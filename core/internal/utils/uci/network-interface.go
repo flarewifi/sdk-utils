@@ -7,8 +7,8 @@ import (
 )
 
 // interface
-func (self *UciNetworkApi) GetInterface(section string) (iface *uci.NetIface, err error) {
-	var ifdata uci.NetIface
+func (self *UciNetworkApi) GetInterface(section string) (iface *uci.INetIface, err error) {
+	var ifdata uci.INetIface
 
 	ifdata.Section = section
 
@@ -54,7 +54,7 @@ func (self *UciNetworkApi) GetInterfaceSecs() (sections []string) {
 	return secs
 }
 
-func (self *UciNetworkApi) GetInterfaces() (ifaces []*uci.NetIface, err error) {
+func (self *UciNetworkApi) GetInterfaces() (ifaces []*uci.INetIface, err error) {
 	secs, _ := UciTree.GetSections("network", "interface")
 
 	for _, s := range secs {
@@ -68,7 +68,7 @@ func (self *UciNetworkApi) GetInterfaces() (ifaces []*uci.NetIface, err error) {
 	return ifaces, nil
 }
 
-func (self *UciNetworkApi) SetInterface(section string, cfg *uci.NetIface) error {
+func (self *UciNetworkApi) SetInterface(section string, cfg *uci.INetIface) error {
 	var ok bool
 
 	ok = UciTree.Set("network", section, "proto", cfg.Proto)

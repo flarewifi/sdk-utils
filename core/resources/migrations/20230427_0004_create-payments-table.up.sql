@@ -1,8 +1,0 @@
-CREATE TABLE IF NOT EXISTS payments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    purchase_id INT NOT NULL,
-    amount DECIMAL(8, 2) DEFAULT 0.0,
-    optname VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (purchase_id) REFERENCES purchases (id) ON DELETE CASCADE
-);

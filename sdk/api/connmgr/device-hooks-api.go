@@ -10,10 +10,10 @@ import (
 	"context"
 )
 
-type ClientCreatedHookFn func(ctx context.Context, clnt ClientDevice) error
-type ClientChangedHookFn func(ctx context.Context, current ClientDevice, old ClientDevice) error
+type ClientCreatedHookFn func(ctx context.Context, clnt IClientDevice) error
+type ClientChangedHookFn func(ctx context.Context, current IClientDevice, old IClientDevice) error
 
-type DeviceHooksApi interface {
+type IDeviceHooksApi interface {
 	ClientCreatedHook(...ClientCreatedHookFn)
 	ClientChangedHook(...ClientChangedHookFn)
 }

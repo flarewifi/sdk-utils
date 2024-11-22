@@ -1,0 +1,46 @@
+package bootstrap5
+
+import (
+	"fmt"
+	"sdk/api/forms"
+	"sdk/api/http"
+)
+
+templ HtmlForm(form sdkhttp.IHttpForm, csrfTag string, submitUrl string) {
+	{{ json, err := form.JsonData() }}
+	if err != nil {
+		<p>Error: { err.Error() }</p>
+		{{ return }}
+	}
+	<form id="form" method="POST" action={ templ.SafeURL(submitUrl) } data-json={ templ.JSONString(json) }>
+		@templ.Raw(csrfTag)
+		for _, sec := range form.GetSections() {
+			<legend>{ sec.Name }</legend>
+			for _, fld := range sec.Fields {
+				switch fld.GetType() {
+					case sdkforms.FormFieldTypeText:
+						@TextInputField(form, sec, fld)
+					case sdkforms.FormFieldTypeInteger:
+						@IntegerInputField(form, sec, fld)
+					case sdkforms.FormFieldTypeDecimal:
+						@DecimalInputField(form, sec, fld)
+					case sdkforms.FormFieldTypeBoolean:
+						@BooleanInputField(form, sec, fld)
+					case sdkforms.FormFieldTypeList:
+						@ListInputField(form, sec, fld)
+					case sdkforms.FormFieldTypeMulti:
+						@MultiInputField(form, sec, fld)
+					default:
+						<p>{ fmt.Sprintf("unsupported field type: %s", fld.GetType()) }</p>
+				}
+				<br/>
+			}
+			<hr/>
+		}
+		<button type="submit">Submit</button>
+	</form>
+	<script type="text/javascript">
+  var str = document.getElementById('form').getAttribute('data-json');
+  console.log(JSON.parse(str));
+</script>
+}

@@ -8,7 +8,7 @@ import (
 	sdkconnmgr "sdk/api/connmgr"
 )
 
-func NewClientSession(src sdkconnmgr.SessionSource) *ClientSession {
+func NewClientSession(src sdkconnmgr.ISessionSource) *ClientSession {
 	s := src.Data()
 	return &ClientSession{
 		provider:  s.Provider,

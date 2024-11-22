@@ -6,6 +6,6 @@
 
 package sdknet
 
-type NetworkPlugin interface {
+type INetworkPlugin interface {
 	OnInit() error
 }

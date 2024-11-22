@@ -1,14 +1,16 @@
 package pkg
 
 import (
+	"core/env"
 	"core/internal/config"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"sdk/libs/go-json"
 	"strings"
+
+	"github.com/goccy/go-json"
 
 	sdkfs "github.com/flarehotspot/go-utils/fs"
 	paths "github.com/flarehotspot/go-utils/paths"
@@ -195,6 +197,10 @@ func InstalledPluginsList() []PluginInstallData {
 }
 
 func NeedsRecompile(def PluginSrcDef) bool {
+	if env.GO_ENV == env.ENV_DEV && (def.Src == PluginSrcLocal || def.Src == PluginSrcSystem) {
+		return true
+	}
+
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
 		log.Println("Error reading plugins config: ", err)
@@ -303,7 +309,7 @@ func ValidateSrcPath(src string) error {
 }
 
 func ValidateInstallPath(src string) error {
-	requiredFiles := []string{"plugin.json", "go.mod", "plugin.so"}
+	requiredFiles := []string{"plugin.json", "go.mod", "plugin.so", "metadata.json"}
 
 	for _, f := range requiredFiles {
 		if !sdkfs.Exists(filepath.Join(src, f)) {

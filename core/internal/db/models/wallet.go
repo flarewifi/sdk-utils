@@ -2,17 +2,20 @@ package models
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 	"time"
 
 	"core/internal/db"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Wallet struct {
 	db        *db.Database
 	models    *Models
-	id        int64
-	deviceId  int64
+	id        pgtype.UUID
+	deviceId  pgtype.UUID
 	balance   float64
 	createdAt time.Time
 }
@@ -24,11 +27,11 @@ func NewWallet(dtb *db.Database, m *Models) *Wallet {
 	}
 }
 
-func (self *Wallet) Id() int64 {
+func (self *Wallet) Id() pgtype.UUID {
 	return self.id
 }
 
-func (self *Wallet) DeviceId() int64 {
+func (self *Wallet) DeviceId() pgtype.UUID {
 	return self.deviceId
 }
 
@@ -40,7 +43,7 @@ func (self *Wallet) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Wallet) IncBalanceTx(tx *sql.Tx, ctx context.Context, bal float64) error {
+func (self *Wallet) IncBalanceTx(tx pgx.Tx, ctx context.Context, bal float64) error {
 	newbal := self.balance + bal
 	err := self.UpdateTx(tx, ctx, newbal)
 	if err != nil {
@@ -51,8 +54,8 @@ func (self *Wallet) IncBalanceTx(tx *sql.Tx, ctx context.Context, bal float64) e
 	return nil
 }
 
-func (self *Wallet) UpdateTx(tx *sql.Tx, ctx context.Context, bal float64) error {
-	err := self.models.walletModel.UpdateTx(tx, ctx, self.id, bal)
+func (self *Wallet) UpdateTx(tx pgx.Tx, ctx context.Context, bal float64) error {
+	err := self.models.walletModel.Update(ctx, self.id, bal)
 	if err != nil {
 		return err
 	}
@@ -60,8 +63,8 @@ func (self *Wallet) UpdateTx(tx *sql.Tx, ctx context.Context, bal float64) error
 	return nil
 }
 
-func (self *Wallet) AvailableBalTx(tx *sql.Tx, ctx context.Context) (float64, error) {
-	pending, err := self.models.purchaseModel.PendingPurchaseTx(tx, ctx, self.deviceId)
+func (self *Wallet) AvailableBalTx(tx pgx.Tx, ctx context.Context) (float64, error) {
+	pending, err := self.models.purchaseModel.PendingPurchase(ctx, self.deviceId)
 	if err != nil {
 		return 0, nil
 	}
@@ -71,45 +74,61 @@ func (self *Wallet) AvailableBalTx(tx *sql.Tx, ctx context.Context) (float64, er
 }
 
 func (self *Wallet) IncBalance(ctx context.Context, bal float64) error {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+	tx, err := self.db.SqlDB().Begin(ctx)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		}
+	}()
 
 	err = self.IncBalanceTx(tx, ctx, bal)
 	if err != nil {
 		return err
 	}
-	return tx.Commit()
+
+	return nil
 }
 
 func (self *Wallet) Update(ctx context.Context, bal float64) error {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+	tx, err := self.db.SqlDB().Begin(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		}
+	}()
 
 	err = self.UpdateTx(tx, ctx, bal)
 	if err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 func (self *Wallet) AvailableBal(ctx context.Context) (float64, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+	tx, err := self.db.SqlDB().Begin(ctx)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("could not begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		}
+	}()
 
 	bal, err := self.AvailableBalTx(tx, ctx)
 	if err != nil {
 		return 0, nil
 	}
 
-	return bal, tx.Commit()
+	return bal, nil
 }

@@ -12,16 +12,19 @@ import (
 	sdkacct "sdk/api/accounts"
 )
 
-type HttpAuth interface {
+type IHttpAuth interface {
 
 	// Get the current admin user from the http request.
-	CurrentAcct(r *http.Request) (sdkacct.Account, error)
+	CurrentAcct(r *http.Request) (sdkacct.IAccount, error)
 
-    // Authenticate the user and return the account
-	Authenticate(username string, password string) (sdkacct.Account, error)
+	// Check if the user is authenticated
+	IsAuthenticated(r *http.Request) bool
+
+	// Authenticate the user and return the account
+	Authenticate(username string, password string) (sdkacct.IAccount, error)
 
 	// Sets the auth-token cookie in response header
-	SignIn(w http.ResponseWriter, acct sdkacct.Account) error
+	SignIn(w http.ResponseWriter, acct sdkacct.IAccount) error
 
 	// Sets empty auth-token cooke response header
 	SignOut(w http.ResponseWriter) error

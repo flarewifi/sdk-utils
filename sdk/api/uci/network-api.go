@@ -6,8 +6,8 @@
 
 package sdkuci
 
-// NetworkApi is used to get/set network configuration
-type NetworkApi interface {
+// INetworkApi is used to get/set network configuration
+type INetworkApi interface {
 	// device
 	GetDevice(section string) (dev string, err error)
 	GetDeviceSec(name string) (section string, err error)
@@ -30,8 +30,8 @@ type NetworkApi interface {
 	DeleteBrVlan(brvlan *BrVlan)
 
 	// interface
-	GetInterface(section string) (iface *NetIface, err error)
+	GetInterface(section string) (iface *INetIface, err error)
 	GetInterfaceSecs() (sections []string)
-  GetInterfaces() (ifaces []*NetIface, err error)
-	SetInterface(section string, cfg *NetIface) error
+  GetInterfaces() (ifaces []*INetIface, err error)
+	SetInterface(section string, cfg *INetIface) error
 }

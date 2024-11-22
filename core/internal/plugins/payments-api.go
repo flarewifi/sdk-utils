@@ -9,11 +9,12 @@ import (
 	sdkpayments "sdk/api/payments"
 )
 
-func NewPaymentsApi(plugin *PluginApi, pmgr *PaymentsMgr) *PaymentsApi {
-	return &PaymentsApi{
-		api:         plugin,
+func NewPaymentsApi(api *PluginApi, pmgr *PaymentsMgr) {
+	pmtApi := &PaymentsApi{
+		api:         api,
 		paymentsMgr: pmgr,
 	}
+	api.PaymentsAPI = pmtApi
 }
 
 type PaymentsApi struct {
@@ -21,7 +22,7 @@ type PaymentsApi struct {
 	paymentsMgr *PaymentsMgr
 }
 
-func (self *PaymentsApi) NewPaymentProvider(provider sdkpayments.PaymentProvider) {
+func (self *PaymentsApi) NewPaymentProvider(provider sdkpayments.IPaymentProvider) {
 	log.Println("Registering payment method:", provider.Name())
 	self.paymentsMgr.NewPaymentProvider(self.api, provider)
 }
@@ -31,7 +32,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdkp
 		clnt, err := helpers.CurrentClient(self.api.ClntReg, r)
 		if err != nil {
 			log.Println("helpers.CurrentClient error:", err)
-			self.api.HttpAPI.VueResponse().Error(w, err.Error(), 500)
+			self.ErrorPage(w, err)
 			return
 		}
 
@@ -48,19 +49,19 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdkp
 		)
 		if err != nil {
 			log.Println("self.api.models.Purchase().Create error:", err)
-			self.api.HttpAPI.VueResponse().Error(w, err.Error(), 500)
+			self.ErrorPage(w, err)
 			return
 		}
 
 		coreApi := self.api.CoreAPI
-		coreApi.HttpAPI.VueResponse().Redirect(w, "payments:customer:options")
+		coreApi.HttpAPI.HttpResponse().Redirect(w, r, "payments:customer:options")
 	}
 
 	purMw := self.api.HttpAPI.middlewares.PendingPurchase()
 	purMw(http.HandlerFunc(handler)).ServeHTTP(w, r)
 }
 
-func (self *PaymentsApi) GetPendingPurchase(r *http.Request) (sdkpayments.Purchase, error) {
+func (self *PaymentsApi) GetPendingPurchase(r *http.Request) (sdkpayments.IPurchase, error) {
 	mdls := self.api.models
 	clnt, err := helpers.CurrentClient(self.api.ClntReg, r)
 	if err != nil {
@@ -78,4 +79,10 @@ func (self *PaymentsApi) GetPendingPurchase(r *http.Request) (sdkpayments.Purcha
 	}
 	purchase := NewPurchase(self.api, r.Context(), clnt.Id(), p)
 	return purchase, nil
+}
+
+func (self *PaymentsApi) ErrorPage(w http.ResponseWriter, err error) {
+	// TODO: show error page
+	w.WriteHeader(500)
+	w.Write([]byte(err.Error()))
 }

@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"core/internal/plugins"
+	"core/internal/utils/pkg"
+
+	sdkpaths "github.com/flarehotspot/go-utils/paths"
 )
 
 func Init(g *plugins.CoreGlobals) {
@@ -15,12 +18,14 @@ func Init(g *plugins.CoreGlobals) {
 	InitDirs()
 
 	go func() {
+		pkg.LinkNodeModulesLib(sdkpaths.AppDir)
+
 		bp.AppendLog("Initializing plugins...")
-		time.Sleep(1000 * 3 * time.Millisecond)
+		// time.Sleep(1000 * 3 * time.Millisecond)
 		InitPlugins(g)
 
 		// delay boot
-		time.Sleep(1000 * 3 * time.Millisecond)
+		// time.Sleep(1000 * 3 * time.Millisecond)
 
 		bp.AppendLog("Initializing storage...")
 		InitStorage()

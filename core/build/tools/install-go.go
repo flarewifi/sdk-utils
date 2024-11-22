@@ -25,9 +25,16 @@ func InstallGo(installPath string) {
 		installPath = filepath.Join(sdkpaths.AppDir, "go")
 	}
 
+	// get go version from ".go-version"
+	b, err := os.ReadFile(".go-version")
+	if err != nil {
+		panic(fmt.Sprintf("Error reading .go-version file: %s", err))
+	}
+
 	GOOS := sdkruntime.GOOS
 	GOARCH := sdkruntime.GOARCH
-	GOVERSION := sdkruntime.GO_VERSION
+	GOVERSION := strings.ReplaceAll(strings.TrimSpace(string(b)), "go", "")
+	// GOVERSION := sdkruntime.GO_VERSION
 
 	if GoInstallExists(installPath) {
 		fmt.Printf("Go version %s already installed to %s\n", GOVERSION, installPath)
@@ -35,7 +42,7 @@ func InstallGo(installPath string) {
 	}
 
 	EXTRACT_PATH := filepath.Join(sdkpaths.CacheDir, "downloads", fmt.Sprintf("go%s-%s-%s", GOVERSION, GOOS, GOARCH))
-	err := downloadAndExtractGo(GOOS, GOARCH, GOVERSION, EXTRACT_PATH)
+	err = downloadAndExtractGo(GOOS, GOARCH, GOVERSION, EXTRACT_PATH)
 	if err != nil {
 		panic(err)
 	}
@@ -126,6 +133,9 @@ func downloadAndExtractGo(goos, goarch, version, extractPath string) error {
 
 	// Extract the tar.gz file to the specified path
 	fmt.Println("Extracting Go to: ", extractPath)
+
+	// TODO: Fix too many open files on MacOS
+	// err = sdkextract.Extract(tmpFile.Name(), extractPath)
 	err = extractTarGz(tmpFile.Name(), extractPath)
 	if err != nil {
 		return err

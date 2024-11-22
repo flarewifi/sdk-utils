@@ -7,9 +7,9 @@ import (
 
 	"core/internal/connmgr"
 	"core/internal/db"
-	"core/internal/web/middlewares"
-	"core/internal/web/router"
+	webutil "core/internal/utils/web"
 	sdkhttp "sdk/api/http"
+
 	"github.com/gorilla/mux"
 )
 
@@ -21,10 +21,8 @@ type HttpRouterApi struct {
 
 func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegister) *HttpRouterApi {
 	prefix := fmt.Sprintf("/%s/%s", api.Pkg(), api.Version())
-	pluginMux := router.PluginRouter.PathPrefix(prefix).Subrouter()
-
+	pluginMux := webutil.PluginRouter.PathPrefix(prefix).Subrouter()
 	adminMux := pluginMux.PathPrefix("/admin").Subrouter()
-	adminMux.Use(middlewares.AdminAuth)
 
 	pluginRouter := &HttpRouterInstance{api, pluginMux}
 	adminRouter := &HttpRouterInstance{api, adminMux}
@@ -32,17 +30,21 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegis
 	return &HttpRouterApi{api, adminRouter, pluginRouter}
 }
 
-func (self *HttpRouterApi) AdminRouter() sdkhttp.HttpRouterInstance {
+func (self *HttpRouterApi) Initialize() {
+	self.adminRouter.Use(self.api.HttpAPI.middlewares.AdminAuth())
+}
+
+func (self *HttpRouterApi) AdminRouter() sdkhttp.IHttpRouterInstance {
 	return self.adminRouter
 }
 
-func (self *HttpRouterApi) PluginRouter() sdkhttp.HttpRouterInstance {
+func (self *HttpRouterApi) PluginRouter() sdkhttp.IHttpRouterInstance {
 	return self.pluginRouter
 }
 
 func (self *HttpRouterApi) UseMiddleware(middleware ...func(http.Handler) http.Handler) {
 	for _, mw := range middleware {
-		router.RootRouter.Use(mux.MiddlewareFunc(mw))
+		webutil.RootRouter.Use(mux.MiddlewareFunc(mw))
 	}
 }
 
@@ -52,7 +54,7 @@ func (self *HttpRouterApi) MuxRouteName(name sdkhttp.PluginRouteName) sdkhttp.Mu
 }
 
 func (self *HttpRouterApi) UrlForMuxRoute(muxname sdkhttp.MuxRouteName, pairs ...string) string {
-	route := router.RootRouter.Get(string(muxname))
+	route := webutil.RootRouter.Get(string(muxname))
 	if route == nil {
 		log.Println("Error: route not found for " + string(muxname))
 		return "Error: route not found for " + string(muxname)

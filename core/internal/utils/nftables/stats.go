@@ -3,7 +3,8 @@ package nftables
 import (
 	"bytes"
 	"fmt"
-	"sdk/libs/go-json"
+
+	"github.com/goccy/go-json"
 
 	"core/internal/utils/cmd"
 )

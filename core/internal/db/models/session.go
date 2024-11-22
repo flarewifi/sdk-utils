@@ -2,10 +2,14 @@ package models
 
 import (
 	"context"
-	"database/sql"
+	"log"
 	"time"
 
 	"core/internal/db"
+	"core/internal/db/sqlc"
+	"core/internal/utils/pg"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const (
@@ -17,8 +21,8 @@ const (
 type Session struct {
 	db          *db.Database
 	models      *Models
-	id          int64
-	deviceId    int64
+	id          pgtype.UUID
+	deviceId    pgtype.UUID
 	sessionType uint8
 	timeSecs    uint
 	dataMb      float64
@@ -40,7 +44,7 @@ func NewSession(dtb *db.Database, mdls *Models) *Session {
 	}
 }
 
-func BuildSession(id int64, devId int64, t uint8, timeSecs uint, dataMb float64, timeCons uint, dataCons float64, startedAt *time.Time, expDays *uint, expiresAt *time.Time, dmbits int, umbits int, g bool) *Session {
+func BuildSession(id pgtype.UUID, devId pgtype.UUID, t uint8, timeSecs uint, dataMb float64, timeCons uint, dataCons float64, startedAt *time.Time, expDays *uint, expiresAt *time.Time, dmbits int, umbits int, g bool) *Session {
 	return &Session{
 		id:          id,
 		deviceId:    devId,
@@ -58,11 +62,11 @@ func BuildSession(id int64, devId int64, t uint8, timeSecs uint, dataMb float64,
 	}
 }
 
-func (self *Session) Id() int64 {
+func (self *Session) Id() pgtype.UUID {
 	return self.id
 }
 
-func (self *Session) DeviceId() int64 {
+func (self *Session) DeviceId() pgtype.UUID {
 	return self.deviceId
 }
 
@@ -122,9 +126,23 @@ func (self *Session) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Session) UpdateTx(tx *sql.Tx, ctx context.Context, devId int64, t uint8, secs uint, mb float64, timecon uint, datacon float64, started *time.Time, exp *uint, downMbit int, upMbit int, g bool) error {
-	err := self.models.sessionModel.UpdateTx(tx, ctx, self.id, devId, t, secs, mb, timecon, datacon, started, exp, downMbit, upMbit, g)
+func (self *Session) Update(ctx context.Context, devId pgtype.UUID, t uint8, secs uint, mb float64, timecon uint, datacon float64, started *time.Time, exp *uint, downMbit int, upMbit int, g bool) error {
+	err := self.db.Queries.UpdateSession(ctx, sqlc.UpdateSessionParams{
+		DeviceID:        devId,
+		SessionType:     int16(t),
+		TimeSecs:        pgtype.Int4{Int32: int32(secs)},
+		DataMbytes:      pg.Float64ToNumeric(mb),
+		ConsumptionSecs: pgtype.Int4{Int32: int32(timecon)},
+		ConsumptionMb:   pg.Float64ToNumeric(datacon),
+		StartedAt:       pgtype.Timestamp{Time: *started},
+		ExpDays:         pgtype.Int4{Int32: int32(*exp)},
+		DownMbits:       int32(downMbit),
+		UpMbits:         int32(upMbit),
+		UseGlobal:       g,
+		ID:              self.id,
+	})
 	if err != nil {
+		log.Printf("error updating session %v: %v", self.id, err)
 		return err
 	}
 
@@ -137,26 +155,8 @@ func (self *Session) UpdateTx(tx *sql.Tx, ctx context.Context, devId int64, t ui
 	self.startedAt = started
 	self.downMbits = downMbit
 	self.upMbits = upMbit
+
 	return nil
-}
-
-func (self *Session) SaveTx(tx *sql.Tx, ctx context.Context) error {
-	return self.UpdateTx(tx, ctx, self.deviceId, self.sessionType, self.timeSecs, self.dataMb, self.timeCons, self.dataCons, self.startedAt, self.expDays, self.downMbits, self.upMbits, self.useGlobal)
-}
-
-func (self *Session) Update(ctx context.Context, devId int64, t uint8, secs uint, mb float64, timecon uint, datacon float64, started *time.Time, exp *uint, downMbit int, upMbit int, g bool) error {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	err = self.UpdateTx(tx, ctx, devId, t, secs, mb, timecon, datacon, started, exp, downMbit, upMbit, g)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
 }
 
 func (self *Session) Save(ctx context.Context) error {

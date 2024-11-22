@@ -10,13 +10,13 @@ import (
 	connmgr "sdk/api/connmgr"
 )
 
-// PaymentProvider represents a payment provider.
+// IPaymentProvider represents a payment provider.
 // A payment provider can have many payment options.
-type PaymentProvider interface {
+type IPaymentProvider interface {
 
 	// Returns name of the payment provider.
 	Name() string
 
 	// Returns a list of available payment options.
-	PaymentOpts(clnt connmgr.ClientDevice) []PaymentOpt
+	PaymentOpts(clnt connmgr.IClientDevice) []PaymentOpt
 }

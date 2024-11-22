@@ -13,11 +13,13 @@ import (
 	connmgr "sdk/api/connmgr"
 	sdkconnmgr "sdk/api/connmgr"
 	sdknet "sdk/api/network"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var sessionQ *jobque.JobQue = jobque.NewJobQue()
 
-func NewRunningSession(clnt sdkconnmgr.ClientDevice, s connmgr.ClientSession) (*RunningSession, error) {
+func NewRunningSession(clnt sdkconnmgr.IClientDevice, s connmgr.IClientSession) (*RunningSession, error) {
 	lan, err := network.FindByIp(clnt.IpAddr())
 	if err != nil {
 		return nil, err
@@ -37,7 +39,7 @@ func NewRunningSession(clnt sdkconnmgr.ClientDevice, s connmgr.ClientSession) (*
 
 type RunningSession struct {
 	mu         sync.RWMutex
-	clntId     int64
+	clntId     pgtype.UUID
 	ip         string
 	mac        string
 	lan        *network.NetworkLan
@@ -45,17 +47,17 @@ type RunningSession struct {
 	tcFilter   *tc.TcFilter
 	timeTicker *time.Ticker
 	tickerDone chan bool
-	session    connmgr.ClientSession
+	session    connmgr.IClientSession
 	callbacks  []chan error
 }
 
-func (self *RunningSession) ClientId() int64 {
+func (self *RunningSession) ClientId() pgtype.UUID {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.clntId
 }
 
-func (self *RunningSession) GetSession() connmgr.ClientSession {
+func (self *RunningSession) GetSession() connmgr.IClientSession {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.session
@@ -76,7 +78,7 @@ func (self *RunningSession) Done() <-chan error {
 	return ch
 }
 
-func (self *RunningSession) Start(ctx context.Context, s connmgr.ClientSession) error {
+func (self *RunningSession) Start(ctx context.Context, s connmgr.IClientSession) error {
 	_, err := sessionQ.Exec(func() (interface{}, error) {
 		self.mu.Lock()
 		defer self.mu.Unlock()

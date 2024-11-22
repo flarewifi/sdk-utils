@@ -1,7 +1,5 @@
 package jobque
 
-import "sync"
-
 // Define a Job type
 type Job func() (interface{}, error)
 
@@ -10,7 +8,6 @@ type JobQue struct {
 	jobChannel chan Job
 	results    chan JobResult
 	stopChan   chan struct{}
-	wg         sync.WaitGroup
 }
 
 // JobResult holds the result of a job execution
@@ -46,19 +43,10 @@ func (jq *JobQue) worker() {
 
 // Exec adds a job to the queue and waits for the result
 func (jq *JobQue) Exec(job Job) (interface{}, error) {
-	jq.wg.Add(1)
-	defer jq.wg.Done()
-
 	// Send the job to the worker
 	jq.jobChannel <- job
 
 	// Wait for the result
 	result := <-jq.results
 	return result.Result, result.Err
-}
-
-// Stop stops the job queue and waits for all jobs to finish
-func (jq *JobQue) Stop() {
-	close(jq.stopChan)
-	jq.wg.Wait() // Wait for all jobs to be processed
 }

@@ -1,12 +1,13 @@
 package plugins
 
 import (
-	inappur "sdk/api/inappur"
 	"net/http"
+	inappur "sdk/api/inappur"
 )
 
-func NewInAppPurchaseApi(plugin *PluginApi) *InAppPurchaseApi {
-	return &InAppPurchaseApi{plugin}
+func NewInAppPurchaseApi(plugin *PluginApi) {
+	purApi := &InAppPurchaseApi{plugin}
+	plugin.InAppPurchaseAPI = purApi
 }
 
 type InAppPurchaseApi struct {

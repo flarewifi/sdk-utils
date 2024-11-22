@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sdk/libs/go-json"
 
 	"core/env"
 	"core/internal/utils/pkg"
@@ -16,19 +15,22 @@ import (
 	sdkruntime "github.com/flarehotspot/go-utils/runtime"
 	sdkstr "github.com/flarehotspot/go-utils/strings"
 	sdkzip "github.com/flarehotspot/go-utils/zip"
+
+	"github.com/goccy/go-json"
 )
 
 var (
 	devkitReleaseDir string
 	devkitFiles      = []string{
-		"go",
+		".tmp/go",
+		".go-version",
+		"tools.sh",
 		"bin",
 		"config/.defaults",
 		"core/go.mod",
 		"core/plugin.so",
 		"core/plugin.json",
 		"core/resources",
-		"core/go-version",
 		"plugins/system",
 		"main/go.mod",
 		"sdk",
@@ -43,7 +45,7 @@ func init() {
 
 func CreateDevkit() {
 	PrepareCleanup()
-	InstallGo("./go")
+	InstallGo(".tmp/go")
 	BuildFlareCLI()
 	BuildCore()
 	CopyDevkitFiles()

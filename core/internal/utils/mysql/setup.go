@@ -3,18 +3,17 @@
 package mysql
 
 import (
+	"core/internal/utils/cmd"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sdk/libs/go-json"
 	stdstr "strings"
 	"time"
 
-	"core/internal/utils/cmd"
-	"sdk/libs/go-uci"
-
+	gouci "github.com/digineo/go-uci"
 	fs "github.com/flarehotspot/go-utils/fs"
 	paths "github.com/flarehotspot/go-utils/paths"
+	"github.com/goccy/go-json"
 )
 
 var (
@@ -103,11 +102,11 @@ func prepareSrvMysqlDir() error {
 }
 
 func prepareConfigMysqld() error {
-	values, ok := uci.Get("mysqld", "general", "enabled")
+	values, ok := gouci.Get("mysqld", "general", "enabled")
 	enabled := ok && len(values) > 0 && values[0] == "1"
 	if !enabled {
-		uci.Set("mysqld", "general", "enabled", "1")
-		return uci.Commit()
+		gouci.Set("mysqld", "general", "enabled", "1")
+		return gouci.Commit()
 	}
 	return nil
 }

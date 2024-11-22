@@ -6,15 +6,12 @@
 
 package sdkcfg
 
-// ConfigApi is used to access the configuration API.
-type ConfigApi interface {
+// IConfigApi is used to access the configuration API.
+type IConfigApi interface {
 
 	// Get the application configuration api.
-	Application() AppCfgApi
+	Application() IAppCfgApi
 
 	// Get the bandwidth configuration api of a network interface.
-	Bandwidth(ifname string) BandwidthCfgApi
-
-	// Get the custom configuration guration api.
-	Custom(key string) CustomCfgApi
+	Bandwidth(ifname string) IBandwidthCfgApi
 }

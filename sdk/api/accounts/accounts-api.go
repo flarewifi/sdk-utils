@@ -11,16 +11,16 @@ type AccountsApi interface {
 
 	// Create a new system account. The list of available permissions
 	// can be obtained from IAcctApi.Permissions().
-	Create(username string, pass string, perms []string) (Account, error)
+	Create(username string, pass string, perms []string) (IAccount, error)
 
 	// Find an account by username.
-	Find(username string) (Account, error)
+	Find(username string) (IAccount, error)
 
 	// Get all accounts, admin and non-admin.
-	GetAll() ([]Account, error)
+	GetAll() ([]IAccount, error)
 
 	// Get all admin accounts.
-	GetAdmins() ([]Account, error)
+	GetAdmins() ([]IAccount, error)
 
 	// Add a new type of permission.
 	NewPerm(name string, desc string) error

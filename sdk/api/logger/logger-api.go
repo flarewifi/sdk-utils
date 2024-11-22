@@ -1,6 +1,6 @@
 package sdklogger
 
-type LoggerApi interface {
+type ILoggerApi interface {
 	// Logs title and body with info level to console and log file
 	Info(title string, body ...any) error
 

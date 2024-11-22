@@ -3,6 +3,7 @@ package tools
 import (
 	"core/internal/utils/pkg"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -15,13 +16,23 @@ func CreateGoWorkspace() {
 	goWork := fmt.Sprintf(`go %s
 
 use (
+    ./main
     ./core
-    ./sdk
-    ./utils
-    ./main`, goVersion)
+    ./sdk/api
+    ./sdk/utils`, goVersion)
 
+	// insert libs paths
+	libs := []string{}
+	if err := sdkfs.LsDirs("sdk/libs", &libs, false); err != nil {
+		log.Println(err)
+	}
+
+	for _, lib := range libs {
+		goWork += "\n    ./" + lib
+	}
+
+	// insert plugin paths
 	pluginSearchPaths := []string{"plugins/system", "plugins/local"}
-
 	for _, searchPath := range pluginSearchPaths {
 		if sdkfs.Exists(searchPath) {
 			entries, err := os.ReadDir(searchPath)

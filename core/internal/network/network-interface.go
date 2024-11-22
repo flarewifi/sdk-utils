@@ -22,7 +22,7 @@ func (self *NetworkInterface) Ifname() string {
 	return self.name
 }
 
-func (self *NetworkInterface) Device() (d sdknet.NetworkDevice, err error) {
+func (self *NetworkInterface) Device() (d sdknet.INetworkDevice, err error) {
 	info, err := self.getInfo()
 	if err != nil {
 		return nil, err

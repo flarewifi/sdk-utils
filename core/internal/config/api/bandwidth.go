@@ -15,18 +15,18 @@ type BandwdCfgApi struct {
 	ifname string
 }
 
-func (c *BandwdCfgApi) Get() (sdkcfg.BandwdCfg, bool) {
+func (c *BandwdCfgApi) Get() (sdkcfg.IBandwdCfg, bool) {
 	cfg, err := config.ReadBandwidthConfig()
 	if err != nil {
-		return sdkcfg.BandwdCfg{}, false
+		return sdkcfg.IBandwdCfg{}, false
 	}
 
 	bcfg, ok := cfg.Lans[c.ifname]
 	if !ok {
-		return sdkcfg.BandwdCfg{}, false
+		return sdkcfg.IBandwdCfg{}, false
 	}
 
-	return sdkcfg.BandwdCfg{
+	return sdkcfg.IBandwdCfg{
 		UseGlobal:       bcfg.UseGlobal,
 		GlobalDownMbits: bcfg.GlobalDownMbits,
 		GlobalUpMbits:   bcfg.GlobalUpMbits,
@@ -35,7 +35,7 @@ func (c *BandwdCfgApi) Get() (sdkcfg.BandwdCfg, bool) {
 	}, true
 }
 
-func (c *BandwdCfgApi) Save(cfg sdkcfg.BandwdCfg) error {
+func (c *BandwdCfgApi) Save(cfg sdkcfg.IBandwdCfg) error {
 	oldCfg, err := config.ReadBandwidthConfig()
 	if err != nil {
 		return err

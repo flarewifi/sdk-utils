@@ -20,7 +20,7 @@ type SessionData struct {
 	CreatedAt      time.Time
 }
 
-type SessionSource interface {
+type ISessionSource interface {
 
 	// Return the session data.
 	Data() SessionData

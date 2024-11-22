@@ -1,37 +1,35 @@
 package db
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
 	"core/internal/config"
-	"core/internal/utils/mysql"
+	"core/internal/db/sqlc"
+	"core/internal/utils/pg"
 
 	sdkstr "github.com/flarehotspot/go-utils/strings"
-	//
-	// UNCOMMENT BELOW LINES WHEN DEBUGGING SQL QUERIES:
-	//
-	// "github.com/rs/zerolog"
-	// "os"
-	// sqldblogger "github.com/simukti/sqldb-logger"
-	// "github.com/simukti/sqldb-logger/logadapter/zerologadapter"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Database struct {
-	mu sync.RWMutex
-	db *sql.DB
+	mu      sync.RWMutex
+	db      *pgxpool.Pool
+	Queries sqlc.Queries
 }
 
 func NewDatabase() (*Database, error) {
 	dbpass := sdkstr.Rand(8)
 	dbname := fmt.Sprintf("flarehotspot_%s", sdkstr.Rand(8))
 
-	err := mysql.SetupDb(dbpass, dbname)
+	// Sets up flarehotspot_.. database
+	err := pg.SetupDb(dbpass, dbname)
 	if err != nil {
-		log.Println("Error installing mariadb: ", err)
+		log.Println("Error installing postgres db: ", err)
 		return nil, err
 	}
 
@@ -45,53 +43,52 @@ func NewDatabase() (*Database, error) {
 	url := cfg.DbUrlString()
 	log.Println("DB URL: ", url)
 
-	// Ensure mysql starts up during boot before returning err
-	openErrorCountThreshold := 5
-	conn, err := sql.Open("mysql", url)
-	for openErrorCount := 0; err != nil && openErrorCount < openErrorCountThreshold; openErrorCount++ {
-		conn, err = sql.Open("mysql", url)
-		time.Sleep(time.Second * 2)
-	}
+	dbConf, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, err
 	}
 
 	//https://stackoverflow.com/questions/39980902/golang-mysql-error-packets-go33-unexpected-eof
-	conn.SetConnMaxLifetime(time.Minute * 4)
+	dbConf.MaxConnLifetime = time.Minute * 4
 
-	// UNCOMMENT BELOW LINES WHEN DEBUGGING SQL QUERIES:
-	//
-	// loggerAdapter := zerologadapter.New(zerolog.New(os.Stdout))
-	// conn = sqldblogger.OpenDriver(
-	// url,
-	// conn.Driver(),
-	// loggerAdapter,
-	// sqldblogger.WithMinimumLevel(sqldblogger.LevelInfo),
-	// sqldblogger.WithLogDriverErrorSkip(false),
-	// sqldblogger.WithSQLQueryAsMessage(false),
-	// sqldblogger.WithWrapResult(false),
-	// sqldblogger.WithIncludeStartTime(false),
-	// sqldblogger.WithPreparerLevel(sqldblogger.LevelInfo),
-	// sqldblogger.WithQueryerLevel(sqldblogger.LevelInfo),
-	// sqldblogger.WithExecerLevel(sqldblogger.LevelInfo),
-	// )
-
-	err = conn.Ping()
+	// Ensure postgresql starts up during boot before returning err
+	openErrorCountThreshold := 5
+	pgPool, err := pgxpool.NewWithConfig(context.Background(), dbConf)
+	for openErrorCount := 0; err != nil && openErrorCount < openErrorCountThreshold; openErrorCount++ {
+		pgPool, err = pgxpool.New(context.Background(), url)
+		time.Sleep(time.Second * 2)
+		log.Println("Error opening database: ", err)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	db.db = conn
+	// TODO: find an equivalent postgresql sql query debugging
+
+	err = CheckDatabaseConnection(pgPool)
+	if err != nil {
+		return nil, err
+	}
+
+	db.Queries = *sqlc.New(pgPool)
+	db.db = pgPool
 	return &db, nil
 }
 
-func (d *Database) SqlDB() (db *sql.DB) {
+func CheckDatabaseConnection(pool *pgxpool.Pool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return pool.Ping(ctx)
+}
+
+func (d *Database) SqlDB() (db *pgxpool.Pool) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	return d.db
 }
 
-func (d *Database) SetSql(db *sql.DB) {
+func (d *Database) SetSql(db *pgxpool.Pool) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.db = db
@@ -104,17 +101,21 @@ func CreateDb() (*config.DbConfig, error) {
 	}
 
 	log.Println("DB conn string: ", cfg.BaseConnStr())
-	db, err := sql.Open("mysql", cfg.BaseConnStr())
+	connPool, err := pgxpool.New(context.Background(), cfg.DbUrlString())
 	if err != nil {
 		log.Println("Error opening database: ", err)
 		return cfg, err
 	}
-	defer db.Close()
+	defer connPool.Close()
 
 	log.Println("Creating database " + cfg.Database + "...")
-	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + cfg.Database)
+	_, err = connPool.Exec(context.Background(), "CREATE DATABASE "+cfg.Database)
 	if err != nil {
-		log.Println("Unable to create database:", err)
+		if !strings.Contains(err.Error(), "already exists") {
+			log.Println("Unable to create database:", err)
+			return nil, err
+		}
+		log.Println("Database already exists, skipping creation.")
 	}
 
 	return cfg, nil

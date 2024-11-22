@@ -2,20 +2,23 @@ package models
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"core/internal/db"
+	"core/internal/db/sqlc"
+	"core/internal/utils/pg"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type WalletModel struct {
 	db        *db.Database
 	models    *Models
 	attrs     []string
-	id        int64
+	id        uuid.UUID
 	balance   float64
 	createdAt time.Time
 }
@@ -29,96 +32,62 @@ func NewWalletModel(dtb *db.Database, mdls *Models) *WalletModel {
 	}
 }
 
-func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, devId int64, bal float64) (*Wallet, error) {
-	query := "INSERT INTO wallets (device_id, balance) VALUES (?, ?)"
-	result, err := tx.ExecContext(ctx, query, devId, bal)
+func (self *WalletModel) CreateTx(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, bal float64) (*Wallet, error) {
+	wId, err := self.db.Queries.CreateWallet(ctx, sqlc.CreateWalletParams{
+		DeviceID: devId,
+		Balance:  pg.Float64ToNumeric(bal),
+	})
 	if err != nil {
+		log.Println("error creating wallet:", err)
 		return nil, err
 	}
 
-	lastId, err := result.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-
-	return self.FindTx(tx, ctx, lastId)
+	return self.Find(ctx, wId)
 }
 
-func (self *WalletModel) FindTx(tx *sql.Tx, ctx context.Context, id int64) (*Wallet, error) {
-	wallet := NewWallet(self.db, self.models)
-	query := fmt.Sprintf("SELECT %s FROM wallets WHERE id = ? LIMIT 1", strings.Join(self.attrs, ", "))
-	err := tx.QueryRowContext(ctx, query, id).
-		Scan(&wallet.id, &wallet.deviceId, &wallet.balance, &wallet.createdAt)
-
+func (self *WalletModel) Find(ctx context.Context, id pgtype.UUID) (*Wallet, error) {
+	w, err := self.db.Queries.FindWallet(ctx, id)
 	if err != nil {
+		log.Printf("error finding wallet %v: %v", id, err)
 		return nil, err
 	}
+
+	wallet := NewWallet(self.db, self.models)
+	wallet.id = w.ID
+	wallet.deviceId = w.DeviceID
+	wallet.balance = pg.NumericToFloat64(w.Balance)
+	wallet.createdAt = w.CreatedAt.Time
 
 	return wallet, nil
 }
 
-func (self *WalletModel) UpdateTx(tx *sql.Tx, ctx context.Context, id int64, bal float64) error {
-	query := "UPDATE wallets SET balance = ? WHERE id = ? LIMIT 1"
-	_, err := tx.ExecContext(ctx, query, bal, id)
-	return err
-}
-
-func (self *WalletModel) Find(ctx context.Context, id int64) (*Wallet, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+func (self *WalletModel) Update(ctx context.Context, id pgtype.UUID, bal float64) error {
+	err := self.db.Queries.UpdateWallet(ctx, sqlc.UpdateWalletParams{
+		Balance: pg.Float64ToNumeric(bal),
+		ID:      id,
+	})
 	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	wallet, err := self.FindTx(tx, ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return wallet, tx.Commit()
-}
-
-func (self *WalletModel) Update(ctx context.Context, id int64, bal float64) error {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	err = self.UpdateTx(tx, ctx, id, bal)
-	if err != nil {
+		log.Printf("error updating wallet %v: %v\n", id, err)
 		return err
 	}
 
-	return tx.Commit()
+	self.balance = bal
+
+	return nil
 }
 
-func (self *WalletModel) findByDeviceTx(tx *sql.Tx, ctx context.Context, devId int64) (*Wallet, error) {
+func (self *WalletModel) findByDevice(ctx context.Context, devId pgtype.UUID) (*Wallet, error) {
+	w, err := self.db.Queries.FindWalletByDeviceId(ctx, devId)
+	if err != nil {
+		log.Printf("error finding wallet by device %v: %v", devId, err)
+		return nil, err
+	}
+
 	wallet := NewWallet(self.db, self.models)
-	query := fmt.Sprintf("SELECT %s FROM wallets WHERE device_id = ? LIMIT 1", strings.Join(self.attrs, ", "))
-	err := tx.QueryRowContext(ctx, query, devId).
-		Scan(&wallet.id, &wallet.deviceId, &wallet.balance, &wallet.createdAt)
-
-	if err != nil {
-		log.Println("Error finding wallet for device id "+string(rune(devId)), err.Error())
-		return nil, err
-	}
+	wallet.id = w.ID
+	wallet.deviceId = w.DeviceID
+	wallet.balance = pg.NumericToFloat64(w.Balance)
+	wallet.createdAt = w.CreatedAt.Time
 
 	return wallet, nil
-}
-
-func (self *WalletModel) findByDevice(ctx context.Context, devId int64) (*Wallet, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	wallet, err := self.findByDeviceTx(tx, ctx, devId)
-	if err != nil {
-		return nil, err
-	}
-
-	err = tx.Commit()
-	return wallet, err
 }

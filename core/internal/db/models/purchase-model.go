@@ -2,13 +2,14 @@ package models
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"core/internal/db"
+	"core/internal/db/sqlc"
+	"core/internal/utils/pg"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PurchaseModel struct {
@@ -22,154 +23,119 @@ func NewPurchaseModel(dtb *db.Database, mdls *Models) *PurchaseModel {
 	return &PurchaseModel{dtb, mdls, attrs}
 }
 
-func (self *PurchaseModel) CreateTx(tx *sql.Tx, ctx context.Context, deviceId int64, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string) (*Purchase, error) {
-	query := `
-    INSERT INTO purchases (
-        device_id,
-        sku,
-        name,
-        description,
-        price,
-        any_price,
-        callback_plugin,
-        callback_vue_route_name
-    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
-	result, err := tx.ExecContext(ctx, query, deviceId, sku, name, desc, price, vprice, pkg, routename)
+func (self *PurchaseModel) Create(ctx context.Context, deviceId pgtype.UUID, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string) (*Purchase, error) {
+	pId, err := self.db.Queries.CreatePurchase(ctx, sqlc.CreatePurchaseParams{
+		DeviceID:             deviceId,
+		Sku:                  sku,
+		Name:                 name,
+		Description:          pgtype.Text{String: desc, Valid: desc != ""},
+		Price:                pg.Float64ToNumeric(price),
+		AnyPrice:             vprice,
+		CallbackPlugin:       pkg,
+		CallbackVueRouteName: pgtype.Text{String: routename, Valid: routename != ""},
+	})
 	if err != nil {
-		log.Println("SQL Exec Error: ", err)
+		log.Println("error creating purchase: %w", err)
 		return nil, err
 	}
 
-	lastId, err := result.LastInsertId()
-	if err != nil {
-		log.Println("SQL Exec Error: ", err)
-		return nil, err
-	}
-
-	return self.FindTx(tx, ctx, lastId)
+	return self.Find(ctx, pId)
 }
 
-func (self *PurchaseModel) FindTx(tx *sql.Tx, ctx context.Context, id int64) (*Purchase, error) {
-	p := NewPurchase(self.db, self.models)
-	attrs := strings.Join(self.attrs, ", ")
-	query := "SELECT " + attrs + " FROM purchases WHERE id = ? LIMIT 1"
-	err := tx.QueryRowContext(ctx, query, id).
-		Scan(&p.id, &p.deviceId, &p.sku, &p.name, &p.description, &p.price, &p.anyPrice, &p.callbackPluginPkg, &p.callbackVueRouteName, &p.walletDebit, &p.walletTxId, &p.confirmedAt, &p.cancelledAt, &p.cancelledReason, &p.createdAt)
-
-	return p, err
-}
-
-func (self *PurchaseModel) FindByDeviceIdTx(tx *sql.Tx, ctx context.Context, deviceId int64) (*Purchase, error) {
-	p := NewPurchase(self.db, self.models)
-	attrs := strings.Join(self.attrs, ", ")
-	query := fmt.Sprintf(`
-  SELECT %s
-  FROM purchases
-  WHERE device_id = ?
-  LIMIT 1
-  `, attrs)
-
-	err := tx.QueryRowContext(ctx, query, deviceId).
-		Scan(&p.id, &p.deviceId, &p.sku, &p.name, &p.description, &p.price, &p.anyPrice, &p.callbackPluginPkg, &p.callbackVueRouteName, &p.walletDebit, &p.walletTxId, &p.confirmedAt, &p.cancelledAt, &p.cancelledReason, &p.createdAt)
-
-	return p, err
-}
-
-func (self *PurchaseModel) UpdateTx(tx *sql.Tx, ctx context.Context, id int64, dbt float64, txid *int64, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
-	query := "UPDATE purchases SET wallet_debit = ?, wallet_tx_id = ?, cancelled_at = ?, confirmed_at = ?, cancelled_reason = ? WHERE id = ? LIMIT 1"
-	_, err := tx.ExecContext(ctx, query, dbt, txid, cancelledAt, confirmedAt, reason, id)
-	return err
-}
-
-func (self *PurchaseModel) PendingPurchaseTx(tx *sql.Tx, ctx context.Context, deviceId int64) (*Purchase, error) {
-	p := NewPurchase(self.db, self.models)
-	attrs := strings.Join(self.attrs, ", ")
-	query := fmt.Sprintf(`
-  SELECT %s
-  FROM purchases
-  WHERE confirmed_at IS NULL
-  AND cancelled_at IS NULL
-  AND device_id = ?
-  LIMIT 1
-`, attrs)
-	err := tx.QueryRowContext(ctx, query, deviceId).
-		Scan(&p.id, &p.deviceId, &p.sku, &p.name, &p.description, &p.price, &p.anyPrice, &p.callbackPluginPkg, &p.callbackVueRouteName, &p.walletDebit, &p.walletTxId, &p.confirmedAt, &p.cancelledAt, &p.cancelledReason, &p.createdAt)
-
-	return p, err
-}
-
-func (self *PurchaseModel) Create(ctx context.Context, deviceId int64, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string) (*Purchase, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+func (self *PurchaseModel) Find(ctx context.Context, id pgtype.UUID) (*Purchase, error) {
+	p, err := self.db.Queries.FindPurchase(ctx, id)
 	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	d, err := self.CreateTx(tx, ctx, deviceId, sku, name, desc, price, vprice, pkg, routename)
-	if err != nil {
-		return nil, err
-	}
-	err = tx.Commit()
-	return d, err
-}
-
-func (self *PurchaseModel) Find(ctx context.Context, id int64) (*Purchase, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	p, err := self.FindTx(tx, ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	err = tx.Commit()
-	return p, err
-}
-
-func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId int64) (*Purchase, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	d, err := self.PendingPurchaseTx(tx, ctx, deviceId)
-	if err != nil {
+		log.Println("error finding purchase: %w", err)
 		return nil, err
 	}
 
-	err = tx.Commit()
-	return d, err
+	purchase := NewPurchase(self.db, self.models)
+	purchase.id = p.ID
+	purchase.deviceId = p.DeviceID
+	purchase.sku = p.Sku
+	purchase.name = p.Name
+	purchase.description = p.Description.String
+	purchase.price = pg.NumericToFloat64(p.Price)
+	purchase.anyPrice = p.AnyPrice
+	purchase.callbackPluginPkg = p.CallbackPlugin
+	purchase.callbackVueRouteName = p.CallbackVueRouteName.String
+	purchase.walletDebit = pg.NumericToFloat64(p.WalletDebit)
+	purchase.walletTxId = &p.WalletTxID
+	purchase.confirmedAt = &p.ConfirmedAt.Time
+	purchase.cancelledAt = &p.CancelledAt.Time
+	purchase.cancelledReason = &p.CancelledReason.String
+	purchase.createdAt = p.CreatedAt.Time
+
+	return purchase, err
 }
 
-func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId int64) (*Purchase, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
+	p, err := self.db.Queries.FindPending(ctx, deviceId)
 	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	purchase, err := self.FindByDeviceIdTx(tx, ctx, deviceId)
-	if err != nil {
+		log.Printf("error finding pending purchase with dev id %v: %v\n", deviceId, err)
 		return nil, err
 	}
 
-	return purchase, tx.Commit()
+	purchase := NewPurchase(self.db, self.models)
+	purchase.id = p.ID
+	purchase.deviceId = p.DeviceID
+	purchase.sku = p.Sku
+	purchase.name = p.Name
+	purchase.description = p.Description.String
+	purchase.price = pg.NumericToFloat64(p.Price)
+	purchase.anyPrice = p.AnyPrice
+	purchase.callbackPluginPkg = p.CallbackPlugin
+	purchase.callbackVueRouteName = p.CallbackVueRouteName.String
+	purchase.walletDebit = pg.NumericToFloat64(p.WalletDebit)
+	purchase.walletTxId = &p.WalletTxID
+	purchase.confirmedAt = &p.ConfirmedAt.Time
+	purchase.cancelledAt = &p.CancelledAt.Time
+	purchase.cancelledReason = &p.CancelledReason.String
+	purchase.createdAt = p.CreatedAt.Time
+
+	return purchase, err
 }
 
-func (self *PurchaseModel) Update(ctx context.Context, id int64, dbt float64, txid *int64, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
+	p, err := self.db.Queries.FindPurchaseByDeviceId(ctx, deviceId)
 	if err != nil {
-		return err
+		log.Printf("error finding purchase by device id %v: %v", deviceId, err)
+		return nil, err
 	}
-	defer tx.Rollback()
 
-	err = self.UpdateTx(tx, ctx, id, dbt, txid, cancelledAt, confirmedAt, reason)
+	purchase := NewPurchase(self.db, self.models)
+	purchase.id = p.ID
+	purchase.deviceId = p.DeviceID
+	purchase.sku = p.Sku
+	purchase.name = p.Name
+	purchase.description = p.Description.String
+	purchase.price = pg.NumericToFloat64(p.Price)
+	purchase.anyPrice = p.AnyPrice
+	purchase.callbackPluginPkg = p.CallbackPlugin
+	purchase.callbackVueRouteName = p.CallbackVueRouteName.String
+	purchase.walletDebit = pg.NumericToFloat64(p.WalletDebit)
+	purchase.walletTxId = &p.WalletTxID
+	purchase.confirmedAt = &p.ConfirmedAt.Time
+	purchase.cancelledAt = &p.CancelledAt.Time
+	purchase.cancelledReason = &p.CancelledReason.String
+	purchase.createdAt = p.CreatedAt.Time
+
+	return purchase, err
+}
+
+func (self *PurchaseModel) Update(ctx context.Context, id pgtype.UUID, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
+	err := self.db.Queries.UpdatePurchase(ctx, sqlc.UpdatePurchaseParams{
+		WalletDebit:     pg.Float64ToNumeric(dbt),
+		WalletTxID:      *txid,
+		CancelledAt:     pgtype.Timestamp{Time: *cancelledAt},
+		ConfirmedAt:     pgtype.Timestamp{Time: *confirmedAt},
+		CancelledReason: pgtype.Text{String: *reason},
+		ID:              id,
+	})
 	if err != nil {
+		log.Printf("error updating purchase %v: %v", id, err)
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }

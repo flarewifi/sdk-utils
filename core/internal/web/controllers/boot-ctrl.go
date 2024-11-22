@@ -21,14 +21,14 @@ type BootCtrl struct {
 }
 
 func (ctrl *BootCtrl) IndexPage(w http.ResponseWriter, r *http.Request) {
-	data := map[string]any{
-		"title":  "Booting",
-		"logs":   ctrl.bp.Logs(),
-		"sseUrl": urls.BOOT_STATUS_URL,
-		"done":   ctrl.bp.IsDone(),
-	}
+	// data := map[string]any{
+	// 	"title":  "Booting",
+	// 	"logs":   ctrl.bp.Logs(),
+	// 	"sseUrl": urls.BOOT_STATUS_URL,
+	// 	"done":   ctrl.bp.IsDone(),
+	// }
 
-	ctrl.api.Http().HttpResponse().View(w, r, "booting/index.html", data)
+	// ctrl.api.Http().HttpResponse().View(w, r, "booting/index.html", data)
 }
 
 func (ctrl *BootCtrl) SseHandler(w http.ResponseWriter, r *http.Request) {

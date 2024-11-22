@@ -8,8 +8,8 @@ package sdkpayments
 
 import "net/http"
 
-// Purchase represents a record in purchases table in the database.
-type Purchase interface {
+// IPurchase represents a record in purchases table in the database.
+type IPurchase interface {
 
     // Returns the name of the purchase item.
 	Name() string

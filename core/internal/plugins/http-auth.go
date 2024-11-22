@@ -4,13 +4,12 @@ import (
 	"errors"
 	"net/http"
 
-	"core/internal/accounts"
 	"core/internal/config"
 	"core/internal/utils/jsonwebtoken"
+	webutil "core/internal/utils/web"
 	"core/internal/web/helpers"
-	"core/internal/web/middlewares"
-	"sdk/api/accounts"
-	"sdk/api/http"
+	sdkacct "sdk/api/accounts"
+	sdkhttp "sdk/api/http"
 )
 
 func NewHttpAuth(api *PluginApi) *HttpAuth {
@@ -23,24 +22,26 @@ type HttpAuth struct {
 	api *PluginApi
 }
 
-func (self *HttpAuth) CurrentAcct(r *http.Request) (sdkacct.Account, error) {
+func (self *HttpAuth) CurrentAcct(r *http.Request) (sdkacct.IAccount, error) {
 	return helpers.CurrentAcct(r)
 }
 
-func (self *HttpAuth) Authenticate(username string, password string) (sdkacct.Account, error) {
-	acct, err := accounts.Find(username)
-	if err != nil {
-		return nil, err
-	}
+func (self *HttpAuth) IsAuthenticated(r *http.Request) bool {
+	_, err := webutil.IsAdminAuthenticated(r)
+	return err == nil
+}
 
-	if !acct.Auth(password) {
-		return nil, errors.New(self.api.CoreAPI.Utl.Translate("error", "invalid_login"))
+func (self *HttpAuth) Authenticate(username string, password string) (sdkacct.IAccount, error) {
+	acct, err := webutil.AuthenticateAdmin(username, password)
+	if err != nil {
+		err = errors.New(self.api.CoreAPI.Utl.Translate("error", "invalid_login"))
+		return nil, err
 	}
 
 	return acct, nil
 }
 
-func (self *HttpAuth) SignIn(w http.ResponseWriter, acct sdkacct.Account) error {
+func (self *HttpAuth) SignIn(w http.ResponseWriter, acct sdkacct.IAccount) error {
 	appcfg, err := config.ReadApplicationConfig()
 	if err != nil {
 		return err
@@ -52,11 +53,11 @@ func (self *HttpAuth) SignIn(w http.ResponseWriter, acct sdkacct.Account) error 
 		return err
 	}
 
-	sdkhttp.SetCookie(w, middlewares.AuthTokenCookie, token)
+	sdkhttp.SetCookie(w, webutil.AuthTokenCookie, token)
 	return nil
 }
 
 func (self *HttpAuth) SignOut(w http.ResponseWriter) error {
-	sdkhttp.SetCookie(w, middlewares.AuthTokenCookie, "")
+	sdkhttp.SetCookie(w, webutil.AuthTokenCookie, "")
 	return nil
 }

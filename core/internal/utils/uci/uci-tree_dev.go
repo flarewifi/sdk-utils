@@ -5,7 +5,7 @@ package uci
 import (
 	"path/filepath"
 
-	"sdk/libs/go-uci"
+	"github.com/digineo/go-uci"
 
 	paths "github.com/flarehotspot/go-utils/paths"
 )

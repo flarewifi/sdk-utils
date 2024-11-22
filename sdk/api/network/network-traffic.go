@@ -21,9 +21,9 @@ type TrafficData struct {
 	Upload map[string]ClientStat
 }
 
-// TrafficApi is the interface for the network traffic API.
+// ITrafficApi is the interface for the network traffic API.
 // It can be used to listen to network traffic.
 // It emits network traffic data every 5 seconds.
-type TrafficApi interface {
+type ITrafficApi interface {
 	Listen() <-chan TrafficData
 }

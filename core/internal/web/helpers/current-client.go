@@ -10,10 +10,10 @@ import (
 	"core/internal/utils/hostfinder"
 )
 
-func CurrentClient(clntMgr *connmgr.ClientRegister, r *http.Request) (sdkconnmgr.ClientDevice, error) {
+func CurrentClient(clntMgr *connmgr.ClientRegister, r *http.Request) (sdkconnmgr.IClientDevice, error) {
 	clntSym := r.Context().Value(sdkhttp.ClientCtxKey)
 	if clntSym != nil {
-        clnt, ok := clntSym.(sdkconnmgr.ClientDevice)
+        clnt, ok := clntSym.(sdkconnmgr.IClientDevice)
         if ok {
             return clnt, nil
         }

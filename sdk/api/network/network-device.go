@@ -15,8 +15,8 @@ const (
 	NetDevVLAN   NetDevType = "vlan"
 )
 
-// NetworkDevice represents a network device.
-type NetworkDevice interface {
+// INetworkDevice represents a network device.
+type INetworkDevice interface {
 
 	// Returns the name of the network device.
 	Name() string

@@ -5,19 +5,20 @@ import (
 	acct "sdk/api/accounts"
 )
 
-func NewAcctApi(api *PluginApi) *AccountsApi {
-	return &AccountsApi{api}
+func NewAcctApi(api *PluginApi) {
+	acctApi := &AccountsApi{api}
+	api.AcctAPI = acctApi
 }
 
 type AccountsApi struct {
 	api *PluginApi
 }
 
-func (self *AccountsApi) Create(uname string, pass string, perms []string) (acct.Account, error) {
+func (self *AccountsApi) Create(uname string, pass string, perms []string) (acct.IAccount, error) {
 	return accounts.Create(uname, pass, perms)
 }
 
-func (self *AccountsApi) Update(oldname string, uname string, pass string, perms []string) (acct.Account, error) {
+func (self *AccountsApi) Update(oldname string, uname string, pass string, perms []string) (acct.IAccount, error) {
 	return accounts.Update(oldname, uname, pass, perms)
 }
 
@@ -25,13 +26,13 @@ func (self *AccountsApi) Delete(uname string) error {
 	return accounts.Delete(uname)
 }
 
-func (self *AccountsApi) GetAll() ([]acct.Account, error) {
+func (self *AccountsApi) GetAll() ([]acct.IAccount, error) {
 	accts, err := accounts.All()
 	if err != nil {
 		return nil, err
 	}
 
-	accounts := []acct.Account{}
+	accounts := []acct.IAccount{}
 	for _, a := range accts {
 		accounts = append(accounts, a)
 	}
@@ -39,13 +40,13 @@ func (self *AccountsApi) GetAll() ([]acct.Account, error) {
 	return accounts, nil
 }
 
-func (self *AccountsApi) GetAdmins() ([]acct.Account, error) {
+func (self *AccountsApi) GetAdmins() ([]acct.IAccount, error) {
 	accts, err := accounts.All()
 	if err != nil {
 		return nil, err
 	}
 
-	admins := []acct.Account{}
+	admins := []acct.IAccount{}
 	for _, acct := range accts {
 		if acct.IsAdmin() {
 			admins = append(admins, acct)
@@ -55,7 +56,7 @@ func (self *AccountsApi) GetAdmins() ([]acct.Account, error) {
 	return admins, nil
 }
 
-func (self *AccountsApi) Find(username string) (acct.Account, error) {
+func (self *AccountsApi) Find(username string) (acct.IAccount, error) {
 	return accounts.Find(username)
 }
 
@@ -71,10 +72,10 @@ func (self *AccountsApi) PermDesc(name string) (desc string) {
 	return accounts.PermDesc(name)
 }
 
-func (self *AccountsApi) HasAllPerms(acct acct.Account, perms ...string) bool {
+func (self *AccountsApi) HasAllPerms(acct acct.IAccount, perms ...string) bool {
 	return accounts.HasAllPerms(acct, perms...)
 }
 
-func (self *AccountsApi) HasAnyPerm(acct acct.Account, perms ...string) bool {
+func (self *AccountsApi) HasAnyPerm(acct acct.IAccount, perms ...string) bool {
 	return accounts.HasAnyPerm(acct, perms...)
 }

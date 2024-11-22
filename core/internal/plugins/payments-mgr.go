@@ -14,7 +14,7 @@ type PaymentsMgr struct {
 	providers []*PaymentProvider
 }
 
-func (self *PaymentsMgr) Options(clnt connmgr.ClientDevice) []PaymentOption {
+func (self *PaymentsMgr) Options(clnt connmgr.IClientDevice) []PaymentOption {
 	opts := []PaymentOption{}
 	for _, prvdr := range self.providers {
 		for _, opt := range prvdr.PaymentOpts(clnt) {
@@ -24,7 +24,7 @@ func (self *PaymentsMgr) Options(clnt connmgr.ClientDevice) []PaymentOption {
 	return opts
 }
 
-func (self *PaymentsMgr) FindByUuid(clnt connmgr.ClientDevice, uuid string) (PaymentOption, bool) {
+func (self *PaymentsMgr) FindByUuid(clnt connmgr.IClientDevice, uuid string) (PaymentOption, bool) {
 	methods := self.Options(clnt)
 	for _, opt := range methods {
 		if opt.UUID == uuid {
@@ -34,7 +34,7 @@ func (self *PaymentsMgr) FindByUuid(clnt connmgr.ClientDevice, uuid string) (Pay
 	return PaymentOption{}, false
 }
 
-func (self *PaymentsMgr) NewPaymentProvider(api plugin.PluginApi, provider payments.PaymentProvider) {
+func (self *PaymentsMgr) NewPaymentProvider(api plugin.IPluginApi, provider payments.IPaymentProvider) {
 	prvdr := NewPaymentProvider(api, provider)
 	self.providers = append(self.providers, prvdr)
 }

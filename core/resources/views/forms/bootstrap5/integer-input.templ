@@ -1,0 +1,35 @@
+package bootstrap5
+
+import (
+	"sdk/api/forms"
+	"fmt"
+	"sdk/api/http"
+)
+
+type IntegerInputFieldAttrs struct {
+	Label string
+	Name  string
+	Value string
+	Error error
+}
+
+templ IntegerInputField(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) {
+	{{ attrs := getIntegerInputFieldAttrs(form, sec, fld) }}
+	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
+	<input type="number" class="form-control" id={ attrs.Name } name={ attrs.Name } value={ attrs.Value }/>
+	if attrs.Error != nil {
+		<div class="invalid-feedback">{ attrs.Error.Error() }</div>
+	}
+}
+
+func getIntegerInputFieldAttrs(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) (attrs IntegerInputFieldAttrs) {
+	attrs.Label = fld.GetLabel()
+	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+	var val int
+	val, attrs.Error = form.GetIntValue(sec.Name, fld.GetName())
+	if attrs.Error != nil {
+		return
+	}
+	attrs.Value = fmt.Sprintf("%d", val)
+	return
+}

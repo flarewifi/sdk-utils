@@ -1,12 +1,15 @@
+/core/internal/db/sqlc
 /config/accounts
 /config/plugins
 /config/*.json
 /plugins/local/com.sample.plugin
-/plugins/installed/*
-/plugins/update/*
-/plugins/backup/*
+/plugins/installed
+/plugins/update
+/plugins/backup
+/plugins/local
 /output
 /public
+/local
 /openwrt-files
 /.cache
 /.tmp
@@ -22,6 +25,8 @@
 *.so
 *.app
 *.work
+*.log
+.env
 main_mono.go
 plugin-init_mono.go
 go.work.sum

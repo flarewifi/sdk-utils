@@ -1,9 +1,9 @@
 package app
 
 import (
-	"com.flarego.default-theme/app/controllers"
-	sdkhttp "sdk/api/http"
 	sdkplugin "sdk/api/plugin"
+
+	"com.flarego.default-theme/app/controllers"
 )
 
 const (
@@ -14,14 +14,17 @@ const (
 	RoutePayments    = "save.settings"
 )
 
-func SetupRoutes(api sdkplugin.PluginApi) {
-	pluginRouter := api.Http().HttpRouter().PluginRouter()
-	pluginRouter.Group("/auth", func(subrouter sdkhttp.HttpRouterInstance) {
-		subrouter.Post("/login", controllers.LoginCtrl(api)).Name(RouteNameLogin)
-		subrouter.Post("/logout", controllers.LogoutCtrl(api)).Name(RouteNameLogout)
-	})
-
+func SetupRoutes(api sdkplugin.IPluginApi) {
+	// pluginRouter := api.Http().HttpRouter().PluginRouter()
 	adminRouter := api.Http().HttpRouter().AdminRouter()
-	adminRouter.Get("/navs", controllers.GetAdminNavs(api)).Name(RouteAdminNavs)
+	// pluginRouter.Get("/test", controllers.IndexCtrl(api)).Name("index")
+	adminRouter.Get("/test", controllers.TestCtrl(api)).Name("test")
+	// pluginRouter.Group("/auth", func(subrouter sdkhttp.HttpRouterInstance) {
+	// 	subrouter.Post("/login", controllers.LoginCtrl(api)).Name(RouteNameLogin)
+	// 	subrouter.Post("/logout", controllers.LogoutCtrl(api)).Name(RouteNameLogout)
+	// })
+
+	// adminRouter := api.Http().HttpRouter().AdminRouter()
+	// adminRouter.Get("/navs", controllers.GetAdminNavs(api)).Name(RouteAdminNavs)
 
 }

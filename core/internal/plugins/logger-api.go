@@ -6,8 +6,9 @@ import (
 
 type LoggerApi struct{}
 
-func NewLoggerApi() *LoggerApi {
-	return &LoggerApi{}
+func NewLoggerApi(pluginApi *PluginApi) {
+	loggerApi := &LoggerApi{}
+	pluginApi.LoggerAPI = loggerApi
 }
 
 func (l *LoggerApi) Info(title string, body ...any) error {

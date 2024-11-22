@@ -1,14 +1,16 @@
 package connmgr
 
 import (
-	"database/sql"
-	"errors"
+	"fmt"
+	"log"
 	"net/http"
 
 	"core/internal/db"
 	"core/internal/db/models"
 	jobque "core/internal/utils/job-que"
 	connmgr "sdk/api/connmgr"
+
+	"github.com/jackc/pgx/v5"
 )
 
 const (
@@ -45,32 +47,33 @@ func (reg *ClientRegister) ClientChangedHook(fn ...connmgr.ClientChangedHookFn) 
 	reg.changedHooks = append(reg.changedHooks, fn...)
 }
 
-func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, hostname string) (connmgr.ClientDevice, error) {
+func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, hostname string) (connmgr.IClientDevice, error) {
 	ctx := r.Context()
 	dev, err := reg.mdls.Device().FindByMac(ctx, mac)
+	if err != nil {
+		if err == pgx.ErrNoRows && dev == nil {
+			log.Println("no device found by mac, creating new device...")
+			// create new device record
+			dev, err = reg.mdls.Device().Create(ctx, mac, ip, hostname)
+			if err != nil {
+				return nil, err
+			}
 
-	if errors.Is(err, sql.ErrNoRows) {
-		// create new device record
-		dev, err = reg.mdls.Device().Create(ctx, mac, ip, hostname)
-		if err != nil {
-			return nil, err
-		}
+			clnt := NewClientDevice(reg.db, reg.mdls, dev)
 
-		clnt := NewClientDevice(reg.db, reg.mdls, dev)
-
-		// call createdHooks functions
-		if len(reg.createdHooks) > 0 {
-			for _, hookFn := range reg.createdHooks {
-				if err := hookFn(ctx, clnt); err != nil {
-					return nil, err
+			// call createdHooks functions
+			if len(reg.createdHooks) > 0 {
+				for _, hookFn := range reg.createdHooks {
+					if err := hookFn(ctx, clnt); err != nil {
+						return nil, err
+					}
 				}
 			}
+
+			return clnt, nil
 		}
 
-		return clnt, nil
-	}
-
-	if err != nil {
+		log.Println("error finding device by mac:", err)
 		return nil, err
 	}
 
@@ -91,7 +94,8 @@ func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, host
 		old := NewClientDevice(reg.db, reg.mdls, dev.Clone())
 		err := dev.Update(ctx, mac, ip, hostname)
 		if err != nil {
-			return nil, err
+			fmt.Println("error updating dev: ", err)
+			return nil, fmt.Errorf("could not update dev: %w", err)
 		}
 
 		// call changedHooks functions

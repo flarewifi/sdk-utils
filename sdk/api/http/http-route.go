@@ -6,8 +6,11 @@
 
 package sdkhttp
 
-// HttpRoute represents a single route in the router.
-type HttpRoute interface {
-	// Returns the name of the route.
-	Name(name PluginRouteName)
+// IHttpRoute represents a single route in the router.
+type IHttpRoute interface {
+	// Add url query params to the route
+	Queries(pairs ...string) IHttpRoute
+
+	// Set the name of the route.
+	Name(name PluginRouteName) IHttpRoute
 }

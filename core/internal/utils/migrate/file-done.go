@@ -2,20 +2,22 @@ package migrate
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func fileDone(f string, ctx context.Context, db *sql.DB) (exists bool, err error) {
+func fileDone(f string, ctx context.Context, db *pgxpool.Pool) (exists bool, err error) {
 	var id int
-	q := `SELECT id FROM migrations WHERE file = ? LIMIT 1`
-	row := db.QueryRowContext(ctx, q, f)
+	q := `SELECT id FROM migrations WHERE file = $1 LIMIT 1`
+	row := db.QueryRow(ctx, q, f)
 	err = row.Scan(&id)
 
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && err != pgx.ErrNoRows {
 		return false, err
 	}
 
-	if err != nil && err == sql.ErrNoRows {
+	if err != nil && err == pgx.ErrNoRows {
 		return false, nil
 	}
 

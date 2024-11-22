@@ -6,8 +6,8 @@
 
 package sdkcfg
 
-// BandwdCfg is the bandwidth configuration for a given interface. Each interface bandwidth is configured individually.
-type BandwdCfg struct {
+// IBandwdCfg is the bandwidth configuration for a given interface. Each interface bandwidth is configured individually.
+type IBandwdCfg struct {
 	// UseGlobal is true if the global bandwidth should be used.
 	UseGlobal bool
 
@@ -24,12 +24,12 @@ type BandwdCfg struct {
 	UserUpMbits int
 }
 
-// BandwidthCfgApi is used to get and set bandwidth configuration.
-type BandwidthCfgApi interface {
+// IBandwidthCfgApi is used to get and set bandwidth configuration.
+type IBandwidthCfgApi interface {
 	// Read returns the bandwidth configuration for a given interface.
-	Get() (cfg BandwdCfg, ok bool)
+	Get() (cfg IBandwdCfg, ok bool)
 
 	// SetConfig sets the bandwidth configuration for a given interface.
 	// It needs application restart for the changes to take effect.
-	Save(cfg BandwdCfg) error
+	Save(cfg IBandwdCfg) error
 }

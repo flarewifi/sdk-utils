@@ -7,14 +7,14 @@ func main() {
 		OutputDirName: "core-files",
 		Files: []string{
 			"config/.defaults",
-			"core/go-version",
 			"core/go.mod",
 			"core/plugin.json",
 			"core/support.json",
 			"core/resources",
 			"plugins/system",
 			"sdk",
-			"utils",
+			// "utils",
+			"go.work.default",
 		},
 		ExtraFiles: []tools.ExtraFiles{
 			{

@@ -1,8 +1,9 @@
 package ubus
 
 import (
-	"sdk/libs/go-json"
 	"strings"
+
+	"github.com/goccy/go-json"
 
 	"core/internal/utils/cmd"
 	jobque "core/internal/utils/job-que"

@@ -2,8 +2,6 @@ package config
 
 import (
 	"fmt"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 const databaseJsonFile = "database.json"
@@ -18,7 +16,7 @@ type DbConfig struct {
 }
 
 func (cfg *DbConfig) DbUrlString() string {
-	return fmt.Sprintf("%s%s?parseTime=true", cfg.BaseConnStr(), cfg.Database)
+	return fmt.Sprintf("%s/%s?sslmode=disable", cfg.BaseConnStr(), cfg.Database)
 }
 
 func (cfg *DbConfig) BaseConnStr() string {
@@ -36,7 +34,7 @@ func (cfg *DbConfig) BaseConnStr() string {
 		port = ""
 	}
 
-	return fmt.Sprintf("%s%s@tcp(%s%s)/", cfg.Username, password, cfg.Host, port)
+	return fmt.Sprintf("postgres://%s%s@%s%s", cfg.Username, password, cfg.Host, port)
 }
 
 func ReadDatabaseConfig() (*DbConfig, error) {

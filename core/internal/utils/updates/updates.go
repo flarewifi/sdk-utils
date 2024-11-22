@@ -235,7 +235,7 @@ func UpdateCore(localUpdateFiles UpdateFiles) error {
 	return nil
 }
 
-func CheckForPluginUpdates(pDatum pkg.PluginInstallData, pInfo sdkplugin.PluginInfo) (bool, error) {
+func CheckForPluginUpdates(pDatum *pkg.PluginInstallData, pInfo sdkplugin.PluginInfo) (bool, error) {
 	switch pDatum.Def.Src {
 	case "git":
 		hasUpdates, err := CheckUpdatesFromGithub(pDatum, pInfo)
@@ -245,7 +245,7 @@ func CheckForPluginUpdates(pDatum pkg.PluginInstallData, pInfo sdkplugin.PluginI
 		}
 		return hasUpdates, nil
 	case "store":
-		hasUpdates, err := CheckUpdatesFromStore(pDatum.Def, pInfo)
+		hasUpdates, err := CheckUpdatesFromStore(&pDatum.Def, pInfo)
 		if err != nil {
 			log.Println("Error checking plugin updates from store: ", err)
 			return false, err
@@ -256,9 +256,9 @@ func CheckForPluginUpdates(pDatum pkg.PluginInstallData, pInfo sdkplugin.PluginI
 	}
 }
 
-func CheckUpdatesFromGithub(pDatum pkg.PluginInstallData, pInfo sdkplugin.PluginInfo) (bool, error) {
-	author := pkg.GetAuthorNameFromGitUrl(pDatum)
-	repo := pkg.GetRepoFromGitUrl(pDatum)
+func CheckUpdatesFromGithub(pDatum *pkg.PluginInstallData, pInfo sdkplugin.PluginInfo) (bool, error) {
+	author := pkg.GetAuthorNameFromGitUrl(*pDatum)
+	repo := pkg.GetRepoFromGitUrl(*pDatum)
 
 	// NOTE: release tags should adhere to semver
 
@@ -305,11 +305,11 @@ func CheckUpdatesFromGithub(pDatum pkg.PluginInstallData, pInfo sdkplugin.Plugin
 	return sdksemver.HasUpdates(currentPRVersion, latestPRVersion), nil
 }
 
-func CheckUpdatesFromStore(p pkg.PluginSrcDef, pinfo sdkplugin.PluginInfo) (bool, error) {
+func CheckUpdatesFromStore(p *pkg.PluginSrcDef, pinfo sdkplugin.PluginInfo) (bool, error) {
 	// fetch latest plugin release from flare-server rpc
 	srv, ctx := rpc.GetCoreMachineTwirpServiceAndCtx()
-	qPlugins, err := srv.FetchLatestPluginRelease(ctx, &rpc.FetchLatestPluginReleaseRequest{
-		PluginReleaseId: int32(p.StorePluginReleaseId),
+	qPlugins, err := srv.FetchLatestValidPRByPackage(ctx, &rpc.FetchLatestValidPRByPackageRequest{
+		PluginPackage: p.StorePackage,
 	})
 	if err != nil {
 		log.Println("Error fetching latest plugin release: ", err)
@@ -322,6 +322,9 @@ func CheckUpdatesFromStore(p pkg.PluginSrcDef, pinfo sdkplugin.PluginInfo) (bool
 		return false, err
 	}
 
+	// update plugin release zip file url def temporarily
+	p.StoreZipUrl = qPlugins.PluginRelease.ZipFileUrl
+
 	latestVersion := sdksemver.Version{
 		Major: int(qPlugins.PluginRelease.Major),
 		Minor: int(qPlugins.PluginRelease.Minor),
@@ -329,22 +332,4 @@ func CheckUpdatesFromStore(p pkg.PluginSrcDef, pinfo sdkplugin.PluginInfo) (bool
 	}
 
 	return sdksemver.HasUpdates(currVersion, latestVersion), nil
-}
-
-func GetLatestReleaseFromStore(def pkg.PluginSrcDef) (pkg.PluginSrcDef, error) {
-	// fetch latest plugin release from flare-server rpc
-	srv, ctx := rpc.GetCoreMachineTwirpServiceAndCtx()
-	qPlugins, err := srv.FetchLatestPluginRelease(ctx, &rpc.FetchLatestPluginReleaseRequest{
-		PluginReleaseId: int32(def.StorePluginReleaseId),
-	})
-	if err != nil {
-		log.Println("Error fetching latest plugin release: ", err)
-		return pkg.PluginSrcDef{}, err
-	}
-
-	return pkg.PluginSrcDef{
-		Src:                  "store",
-		StorePluginReleaseId: int(qPlugins.PluginRelease.PluginReleaseId),
-		StoreZipFile:         qPlugins.PluginRelease.ZipFileUrl,
-	}, nil
 }

@@ -3,16 +3,16 @@ package sdkconnmgr
 import "context"
 
 type FetchSessionsResult struct {
-	Sessions []SessionSource
+	Sessions []ISessionSource
 	Pages    uint
 	Count    uint
 }
 
-type SessionProvider interface {
+type ISessionProvider interface {
 
-    // Get avaialable session for a client device
-	GetSession(ctx context.Context, clnt ClientDevice) (s SessionSource, ok bool)
+	// Get avaialable session for a client device
+	GetSession(ctx context.Context, clnt IClientDevice) (s ISessionSource, ok bool)
 
-    // Fetch available sessions for a client device
-	FetchSessions(ctx context.Context, clnt ClientDevice, page int, perPage int) (result FetchSessionsResult, err error)
+	// Fetch available sessions for a client device
+	FetchSessions(ctx context.Context, clnt IClientDevice, page int, perPage int) (result FetchSessionsResult, err error)
 }

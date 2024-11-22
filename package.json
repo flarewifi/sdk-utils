@@ -2,22 +2,16 @@
   "author": "Flarego Technologies Corporation",
   "dependencies": {
     "@octokit/core": "^5.1.0",
-    "fs-extra": "^11.2.0"
+    "fs-extra": "^11.2.0",
+    "jquery": "1"
   },
-  "description": "Flare Hotspot SDK",
+  "description": "flarehotspot sdk",
   "devDependencies": {
     "eslint": "^9.0.0",
     "typescript": "^5.5.4"
   },
-  "keywords": [
-    "flarehotspot",
-    "devkit"
-  ],
   "license": "ISC",
   "main": "index.js",
-  "name": "devkit",
-  "scripts": {
-    "start": "node run.js"
-  },
-  "version": "0.1.0-pre"
+  "name": "@flarehotspot/devkit",
+  "version": "0.1.1-pre"
 }

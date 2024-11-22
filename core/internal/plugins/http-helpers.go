@@ -1,23 +1,17 @@
 package plugins
 
 import (
-	"fmt"
 	"html/template"
-	"log"
+	"net/http"
 	"path"
-	"path/filepath"
-	"strings"
-	texttemplate "text/template"
 
-	"core/internal/utils/flaretmpl"
-	"core/internal/web/response"
-	"core/internal/web/router"
-	rnames "core/internal/web/routes/names"
 	sdkhttp "sdk/api/http"
 	plugin "sdk/api/plugin"
+
+	"github.com/gorilla/csrf"
 )
 
-func NewHttpHelpers(api *PluginApi) sdkhttp.HttpHelpers {
+func NewHttpHelpers(api *PluginApi) sdkhttp.IHttpHelpers {
 	return &HttpHelpers{api: api}
 }
 
@@ -25,92 +19,20 @@ type HttpHelpers struct {
 	api *PluginApi
 }
 
+func (self *HttpHelpers) CsrfHtmlTag(r *http.Request) string {
+	tpl := csrf.TemplateField(r)
+	return string(tpl)
+}
+
 func (self *HttpHelpers) Translate(msgtype string, msgk string, pairs ...interface{}) string {
 	return self.api.Utl.Translate(msgtype, msgk, pairs...)
 }
 
 func (self *HttpHelpers) AssetPath(p string) string {
-	return path.Join("/plugin", self.api.Pkg(), self.api.Version(), "assets", p)
+	return path.Join("/plugin", self.api.Pkg(), self.api.Version(), "assets/dist", p)
 }
 
-func (self *HttpHelpers) AssetWithHelpersPath(path string) string {
-	assetsR := router.AssetsRouter.Get(rnames.RouteAssetWithHelpers)
-	pluginApi := self.api
-	url, err := assetsR.URL("pkg", pluginApi.Pkg(), "version", pluginApi.Version(), "path", path)
-	if err != nil {
-		log.Println("Error generating URL: ", err.Error())
-		return ""
-	}
-
-	return url.String()
-}
-
-func (self *HttpHelpers) VueComponentPath(path string) string {
-	assetsR := router.AssetsRouter.Get(rnames.RouteAssetVueComponent)
-	if assetsR == nil {
-		log.Println("Route not found: ", rnames.RouteAssetVueComponent)
-		return ""
-	}
-
-	pluginApi := self.api
-	url, err := assetsR.URL("pkg", pluginApi.Pkg(), "version", pluginApi.Version(), "path", path)
-	if err != nil {
-		log.Println("Error generating URL: ", err.Error())
-		return ""
-	}
-
-	return url.String()
-}
-
-func (self *HttpHelpers) EmbedJs(path string, data interface{}) template.JS {
-	jspath := self.api.Utl.Resource(filepath.Join("assets", path))
-
-	var output strings.Builder
-
-	jstmpl, err := flaretmpl.GetTextTemplate(jspath)
-	if err != nil {
-		jstmpl, _ = texttemplate.New("").Parse(fmt.Sprintf("console.error('%s: %s')", jspath, err.Error()))
-	}
-
-	vdata := &response.ViewData{
-		ViewData:    data,
-		ViewHelpers: self,
-	}
-
-	err = jstmpl.Execute(&output, vdata)
-	if err != nil {
-		log.Println("Error executing template: ", err.Error())
-		return template.JS(fmt.Sprintf("console.error('%s: %s')", jspath, err.Error()))
-	}
-
-	return template.JS(output.String())
-}
-
-func (self *HttpHelpers) EmbedCss(path string, data interface{}) template.CSS {
-	csspath := self.api.Utl.Resource(filepath.Join("assets", path))
-
-	var output strings.Builder
-
-	csstmpl, err := flaretmpl.GetTextTemplate(csspath)
-	if err != nil {
-		csstmpl, _ = texttemplate.New("").Parse(fmt.Sprintf("/* %s: %s */", csspath, err.Error()))
-	}
-
-	vdata := &response.ViewData{
-		ViewData:    data,
-		ViewHelpers: self,
-	}
-
-	err = csstmpl.Execute(&output, vdata)
-	if err != nil {
-		log.Println("Error executing template: ", err.Error())
-		return template.CSS(fmt.Sprintf("/* %s: %s */", csspath, err.Error()))
-	}
-
-	return template.CSS(output.String())
-}
-
-func (self *HttpHelpers) PluginMgr() plugin.PluginsMgrApi {
+func (self *HttpHelpers) PluginMgr() plugin.IPluginsMgrApi {
 	return self.api.PluginsMgrApi
 }
 
@@ -124,16 +46,4 @@ func (self *HttpHelpers) UrlForRoute(name string, pairs ...string) string {
 
 func (self *HttpHelpers) UrlForPkgRoute(pkg string, name string, pairs ...string) string {
 	return self.api.HttpAPI.httpRouter.UrlForPkgRoute(pkg, name, pairs...)
-}
-
-func (self *HttpHelpers) VueRouteName(name string) string {
-	return self.api.HttpAPI.vueRouter.VueRouteName(name)
-}
-
-func (self *HttpHelpers) VueRoutePath(name string, pairs ...string) string {
-	return self.api.HttpAPI.vueRouter.VueRoutePath(name, pairs...)
-}
-
-func (self *HttpHelpers) VuePkgRoutePath(pkg string, name string, pairs ...string) string {
-	return self.api.HttpAPI.vueRouter.VuePkgRoutePath(pkg, name, pairs...)
 }

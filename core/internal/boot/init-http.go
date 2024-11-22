@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"core/internal/plugins"
+	webutil "core/internal/utils/web"
 	"core/internal/web"
-	"core/internal/web/router"
 )
 
 func InitHttpServer(g *plugins.CoreGlobals) {
 	web.SetupBootRoutes(g)
-	server := web.StartServer(router.BootingRouter, false)
+	server := web.StartServer(webutil.BootingRouter, false)
 
 	err := <-g.BootProgress.DONE_C
 	if err != nil {
@@ -37,5 +37,5 @@ func InitHttpServer(g *plugins.CoreGlobals) {
 	// Restart the server with all routes
 	web.SetupAllRoutes(g)
 	log.Println("Starting server...")
-	web.StartServer(router.RootRouter, true)
+	web.StartServer(webutil.RootRouter, true)
 }

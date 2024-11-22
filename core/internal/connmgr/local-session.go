@@ -10,9 +10,11 @@ import (
 	"core/internal/db/models"
 	connmgr "sdk/api/connmgr"
 	sdkconnmgr "sdk/api/connmgr"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func NewLocalSession(dtb *db.Database, mdls *models.Models, s *models.Session) connmgr.SessionSource {
+func NewLocalSession(dtb *db.Database, mdls *models.Models, s *models.Session) connmgr.ISessionSource {
 	ls := &LocalSession{db: dtb, mdls: mdls}
 	ls.load(s)
 	return ls
@@ -22,8 +24,8 @@ type LocalSession struct {
 	mu        sync.RWMutex
 	db        *db.Database
 	mdls      *models.Models
-	id        int64
-	devId     int64
+	id        pgtype.UUID
+	devId     pgtype.UUID
 	t         uint8
 	timeSecs  uint
 	dataMb    float64

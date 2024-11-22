@@ -11,13 +11,13 @@ import "net/http"
 type MuxRouteName string
 type PluginRouteName string
 
-type HttpRouterApi interface {
+type IHttpRouterApi interface {
 
 	// Returns a plugin router with authentication middleware.
-	AdminRouter() HttpRouterInstance
+	AdminRouter() IHttpRouterInstance
 
 	// Returns a generic plugin router.
-	PluginRouter() HttpRouterInstance
+	PluginRouter() IHttpRouterInstance
 
 	// Register global middleware.
 	UseMiddleware(middleware ...func(http.Handler) http.Handler)

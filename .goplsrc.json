@@ -1,0 +1,12 @@
+{
+  "buildFlags": [
+    "-tags=dev"
+  ],
+  "directoryFilters": [
+    "-.git",
+    "-.github",
+    "-bin",
+    "-node_modules",
+    "-sdk/libs"
+  ]
+}

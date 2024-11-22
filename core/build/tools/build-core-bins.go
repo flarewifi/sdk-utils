@@ -4,6 +4,8 @@ import (
 	"core/env"
 	"core/internal/utils/pkg"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 
 	sdkpaths "github.com/flarehotspot/go-utils/paths"
@@ -32,8 +34,28 @@ func BuildCoreBins() {
 }
 
 func BuildCore() {
-	workdir := filepath.Join(sdkpaths.TmpDir, "builds/core")
-	if err := pkg.BuildPlugin(sdkpaths.CoreDir, workdir); err != nil {
+	workdir := filepath.Join(sdkpaths.TmpDir, "b/core", sdkstr.Rand(16))
+	defer os.RemoveAll(workdir)
+
+	InstallSqlc()
+
+	cmd := exec.Command(sdkpaths.SqlcBin, "generate")
+	cmd.Dir = sdkpaths.AppDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	}
+
+	if err := pkg.BuildTemplates(sdkpaths.CoreDir); err != nil {
+		panic(err)
+	}
+
+	if err := pkg.BuildPluginSo(sdkpaths.CoreDir, workdir); err != nil {
+		panic(err)
+	}
+
+	if err := pkg.BuildGlobalAssets(); err != nil {
 		panic(err)
 	}
 }

@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"core/internal/web/helpers"
-	"core/internal/web/response"
 	"net/http"
 )
 
@@ -11,7 +10,8 @@ func AssetPath(next http.Handler) http.Handler {
 		if helpers.IsAssetPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 		} else {
-			response.ErrorJson(w, "Invalid asset path: "+r.URL.Path, 404)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 page not found"))
 		}
 	})
 }

@@ -37,7 +37,7 @@ unzip openwrt-files.zip -d openwrt-files
 # Installing Go
 ```sh
 curl -sSL https://github.com/moovweb/gvm/raw/master/binscripts/gvm-installer | bash
-gvm install "$(cat .go-version)"
+gvm install "go$(cat .go-version)"
 cd ../flarehotspot # load go version
 ```
 
@@ -58,18 +58,10 @@ password: admin
 
 # Flare CLI
 
-There are two Flare CLI tools:
-
-Install the `flare` sdk CLI:
+Install the `flare` CLI:
 ```sh
-go install ./core/devkit/cli/flare.go
-flare --help
-```
-
-Install the `flare-internal` CLI:
-```sh
-go install ./core/internal/cli/flare-internal.go
-flare-internal --help
+go run ./core/cmd/build-cli/main.go
+./bin/flare -h
 ```
 
 # Documentation
@@ -97,41 +89,31 @@ make docs-build
 
 # Steps in implementing git subtree for `go-utils`
 
-1. Move the old `root/sdk/utils` to `root/utils/` 
-
-2. Split the utils to a `git subtree`.
+## Split the utils to a `git subtree`.
 
 ```sh
-# command guide
-# git subtree split --prefix=<dir name> -b <new branch name> 
-
-# actual command
-git subtree split --prefix utils -b go-utils
+git subtree split --prefix sdk/utils -b go-utils
 ```
 
 This will create a new branch called `go-utils` which can be pushed to a git repo.
 
-3. Add the necessary `go.mod` file for making the `go-utils` a standalone library.
+## Add the necessary `go.mod` file for making the `go-utils` a standalone library.
 
 Example:
 ```go
-module github.com/marcbentoy/go-utils
+module github.com/flarehotspot/go-utils
 
 go 1.22.0
 ```
 
-4. Add the remote url of `flarehotspot/go-utils`
+## Add the remote url of `flarehotspot/go-utils`
 
 ```sh
 git remote add go-utils git@github.com:flarehotspot/go-utils.git
 ```
 
-5. Push the `go-utils` branch to a remote git repo. 
+## Push the `go-utils` branch to a remote git repo.
 ```sh
-# command guide
-# git push <go-utils remote repo url> <branch name to push>:<desired branch>
-
-# actual command
 git push go-utils go-utils:main
 ```
 
@@ -139,25 +121,33 @@ git push go-utils go-utils:main
 
 ```sh
 # command guide
-# git subtree push --prefix <utils dir name> <go-utils remote name or url> <desired local branch to push> 
+# git subtree push --prefix <utils dir name> <go-utils remote name or url> <desired local branch to push>
 # don't worry, this will only push the changes inside the `utils` and not the entire local branch
 
 # actual command
-git subtree push --prefix utils go-utils development # or your desired local branch e.g. feat/utils-subtree
+git subtree push --prefix sdk/utils go-utils development # or your desired local branch e.g. feat/utils-subtree
 ```
 
 # Persist changes
 
-For the changes to persist in other codebases that uses the go library, head over to the github or even to the local cloned repo of `go-utils` and create a git tag. 
+For the changes to persist in other codebases that uses the go library, head over to the github or even to the local cloned repo of `go-utils` and create a git tag.
 
 ```sh
-git checkout <branch>
+git checkout go-utils
 git tag vx.x.x # creates a tag to the latest commit of the current branch
 git push --tags # pushes the created tag
 ```
 
-Then, update the `go-utils` library by specifying the version of the newly pushed tag. 
+Then, update the `go-utils` library by specifying the version of the newly pushed tag.
 ```sh
 go get -u github.com/flarehotspot/go-utils@vx.x.x
 ```
 
+## Building `dev-kit`
+
+Change owner to `$USER` the `flarehotspot` dir first:
+```shell
+sudo chown -R $USER <flarehotspot dir>
+```
+
+then, `make devkit`.

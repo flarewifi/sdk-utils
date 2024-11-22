@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"sdk/libs/go-json"
+	"github.com/goccy/go-json"
 
 	accounts "sdk/api/accounts"
 
@@ -239,7 +239,7 @@ func PermDesc(perm string) string {
 }
 
 // Check if account has all permissions
-func HasAllPerms(acct accounts.Account, perms ...string) bool {
+func HasAllPerms(acct accounts.IAccount, perms ...string) bool {
 	count := 0
 	for _, perm := range perms {
 		for _, acctPerm := range acct.Permissions() {
@@ -253,7 +253,7 @@ func HasAllPerms(acct accounts.Account, perms ...string) bool {
 }
 
 // Check if account has any of the permissions
-func HasAnyPerm(acct accounts.Account, perms ...string) bool {
+func HasAnyPerm(acct accounts.IAccount, perms ...string) bool {
 	for _, perm := range perms {
 		for _, acctPerm := range acct.Permissions() {
 			if perm == acctPerm {

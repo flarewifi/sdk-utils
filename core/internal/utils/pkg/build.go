@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"core/env"
 	"core/internal/utils/cmd"
 	"core/internal/utils/encdisk"
 	"core/internal/utils/git"
@@ -77,7 +78,7 @@ func BuildFromGit(w io.Writer, def PluginSrcDef) (sdkplugin.PluginInfo, error) {
 	return info, nil
 }
 
-func BuildPlugin(pluginSrcDir string, workdir string) error {
+func BuildPluginSo(pluginSrcDir string, workdir string) error {
 	if pluginSrcDir == "" {
 		return errors.New("Build plugin error: no plugin source path")
 	}
@@ -117,7 +118,9 @@ func BuildPlugin(pluginSrcDir string, workdir string) error {
 		return err
 	}
 
-	if err := sdkfs.CopyDir(filepath.Join(sdkpaths.AppDir, "utils"), filepath.Join(workdir, "utils"), nil); err != nil {
+	libs := []string{}
+	err := sdkfs.LsDirs("sdk/libs", &libs, false)
+	if err != nil {
 		return err
 	}
 
@@ -125,15 +128,29 @@ func BuildPlugin(pluginSrcDir string, workdir string) error {
 go %s
 
 use (
-    ./sdk
-    ./plugins/%s
-    ./utils
-)
-    `, sdkruntime.GO_VERSION, info.Package)
+    ./sdk/api
+    ./sdk/utils
+    `, sdkruntime.GO_VERSION)
 
+	for _, lib := range libs {
+		goWork += fmt.Sprintf("./sdk/libs/%s\n", filepath.Base(lib))
+	}
+
+	goWork += fmt.Sprintf("./plugins/%s\n)", info.Package)
 	goworkFile := filepath.Join(workdir, "go.work")
 	if err := os.WriteFile(goworkFile, []byte(goWork), sdkfs.PermFile); err != nil {
 		return err
+	}
+
+	if err := BuildAssets(pluginSrcDir); err != nil {
+		return err
+	}
+
+	// Don't build templates in development since it is already watched and built by another script.
+	if env.GO_ENV != env.ENV_DEV {
+		if err := BuildTemplates(buildpath); err != nil {
+			return err
+		}
 	}
 
 	gofile := "main.go"

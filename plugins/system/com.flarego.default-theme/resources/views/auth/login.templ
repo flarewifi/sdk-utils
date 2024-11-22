@@ -1,0 +1,36 @@
+package auth
+
+import (
+	"sdk/api/http"
+)
+
+templ LoginPage(csrfHTML string, data sdkhttp.LoginPageData) {
+	<div class="container">
+		<div class="row">
+			<div class="col-md-6 offset-md-3">
+				<div class="py-2">Sample error</div>
+				<div id="login-con">
+					<h1>Login</h1>
+					<form id="login-form" method="POST" action={ templ.SafeURL(data.LoginUrl) }>
+                        @templ.Raw(csrfHTML)
+						<div class="mb-3">
+							<label for="username" class="form-label">Username</label>
+							<input type="text" class="form-control" name="username" id="username" aria-describedby="username-help"/>
+							if data.UsernameErr != nil {
+								<span type="text-muted">{ data.UsernameErr.Error() }</span>
+							}
+						</div>
+						<div class="mb-3">
+							<label for="password" class="form-label">Password</label>
+							<input type="password" class="form-control" name="password" id="password"/>
+							if data.PasswordErr != nil {
+								<span type="text-muted">{ data.PasswordErr.Error() }</span>
+							}
+						</div>
+						<button type="submit" class="btn btn-primary">Login</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+}

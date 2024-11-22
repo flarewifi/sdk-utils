@@ -7,10 +7,9 @@ import (
 const applicationJsonFile = "application.json"
 
 type AppConfig struct {
-	Lang          string `json:"lang"`
-	Currency      string `json:"currency"`
-	AssetsVersion string `json:"assets_version"`
-	Secret        string `json:"secret"`
+	Lang     string `json:"lang"`
+	Currency string `json:"currency"`
+	Secret   string `json:"secret"`
 }
 
 func ReadApplicationConfig() (AppConfig, error) {

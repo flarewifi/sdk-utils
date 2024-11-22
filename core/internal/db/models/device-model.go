@@ -2,10 +2,12 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"log"
 
 	"core/internal/db"
+	"core/internal/db/sqlc"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type DeviceModel struct {
@@ -17,118 +19,86 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 	return &DeviceModel{database, mdls}
 }
 
-func (self *DeviceModel) CreateTx(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
-	query := "INSERT INTO devices (mac_address, ip_address, hostname) VALUES(?, ?, UPPER(?))"
-	result, err := tx.ExecContext(ctx, query, mac, ip, hostname)
-	if err != nil {
-		log.Println("SQL Exec Error: ", err)
-		return nil, err
-	}
-
-	lastId, err := result.LastInsertId()
-	if err != nil {
-		log.Println("SQL Exec Error: ", err)
-		return nil, err
-	}
-
-	return self.FindTx(tx, ctx, lastId)
-}
-
-func (self *DeviceModel) FindTx(tx *sql.Tx, ctx context.Context, id int64) (*Device, error) {
-	device := NewDevice(self.db, self.models)
-	err := tx.QueryRowContext(ctx, "SELECT id, mac_address, ip_address, hostname, created_at FROM devices WHERE id = ? LIMIT 1", id).
-		Scan(&device.id, &device.macAddr, &device.ipAddr, &device.hostname, &device.createdAt)
-
-	if err != nil {
-		log.Println("Error finding device with id "+string(rune(id)), err.Error())
-		return nil, err
-	}
-
-	log.Println("Found device: ", device)
-	return device, nil
-}
-
-func (self *DeviceModel) FindByMacTx(tx *sql.Tx, ctx context.Context, mac string) (*Device, error) {
-	device := NewDevice(self.db, self.models)
-	query := "SELECT id, hostname, ip_address, mac_address, created_at FROM devices WHERE UPPER(mac_address) = UPPER(?) LIMIT 1"
-	err := tx.QueryRowContext(ctx, query, mac).
-		Scan(&device.id, &device.hostname, &device.ipAddr, &device.macAddr, &device.createdAt)
-
-	if err != nil {
-		log.Println("Error finding device with mac "+mac, err.Error())
-		return nil, err
-	}
-
-	log.Println("Found device: ", device)
-	return device, nil
-}
-
-func (self *DeviceModel) UpdateTx(tx *sql.Tx, ctx context.Context, id int64, mac string, ip string, hostname string) error {
-	query := "UPDATE devices SET hostname = ?, ip_address = ?, mac_address = ? WHERE id = ? LIMIT 1"
-	_, err := tx.ExecContext(ctx, query, hostname, ip, mac, id)
-	if err != nil {
-		log.Println("SQL Exec Error: ", err)
-		return err
-	}
-	return nil
-}
-
 func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+	dId, err := self.db.Queries.CreateDevice(ctx, sqlc.CreateDeviceParams{
+		MacAddress: mac,
+		IpAddress:  ip,
+		Hostname:   pgtype.Text{String: hostname},
+	})
 	if err != nil {
+		log.Println("error creating new device:", err)
 		return nil, err
 	}
-	defer tx.Rollback()
 
-	dev, err := self.CreateTx(tx, ctx, mac, ip, hostname)
+	d, err := self.db.Queries.FindDevice(ctx, dId)
 	if err != nil {
+		log.Printf("error finding device %v: %v\n", dId, err)
 		return nil, err
 	}
 
-	return dev, tx.Commit()
+	dev := &Device{
+		db:        self.db,
+		models:    self.models,
+		id:        d.ID,
+		macAddr:   d.MacAddress,
+		ipAddr:    d.IpAddress,
+		hostname:  d.Hostname.String,
+		createdAt: d.CreatedAt.Time,
+	}
+
+	return dev, nil
 }
 
-func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
+func (self *DeviceModel) Find(ctx context.Context, id pgtype.UUID) (*Device, error) {
+	device := NewDevice(self.db, self.models)
 
-	device, err := self.FindTx(tx, ctx, id)
+	d, err := self.db.Queries.FindDevice(ctx, id)
 	if err != nil {
+		log.Printf("error finding device %v: %v", id, err)
 		return nil, err
 	}
 
-	return device, tx.Commit()
+	device.id = d.ID
+	device.macAddr = d.MacAddress
+	device.ipAddr = d.IpAddress
+	device.hostname = d.Hostname.String
+	device.createdAt = d.CreatedAt.Time
+
+	log.Printf("Found device: %+v", device)
+	return device, nil
 }
 
 func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, error) {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
+	device := NewDevice(self.db, self.models)
 
-	dev, err := self.FindByMacTx(tx, ctx, mac)
+	d, err := self.db.Queries.FindDeviceByMac(ctx, mac)
 	if err != nil {
+		log.Printf("error finding device %s: %v", mac, err)
 		return nil, err
 	}
 
-	return dev, tx.Commit()
+	device.id = d.ID
+	device.macAddr = d.MacAddress
+	device.ipAddr = d.IpAddress
+	device.hostname = d.Hostname.String
+	device.createdAt = d.CreatedAt.Time
+
+	log.Printf("Found device: %+v", device)
+	return device, nil
 }
 
-func (self *DeviceModel) Update(ctx context.Context, id int64, mac string, ip string, hostname string) error {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+func (self *DeviceModel) Update(ctx context.Context, id pgtype.UUID, mac string, ip string, hostname string) error {
+	err := self.db.Queries.UpdateDevice(ctx, sqlc.UpdateDeviceParams{
+		Hostname:   pgtype.Text{String: hostname, Valid: hostname != ""},
+		IpAddress:  ip,
+		MacAddress: mac,
+		ID:         id,
+	})
 	if err != nil {
+		log.Printf("error updating device %v: %v", id, err)
 		return err
 	}
-	defer tx.Commit()
 
-	err = self.UpdateTx(tx, ctx, id, hostname, mac, ip)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	log.Printf("Successfully updated device with id %v", id)
+	return nil
 }

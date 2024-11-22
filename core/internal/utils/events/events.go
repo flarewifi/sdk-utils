@@ -1,8 +1,9 @@
 package events
 
 import (
-	"sdk/libs/go-json"
 	"sync"
+
+	"github.com/goccy/go-json"
 )
 
 var (

@@ -10,7 +10,7 @@ import (
 
 func main() {}
 
-func Init(api plugin.PluginApi) {
+func Init(api plugin.IPluginApi) {
     app.SetupRoutes(api)
 	themes.SetPortalTheme(api)
     themes.SetAdminTheme(api)

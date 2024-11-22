@@ -6,7 +6,7 @@
 
 package sdkuci
 
-type NetIface struct {
+type INetIface struct {
 	Section string
 	Device  string
 	Proto   string

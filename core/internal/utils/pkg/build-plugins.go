@@ -12,7 +12,13 @@ func BuildLocalPlugins() error {
 	pluginPaths := LocalPluginPaths()
 	for _, pluginPath := range pluginPaths {
 		workdir := filepath.Join(sdkpaths.TmpDir, "builds", filepath.Base(pluginPath))
-		if err := BuildPlugin(pluginPath, workdir); err != nil {
+		defer os.RemoveAll(workdir)
+
+		if err := BuildTemplates(pluginPath); err != nil {
+			return err
+		}
+
+		if err := BuildPluginSo(pluginPath, workdir); err != nil {
 			return err
 		}
 

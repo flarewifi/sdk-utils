@@ -7,8 +7,9 @@ services:
     volumes:
       - ./:/build
       - ./core/build/devkit/extras/config/database.json:/build/config/database.json
+      - /var/tmp/flare.tmp:/var/tmp/flare.tmp
     depends_on:
-      mariadb:
+      postgres:
         condition: service_healthy
     ports:
       - 3000:3000
@@ -17,40 +18,38 @@ services:
         aliases:
           - rpc-machines.flarehotspot-dev.com
 
-  mariadb:
-    image: mariadb:latest
+  postgres:
+    image: postgres:latest
     volumes:
-      - mariadb:/var/lib/mysql
+      - postgres:/var/lib/postgresql/data
     environment:
-      - MARIADB_ROOT_PASSWORD=root
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=flarehotspot_dev  # Customize database name as needed
+      - PGDATA=/var/lib/postgresql/data/pgdata
     healthcheck:
-      test: mariadb-admin ping -h 127.0.0.1 --password=root
+      test: ["CMD-SHELL", "pg_isready"]
       start_period: 20s
-      start_interval: 1s
       interval: 30s
       timeout: 5s
       retries: 30
     networks:
       flare_network:
 
-  phpmyadmin:
-    image: phpmyadmin
-    volumes:
-      - ./phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php
+  pgadmin:
+    image: dpage/pgadmin4
     ports:
       - 8081:80
     depends_on:
-      - mariadb
+      - postgres
     environment:
-      - PMA_ARBITRARY=1
-      - PMA_HOST=mariadb
-      - PMA_USER=root
-      - PMA_PASSWORD=root
+      - PGADMIN_DEFAULT_EMAIL=admin@pg.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
     networks:
       flare_network:
 
 volumes:
-  mariadb:
+  postgres:
 
 networks:
   flare_network:

@@ -1,0 +1,39 @@
+package bootstrap5
+
+import (
+	"sdk/api/http"
+	"sdk/api/forms"
+	"fmt"
+)
+
+type BooleanInputFieldAttrs struct {
+	Label   string
+	Name    string
+	Checked bool
+	Error   error
+}
+
+templ BooleanInputField(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) {
+	{{ attrs := getBooleanInputFieldAttrs(form, sec, fld) }}
+	<div class="form-check">
+		<input class="form-check-input" type="checkbox" value="true" name={ attrs.Name } checked?={ attrs.Checked }/>
+		<label class="form-check-label" for={ attrs.Name }>
+			{ attrs.Label }
+		</label>
+	</div>
+	if attrs.Error != nil {
+		<div class="invalid-feedback">{ attrs.Error.Error() }</div>
+	}
+}
+
+func getBooleanInputFieldAttrs(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) (attrs BooleanInputFieldAttrs) {
+	attrs.Label = fld.GetLabel()
+	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+	var val bool
+	val, attrs.Error = form.GetBoolValue(sec.Name, fld.GetName())
+	if attrs.Error != nil {
+		return
+	}
+    attrs.Checked = val
+	return
+}

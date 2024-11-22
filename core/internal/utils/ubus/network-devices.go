@@ -6,7 +6,8 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"sdk/libs/go-json"
+
+	"github.com/goccy/go-json"
 
 	"core/internal/utils/cmd"
 )

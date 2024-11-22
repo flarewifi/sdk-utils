@@ -1,0 +1,8 @@
+{
+  "theme.css": [
+    "./portal/portal.css"
+  ],
+  "theme.js": [
+    "./portal/portal.js"
+  ]
+}

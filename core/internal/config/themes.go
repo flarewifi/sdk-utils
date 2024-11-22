@@ -19,8 +19,8 @@ var (
 )
 
 type ThemesConfig struct {
-	Portal string `json:"portal"`
-	Admin  string `json:"admin"`
+	PortalThemePkg string `json:"portal"`
+	AdminThemePkg  string `json:"admin"`
 }
 
 func ReadThemesConfig() (ThemesConfig, error) {
@@ -29,8 +29,8 @@ func ReadThemesConfig() (ThemesConfig, error) {
 		defer themeCfgMu.RUnlock()
 		// prevent cache modification
 		return ThemesConfig{
-			Portal: themeCfgCache.Portal,
-			Admin:  themeCfgCache.Admin,
+			PortalThemePkg: themeCfgCache.PortalThemePkg,
+			AdminThemePkg:  themeCfgCache.AdminThemePkg,
 		}, nil
 	}
 	themeCfgMu.RUnlock()
@@ -39,11 +39,11 @@ func ReadThemesConfig() (ThemesConfig, error) {
 	if err := readConfigFile(themesConfigJsonFile, &cfg); err != nil {
 		return cfg, err
 	}
-	if !isThemeValid(cfg.Portal) {
-		cfg.Portal = defaultThemePlugin
+	if !isThemeValid(cfg.PortalThemePkg) {
+		cfg.PortalThemePkg = defaultThemePlugin
 	}
-	if !isThemeValid(cfg.Admin) {
-		cfg.Admin = defaultThemePlugin
+	if !isThemeValid(cfg.AdminThemePkg) {
+		cfg.AdminThemePkg = defaultThemePlugin
 	}
 
 	themeCfgMu.Lock()

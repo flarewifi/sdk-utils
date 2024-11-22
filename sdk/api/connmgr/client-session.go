@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// ClientSession represents a client's internet connection session.
-type ClientSession interface {
+// IClientSession represents a client's internet connection session.
+type IClientSession interface {
 	// REturns the provider of the session record.
 	Provider() string
 

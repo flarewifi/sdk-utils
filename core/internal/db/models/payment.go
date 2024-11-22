@@ -2,17 +2,21 @@ package models
 
 import (
 	"context"
-	"database/sql"
+	"log"
 	"time"
 
 	"core/internal/db"
+	"core/internal/db/sqlc"
+	"core/internal/utils/pg"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Payment struct {
 	db         *db.Database
 	models     *Models
-	id         int64
-	purchaseId int64
+	id         pgtype.UUID
+	purchaseId pgtype.UUID
 	amount     float64
 	optname    string
 	createdAt  time.Time
@@ -25,11 +29,11 @@ func NewPayment(dtb *db.Database, mdls *Models) *Payment {
 	}
 }
 
-func (self *Payment) Id() int64 {
+func (self *Payment) Id() pgtype.UUID {
 	return self.id
 }
 
-func (self *Payment) PurchaseId() int64 {
+func (self *Payment) PurchaseId() pgtype.UUID {
 	return self.purchaseId
 }
 
@@ -45,27 +49,15 @@ func (self *Payment) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Payment) UpdateTx(tx *sql.Tx, ctx context.Context, amt float64) error {
-	err := self.models.paymentModel.UpdateTx(tx, ctx, self.id, amt)
-	if err != nil {
-		return err
-	}
-
-	self.amount = amt
-	return nil
-}
-
 func (self *Payment) Update(ctx context.Context, amt float64) error {
-	tx, err := self.db.SqlDB().BeginTx(ctx, nil)
+	err := self.db.Queries.UpdatePayment(ctx, sqlc.UpdatePaymentParams{
+		Amount: pg.Float64ToNumeric(amt),
+		ID:     self.id,
+	})
 	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	err = self.UpdateTx(tx, ctx, amt)
-	if err != nil {
+		log.Printf("error updating payment %v: %v", self.id, err)
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }

@@ -3,6 +3,7 @@ package pkg
 import (
 	"path/filepath"
 
+	sdkfs "github.com/flarehotspot/go-utils/fs"
 	sdkpaths "github.com/flarehotspot/go-utils/paths"
 )
 
@@ -27,7 +28,7 @@ func FindDefInstallPath(def PluginSrcDef) (path string, ok bool) {
 		if def.Src == PluginSrcGit && p.Def.GitURL == def.GitURL {
 			return p.InstallPath, true
 		}
-		if def.Src == PluginSrcStore && p.Def.StoreZipFile == def.StoreZipFile {
+		if def.Src == PluginSrcStore && p.Def.StorePackage == def.StorePackage {
 			return p.InstallPath, true
 		}
 		if def.Src == PluginSrcZip && p.Def.LocalPath == def.LocalPath {
@@ -35,4 +36,22 @@ func FindDefInstallPath(def PluginSrcDef) (path string, ok bool) {
 		}
 	}
 	return "", false
+}
+
+func ListPluginDirs(includeCore bool) []string {
+	searchPaths := []string{"plugins/system", "plugins/local"}
+	pluginDirs := []string{}
+
+	if includeCore {
+		pluginDirs = append(pluginDirs, "core")
+	}
+
+	for _, s := range searchPaths {
+		var list []string
+		if err := sdkfs.LsDirs(s, &list, false); err == nil {
+			pluginDirs = append(pluginDirs, list...)
+		}
+	}
+
+	return pluginDirs
 }

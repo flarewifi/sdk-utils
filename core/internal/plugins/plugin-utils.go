@@ -2,14 +2,13 @@ package plugins
 
 import (
 	"log"
-	"net/http"
 	"path/filepath"
+	sdkhttp "sdk/api/http"
 	"strings"
 
 	"core/internal/config"
-	"core/internal/utils/assets"
 	"core/internal/utils/flaretmpl"
-	"core/internal/web/response"
+	"core/internal/utils/pkg"
 )
 
 func NewPluginUtils(api *PluginApi) *PluginUtils {
@@ -58,17 +57,60 @@ func (self *PluginUtils) Resource(path string) string {
 	return filepath.Join(self.api.dir, "resources", path)
 }
 
-func (self *PluginUtils) BundleAssetsWithHelper(w http.ResponseWriter, r *http.Request, entries ...assets.AssetWithData) (assets.CacheData, error) {
-	entriesWithHelpers := make([]assets.AssetWithData, len(entries))
-	for i, entry := range entries {
-		entriesWithHelpers[i] = assets.AssetWithData{
-			File: entry.File,
-			Data: &response.ViewData{
-				ViewData:    entry.Data,
-				ViewHelpers: self.api.HttpAPI.Helpers(),
-			},
-		}
+func (self *PluginUtils) GetAdminAssetsForPage(v sdkhttp.ViewPage) (assets sdkhttp.PageAssets) {
+	_, themesApi, err := self.api.PluginsMgrApi.GetAdminTheme()
+	if err != nil {
+		return
+	} else {
+		themeJsSrc, themeCssHref := themesApi.GetAdminAssets()
+		assets.ThemeJsSrc = themeJsSrc
+		assets.ThemeCssHref = themeCssHref
 	}
 
-	return assets.BundleWithData(entriesWithHelpers...)
+	globals := pkg.ReadGlobalAssetsManifest()
+	assets.GlobalJsSrc = self.api.CoreAPI.Http().Helpers().AssetPath(globals.AdminJsFile)
+	assets.GlobalCssHref = self.api.CoreAPI.Http().Helpers().AssetPath(globals.AdminCssFile)
+
+	manifest := self.api.AssetsManifest
+
+	jsFile, ok := manifest.AdminAssets.Scripts[v.Assets.JsFile]
+	if ok {
+		assets.PageJsSrc = self.api.HttpAPI.Helpers().AssetPath(jsFile)
+	}
+
+	cssFile, ok := manifest.AdminAssets.Styles[v.Assets.CssFile]
+	if ok {
+		assets.PageCssHref = self.api.HttpAPI.Helpers().AssetPath(cssFile)
+	}
+
+	return
+}
+
+func (self *PluginUtils) GetPortalAssetsForPage(v sdkhttp.ViewPage) (assets sdkhttp.PageAssets) {
+	_, themesApi, err := self.api.PluginsMgrApi.GetPortalTheme()
+	if err != nil {
+		return
+	} else {
+		themeJsSrc, themeCssHref := themesApi.GetPortalAssets()
+		assets.ThemeJsSrc = themeJsSrc
+		assets.ThemeCssHref = themeCssHref
+	}
+
+	globals := pkg.ReadGlobalAssetsManifest()
+	assets.GlobalJsSrc = self.api.CoreAPI.Http().Helpers().AssetPath(globals.PortalJsFile)
+	assets.GlobalCssHref = self.api.CoreAPI.Http().Helpers().AssetPath(globals.PortalCssFile)
+
+	manifest := self.api.AssetsManifest
+
+	jsFile, ok := manifest.PortalAssets.Scripts[v.Assets.JsFile]
+	if ok {
+		assets.PageJsSrc = self.api.HttpAPI.Helpers().AssetPath(jsFile)
+	}
+
+	cssFile, ok := manifest.PortalAssets.Styles[v.Assets.CssFile]
+	if ok {
+		assets.PageCssHref = self.api.HttpAPI.Helpers().AssetPath(cssFile)
+	}
+
+	return
 }

@@ -2,7 +2,8 @@ package jsonwebtoken
 
 import (
 	"fmt"
-	"sdk/libs/jwt"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func GenerateToken(clms map[string]string, secret string) (string, error) {

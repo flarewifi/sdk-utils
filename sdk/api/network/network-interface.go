@@ -8,14 +8,14 @@ package sdknet
 
 import "net"
 
-// NetworkInterface represents a network interface in the system.
-type NetworkInterface interface {
+// INetworkInterface represents a network interface in the system.
+type INetworkInterface interface {
 
 	// Returns the name of the interface.
 	Ifname() string
 
 	// Returns the device used for this interface.
-	Device() (NetworkDevice, error)
+	Device() (INetworkDevice, error)
 
 	// Returns the status of the network interface.
 	Up() bool

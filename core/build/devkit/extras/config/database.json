@@ -1,6 +1,6 @@
 {
-  "host": "mariadb",
-  "database": "flarehotspot_dev",
-  "username": "root",
-  "password": "root"
+    "host": "postgres",
+    "database": "flarehotspot_dev",
+    "username": "postgres",
+    "password": "postgres"
 }

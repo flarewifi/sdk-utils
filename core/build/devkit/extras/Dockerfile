@@ -9,17 +9,17 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y \
         wget curl gcc ca-certificates
 
-ENV GOPATH=/opt/go
+ENV GOPATH=/build/.tmp/gopath
 ENV GOCACHE=/build/.tmp/gocache
-ENV GO_CUSTOM_PATH=/build/go
+ENV GO_CUSTOM_PATH=/build/.tmp/go
 ENV PATH=${GO_CUSTOM_PATH}/bin:${PATH}
-ENV PATH=${GOPATH}/bin:${PATH}
+ENV PATH=${PATH}:/build/.tmp/gopath/bin
 
 WORKDIR /build
-COPY go /build/go
-RUN go install github.com/cespare/reflex@latest
 
-CMD reflex \
+CMD cp go.work.default go.work && \
+    ./tools.sh && \
+    reflex \
         -r '\.go$' \
         -R '\.tmp\/*.' \
         -R 'core\/main\.go' \

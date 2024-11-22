@@ -1,0 +1,124 @@
+package bootstrap5
+
+import (
+	"sdk/api/forms"
+	"fmt"
+	"sdk/api/http"
+)
+
+templ MultiInputField(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) {
+	<legend>{ fld.GetLabel() }</legend>
+	{{ mfval, err := form.GetMultiField(sec.Name, fld.GetName()) }}
+	if err != nil {
+		<p>{ fmt.Sprintf("unable to get multi-field value: %s", err.Error()) }</p>
+		{{ return }}
+	}
+	{{ mfld, ok := fld.(sdkforms.MultiField) }}
+	if !ok {
+		<p>{ fmt.Sprintf("field %s is not a multi-field", fld.GetName()) }</p>
+		{{ return }}
+	}
+	<div class="row">
+		for _, col := range mfld.Columns() {
+			<div class="col">{ col.Label }</div>
+		}
+		<div class="col">Options</div>
+	</div>
+	for  i := 0; i < mfval.NumRows(); i++ {
+		<div x-data="{row: {deleted: false}}">
+			@multiFieldRow(sec, mfld, mfval, i)
+		</div>
+	}
+	<div x-data="{newrows: []}">
+		<template x-for="row in newrows">
+			@multiFieldRow(sec, mfld, mfval, -1)
+		</template>
+		<hr/>
+		<button type="button" class="" x-on:click="newrows.push({ deleted: false })">Add Item</button>
+	</div>
+}
+
+templ multiFieldRow(sec sdkforms.FormSection, mfld sdkforms.MultiField, mfval sdkforms.IMultiField, row int) {
+	<template x-if="!row.deleted">
+		<div class="row mb-2">
+			for _, col := range mfld.Columns() {
+				@multiFieldCol(sec, mfld, mfval, row, col)
+			}
+			<div class="col">
+				<button type="button" class="btn btn-secondary">Edit</button>
+				<button
+					type="button"
+					class="btn btn-danger"
+					x-on:click="row.deleted = true"
+				>
+					Delete
+				</button>
+			</div>
+		</div>
+	</template>
+}
+
+templ multiFieldCol(sec sdkforms.FormSection, fld sdkforms.MultiField, mfval sdkforms.IMultiField, row int, col sdkforms.MultiFieldCol) {
+	<div class="col">
+		{{ colName := mfColName(sec, fld, col) }}
+		switch col.Type {
+			case sdkforms.FormFieldTypeText:
+				{{ var val string }}
+				{{ var err error }}
+				if row < 0 {
+					{{ val = "" }}
+				} else {
+					{{ val, err = mfval.GetStringValue(row, col.Name) }}
+				}
+				<input type="text" class="form-control" name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				if err != nil {
+					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get string value from field %s, column %s", fld.Name, col.Name) }</p>
+				}
+			case sdkforms.FormFieldTypeInteger:
+				{{ var val int }}
+				{{ var err error }}
+				if row > -1 {
+					{{ val, err = mfval.GetIntValue(row, col.Name) }}
+				} else {
+					{{ val = 0 }}
+				}
+				<input type="text" class="form-control" name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ fmt.Sprintf("%d", val) }/>
+				if err != nil {
+					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err) }</p>
+				}
+			case sdkforms.FormFieldTypeDecimal:
+				{{ var val float64 }}
+				{{ var err error }}
+				if row > -1 {
+					{{ val, err = mfval.GetFloatValue(row, col.Name) }}
+				} else {
+					{{ val = 0 }}
+				}
+				<input type="text" class="form-control" name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ fmt.Sprintf("%.2f", val) }/>
+				if err != nil {
+					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err) }</p>
+				}
+			case sdkforms.FormFieldTypeBoolean:
+				{{ var val bool }}
+				{{ var err error }}
+				if row < 0 {
+					{{ val = false }}
+				} else {
+					{{ val, err = mfval.GetBoolValue(row, col.Name) }}
+				}
+				<select class="form-control" name={ colName }>
+					<option value="true" selected?={ val }>Yes</option>
+					<option value="false" selected?={ !val }>No</option>
+				</select>
+				if err != nil {
+					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err) }</p>
+				}
+			default:
+				<p>{ fmt.Sprintf("unsupported column type: %s", col.Type) }</p>
+		}
+	</div>
+}
+
+func mfColName(sec sdkforms.FormSection, fld sdkforms.IFormField, col sdkforms.MultiFieldCol) string {
+	return sec.Name + ":" + fld.GetName() + ":" + col.Name
+}

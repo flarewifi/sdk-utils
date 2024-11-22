@@ -1,6 +1,7 @@
 //go:build !dev
+
 package uci
 
-import "sdk/libs/go-uci"
+import "github.com/digineo/go-uci"
 
 var UciTree = uci.NewTree("/etc/config")

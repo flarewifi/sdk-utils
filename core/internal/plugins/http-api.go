@@ -7,78 +7,79 @@ import (
 	"core/internal/db"
 	"core/internal/db/models"
 	"core/internal/web/helpers"
-	sdkacct "sdk/api/accounts"
 	sdkconnmgr "sdk/api/connmgr"
 	sdkhttp "sdk/api/http"
+
 	"github.com/gorilla/mux"
 )
 
-func NewHttpApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegister, mdls *models.Models, dmgr *connmgr.ClientRegister, pmgr *PaymentsMgr) *HttpApi {
+func NewHttpApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegister, mdls *models.Models, dmgr *connmgr.ClientRegister, pmgr *PaymentsMgr) {
+	navs := NewNavsApi(api)
 	auth := NewHttpAuth(api)
-	httpRouter := NewHttpRouterApi(api, db, clnt)
-	vueRouter := NewVueRouterApi(api)
 	httpResp := NewHttpResponse(api)
 	middlewares := NewPluginMiddlewares(api, mdls, dmgr, pmgr)
+	httpRouter := NewHttpRouterApi(api, db, clnt)
+	httpForm := NewHttpFormApi(api)
 
-	return &HttpApi{
+	httpApi := &HttpApi{
 		api:         api,
 		auth:        auth,
 		httpRouter:  httpRouter,
-		vueRouter:   vueRouter,
+		navsApi:     navs,
 		httpResp:    httpResp,
 		middlewares: middlewares,
+		formsApi:    httpForm,
 	}
+
+	api.HttpAPI = httpApi
 }
 
 type HttpApi struct {
 	api         *PluginApi
 	auth        *HttpAuth
 	httpRouter  *HttpRouterApi
-	vueRouter   *VueRouterApi
+	navsApi     *HttpNavsApi
+	formsApi    *HttpFormApi
 	httpResp    *HttpResponse
 	middlewares *PluginMiddlewares
 }
 
-func (self *HttpApi) GetClientDevice(r *http.Request) (sdkconnmgr.ClientDevice, error) {
+func (self *HttpApi) Initialize() {
+	self.httpRouter.Initialize()
+}
+
+func (self *HttpApi) GetClientDevice(r *http.Request) (sdkconnmgr.IClientDevice, error) {
 	return helpers.CurrentClient(self.api.ClntReg, r)
 }
 
-func (self *HttpApi) Auth() sdkhttp.HttpAuth {
+func (self *HttpApi) Auth() sdkhttp.IHttpAuth {
 	return self.auth
 }
 
-func (self *HttpApi) HttpRouter() sdkhttp.HttpRouterApi {
+func (self *HttpApi) HttpRouter() sdkhttp.IHttpRouterApi {
 	return self.httpRouter
 }
 
-func (self *HttpApi) VueRouter() sdkhttp.VueRouterApi {
-	return self.vueRouter
+func (self *HttpApi) Forms() sdkhttp.IHttpFormApi {
+	return self.formsApi
 }
 
-func (self *HttpApi) Helpers() sdkhttp.HttpHelpers {
+func (self *HttpApi) Helpers() sdkhttp.IHttpHelpers {
 	return NewHttpHelpers(self.api)
 }
 
-func (self *HttpApi) Middlewares() sdkhttp.HttpMiddlewares {
+func (self *HttpApi) Middlewares() sdkhttp.IHttpMiddlewares {
 	return self.middlewares
 }
 
-func (self *HttpApi) HttpResponse() sdkhttp.HttpResponse {
+func (self *HttpApi) HttpResponse() sdkhttp.IHttpResponse {
 	return self.httpResp
-}
-
-func (self *HttpApi) VueResponse() sdkhttp.VueResponse {
-	return NewVueResponse(self.api.HttpAPI.vueRouter)
 }
 
 func (self *HttpApi) MuxVars(r *http.Request) map[string]string {
 	return mux.Vars(r)
 }
 
-func (self *HttpApi) GetAdminNavs(acct sdkacct.Account) []sdkhttp.AdminNavList {
-	return self.api.PluginsMgrApi.Utils().GetAdminNavs(acct)
-}
-
-func (self *HttpApi) GetPortalItems(clnt sdkconnmgr.ClientDevice) []sdkhttp.PortalItem {
-	return self.api.PluginsMgrApi.Utils().GetPortalItems(clnt)
+func (self *HttpApi) Navs() sdkhttp.INavpsApi {
+	return self.navsApi
 }

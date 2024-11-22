@@ -29,30 +29,14 @@ type PluginFile struct {
 }
 
 var PLuginFiles = []PluginFile{
-	{
-		File:     "plugin.json",
-		Optional: false,
-	},
-	{
-		File:     "plugin.so",
-		Optional: false,
-	},
-	{
-		File:     "metadata.json",
-		Optional: true,
-	},
-	{
-		File:     "resources",
-		Optional: true,
-	},
-	{
-		File:     "go.mod",
-		Optional: false,
-	},
-	{
-		File:     "LICENSE.txt",
-		Optional: true,
-	},
+	{File: "LICENSE.txt", Optional: false},
+	{File: "plugin.json", Optional: false},
+	{File: "plugin.so", Optional: false},
+	{File: "metadata.json", Optional: true},
+	{File: "resources/assets/dist", Optional: true},
+	{File: "resources/migrations", Optional: true},
+	{File: "resources/translations", Optional: true},
+	{File: "go.mod", Optional: false},
 }
 
 func InstallSrcDef(w io.Writer, def PluginSrcDef) (info sdkplugin.PluginInfo, err error) {
@@ -125,7 +109,7 @@ func InstallFromZipFile(w io.Writer, def PluginSrcDef) (sdkplugin.PluginInfo, er
 }
 
 func InstallFromPluginStore(w io.Writer, def PluginSrcDef) (sdkplugin.PluginInfo, error) {
-	w.Write([]byte("Installing plugin from store: " + def.StoreZipFile))
+	w.Write([]byte("Installing plugin from store: " + def.StorePackage))
 
 	// prepare path
 	randomPath := RandomPluginPath()
@@ -144,8 +128,8 @@ func InstallFromPluginStore(w io.Writer, def PluginSrcDef) (sdkplugin.PluginInfo
 	defer mnt.Unmount()
 
 	// download plugin release zip file
-	log.Println("downloading plugin release: ", def.StoreZipFile)
-	downloader := download.NewDownloader(def.StoreZipFile, clonePath)
+	log.Println("downloading plugin release: ", def.StoreZipUrl)
+	downloader := download.NewDownloader(def.StoreZipUrl, clonePath)
 	if err := downloader.Download(); err != nil {
 		log.Println("Error: ", err)
 		return sdkplugin.PluginInfo{}, err
@@ -153,6 +137,9 @@ func InstallFromPluginStore(w io.Writer, def PluginSrcDef) (sdkplugin.PluginInfo
 
 	// extract compressed plugin release
 	sdkextract.Extract(clonePath, workPath)
+
+	// clear StoreZipUrl def
+	def.StoreZipUrl = ""
 
 	newWorkPath, err := FindPluginSrc(workPath)
 	if err != nil {
@@ -229,14 +216,15 @@ func InstallPlugin(src string, opts InstallOpts) error {
 
 		defer mnt.Unmount()
 	} else {
-		parentpath := filepath.Join(sdkpaths.TmpDir, "plugins", "build", sdkstr.Rand(16))
+		parentpath := filepath.Join(sdkpaths.TmpDir, "b", sdkstr.Rand(16))
 		buildpath = filepath.Join(parentpath, "0")
 		if err := sdkfs.EmptyDir(buildpath); err != nil {
 			return err
 		}
+		defer os.RemoveAll(parentpath)
 	}
 
-	if err := BuildPlugin(src, buildpath); err != nil {
+	if err := BuildPluginSo(src, buildpath); err != nil {
 		log.Println("Error building plugin: ", err)
 		return err
 	}
@@ -247,7 +235,7 @@ func InstallPlugin(src string, opts InstallOpts) error {
 	}
 
 	installPath := GetInstallPath(info.Package)
-	if sdkfs.Exists(installPath) {
+	if err := ValidateInstallPath(installPath); err == nil {
 		installPath = GetPendingUpdatePath(info.Package)
 	}
 
@@ -256,7 +244,6 @@ func InstallPlugin(src string, opts InstallOpts) error {
 	}
 
 	log.Println("Copying plugin files to: ", installPath)
-
 	for _, f := range PLuginFiles {
 		err := sdkfs.Copy(filepath.Join(src, f.File), filepath.Join(installPath, f.File))
 		if err != nil && !f.Optional {
