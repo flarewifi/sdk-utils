@@ -6,8 +6,8 @@ When a user uses a browser to navigate to a specific URL, the router will match 
 ## Types of Routes {#registering-routes}
 There two (2) types of routes:
 
-- `plugin routes` - accessible to all users
-- `admin routes` - accessible to authenticated admin accounts.
+- `plugin routes` - Accessible to all users.
+- `admin routes` - Accessible to authenticated admin accounts.
 
 ### Plugin Routes {#plugin-routes}
 
@@ -27,7 +27,7 @@ func main() {}
 
 func Init(api sdkapi.PluginApi) {
     pluginRouter := api.Http().HttpRouter().PluginRouter()
-    pluginRouter.Get("/welcome/:name", func (w http.ResponseWriter, r *http.Request) {
+    pluginRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
         vars := api.Http().MuxVars(r)
         name := vars["name"]
 
@@ -47,8 +47,8 @@ templ WelcomePage(name string) {
 }
 ```
 
-In this example, we registered a plugin route named `portal:welcome` that executes when a user navigates to `/welcome/:name`.
-Then we extract the `:name` URL param using [IHttpApi.MuxVars](../api/http-api.md#muxvars) method and display the `welcome.templ` [view template](../api/http-response.md#template-parsing).
+In this example, we registered a plugin route named `portal:welcome` that executes when a user navigates to `/welcome/{name}`.
+Then we extract the `name` URL param using [IHttpApi.MuxVars](../api/http-api.md#muxvars) method and display the `welcome.templ` [view template](../api/http-response.md#template-parsing).
 
 The `plugin router` has additional methods aside from `Get`. See the [Router Instance](../api/http-router-api.md#router-instance) documentation.
 
@@ -70,7 +70,7 @@ func main() {}
 
 func Init(api sdkapi.PluginApi) {
     adminRouter := api.Http().HttpRouter().AdminRouter()
-    adminRouter.Get("/welcome/:name", func (w http.ResponseWriter, r *http.Request) {
+    adminRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
         vars := api.Http().MuxVars(r)
         name := vars["name"]
 
@@ -82,7 +82,48 @@ func Init(api sdkapi.PluginApi) {
 }
 ```
 
+## Handler Function
+
+A handler function is a function that executes when a route is matched. It accepts two (2) parameters: `http.ResponseWriter` and `*http.Request`.
+
+```go
+func(w http.ResponseWriter, r *http.Request) {
+    // Handler function code here...
+}
+```
+
+When used in a route, the handler function is executed when a user navigates to the route URL. An example below is a handler function that gets executed when a user navigates to `/welcome/{name}`.
+
+```go
+pluginRouter := api.Http().HttpRouter().PluginRouter()
+pluginRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
+    // Handler function code here...
+    vars := api.Http().MuxVars(r)
+    name := vars["name"]
+    welcomePage := views.WelcomePage(name)
+    api.Http().HttpResponse().PortalView(w, r, sdkapi.ViewPage{
+        PageContent: welcomePage,
+    })
+}).name("portal:welcome")
+```
+
 See the [Router Instance](../api/http-router-api.md#router-instance) documentation for the details.
+
+## Path Variables
+
+Routes can have path variables that are extracted from the URL. In the example below, the `name` path variable is extracted from the URL `/welcome/{name}`.
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    vars := api.Http().MuxVars(r)
+    name := vars["name"]
+}
+```
+
+## Generating URLs
+
+
 
 ## Portal menu item
 
@@ -132,3 +173,4 @@ navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
 ```
 
 Now, visit [localhost:3000/admin](http://localhost:3000/admin) to see if the admin menu item is present.
+

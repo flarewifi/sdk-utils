@@ -38,7 +38,7 @@ api.Http().HttpRouter().Use(middleware)
 
 ### UrlForRoute
 
-This method is used to generate the url for the given plugin route name. This method accepts two arguments, the first argument is the route name and the second argument is a map of route parameters. The route parameters are key-value pairs. The example below generates a URL for the route name `portal.welcome` with a route path `/welcome/:name`:
+This method is used to generate the url for the given plugin route name. This method accepts two arguments, the first argument is the route name and the second argument is a map of route parameters. The route parameters are key-value pairs. The example below generates a URL for the route name `portal.welcome` with a route path `/welcome/{name}`:
 
 ```go
 url := api.Http().HttpRouter().UrlForRoute("portal.welcome", "name", "John")
