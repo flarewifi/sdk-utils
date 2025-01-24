@@ -54,7 +54,7 @@ url := api.Http().HttpRouter().UrlForPkgRoute("com.mydomain.myplugin", "portal.w
 
 ## IHttpRouterInstance {#router-instance}
 
-Router instance is used to generate routes for the plugin. It can be a [PluginRouter](#plugin-router) or an [AdminRouter](#admin-router). Below are the methods available in the router instance:
+`IHttpRouterInstance` is a router instance used to generate routes for the plugin. Routes can be generated using a [PluginRouter](#plugin-router) or an [AdminRouter](#admin-router). Below are the methods available in the router instance:
 
 ### Group
 
