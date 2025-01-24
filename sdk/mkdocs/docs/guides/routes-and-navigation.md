@@ -1,7 +1,7 @@
 # Routes and Navigation
 
 Routes are used to map URL patterns to a functionality or components in your application.
-When a user uses a browser to navigate to a specific URL, the router will match the URL to a registered `route` and executes the handler defined in that route.
+When a user uses a browser to navigate to a specific URL, the router will match the URL to a registered `route` and executes the [handler function](../api/http-router-api.md#handler-function) defined in that route.
 
 ## Types of Routes {#registering-routes}
 There two (2) types of routes:
