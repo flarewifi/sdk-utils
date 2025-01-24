@@ -48,7 +48,7 @@ templ WelcomePage(name string) {
 ```
 
 In this example, we registered a plugin route named `portal:welcome` that executes when a user navigates to `/welcome/{name}`.
-Then we extract the `name` URL param using [IHttpApi.MuxVars](../api/http-api.md#muxvars) method and display the `welcome.templ` [view template](../api/http-response.md#template-parsing).
+Then we extract the `name` URL parameter using [IHttpApi.MuxVars](../api/http-api.md#muxvars) method and display the `welcome.templ` [view template](../api/http-response.md#template-parsing).
 
 The `plugin router` has additional methods aside from `Get`. See the [Router Instance](../api/http-router-api.md#router-instance) documentation.
 
@@ -82,50 +82,14 @@ func Init(api sdkapi.PluginApi) {
 }
 ```
 
-## Handler Function
+## Navigation Menu
 
-A handler function is a function that executes when a route is matched. It accepts two (2) parameters: `http.ResponseWriter` and `*http.Request`.
+We have two (2) types of navigation menu:
 
-```go
-func(w http.ResponseWriter, r *http.Request) {
-    // Handler function code here...
-}
-```
+- `portal menu` - Menu items that are available in the captive portal.
+- `admin menu` - Menu items that are available in the admin web interface.
 
-When used in a route, the handler function is executed when a user navigates to the route URL. An example below is a handler function that gets executed when a user navigates to `/welcome/{name}`.
-
-```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
-pluginRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
-    // Handler function code here...
-    vars := api.Http().MuxVars(r)
-    name := vars["name"]
-    welcomePage := views.WelcomePage(name)
-    api.Http().HttpResponse().PortalView(w, r, sdkapi.ViewPage{
-        PageContent: welcomePage,
-    })
-}).name("portal:welcome")
-```
-
-See the [Router Instance](../api/http-router-api.md#router-instance) documentation for the details.
-
-## Path Variables
-
-Routes can have path variables that are extracted from the URL. In the example below, the `name` path variable is extracted from the URL `/welcome/{name}`.
-
-```go
-// handler
-func (w http.ResponseWriter, r *http.Request) {
-    vars := api.Http().MuxVars(r)
-    name := vars["name"]
-}
-```
-
-## Generating URLs
-
-
-
-## Portal menu item
+### Portal Menu Items
 
 In the example above, we [registered a plugin route](#plugin-routes) to the plugin router. We named the route `portal:welcome`. Take note of the name of the route since we will use it as reference when registering a portal menu item.
 
@@ -151,7 +115,7 @@ navsAPI.PortalNavsFactory(func(r *http.Request) []PortalNavItemOpt {
 
 Now, visit [localhost:3000](http://localhost:3000) to see if the menu item appears.
 
-## Admin menu item
+### Admin Menu Items
 
 In the example above, we also [registered an admin route](#admin-routes) to the admin router. We named the route `admin:welcome`. Take note of the name of the route since we will use it as reference when registering an admin menu item.
 
@@ -174,3 +138,54 @@ navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
 
 Now, visit [localhost:3000/admin](http://localhost:3000/admin) to see if the admin menu item is present.
 
+## Generating URLs {#generating-urls}
+
+To generate URLs for a route, we will use the name of the route. In the example above, we named the route `portal:welcome` with a URL path `/welcome/{name}`.
+To generate the URL for the route `portal:welcome`, we will use the [IHttpRouterApi.UrlForRoute](../api/http-router-api.md#urlforroute) method:
+
+```go
+url := api.Http().HttpRouter().UrlForRoute("portal:welcome", "name", "John")
+fmt.Println(url)
+// => /p/com.mydomain.myplugin/1.0.0/welcome/John
+```
+
+The example showed us how to generate a URL from a named route and how to set a value to a URL patameter (we replaced `{name}` parameter with the value `John`).
+
+For multiple URL params, you can add more pairs to the `UrlForRoute` method. For example, if the route URL is `/welcome/:name/:gender/:age`:
+
+```go
+url := api.Http().HttpRouter().UrlForRoute("portal:welcome", "name", "John", "gender", "male", "age", "21")
+fmt.Println(url)
+// => /p/com.mydomain.myplugin/1.0.0/welcome/John/male/21
+```
+
+If you want to generate route for a third-party plugin or the core system, we will use the [IHttpRouterApi.UrlForPkgRoute](../api/http-router-api.md#urlforpkgroute) method:
+
+```go
+url := api.Http().HttpRouter().UrlForPkgRoute("com.flarego.core", "admin:index", "name", "John")
+```
+
+## URL Parameters {#url-params}
+
+Routes can have path variables (URL parameters) that can be extracted from the URL. In the example above, the `name` parameter is extracted from the URL `/welcome/{name}` with:
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    vars := api.Http().MuxVars(r)
+    name := vars["name"]
+}
+```
+
+If you just want to extract the query parameters from the URL, you can use the `r.URL.Query()` method in your handler function.
+For example, if the URL is `/welcome?name=John` and you want to get the value of `name` query parameter:
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    queryParams := r.URL.Query()
+    name := queryParams.Get("name")
+    fmt.Println(name) // "John"
+    // ...
+}
+```

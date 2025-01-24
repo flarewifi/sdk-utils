@@ -9,6 +9,8 @@ func TestCtrl(api sdkplugin.IPluginApi) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := api.Http().MuxVars(r)
 		name := vars["name"]
-		w.Write([]byte("Welcome " + name))
+		params := r.URL.Query()
+		lname := params.Get("lname")
+		w.Write([]byte("Welcome " + name + " " + lname))
 	}
 }

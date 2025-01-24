@@ -1,7 +1,7 @@
 # IHttpRouterApi
 The `IHttpRouterApi` is the backend for http routing in Flare Hotspot. There are two (2) kinds of http routers:
 
-- `AdminRouter` - a router for the admin pages of the plugin that uses the [AdminAuth](./http-middlewares.md#admin-auth) middleware.
+- `AdminRouter` - a router for the admin pages of the plugin that uses the [AdminAuth](#admin-auth) middleware.
 - `PluginRouter` - a router for general purpose routing within the plugin
 
 ## IHttpRouterApi methods {#http-router-api}
@@ -24,7 +24,7 @@ pluginRouter := api.Http().HttpRouter().PluginRouter()
 
 ### Use {#use}
 
-This method is used to add a global [middleware](#middlewares) to all routes. It accepts a list of [middlewares](./http-middlewares.md).
+This method is used to add a global middleware to all routes. It accepts a list of middlewares.
 ```go
 middleware := func (next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -97,12 +97,39 @@ router.Post("/settings/save", func(w http.ResponseWriter, r *http.Request) {
 
 ### Use
 
+## Handler Function {#handler-function}
+
+A handler function is a function that executes when a route is matched. It accepts two (2) parameters: `http.ResponseWriter` and `*http.Request`.
+
+```go
+func(w http.ResponseWriter, r *http.Request) {
+    // Handler function code here...
+}
+```
+
+### Registering a handler function
+
+When used in a route, the handler function is executed when a user navigates to the route URL. An example below is a handler function that gets executed when a user navigates to `/welcome/{name}`.
+
+```go
+pluginRouter := api.Http().HttpRouter().PluginRouter()
+pluginRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
+    // Handler function code here...
+    vars := api.Http().MuxVars(r)
+    name := vars["name"]
+    welcomePage := views.WelcomePage(name)
+    api.Http().HttpResponse().PortalView(w, r, sdkapi.ViewPage{
+        PageContent: welcomePage,
+    })
+}).name("portal:welcome")
+```
+
 This method is used to add a [middleware](#middlewares) to the router. It accepts a list of middlewares.
 All routes defined after the `Use` method will use the middleware.
 
 ## Middlewares {#middlewares}
 
-A [middleware](./http-middlewares.md) is a function of type `func(next http.Handler) http.Handler`. It is used to perform operations on the request before it reaches the handler function. Middlewares are functions that accept a http handler function and returns another http handler function.
+A middleware is used to perform operations on the HTTP request before it reaches the [handler function](#handler-function). Middlewares are functions that accept a http handler function and returns another http handler function: `func(next http.Handler) http.Handler`
 
 ### Declaring a middleware
 
@@ -136,3 +163,54 @@ api.Http().HttpRouter().AdminRouter().Group("/settings", func (subrouter sdkhttp
 ```
 
 In the examples above, the middleware is used to perform operations on the request before it reaches the handler function inside the sub-router. But it can also be used directly on the [PluginRouter](#plugin-router) or the [AdminRouter](#admin-router).
+
+### Built-in Middlewares {#built-in-middlewares}
+
+To get an instance of the built-in `IHttpMiddlewares`:
+
+```go
+httpMw := api.Http().Middlewares()
+fmt.Println(httpMw) // IHttpMiddlewares
+```
+
+Below are the list of available built-in middlewares in `IHttpMiddlewares`:
+
+#### AdminAuth {#admin-auth}
+
+It returns a middleware that ensures that only authenticated admins can access the route.
+
+```go
+pluginRouter := api.Http().HttpRouter().PluginRouter()
+authMw := httpMw.AdminAuth()
+handler := func(w http.ResponseWriter, r *http.Request) {
+    // handle the http request...
+}
+pluginRouter.Get("/protected-page", handler, authMw)
+```
+
+#### CacheResponse {#cache-response}
+
+It returns a middleware that caches the response throughout the duration of the application lifetime which can improve system performance.
+
+```go
+pluginRouter := api.Http().HttpRouter().PluginRouter()
+cacheMw := api.Http().Middlewares().CacheResponse()
+handler := func(w http.ResponseWriter, r *http.Request) {
+    // handle the http request...
+}
+pluginRouter.Get("/some-generated-image.png", handler, cacheMw)
+```
+
+#### PendingPurchase
+
+It returns a middleware that redirects the user to the pending order payment page when a pending purchase request is present.
+
+
+```go
+pluginRouter := api.Http().HttpRouter().PluginRouter()
+pendingMw := httpMw.PendingPurchase()
+handler := func(w http.ResponseWriter, r *http.Request) {
+    // handle the http request...
+}
+pluginRouter.Get("/some-checkout-page", handler, pendingMw)
+```

@@ -36,6 +36,7 @@ nav:
       - 'Getting Started': guides/getting-started.md
       - 'Creating a plugin': guides/creating-a-plugin.md
       - 'Routes and Navigation': guides/routes-and-navigation.md
+      - 'Rendering Views': guides/rendering-views.md
       - 'Form Submission': guides/form-submission.md
       - 'Saving Data': guides/saving-data.md
       - 'Translations': guides/translations.md
@@ -56,7 +57,6 @@ nav:
       - 'IHttpCookie': api/http-cookie.md
       - 'IHttpFormsApi': api/http-forms-api.md
       - 'IHttpHelpers': api/http-helpers.md
-      - 'IHttpMiddlewares': api/http-middlewares.md
       - 'IHttpNavsApi': api/http-navs-api.md
       - 'IHttpResponse': api/http-response.md
       - 'IHttpRouterApi': api/http-router-api.md
