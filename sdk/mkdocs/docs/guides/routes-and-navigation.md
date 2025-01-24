@@ -1,12 +1,13 @@
 # Routes and Navigation
 
-Routes are used to handle URL navigation by matching the requested URL from the browser to a router pattern in your plugin.
+Routes are used to map URL patterns to a functionality or components in your application.
+When a user uses a browser to navigate to a specific URL, the router will match the URL to a registered `route` and executes the handler defined in that route.
 
 ## Types of Routes {#registering-routes}
 There two (2) types of routes:
 
-- `Plugin routes` - accessible to all users
-- `Admin routes` - accessible to authenticated admin accounts.
+- `plugin routes` - accessible to all users
+- `admin routes` - accessible to authenticated admin accounts.
 
 ### Plugin Routes {#plugin-routes}
 
@@ -47,9 +48,9 @@ templ WelcomePage(name string) {
 ```
 
 In this example, we registered a plugin route named `portal:welcome` that executes when a user navigates to `/welcome/:name`.
-Then we extract the `name` URL param using [IHttpApi.MuxVars](../api/http-api.md#muxvars) method and display the `welcome.templ` [view template](../api/http-response.md#template-parsing).
+Then we extract the `:name` URL param using [IHttpApi.MuxVars](../api/http-api.md#muxvars) method and display the `welcome.templ` [view template](../api/http-response.md#template-parsing).
 
-The plugin router has additional methods aside from `Get`. See the [Router Instance](../api/http-router-api.md#router-instance) documentation.
+The `plugin router` has additional methods aside from `Get`. See the [Router Instance](../api/http-router-api.md#router-instance) documentation.
 
 ### Admin Routes {#admin-routes}
 Admin routes are very similar to [plugin routes](#plugin-routes), but are only accessible by authenticated admin accounts.
