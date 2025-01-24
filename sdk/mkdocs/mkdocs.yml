@@ -41,6 +41,8 @@ nav:
       - 'Saving Data': guides/saving-data.md
       - 'Translations': guides/translations.md
       - 'Database Migrations': guides/database-migrations.md
+      - 'Error Handling': guides/error-handling.md
+      - 'Debugging': guides/debugging.md
       - 'FAQ': guides/faq.md
   - Tutorials:
       - 'Manage Sessions': tutorials/manage-sessions.md

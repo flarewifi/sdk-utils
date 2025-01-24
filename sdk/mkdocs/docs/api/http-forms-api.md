@@ -35,7 +35,7 @@ if !ok {
 }
 ```
 
-## The `HttpForm` struct {#httpform}
+## HttpForm {#httpform}
 
 The `HttpForm` struct defines the HTML form sections, fields, default input values, and validation rules.
 It is composed of one or more sections. Each section contains various types of fields which include [text](#text-field), [decimal](#decimal-field), [integer](#integer-field), [boolean](#boolean-field), [list](#list-field) and [multi-field](#multi-field).
@@ -57,7 +57,7 @@ sections := []sdkapi.FormSection{
                 // sdkapi.FormListField,
                 // sdkapi.FormMultiField,
                 sdkapi.FormTextField{
-                    Name:  "Banner Text",
+                    Name:  "banner_text",
                     Label: "Banner Text",
                     ValueFn: func() string {
                         b, err := pluginConfigAPI.Read("banner_text")
@@ -81,6 +81,10 @@ form := sdkapi.HttpForm{
 
 formsAPI.RegisterForms(form)
 ```
+
+## FormSection {#formsection}
+
+A `FormSection` is a collection of fields in a form. It is composed of a name and a slice of [Form Fields](#form-fields).
 
 ## Form Fields {#form-fields}
 
@@ -106,14 +110,16 @@ TODO: Add description
 
 ### GetTemplate
 
-It returns the templ component of the form which can be used to render to the view.
+It returns the [templ](../guides/rendering-views.md) component of the form which can be used to render a view.
 
 ```go
 // handler
 func handler(w http.ResponseWriter, r *http.Request) {
-    formsAPI := api.Http().Forms()
-    form, _ := formsAPI.GetForm("my-form")
-    formHTML := form.GetTemplate(r)
+    form := sdkapi.HttpForm{
+        Name: "my-form",
+        // rest of the form definition...
+    }
+    formTpl := form.GetTemplate(r)
     // render formHTML to the view
 }
 ```
@@ -125,7 +131,7 @@ Returns a slice of [FormSection](#formsection) in the form.
 ```go
 formsAPI := api.Http().Forms()
 form, _ := formsAPI.GetForm("my-form")
-sectoins := form.GetSections()
+sections := form.GetSections()
 ```
 
 ### GetStringValue
@@ -133,7 +139,7 @@ sectoins := form.GetSections()
 Returns the string value of a field in the form.
 
 ```go
-val, err := form.GetStringValue(section, "Banner Text")
+val, err := form.GetStringValue(section, "banner_text")
 ```
 
 ### GetStringValues
@@ -198,9 +204,5 @@ Returns a [IFormMultiField](#imultifield) instance of a multi field in the form.
 ```go
 mf, err := form.GetMultiField(section, "Multi Field")
 ```
-
-## FormSection struct {#formsection}
-
-A `FormSection` is a collection of fields in a form. It is composed of a name and a slice of [Form Fields](#form-fields).
 
 ## IFormMultiField {#imultifield}

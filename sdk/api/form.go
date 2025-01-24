@@ -31,15 +31,17 @@ type HttpForm struct {
 
 type FormSection struct {
 	Name   string
+	Label  string
 	Fields []IFormField
 }
 
 type SectionData struct {
-	Name   string          `json:"name"`
-	Fields []FormFieldData `json:"fields"`
+	Name   string
+	Fields []FormFieldData
+	Errors []string
 }
 
 type FormFieldData struct {
-	Name  string      `json:"name"`
-	Value interface{} `json:"value"`
+	Name  string
+	Value interface{}
 }
