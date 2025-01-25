@@ -32,7 +32,7 @@ It returns an instance of [IHttpCookie](./http-cookie.md).
 
 ### Middlewares
 
-It returns an instance of [IHttpMiddlewares](./http-middlewares.md) that contains the built-in middlewares.
+It returns an instance of [IHttpMiddlewares](./http-router-api.md#middlewares) that contains the built-in middlewares.
 
 ```go
 middlewares := api.Http().Middlewares()

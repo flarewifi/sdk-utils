@@ -28,6 +28,8 @@ In this example, the files `./portal/portal.css` and `./portal/anoter-file.css` 
 
 Likewise, the files `./portal/portal.js` and `./portal/another-file.js` will be bundled into `index.js` and can be rendered in the views.
 
+The `index.css` and `index.js` can be used with any views that is rendered using the [IHttpResponse.PortalView](../api/http-response.md#portalview) method.
+
 ## Admin manifest file {#admin-manifest}
 
 The admin assets manifest file must be located in `resources/assets/manifest.admin.json` inside your plugin directory. An example of admin assets manifest file:
@@ -48,3 +50,5 @@ The admin assets manifest file must be located in `resources/assets/manifest.adm
 The files `./admin/admin.css` and other files in the list are relative to `manifest.admin.json` file.
 
 Similar to [portal assets manifest](#portal-manifest), `index.css` and `index.js` files are a bundle of assets which can be [rendered in the views](./http-response.md#view-assets).
+
+The `index.css` and `index.js` can be used with any views that is rendered using the [IHttpResponse.AdminView](../api/http-response.md#adminview) method.

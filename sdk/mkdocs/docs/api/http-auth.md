@@ -23,7 +23,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### IsAuthenticated
 
-Checks if the user is authenticated. This will perform cookie checks and does not rely on the [AdminAuth middleware](./http-middlewares.md#admin-auth).
+Checks if the user is authenticated. This will perform cookie checks and does not rely on the [AdminAuth middleware](./http-router-api.md#admin-auth).
 
 ### Authenticate
 
