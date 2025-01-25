@@ -49,7 +49,8 @@ formsAPI := api.Http().Forms()
 sections := []sdkapi.FormSection{
     {
         {
-            Name: "General Configuration",
+            Name: "general_configuration",
+            Label: "General Configuration",
             Fields: []sdkapi.IFormField{
                 // sdkapi.FormBooleanField,
                 // sdkapi.FormDecimalField,
