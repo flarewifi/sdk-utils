@@ -35,6 +35,8 @@ if !ok {
 }
 ```
 
+---
+
 ## HttpForm {#httpform}
 
 The `HttpForm` struct defines the HTML form sections, fields, default input values, and validation rules.
@@ -83,7 +85,18 @@ form := sdkapi.HttpForm{
 formsAPI.RegisterForms(form)
 ```
 
-## FormSection {#formsection}
+Below aer the attributes of the `HttpForm` struct:
+
+### Name
+
+The name of the form.
+
+
+### CallbackRoute
+
+The [route](./http-router-api.md) to handle form submission.
+
+### FormSection {#formsection}
 
 A `FormSection` is a collection of [fields](#form-fields) in a form.
 It also has a `Name` and `Label` attributes.
@@ -96,25 +109,27 @@ type FormSection struct {
 }
 ```
 
-## Form Fields {#form-fields}
+### Form Fields {#form-fields}
 
 Below are the available fields that can be used in the `HttpForm` definition.
 
-### Boolean Field
+#### Boolean Field
 
 TODO: Add description
 
-### Decimal Field
+#### Decimal Field
 
 TODO: Add description
 
-### Integer Field
+#### Integer Field
 
-### List Field
+#### List Field
 
-### Multi Field
+#### Multi Field
 
-### Text Field
+#### Text Field
+
+---
 
 ## IHttpForm methods {#ihttpform}
 
