@@ -34,7 +34,7 @@ if err != nil {
 }
 ```
 
-Plugin configuration is separated into different keys for ease of management. The data must be serializable to JSON.
+Plugin configuration requires `string` key identifiers to separate concerns.
 
 ## Retreiving Data
 
