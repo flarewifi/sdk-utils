@@ -84,7 +84,16 @@ formsAPI.RegisterForms(form)
 
 ## FormSection {#formsection}
 
-A `FormSection` is a collection of fields in a form. It is composed of a name and a slice of [Form Fields](#form-fields).
+A `FormSection` is a collection of [fields](#form-fields) in a form.
+It also has a `Name` and `Label` attributes.
+
+```go
+type FormSection struct {
+	Name   string
+	Label  string
+	Fields []IFormField
+}
+```
 
 ## Form Fields {#form-fields}
 
