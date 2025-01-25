@@ -120,7 +120,7 @@ TODO: Add description
 
 ### GetTemplate
 
-It returns the [templ](../guides/rendering-views.md) component of the form which can be used to render a view.
+It returns the [templ](https://templ.guide) component of the form which can be used to [render a view](../guides/rendering-views.md).
 
 ```go
 // handler
