@@ -1,13 +1,13 @@
-# SessionsMgrApi
+# ISessionsMgrApi
 
-The `SessionsMgrApi` contains methods to manage the [ClientDevice](./client-device.md) sessions.
+The `ISessionsMgrApi` contains methods to manage the client device [sessions](./client-session.md).
 
-## SessionsMgrApi Methods
+## ISessionsMgrApi Methods
 
 ### Connect
 
-This method will connect the client device to the internet if the client device has available [ClientSession](./client-session.md) to consume.
-It takes a [context](https://gobyexample.com/context), a [ClientDevice](./client-device.md), and a notification `string` as parameters.
+This method will connect the client device to the internet if the client device has available [IClientSession](./client-session.md) to consume.
+It takes a [context](https://gobyexample.com/context), a [IClientDevice](./client-device.md), and a notification `string` as parameters.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -18,7 +18,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### Disconnect
 
-This method will disconnect the client device from the internet. It will also pause the current running [ClientSession](./client-session.md) of the client device. It takes a [context](https://gobyexample.com/context), a [ClientDevice](./client-device.md) and a notification `string` as parameters.
+This method will disconnect the client device from the internet. It will also pause the current running [IClientSession](./client-session.md) of the client device. It takes a [context](https://gobyexample.com/context), a [IClientDevice](./client-device.md) and a notification `string` as parameters.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -29,7 +29,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### IsConnected
 
-Returns `true` if the [ClientDevice](./client-device.md) is connected to the internet, otherwise `false`.
+Returns `true` if the [IClientDevice](./client-device.md) is connected to the internet, otherwise `false`.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -40,10 +40,10 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### CreateSession
 
-It creates a [ClientSession](./client-session.md) for the [ClientDevice](./client-device.md). It takes the following arguments:
+It creates a [IClientSession](./client-session.md) for the [IClientDevice](./client-device.md). It takes the following arguments:
 
 - `context.Context`
-- `int64` - the [ClientDevice](./client-device.md) ID
+- `pgtype.UUID` - the [IClientDevice](./client-device.md) UUID
 - `uint8` - the [type of session](./client-session.md#type) to create
 - `uint` - the duration of the session in seconds, applicable only for `time` and `time_or_data` session types
 - `float64` - the data in mega bytes, applicable only for `data` and `time_or_data` session types
@@ -80,7 +80,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### CurrSession
 
-This is the current running [ClientSession](./client-session.md) of the [ClientDevice](./client-device.md).
+This is the current running [IClientSession](./client-session.md) of the [IClientDevice](./client-device.md).
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -91,7 +91,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### GetSession
 
-Returns any available [ClientSession](./client-session.md) for the given [ClientDevice](./client-device.md) ID. This may include the current running session or any paused session.
+Returns any available [IClientSession](./client-session.md) for the given [IClientDevice](./client-device.md) ID. This may include the current running session or any paused session.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
