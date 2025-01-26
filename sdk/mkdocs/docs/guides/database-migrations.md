@@ -9,13 +9,13 @@ To create migration files for your database, you can use the `db-migrate` comman
 In Windows:
 
 ```title="PowerShell"
-bin\flare.exe create-migration
+.\scripts\flare.bat create-migration
 ```
 
 In Linux/Mac:
 
 ```title="Terminal"
-./bin/flare create-migration
+./scripts/flare.sh create-migration
 ```
 
 This will create new migration files in the `resources/migrations` directory of your plugin. The file will be named with a timestamp and a description of the migration. For example, `20210101000000_create_users_table.up.sql` and `20210101000000_create_users_table.down.sql`.
@@ -44,21 +44,5 @@ DROP TABLE IF EXISTS users;
 
 ## 2. Running Migration Files {#running-migration-files}
 
-To run the migration file, you have to call the [PluginApi.Migrate](../api/plugin-api.md#migrate) method. The down migration files are executed when the plugin is uninstalled.
-
-```go
-package main
-
-import (
-	sdkplugin "sdk/api/plugin"
-)
-
-func main() {}
-
-func Init(api sdkplugin.PluginApi) {
-    err := api.Migrate()
-    if err != nil {
-        api.Logger().Error(err.Error())
-    }
-}
-```
+The `up` migration files are run automatically during plugin installation.
+The `down` migrations are also run automatically when the plugin is being uninstalled.
