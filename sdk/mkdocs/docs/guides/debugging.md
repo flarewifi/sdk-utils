@@ -8,3 +8,5 @@ message := "Some error message body"
 
 api.Logger().Error(title, message)
 ```
+
+See [ILoggerApi](../api/logger-api.md) to learn more.
