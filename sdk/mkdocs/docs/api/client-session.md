@@ -1,6 +1,6 @@
-# ClientSession
+# IClientSession
 
-The `ClientSession` represents a session for the [ClientDevice](./client-device.md). It can be manipulated using the [SessionsMgrApi](./sessions-mgr-api.md). To get an instance of `ClientSession`, you can use the [CreateSession](./sessions-mgr-api.md#createsession), [CurrSession](./sessions-mgr-api.md#currsession) or [GetSession](./sessions-mgr-api.md#getsession) methods from [SessionMgrApi](./sessions-mgr-api.md). For example:
+The `IClientSession` represents a session for the [IClientDevice](./client-device.md). It can be manipulated using the [SessionsMgrApi](./sessions-mgr-api.md). To get an instance of `IClientSession`, you can use the [CreateSession](./sessions-mgr-api.md#createsession), [CurrSession](./sessions-mgr-api.md#currsession) or [GetSession](./sessions-mgr-api.md#getsession) methods from [SessionMgrApi](./sessions-mgr-api.md). For example:
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -9,13 +9,13 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-## ClientSession Methods
+## IClientSession Methods
 
-The following methods are available in `ClientSession`.
+The following methods are available in `IClientSession`.
 
 ### Provider
 
-Returns the session provider name. The provider name is a `string` value.
+Returns the session [provider](../api/session-provider.md) name. The provider name is a `string` value.
 
 ```go
 provider := session.Provider()
@@ -135,7 +135,7 @@ mbps := session.UpMbits()
 
 ### UseGlobalSpeed
 
-Returns a `bool` value indicating if the session uses the global [bandwidth settings](./config-api.md#bandwidth) for the network interface which the [ClientDevice](./client-device.md) is connected.
+Returns a `bool` value indicating if the session uses the global [bandwidth settings](./config-api.md#bandwidth) for the network interface which the [IClientDevice](./client-device.md) is connected.
 
 ```go
 useGlobal := session.UseGlobalSpeed()
@@ -233,7 +233,7 @@ session.Save()
 
 ### SetUseGlobalSpeed
 
-Sets a `bool` value indicating if the session uses the global [bandwidth settings](./config-api.md#bandwidth) for the network interface which the [ClientDevice](./client-device.md) is connected. The new value is not saved until the [save](#save) method is called.
+Sets a `bool` value indicating if the session uses the global [bandwidth settings](./config-api.md#bandwidth) for the network interface which the [IClientDevice](./client-device.md) is connected. The new value is not saved until the [save](#save) method is called.
 
 ```go
 session.SetUseGlobalSpeed(true)
