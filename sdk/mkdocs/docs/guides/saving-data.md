@@ -35,7 +35,7 @@ if err != nil {
 }
 ```
 
-Plugin configuration requires `string` key identifiers to separate concerns.
+Plugin configuration requires `string` key identifier in writing and reading data.
 
 ## Retreiving Data
 
