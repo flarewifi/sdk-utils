@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"path/filepath"
 
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func RandomPluginPath() string {
@@ -32,7 +32,7 @@ func RandomPluginPath() string {
 		"scripts", "services", "log", "web", "build", "data", "applications", "private", "public", "jobs", "archives", "software",
 		"settings", "documents", "images", "videos", "audio", "projects", "archives", "old", "new", "configuration", "desktop",
 	}
-	randname := sdkstr.Rand(6)
+	randname := sdkutils.RandomStr(6)
 	parentpath := parents[rand.Intn(len(parents))]
 	folder := linuxFolders[rand.Intn(len(linuxFolders))]
 	subpar := subparents[rand.Intn(len(subparents))]

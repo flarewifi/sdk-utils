@@ -20,8 +20,6 @@ import (
 	jobque "core/internal/utils/job-que"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-
-	"github.com/flarehotspot/go-utils/wsv"
 )
 
 const (
@@ -157,7 +155,7 @@ func ReadLogs(start int, end int) ([]*LogLine, error) {
 			}
 
 			// read of line successful
-			dataInLine, err := wsv.ParseLineAsArray(l)
+			dataInLine, err := sdkutils.ParseLineAsArray(l)
 			if err != nil {
 				log.Println("Core Logger: error parsing raw log file to wsv: ", err)
 				return nil, err
@@ -388,7 +386,7 @@ func LogToFile(file string, line int, level int, title string, body ...any) erro
 		content = append(content, logInfo)
 
 		// serialize
-		serialized := wsv.Serialize(content)
+		serialized := sdkutils.Serialize(content)
 
 		// actual logging to file
 		_, err = logFile.WriteString(serialized + "\n")

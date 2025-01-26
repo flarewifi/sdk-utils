@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	sdkdownloader "github.com/flarehotspot/go-utils/downloader"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func FetchUpdatesCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
@@ -83,7 +83,7 @@ func DownloadUpdatesCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 }
 
 func downloadFile(src string, dest string) error {
-	downloader := sdkdownloader.NewDownloader(src, dest)
+	downloader := sdkutils.NewDownloader(src, dest)
 	err := downloader.Download()
 	if err != nil {
 		log.Println("Error:", err)
