@@ -3,12 +3,20 @@ package coreforms
 import (
 	"core/internal/config"
 	"core/internal/plugins"
+	"encoding/json"
 	sdkapi "sdk/api"
 )
 
 const (
 	ThemesFormName = "themes"
 )
+
+type MultiFieldRowData struct {
+	Col1 string
+	Col2 float64
+	Col3 int64
+	Col4 bool
+}
 
 func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 	allPlugins := g.PluginMgr.All()
@@ -115,6 +123,42 @@ func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 				},
 			}
 			return cols
+		},
+		ValueFn: func() [][]sdkapi.FormFieldData {
+			var rowData []MultiFieldRowData
+			b, err := g.CoreAPI.Config().Plugin().Read("multi_field")
+			if err != nil {
+				return nil
+			}
+
+			err = json.Unmarshal(b, &rowData)
+			if err != nil {
+				return nil
+			}
+
+			data := make([][]sdkapi.FormFieldData, len(rowData))
+			for i, row := range rowData {
+				data[i] = []sdkapi.FormFieldData{
+					{
+						Name:  "col1",
+						Value: row.Col1,
+					},
+					{
+						Name:  "col2",
+						Value: row.Col2,
+					},
+					{
+						Name:  "col3",
+						Value: row.Col3,
+					},
+					{
+						Name:  "col4",
+						Value: row.Col4,
+					},
+				}
+			}
+
+			return data
 		},
 	}
 

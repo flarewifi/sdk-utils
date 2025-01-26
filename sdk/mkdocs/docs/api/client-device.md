@@ -19,7 +19,7 @@ Below are the methods available on the `IClientDevice` instance.
 
 ### Id
 
-Returns the database `UUID` of the client device.
+Returns the database `pgtype.UUID` of the client device.
 
 ```go
 uuid := clnt.Id()

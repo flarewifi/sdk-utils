@@ -90,9 +90,7 @@ func (self *HttpFormInstance) ParseForm(r *http.Request) (err error) {
 					}
 					val = mfldval
 				}
-				field.Value = sdkapi.FormMultiFieldData{
-					Fields: val,
-				}
+				field.Value = val
 
 			default:
 				return errors.New("invalid field type" + fld.GetType())
@@ -235,12 +233,14 @@ func (self *HttpFormInstance) GetMultiField(section string, field string) (val s
 		return
 	}
 
-	mfd, ok := v.(sdkapi.FormMultiFieldData)
+	data, ok := v.([][]sdkapi.FormFieldData)
 	if !ok {
-		return val, errors.New(fmt.Sprintf("section %s, field %s value is not sdkapi.MultiFieldData, instead %T", section, field, v))
+		return val, errors.New(fmt.Sprintf("section %s, field %s value is not [][]sdkapi.FormFieldData, instead %T", section, field, v))
 	}
 
-	return mfd, nil
+	return sdkapi.FormMultiFieldData{
+		Fields: data,
+	}, nil
 }
 
 func (self *HttpFormInstance) getSection(section string) (sec sdkapi.FormSection, ok bool) {

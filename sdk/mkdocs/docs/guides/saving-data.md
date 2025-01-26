@@ -3,7 +3,8 @@
 ## Saving Data
 
 To save the plugin data like plugin settings, configuration and statistics, we use the  [IPluginCfgApi.Write](../api/config-api.md#write) method.
-Using this API ensures that the user-defined configuration data for your plugin can be migrated properly when a machine owner upgrades or migrate the sytem to another machine.
+Using this API ensures that the user-defined configuration and data for your plugin can be migrated properly when a machine owner upgrades or
+migrate the sytem to another machine.
 
 ```go
 import "encoding/json"
@@ -34,7 +35,7 @@ if err != nil {
 }
 ```
 
-Plugin configuration is separated into different keys for ease of management. The data must be serializable to JSON.
+Plugin configuration requires `string` key identifier in writing and reading data.
 
 ## Retreiving Data
 
