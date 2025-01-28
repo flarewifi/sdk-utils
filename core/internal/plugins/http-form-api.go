@@ -2,8 +2,12 @@ package plugins
 
 import (
 	"errors"
+	"fmt"
+	"net/http"
 	sdkapi "sdk/api"
 	"sync"
+
+	"github.com/a-h/templ"
 )
 
 func NewHttpFormApi(api *PluginApi) *HttpFormApi {
@@ -18,28 +22,51 @@ type HttpFormApi struct {
 	forms sync.Map
 }
 
-func (self *HttpFormApi) RegisterForms(forms ...sdkapi.HttpForm) error {
-	for _, form := range forms {
-		if form.Name == "" {
-			return errors.New("form name key is required")
-		}
-
-		f := NewHttpForm(self.api, form)
-		self.forms.Store(form.Name, f)
+func (self *HttpFormApi) RegisterForm(name string, factory func(*http.Request) sdkapi.HttpForm) error {
+	if name == "" {
+		return errors.New("form name key is required")
 	}
+
+	self.forms.Store(name, factory)
 	return nil
 }
 
-func (self *HttpFormApi) GetForm(name string) (form sdkapi.IHttpForm, ok bool) {
+func (self *HttpFormApi) GetFormTemplate(name string, r *http.Request) (templ.Component, error) {
 	f, ok := self.forms.Load(name)
 	if !ok {
-		return form, false
+		return nil, fmt.Errorf("Unable to find form with name %s", name)
 	}
 
-	form, ok = f.(sdkapi.IHttpForm)
+	factory, ok := f.(func(*http.Request) sdkapi.HttpForm)
 	if !ok {
-		return form, false
+		return nil, fmt.Errorf("Invalid form factory for form %s", name)
 	}
 
-	return
+	formDef := factory(r)
+
+	httpForm := NewHttpForm(self.api, formDef)
+
+	return httpForm.GetTemplate(r), nil
+}
+
+func (self *HttpFormApi) ParseForm(name string, r *http.Request) (form sdkapi.IHttpForm, err error) {
+	f, ok := self.forms.Load(name)
+	if !ok {
+		return form, fmt.Errorf("Unable to find form with name %s", name)
+	}
+
+	factory, ok := f.(func(*http.Request) sdkapi.HttpForm)
+	if !ok {
+		return form, fmt.Errorf("Invalid form factory for form %s", name)
+	}
+
+	formDef := factory(r)
+
+	httpForm := NewHttpForm(self.api, formDef)
+
+	if err := httpForm.ParseForm(r); err != nil {
+		return nil, err
+	}
+
+	return httpForm, nil
 }

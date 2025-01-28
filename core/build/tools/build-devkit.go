@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"core/env"
 	"core/internal/utils/pkg"
@@ -95,6 +96,21 @@ func CreateDevkit() {
 	}
 
 	fmt.Println("Application config created: ", sdkutils.StripRootPath(appConfigFile))
+
+	// Clean up core template files
+	var templateFiles []string
+	if err := sdkutils.FsListFiles(filepath.Join(devkitReleaseDir, "core/resources/views"), &templateFiles, true); err != nil {
+		panic(err)
+	}
+
+	for _, file := range templateFiles {
+		if filepath.Ext(file) == ".templ" || strings.HasSuffix(file, "_templ.go") {
+			fmt.Println("Removing: ", sdkutils.StripRootPath(file))
+			if err := os.Remove(file); err != nil {
+				panic(err)
+			}
+		}
+	}
 
 	// Compress devkit release files
 	file := filepath.Base(devkitReleaseDir) + ".zip"

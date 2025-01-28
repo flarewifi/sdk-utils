@@ -4,6 +4,7 @@ import (
 	"core/internal/config"
 	"core/internal/plugins"
 	"encoding/json"
+	"net/http"
 	sdkapi "sdk/api"
 )
 
@@ -241,7 +242,6 @@ func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 	}
 
 	themesForm := sdkapi.HttpForm{
-		Name:          ThemesFormName,
 		CallbackRoute: "admin:themes:save",
 		SubmitLabel:   "Save",
 		Sections: []sdkapi.FormSection{
@@ -262,7 +262,10 @@ func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 		},
 	}
 
-	err = g.CoreAPI.HttpAPI.Forms().RegisterForms(themesForm)
+	err = g.CoreAPI.HttpAPI.Forms().RegisterForm(ThemesFormName, func(r *http.Request) sdkapi.HttpForm {
+		return themesForm
+	})
+
 	if err != nil {
 		return err
 	}

@@ -35,6 +35,11 @@ func AdminRoutes(g *plugins.CoreGlobals) {
 		subrouter.Post("/save", adminctrl.SaveThemeSettings(g)).Name("admin:themes:save")
 	})
 
+	adminR.Group("/logs", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/index", adminctrl.LogsIndex(g)).Name("admin:logs:index")
+		subrouter.Post("/search", adminctrl.LogsPostSearch(g)).Name("admin:logs:search")
+	})
+
 	// adminR.Group("/core", func(subrouter sdkhttp.HttpRouterInstance) {
 	// 	subrouter.Get("/fetch", adminctrl.FetchUpdatesCtrl(g)).Name("admin:core:fetch")
 	// 	subrouter.Get("/current", adminctrl.GetCurrentCoreVersionCtrl(g)).Name("admin:core:current")

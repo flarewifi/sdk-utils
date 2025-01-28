@@ -23,7 +23,7 @@ RUN ./install-tools.sh
 # Watch and recompile server on file change
 CMD cp go.work.default go.work && \
     reflex \
-        -r '\.(go|templ|js|css|json)$' \
+        -r '\.(go|templ|sql|js|css|json)$' \
         -R 'assets\/dist\/.*' \
         -R 'db/sqlc/.*' \
         -R '^config\/.*\.json$' \

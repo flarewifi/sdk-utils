@@ -16,6 +16,16 @@ type Device struct {
 	CreatedAt  pgtype.Timestamp
 }
 
+type Log struct {
+	ID         pgtype.UUID
+	Package    pgtype.Text
+	Level      string
+	Message    string
+	Filepath   string
+	LineNumber int32
+	CreatedAt  pgtype.Timestamp
+}
+
 type Payment struct {
 	ID         pgtype.UUID
 	PurchaseID pgtype.UUID
