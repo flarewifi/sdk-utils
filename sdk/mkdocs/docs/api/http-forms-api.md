@@ -10,7 +10,7 @@ Below are the methods available in `IHttpFormsApi`.
 
 ### RegisterForm
 
-It registers one or more [HttpForm](#httpform) into the plugin.
+It registers a [HttpForm](#httpform) generator function into the plugin.
 
 ```go
 formsAPI := api.Http().Forms()
