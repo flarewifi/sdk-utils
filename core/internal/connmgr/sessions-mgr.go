@@ -13,7 +13,7 @@ import (
 	"core/internal/utils/nftables"
 	sdkapi "sdk/api"
 
-	sdkslices "github.com/flarehotspot/go-utils/slices"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -276,7 +276,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 		}
 
 		self.mu.Lock()
-		self.sessions = sdkslices.Filter(self.sessions, func(rs *RunningSession) bool {
+		self.sessions = sdkutils.SliceFilter(self.sessions, func(rs *RunningSession) bool {
 			return rs.ClientId() != clnt.Id()
 		})
 		self.mu.Unlock()

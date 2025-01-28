@@ -7,12 +7,12 @@
 package sdkapi
 
 type ILoggerApi interface {
-	// Logs title and body with info level to console and log file
-	Info(title string, body ...any) error
+	// Logs message with info level
+	Info(message string) error
 
-	// Logs title and body with debug level to console and log file
-	Debug(title string, body ...any) error
+	// Logs message with debug level
+	Debug(message string) error
 
-	// Logs title and body with error level to console and log file
-	Error(title string, body ...any) error
+	// Logs message with error level
+	Error(message string) error
 }

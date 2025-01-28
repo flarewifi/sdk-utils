@@ -5,8 +5,11 @@ import (
 )
 
 func RegisterForms(g *plugins.CoreGlobals) {
-	err := RegisterThemesForm(g)
-	if err != nil {
+	if err := RegisterThemesForm(g); err != nil {
+		panic(err)
+	}
+
+	if err := RegisterLogsForm(g); err != nil {
 		panic(err)
 	}
 }

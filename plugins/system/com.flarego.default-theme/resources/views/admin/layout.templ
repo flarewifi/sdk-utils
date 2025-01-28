@@ -12,9 +12,6 @@ templ AdminLayout(api sdkapi.IPluginApi, data sdkapi.AdminLayoutData) {
 			<link rel="stylesheet" href={ data.Layout.Assets.GlobalCssHref }/>
 			<link rel="stylesheet" href={ data.Layout.Assets.ThemeCssHref }/>
 			<link rel="stylesheet" href={ data.Layout.Assets.PageCssHref }/>
-			<script src={ data.Layout.Assets.GlobalJsSrc }></script>
-			<script src={ data.Layout.Assets.ThemeJsSrc }></script>
-			<script src={ data.Layout.Assets.PageJsSrc }></script>
 		</head>
 		<body>
 			@colorSchemeToggle()
@@ -22,6 +19,15 @@ templ AdminLayout(api sdkapi.IPluginApi, data sdkapi.AdminLayoutData) {
 			<main class="container">
 				@data.Layout.PageContent
 			</main>
+			if data.Layout.Assets.GlobalJsSrc != "" {
+				<script src={ data.Layout.Assets.GlobalJsSrc }></script>
+			}
+			if data.Layout.Assets.ThemeJsSrc != "" {
+				<script src={ data.Layout.Assets.ThemeJsSrc }></script>
+			}
+			if data.Layout.Assets.PageJsSrc != "" {
+				<script src={ data.Layout.Assets.PageJsSrc }></script>
+			}
 		</body>
 	</html>
 }

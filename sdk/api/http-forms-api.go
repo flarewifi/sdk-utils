@@ -13,13 +13,12 @@ import (
 )
 
 type IHttpFormsApi interface {
-	RegisterForms(forms ...HttpForm) (err error)
-	GetForm(name string) (form IHttpForm, ok bool)
+	RegisterForm(name string, factory func(r *http.Request) HttpForm) error
+	GetFormTemplate(name string, r *http.Request) (templ.Component, error)
+	ParseForm(name string, r *http.Request) (IHttpForm, error)
 }
 
 type IHttpForm interface {
-	GetTemplate(r *http.Request) templ.Component
-
 	GetSections() []FormSection
 
 	GetStringValue(section string, name string) (string, error)
@@ -35,6 +34,4 @@ type IHttpForm interface {
 	GetBoolValues(section string, name string) ([]bool, error)
 
 	GetMultiField(section string, name string) (IFormMultiField, error)
-
-	ParseForm(r *http.Request) error
 }

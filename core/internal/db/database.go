@@ -12,7 +12,7 @@ import (
 	"core/internal/db/sqlc"
 	"core/internal/utils/pg"
 
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -24,8 +24,8 @@ type Database struct {
 }
 
 func NewDatabase() (*Database, error) {
-	dbpass := sdkstr.Rand(8)
-	dbname := strings.ToLower(fmt.Sprintf("flarehotspot_%s", sdkstr.Rand(8)))
+	dbpass := sdkutils.RandomStr(8)
+	dbname := strings.ToLower(fmt.Sprintf("flarehotspot_%s", sdkutils.RandomStr(8)))
 
 	// Setup PostgreSQL server
 	err := pg.SetupServer(dbpass, dbname)

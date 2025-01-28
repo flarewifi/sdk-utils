@@ -23,7 +23,6 @@ type IFormField interface {
 }
 
 type HttpForm struct {
-	Name          string
 	CallbackRoute string
 	Sections      []FormSection
 	SubmitLabel   string

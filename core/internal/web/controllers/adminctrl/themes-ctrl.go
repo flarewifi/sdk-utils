@@ -2,7 +2,6 @@ package adminctrl
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
@@ -16,14 +15,13 @@ import (
 func GetAvailableThemes(g *plugins.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.HttpResponse()
-		httpForm, ok := g.CoreAPI.HttpAPI.Forms().GetForm(coreforms.ThemesFormName)
-		if !ok {
-			err := errors.New("form not found: themes")
+		formTpl, err := g.CoreAPI.HttpAPI.Forms().GetFormTemplate(coreforms.ThemesFormName, r)
+		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
-		page := themes.AdminThemesIndex(httpForm.GetTemplate(r))
+		page := themes.AdminThemesIndex(formTpl)
 		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
 	}
 }
@@ -31,14 +29,7 @@ func GetAvailableThemes(g *plugins.CoreGlobals) http.HandlerFunc {
 func SaveThemeSettings(g *plugins.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.HttpResponse()
-		httpForm, ok := g.CoreAPI.HttpAPI.Forms().GetForm(coreforms.ThemesFormName)
-		if !ok {
-			err := errors.New("form not found: themes")
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		err := httpForm.ParseForm(r)
+		httpForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm(coreforms.ThemesFormName, r)
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return

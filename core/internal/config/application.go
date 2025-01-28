@@ -1,7 +1,7 @@
 package config
 
 import (
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	"github.com/flarehotspot/sdk-utils"
 )
 
 const applicationJsonFile = "application.json"
@@ -21,7 +21,7 @@ func ReadApplicationConfig() (AppConfig, error) {
 		cfg := AppConfig{
 			Lang:     "en",
 			Currency: "USD",
-			Secret:   sdkstr.Rand(16),
+			Secret:   sdkutils.RandomStr(16),
 		}
 
 		err = writeConfigFile(applicationJsonFile, cfg)

@@ -12,15 +12,13 @@ import (
 	"core/internal/utils/cmd"
 
 	gouci "github.com/digineo/go-uci"
-	fs "github.com/flarehotspot/go-utils/fs"
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
 	pgDataDir  = "/srv/postgresql/data"
 	pgLogFile  = "/srv/postgresql/data/postgresql.log"
-	pgPassFile = filepath.Join(sdkpaths.TmpDir, "pg-pass.txt")
+	pgPassFile = filepath.Join(sdkutils.PathTmpDir, "pg-pass.txt")
 )
 
 // Sets up all necessary postgresql server requirements
@@ -32,14 +30,14 @@ func SetupServer(dbpass string, dbname string) error {
 		hasDbConfig = true
 	}
 
-	isInstalled := fs.Exists(pgDataDir) && hasDbConfig
+	isInstalled := sdkutils.FsExists(pgDataDir) && hasDbConfig
 	if isInstalled {
 		fmt.Println("Postgres is already setup.")
 		return nil
 	}
 
 	// Prepare pg data directory
-	if err := sdkfs.EnsureDir(pgDataDir); err != nil {
+	if err := sdkutils.FsEnsureDir(pgDataDir); err != nil {
 		return err
 	}
 
@@ -61,7 +59,7 @@ func SetupServer(dbpass string, dbname string) error {
 		return err
 	}
 
-	if err := os.WriteFile(pgPassFile, []byte(dbpass), sdkfs.PermFile); err != nil {
+	if err := os.WriteFile(pgPassFile, []byte(dbpass), sdkutils.PermFile); err != nil {
 		fmt.Println("unable to write pg password file")
 		return err
 	}

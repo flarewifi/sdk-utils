@@ -61,69 +61,63 @@ func Init(api sdkapi.IPluginApi) {
 	pluginConfigAPI := api.Config().Plugin()
 	adminRouter := httpAPI.HttpRouter().AdminRouter()
 
-	// Define the settings form
-	settingsForm := sdkapi.HttpForm{
-		Name:          "settings",
-		CallbackRoute: "settings.save",
-		SubmitLabel:   "Submit",
-		Sections: []sdkapi.FormSection{
-			{
-				Name: "General Configuration",
-				Fields: []sdkapi.IFormField{
-					sdkapi.FormTextField{
-						Name:  "Banner Text",
-						Label: "Banner Text",
-						ValueFn: func() string {
-							b, err := pluginConfigAPI.Read("banner_text")
-							if err != nil {
-								return "This is the default banner text!"
-							}
-							return string(b)
+	// register the settings form
+	if err := httpAPI.Forms().RegisterForm("settings", func(r *http.Request) sdkapi.HttpForm {
+
+		// Return the form definition
+		return sdkapi.HttpForm{
+			CallbackRoute: "settings:save",
+			SubmitLabel:   "Submit",
+			Sections: []sdkapi.FormSection{
+				{
+					Name:  "general_configuration",
+					Label: "General Configuration",
+					Fields: []sdkapi.IFormField{
+						sdkapi.FormTextField{
+							Name:  "banner_text",
+							Label: "Banner Text",
+							ValueFn: func() string {
+								b, err := pluginConfigAPI.Read("banner_text")
+								if err != nil {
+									return "This is the default banner text!"
+								}
+								return string(b)
+							},
 						},
 					},
 				},
 			},
-		},
-	}
+		}
 
-	// register the settings form
-	if err := httpAPI.Forms().RegisterForms(settingsForm); err != nil {
-		api.Logger().Error("Failed to register settings form: %s", err)
+	}); err != nil {
+		api.Logger().Error(fmt.Sprintf("Failed to register settings form: %s", err))
 		return
 	}
 
 	// Add a new route group to the admin router
 	adminRouter.Group("/settings", func(subrouter sdkapi.IHttpRouterInstance) {
 
-		// Show the settings form
 		subrouter.Get("/form", func(w http.ResponseWriter, r *http.Request) {
-			// Retrieve the registered form
-			form, ok := httpAPI.Forms().GetForm("settings")
-			if !ok {
-				httpAPI.HttpResponse().Error(w, r, fmt.Errorf("Form not found"), http.StatusInternalServerError)
-				return
-			}
-
-			// Render the form template
-			htmlForm := form.GetTemplate(r)
-			httpAPI.HttpResponse().AdminView(w, r, sdkapi.ViewPage{PageContent: htmlForm})
-		}).Name("settings.form")
-
-		// Save the settings
-		subrouter.Post("/save", func(w http.ResponseWriter, r *http.Request) {
-			// Retrieve the registered settings form
-			form, ok := httpAPI.Forms().GetForm("settings")
-			if !ok {
-				httpAPI.HttpResponse().Error(w, r, fmt.Errorf("Form not found"), http.StatusInternalServerError)
-				return
-			}
-
-			if err := form.ParseForm(r); err != nil {
+			// Get the form template
+			formTemplate, err := httpAPI.Forms().GetFormTemplate("settings", r)
+			if err != nil {
 				httpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
 				return
 			}
 
-			bannerText, err := form.GetStringValue("General Configuration", "Banner Text")
+			httpAPI.HttpResponse().AdminView(w, r, sdkapi.ViewPage{PageContent: formTemplate})
+
+		}).Name("settings:form")
+
+		subrouter.Post("/save", func(w http.ResponseWriter, r *http.Request) {
+			// Parse and validate the form input values
+			form, err := httpAPI.Forms().ParseForm("settings", r)
+			if err != nil {
+				httpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+				return
+			}
+
+			bannerText, err := form.GetStringValue("general_configuration", "banner_text")
 			if err != nil {
 				httpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
 				return
@@ -132,9 +126,9 @@ func Init(api sdkapi.IPluginApi) {
 			// Write the new value to the plugin configuration and send a success message
 			pluginConfigAPI.Write("banner_text", []byte(bannerText))
 			httpAPI.HttpResponse().FlashMsg(w, r, "Settings saved successfully", sdkapi.FlashMsgSuccess)
-			httpAPI.HttpResponse().Redirect(w, r, "settings.form")
+			httpAPI.HttpResponse().Redirect(w, r, "settings:form")
 
-		}).Name("settings.save")
+		}).Name("settings:save")
 	})
 
 	// Register navigation menu items
@@ -142,13 +136,12 @@ func Init(api sdkapi.IPluginApi) {
 		return []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
-				Label:     "Sample Plugin",
-				RouteName: "settings.form",
+				Label:     "My Plugin",
+				RouteName: "settings:form",
 			},
 		}
 	})
-}
-`
+}`
 
 	if err := os.WriteFile(mainPath, []byte(goMain), 0644); err != nil {
 		panic(err)

@@ -8,30 +8,54 @@ The `IHttpFormsApi` is used to build HTML forms. It is responsible for rendering
 
 Below are the methods available in `IHttpFormsApi`.
 
-### RegisterForms
+### RegisterForm
 
 It registers one or more [HttpForm](#httpform) into the plugin.
 
 ```go
-form := sdkapi.HttpForm{
-    Name: "my-form", // name of the form
-    // rest of the form definition...
-}
 formsAPI := api.Http().Forms()
-if err := formsAPI.RegisterForms(form); err != nil {
+if err := formsAPI.RegisterForm("my-form", func (r *http.Request) sdkapi.HttpForm {
+
+    return sdkapi.HttpForm{
+        // Define the form sections and fields
+    }
+
+}); err != nil {
     // handle error
 }
 ```
 
-### GetForm
+### GetFormTemplate
 
-It returns an instance of a registered [IHttpForm](#ihttpform).
+It returns [templ.Component](../guides/rendering-views.md) of the HTML form.
 
 ```go
-formsAPI := api.Http().Forms()
-form, ok := formsAPI.GetForm("my-form")
-if !ok {
-    // handle error
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    formsAPI := api.Http().Forms()
+    formComponent, err := formsAPI.GetFormTemplate("my-form", r)
+    if err != nil {
+        // handle error
+    }
+
+    // do something with formComponent
+}
+```
+
+### ParseForm
+
+It parses the input values from the HTTP request and returns a [IHttpForm](#ihttpform) object.
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    formsAPI := api.Http().Forms()
+    form, err := formsAPI.ParseForm("my-form", r)
+    if err != nil {
+        // handle error
+    }
+
+    // do something with form
 }
 ```
 
@@ -48,55 +72,62 @@ Below is an example of `HttpForm` definition:
 pluginConfigAPI := api.Config().Plugin()
 formsAPI := api.Http().Forms()
 
-sections := []sdkapi.FormSection{
-    {
+formsAPI.RegisterForm("my-form", func (r *http.Request) sdkapi.HttpForm {
+
+    // Define the form sections and fields
+    sections := []sdkapi.FormSection{
         {
-            Name: "general_configuration",
-            Label: "General Configuration",
-            Fields: []sdkapi.IFormField{
-                // sdkapi.FormBooleanField,
-                // sdkapi.FormDecimalField,
-                // sdkapi.FormIntegerField,
-                // sdkapi.FormListField,
-                // sdkapi.FormMultiField,
-                sdkapi.FormTextField{
-                    Name:  "banner_text",
-                    Label: "Banner Text",
-                    ValueFn: func() string {
-                        b, err := pluginConfigAPI.Read("banner_text")
-                        if err != nil {
-                            return "This is the default banner text!"
-                        }
-                        return string(b)
+            {
+                Name: "general_configuration",
+                Label: "General Configuration",
+                Fields: []sdkapi.IFormField{
+                    // sdkapi.FormBooleanField,
+                    // sdkapi.FormDecimalField,
+                    // sdkapi.FormIntegerField,
+                    // sdkapi.FormListField,
+                    // sdkapi.FormMultiField,
+                    sdkapi.FormTextField{
+                        Name:  "banner_text",
+                        Label: "Banner Text",
+                        ValueFn: func() string {
+                            b, err := pluginConfigAPI.Read("banner_text")
+                            if err != nil {
+                                return "This is the default banner text!"
+                            }
+                            return string(b)
+                        },
                     },
                 },
             },
         },
-    },
-}
+    }
 
-form := sdkapi.HttpForm{
-    Name: "my-form", // name of the form
-    CallbackRoute: "settings:save", // route to handle form submission
-    SubmitLabel: "Submit", // submit button text
-    Sections: sections,
-}
+    // Define the form callback and submit button
+    form := sdkapi.HttpForm{
+        CallbackRoute: "settings:save", // route to handle form submission
+        SubmitLabel: "Submit", // submit button text
+        Sections: sections, // assign the sections to the form
+    }
 
-formsAPI.RegisterForms(form)
+    return form
+})
 ```
 
-Below aer the attributes of the `HttpForm` struct:
-
-### Name
-
-The name of the form.
-
+Below are the attributes of the `HttpForm` struct:
 
 ### CallbackRoute
 
 The [route](./http-router-api.md) to handle form submission.
 
-### FormSection {#formsection}
+### SubmitLabel
+
+The text for the submit button.
+
+### Sections
+
+A slice of [FormSection](#formsection).
+
+## FormSection {#formsection}
 
 A `FormSection` is a collection of [fields](#form-fields) in a form.
 It also has a `Name` and `Label` attributes.
@@ -109,7 +140,7 @@ type FormSection struct {
 }
 ```
 
-### Form Fields {#form-fields}
+## Form Fields {#form-fields}
 
 Below are the available fields that can be used in the `HttpForm` definition.
 
@@ -132,22 +163,6 @@ TODO: Add description
 ---
 
 ## IHttpForm methods {#ihttpform}
-
-### GetTemplate
-
-It returns the [templ](https://templ.guide) component of the form which can be used to [render a view](../guides/rendering-views.md).
-
-```go
-// handler
-func handler(w http.ResponseWriter, r *http.Request) {
-    form := sdkapi.HttpForm{
-        Name: "my-form",
-        // rest of the form definition...
-    }
-    formTpl := form.GetTemplate(r)
-    // render formHTML to the view
-}
-```
 
 ### GetSections
 

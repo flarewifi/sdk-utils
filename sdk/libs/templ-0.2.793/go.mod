@@ -6,7 +6,6 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/a-h/htmlformat v0.0.0-20231108124658-5bd994fe268e
 	github.com/a-h/parse v0.0.0-20240121214402-3caf7543159a
-	github.com/a-h/pathvars v0.0.14
 	github.com/a-h/protocol v0.0.0-20240704131721-1e461c188041
 	github.com/andybalholm/brotli v1.1.0
 	github.com/cenkalti/backoff/v4 v4.3.0
@@ -15,7 +14,6 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/go-cmp v0.6.0
 	github.com/natefinch/atomic v1.0.1
-	github.com/rs/cors v1.11.0
 	go.lsp.dev/jsonrpc2 v0.10.0
 	go.lsp.dev/uri v0.3.0
 	go.uber.org/zap v1.27.0

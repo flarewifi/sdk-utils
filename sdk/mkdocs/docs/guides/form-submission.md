@@ -41,16 +41,16 @@ sections := []sdkapi.FormSection{
     },
 }
 
-// Define the form
-form := sdkapi.HttpForm{
-    Name: "my-form", // name of the form
-    CallbackRoute: "settings:save", // route to handle form submission
-    SubmitLabel: "Submit", // submit button text
-    Sections: sections, // add sections
-}
 
 // Register the form
-if err := formsAPI.RegisterForms(form); err != nil {
+if err := formsAPI.RegisterForm("my-form", func (r *http.Request) sdkapi.HttpForm {
+    // Define the form
+    return sdkapi.HttpForm{
+        CallbackRoute: "settings:save", // route to handle form submission
+        SubmitLabel: "Submit", // submit button text
+        Sections: sections, // add sections
+    }
+}); err != nil {
     // handle error
 }
 ```
@@ -64,15 +64,11 @@ To render the form in our views, first we need to get the form's template using 
 ```go
 // handler
 func handler(w http.ResponseWriter, r *http.Request) {
-    // Define the form
-    form := sdkapi.HttpForm{
-        Name: "my-form",
-        CallbackRoute: "settings:save", // the route where the form will be submitted
-        // rest of the form definition...
-    }
-
     // Get the form template
-    formTpl := form.GetTemplate(r)
+    formTpl, err := api.Http().Forms().GetFormTemplate("my-form", r)
+    if err != nil {
+        // handle error
+    }
 
     // render form to the admin view
     api.Http().HttpResponse().AdminView(w, r, sdkapi.ViewPage{
@@ -109,14 +105,9 @@ cfgAPI := api.Config().Plugin()
 pluginRouter.Post("/settings/save", func (w http.ResponseWriter, r *http.Request) {
     // Handle the form data...
 
-    // Get the registered form
-    form, ok := api.Http().Forms().GetForm("my-form")
+    // Parse and validate the form input values
+    form, ok := api.Http().Forms().ParseForm("my-form", r)
     if !ok {
-        // handle error
-    }
-
-    // Parse and validate the form data
-    if err := form.ParseForm(r); err != nil {
         // handle error
     }
 
@@ -135,4 +126,5 @@ pluginRouter.Post("/settings/save", func (w http.ResponseWriter, r *http.Request
 }).Name("settings:save") // Set the route name to "settings:save"
 ```
 
-See [Error Handling](./error-handling.md).
+!!!note
+    Read the [Error Handling](./error-handling.md) and the [Saving Data](./saving-data.md) guides.

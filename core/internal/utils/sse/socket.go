@@ -16,7 +16,7 @@ import (
 
 	// "time"
 
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewSocket(w http.ResponseWriter, r *http.Request) (s *SseSocket, err error) {
@@ -32,7 +32,7 @@ func NewSocket(w http.ResponseWriter, r *http.Request) (s *SseSocket, err error)
 	w.Header().Set("Connection", "keep-alive")
 	f.Flush()
 
-	id := sdkstr.Rand(32)
+	id := sdkutils.RandomStr(32)
 
 	return &SseSocket{
 		id:      id,

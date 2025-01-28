@@ -9,34 +9,32 @@ templ HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTe
 	<form id="form" method="POST" action={ templ.SafeURL(submitUrl) }>
 		@templ.Raw(csrfTag)
 		for _, sec := range form.GetSections() {
-			<legend>{ sec.Name }</legend>
+			<legend>{ sec.Label }</legend>
 			for _, fld := range sec.Fields {
-				switch fld.GetType() {
-					case sdkapi.FormFieldTypeText:
-						@TextInputField(form, sec, fld)
-					case sdkapi.FormFieldTypeInteger:
-						@IntegerInputField(form, sec, fld)
-					case sdkapi.FormFieldTypeDecimal:
-						@DecimalInputField(form, sec, fld)
-					case sdkapi.FormFieldTypeBoolean:
-						@BooleanInputField(form, sec, fld)
-					case sdkapi.FormFieldTypeList:
-						@ListInputField(form, sec, fld)
-					case sdkapi.FormFieldTypeMulti:
-						@MultiInputField(form, sec, fld)
-					default:
-						<p>{ fmt.Sprintf("unsupported field type: %s", fld.GetType()) }</p>
-				}
-				<br/>
+				<div class="mt-1">
+					switch fld.GetType() {
+						case sdkapi.FormFieldTypeText:
+							@TextInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeInteger:
+							@IntegerInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeDecimal:
+							@DecimalInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeBoolean:
+							@BooleanInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeList:
+							@ListInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeMulti:
+							@MultiInputField(form, sec, fld)
+						default:
+							<p>{ fmt.Sprintf("unsupported field type: %s", fld.GetType()) }</p>
+					}
+				</div>
 			}
-			<hr/>
 		}
-		<button type="submit">
-            { submitText }
-        </button>
+		<div class="mt-1">
+			<button class="btn btn-primary" type="submit">
+				{ submitText }
+			</button>
+		</div>
 	</form>
-	<script type="text/javascript">
-  var str = document.getElementById('form').getAttribute('data-json');
-  console.log(JSON.parse(str));
-</script>
 }
