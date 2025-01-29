@@ -1,8 +1,6 @@
 package adminctrl
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
 
@@ -35,14 +33,6 @@ func SaveThemeSettings(g *plugins.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		mfdata, err := httpForm.GetMultiField("themes", "multi_field")
-		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Printf("mfdata: %+v\n", mfdata)
-
 		portalTheme, err := httpForm.GetStringValue("themes", "portal_theme")
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
@@ -60,58 +50,6 @@ func SaveThemeSettings(g *plugins.CoreGlobals) http.HandlerFunc {
 			PortalThemePkg: portalTheme,
 		})
 		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		// extras for testing
-		mfd, err := httpForm.GetMultiField("themes", "multi_field")
-		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		numRows := mfd.NumRows()
-		data := make([]coreforms.MultiFieldRowData, numRows)
-		for i := 0; i < numRows; i++ {
-			var row coreforms.MultiFieldRowData
-			col1, err := mfd.GetStringValue(i, "col1")
-			if err != nil {
-				res.Error(w, r, err, http.StatusInternalServerError)
-				return
-			}
-			row.Col1 = col1
-
-			col2, err := mfd.GetFloatValue(i, "col2")
-			if err != nil {
-				res.Error(w, r, err, http.StatusInternalServerError)
-				return
-			}
-			row.Col2 = col2
-
-			col3, err := mfd.GetIntValue(i, "col3")
-			if err != nil {
-				res.Error(w, r, err, http.StatusInternalServerError)
-				return
-			}
-			row.Col3 = col3
-
-			col4, err := mfd.GetBoolValue(i, "col4")
-			if err != nil {
-				res.Error(w, r, err, http.StatusInternalServerError)
-				return
-			}
-			row.Col4 = col4
-			data[i] = row
-		}
-
-		b, err := json.Marshal(data)
-		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		if err := g.CoreAPI.Config().Plugin().Write("multi_field", b); err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
