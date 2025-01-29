@@ -1,14 +1,16 @@
-# IAccountsApi
+ # IAccountsApi
 
-The `IAccountsApi` let's you create, modify, remove and manage admin accounts and permissions. There are two (2) kinds of admin accounts:
+The `IAccountsApi` allows you to create, modify, remove, and manage admin accounts and permissions. There are two types of admin accounts:
 
-- `normal` - A normal admin account with limitted permissions
-- `master` - An admin account that can create, modify and delete other admin accounts and permissions
+- **normal**: A normal admin account with limited permissions.
+- **master**: An admin account that can create, modify, and delete other admin accounts and permissions.
 
-To get an instance of the `IAccountsApi`:
+To obtain an instance of the `IAccountsApi`:
 
 ```go title="main.go"
-
+import (
+    sdkapi "sdk/api"
+)
 func Init(api sdkapi.IPluginApi) {
     acctAPI := api.Acct()
     fmt.Println(acctAPI) // IAccountsApi
