@@ -150,7 +150,43 @@ TODO: Add description
 
 #### Decimal Field
 
-TODO: Add description
+The `FormDecimalField` represents a decimal number input field in an HTTP form.
+
+##### Definition
+
+```go
+type FormDecimalField struct {
+    Name      string
+    Label     string
+    Step      float64   // controls the increment/decrement value of the field
+    Precision int       // controls the precision of the decimal value or how many decimal places it accepts
+    ValueFn   func() float64
+}
+```
+
+##### Methods
+
+| Method | Description |
+| ---- | ---- |
+| `GetName() string` | Returns the decimal field name. |
+| `GetLabel() string` | Returns the decimal field label. |
+| `GetType() string` | Returns the field type ("decimal"). |
+| `GetValue() interface{}` | Returns the decimal value of the field. Uses `ValueFn` if set, otherwise returns 0.0. |
+
+##### Usage Example
+
+```go
+priceField := FormDecimalField{
+    Name:      "price",
+    Label:     "Product Price",
+    Step:      0.01,
+    Precision: 2,
+    ValueFn: func() float64 {
+        // your custom specific decimal form logic
+        return 99.99
+    },
+}
+```
 
 #### Integer Field
 
