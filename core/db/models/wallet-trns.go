@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/jackc/pgx/v5"
@@ -56,7 +56,7 @@ func (self *WalletTrns) CreatedAt() time.Time {
 }
 
 func (self *WalletTrns) UpdateTx(tx pgx.Tx, ctx context.Context, walletId pgtype.UUID, amount float64, newbal float64, desc string) error {
-	err := self.db.Queries.UpdateWalletTrns(ctx, sqlc.UpdateWalletTrnsParams{
+	err := self.db.Queries.UpdateWalletTrns(ctx, queries.UpdateWalletTrnsParams{
 		WalletID:    walletId,
 		Amount:      pg.Float64ToNumeric(amount),
 		NewBalance:  pg.Float64ToNumeric(newbal),

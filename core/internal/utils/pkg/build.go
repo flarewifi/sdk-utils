@@ -83,12 +83,14 @@ func BuildPluginSo(pluginSrcDir string, workdir string) error {
 
 	var info sdkutils.PluginInfo
 
-	pluginSoPath := filepath.Join(pluginSrcDir, "plugin.so")
 	if err := sdkutils.FsReadJson(filepath.Join(pluginSrcDir, "plugin.json"), &info); err != nil {
 		return err
 	}
 
 	buildpath := filepath.Join(workdir, "plugins", info.Package)
+
+	pluginSoPath := filepath.Join(pluginSrcDir, "plugin.so")
+	os.Remove(pluginSoPath)
 
 	if sdkutils.FsExists(pluginSoPath) {
 		if err := os.Remove(pluginSoPath); err != nil {
@@ -180,10 +182,4 @@ func BuildGoPlugin(gofile string, outfile string, workdir string, envs []string)
 	}
 
 	return nil
-}
-
-type InstallOpts struct {
-	Def       sdkutils.PluginSrcDef
-	RemoveSrc bool
-	Encrypt   bool
 }

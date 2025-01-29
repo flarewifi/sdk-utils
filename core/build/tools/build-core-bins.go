@@ -39,6 +39,10 @@ func BuildCore() {
 		panic(err)
 	}
 
+	if err := pkg.BuildSQLC(sdkutils.PathCoreDir); err != nil {
+		panic(err)
+	}
+
 	if err := pkg.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {
 		panic(err)
 	}

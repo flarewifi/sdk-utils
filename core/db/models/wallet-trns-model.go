@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,7 +21,7 @@ func NewWalletTrnsModel(dtb *db.Database, mdls *Models) *WalletTrnsModel {
 }
 
 func (self *WalletTrnsModel) Create(ctx context.Context, wltId pgtype.UUID, amount float64, newBal float64, desc string) (*WalletTrns, error) {
-	wt, err := self.db.Queries.CreateWalletTrns(ctx, sqlc.CreateWalletTrnsParams{
+	wt, err := self.db.Queries.CreateWalletTrns(ctx, queries.CreateWalletTrnsParams{
 		WalletID:    wltId,
 		Amount:      pg.Float64ToNumeric(amount),
 		NewBalance:  pg.Float64ToNumeric(newBal),

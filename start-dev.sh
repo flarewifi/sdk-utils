@@ -9,7 +9,6 @@ FLARE_BIN="./bin/flare"
 
 rm -rf **/*_templ.go && \
     rm -rf core/internal/db/sqlc && \
-    sqlc generate && \
     go run -tags="${BUILD_TAGS}" $LINK_NODE_MODULES && \
     go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN && \
     sh -c "$FLARE_BIN fix-workspace" && \

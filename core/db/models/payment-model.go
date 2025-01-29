@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,7 +21,7 @@ func NewPaymentModel(dtb *db.Database, mdls *Models) *PaymentModel {
 }
 
 func (self *PaymentModel) Create(ctx context.Context, purid pgtype.UUID, amt float64, mtd string) (*Payment, error) {
-	pId, err := self.db.Queries.CreatePayment(ctx, sqlc.CreatePaymentParams{
+	pId, err := self.db.Queries.CreatePayment(ctx, queries.CreatePaymentParams{
 		PurchaseID: purid,
 		Amount:     pg.Float64ToNumeric(amt),
 		Optname:    mtd,
@@ -88,7 +88,7 @@ func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId pgtype.UU
 }
 
 func (self *PaymentModel) Update(ctx context.Context, id pgtype.UUID, amt float64, dbt *float64, txid *int64) error {
-	err := self.db.Queries.UpdatePayment(ctx, sqlc.UpdatePaymentParams{
+	err := self.db.Queries.UpdatePayment(ctx, queries.UpdatePaymentParams{
 		Amount: pg.Float64ToNumeric(amt),
 		ID:     id,
 	})

@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -50,7 +50,7 @@ func (self *Payment) CreatedAt() time.Time {
 }
 
 func (self *Payment) Update(ctx context.Context, amt float64) error {
-	err := self.db.Queries.UpdatePayment(ctx, sqlc.UpdatePaymentParams{
+	err := self.db.Queries.UpdatePayment(ctx, queries.UpdatePaymentParams{
 		Amount: pg.Float64ToNumeric(amt),
 		ID:     self.id,
 	})

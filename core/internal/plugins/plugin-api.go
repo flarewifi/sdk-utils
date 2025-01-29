@@ -3,9 +3,9 @@ package plugins
 import (
 	"log"
 
+	"core/db"
+	"core/db/models"
 	"core/internal/connmgr"
-	"core/internal/db"
-	"core/internal/db/models"
 	"core/internal/network"
 	"core/internal/utils/pkg"
 	sdkapi "sdk/api"

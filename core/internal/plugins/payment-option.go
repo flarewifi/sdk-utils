@@ -4,13 +4,13 @@ import (
 	sdkapi "sdk/api"
 )
 
-func NewPaymentOpt(api sdkapi.IPluginApi, opt sdkapi.PaymentOpt) PaymentOption {
-	uuid := api.Info().Package + "::" + opt.OptName
+func NewPaymentOpt(api sdkapi.IPluginApi, opt sdkapi.PaymentOption) PaymentOption {
+	uuid := api.Info().Package + "::" + opt.Name
 	return PaymentOption{api, opt, uuid}
 }
 
 type PaymentOption struct {
 	api  sdkapi.IPluginApi
-	Opt  sdkapi.PaymentOpt
+	Opt  sdkapi.PaymentOption
 	UUID string
 }

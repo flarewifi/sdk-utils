@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,7 +22,7 @@ func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 }
 
 func (self *SessionModel) Create(ctx context.Context, devId pgtype.UUID, t uint8, timeSecs uint, dataMbytes float64, exp *uint, downMbit int, upMbit int, g bool) (*Session, error) {
-	sId, err := self.db.Queries.CreateSession(ctx, sqlc.CreateSessionParams{
+	sId, err := self.db.Queries.CreateSession(ctx, queries.CreateSessionParams{
 		DeviceID:    devId,
 		SessionType: int16(t),
 		TimeSecs:    pgtype.Int4{Int32: int32(timeSecs)},
@@ -70,7 +70,7 @@ func (self *SessionModel) Find(ctx context.Context, id pgtype.UUID) (*Session, e
 }
 
 func (self *SessionModel) Update(ctx context.Context, id pgtype.UUID, devId pgtype.UUID, t uint8, timeSecs uint, dataMbytes float64, timeCons uint, dataCons float64, started *time.Time, exp *uint, downMbit int, upMbit int, g bool) error {
-	err := self.db.Queries.UpdateSession(ctx, sqlc.UpdateSessionParams{
+	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		DeviceID:        devId,
 		SessionType:     int16(t),
 		TimeSecs:        pgtype.Int4{Int32: int32(timeSecs)},
@@ -162,7 +162,7 @@ func (self *SessionModel) SessionsForDev(ctx context.Context, devId pgtype.UUID)
 }
 
 func (self *SessionModel) UpdateAllBandwidth(ctx context.Context, downMbit int, upMbit int, g bool) error {
-	err := self.db.Queries.UpdateAllBandwidth(ctx, sqlc.UpdateAllBandwidthParams{
+	err := self.db.Queries.UpdateAllBandwidth(ctx, queries.UpdateAllBandwidthParams{
 		DownMbits: int32(downMbit),
 		UpMbits:   int32(upMbit),
 		UseGlobal: g,

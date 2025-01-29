@@ -152,6 +152,7 @@ func Init(api sdkapi.IPluginApi) {
 .DS_Store
 /node_modules
 /resources/assets/dist
+/db/queries
 *.so
 main_mono.go
 *_templ.go
@@ -172,6 +173,24 @@ By default, all rights are reserved. This means:
 The license for this software is still under consideration and will be added in the future. Until then, please contact [YOUR CONTACT INFORMATION] for any inquiries about usage or licensing.
 `
 	if err := os.WriteFile(licenseFile, []byte(licenseTxt), sdkutils.PermFile); err != nil {
+		panic(err)
+	}
+
+	sqlcYaml := `---
+version: '2'
+sql:
+  - engine: postgresql
+    queries: [resources/queries]
+    schema: [resources/migrations]
+    gen:
+      go:
+        package: queries
+        out: db/queries
+        sql_package: pgx/v5
+`
+
+	sqlcPath := filepath.Join(pluginDir, "sqlc.yaml")
+	if err := sdkutils.FsWriteFile(sqlcPath, []byte(sqlcYaml)); err != nil {
 		panic(err)
 	}
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"core/internal/db"
+	"core/db"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

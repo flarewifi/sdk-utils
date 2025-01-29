@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"core/internal/db"
-	"core/internal/db/models"
+	"core/db"
+	"core/db/models"
 	"core/internal/utils/events"
 	"core/internal/utils/sse"
 

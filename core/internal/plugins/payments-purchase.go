@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"core/internal/db/models"
+	"core/db/models"
 	sdkapi "sdk/api"
 
 	"github.com/jackc/pgx/v5/pgtype"

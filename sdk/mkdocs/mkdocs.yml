@@ -63,6 +63,7 @@ nav:
       - 'IHttpResponse': api/http-response.md
       - 'IHttpRouterApi': api/http-router-api.md
       - 'ILoggerApi': api/logger-api.md
+      - 'IPaymentsApi': api/payments-api.md
       - 'IPluginApi': api/plugin-api.md
       - 'ISessionsMgrApi': api/sessions-mgr-api.md
       - 'ISessionProvider': api/session-provider.md

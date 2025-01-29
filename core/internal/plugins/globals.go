@@ -1,9 +1,9 @@
 package plugins
 
 import (
+	"core/db"
+	"core/db/models"
 	"core/internal/connmgr"
-	"core/internal/db"
-	"core/internal/db/models"
 	"core/internal/network"
 	"sync/atomic"
 

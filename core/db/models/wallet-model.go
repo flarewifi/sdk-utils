@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/google/uuid"
@@ -33,7 +33,7 @@ func NewWalletModel(dtb *db.Database, mdls *Models) *WalletModel {
 }
 
 func (self *WalletModel) CreateTx(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, bal float64) (*Wallet, error) {
-	wId, err := self.db.Queries.CreateWallet(ctx, sqlc.CreateWalletParams{
+	wId, err := self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
 		DeviceID: devId,
 		Balance:  pg.Float64ToNumeric(bal),
 	})
@@ -62,7 +62,7 @@ func (self *WalletModel) Find(ctx context.Context, id pgtype.UUID) (*Wallet, err
 }
 
 func (self *WalletModel) Update(ctx context.Context, id pgtype.UUID, bal float64) error {
-	err := self.db.Queries.UpdateWallet(ctx, sqlc.UpdateWalletParams{
+	err := self.db.Queries.UpdateWallet(ctx, queries.UpdateWalletParams{
 		Balance: pg.Float64ToNumeric(bal),
 		ID:      id,
 	})

@@ -24,6 +24,12 @@ type PluginMetadata struct {
 	Def sdkutils.PluginSrcDef
 }
 
+type InstallOpts struct {
+	Def       sdkutils.PluginSrcDef
+	RemoveSrc bool
+	Encrypt   bool
+}
+
 func InstallSrcDef(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
 	switch def.Src {
 	case sdkutils.PluginSrcGit:
@@ -214,6 +220,11 @@ func InstallPlugin(src string, db *pgxpool.Pool, opts InstallOpts) error {
 		return err
 	}
 
+	if err := BuildSQLC(src); err != nil {
+		log.Println("Error building plugin sqlc: ", err)
+		return err
+	}
+
 	if err := BuildPluginSo(src, buildpath); err != nil {
 		log.Println("Error building plugin: ", err)
 		return err
@@ -339,16 +350,24 @@ func IsToBeRemoved(pkg string) bool {
 	return sdkutils.FsExists(uninstallFile)
 }
 
-func RemovePlugin(pkg string) error {
+func RemovePlugin(pkg string, pool *pgxpool.Pool) error {
 	meta, err := ReadMetadata(pkg)
 	if err != nil {
 		return err
 	}
+
 	if meta.Def.Src == sdkutils.PluginSrcLocal || meta.Def.Src == sdkutils.PluginSrcSystem {
 		return os.RemoveAll(meta.Def.LocalPath)
 	}
-	if err := os.RemoveAll(GetInstallPath(pkg)); err != nil {
+
+	installPath := GetInstallPath(pkg)
+	if err := migrate.MigrateDown(installPath, pool); err != nil {
 		return err
 	}
+
+	if err := os.RemoveAll(installPath); err != nil {
+		return err
+	}
+
 	return nil
 }

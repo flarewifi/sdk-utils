@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"core/internal/db"
-	"core/internal/db/models"
+	"core/db"
+	"core/db/models"
 	jobque "core/internal/utils/job-que"
 	sdkapi "sdk/api"
 

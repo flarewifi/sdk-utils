@@ -2,8 +2,8 @@ package models
 
 import (
 	"context"
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -35,7 +35,7 @@ func NewLogModel(database *db.Database, mdls *Models) *LogModel {
 }
 
 func (self *LogModel) Create(ctx context.Context, pkg string, level string, message string, filepath string, line int) error {
-	_, err := self.db.Queries.CreateLog(ctx, sqlc.CreateLogParams{
+	_, err := self.db.Queries.CreateLog(ctx, queries.CreateLogParams{
 		Package:    pgtype.Text{String: pkg, Valid: pkg != ""},
 		Level:      level,
 		Message:    message,
@@ -50,7 +50,7 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 	offset := opts.PerPage * (opts.Page - 1)
 	limit := opts.PerPage
 
-	searchOpts := sqlc.SearchLogsParams{
+	searchOpts := queries.SearchLogsParams{
 		Offset:     int32(offset),
 		Limit:      int32(limit),
 		Package:    opts.Package,
@@ -65,7 +65,7 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 		return nil, err
 	}
 
-	count, err := self.db.Queries.SearchCount(ctx, sqlc.SearchCountParams{
+	count, err := self.db.Queries.SearchCount(ctx, queries.SearchCountParams{
 		Package:    opts.Package,
 		Level:      opts.Level,
 		SearchText: opts.SearchText,

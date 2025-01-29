@@ -26,14 +26,14 @@ CMD cp go.work.default go.work && \
     go run --tags=dev ./core/cmd/sync-versions/main.go && \
     reflex \
         -r '\.(go|templ|sql|js|css|json)$' \
-        -R 'assets\/dist\/.*' \
-        -R 'db/sqlc/.*' \
-        -R '^config\/.*\.json$' \
+        -R 'db\/queries\/.*' \
         -R 'node_modules' \
         -R '_templ\.go$' \
-        -R '\.tmp\/*.' \
-        -R '^output\/*.' \
-        -R '^bin\/*.' \
+        -R '\.tmp\/.*' \
+        -R '^output\/.*' \
+        -R '^bin\/.*' \
+        -R '^config\/.*' \
+        -R 'resources\/assets\/dist' \
         -R 'plugins\/installed\/.*' \
         -R 'plugins\/update\/.*' \
         -R 'plugins\/backup\/.*' \

@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -64,7 +64,7 @@ func (self *Device) Reload(ctx context.Context) error {
 }
 
 func (self *Device) Update(ctx context.Context, mac string, ip string, hostname string) error {
-	err := self.db.Queries.UpdateDevice(ctx, sqlc.UpdateDeviceParams{
+	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		Hostname:   pgtype.Text{String: hostname, Valid: hostname != ""},
 		IpAddress:  ip,
 		MacAddress: mac,

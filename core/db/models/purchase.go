@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/jackc/pgx/v5"
@@ -23,23 +23,24 @@ func NewPurchase(dtb *db.Database, mdls *Models) *Purchase {
 }
 
 type Purchase struct {
-	db                   *db.Database
-	models               *Models
-	id                   pgtype.UUID
-	deviceId             pgtype.UUID
-	sku                  string
-	name                 string
-	description          string
-	price                float64
-	anyPrice             bool
-	callbackPluginPkg    string
-	callbackVueRouteName string
-	walletDebit          float64
-	walletTxId           *pgtype.UUID
-	confirmedAt          *time.Time
-	cancelledAt          *time.Time
-	cancelledReason      *string
-	createdAt            time.Time
+	db                  *db.Database
+	models              *Models
+	id                  pgtype.UUID
+	deviceId            pgtype.UUID
+	sku                 string
+	name                string
+	description         string
+	price               float64
+	anyPrice            bool
+	callbackPluginPkg   string
+	callbackRoute       string
+	callbackRouteParams map[string]string
+	walletDebit         float64
+	walletTxId          *pgtype.UUID
+	confirmedAt         *time.Time
+	cancelledAt         *time.Time
+	cancelledReason     *string
+	createdAt           time.Time
 }
 
 func (self *Purchase) Id() pgtype.UUID {
@@ -99,7 +100,7 @@ func (self *Purchase) CallbackPluginPkg() string {
 }
 
 func (self *Purchase) CallbackVueRouteName() string {
-	return self.callbackVueRouteName
+	return self.callbackRoute
 }
 
 func (self *Purchase) IsConfirmed() bool {
@@ -279,7 +280,7 @@ func (self *Purchase) TotalPayment(ctx context.Context) (float64, error) {
 }
 
 func (self *Purchase) Update(ctx context.Context, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
-	err := self.db.Queries.UpdatePurchase(ctx, sqlc.UpdatePurchaseParams{
+	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
 		WalletDebit:     pg.Float64ToNumeric(dbt),
 		WalletTxID:      *txid,
 		CancelledAt:     pgtype.Timestamp{Time: *cancelledAt},

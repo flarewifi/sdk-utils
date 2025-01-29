@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -20,7 +20,7 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 }
 
 func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
-	dId, err := self.db.Queries.CreateDevice(ctx, sqlc.CreateDeviceParams{
+	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
 		MacAddress: mac,
 		IpAddress:  ip,
 		Hostname:   pgtype.Text{String: hostname},
@@ -88,7 +88,7 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 }
 
 func (self *DeviceModel) Update(ctx context.Context, id pgtype.UUID, mac string, ip string, hostname string) error {
-	err := self.db.Queries.UpdateDevice(ctx, sqlc.UpdateDeviceParams{
+	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		Hostname:   pgtype.Text{String: hostname, Valid: hostname != ""},
 		IpAddress:  ip,
 		MacAddress: mac,

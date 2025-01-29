@@ -6,6 +6,8 @@
 
 package sdkapi
 
+import "net/http"
+
 // IPaymentProvider represents a payment provider.
 // A payment provider can have many payment options.
 type IPaymentProvider interface {
@@ -14,5 +16,5 @@ type IPaymentProvider interface {
 	Name() string
 
 	// Returns a list of available payment options.
-	PaymentOpts(clnt IClientDevice) []PaymentOpt
+	PaymentOpts(r *http.Request) []PaymentOption
 }

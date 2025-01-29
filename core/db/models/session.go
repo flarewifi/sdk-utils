@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"core/internal/db"
-	"core/internal/db/sqlc"
+	"core/db"
+	"core/db/queries"
 	"core/internal/utils/pg"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -127,7 +127,7 @@ func (self *Session) CreatedAt() time.Time {
 }
 
 func (self *Session) Update(ctx context.Context, devId pgtype.UUID, t uint8, secs uint, mb float64, timecon uint, datacon float64, started *time.Time, exp *uint, downMbit int, upMbit int, g bool) error {
-	err := self.db.Queries.UpdateSession(ctx, sqlc.UpdateSessionParams{
+	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		DeviceID:        devId,
 		SessionType:     int16(t),
 		TimeSecs:        pgtype.Int4{Int32: int32(secs)},

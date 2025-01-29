@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
+	queries "core/db/queries"
 	"core/internal/config"
-	"core/internal/db/sqlc"
 	"core/internal/utils/pg"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -20,7 +20,7 @@ import (
 type Database struct {
 	mu      sync.RWMutex
 	db      *pgxpool.Pool
-	Queries sqlc.Queries
+	Queries queries.Queries
 }
 
 func NewDatabase() (*Database, error) {
@@ -110,7 +110,7 @@ func NewDatabase() (*Database, error) {
 		return nil, err
 	}
 
-	db.Queries = *sqlc.New(pgPool)
+	db.Queries = *queries.New(pgPool)
 	db.db = pgPool
 	return &db, nil
 }

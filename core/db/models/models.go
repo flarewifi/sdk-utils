@@ -1,7 +1,7 @@
 package models
 
 import (
-	"core/internal/db"
+	"core/db"
 )
 
 type Models struct {
