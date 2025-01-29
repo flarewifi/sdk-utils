@@ -156,6 +156,38 @@ TODO: Add description
 
 #### List Field
 
+The `FormListField` represents a list selection field in an HTTP form, allowing users to choose from a predefined set of options. It supports both single and multiple selections.
+
+##### Definition
+
+##### Methods
+| Method | Description |
+| ---- | ----- |
+| `GetName() string` | Returns the list field name. |
+| `GetLabel() string` | Returns the list field label. |
+| `GetType() string` | Returns the field type ("list"). |
+| `GetValue() interface{}` | Returns the selected value(s). Uses ValueFn if set, otherwise returns nil. |
+
+##### Usage Example
+```go
+countryField := FormListField{
+    Name:     "country",
+    Label:    "Select Country",
+    Multiple: false,
+    Options: func() []FormListOption {
+        return []FormListOption{
+            {Label: "Philippines", Value: "PH"},
+            {Label: "Canada", Value: "CA"},
+            {Label: "United Kingdom", Value: "UK"},
+        }
+    },
+    ValueFn: func() interface{} {
+        // your custom list logic
+        return "PH"
+    },
+}
+```
+
 #### Multi Field
 
 #### Text Field
