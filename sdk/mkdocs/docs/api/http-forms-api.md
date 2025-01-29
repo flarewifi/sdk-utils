@@ -160,6 +160,40 @@ TODO: Add description
 
 #### Text Field
 
+The `FormTextField` represents a text input field in a form. It provides methods to retrieve metadata and the field value dynamically.
+
+##### Definition
+
+```go
+type FormTextField struct {
+	Name    string
+	Label   string
+	ValueFn func() string
+}
+```
+
+##### Methods
+
+| Method | Description |
+| ---- | ---- |
+| `GetName() string` | Returns the unique name of the text field. |
+| `GetLabel() string` | Returns the display label of the text field. |
+| `GetType() string` | Returns the type of the field, which is "text". | 
+| `GetValue() interface{}` | Returns the value of the text field. If ValueFn is defined, it calls the function;  otherwise, it returns an empty string. |
+
+##### Example Usage
+
+```go
+// Create a FormTextField instance with a dynamic value function
+	textField := sdkapi.FormTextField{
+		Name:  "username",
+		Label: "Username",
+		ValueFn: func() string {
+			return "john_doe"
+		},
+	}
+```
+
 ---
 
 ## IHttpForm methods {#ihttpform}
