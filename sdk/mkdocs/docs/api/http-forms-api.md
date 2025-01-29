@@ -154,6 +154,40 @@ TODO: Add description
 
 #### Integer Field
 
+The `FormIntegerField` represents an integer input field in an HTTP form.
+
+##### Definition
+
+```go
+type FormIntegerField struct {
+	Name    string
+	Label   string
+	ValueFn func() int64
+}
+```
+
+##### Methods
+
+| Method | Description |
+| ---- | ---- |
+| `GetName() string` | Returns the integer field name. |
+| `GetLabel() string` | Returns the integer field label. |
+| `GetType() string` | Returns the field type ("int"). |
+| `GetValue() interface{}` | Returns the integer value of the field. Uses `ValueFn()` if set, otherwise returns 0. |
+
+##### Usage Example
+
+```go
+ageField := FormIntegerField{
+    Name:  "age",
+    Label: "User Age",
+    ValueFn: func() int64 {
+        // your custom integer specific logic
+        return 25
+    },
+}
+```
+
 #### List Field
 
 #### Multi Field
