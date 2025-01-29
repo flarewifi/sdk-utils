@@ -146,7 +146,39 @@ Below are the available fields that can be used in the `HttpForm` definition.
 
 #### Boolean Field
 
-TODO: Add description
+The `FormBooleanField` represents a boolean field in an HTTP form.
+
+##### Definition
+
+```go
+type FormBooleanField struct {
+    Name    string
+    Label   string
+    ValueFn func() bool
+}
+```
+
+##### Methods
+
+| Method | Description |
+| ---- | ----|
+| GetName() string | Returns the boolean field name. |
+| GetLabel() string | Returns the boolean field label. | 
+| GetType() string | Returns the field type ("bool"). |
+| GetValue() interface{} | Returns the boolean value of the field. Uses `ValueFn` if set, otherwise returns `false`. | 
+
+##### Usage Example
+
+```go
+termsField := FormBooleanField{
+    Name:  "accept_terms",
+    Label: "Accept Terms and Conditions",
+    ValueFn: func() bool {
+        // your custom specific boolean logic
+        return true
+    },
+}
+```
 
 #### Decimal Field
 
