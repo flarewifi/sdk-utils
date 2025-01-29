@@ -238,7 +238,7 @@ func (self *HttpFormInstance) GetMultiField(section string, field string) (val s
 		return val, errors.New(fmt.Sprintf("section %s, field %s value is not [][]sdkapi.FormFieldData, instead %T", section, field, v))
 	}
 
-	return sdkapi.FormMultiFieldData{
+	return FormMultiFieldData{
 		Fields: data,
 	}, nil
 }
