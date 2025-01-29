@@ -158,6 +158,108 @@ TODO: Add description
 
 #### Multi Field
 
+The `FormMultiField` represents a structured form field that consists of multiple rows and columns. Each column defines a specific type of data, and each row contains values for those columns.
+
+##### Interface: `IFormMultiField`
+
+The IFormMultiField interface provides methods to retrieve values from a multi-row form field.
+
+**`IFormMultiField` Methods**
+
+| Method | Description |
+| ---- | ---- |
+| `NumRows() int` | Returns the number of rows in the multi-field form. |
+| `GetStringValue(row int, name string) (string, error)` | Retrieves a string value from the specified row and column name. |
+| `GetIntValue(row int, name string) (int64, error)` | Retrieves an integer value from the specified row and column name. |
+| `GetFloatValue(row int, name string) (float64, error)` | Retrieves a float value from the specified row and column  name. |
+| `GetBoolValue(row int, name string) (bool, error)` | Retrieves a boolean value from the specified row and column name. |
+
+##### Struct: `FormMultiFieldCol`
+
+Represents a column in the multi-field form.
+
+**`FormMultiFieldCol` Fields**
+
+| Field | Type | Description |
+| ---- | ---- | ---- |
+| `Name` | string | The name of the column. |
+| `Label` | string | The label displayed for the column. |
+| `Type` | string | The data type of the column (e.g., "string", "int", "float", "bool"). | 
+| `ValueFn` | `func() interface{}` | Function that returns the value for the column. |
+
+**`FormMultiFieldCol` Methods**
+
+| Method | Description |
+| ---- | ---- |
+| `GetName()`  string` | Returns the column name. |
+| `GetLabel() string` | Returns the column label. |
+| `GetType() string` | Returns the column data type. |
+| `GetValue() interface{}` | Returns the column value using ValueFn if set, otherwise nil. |
+
+##### Struct: `FormMultiField`
+
+Represents a multi-field form containing multiple rows and columns.
+
+**`FormMultiField` Fields**
+
+| Field | Type | Description |
+| ---- | ---- | ---- |
+| `Name` | string | The name of the multi-field form. |
+| `Label` | string | The label displayed for the multi-field form. |
+| `Columns` | `func() []FormMultiFieldCol` | Function returning a list of column definitions. |
+| `ValueFn` | `func() [][]FormFieldData` | Function returning the values for each row and column. |
+
+**`FormMultiField` Methods**
+
+| Method | Description |
+| ---- | ----- |
+| `GetName() string` | Returns the field name. |
+| `GetLabel() string` | Returns the field label. |
+| `GetType() string` | Returns the field type ("multi"). |
+| `GetValue() interface{}` | Returns the field value using ValueFn if set, otherwise returns an empty slice of  `[][]FormFieldData{}`. |
+
+##### Usage Example
+
+```go
+field := sdkapi.FormMultiField{
+    Name:  "items",
+    Label: "Order Items",
+    Columns: func() []sdkapi.FormMultiFieldCol {
+        return []sdkapi.FormMultiFieldCol{
+            {Name: "item_name", Label: "Item Name", Type: "string"},
+            {Name: "quantity", Label: "Quantity", Type: "int"},
+            {Name: "price", Label: "Price", Type: "float"},
+        }
+    },
+    ValueFn: func() [][]sdkapi.FormFieldData {
+        return [][]sdkapi.FormFieldData{
+            {{"item_name", "Apple"}, {"quantity", 3}, {"price", 1.99}},
+            {{"item_name", "Banana"}, {"quantity", 2}, {"price", 0.99}},
+        }
+    },
+}
+
+// Accessing field details
+fmt.Println(field.GetName())  // "items"
+fmt.Println(field.GetLabel()) // "Order Items"
+fmt.Println(field.GetType())  // "multi"
+
+// Accessing columns
+columns := field.Columns()
+for _, col := range columns {
+    fmt.Printf("Column: %s (%s)\n", col.Label, col.Type)
+}
+
+// Accessing values
+values := field.GetValue().([][]FormFieldData)
+for rowIdx, row := range values {
+    fmt.Printf("Row %d:\n", rowIdx+1)
+    for _, fieldData := range row {
+        fmt.Printf("  %s: %v\n", fieldData.Name, fieldData.Value)
+    }
+}
+```
+
 #### Text Field
 
 ---
