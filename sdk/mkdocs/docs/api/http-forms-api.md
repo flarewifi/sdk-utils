@@ -142,7 +142,21 @@ type FormSection struct {
 
 ## Form Fields {#form-fields}
 
-Below are the available fields that can be used in the `HttpForm` definition.
+The `IFormField` interface defines a generic form field structure. It provides methods for retrieving essential field properties such as name, label, type, and value.
+
+### Definition
+
+```go
+type IFormField interface {
+    GetName() string
+    GetLabel() string
+    GetType() string
+    GetValue() interface{}
+}
+```
+
+### Available Fields
+Below are the available fields that can be used in the `HttpForm` definition which implements the `IFormField` interface.
 
 #### Boolean Field
 
