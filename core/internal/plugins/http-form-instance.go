@@ -397,7 +397,8 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 
 	switch listField.Type {
 
-	case sdkapi.FormFieldTypeString:
+	case sdkapi.FormFieldTypeString,
+		sdkapi.FormFieldTypeText:
 		vals := valstr
 		val = valstr
 		if !listField.Multiple {
