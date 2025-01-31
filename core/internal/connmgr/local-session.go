@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"core/internal/db"
-	"core/internal/db/models"
+	"core/db"
+	"core/db/models"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )

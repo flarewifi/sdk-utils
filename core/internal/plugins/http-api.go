@@ -3,9 +3,9 @@ package plugins
 import (
 	"net/http"
 
+	"core/db"
+	"core/db/models"
 	"core/internal/connmgr"
-	"core/internal/db"
-	"core/internal/db/models"
 	"core/internal/web/helpers"
 	sdkapi "sdk/api"
 

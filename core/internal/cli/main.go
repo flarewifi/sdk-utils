@@ -59,6 +59,10 @@ func main() {
 		tools.BuildTemplates()
 		return
 
+	case "build-queries":
+		tools.BuildQueries()
+		return
+
 	case "fix-workspace":
 		tools.CreateGoWorkspace()
 		return
@@ -286,6 +290,8 @@ list of commands:
     build-plugins                       Build plugin.so of all the local and system plugins. Similar to build-plugin command without arguments.
 
     build-templates                     Compile templ files to golang.
+
+    build-queries                       Compile sql queries to golang.
 
     fix-workspace                       Re-generate the go.work file
 

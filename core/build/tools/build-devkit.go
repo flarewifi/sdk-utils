@@ -29,6 +29,7 @@ var (
 		"go.work.default",
 		"main/go.mod",
 		"plugins/system",
+		"scripts",
 		"sdk",
 	}
 )

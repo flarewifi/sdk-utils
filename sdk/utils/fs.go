@@ -112,9 +112,11 @@ func FsAppendFile(filename string, data []byte, perm os.FileMode) error {
 	return err
 }
 
-func FsExists(p string) bool {
-	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		return false
+func FsExists(paths ...string) bool {
+	for _, path := range paths {
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return false
+		}
 	}
 	return true
 }

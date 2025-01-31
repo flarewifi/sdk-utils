@@ -7,8 +7,8 @@ import (
 	"log"
 	"sync"
 
-	"core/internal/db"
-	"core/internal/db/models"
+	"core/db"
+	"core/db/models"
 	"core/internal/network"
 	"core/internal/utils/nftables"
 	sdkapi "sdk/api"

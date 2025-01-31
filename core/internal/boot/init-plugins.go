@@ -40,7 +40,7 @@ func InitPlugins(g *plugins.CoreGlobals) {
 
 		if pkg.IsToBeRemoved(info.Package) {
 			bp.AppendLog(fmt.Sprintf("%s: Plugin is marked for removal, uninstalling...", info.Package))
-			if err := pkg.RemovePlugin(info.Package); err != nil {
+			if err := pkg.RemovePlugin(info.Package, g.CoreAPI.SqlDb()); err != nil {
 				bp.AppendLog(fmt.Sprintf("%s: Error removing plugin: %s", info.Package, err.Error()))
 			} else {
 				bp.AppendLog(fmt.Sprintf("%s: Successfully removed plugin", info.Package))

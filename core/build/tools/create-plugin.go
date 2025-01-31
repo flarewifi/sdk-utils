@@ -31,7 +31,13 @@ func CreatePlugin(pack string, name string, desc string) {
 
 	modPath := filepath.Join(pluginDir, "go.mod")
 	modUri := fmt.Sprintf("com.mydomain.%s", sdkutils.RandomStr(8))
-	goMod := fmt.Sprintf("module %s\n\ngo %s", modUri, goVersion)
+	goMod := fmt.Sprintf(`module %s
+go %s
+
+require (
+	github.com/a-h/templ v0.2.793
+)
+`, modUri, goVersion)
 	if err := os.WriteFile(modPath, []byte(goMod), 0644); err != nil {
 		panic(err)
 	}
@@ -154,7 +160,6 @@ func Init(api sdkapi.IPluginApi) {
 /resources/assets/dist
 *.so
 main_mono.go
-*_templ.go
 `
 	if err := os.WriteFile(gitIgnorePath, []byte(gitIgnore), 0644); err != nil {
 		panic(err)
@@ -172,6 +177,24 @@ By default, all rights are reserved. This means:
 The license for this software is still under consideration and will be added in the future. Until then, please contact [YOUR CONTACT INFORMATION] for any inquiries about usage or licensing.
 `
 	if err := os.WriteFile(licenseFile, []byte(licenseTxt), sdkutils.PermFile); err != nil {
+		panic(err)
+	}
+
+	sqlcYaml := `---
+version: '2'
+sql:
+  - engine: postgresql
+    queries: [resources/queries]
+    schema: [resources/migrations]
+    gen:
+      go:
+        package: queries
+        out: db/queries
+        sql_package: pgx/v5
+`
+
+	sqlcPath := filepath.Join(pluginDir, "sqlc.yaml")
+	if err := sdkutils.FsWriteFile(sqlcPath, []byte(sqlcYaml)); err != nil {
 		panic(err)
 	}
 

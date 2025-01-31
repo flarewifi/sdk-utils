@@ -45,7 +45,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 			p.Price,
 			p.AnyPrice,
 			self.api.Info().Package,
-			p.CallbackVueRouteName,
+			p.CallbackRoute,
 		)
 		if err != nil {
 			log.Println("self.api.models.Purchase().Create error:", err)

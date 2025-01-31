@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"core/internal/db/models"
+	"core/db/models"
 	"core/internal/network"
 	jobque "core/internal/utils/job-que"
 	"core/internal/utils/tc"

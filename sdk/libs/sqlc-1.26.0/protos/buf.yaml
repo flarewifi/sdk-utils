@@ -1,8 +1,0 @@
-version: v1
-name: buf.build/sqlc/sqlc
-breaking:
-lint:
-  use:
-    - DEFAULT
-  except:
-    - PACKAGE_VERSION_SUFFIX

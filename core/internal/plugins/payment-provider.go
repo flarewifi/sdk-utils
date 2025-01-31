@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"net/http"
 	sdkapi "sdk/api"
 )
 
@@ -18,6 +19,6 @@ func (self *PaymentProvider) IProvider() sdkapi.IPaymentProvider {
 	return self.provider
 }
 
-func (self *PaymentProvider) PaymentOpts(clnt sdkapi.IClientDevice) []sdkapi.PaymentOpt {
-	return self.provider.PaymentOpts(clnt)
+func (self *PaymentProvider) PaymentOpts(r *http.Request) []sdkapi.PaymentOption {
+	return self.provider.PaymentOpts(r)
 }

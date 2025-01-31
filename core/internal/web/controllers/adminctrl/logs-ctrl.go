@@ -1,7 +1,7 @@
 package adminctrl
 
 import (
-	"core/internal/db/models"
+	"core/db/models"
 	"core/internal/plugins"
 	logsview "core/resources/views/admin/logs"
 	"core/resources/views/bs5utils"

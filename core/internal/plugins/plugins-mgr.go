@@ -5,10 +5,10 @@ import (
 	"log"
 	sdkplugin "sdk/api"
 
+	"core/db"
+	"core/db/models"
 	"core/internal/config"
 	"core/internal/connmgr"
-	"core/internal/db"
-	"core/internal/db/models"
 	"core/internal/network"
 )
 
