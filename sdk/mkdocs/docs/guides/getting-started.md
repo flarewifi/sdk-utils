@@ -9,15 +9,11 @@ You can download docker from the official [docker website](https://docs.docker.c
 
 ## 2. Download the SDK {#download-sdk}
 
-Download the latest **devkit-x.x.xzip** file from [devkit releases](https://github.com/flarehotspot/devkit/releases) repository.
+Download the latest **devkit-x.x.xzip** file from [devkit releases repository](https://github.com/flarehotspot/devkit/releases).
 Instructions for downloading the SDK:
 
 - If you are using Windows on x86/64 CPU architecture (non-arm CPU), choose the file with **amd64** in the file name.
 - If you are using Windows on Arm or Mac OS on M-series CPU, choose the file with **arm64** in the file name.
-
-```url title="Browser"
-https://github.com/flarehotspot/devkit/releases
-```
 
 ![Download Flare Hotspot SDK](./img/01-select-latest-release.png)
 

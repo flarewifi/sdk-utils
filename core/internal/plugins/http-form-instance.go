@@ -60,7 +60,8 @@ func (self *HttpFormInstance) ParseForm(r *http.Request) (err error) {
 
 			switch fld.GetType() {
 
-			case sdkapi.FormFieldTypeText,
+			case sdkapi.FormFieldTypeString,
+				sdkapi.FormFieldTypeText,
 				sdkapi.FormFieldTypeInteger,
 				sdkapi.FormFieldTypeDecimal,
 				sdkapi.FormFieldTypeBoolean:
@@ -138,6 +139,14 @@ func (self *HttpFormInstance) GetStringValues(section string, field string) (val
 	}
 
 	return val, nil
+}
+
+func (self *HttpFormInstance) GetTextValue(section string, field string) (val string, err error) {
+	return self.GetStringValue(section, field)
+}
+
+func (self *HttpFormInstance) GetTextValues(section string, field string) (val []string, err error) {
+	return self.GetStringValues(section, field)
 }
 
 func (self *HttpFormInstance) GetIntValue(section string, field string) (val int64, err error) {
@@ -338,7 +347,8 @@ func (self *HttpFormInstance) getFieldValues(section string, field string) (val 
 // ----- Parser functions ----
 func ParseBasicValue(fld sdkapi.IFormField, valstr []string) (val interface{}, err error) {
 	switch fld.GetType() {
-	case sdkapi.FormFieldTypeText:
+	case sdkapi.FormFieldTypeString,
+		sdkapi.FormFieldTypeText:
 		if len(valstr) < 1 {
 			return "", nil
 		}
@@ -354,11 +364,11 @@ func ParseBasicValue(fld sdkapi.IFormField, valstr []string) (val interface{}, e
 		}
 	case sdkapi.FormFieldTypeDecimal:
 		if len(valstr) < 1 {
-			return 0.0, nil
+			return float64(0.0), nil
 		}
 		val, err = strconv.ParseFloat(valstr[0], 64)
 		if err != nil {
-			return 0, nil
+			return float64(0.0), nil
 		}
 	case sdkapi.FormFieldTypeBoolean:
 		if len(valstr) < 1 {
@@ -387,7 +397,8 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 
 	switch listField.Type {
 
-	case sdkapi.FormFieldTypeText:
+	case sdkapi.FormFieldTypeString,
+		sdkapi.FormFieldTypeText:
 		vals := valstr
 		val = valstr
 		if !listField.Multiple {
@@ -488,7 +499,8 @@ func ParseMultiFieldValue(sec sdkapi.FormSection, f sdkapi.IFormField, form url.
 
 			switch colfld.GetType() {
 
-			case sdkapi.FormFieldTypeText,
+			case sdkapi.FormFieldTypeString,
+				sdkapi.FormFieldTypeText,
 				sdkapi.FormFieldTypeInteger,
 				sdkapi.FormFieldTypeDecimal,
 				sdkapi.FormFieldTypeBoolean:
@@ -525,7 +537,8 @@ func ParseMultiFieldValue(sec sdkapi.FormSection, f sdkapi.IFormField, form url.
 func GetTypeDefault(fld sdkapi.IFormField) interface{} {
 	switch fld.GetType() {
 
-	case sdkapi.FormFieldTypeText,
+	case sdkapi.FormFieldTypeString,
+		sdkapi.FormFieldTypeText,
 		sdkapi.FormFieldTypeInteger,
 		sdkapi.FormFieldTypeDecimal,
 		sdkapi.FormFieldTypeBoolean:
@@ -549,7 +562,8 @@ func GetTypeDefault(fld sdkapi.IFormField) interface{} {
 
 func GetBasicTypeDefault(t string) interface{} {
 	switch t {
-	case sdkapi.FormFieldTypeText:
+	case sdkapi.FormFieldTypeString,
+		sdkapi.FormFieldTypeText:
 		return ""
 	case sdkapi.FormFieldTypeInteger:
 		return int64(0)

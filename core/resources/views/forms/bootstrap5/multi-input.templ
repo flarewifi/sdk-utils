@@ -61,7 +61,7 @@ templ multiFieldCol(sec sdkapi.FormSection, fld sdkapi.FormMultiField, mfval sdk
 	<div class="col">
 		{{ colName := mfColName(sec, fld, col) }}
 		switch col.Type {
-			case sdkapi.FormFieldTypeText:
+			case sdkapi.FormFieldTypeString:
 				{{ var val string }}
 				{{ var err error }}
 				if row < 0 {
