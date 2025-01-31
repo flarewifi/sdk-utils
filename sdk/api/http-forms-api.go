@@ -24,6 +24,9 @@ type IHttpForm interface {
 	GetStringValue(section string, name string) (string, error)
 	GetStringValues(section string, name string) ([]string, error)
 
+	GetTextValue(section string, name string) (string, error)
+	GetTextValues(section string, name string) ([]string, error)
+
 	GetIntValue(section string, name string) (int64, error)
 	GetIntValues(section string, name string) ([]int64, error)
 

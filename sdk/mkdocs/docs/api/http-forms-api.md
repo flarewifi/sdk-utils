@@ -114,7 +114,7 @@ formsAPI.RegisterForm("my-form", func (r *http.Request) sdkapi.HttpForm {
                     listField := sdkapi.FormListField{
                         Name:  "experience_level",
                         Label: "Select Experience Level",
-                        Type:  "int", // Specifies that the values are integers
+                        Type: sdkapi.FormFieldTypeInteger,
                         OptionsFn: func() []sdkapi.FormListFieldOption {
                             return []sdkapi.FormListFieldOption{
                                 {Label: "Beginner", Value: 1},
@@ -238,9 +238,9 @@ type FormBooleanField struct {
 | Method | Description |
 | ---- | ----|
 | `GetName() string` | Returns the boolean field name. |
-| `GetLabel() string` | Returns the boolean field label. | 
+| `GetLabel() string` | Returns the boolean field label. |
 | `GetType() string` | Returns the field type ("bool"). |
-| `GetValue() interface{}` | Returns the boolean value of the field. Uses `ValueFn` if set, otherwise returns `false`. | 
+| `GetValue() interface{}` | Returns the boolean value of the field. Uses `ValueFn` if set, otherwise returns `false`. |
 
 ##### Usage Example
 
@@ -431,7 +431,7 @@ Represents a column in the multi-field form.
 | ---- | ---- | ---- |
 | `Name` | `string` | The name of the column. |
 | `Label` | `string` | The label displayed for the column. |
-| `Type` | `string` | The data type of the column (e.g., "string", "int", "float", "bool"). | 
+| `Type` | `string` | The data type of the column (e.g., "string", "int", "float", "bool"). |
 | `ValueFn` | `func() interface{}` | Function that returns the value for the column. |
 
 **`FormMultiFieldCol` Methods**
@@ -527,7 +527,7 @@ type FormTextField struct {
 | ---- | ---- |
 | `GetName() string` | Returns the unique name of the text field. |
 | `GetLabel() string` | Returns the display label of the text field. |
-| `GetType() string` | Returns the type of the field, which is "text". | 
+| `GetType() string` | Returns the type of the field, which is "text". |
 | `GetValue() interface{}` | Returns the value of the text field. If ValueFn is defined, it calls the function;  otherwise, it returns an empty string. |
 
 ##### Example Usage
@@ -542,6 +542,14 @@ type FormTextField struct {
 		},
 	}
 ```
+
+---
+
+## Field Types
+
+| Field Type | Constant | Description
+| ---- | ---- | ----
+| `sdkapi.FormFieldTypeString` | "string" | Represents a string field.
 
 ---
 
