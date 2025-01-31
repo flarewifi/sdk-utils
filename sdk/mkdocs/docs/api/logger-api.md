@@ -16,9 +16,9 @@ type ILoggerApi interface {
 
 | Method | Description |
 | ---- | ---- |
-| Info(message string) error | Logs a general information message. |
-| Debug(message string) error | Logs a debug message to help with troubleshooting. |
-| Error(message string) error | Logs an error message indicating an issue that needs attention. |
+| `Info(message string) error` | Logs a general information message. |
+| `Debug(message string) error` | Logs a debug message to help with troubleshooting. |
+| `Error(message string) error` | Logs an error message indicating an issue that needs attention. |
 
 
 ## Usage Examples

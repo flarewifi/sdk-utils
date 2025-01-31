@@ -176,10 +176,10 @@ type FormBooleanField struct {
 
 | Method | Description |
 | ---- | ----|
-| GetName() string | Returns the boolean field name. |
-| GetLabel() string | Returns the boolean field label. | 
-| GetType() string | Returns the field type ("bool"). |
-| GetValue() interface{} | Returns the boolean value of the field. Uses `ValueFn` if set, otherwise returns `false`. | 
+| `GetName() string` | Returns the boolean field name. |
+| `GetLabel() string` | Returns the boolean field label. | 
+| `GetType() string` | Returns the field type ("bool"). |
+| `GetValue() interface{}` | Returns the boolean value of the field. Uses `ValueFn` if set, otherwise returns `false`. | 
 
 ##### Usage Example
 
@@ -298,16 +298,16 @@ Represents a column in the multi-field form.
 
 | Field | Type | Description |
 | ---- | ---- | ---- |
-| `Name` | string | The name of the column. |
-| `Label` | string | The label displayed for the column. |
-| `Type` | string | The data type of the column (e.g., "string", "int", "float", "bool"). | 
+| `Name` | `string` | The name of the column. |
+| `Label` | `string` | The label displayed for the column. |
+| `Type` | `string` | The data type of the column (e.g., "string", "int", "float", "bool"). | 
 | `ValueFn` | `func() interface{}` | Function that returns the value for the column. |
 
 **`FormMultiFieldCol` Methods**
 
 | Method | Description |
 | ---- | ---- |
-| `GetName()`  string` | Returns the column name. |
+| `GetName()  string` | Returns the column name. |
 | `GetLabel() string` | Returns the column label. |
 | `GetType() string` | Returns the column data type. |
 | `GetValue() interface{}` | Returns the column value using ValueFn if set, otherwise nil. |
@@ -320,8 +320,8 @@ Represents a multi-field form containing multiple rows and columns.
 
 | Field | Type | Description |
 | ---- | ---- | ---- |
-| `Name` | string | The name of the multi-field form. |
-| `Label` | string | The label displayed for the multi-field form. |
+| `Name` | `string` | The name of the multi-field form. |
+| `Label` | `string` | The label displayed for the multi-field form. |
 | `Columns` | `func() []FormMultiFieldCol` | Function returning a list of column definitions. |
 | `ValueFn` | `func() [][]FormFieldData` | Function returning the values for each row and column. |
 
@@ -496,5 +496,3 @@ Returns a [IFormMultiField](#imultifield) instance of a multi field in the form.
 ```go
 mf, err := form.GetMultiField(section, "Multi Field")
 ```
-
-## IFormMultiField {#imultifield}
