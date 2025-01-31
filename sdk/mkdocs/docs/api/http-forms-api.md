@@ -272,6 +272,76 @@ ageField := FormIntegerField{
 
 #### List Field
 
+The `FormListField` represents a list selection field in an HTTP form, allowing users to choose from a predefined set of options which is based on `FormListOption`. It supports both single and multiple selections.
+
+##### Definition
+
+```go
+type FormListOption struct {
+	Label string
+	Value interface{}
+}
+
+type FormListField struct {
+	Name     string
+	Label    string
+	Type     string     // type of the list options
+	Multiple bool
+	Options  func() []FormListOption
+	ValueFn  func() interface{}
+}
+```
+
+The `Type` field of `FormListField` indicates the type of the list options, which can be of type `string`, `int`, `float`, `boolean`, etc. and all options must be in the same type.
+
+##### Methods
+
+| Method | Description |
+| ---- | ----- |
+| `GetName() string` | Returns the list field name. |
+| `GetLabel() string` | Returns the list field label. |
+| `GetType() string` | Returns the field type ("list"). |
+| `GetValue() interface{}` | Returns the selected value(s). Uses ValueFn if set, otherwise returns nil. |
+
+##### Usage Example
+
+```go
+countryField := sdkapi.FormListField{
+    Name:     "country",
+    Label:    "Select Country",
+    Type:     "string",
+    Multiple: false,
+    Options: func() []FormListOption {
+        return []FormListOption{
+            {Label: "Philippines", Value: "PH"},
+            {Label: "Canada", Value: "CA"},
+            {Label: "United Kingdom", Value: "UK"},
+        }
+    },
+    ValueFn: func() interface{} {
+        // your custom list logic
+        return "PH"
+    },
+}
+
+listField := sdkapi.FormListField{
+    Name:  "experience_level",
+    Label: "Select Experience Level",
+    Type:  "int", // Specifies that the values are integers
+    OptionsFn: func() []sdkapi.FormListFieldOption {
+        return []sdkapi.FormListFieldOption{
+            {Label: "Beginner", Value: 1},
+            {Label: "Intermediate", Value: 2},
+            {Label: "Advanced", Value: 3},
+        }
+    },
+    ValueFn: func() interface{} {
+        // Your custom list specific logic
+        return 2 // Default selected value (Intermediate)
+    },
+}
+```
+
 #### Multi Field
 
 The `FormMultiField` represents a structured form field that consists of multiple rows and columns. Each column defines a specific type of data, and each row contains values for those columns.
