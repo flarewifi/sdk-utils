@@ -19,12 +19,12 @@ USER ubuntu
 
 # Install additional tools
 COPY ./scripts/install-tools.sh .
+COPY ./sdk ./sdk
 RUN ./install-tools.sh
 
 # Watch and recompile server on file change
 CMD cp go.work.default go.work && \
     reflex \
-        -r '\.(go|templ|sql|js|css|json)$' \
         -r '\.(go|templ|sql|js|css|json)$' \
         -R 'db\/queries\/.*' \
         -R 'node_modules' \
@@ -37,4 +37,4 @@ CMD cp go.work.default go.work && \
         -R 'plugins\/installed\/.*' \
         -R 'plugins\/update\/.*' \
         -R 'plugins\/backup\/.*' \
-        -s -- sh -c './scripts/start-devkit.sh' -v
+        -s -- sh -c './start-devkit.sh' -v

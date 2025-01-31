@@ -22,7 +22,7 @@ func RegisterLogsForm(g *plugins.CoreGlobals) error {
 					Name:  "search",
 					Label: "System Logs",
 					Fields: []sdkapi.IFormField{
-						sdkapi.FormTextField{
+						sdkapi.FormStringField{
 							Name:  "search_text",
 							Label: "Search Logs",
 							ValueFn: func() string {
@@ -32,7 +32,7 @@ func RegisterLogsForm(g *plugins.CoreGlobals) error {
 						sdkapi.FormListField{
 							Name:  "package",
 							Label: "Package",
-							Type:  sdkapi.FormFieldTypeText,
+							Type:  sdkapi.FormFieldTypeString,
 							Options: func() []sdkapi.FormListOption {
 								opts := []sdkapi.FormListOption{
 									{Label: "All", Value: ""},
@@ -56,7 +56,7 @@ func RegisterLogsForm(g *plugins.CoreGlobals) error {
 						sdkapi.FormListField{
 							Name:  "level",
 							Label: "Level",
-							Type:  sdkapi.FormFieldTypeText,
+							Type:  sdkapi.FormFieldTypeString,
 							Options: func() []sdkapi.FormListOption {
 								return []sdkapi.FormListOption{
 									{Label: "All", Value: ""},

@@ -46,7 +46,7 @@ templ listOptionFields(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 
 func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.FormListField, opt sdkapi.FormListOption) bool {
 	switch lf.Type {
-	case sdkapi.FormFieldTypeText:
+	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)
 		if !ok {
 			return false
@@ -101,7 +101,7 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 
 func parseListOptValue(lf sdkapi.FormListField, opt sdkapi.FormListOption) (val string) {
 	switch lf.Type {
-	case sdkapi.FormFieldTypeText:
+	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)
 		if !ok {
 			return ""

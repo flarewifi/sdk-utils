@@ -13,6 +13,8 @@ templ HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTe
 			for _, fld := range sec.Fields {
 				<div class="mt-1">
 					switch fld.GetType() {
+						case sdkapi.FormFieldTypeString:
+							@StringInputField(form, sec, fld)
 						case sdkapi.FormFieldTypeText:
 							@TextInputField(form, sec, fld)
 						case sdkapi.FormFieldTypeInteger:

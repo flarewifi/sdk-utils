@@ -39,7 +39,9 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 
 	w.Header().Set("Content-Type", "text/html")
 	page := themeApi.AdminTheme.LayoutFactory(w, r, data)
-	page.Render(r.Context(), w)
+	if err := page.Render(r.Context(), w); err != nil {
+		w.Write([]byte("\n\nTemplate Error:" + err.Error()))
+	}
 }
 
 func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
@@ -59,12 +61,16 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 
 	w.Header().Set("Content-Type", "text/html")
 	page := themeApi.PortalTheme.LayoutFactory(w, r, data)
-	page.Render(r.Context(), w)
+	if err := page.Render(r.Context(), w); err != nil {
+		w.Write([]byte("\n\nTemplate Error:" + err.Error()))
+	}
 }
 
 func (self *HttpResponse) View(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
 	w.Header().Set("Content-Type", "text/html")
-	v.PageContent.Render(r.Context(), w)
+	if err := v.PageContent.Render(r.Context(), w); err != nil {
+		w.Write([]byte("\n\nTemplate Error:" + err.Error()))
+	}
 }
 
 func (self *HttpResponse) Json(w http.ResponseWriter, r *http.Request, data interface{}, status int) {

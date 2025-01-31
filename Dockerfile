@@ -18,7 +18,8 @@ WORKDIR /app
 USER ubuntu
 
 # Install additional tools
-COPY ./core/build/devkit/extras/scripts/install-tools.sh .
+COPY ./scripts/install-tools.sh .
+COPY ./sdk ./sdk
 RUN ./install-tools.sh
 
 # Watch and recompile server on file change

@@ -220,7 +220,7 @@ func InstallPlugin(src string, db *pgxpool.Pool, opts InstallOpts) error {
 		return err
 	}
 
-	if err := BuildSQLC(src); err != nil {
+	if err := BuildQueries(src); err != nil {
 		log.Println("Error building plugin sqlc: ", err)
 		return err
 	}

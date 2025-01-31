@@ -81,11 +81,72 @@ formsAPI.RegisterForm("my-form", func (r *http.Request) sdkapi.HttpForm {
                 Name: "general_configuration",
                 Label: "General Configuration",
                 Fields: []sdkapi.IFormField{
-                    // sdkapi.FormBooleanField,
-                    // sdkapi.FormDecimalField,
-                    // sdkapi.FormIntegerField,
-                    // sdkapi.FormListField,
-                    // sdkapi.FormMultiField,
+                    // Boolean Field
+                    sdkapi.FormBooleanField{
+                        Name:  "accept_terms",
+                        Label: "Accept Terms and Conditions",
+                        ValueFn: func() bool {
+                            // your custom specific boolean logic
+                            return true
+                        },
+                    },
+                    // Decimal Field
+                    priceField := FormDecimalField{
+                        Name:      "price",
+                        Label:     "Product Price",
+                        Step:      0.01,
+                        Precision: 2,
+                        ValueFn: func() float64 {
+                            // your custom specific decimal form logic
+                            return 99.99
+                        },
+                    }
+                    // Integer Field,
+                    ageField := sdkapi.FormIntegerField{
+                        Name:  "age",
+                        Label: "User Age",
+                        ValueFn: func() int64 {
+                            // your custom integer specific logic
+                            return 25
+                        },
+                    }
+                    // List Field,
+                    listField := sdkapi.FormListField{
+                        Name:  "experience_level",
+                        Label: "Select Experience Level",
+                        Type: sdkapi.FormFieldTypeInteger,
+                        OptionsFn: func() []sdkapi.FormListFieldOption {
+                            return []sdkapi.FormListFieldOption{
+                                {Label: "Beginner", Value: 1},
+                                {Label: "Intermediate", Value: 2},
+                                {Label: "Advanced", Value: 3},
+                            }
+                        },
+                        ValueFn: func() interface{} {
+                            // Your custom list specific logic
+                            return 2 // Default selected value (Intermediate)
+                        },
+                    }
+                    // Multi Field,
+                    sdkapi.FormMultiField{
+                        Name:  "items",
+                        Label: "Order Items",
+                        Columns: func() []sdkapi.FormMultiFieldCol {
+                            return []sdkapi.FormMultiFieldCol{
+                                {Name: "item_name", Label: "Item Name", Type: "string"},
+                                {Name: "quantity", Label: "Quantity", Type: "int"},
+                                {Name: "price", Label: "Price", Type: "float"},
+                            }
+                        },
+                        ValueFn: func() [][]sdkapi.FormFieldData {
+                            // Your custom multi field logic
+                            return [][]sdkapi.FormFieldData{
+                                {{"item_name", "Apple"}, {"quantity", 3}, {"price", 1.99}},
+                                {{"item_name", "Banana"}, {"quantity", 2}, {"price", 0.99}},
+                            }
+                        },
+                    },
+                    // Text Field
                     sdkapi.FormTextField{
                         Name:  "banner_text",
                         Label: "Banner Text",
@@ -176,10 +237,10 @@ type FormBooleanField struct {
 
 | Method | Description |
 | ---- | ----|
-| GetName() string | Returns the boolean field name. |
-| GetLabel() string | Returns the boolean field label. | 
-| GetType() string | Returns the field type ("bool"). |
-| GetValue() interface{} | Returns the boolean value of the field. Uses `ValueFn` if set, otherwise returns `false`. | 
+| `GetName() string` | Returns the boolean field name. |
+| `GetLabel() string` | Returns the boolean field label. |
+| `GetType() string` | Returns the field type ("bool"). |
+| `GetValue() interface{}` | Returns the boolean value of the field. Uses `ValueFn` if set, otherwise returns `false`. |
 
 ##### Usage Example
 
@@ -272,6 +333,76 @@ ageField := FormIntegerField{
 
 #### List Field
 
+The `FormListField` represents a list selection field in an HTTP form, allowing users to choose from a predefined set of options which is based on `FormListOption`. It supports both single and multiple selections.
+
+##### Definition
+
+```go
+type FormListOption struct {
+	Label string
+	Value interface{}
+}
+
+type FormListField struct {
+	Name     string
+	Label    string
+	Type     string     // type of the list options
+	Multiple bool
+	Options  func() []FormListOption
+	ValueFn  func() interface{}
+}
+```
+
+The `Type` field of `FormListField` indicates the type of the list options, which can be of type `string`, `int`, `float`, `boolean`, etc. and all options must be in the same type.
+
+##### Methods
+
+| Method | Description |
+| ---- | ----- |
+| `GetName() string` | Returns the list field name. |
+| `GetLabel() string` | Returns the list field label. |
+| `GetType() string` | Returns the field type ("list"). |
+| `GetValue() interface{}` | Returns the selected value(s). Uses ValueFn if set, otherwise returns nil. |
+
+##### Usage Example
+
+```go
+countryField := sdkapi.FormListField{
+    Name:     "country",
+    Label:    "Select Country",
+    Type:     "string",
+    Multiple: false,
+    Options: func() []FormListOption {
+        return []FormListOption{
+            {Label: "Philippines", Value: "PH"},
+            {Label: "Canada", Value: "CA"},
+            {Label: "United Kingdom", Value: "UK"},
+        }
+    },
+    ValueFn: func() interface{} {
+        // your custom list logic
+        return "PH"
+    },
+}
+
+listField := sdkapi.FormListField{
+    Name:  "experience_level",
+    Label: "Select Experience Level",
+    Type:  "int", // Specifies that the values are integers
+    OptionsFn: func() []sdkapi.FormListFieldOption {
+        return []sdkapi.FormListFieldOption{
+            {Label: "Beginner", Value: 1},
+            {Label: "Intermediate", Value: 2},
+            {Label: "Advanced", Value: 3},
+        }
+    },
+    ValueFn: func() interface{} {
+        // Your custom list specific logic
+        return 2 // Default selected value (Intermediate)
+    },
+}
+```
+
 #### Multi Field
 
 The `FormMultiField` represents a structured form field that consists of multiple rows and columns. Each column defines a specific type of data, and each row contains values for those columns.
@@ -298,16 +429,16 @@ Represents a column in the multi-field form.
 
 | Field | Type | Description |
 | ---- | ---- | ---- |
-| `Name` | string | The name of the column. |
-| `Label` | string | The label displayed for the column. |
-| `Type` | string | The data type of the column (e.g., "string", "int", "float", "bool"). | 
+| `Name` | `string` | The name of the column. |
+| `Label` | `string` | The label displayed for the column. |
+| `Type` | `string` | The data type of the column (e.g., "string", "int", "float", "bool"). |
 | `ValueFn` | `func() interface{}` | Function that returns the value for the column. |
 
 **`FormMultiFieldCol` Methods**
 
 | Method | Description |
 | ---- | ---- |
-| `GetName()`  string` | Returns the column name. |
+| `GetName()  string` | Returns the column name. |
 | `GetLabel() string` | Returns the column label. |
 | `GetType() string` | Returns the column data type. |
 | `GetValue() interface{}` | Returns the column value using ValueFn if set, otherwise nil. |
@@ -320,8 +451,8 @@ Represents a multi-field form containing multiple rows and columns.
 
 | Field | Type | Description |
 | ---- | ---- | ---- |
-| `Name` | string | The name of the multi-field form. |
-| `Label` | string | The label displayed for the multi-field form. |
+| `Name` | `string` | The name of the multi-field form. |
+| `Label` | `string` | The label displayed for the multi-field form. |
 | `Columns` | `func() []FormMultiFieldCol` | Function returning a list of column definitions. |
 | `ValueFn` | `func() [][]FormFieldData` | Function returning the values for each row and column. |
 
@@ -396,7 +527,7 @@ type FormTextField struct {
 | ---- | ---- |
 | `GetName() string` | Returns the unique name of the text field. |
 | `GetLabel() string` | Returns the display label of the text field. |
-| `GetType() string` | Returns the type of the field, which is "text". | 
+| `GetType() string` | Returns the type of the field, which is "text". |
 | `GetValue() interface{}` | Returns the value of the text field. If ValueFn is defined, it calls the function;  otherwise, it returns an empty string. |
 
 ##### Example Usage
@@ -411,6 +542,14 @@ type FormTextField struct {
 		},
 	}
 ```
+
+---
+
+## Field Types
+
+| Field Type | Constant | Description
+| ---- | ---- | ----
+| `sdkapi.FormFieldTypeString` | "string" | Represents a string field.
 
 ---
 
@@ -496,5 +635,3 @@ Returns a [IFormMultiField](#imultifield) instance of a multi field in the form.
 ```go
 mf, err := form.GetMultiField(section, "Multi Field")
 ```
-
-## IFormMultiField {#imultifield}

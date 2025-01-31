@@ -32,7 +32,7 @@ func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 	portalThemesField := sdkapi.FormListField{
 		Name:  "portal_theme",
 		Label: "Select Portal Theme",
-		Type:  sdkapi.FormFieldTypeText,
+		Type:  sdkapi.FormFieldTypeString,
 		ValueFn: func() interface{} {
 			cfg, err := config.ReadThemesConfig()
 			if err != nil {
@@ -56,7 +56,7 @@ func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 	adminThemesField := sdkapi.FormListField{
 		Name:  "admin_theme",
 		Label: "Select Admin Theme",
-		Type:  sdkapi.FormFieldTypeText,
+		Type:  sdkapi.FormFieldTypeString,
 		ValueFn: func() interface{} {
 			cfg, err := config.ReadThemesConfig()
 			if err != nil {

@@ -7,7 +7,8 @@ BUILD_TEMPLATES="./core/cmd/build-templates"
 LINK_NODE_MODULES="./core/cmd/link-node-modules"
 FLARE_BIN="./bin/flare"
 
-rm -rf **/*_templ.go && \
+cp go.work.default go.work && \
+    rm -rf **/*_templ.go && \
     rm -rf core/internal/db/sqlc && \
     go run -tags="${BUILD_TAGS}" $LINK_NODE_MODULES && \
     go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN && \

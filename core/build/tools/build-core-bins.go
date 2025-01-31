@@ -39,7 +39,7 @@ func BuildCore() {
 		panic(err)
 	}
 
-	if err := pkg.BuildSQLC(sdkutils.PathCoreDir); err != nil {
+	if err := pkg.BuildQueries(sdkutils.PathCoreDir); err != nil {
 		panic(err)
 	}
 

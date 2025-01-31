@@ -31,7 +31,13 @@ func CreatePlugin(pack string, name string, desc string) {
 
 	modPath := filepath.Join(pluginDir, "go.mod")
 	modUri := fmt.Sprintf("com.mydomain.%s", sdkutils.RandomStr(8))
-	goMod := fmt.Sprintf("module %s\n\ngo %s", modUri, goVersion)
+	goMod := fmt.Sprintf(`module %s
+go %s
+
+require (
+	github.com/a-h/templ v0.2.793
+)
+`, modUri, goVersion)
 	if err := os.WriteFile(modPath, []byte(goMod), 0644); err != nil {
 		panic(err)
 	}
@@ -152,10 +158,8 @@ func Init(api sdkapi.IPluginApi) {
 .DS_Store
 /node_modules
 /resources/assets/dist
-/db/queries
 *.so
 main_mono.go
-*_templ.go
 `
 	if err := os.WriteFile(gitIgnorePath, []byte(gitIgnore), 0644); err != nil {
 		panic(err)

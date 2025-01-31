@@ -7,6 +7,7 @@
 package sdkapi
 
 const (
+	FormFieldTypeString  string = "string"
 	FormFieldTypeText    string = "text"
 	FormFieldTypeDecimal string = "decimal"
 	FormFieldTypeInteger string = "int"
