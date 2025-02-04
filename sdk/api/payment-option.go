@@ -8,6 +8,7 @@ package sdkapi
 
 type PaymentOption struct {
 	Name        string
+	Label       string
 	RouteName   string
 	RouteParams map[string]string
 }

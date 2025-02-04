@@ -3,49 +3,48 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PurchaseModel struct {
 	db     *db.Database
 	models *Models
-	attrs  []string
 }
 
 func NewPurchaseModel(dtb *db.Database, mdls *Models) *PurchaseModel {
-	attrs := []string{"id", "device_id", "sku", "name", "description", "price", "any_price", "callback_plugin", "callback_vue_route_name", "wallet_debit", "wallet_tx_id", "confirmed_at", "cancelled_at", "cancelled_reason", "created_at"}
-	return &PurchaseModel{dtb, mdls, attrs}
+	return &PurchaseModel{dtb, mdls}
 }
 
-func (self *PurchaseModel) Create(ctx context.Context, deviceId pgtype.UUID, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string, pairs ...string) (*Purchase, error) {
-	routeParams := make(map[string]string)
-	for i := 0; i < len(pairs); i += 2 {
-		routeParams[pairs[i]] = pairs[i+1]
-	}
+func (self *PurchaseModel) Create(ctx context.Context, deviceId pgtype.UUID, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string, metadata map[string]string) (*Purchase, error) {
 
-	routeParamsJson, err := json.Marshal(routeParams)
+	b, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	pId, err := self.db.Queries.CreatePurchase(ctx, queries.CreatePurchaseParams{
-		DeviceID:            deviceId,
-		Sku:                 sku,
-		Name:                name,
-		Description:         pgtype.Text{String: desc, Valid: desc != ""},
-		Price:               pg.Float64ToNumeric(price),
-		AnyPrice:            vprice,
-		CallbackPlugin:      pkg,
-		CallbackRoute:       pgtype.Text{String: routename, Valid: routename != ""},
-		CallbackRouteParams: routeParamsJson,
-	})
+	params := queries.CreatePurchaseParams{
+		DeviceID:       deviceId,
+		Sku:            sku,
+		Name:           name,
+		Description:    pgtype.Text{String: desc, Valid: desc != ""},
+		Price:          sdkutils.PgFloat64ToNumeric(price),
+		AnyPrice:       vprice,
+		CallbackPlugin: pkg,
+		CallbackRoute:  routename,
+		Metadata:       b,
+	}
+
+	fmt.Printf("Create Purchase: %+v\n", params)
+
+	pId, err := self.db.Queries.CreatePurchase(ctx, params)
 	if err != nil {
 		log.Println("error creating purchase: %w", err)
 		return nil, err
@@ -61,8 +60,8 @@ func (self *PurchaseModel) Find(ctx context.Context, id pgtype.UUID) (*Purchase,
 		return nil, err
 	}
 
-	params := make(map[string]string)
-	if err = json.Unmarshal(p.CallbackRouteParams, &params); err != nil {
+	metadata := make(map[string]string)
+	if err = json.Unmarshal(p.Metadata, &metadata); err != nil {
 		return nil, err
 	}
 
@@ -72,12 +71,12 @@ func (self *PurchaseModel) Find(ctx context.Context, id pgtype.UUID) (*Purchase,
 	purchase.sku = p.Sku
 	purchase.name = p.Name
 	purchase.description = p.Description.String
-	purchase.price = pg.NumericToFloat64(p.Price)
+	purchase.price = sdkutils.PgNumericToFloat64(p.Price)
 	purchase.anyPrice = p.AnyPrice
 	purchase.callbackPluginPkg = p.CallbackPlugin
-	purchase.callbackRoute = p.CallbackRoute.String
-	purchase.walletDebit = pg.NumericToFloat64(p.WalletDebit)
-	purchase.callbackRouteParams = params
+	purchase.callbackRoute = p.CallbackRoute
+	purchase.metadata = metadata
+	purchase.walletDebit = sdkutils.PgNumericToFloat64(p.WalletDebit)
 	purchase.walletTxId = &p.WalletTxID
 	purchase.confirmedAt = &p.ConfirmedAt.Time
 	purchase.cancelledAt = &p.CancelledAt.Time
@@ -88,14 +87,14 @@ func (self *PurchaseModel) Find(ctx context.Context, id pgtype.UUID) (*Purchase,
 }
 
 func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
-	p, err := self.db.Queries.FindPending(ctx, deviceId)
+	p, err := self.db.Queries.FindPendingPurchase(ctx, deviceId)
 	if err != nil {
 		log.Printf("error finding pending purchase with dev id %v: %v\n", deviceId, err)
 		return nil, err
 	}
 
-	params := make(map[string]string)
-	if err = json.Unmarshal(p.CallbackRouteParams, &params); err != nil {
+	metadata := make(map[string]string)
+	if err = json.Unmarshal(p.Metadata, &metadata); err != nil {
 		return nil, err
 	}
 
@@ -105,12 +104,12 @@ func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId pgtype.
 	purchase.sku = p.Sku
 	purchase.name = p.Name
 	purchase.description = p.Description.String
-	purchase.price = pg.NumericToFloat64(p.Price)
+	purchase.price = sdkutils.PgNumericToFloat64(p.Price)
 	purchase.anyPrice = p.AnyPrice
 	purchase.callbackPluginPkg = p.CallbackPlugin
-	purchase.callbackRoute = p.CallbackRoute.String
-	purchase.callbackRouteParams = params
-	purchase.walletDebit = pg.NumericToFloat64(p.WalletDebit)
+	purchase.callbackRoute = p.CallbackRoute
+	purchase.metadata = metadata
+	purchase.walletDebit = sdkutils.PgNumericToFloat64(p.WalletDebit)
 	purchase.walletTxId = &p.WalletTxID
 	purchase.confirmedAt = &p.ConfirmedAt.Time
 	purchase.cancelledAt = &p.CancelledAt.Time
@@ -127,8 +126,8 @@ func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId pgtype.U
 		return nil, err
 	}
 
-	params := make(map[string]string)
-	if err = json.Unmarshal(p.CallbackRouteParams, &params); err != nil {
+	metadata := make(map[string]string)
+	if err = json.Unmarshal(p.Metadata, &metadata); err != nil {
 		return nil, err
 	}
 
@@ -138,12 +137,12 @@ func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId pgtype.U
 	purchase.sku = p.Sku
 	purchase.name = p.Name
 	purchase.description = p.Description.String
-	purchase.price = pg.NumericToFloat64(p.Price)
+	purchase.price = sdkutils.PgNumericToFloat64(p.Price)
 	purchase.anyPrice = p.AnyPrice
 	purchase.callbackPluginPkg = p.CallbackPlugin
-	purchase.callbackRoute = p.CallbackRoute.String
-	purchase.callbackRouteParams = params
-	purchase.walletDebit = pg.NumericToFloat64(p.WalletDebit)
+	purchase.callbackRoute = p.CallbackRoute
+	purchase.metadata = metadata
+	purchase.walletDebit = sdkutils.PgNumericToFloat64(p.WalletDebit)
 	purchase.walletTxId = &p.WalletTxID
 	purchase.confirmedAt = &p.ConfirmedAt.Time
 	purchase.cancelledAt = &p.CancelledAt.Time
@@ -155,7 +154,7 @@ func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId pgtype.U
 
 func (self *PurchaseModel) Update(ctx context.Context, id pgtype.UUID, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
 	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
-		WalletDebit:     pg.Float64ToNumeric(dbt),
+		WalletDebit:     sdkutils.PgFloat64ToNumeric(dbt),
 		WalletTxID:      *txid,
 		CancelledAt:     pgtype.Timestamp{Time: *cancelledAt},
 		ConfirmedAt:     pgtype.Timestamp{Time: *confirmedAt},

@@ -12,22 +12,22 @@ import (
 )
 
 const createPurchase = `-- name: CreatePurchase :one
-INSERT INTO purchases (device_id, sku, name, description, price, any_price, callback_plugin, callback_route, callback_route_params)
+INSERT INTO purchases (device_id, sku, name, description, price, any_price, callback_plugin, callback_route, metadata)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING
     id
 `
 
 type CreatePurchaseParams struct {
-	DeviceID            pgtype.UUID
-	Sku                 string
-	Name                string
-	Description         pgtype.Text
-	Price               pgtype.Numeric
-	AnyPrice            bool
-	CallbackPlugin      string
-	CallbackRoute       pgtype.Text
-	CallbackRouteParams []byte
+	DeviceID       pgtype.UUID
+	Sku            string
+	Name           string
+	Description    pgtype.Text
+	Price          pgtype.Numeric
+	AnyPrice       bool
+	CallbackPlugin string
+	CallbackRoute  string
+	Metadata       []byte
 }
 
 func (q *Queries) CreatePurchase(ctx context.Context, arg CreatePurchaseParams) (pgtype.UUID, error) {
@@ -40,16 +40,16 @@ func (q *Queries) CreatePurchase(ctx context.Context, arg CreatePurchaseParams) 
 		arg.AnyPrice,
 		arg.CallbackPlugin,
 		arg.CallbackRoute,
-		arg.CallbackRouteParams,
+		arg.Metadata,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
-const findPending = `-- name: FindPending :one
+const findPendingPurchase = `-- name: FindPendingPurchase :one
 SELECT
-    id, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, callback_route_params, wallet_debit, wallet_tx_id, confirmed_at, cancelled_at, cancelled_reason, created_at
+    id, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, metadata, wallet_debit, wallet_tx_id, confirmed_at, cancelled_at, cancelled_reason, created_at
 FROM
     purchases
 WHERE
@@ -59,8 +59,8 @@ WHERE
 LIMIT 1
 `
 
-func (q *Queries) FindPending(ctx context.Context, deviceID pgtype.UUID) (Purchase, error) {
-	row := q.db.QueryRow(ctx, findPending, deviceID)
+func (q *Queries) FindPendingPurchase(ctx context.Context, deviceID pgtype.UUID) (Purchase, error) {
+	row := q.db.QueryRow(ctx, findPendingPurchase, deviceID)
 	var i Purchase
 	err := row.Scan(
 		&i.ID,
@@ -72,7 +72,7 @@ func (q *Queries) FindPending(ctx context.Context, deviceID pgtype.UUID) (Purcha
 		&i.AnyPrice,
 		&i.CallbackPlugin,
 		&i.CallbackRoute,
-		&i.CallbackRouteParams,
+		&i.Metadata,
 		&i.WalletDebit,
 		&i.WalletTxID,
 		&i.ConfirmedAt,
@@ -85,7 +85,7 @@ func (q *Queries) FindPending(ctx context.Context, deviceID pgtype.UUID) (Purcha
 
 const findPurchase = `-- name: FindPurchase :one
 SELECT
-    id, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, callback_route_params, wallet_debit, wallet_tx_id, confirmed_at, cancelled_at, cancelled_reason, created_at
+    id, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, metadata, wallet_debit, wallet_tx_id, confirmed_at, cancelled_at, cancelled_reason, created_at
 FROM
     purchases
 WHERE
@@ -106,7 +106,7 @@ func (q *Queries) FindPurchase(ctx context.Context, id pgtype.UUID) (Purchase, e
 		&i.AnyPrice,
 		&i.CallbackPlugin,
 		&i.CallbackRoute,
-		&i.CallbackRouteParams,
+		&i.Metadata,
 		&i.WalletDebit,
 		&i.WalletTxID,
 		&i.ConfirmedAt,
@@ -119,7 +119,7 @@ func (q *Queries) FindPurchase(ctx context.Context, id pgtype.UUID) (Purchase, e
 
 const findPurchaseByDeviceId = `-- name: FindPurchaseByDeviceId :one
 SELECT
-    id, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, callback_route_params, wallet_debit, wallet_tx_id, confirmed_at, cancelled_at, cancelled_reason, created_at
+    id, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, metadata, wallet_debit, wallet_tx_id, confirmed_at, cancelled_at, cancelled_reason, created_at
 FROM
     purchases
 WHERE
@@ -127,8 +127,8 @@ WHERE
 LIMIT 1
 `
 
-func (q *Queries) FindPurchaseByDeviceId(ctx context.Context, deviceID pgtype.UUID) (Purchase, error) {
-	row := q.db.QueryRow(ctx, findPurchaseByDeviceId, deviceID)
+func (q *Queries) FindPurchaseByDeviceId(ctx context.Context, id pgtype.UUID) (Purchase, error) {
+	row := q.db.QueryRow(ctx, findPurchaseByDeviceId, id)
 	var i Purchase
 	err := row.Scan(
 		&i.ID,
@@ -140,7 +140,7 @@ func (q *Queries) FindPurchaseByDeviceId(ctx context.Context, deviceID pgtype.UU
 		&i.AnyPrice,
 		&i.CallbackPlugin,
 		&i.CallbackRoute,
-		&i.CallbackRouteParams,
+		&i.Metadata,
 		&i.WalletDebit,
 		&i.WalletTxID,
 		&i.ConfirmedAt,

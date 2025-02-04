@@ -17,7 +17,7 @@ import (
 	"reflect"
 )
 
-func ListInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) templ.Component {
+func ListInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -50,9 +50,9 @@ func ListInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IF
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("list field %s in section %s is not a list field", fld.GetName(), sec.Name))
+			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("list field %s in section %s is not a list field", fld.GetName(), sec.GetName()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 17, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 17, Col: 102}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -67,7 +67,7 @@ func ListInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IF
 	})
 }
 
-func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.FormListField) templ.Component {
+func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.FormListField) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -131,9 +131,9 @@ func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.F
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s:%s", sec.Name, lf.Name))
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s:%s", sec.GetName(), lf.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 36, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 36, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -184,7 +184,7 @@ func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.F
 	})
 }
 
-func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.FormListField, opt sdkapi.FormListOption) bool {
+func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) bool {
 	switch lf.Type {
 	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)
@@ -193,13 +193,13 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetStringValues(sec.Name, lf.Name)
+			vals, err := form.GetStringValues(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
 			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetStringValue(sec.Name, lf.Name)
+			val, err := form.GetStringValue(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
@@ -223,13 +223,13 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetFloatValues(sec.Name, lf.Name)
+			vals, err := form.GetFloatValues(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
 			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetFloatValue(sec.Name, lf.Name)
+			val, err := form.GetFloatValue(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
@@ -239,7 +239,7 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 	return false
 }
 
-func parseListOptValue(lf sdkapi.FormListField, opt sdkapi.FormListOption) (val string) {
+func parseListOptValue(lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) (val string) {
 	switch lf.Type {
 	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)

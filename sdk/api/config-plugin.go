@@ -6,10 +6,20 @@
 
 package sdkapi
 
-type IPluginCfgApi interface {
-	// Write a value to the plugin configuration file identified by key.
-	Write(key string, value []byte) error
+import "os"
 
-	// Read a value from the plugin configuration file identified by key.
-	Read(key string) ([]byte, error)
+type IPluginCfgApi interface {
+	// Write a value to the plugin configuration file.
+	Write(path string, value []byte) error
+
+	// Read a value from the plugin configuration file.
+	Read(path string) ([]byte, error)
+
+	// List entries inside the path
+	List(path string) ([]*ConfigEntry, error)
+}
+
+type ConfigEntry struct {
+	Entry os.DirEntry
+	Path  string
 }

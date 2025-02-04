@@ -7,13 +7,13 @@
 package sdkapi
 
 const (
-	FormFieldTypeString  string = "string"
-	FormFieldTypeText    string = "text"
-	FormFieldTypeDecimal string = "decimal"
-	FormFieldTypeInteger string = "int"
 	FormFieldTypeBoolean string = "bool"
+	FormFieldTypeDecimal string = "decimal"
+	FormFieldTypeInteger string = "integer"
 	FormFieldTypeList    string = "list"
 	FormFieldTypeMulti   string = "multi"
+	FormFieldTypeString  string = "string"
+	FormFieldTypeText    string = "text"
 )
 
 type IFormField interface {
@@ -23,10 +23,29 @@ type IFormField interface {
 	GetValue() interface{}
 }
 
+type IHttpForm interface {
+	GetSection(section string) (sec IFormSection, ok bool)
+	GetSections() []IFormSection
+
+	GetStringValue(section string, name string) (string, error)
+	GetStringValues(section string, name string) ([]string, error)
+
+	GetIntValue(section string, name string) (int64, error)
+	GetIntValues(section string, name string) ([]int64, error)
+
+	GetFloatValue(section string, name string) (float64, error)
+	GetFloatValues(section string, name string) ([]float64, error)
+
+	GetBoolValue(section string, name string) (bool, error)
+	GetBoolValues(section string, name string) ([]bool, error)
+
+	GetMultiField(section string, name string) (IFormMultiField, error)
+}
+
 type HttpForm struct {
 	CallbackRoute string
-	Sections      []FormSection
 	SubmitLabel   string
+	Sections      []FormSection
 }
 
 type FormSection struct {

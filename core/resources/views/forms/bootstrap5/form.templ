@@ -9,8 +9,8 @@ templ HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTe
 	<form id="form" method="POST" action={ templ.SafeURL(submitUrl) }>
 		@templ.Raw(csrfTag)
 		for _, sec := range form.GetSections() {
-			<legend>{ sec.Label }</legend>
-			for _, fld := range sec.Fields {
+			<legend>{ sec.GetLabel() }</legend>
+			for _, fld := range sec.GetFields() {
 				<div class="mt-1">
 					switch fld.GetType() {
 						case sdkapi.FormFieldTypeString:

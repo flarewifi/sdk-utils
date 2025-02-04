@@ -9,16 +9,16 @@ import (
 	"reflect"
 )
 
-templ ListInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) {
+templ ListInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	{{ lf, ok := fld.(sdkapi.FormListField) }}
 	if ok {
 		@listOptionFields(form, sec, lf)
 	} else {
-		<span>{ fmt.Sprintf("list field %s in section %s is not a list field", fld.GetName(), sec.Name) }</span>
+		<span>{ fmt.Sprintf("list field %s in section %s is not a list field", fld.GetName(), sec.GetName()) }</span>
 	}
 }
 
-templ listOptionFields(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.FormListField) {
+templ listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.FormListField) {
 	<legend>{ lf.Label }</legend>
 	{{
 	var optType string
@@ -33,7 +33,7 @@ templ listOptionFields(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 			<input
 				class="form-check-input"
 				type={ optType }
-				name={ fmt.Sprintf("%s:%s", sec.Name, lf.Name) }
+				name={ fmt.Sprintf("%s:%s", sec.GetName(), lf.Name) }
 				value={ parseListOptValue(lf, opt) }
 				checked?={ isListOptSelected(form, sec, lf, opt) }
 			/>
@@ -44,7 +44,7 @@ templ listOptionFields(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 	}
 }
 
-func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.FormListField, opt sdkapi.FormListOption) bool {
+func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) bool {
 	switch lf.Type {
 	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)
@@ -53,13 +53,13 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetStringValues(sec.Name, lf.Name)
+			vals, err := form.GetStringValues(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
 			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetStringValue(sec.Name, lf.Name)
+			val, err := form.GetStringValue(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
@@ -83,13 +83,13 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetFloatValues(sec.Name, lf.Name)
+			vals, err := form.GetFloatValues(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
 			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetFloatValue(sec.Name, lf.Name)
+			val, err := form.GetFloatValue(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
@@ -99,7 +99,7 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.FormSection, lf sdkapi.
 	return false
 }
 
-func parseListOptValue(lf sdkapi.FormListField, opt sdkapi.FormListOption) (val string) {
+func parseListOptValue(lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) (val string) {
 	switch lf.Type {
 	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)

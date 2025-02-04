@@ -78,7 +78,7 @@ func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, host
 	}
 
 	clnt := NewClientDevice(reg.db, reg.mdls, dev)
-	changed := ip != dev.IpAddress() || hostname != dev.Hostname()
+	changed := ip != dev.IpAddr() || hostname != dev.Hostname()
 
 	// Update device details if need be
 	if changed {

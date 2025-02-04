@@ -1,7 +1,7 @@
 
 # Creating a Plugin
 
-## The `create-plugin` command
+## Using `create-plugin` command {#create-plugin}
 
 To create a new plugin, open a terminal and navigate inside the devkit directory.
 
@@ -15,16 +15,35 @@ If you are using Linux/Mac/WSL, type:
 ./scripts/flare.sh create-plugin
 ```
 
-Follow the instructions in the command prompt and enter the necessary details for your plugin. Below are the needed details for your plugin:
+Follow the instructions in the command prompt and enter any necessary details for your plugin. Below are the required details for your plugin:
 
-Package Name
-: This is the primary identifier of your plugin. It should be unique and follow reverse domain naming convention, e.g `com.mydomain.myplugin`. The package name should be in lowercase and should not contain any special characters or spaces except period, underscore and hyphen (`.`, `_`, `-`).
+### Package Name
 
-Plugin Name
-: This is the name of your plugin, e.g. "System Monitor".
+This is the primary identifier for your plugin. It must be unique and follow reverse domain naming conventions, such as `com.mydomain.myplugin`. The package name should be entirely lowercase and can only include periods, underscores, or hyphens (`.` `_` `-`).
 
-Description
-: This is a brief description of your plugin. It should describe the purpose of your plugin.
+### Plugin Name
+
+This is the official name of your plugin, for example: "System Monitor".
+
+### Description
+
+Please provide a concise description of your plugin. This should briefly explain its purpose.
+
+---
+
+## Cloning an existing plugin {#cloning-plugin}
+
+If you need to develop an existing plugin, open a terminal and navigate to `plugins/local` folder inside the devkit directory. Then clone the plugin:
+
+```sh title="Terminal"
+cd [devkit-root]/plugins/local
+# Replace the URL with the URL of the plugin you want to clone
+git clone https://github.com/flarehotspot/com.flarego.sample
+```
+
+Now you can start developing your plugin.
+
+---
 
 ## The main.go file
 
@@ -53,6 +72,8 @@ func Init(api sdkapi.PluginApi) {
 
 !!! note
     The `api` variable is an instance of the [IPluginApi](../api/plugin-api.md), the root API of the Flare Hotspot SDK. Throughout the documentation, when you see the variable `api`, it refers to [IPluginApi](../api/plugin-api.md).
+
+---
 
 ## Troubleshooting
 

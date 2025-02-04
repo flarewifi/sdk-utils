@@ -57,9 +57,9 @@ func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTex
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(sec.Label)
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(sec.GetLabel())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 12, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 12, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -69,7 +69,7 @@ func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTex
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, fld := range sec.Fields {
+			for _, fld := range sec.GetFields() {
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"mt-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

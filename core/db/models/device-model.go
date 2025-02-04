@@ -40,8 +40,8 @@ func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, host
 		db:        self.db,
 		models:    self.models,
 		id:        d.ID,
-		macAddr:   d.MacAddress,
-		ipAddr:    d.IpAddress,
+		mac:       d.MacAddress,
+		ip:        d.IpAddress,
 		hostname:  d.Hostname.String,
 		createdAt: d.CreatedAt.Time,
 	}
@@ -59,8 +59,8 @@ func (self *DeviceModel) Find(ctx context.Context, id pgtype.UUID) (*Device, err
 	}
 
 	device.id = d.ID
-	device.macAddr = d.MacAddress
-	device.ipAddr = d.IpAddress
+	device.mac = d.MacAddress
+	device.ip = d.IpAddress
 	device.hostname = d.Hostname.String
 	device.createdAt = d.CreatedAt.Time
 
@@ -78,8 +78,8 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 	}
 
 	device.id = d.ID
-	device.macAddr = d.MacAddress
-	device.ipAddr = d.IpAddress
+	device.mac = d.MacAddress
+	device.ip = d.IpAddress
 	device.hostname = d.Hostname.String
 	device.createdAt = d.CreatedAt.Time
 

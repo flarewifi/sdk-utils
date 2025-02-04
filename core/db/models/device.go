@@ -7,8 +7,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,8 +16,8 @@ type Device struct {
 	db        *db.Database
 	models    *Models
 	id        pgtype.UUID
-	macAddr   string
-	ipAddr    string
+	ip        string
+	mac       string
 	hostname  string
 	createdAt time.Time
 }
@@ -29,8 +29,8 @@ func NewDevice(d *db.Database, m *Models) *Device {
 func BuildDevice(id pgtype.UUID, mac string, ip string, hostname string) *Device {
 	return &Device{
 		id:       id,
-		macAddr:  mac,
-		ipAddr:   ip,
+		ip:       mac,
+		mac:      ip,
 		hostname: hostname,
 	}
 }
@@ -43,12 +43,12 @@ func (self *Device) Hostname() string {
 	return self.hostname
 }
 
-func (self *Device) IpAddress() string {
-	return self.ipAddr
+func (self *Device) IpAddr() string {
+	return self.mac
 }
 
-func (self *Device) MacAddress() string {
-	return self.macAddr
+func (self *Device) MacAddr() string {
+	return self.ip
 }
 
 func (self *Device) Reload(ctx context.Context) error {
@@ -57,8 +57,8 @@ func (self *Device) Reload(ctx context.Context) error {
 		log.Printf("error finding device with id %v: %v", self.id, err)
 	}
 	self.hostname = dRow.Hostname.String
-	self.ipAddr = dRow.IpAddress
-	self.macAddr = dRow.MacAddress
+	self.mac = dRow.IpAddress
+	self.ip = dRow.MacAddress
 
 	return nil
 }
@@ -76,8 +76,8 @@ func (self *Device) Update(ctx context.Context, mac string, ip string, hostname 
 	}
 
 	self.hostname = hostname
-	self.macAddr = mac
-	self.ipAddr = ip
+	self.ip = mac
+	self.mac = ip
 
 	return nil
 }
@@ -92,7 +92,7 @@ func (self *Device) Wallet(ctx context.Context) (*Wallet, error) {
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = pg.NumericToFloat64(w.Balance)
+	wallet.balance = sdkutils.PgNumericToFloat64(w.Balance)
 	wallet.createdAt = w.CreatedAt.Time
 
 	return wallet, nil
@@ -115,9 +115,9 @@ func (self *Device) NextSession(ctx context.Context) (*Session, error) {
 		deviceId:    sRow.DeviceID,
 		sessionType: uint8(sRow.SessionType),
 		timeSecs:    uint(sRow.TimeSecs.Int32),
-		dataMb:      pg.NumericToFloat64(sRow.DataMbytes),
+		dataMb:      sdkutils.PgNumericToFloat64(sRow.DataMbytes),
 		timeCons:    uint(sRow.ConsumptionSecs.Int32),
-		dataCons:    pg.NumericToFloat64(sRow.ConsumptionMb),
+		dataCons:    sdkutils.PgNumericToFloat64(sRow.ConsumptionMb),
 		startedAt:   &sRow.StartedAt.Time,
 		expDays:     expDays,
 		// TODO: find out the proper calculation of this field
@@ -151,9 +151,9 @@ func (self *Device) Sessions(ctx context.Context) ([]*Session, error) {
 			deviceId:    s.DeviceID,
 			sessionType: uint8(s.SessionType),
 			timeSecs:    uint(s.TimeSecs.Int32),
-			dataMb:      pg.NumericToFloat64(s.DataMbytes),
+			dataMb:      sdkutils.PgNumericToFloat64(s.DataMbytes),
 			timeCons:    uint(s.ConsumptionSecs.Int32),
-			dataCons:    pg.NumericToFloat64(s.ConsumptionMb),
+			dataCons:    sdkutils.PgNumericToFloat64(s.ConsumptionMb),
 			startedAt:   &s.StartedAt.Time,
 			expDays:     &expDays,
 			// TODO: find out the proper calculation of this field
@@ -173,8 +173,8 @@ func (self *Device) Clone() *Device {
 		db:       self.db,
 		models:   self.models,
 		id:       self.id,
-		macAddr:  self.macAddr,
-		ipAddr:   self.ipAddr,
+		ip:       self.ip,
+		mac:      self.mac,
 		hostname: self.hostname,
 	}
 }

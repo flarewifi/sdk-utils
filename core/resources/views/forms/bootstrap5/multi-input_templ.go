@@ -13,7 +13,7 @@ import (
 	sdkapi "sdk/api"
 )
 
-func MultiInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) templ.Component {
+func MultiInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -51,7 +51,7 @@ func MultiInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.I
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		mfval, err := form.GetMultiField(sec.Name, fld.GetName())
+		mfval, err := form.GetMultiField(sec.GetName(), fld.GetName())
 		if err != nil {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<p>")
 			if templ_7745c5c3_Err != nil {
@@ -150,7 +150,7 @@ func MultiInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.I
 	})
 }
 
-func multiFieldRow(sec sdkapi.FormSection, mfld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int) templ.Component {
+func multiFieldRow(sec sdkapi.IFormSection, mfld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -189,7 +189,7 @@ func multiFieldRow(sec sdkapi.FormSection, mfld sdkapi.FormMultiField, mfval sdk
 	})
 }
 
-func multiFieldCol(sec sdkapi.FormSection, fld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int, col sdkapi.FormMultiFieldCol) templ.Component {
+func multiFieldCol(sec sdkapi.IFormSection, fld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int, col sdkapi.FormMultiFieldCol) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -556,8 +556,8 @@ func multiFieldCol(sec sdkapi.FormSection, fld sdkapi.FormMultiField, mfval sdka
 	})
 }
 
-func mfColName(sec sdkapi.FormSection, fld sdkapi.IFormField, col sdkapi.FormMultiFieldCol) string {
-	return sec.Name + ":" + fld.GetName() + ":" + col.Name
+func mfColName(sec sdkapi.IFormSection, fld sdkapi.IFormField, col sdkapi.FormMultiFieldCol) string {
+	return sec.GetName() + ":" + fld.GetName() + ":" + col.Name
 }
 
 var _ = templruntime.GeneratedTemplate

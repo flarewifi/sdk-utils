@@ -7,8 +7,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -35,7 +35,7 @@ func NewWalletModel(dtb *db.Database, mdls *Models) *WalletModel {
 func (self *WalletModel) CreateTx(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, bal float64) (*Wallet, error) {
 	wId, err := self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
 		DeviceID: devId,
-		Balance:  pg.Float64ToNumeric(bal),
+		Balance:  sdkutils.PgFloat64ToNumeric(bal),
 	})
 	if err != nil {
 		log.Println("error creating wallet:", err)
@@ -55,7 +55,7 @@ func (self *WalletModel) Find(ctx context.Context, id pgtype.UUID) (*Wallet, err
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = pg.NumericToFloat64(w.Balance)
+	wallet.balance = sdkutils.PgNumericToFloat64(w.Balance)
 	wallet.createdAt = w.CreatedAt.Time
 
 	return wallet, nil
@@ -63,7 +63,7 @@ func (self *WalletModel) Find(ctx context.Context, id pgtype.UUID) (*Wallet, err
 
 func (self *WalletModel) Update(ctx context.Context, id pgtype.UUID, bal float64) error {
 	err := self.db.Queries.UpdateWallet(ctx, queries.UpdateWalletParams{
-		Balance: pg.Float64ToNumeric(bal),
+		Balance: sdkutils.PgFloat64ToNumeric(bal),
 		ID:      id,
 	})
 	if err != nil {
@@ -86,7 +86,7 @@ func (self *WalletModel) findByDevice(ctx context.Context, devId pgtype.UUID) (*
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = pg.NumericToFloat64(w.Balance)
+	wallet.balance = sdkutils.PgNumericToFloat64(w.Balance)
 	wallet.createdAt = w.CreatedAt.Time
 
 	return wallet, nil

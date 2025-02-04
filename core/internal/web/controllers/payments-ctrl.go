@@ -2,25 +2,28 @@ package controllers
 
 import (
 	"net/http"
+	sdkapi "sdk/api"
 
 	"core/internal/plugins"
+	paymentsview "core/resources/views/portal/payments"
 )
 
 func PaymentOptionsCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// res := g.CoreAPI.HttpAPI.VueResponse()
-		// clnt, err := helpers.CurrentClient(g.ClientRegister, r)
-		// if err != nil {
-		// 	res.SendFlashMsg(w, "error", err.Error(), http.StatusInternalServerError)
-		// 	return
-		// }
+		res := g.CoreAPI.HttpAPI.HttpResponse()
+		result := g.PaymentsMgr.AllOptions(r)
+		opts := make([]paymentsview.PaymentOption, len(result))
 
-		// methods := map[string]string{}
-		// for _, opt := range g.PaymentsMgr.Options(clnt) {
-		// 	methods[opt.Opt.OptName] = opt.VueRoutePath
-		// }
+		for i, opt := range result {
+			opts[i] = paymentsview.PaymentOption{
+				Name: opt.Name(),
+				URL:  opt.URL(),
+			}
+		}
 
-		// res.Json(w, methods, http.StatusOK)
-
+		paymentsPage := paymentsview.PaymentOptions(opts)
+		res.PortalView(w, r, sdkapi.ViewPage{
+			PageContent: paymentsPage,
+		})
 	}
 }

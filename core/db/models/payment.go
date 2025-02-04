@@ -7,8 +7,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -51,7 +51,7 @@ func (self *Payment) CreatedAt() time.Time {
 
 func (self *Payment) Update(ctx context.Context, amt float64) error {
 	err := self.db.Queries.UpdatePayment(ctx, queries.UpdatePaymentParams{
-		Amount: pg.Float64ToNumeric(amt),
+		Amount: sdkutils.PgFloat64ToNumeric(amt),
 		ID:     self.id,
 	})
 	if err != nil {

@@ -7,8 +7,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -26,7 +26,7 @@ func (self *SessionModel) Create(ctx context.Context, devId pgtype.UUID, t uint8
 		DeviceID:    devId,
 		SessionType: int16(t),
 		TimeSecs:    pgtype.Int4{Int32: int32(timeSecs)},
-		DataMbytes:  pg.Float64ToNumeric(dataMbytes),
+		DataMbytes:  sdkutils.PgFloat64ToNumeric(dataMbytes),
 		ExpDays:     pgtype.Int4{Int32: int32(*exp)},
 		DownMbits:   int32(downMbit),
 		UpMbits:     int32(upMbit),
@@ -53,9 +53,9 @@ func (self *SessionModel) Find(ctx context.Context, id pgtype.UUID) (*Session, e
 	session.id = sRow.ID
 	session.deviceId = sRow.DeviceID
 	session.timeSecs = uint(sRow.TimeSecs.Int32)
-	session.dataMb = pg.NumericToFloat64(sRow.DataMbytes)
+	session.dataMb = sdkutils.PgNumericToFloat64(sRow.DataMbytes)
 	session.timeCons = uint(sRow.ConsumptionSecs.Int32)
-	session.dataCons = pg.NumericToFloat64(sRow.ConsumptionMb)
+	session.dataCons = sdkutils.PgNumericToFloat64(sRow.ConsumptionMb)
 	session.startedAt = &sRow.StartedAt.Time
 	session.expDays = &expDays
 	// TODO: fix proper expiry calculation
@@ -74,9 +74,9 @@ func (self *SessionModel) Update(ctx context.Context, id pgtype.UUID, devId pgty
 		DeviceID:        devId,
 		SessionType:     int16(t),
 		TimeSecs:        pgtype.Int4{Int32: int32(timeSecs)},
-		DataMbytes:      pg.Float64ToNumeric(dataMbytes),
+		DataMbytes:      sdkutils.PgFloat64ToNumeric(dataMbytes),
 		ConsumptionSecs: pgtype.Int4{Int32: int32(timeCons)},
-		ConsumptionMb:   pg.Float64ToNumeric(dataCons),
+		ConsumptionMb:   sdkutils.PgFloat64ToNumeric(dataCons),
 		StartedAt:       pgtype.Timestamp{Time: *started},
 		ExpDays:         pgtype.Int4{Int32: int32(*exp)},
 		DownMbits:       int32(downMbit),
@@ -107,9 +107,9 @@ func (self *SessionModel) AvlForDev(ctx context.Context, devId pgtype.UUID) (*Se
 	session.deviceId = sRow.DeviceID
 	session.sessionType = uint8(sRow.SessionType)
 	session.timeSecs = uint(sRow.TimeSecs.Int32)
-	session.dataMb = pg.NumericToFloat64(sRow.DataMbytes)
+	session.dataMb = sdkutils.PgNumericToFloat64(sRow.DataMbytes)
 	session.timeCons = uint(sRow.ConsumptionSecs.Int32)
-	session.dataCons = pg.NumericToFloat64(sRow.ConsumptionMb)
+	session.dataCons = sdkutils.PgNumericToFloat64(sRow.ConsumptionMb)
 	session.startedAt = &sRow.StartedAt.Time
 	session.expDays = &expDays
 	// TODO: proper calculation for expiry date
@@ -143,9 +143,9 @@ func (self *SessionModel) SessionsForDev(ctx context.Context, devId pgtype.UUID)
 			deviceId:    s.DeviceID,
 			sessionType: uint8(s.SessionType),
 			timeSecs:    uint(s.TimeSecs.Int32),
-			dataMb:      pg.NumericToFloat64(s.DataMbytes),
+			dataMb:      sdkutils.PgNumericToFloat64(s.DataMbytes),
 			timeCons:    uint(s.ConsumptionSecs.Int32),
-			dataCons:    pg.NumericToFloat64(s.ConsumptionMb),
+			dataCons:    sdkutils.PgNumericToFloat64(s.ConsumptionMb),
 			startedAt:   &s.StartedAt.Time,
 			expDays:     &expDays,
 			// TODO: calculate properly the expiry date

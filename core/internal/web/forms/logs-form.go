@@ -33,15 +33,15 @@ func RegisterLogsForm(g *plugins.CoreGlobals) error {
 							Name:  "package",
 							Label: "Package",
 							Type:  sdkapi.FormFieldTypeString,
-							Options: func() []sdkapi.FormListOption {
-								opts := []sdkapi.FormListOption{
+							Options: func() []sdkapi.FormListFieldOption {
+								opts := []sdkapi.FormListFieldOption{
 									{Label: "All", Value: ""},
 								}
 
 								pkgs := g.PluginMgr.All()
 								for _, pkg := range pkgs {
 									info := pkg.Info()
-									opt := sdkapi.FormListOption{
+									opt := sdkapi.FormListFieldOption{
 										Label: info.Package,
 										Value: info.Package,
 									}
@@ -57,8 +57,8 @@ func RegisterLogsForm(g *plugins.CoreGlobals) error {
 							Name:  "level",
 							Label: "Level",
 							Type:  sdkapi.FormFieldTypeString,
-							Options: func() []sdkapi.FormListOption {
-								return []sdkapi.FormListOption{
+							Options: func() []sdkapi.FormListFieldOption {
+								return []sdkapi.FormListFieldOption{
 									{Label: "All", Value: ""},
 									{Label: "Info", Value: plugins.LogLevelInfo},
 									{Label: "Debug", Value: plugins.LogLevelDebug},

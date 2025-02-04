@@ -24,7 +24,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 			return sdkapi.ViewPage{PageContent: page}
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalIndexData) sdkapi.ViewPage {
-			page := portal.PortalIndexPage()
+			page := portal.PortalIndexPage(data.Navs)
 			return sdkapi.ViewPage{PageContent: page}
 		},
 	})

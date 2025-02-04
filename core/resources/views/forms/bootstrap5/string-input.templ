@@ -12,7 +12,7 @@ type StringInputFieldAttrs struct {
 	Error error
 }
 
-templ StringInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) {
+templ StringInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	{{ attrs := getStringInputFieldAttrs(form, sec, fld) }}
 	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
 	<input type="text" class="form-control" id={ attrs.Name } name={ attrs.Name } value={ attrs.Value }/>
@@ -21,9 +21,9 @@ templ StringInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi
 	}
 }
 
-func getStringInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) (attrs StringInputFieldAttrs) {
-	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+func getStringInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs StringInputFieldAttrs) {
+	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
 	attrs.Label = fld.GetLabel()
-	attrs.Value, attrs.Error = form.GetStringValue(sec.Name, fld.GetName())
+	attrs.Value, attrs.Error = form.GetStringValue(sec.GetName(), fld.GetName())
 	return
 }

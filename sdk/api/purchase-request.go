@@ -6,13 +6,58 @@
 
 package sdkapi
 
+import "net/http"
+
+type PurchaseState struct {
+	TotalPayment    float64 `json:"total_payment"`
+	WalletDebit     float64 `json:"wallet_debit"`
+	WalletEndingBal float64 `json:"wallet_ending_bal"`
+	WalletRealBal   float64 `json:"wallet_real_bal"`
+}
+
 // PurchaseRequest represents a purchase to be made by the customer.
 type PurchaseRequest struct {
-	Sku                 string
-	Name                string
-	Description         string
-	Price               float64
-	AnyPrice            bool
-	CallbackRoute       string
-	CallbackRouteParams map[string]string
+	Sku           string
+	Name          string
+	Description   string
+	Price         float64
+	AnyPrice      bool
+	CallbackRoute string
+	Metadata      map[string]string
+}
+
+// IPurchaseRequest represents a record in purchases table in the database.
+type IPurchaseRequest interface {
+
+	// Returns the name of the purchase item.
+	Name() string
+
+	// Returns the price
+	Price() float64
+
+	// Returns true if the purchase request has a fixed price.
+	IsFixedPrice() bool
+
+	// Create a payment for the purchase.
+	CreatePayment(amount float64, optname string) error
+
+	// Pay using the customers wallet.
+	// The amount will be debitted from the wallet once the purchase request has been confirmed.
+	PayWithWallet(amount float64) error
+
+	// Returns the state of the purchase.
+	// The state includes the total accumulated payment for the purchase and other important details.
+	State() (PurchaseState, error)
+
+	// Executes the payment for the purchase.
+	// This will redirect the user to the callback URL of purchase request.
+	Execute(w http.ResponseWriter)
+
+	// Confirm the purchase.
+	// This must be executed in the purchase callback handler.
+	Confirm() error
+
+	// Cancel the purchase.
+	// This must be executed in the purchase callback handler.
+	Cancel() error
 }

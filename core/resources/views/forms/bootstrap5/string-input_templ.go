@@ -20,7 +20,7 @@ type StringInputFieldAttrs struct {
 	Error error
 }
 
-func StringInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) templ.Component {
+func StringInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -134,10 +134,10 @@ func StringInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.
 	})
 }
 
-func getStringInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) (attrs StringInputFieldAttrs) {
-	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+func getStringInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs StringInputFieldAttrs) {
+	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
 	attrs.Label = fld.GetLabel()
-	attrs.Value, attrs.Error = form.GetStringValue(sec.Name, fld.GetName())
+	attrs.Value, attrs.Error = form.GetStringValue(sec.GetName(), fld.GetName())
 	return
 }
 

@@ -1,5 +1,15 @@
 package portal
 
-templ PortalIndexPage() {
-	<h1>Portal Index</h1>
+import "sdk/api"
+
+templ PortalIndexPage(navs []sdkapi.PortalNavItem) {
+	<ul>
+		for _, nav := range navs {
+            <li>
+                <a href={ templ.SafeURL(nav.RouteUrl) }>
+                    { nav.Label }
+                </a>
+            </li>
+		}
+	</ul>
 }

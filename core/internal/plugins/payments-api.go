@@ -46,6 +46,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 			p.AnyPrice,
 			self.api.Info().Package,
 			p.CallbackRoute,
+			p.Metadata,
 		)
 		if err != nil {
 			log.Println("self.api.models.Purchase().Create error:", err)
@@ -54,29 +55,32 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 		}
 
 		coreApi := self.api.CoreAPI
-		coreApi.HttpAPI.HttpResponse().Redirect(w, r, "payments:customer:options")
+		coreApi.HttpAPI.HttpResponse().Redirect(w, r, "payments:options")
 	}
 
 	purMw := self.api.HttpAPI.middlewares.PendingPurchase()
 	purMw(http.HandlerFunc(handler)).ServeHTTP(w, r)
 }
 
-func (self *PaymentsApi) GetPendingPurchase(r *http.Request) (sdkapi.IPurchase, error) {
+func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRequest, error) {
 	mdls := self.api.models
 	clnt, err := helpers.CurrentClient(self.api.ClntReg, r)
 	if err != nil {
 		log.Println("helpers.CurrentClient error:", err)
 		return nil, err
 	}
+
 	p, err := mdls.Purchase().PendingPurchase(r.Context(), clnt.Id())
 	if err != nil {
 		log.Println("mdls.Purchase().FindByDeviceId error:", err)
 		return nil, err
 	}
+
 	if p.IsCancelled() || p.IsConfirmed() {
 		log.Println("Purchase is already processed")
 		return nil, errors.New("Purchase is already processed")
 	}
+
 	purchase := NewPurchase(self.api, r.Context(), clnt.Id(), p)
 	return purchase, nil
 }

@@ -15,10 +15,10 @@ type PaymentProvider struct {
 	provider sdkapi.IPaymentProvider
 }
 
-func (self *PaymentProvider) IProvider() sdkapi.IPaymentProvider {
+func (self *PaymentProvider) GetProvider() sdkapi.IPaymentProvider {
 	return self.provider
 }
 
-func (self *PaymentProvider) PaymentOpts(r *http.Request) []sdkapi.PaymentOption {
-	return self.provider.PaymentOpts(r)
+func (self *PaymentProvider) GetOptions(r *http.Request) []sdkapi.PaymentOption {
+	return self.provider.OptionsFactory(r)
 }

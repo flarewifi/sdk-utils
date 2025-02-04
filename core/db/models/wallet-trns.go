@@ -7,8 +7,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -58,8 +58,8 @@ func (self *WalletTrns) CreatedAt() time.Time {
 func (self *WalletTrns) UpdateTx(tx pgx.Tx, ctx context.Context, walletId pgtype.UUID, amount float64, newbal float64, desc string) error {
 	err := self.db.Queries.UpdateWalletTrns(ctx, queries.UpdateWalletTrnsParams{
 		WalletID:    walletId,
-		Amount:      pg.Float64ToNumeric(amount),
-		NewBalance:  pg.Float64ToNumeric(newbal),
+		Amount:      sdkutils.PgFloat64ToNumeric(amount),
+		NewBalance:  sdkutils.PgFloat64ToNumeric(newbal),
 		Description: pgtype.Text{String: desc},
 		ID:          self.id,
 	})

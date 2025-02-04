@@ -8,8 +8,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	// sdkpayments "sdk/api/payments"
@@ -23,24 +23,24 @@ func NewPurchase(dtb *db.Database, mdls *Models) *Purchase {
 }
 
 type Purchase struct {
-	db                  *db.Database
-	models              *Models
-	id                  pgtype.UUID
-	deviceId            pgtype.UUID
-	sku                 string
-	name                string
-	description         string
-	price               float64
-	anyPrice            bool
-	callbackPluginPkg   string
-	callbackRoute       string
-	callbackRouteParams map[string]string
-	walletDebit         float64
-	walletTxId          *pgtype.UUID
-	confirmedAt         *time.Time
-	cancelledAt         *time.Time
-	cancelledReason     *string
-	createdAt           time.Time
+	db                *db.Database
+	models            *Models
+	id                pgtype.UUID
+	deviceId          pgtype.UUID
+	sku               string
+	name              string
+	description       string
+	price             float64
+	anyPrice          bool
+	callbackPluginPkg string
+	callbackRoute     string
+	metadata          map[string]string
+	walletDebit       float64
+	walletTxId        *pgtype.UUID
+	confirmedAt       *time.Time
+	cancelledAt       *time.Time
+	cancelledReason   *string
+	createdAt         time.Time
 }
 
 func (self *Purchase) Id() pgtype.UUID {
@@ -281,7 +281,7 @@ func (self *Purchase) TotalPayment(ctx context.Context) (float64, error) {
 
 func (self *Purchase) Update(ctx context.Context, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
 	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
-		WalletDebit:     pg.Float64ToNumeric(dbt),
+		WalletDebit:     sdkutils.PgFloat64ToNumeric(dbt),
 		WalletTxID:      *txid,
 		CancelledAt:     pgtype.Timestamp{Time: *cancelledAt},
 		ConfirmedAt:     pgtype.Timestamp{Time: *confirmedAt},
