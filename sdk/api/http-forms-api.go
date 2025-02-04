@@ -17,24 +17,3 @@ type IHttpFormsApi interface {
 	GetFormTemplate(name string, r *http.Request) (templ.Component, error)
 	ParseForm(name string, r *http.Request) (IHttpForm, error)
 }
-
-type IHttpForm interface {
-	GetSections() []FormSection
-
-	GetStringValue(section string, name string) (string, error)
-	GetStringValues(section string, name string) ([]string, error)
-
-	GetTextValue(section string, name string) (string, error)
-	GetTextValues(section string, name string) ([]string, error)
-
-	GetIntValue(section string, name string) (int64, error)
-	GetIntValues(section string, name string) ([]int64, error)
-
-	GetFloatValue(section string, name string) (float64, error)
-	GetFloatValues(section string, name string) ([]float64, error)
-
-	GetBoolValue(section string, name string) (bool, error)
-	GetBoolValues(section string, name string) ([]bool, error)
-
-	GetMultiField(section string, name string) (IFormMultiField, error)
-}

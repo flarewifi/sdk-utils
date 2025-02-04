@@ -40,11 +40,11 @@ func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 			}
 			return cfg.PortalThemePkg
 		},
-		Options: func() []sdkapi.FormListOption {
-			opts := []sdkapi.FormListOption{}
+		Options: func() []sdkapi.FormListFieldOption {
+			opts := []sdkapi.FormListFieldOption{}
 			for _, p := range portalThemes {
 				info := p.Info()
-				opts = append(opts, sdkapi.FormListOption{
+				opts = append(opts, sdkapi.FormListFieldOption{
 					Label: info.Name,
 					Value: info.Package,
 				})
@@ -64,28 +64,16 @@ func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 			}
 			return cfg.AdminThemePkg
 		},
-		Options: func() []sdkapi.FormListOption {
-			opts := []sdkapi.FormListOption{}
+		Options: func() []sdkapi.FormListFieldOption {
+			opts := []sdkapi.FormListFieldOption{}
 			for _, p := range adminThemes {
 				info := p.Info()
-				opts = append(opts, sdkapi.FormListOption{
+				opts = append(opts, sdkapi.FormListFieldOption{
 					Label: info.Name,
 					Value: info.Package,
 				})
 			}
 			return opts
-		},
-	}
-
-	textField := sdkapi.FormTextField{
-		Name:  "text_field",
-		Label: "Text Field",
-		ValueFn: func() string {
-			val, err := g.CoreAPI.ConfigAPI.Plugin().Read("text_field")
-			if err != nil {
-				return err.Error()
-			}
-			return string(val)
 		},
 	}
 
@@ -98,7 +86,6 @@ func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
 				Fields: []sdkapi.IFormField{
 					portalThemesField,
 					adminThemesField,
-					textField,
 				},
 			},
 		},

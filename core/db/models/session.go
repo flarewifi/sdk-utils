@@ -7,8 +7,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -131,9 +131,9 @@ func (self *Session) Update(ctx context.Context, devId pgtype.UUID, t uint8, sec
 		DeviceID:        devId,
 		SessionType:     int16(t),
 		TimeSecs:        pgtype.Int4{Int32: int32(secs)},
-		DataMbytes:      pg.Float64ToNumeric(mb),
+		DataMbytes:      sdkutils.PgFloat64ToNumeric(mb),
 		ConsumptionSecs: pgtype.Int4{Int32: int32(timecon)},
-		ConsumptionMb:   pg.Float64ToNumeric(datacon),
+		ConsumptionMb:   sdkutils.PgFloat64ToNumeric(datacon),
 		StartedAt:       pgtype.Timestamp{Time: *started},
 		ExpDays:         pgtype.Int4{Int32: int32(*exp)},
 		DownMbits:       int32(downMbit),

@@ -5,9 +5,9 @@ import (
 	sdkapi "sdk/api"
 )
 
-templ MultiInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) {
+templ MultiInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	<legend>{ fld.GetLabel() }</legend>
-	{{ mfval, err := form.GetMultiField(sec.Name, fld.GetName()) }}
+	{{ mfval, err := form.GetMultiField(sec.GetName(), fld.GetName()) }}
 	if err != nil {
 		<p>{ fmt.Sprintf("unable to get multi-field value: %s", err.Error()) }</p>
 		{{ return }}
@@ -37,7 +37,7 @@ templ MultiInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.
 	</div>
 }
 
-templ multiFieldRow(sec sdkapi.FormSection, mfld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int) {
+templ multiFieldRow(sec sdkapi.IFormSection, mfld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int) {
 	<template x-if="!row.deleted">
 		<div class="row mb-2">
 			for _, col := range mfld.Columns() {
@@ -57,7 +57,7 @@ templ multiFieldRow(sec sdkapi.FormSection, mfld sdkapi.FormMultiField, mfval sd
 	</template>
 }
 
-templ multiFieldCol(sec sdkapi.FormSection, fld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int, col sdkapi.FormMultiFieldCol) {
+templ multiFieldCol(sec sdkapi.IFormSection, fld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int, col sdkapi.FormMultiFieldCol) {
 	<div class="col">
 		{{ colName := mfColName(sec, fld, col) }}
 		switch col.Type {
@@ -118,6 +118,6 @@ templ multiFieldCol(sec sdkapi.FormSection, fld sdkapi.FormMultiField, mfval sdk
 	</div>
 }
 
-func mfColName(sec sdkapi.FormSection, fld sdkapi.IFormField, col sdkapi.FormMultiFieldCol) string {
-	return sec.Name + ":" + fld.GetName() + ":" + col.Name
+func mfColName(sec sdkapi.IFormSection, fld sdkapi.IFormField, col sdkapi.FormMultiFieldCol) string {
+	return sec.GetName() + ":" + fld.GetName() + ":" + col.Name
 }

@@ -6,8 +6,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -23,7 +23,7 @@ func NewPaymentModel(dtb *db.Database, mdls *Models) *PaymentModel {
 func (self *PaymentModel) Create(ctx context.Context, purid pgtype.UUID, amt float64, mtd string) (*Payment, error) {
 	pId, err := self.db.Queries.CreatePayment(ctx, queries.CreatePaymentParams{
 		PurchaseID: purid,
-		Amount:     pg.Float64ToNumeric(amt),
+		Amount:     sdkutils.PgFloat64ToNumeric(amt),
 		Optname:    mtd,
 	})
 	if err != nil {
@@ -40,7 +40,7 @@ func (self *PaymentModel) Create(ctx context.Context, purid pgtype.UUID, amt flo
 	payment := NewPayment(self.db, self.models)
 	payment.id = p.ID
 	payment.purchaseId = p.PurchaseID
-	payment.amount = pg.NumericToFloat64(p.Amount)
+	payment.amount = sdkutils.PgNumericToFloat64(p.Amount)
 	payment.optname = p.Optname
 	payment.createdAt = p.CreatedAt.Time
 
@@ -57,7 +57,7 @@ func (self *PaymentModel) Find(ctx context.Context, id pgtype.UUID) (*Payment, e
 	payment := NewPayment(self.db, self.models)
 	payment.id = p.ID
 	payment.purchaseId = p.PurchaseID
-	payment.amount = pg.NumericToFloat64(p.Amount)
+	payment.amount = sdkutils.PgNumericToFloat64(p.Amount)
 	payment.optname = p.Optname
 	payment.createdAt = p.CreatedAt.Time
 
@@ -78,7 +78,7 @@ func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId pgtype.UU
 		nP := NewPayment(self.db, self.models)
 		nP.id = p.ID
 		nP.purchaseId = p.PurchaseID
-		nP.amount = pg.NumericToFloat64(p.Amount)
+		nP.amount = sdkutils.PgNumericToFloat64(p.Amount)
 		nP.optname = p.Optname
 		nP.createdAt = p.CreatedAt.Time
 		payments = append(payments, nP)
@@ -89,7 +89,7 @@ func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId pgtype.UU
 
 func (self *PaymentModel) Update(ctx context.Context, id pgtype.UUID, amt float64, dbt *float64, txid *int64) error {
 	err := self.db.Queries.UpdatePayment(ctx, queries.UpdatePaymentParams{
-		Amount: pg.Float64ToNumeric(amt),
+		Amount: sdkutils.PgFloat64ToNumeric(amt),
 		ID:     id,
 	})
 	if err != nil {

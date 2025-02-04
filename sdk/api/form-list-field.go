@@ -6,7 +6,7 @@
 
 package sdkapi
 
-type FormListOption struct {
+type FormListFieldOption struct {
 	Label string
 	Value interface{}
 }
@@ -16,7 +16,7 @@ type FormListField struct {
 	Label    string
 	Type     string
 	Multiple bool
-	Options  func() []FormListOption
+	Options  func() []FormListFieldOption
 	ValueFn  func() interface{}
 }
 

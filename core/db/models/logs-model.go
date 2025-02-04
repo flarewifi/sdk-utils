@@ -58,14 +58,21 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 		SearchText: opts.SearchText,
 	}
 
-	fmt.Printf("Logs filter opts: %+v\n", searchOpts)
-
-	result, err := self.db.Queries.SearchLogs(ctx, searchOpts)
+	tx, err := self.db.SqlDB().Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	count, err := self.db.Queries.SearchCount(ctx, queries.SearchCountParams{
+	qtx := self.db.Queries.WithTx(tx)
+
+	fmt.Printf("Logs filter opts: %+v\n", searchOpts)
+
+	result, err := qtx.SearchLogs(ctx, searchOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := qtx.SearchCount(ctx, queries.SearchCountParams{
 		Package:    opts.Package,
 		Level:      opts.Level,
 		SearchText: opts.SearchText,
@@ -85,6 +92,10 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 			CreatedAt: row.CreatedAt.Time,
 		}
 		logs[i] = &log
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return &PaginateResult{

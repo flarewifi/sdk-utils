@@ -13,24 +13,25 @@ type PaymentsMgr struct {
 	providers []*PaymentProvider
 }
 
-func (self *PaymentsMgr) Options(r *http.Request) []PaymentOption {
-	opts := []PaymentOption{}
+func (self *PaymentsMgr) AllOptions(r *http.Request) []*PaymentOption {
+	opts := []*PaymentOption{}
 	for _, prvdr := range self.providers {
-		for _, opt := range prvdr.PaymentOpts(r) {
+		for _, opt := range prvdr.GetOptions(r) {
 			opts = append(opts, NewPaymentOpt(prvdr.api, opt))
 		}
 	}
+
 	return opts
 }
 
-func (self *PaymentsMgr) FindByUuid(r *http.Request, uuid string) (PaymentOption, bool) {
-	methods := self.Options(r)
-	for _, opt := range methods {
-		if opt.UUID == uuid {
+func (self *PaymentsMgr) FindOption(r *http.Request, uuid string) (*PaymentOption, bool) {
+	options := self.AllOptions(r)
+	for _, opt := range options {
+		if opt.UUID() == uuid {
 			return opt, true
 		}
 	}
-	return PaymentOption{}, false
+	return nil, false
 }
 
 func (self *PaymentsMgr) NewPaymentProvider(api sdkapi.IPluginApi, provider sdkapi.IPaymentProvider) {

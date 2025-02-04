@@ -6,8 +6,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
-	"core/internal/utils/pg"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -23,8 +23,8 @@ func NewWalletTrnsModel(dtb *db.Database, mdls *Models) *WalletTrnsModel {
 func (self *WalletTrnsModel) Create(ctx context.Context, wltId pgtype.UUID, amount float64, newBal float64, desc string) (*WalletTrns, error) {
 	wt, err := self.db.Queries.CreateWalletTrns(ctx, queries.CreateWalletTrnsParams{
 		WalletID:    wltId,
-		Amount:      pg.Float64ToNumeric(amount),
-		NewBalance:  pg.Float64ToNumeric(newBal),
+		Amount:      sdkutils.PgFloat64ToNumeric(amount),
+		NewBalance:  sdkutils.PgFloat64ToNumeric(newBal),
 		Description: pgtype.Text{String: desc},
 	})
 	if err != nil {
@@ -37,8 +37,8 @@ func (self *WalletTrnsModel) Create(ctx context.Context, wltId pgtype.UUID, amou
 		models:      self.models,
 		id:          wt.ID,
 		walletId:    wt.WalletID,
-		amount:      pg.NumericToFloat64(wt.Amount),
-		newBalance:  pg.NumericToFloat64(wt.NewBalance),
+		amount:      sdkutils.PgNumericToFloat64(wt.Amount),
+		newBalance:  sdkutils.PgNumericToFloat64(wt.NewBalance),
 		description: wt.Description.String,
 		createdAt:   wt.CreatedAt.Time,
 	}, nil
@@ -56,8 +56,8 @@ func (self *WalletTrnsModel) Find(ctx context.Context, id pgtype.UUID) (*WalletT
 		models:      self.models,
 		id:          wt.ID,
 		walletId:    wt.WalletID,
-		amount:      pg.NumericToFloat64(wt.Amount),
-		newBalance:  pg.NumericToFloat64(wt.NewBalance),
+		amount:      sdkutils.PgNumericToFloat64(wt.Amount),
+		newBalance:  sdkutils.PgNumericToFloat64(wt.NewBalance),
 		description: wt.Description.String,
 		createdAt:   wt.CreatedAt.Time,
 	}, nil

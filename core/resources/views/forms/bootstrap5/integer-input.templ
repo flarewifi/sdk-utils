@@ -12,7 +12,7 @@ type IntegerInputFieldAttrs struct {
 	Error error
 }
 
-templ IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) {
+templ IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	{{ attrs := getIntegerInputFieldAttrs(form, sec, fld) }}
 	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
 	<input type="number" class="form-control" id={ attrs.Name } name={ attrs.Name } value={ attrs.Value }/>
@@ -21,11 +21,11 @@ templ IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkap
 	}
 }
 
-func getIntegerInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) (attrs IntegerInputFieldAttrs) {
+func getIntegerInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs IntegerInputFieldAttrs) {
 	attrs.Label = fld.GetLabel()
-	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
 	var val int64
-	val, attrs.Error = form.GetIntValue(sec.Name, fld.GetName())
+	val, attrs.Error = form.GetIntValue(sec.GetName(), fld.GetName())
 	if attrs.Error != nil {
 		return
 	}

@@ -41,6 +41,23 @@ func (self *HttpFormInstance) GetTemplate(r *http.Request) templ.Component {
 	return formsview.HtmlForm(self, csrfTag, submitUrl, submitText)
 }
 
+func (self *HttpFormInstance) GetSection(section string) (sdkapi.IFormSection, bool) {
+	for _, s := range self.form.Sections {
+		if s.Name == section {
+			return NewFormSection(self, s), true
+		}
+	}
+	return nil, false
+}
+
+func (self *HttpFormInstance) GetSections() []sdkapi.IFormSection {
+	sections := make([]sdkapi.IFormSection, len(self.form.Sections))
+	for _, s := range self.form.Sections {
+		sections = append(sections, NewFormSection(self, s))
+	}
+	return sections
+}
+
 func (self *HttpFormInstance) ParseForm(r *http.Request) (err error) {
 	if err := r.ParseForm(); err != nil {
 		return err
@@ -111,10 +128,6 @@ func (self *HttpFormInstance) ParseForm(r *http.Request) (err error) {
 	return nil
 }
 
-func (self *HttpFormInstance) GetSections() []sdkapi.FormSection {
-	return self.form.Sections
-}
-
 func (self *HttpFormInstance) GetStringValue(section string, field string) (val string, err error) {
 	v, err := self.getFieldValue(section, field)
 	if err != nil {
@@ -139,14 +152,6 @@ func (self *HttpFormInstance) GetStringValues(section string, field string) (val
 	}
 
 	return val, nil
-}
-
-func (self *HttpFormInstance) GetTextValue(section string, field string) (val string, err error) {
-	return self.GetStringValue(section, field)
-}
-
-func (self *HttpFormInstance) GetTextValues(section string, field string) (val []string, err error) {
-	return self.GetStringValues(section, field)
 }
 
 func (self *HttpFormInstance) GetIntValue(section string, field string) (val int64, err error) {

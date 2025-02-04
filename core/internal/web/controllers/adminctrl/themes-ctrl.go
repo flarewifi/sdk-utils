@@ -1,7 +1,6 @@
 package adminctrl
 
 import (
-	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
 
@@ -51,20 +50,6 @@ func SaveThemeSettings(g *plugins.CoreGlobals) http.HandlerFunc {
 			PortalThemePkg: portalTheme,
 		})
 		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		// Extra for testing
-		val, err := httpForm.GetTextValue("themes", "text_field")
-		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Println("text_field: ", val)
-
-		if err := g.CoreAPI.ConfigAPI.Plugin().Write("text_field", []byte(val)); err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}

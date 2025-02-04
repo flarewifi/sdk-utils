@@ -13,7 +13,7 @@ type TextInputFieldAttrs struct {
 	Error error
 }
 
-templ TextInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) {
+templ TextInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	{{ attrs := getTextInputFieldAttrs(form, sec, fld) }}
 	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
     <textarea class="form-control" rows="3" id={ sdkutils.Slugify(attrs.Name, "_") } name={ attrs.Name }>{ attrs.Value }</textarea>
@@ -22,9 +22,9 @@ templ TextInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.I
 	}
 }
 
-func getTextInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) (attrs TextInputFieldAttrs) {
-	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+func getTextInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs TextInputFieldAttrs) {
+	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
 	attrs.Label = fld.GetLabel()
-	attrs.Value, attrs.Error = form.GetTextValue(sec.Name, fld.GetName())
+	attrs.Value, attrs.Error = form.GetStringValue(sec.GetName(), fld.GetName())
 	return
 }

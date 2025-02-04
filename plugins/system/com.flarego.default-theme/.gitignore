@@ -3,4 +3,3 @@
 /resources/assets/dist
 *.so
 main_mono.go
-*_templ.go

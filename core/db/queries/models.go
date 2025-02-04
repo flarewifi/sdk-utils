@@ -35,22 +35,22 @@ type Payment struct {
 }
 
 type Purchase struct {
-	ID                  pgtype.UUID
-	DeviceID            pgtype.UUID
-	Sku                 string
-	Name                string
-	Description         pgtype.Text
-	Price               pgtype.Numeric
-	AnyPrice            bool
-	CallbackPlugin      string
-	CallbackRoute       pgtype.Text
-	CallbackRouteParams []byte
-	WalletDebit         pgtype.Numeric
-	WalletTxID          pgtype.UUID
-	ConfirmedAt         pgtype.Timestamp
-	CancelledAt         pgtype.Timestamp
-	CancelledReason     pgtype.Text
-	CreatedAt           pgtype.Timestamp
+	ID              pgtype.UUID
+	DeviceID        pgtype.UUID
+	Sku             string
+	Name            string
+	Description     pgtype.Text
+	Price           pgtype.Numeric
+	AnyPrice        bool
+	CallbackPlugin  string
+	CallbackRoute   string
+	Metadata        []byte
+	WalletDebit     pgtype.Numeric
+	WalletTxID      pgtype.UUID
+	ConfirmedAt     pgtype.Timestamp
+	CancelledAt     pgtype.Timestamp
+	CancelledReason pgtype.Text
+	CreatedAt       pgtype.Timestamp
 }
 
 type Session struct {

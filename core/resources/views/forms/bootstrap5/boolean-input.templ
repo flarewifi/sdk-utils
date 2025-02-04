@@ -12,7 +12,7 @@ type BooleanInputFieldAttrs struct {
 	Error   error
 }
 
-templ BooleanInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) {
+templ BooleanInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	{{ attrs := getBooleanInputFieldAttrs(form, sec, fld) }}
 	<div class="form-check">
 		<input class="form-check-input" type="checkbox" value="true" name={ attrs.Name } checked?={ attrs.Checked }/>
@@ -25,11 +25,11 @@ templ BooleanInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkap
 	}
 }
 
-func getBooleanInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) (attrs BooleanInputFieldAttrs) {
+func getBooleanInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs BooleanInputFieldAttrs) {
 	attrs.Label = fld.GetLabel()
-	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
 	var val bool
-	val, attrs.Error = form.GetBoolValue(sec.Name, fld.GetName())
+	val, attrs.Error = form.GetBoolValue(sec.GetName(), fld.GetName())
 	if attrs.Error != nil {
 		return
 	}

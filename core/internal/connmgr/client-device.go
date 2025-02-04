@@ -28,8 +28,8 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 		db:       dtb,
 		mdls:     mdls,
 		id:       d.Id(),
-		mac:      d.MacAddress(),
-		ip:       d.IpAddress(),
+		mac:      d.MacAddr(),
+		ip:       d.IpAddr(),
 		hostname: d.Hostname(),
 	}
 }

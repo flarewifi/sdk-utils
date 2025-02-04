@@ -31,8 +31,14 @@ func (self *Purchase) Name() string {
 	return self.purchase.Name()
 }
 
-func (self *Purchase) FixedPrice() (float64, bool) {
-	return self.purchase.FixedPrice()
+func (self *Purchase) IsFixedPrice() bool {
+	_, isfixed := self.purchase.FixedPrice()
+	return isfixed
+}
+
+func (self *Purchase) Price() float64 {
+	price, _ := self.purchase.FixedPrice()
+	return price
 }
 
 func (self *Purchase) CreatePayment(amount float64, optname string) error {

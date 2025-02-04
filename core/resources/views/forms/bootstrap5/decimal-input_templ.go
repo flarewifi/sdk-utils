@@ -21,7 +21,7 @@ type DecimalInputFieldAttrs struct {
 	Error error
 }
 
-func DecimalInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) templ.Component {
+func DecimalInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -148,17 +148,17 @@ func DecimalInputField(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi
 	})
 }
 
-func getDecimalInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.FormSection, fld sdkapi.IFormField) (attrs DecimalInputFieldAttrs) {
+func getDecimalInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs DecimalInputFieldAttrs) {
 	attrs.Label = fld.GetLabel()
-	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
 	var val float64
-	val, attrs.Error = form.GetFloatValue(sec.Name, fld.GetName())
+	val, attrs.Error = form.GetFloatValue(sec.GetName(), fld.GetName())
 	if attrs.Error != nil {
 		return
 	}
 	numfield, ok := fld.(sdkapi.FormDecimalField)
 	if !ok {
-		attrs.Error = fmt.Errorf("Field %s in section %s is not a number field", fld.GetName(), sec.Name)
+		attrs.Error = fmt.Errorf("Field %s in section %s is not a number field", fld.GetName(), sec.GetName())
 		return
 	}
 	if numfield.Step == 0.0 {

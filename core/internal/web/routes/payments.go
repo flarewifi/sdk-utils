@@ -2,20 +2,16 @@ package routes
 
 import (
 	"core/internal/plugins"
+	"core/internal/web/controllers"
+	sdkapi "sdk/api"
 )
 
 func PaymentRoutes(g *plugins.CoreGlobals) {
 
-	// portalR := g.CoreAPI.HttpAPI.HttpRouter().PluginRouter()
-	// vueR := g.CoreAPI.HttpAPI.VueRouter()
+	portalR := g.CoreAPI.HttpAPI.HttpRouter().PluginRouter()
+	paymentsCtrl := controllers.PaymentOptionsCtrl(g)
 
-	// portalR.Group("/payments", func(subrouter sdkhttp.HttpRouterInstance) {
-	// 	subrouter.Get("/options", controllers.PaymentOptionsCtrl(g)).Name("portal:payments:options")
-	// })
-
-	// vueR.RegisterPortalRoutes(sdkhttp.VuePortalRoute{
-	// 	RouteName: "payments:customer:options",
-	// 	RoutePath: "/payments/options",
-	// 	Component: "payments/customer/PaymentOptions.vue",
-	// })
+	portalR.Group("/payments", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/options", paymentsCtrl).Name("payments:options")
+	})
 }
