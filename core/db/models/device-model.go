@@ -40,8 +40,8 @@ func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, host
 		db:        self.db,
 		models:    self.models,
 		id:        d.ID,
-		mac:       d.MacAddress,
-		ip:        d.IpAddress,
+		macaddr:   d.MacAddress,
+		ipaddr:    d.IpAddress,
 		hostname:  d.Hostname.String,
 		createdAt: d.CreatedAt.Time,
 	}
@@ -50,21 +50,20 @@ func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, host
 }
 
 func (self *DeviceModel) Find(ctx context.Context, id pgtype.UUID) (*Device, error) {
-	device := NewDevice(self.db, self.models)
-
 	d, err := self.db.Queries.FindDevice(ctx, id)
 	if err != nil {
 		log.Printf("error finding device %v: %v", id, err)
 		return nil, err
 	}
 
+	device := NewDevice(self.db, self.models)
 	device.id = d.ID
-	device.mac = d.MacAddress
-	device.ip = d.IpAddress
+	device.macaddr = d.MacAddress
+	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname.String
 	device.createdAt = d.CreatedAt.Time
 
-	log.Printf("Found device: %+v", device)
+	// log.Printf("Found device: %+v", device)
 	return device, nil
 }
 
@@ -78,12 +77,12 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 	}
 
 	device.id = d.ID
-	device.mac = d.MacAddress
-	device.ip = d.IpAddress
+	device.macaddr = d.MacAddress
+	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname.String
 	device.createdAt = d.CreatedAt.Time
 
-	log.Printf("Found device: %+v", device)
+	// log.Printf("Found device: %+v", device)
 	return device, nil
 }
 

@@ -1,0 +1,45 @@
+package themes
+
+import "sdk/api"
+
+templ AdminThemeStylesheets(globalCssHref string, themeCssHref string, pageCssHref string) {
+	<link rel="stylesheet" href={ globalCssHref }/>
+	<link rel="stylesheet" href={ themeCssHref }/>
+	<link rel="stylesheet" href={ pageCssHref }/>
+}
+
+templ AdminThemeScripts(globalJsSrc string, themeJsSrc string, pageJsSrc string) {
+	if globalJsSrc != "" {
+		<script src={ globalJsSrc }></script>
+	}
+	if themeJsSrc != "" {
+		<script src={ themeJsSrc }></script>
+	}
+	if pageJsSrc != "" {
+		<script src={ pageJsSrc }></script>
+	}
+}
+
+type AdminLayoutData struct {
+    Assets sdkapi.PageAssets
+    SseURL string
+    Head templ.Component
+    Layout templ.Component
+}
+
+templ AdminThemeLayout(data AdminLayoutData) {
+	<!DOCTYPE html>
+	<html lang="en" data-bs-theme="auto">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>Fixed top navbar example · Bootstrap v5.3</title>
+			@data.Assets.Stylesheets
+			@data.Head
+		</head>
+		<body hx-ext="sse" sse-connect={ data.SseURL }>
+			@data.Layout
+			@data.Assets.Javascripts
+		</body>
+	</html>
+}

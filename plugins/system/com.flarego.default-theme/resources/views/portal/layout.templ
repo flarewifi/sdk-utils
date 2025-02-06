@@ -4,23 +4,11 @@ import (
 	"sdk/api"
 )
 
-templ PortalLayout(data sdkapi.PortalLayoutData) {
-<html>
-    <head>
-        <script src={data.Layout.Assets.GlobalJsSrc}></script>
-        <script src={data.Layout.Assets.ThemeJsSrc}></script>
-        <script src={data.Layout.Assets.PageJsSrc}></script>
-        <link rel="stylesheet" href={data.Layout.Assets.GlobalCssHref}>
-        <link rel="stylesheet" href={data.Layout.Assets.ThemeCssHref}>
-        <link rel="stylesheet" href={data.Layout.Assets.PageCssHref}>
-    </head>
-    <body>
-	<div>
-		<div style="padding: 10px; background: gray;">
-            @data.Layout.PageContent
-		</div>
-	</div>
-    </body>
-</html>
+templ PortalHead() {
 }
 
+templ PortalLayout(data sdkapi.PortalLayoutData) {
+	<div style="padding: 10px; background: gray;">
+		@data.Builder.Content()
+	</div>
+}

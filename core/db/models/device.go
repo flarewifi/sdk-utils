@@ -16,8 +16,8 @@ type Device struct {
 	db        *db.Database
 	models    *Models
 	id        pgtype.UUID
-	ip        string
-	mac       string
+	ipaddr    string
+	macaddr   string
 	hostname  string
 	createdAt time.Time
 }
@@ -29,8 +29,8 @@ func NewDevice(d *db.Database, m *Models) *Device {
 func BuildDevice(id pgtype.UUID, mac string, ip string, hostname string) *Device {
 	return &Device{
 		id:       id,
-		ip:       mac,
-		mac:      ip,
+		ipaddr:   ip,
+		macaddr:  mac,
 		hostname: hostname,
 	}
 }
@@ -44,11 +44,11 @@ func (self *Device) Hostname() string {
 }
 
 func (self *Device) IpAddr() string {
-	return self.mac
+	return self.ipaddr
 }
 
 func (self *Device) MacAddr() string {
-	return self.ip
+	return self.macaddr
 }
 
 func (self *Device) Reload(ctx context.Context) error {
@@ -57,8 +57,8 @@ func (self *Device) Reload(ctx context.Context) error {
 		log.Printf("error finding device with id %v: %v", self.id, err)
 	}
 	self.hostname = dRow.Hostname.String
-	self.mac = dRow.IpAddress
-	self.ip = dRow.MacAddress
+	self.macaddr = dRow.IpAddress
+	self.ipaddr = dRow.MacAddress
 
 	return nil
 }
@@ -76,8 +76,8 @@ func (self *Device) Update(ctx context.Context, mac string, ip string, hostname 
 	}
 
 	self.hostname = hostname
-	self.ip = mac
-	self.mac = ip
+	self.ipaddr = ip
+	self.macaddr = mac
 
 	return nil
 }
@@ -173,8 +173,8 @@ func (self *Device) Clone() *Device {
 		db:       self.db,
 		models:   self.models,
 		id:       self.id,
-		ip:       self.ip,
-		mac:      self.mac,
+		ipaddr:   self.ipaddr,
+		macaddr:  self.macaddr,
 		hostname: self.hostname,
 	}
 }

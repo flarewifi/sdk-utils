@@ -2,34 +2,20 @@ package admin
 
 import "sdk/api"
 
-templ AdminLayout(api sdkapi.IPluginApi, data sdkapi.AdminLayoutData) {
-	<!DOCTYPE html>
-	<html lang="en" data-bs-theme="auto">
-		<head>
-			<meta charset="utf-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>Fixed top navbar example · Bootstrap v5.3</title>
-			<link rel="stylesheet" href={ data.Layout.Assets.GlobalCssHref }/>
-			<link rel="stylesheet" href={ data.Layout.Assets.ThemeCssHref }/>
-			<link rel="stylesheet" href={ data.Layout.Assets.PageCssHref }/>
-		</head>
-		<body>
-			@colorSchemeToggle()
-			@adminNavsTpl(data.Navs)
-			<main class="container">
-				@data.Layout.PageContent
-			</main>
-			if data.Layout.Assets.GlobalJsSrc != "" {
-				<script src={ data.Layout.Assets.GlobalJsSrc }></script>
-			}
-			if data.Layout.Assets.ThemeJsSrc != "" {
-				<script src={ data.Layout.Assets.ThemeJsSrc }></script>
-			}
-			if data.Layout.Assets.PageJsSrc != "" {
-				<script src={ data.Layout.Assets.PageJsSrc }></script>
-			}
-		</body>
-	</html>
+templ AdminHead() {
+}
+
+type AdminLayoutData struct {
+	Navs        []sdkapi.AdminNavList
+	PageContent templ.Component
+}
+
+templ AdminLayout(data AdminLayoutData) {
+	@colorSchemeToggle()
+	@adminNavsTpl(data.Navs)
+	<main class="container">
+		@data.PageContent
+	</main>
 }
 
 templ adminNavsTpl(navs []sdkapi.AdminNavList) {

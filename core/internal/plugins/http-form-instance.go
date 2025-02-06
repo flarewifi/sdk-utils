@@ -52,8 +52,8 @@ func (self *HttpFormInstance) GetSection(section string) (sdkapi.IFormSection, b
 
 func (self *HttpFormInstance) GetSections() []sdkapi.IFormSection {
 	sections := make([]sdkapi.IFormSection, len(self.form.Sections))
-	for _, s := range self.form.Sections {
-		sections = append(sections, NewFormSection(self, s))
+	for i, s := range self.form.Sections {
+		sections[i] = NewFormSection(self, s)
 	}
 	return sections
 }
