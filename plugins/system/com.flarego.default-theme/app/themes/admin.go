@@ -7,7 +7,6 @@ import (
 	sdkapi "sdk/api"
 
 	"com.flarego.default-theme/resources/views/admin"
-	"github.com/a-h/templ"
 )
 
 func SetAdminTheme(api sdkapi.IPluginApi) {
@@ -15,9 +14,14 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
 		CssLib:  sdkapi.CssLibBootstrap5,
-		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.AdminLayoutData) templ.Component {
-			layout := admin.AdminLayout(api, data)
-			return layout
+		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.AdminLayoutData) {
+			head := admin.AdminHead()
+			layout := admin.AdminLayout(admin.AdminLayoutData{
+				Navs:        data.Navs,
+				PageContent: data.Builder.Content(),
+			})
+
+			data.Builder.Render(head, layout)
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
 			page := admin.AdminIndexPage()
@@ -28,9 +32,10 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 	api.Http().Navs().AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
 		return []sdkapi.AdminNavItemOpt{
 			{
-				Label:     "Test",
-				Category:  sdkapi.NavCategorySystem,
-				RouteName: "test",
+				Label:       "Test",
+				Category:    sdkapi.NavCategorySystem,
+				RouteName:   "test",
+				RouteParams: map[string]string{"name": "test"},
 			},
 		}
 	})

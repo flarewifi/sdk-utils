@@ -6,7 +6,6 @@ import (
 
 	"com.flarego.default-theme/resources/views/auth"
 	"com.flarego.default-theme/resources/views/portal"
-	"github.com/a-h/templ"
 )
 
 func SetPortalTheme(api sdkapi.IPluginApi) {
@@ -14,9 +13,10 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
-		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalLayoutData) templ.Component {
+		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalLayoutData) {
+			head := portal.PortalHead()
 			layout := portal.PortalLayout(data)
-			return layout
+			data.Builder.Render(head, layout)
 		},
 		LoginPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.LoginPageData) sdkapi.ViewPage {
 			csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)

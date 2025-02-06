@@ -92,7 +92,7 @@ func (bp *BootProgress) AddSocket(s *sse.SseSocket) {
 }
 
 func (bp *BootProgress) emit() {
-	data := BootProgData{bp.logs, bp.done.Load()}
+	data := "BootProgData{bp.logs, bp.done.Load()}"
 
 	for _, s := range bp.sockets {
 		err := s.Emit("boot:progress", data)

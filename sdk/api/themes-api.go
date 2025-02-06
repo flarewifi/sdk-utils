@@ -30,28 +30,21 @@ type FlashMsg struct {
 	Message string
 }
 
-type PageAssets struct {
-	GlobalJsSrc   string
-	GlobalCssHref string
-	ThemeJsSrc    string
-	ThemeCssHref  string
-	PageJsSrc     string
-	PageCssHref   string
-}
-
-type LayoutData struct {
-	Assets      PageAssets
-	FlashMsg    FlashMsg
-	PageContent templ.Component
+type ILayoutBuilder interface {
+	FlashMsg() FlashMsg
+	Content() templ.Component
+	Render(head, layout templ.Component)
 }
 
 type AdminLayoutData struct {
-	Layout LayoutData
-	Navs   []AdminNavList
+	Api     IPluginApi
+	Navs    []AdminNavList
+	Builder ILayoutBuilder
 }
 
 type PortalLayoutData struct {
-	Layout LayoutData
+	Api     IPluginApi
+	Builder ILayoutBuilder
 }
 
 type LoginPageData struct {
@@ -68,7 +61,7 @@ type AdminThemeOpts struct {
 	JsFile           string
 	CssFile          string
 	CssLib           AdminCssLib
-	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data AdminLayoutData) templ.Component
+	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data AdminLayoutData)
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
 }
 
@@ -76,7 +69,7 @@ type PortalThemeOpts struct {
 	JsFile           string
 	CssFile          string
 	CssLib           PortalCssLib
-	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data PortalLayoutData) templ.Component
+	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data PortalLayoutData)
 	LoginPageFactory func(w http.ResponseWriter, r *http.Request, data LoginPageData) ViewPage
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request, data PortalIndexData) ViewPage
 }

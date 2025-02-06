@@ -137,9 +137,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 
 		go self.loopSessions(clnt)
 
-		data := map[string]interface{}{"message": notify}
-
-		clnt.Emit(EVENT_CONNECTED, data)
+		clnt.Emit(EVENT_CONNECTED, notify)
 		errCh <- nil
 	}()
 
@@ -152,8 +150,7 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 		return err
 	}
 
-	data := map[string]interface{}{"message": notify}
-	clnt.Emit(EVENT_DISCONNECTED, data)
+	clnt.Emit(EVENT_DISCONNECTED, notify)
 	return nil
 }
 

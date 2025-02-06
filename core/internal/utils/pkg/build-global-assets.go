@@ -112,7 +112,7 @@ func compileGlobalJsAssets(jsfiles []string, target api.Target) (resultFile stri
 	result := EsbuildJs(indexFile, outfile, target)
 
 	if len(result.Errors) > 0 {
-		err = fmt.Errorf("failed to compile global js file: %v", result.Errors)
+		err = fmt.Errorf("%s: %v", outfile, result.Errors)
 		return
 	}
 

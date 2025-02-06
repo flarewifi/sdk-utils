@@ -1,0 +1,48 @@
+package themes
+
+type AdminAssets struct {
+	GlobalCssHref string
+	GlobalJsSrc   string
+	ThemeCssHref  string
+	ThemeJsSrc    string
+	PageCssHref   string
+	PageJsSrc     string
+}
+
+type AdminLayoutData struct {
+	Assets AdminAssets
+	SseURL string
+	Head   templ.Component
+	Layout templ.Component
+}
+
+templ AdminThemeLayout(data AdminLayoutData) {
+	<!DOCTYPE html>
+	<html lang="en" data-bs-theme="auto">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>Fixed top navbar example · Bootstrap v5.3</title>
+			<!-- Theme Stylesheets -->
+			<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>
+			<link rel="stylesheet" href={ data.Assets.ThemeCssHref }/>
+			<link rel="stylesheet" href={ data.Assets.PageCssHref }/>
+			<!-- Theme Head -->
+			@data.Head
+		</head>
+		<body hx-ext="sse" sse-connect={ data.SseURL }>
+			<!-- Theme Layout -->
+			@data.Layout
+			<!-- Theme Scripts -->
+			if data.Assets.GlobalJsSrc != "" {
+				<script src={ data.Assets.GlobalJsSrc }></script>
+			}
+			if data.Assets.ThemeJsSrc != "" {
+				<script src={ data.Assets.ThemeJsSrc }></script>
+			}
+			if data.Assets.PageJsSrc != "" {
+				<script src={ data.Assets.PageJsSrc }></script>
+			}
+		</body>
+	</html>
+}

@@ -1,8 +1,5 @@
 'use strict'
 
-// Alpine is not a commonjs module
-require('../../lib/vendor/alpinejs-v3.14.3.js');
-
 var htmx = require('../../lib/vendor/htmx-v1.9.12.js')
 window.htmx = htmx;
 

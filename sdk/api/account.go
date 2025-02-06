@@ -32,7 +32,7 @@ type IAccount interface {
 
 	// Emit events to the browser for this account.
 	// Events will be propagated to the client's browser via server-sent events.
-	Emit(event string, data interface{})
+	Emit(event string, data string)
 
 	// Subscribe to events for this account.
 	Subscribe(event string) <-chan []byte

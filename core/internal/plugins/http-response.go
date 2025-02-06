@@ -2,11 +2,14 @@ package plugins
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
 
 	"core/resources/views"
+	"core/resources/views/themes"
 
+	"github.com/a-h/templ"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
@@ -27,21 +30,36 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 		return
 	}
 
+	sseURL := self.api.HttpAPI.Helpers().UrlForRoute("admin:sse")
 	navs := self.api.HttpAPI.navsApi.GetAdminNavs(r)
 	assets := self.api.Utl.GetAdminAssetsForPage(v)
-	data := sdkapi.AdminLayoutData{
-		Layout: sdkapi.LayoutData{
-			Assets:      assets,
-			PageContent: v.PageContent,
+
+	layoutBuilder := &ThemesLayoutBuilder{
+		FlashMessage: sdkapi.FlashMsg{},
+		PageContent:  v.PageContent,
+		ContentWrapper: func(head, layout templ.Component) {
+			data := themes.AdminLayoutData{
+				Assets: assets,
+				SseURL: sseURL,
+				Head:   head,
+				Layout: layout,
+			}
+
+			page := themes.AdminThemeLayout(data)
+			if err := page.Render(r.Context(), w); err != nil {
+				fmt.Fprintf(w, "<p>TemplateError: %s</p>", err.Error())
+			}
 		},
-		Navs: navs,
+	}
+
+	data := sdkapi.AdminLayoutData{
+		Api:     self.api,
+		Builder: layoutBuilder,
+		Navs:    navs,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	page := themeApi.AdminTheme.LayoutFactory(w, r, data)
-	if err := page.Render(r.Context(), w); err != nil {
-		w.Write([]byte("\n\nTemplate Error:" + err.Error()))
-	}
+	themeApi.AdminTheme.LayoutFactory(w, r, data)
 }
 
 func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
@@ -51,19 +69,34 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		return
 	}
 
+	sseURL := self.api.HttpAPI.Helpers().UrlForRoute("portal:sse")
 	assets := self.api.Utl.GetPortalAssetsForPage(v)
-	data := sdkapi.PortalLayoutData{
-		Layout: sdkapi.LayoutData{
-			Assets:      assets,
-			PageContent: v.PageContent,
+
+	layoutBuilder := &ThemesLayoutBuilder{
+		FlashMessage: sdkapi.FlashMsg{},
+		PageContent:  v.PageContent,
+		ContentWrapper: func(head, layout templ.Component) {
+			data := themes.PortalLayoutData{
+				Assets: assets,
+				SseURL: sseURL,
+				Head:   head,
+				Layout: layout,
+			}
+
+			page := themes.PortalThemeLayout(data)
+			if err := page.Render(r.Context(), w); err != nil {
+				fmt.Fprintf(w, "<p>TemplateError: %s</p>", err.Error())
+			}
 		},
 	}
 
-	w.Header().Set("Content-Type", "text/html")
-	page := themeApi.PortalTheme.LayoutFactory(w, r, data)
-	if err := page.Render(r.Context(), w); err != nil {
-		w.Write([]byte("\n\nTemplate Error:" + err.Error()))
+	data := sdkapi.PortalLayoutData{
+		Api:     self.api,
+		Builder: layoutBuilder,
 	}
+
+	w.Header().Set("Content-Type", "text/html")
+	themeApi.PortalTheme.LayoutFactory(w, r, data)
 }
 
 func (self *HttpResponse) View(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
