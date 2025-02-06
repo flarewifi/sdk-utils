@@ -57,8 +57,8 @@ func (self *Device) Reload(ctx context.Context) error {
 		log.Printf("error finding device with id %v: %v", self.id, err)
 	}
 	self.hostname = dRow.Hostname.String
-	self.mac = dRow.IpAddress
-	self.ip = dRow.MacAddress
+	self.mac = dRow.MacAddress
+	self.ip = dRow.IpAddress
 
 	return nil
 }
