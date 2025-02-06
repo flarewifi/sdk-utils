@@ -59,7 +59,7 @@ func (self *PluginUtils) Resource(path string) string {
 	return filepath.Join(self.api.dir, "resources", path)
 }
 
-func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets sdkapi.PageAssets) {
+func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets themes.AdminAssets) {
 
 	var themeJsSrc, themeCssHref string
 	_, themesApi, err := self.api.PluginsMgrApi.GetAdminTheme()
@@ -87,13 +87,17 @@ func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets sdkapi
 		pageCssHref = self.api.HttpAPI.Helpers().AssetPath(cssFile)
 	}
 
-	assets.Stylesheets = themes.AdminThemeStylesheets(globalCssHref, themeCssHref, pageCssHref)
-	assets.Javascripts = themes.AdminThemeScripts(globalJsSrc, themeJsSrc, pageJsSrc)
-
-	return
+	return themes.AdminAssets{
+		GlobalCssHref: globalCssHref,
+		ThemeCssHref:  themeCssHref,
+		PageCssHref:   pageCssHref,
+		GlobalJsSrc:   globalJsSrc,
+		ThemeJsSrc:    themeJsSrc,
+		PageJsSrc:     pageJsSrc,
+	}
 }
 
-func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets sdkapi.PageAssets) {
+func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets themes.PortalAssets) {
 	var themeJsSrc, themeCssHref string
 	_, themesApi, err := self.api.PluginsMgrApi.GetPortalTheme()
 	if err != nil {
@@ -120,8 +124,12 @@ func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets sdkap
 		pageCssHref = self.api.HttpAPI.Helpers().AssetPath(cssFile)
 	}
 
-	assets.Stylesheets = themes.PortalThemeStylesheets(globalCssHref, themeCssHref, pageCssHref)
-	assets.Javascripts = themes.PortalThemeJavascripts(globalJsSrc, themeJsSrc, pageJsSrc)
-
-	return
+	return themes.PortalAssets{
+		GlobalCssHref: globalCssHref,
+		ThemeCssHref:  themeCssHref,
+		PageCssHref:   pageCssHref,
+		GlobalJsSrc:   globalJsSrc,
+		ThemeJsSrc:    themeJsSrc,
+		PageJsSrc:     pageJsSrc,
+	}
 }
