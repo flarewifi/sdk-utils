@@ -34,11 +34,11 @@ Now you can browse the portal at [http://localhost:3000](http://localhost:3000)
 
 The admin dashboard can be accessed at [http://localhost:3000/admin](http://localhost:3000/admin)
 
-The database can be managed at [http://localhost:8081](http://localhost:3001)
+The database can be managed at [http://localhost:3001](http://localhost:3001)
 
 # Documentation
 
-To view the documentation locally, visit [http://localhost:8000](http://localhost:3002).
+To view the documentation locally, visit [http://localhost:3002](http://localhost:3002).
 
 To build the documentation to be uploaded to the docs website:
 
