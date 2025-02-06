@@ -30,11 +30,6 @@ type FlashMsg struct {
 	Message string
 }
 
-type PageAssets struct {
-	Stylesheets templ.Component
-	Javascripts templ.Component
-}
-
 type ILayoutBuilder interface {
 	FlashMsg() FlashMsg
 	Content() templ.Component
