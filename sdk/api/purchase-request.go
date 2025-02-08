@@ -51,7 +51,7 @@ type IPurchaseRequest interface {
 
 	// Executes the payment for the purchase.
 	// This will redirect the user to the callback URL of purchase request.
-	Execute(w http.ResponseWriter)
+	Execute(w http.ResponseWriter, r *http.Request)
 
 	// Confirm the purchase.
 	// This must be executed in the purchase callback handler.

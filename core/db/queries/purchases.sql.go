@@ -22,7 +22,7 @@ type CreatePurchaseParams struct {
 	DeviceID       pgtype.UUID
 	Sku            string
 	Name           string
-	Description    pgtype.Text
+	Description    string
 	Price          pgtype.Numeric
 	AnyPrice       bool
 	CallbackPlugin string
@@ -169,7 +169,7 @@ type UpdatePurchaseParams struct {
 	WalletTxID      pgtype.UUID
 	CancelledAt     pgtype.Timestamp
 	ConfirmedAt     pgtype.Timestamp
-	CancelledReason pgtype.Text
+	CancelledReason string
 	ID              pgtype.UUID
 }
 

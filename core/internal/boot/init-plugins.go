@@ -7,14 +7,14 @@ import (
 	"log"
 	"os"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	"core/internal/utils/pkg"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type InstallStatus struct {
-	bp *plugins.BootProgress
+	bp *api.BootProgress
 }
 
 func (is *InstallStatus) Write(p []byte) (n int, err error) {
@@ -23,7 +23,7 @@ func (is *InstallStatus) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func InitPlugins(g *plugins.CoreGlobals) {
+func InitPlugins(g *api.CoreGlobals) {
 	bp := g.BootProgress
 	db := g.CoreAPI.SqlDb()
 	inst := &InstallStatus{bp: bp}
@@ -112,7 +112,7 @@ func InitPlugins(g *plugins.CoreGlobals) {
 			fmt.Println("Plugin not loaded: ", dir)
 			continue
 		} else {
-			p := plugins.NewPluginApi(dir, info, g.PluginMgr, g.TrafficMgr)
+			p := api.NewPluginApi(dir, info, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
 		}
 	}

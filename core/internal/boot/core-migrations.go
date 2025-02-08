@@ -4,13 +4,13 @@ import (
 	"log"
 	"path/filepath"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	"core/internal/utils/migrate"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func RunCoreMigrations(g *plugins.CoreGlobals) {
+func RunCoreMigrations(g *api.CoreGlobals) {
 	db := g.Db.SqlDB()
 
 	err := migrate.Init(db)

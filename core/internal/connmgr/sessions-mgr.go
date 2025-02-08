@@ -287,10 +287,10 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 func (self *SessionsMgr) CreateSession(
 	ctx context.Context,
 	devId pgtype.UUID,
-	t uint8,
-	timeSecs uint,
+	t string,
+	timeSecs int,
 	dataMbytes float64,
-	expDays *uint,
+	expDays *int,
 	downMbits int,
 	upMbits int,
 	useGlobal bool,

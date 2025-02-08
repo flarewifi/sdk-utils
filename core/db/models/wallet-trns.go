@@ -60,7 +60,7 @@ func (self *WalletTrns) UpdateTx(tx pgx.Tx, ctx context.Context, walletId pgtype
 		WalletID:    walletId,
 		Amount:      sdkutils.PgFloat64ToNumeric(amount),
 		NewBalance:  sdkutils.PgFloat64ToNumeric(newbal),
-		Description: pgtype.Text{String: desc},
+		Description: desc,
 		ID:          self.id,
 	})
 	if err != nil {

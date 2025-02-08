@@ -3,14 +3,14 @@
 package main
 
 import (
+	"core/internal/api"
 	"core/internal/boot"
-	"core/internal/plugins"
 )
 
 func main() {}
 
 func Init() {
-	g := plugins.NewGlobals()
+	g := api.NewGlobals()
 	boot.Init(g)
 	defer g.Db.SqlDB().Close()
 }

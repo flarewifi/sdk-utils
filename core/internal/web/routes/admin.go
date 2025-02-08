@@ -1,14 +1,14 @@
 package routes
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/controllers/adminctrl"
 	sdkapi "sdk/api"
 )
 
-func AdminRoutes(g *plugins.CoreGlobals) {
+func AdminRoutes(g *api.CoreGlobals) {
 	authMw := g.CoreAPI.HttpAPI.Middlewares().AdminAuth()
 	rootR := webutil.RootRouter
 	adminR := g.CoreAPI.HttpAPI.HttpRouter().AdminRouter()

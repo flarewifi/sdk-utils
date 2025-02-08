@@ -5,12 +5,12 @@ import (
 	"log"
 	"time"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"core/internal/web"
 )
 
-func InitHttpServer(g *plugins.CoreGlobals) {
+func InitHttpServer(g *api.CoreGlobals) {
 	web.SetupBootRoutes(g)
 	server := web.StartServer(webutil.BootingRouter, false)
 

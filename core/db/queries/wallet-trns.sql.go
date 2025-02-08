@@ -24,7 +24,7 @@ type CreateWalletTrnsParams struct {
 	WalletID    pgtype.UUID
 	Amount      pgtype.Numeric
 	NewBalance  pgtype.Numeric
-	Description pgtype.Text
+	Description string
 }
 
 func (q *Queries) CreateWalletTrns(ctx context.Context, arg CreateWalletTrnsParams) (WalletTransaction, error) {
@@ -92,7 +92,7 @@ type UpdateWalletTrnsParams struct {
 	WalletID    pgtype.UUID
 	Amount      pgtype.Numeric
 	NewBalance  pgtype.Numeric
-	Description pgtype.Text
+	Description string
 	ID          pgtype.UUID
 }
 

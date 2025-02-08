@@ -26,7 +26,7 @@ VALUES
 type CreateDeviceParams struct {
 	MacAddress string
 	IpAddress  string
-	Hostname   pgtype.Text
+	Hostname   string
 }
 
 func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (pgtype.UUID, error) {
@@ -55,7 +55,7 @@ type FindDeviceRow struct {
 	ID         pgtype.UUID
 	MacAddress string
 	IpAddress  string
-	Hostname   pgtype.Text
+	Hostname   string
 	CreatedAt  pgtype.Timestamp
 }
 
@@ -89,7 +89,7 @@ LIMIT
 
 type FindDeviceByMacRow struct {
 	ID         pgtype.UUID
-	Hostname   pgtype.Text
+	Hostname   string
 	IpAddress  string
 	MacAddress string
 	CreatedAt  pgtype.Timestamp
@@ -120,7 +120,7 @@ WHERE
 `
 
 type UpdateDeviceParams struct {
-	Hostname   pgtype.Text
+	Hostname   string
 	IpAddress  string
 	MacAddress string
 	ID         pgtype.UUID

@@ -21,13 +21,19 @@ func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 	return &SessionModel{dtb, mdls}
 }
 
-func (self *SessionModel) Create(ctx context.Context, devId pgtype.UUID, t uint8, timeSecs uint, dataMbytes float64, exp *uint, downMbit int, upMbit int, g bool) (*Session, error) {
+func (self *SessionModel) Create(ctx context.Context, devId pgtype.UUID, t string, timeSecs int, dataMbytes float64, exp *int, downMbit int, upMbit int, g bool) (*Session, error) {
+
+	var expDays pgtype.Int4
+	if exp != nil {
+		expDays = pgtype.Int4{Int32: int32(*exp), Valid: true}
+	}
+
 	sId, err := self.db.Queries.CreateSession(ctx, queries.CreateSessionParams{
 		DeviceID:    devId,
-		SessionType: int16(t),
-		TimeSecs:    pgtype.Int4{Int32: int32(timeSecs)},
+		SessionType: t,
+		TimeSecs:    int32(timeSecs),
 		DataMbytes:  sdkutils.PgFloat64ToNumeric(dataMbytes),
-		ExpDays:     pgtype.Int4{Int32: int32(*exp)},
+		ExpDays:     expDays,
 		DownMbits:   int32(downMbit),
 		UpMbits:     int32(upMbit),
 		UseGlobal:   g,
@@ -46,39 +52,30 @@ func (self *SessionModel) Find(ctx context.Context, id pgtype.UUID) (*Session, e
 		log.Printf("error finding session %v: %v", id, err)
 		return nil, err
 	}
-
-	expDays := uint(sRow.ExpDays.Int32)
-
-	session := NewSession(self.db, self.models)
-	session.id = sRow.ID
-	session.deviceId = sRow.DeviceID
-	session.timeSecs = uint(sRow.TimeSecs.Int32)
-	session.dataMb = sdkutils.PgNumericToFloat64(sRow.DataMbytes)
-	session.timeCons = uint(sRow.ConsumptionSecs.Int32)
-	session.dataCons = sdkutils.PgNumericToFloat64(sRow.ConsumptionMb)
-	session.startedAt = &sRow.StartedAt.Time
-	session.expDays = &expDays
-	// TODO: fix proper expiry calculation
-	// session.expiresAt = sRow.ExpiresAt
-
-	session.downMbits = int(sRow.DownMbits)
-	session.upMbits = int(sRow.UpMbits)
-	session.useGlobal = sRow.UseGlobal
-	session.createdAt = sRow.CreatedAt.Time
-
+	session := NewSession(self.db, self.models, &sRow)
 	return session, nil
 }
 
-func (self *SessionModel) Update(ctx context.Context, id pgtype.UUID, devId pgtype.UUID, t uint8, timeSecs uint, dataMbytes float64, timeCons uint, dataCons float64, started *time.Time, exp *uint, downMbit int, upMbit int, g bool) error {
+func (self *SessionModel) Update(ctx context.Context, id pgtype.UUID, devId pgtype.UUID, t string, timeSecs int, dataMbytes float64, timeCons int, dataCons float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+	var expDays pgtype.Int4
+	if exp != nil {
+		expDays = pgtype.Int4{Int32: int32(*exp), Valid: true}
+	}
+
+	var startedAtTime pgtype.Timestamp
+	if started != nil {
+		startedAtTime = pgtype.Timestamp{Time: *started, Valid: true}
+	}
+
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		DeviceID:        devId,
-		SessionType:     int16(t),
-		TimeSecs:        pgtype.Int4{Int32: int32(timeSecs)},
+		SessionType:     t,
+		TimeSecs:        int32(timeSecs),
 		DataMbytes:      sdkutils.PgFloat64ToNumeric(dataMbytes),
-		ConsumptionSecs: pgtype.Int4{Int32: int32(timeCons)},
+		ConsumptionSecs: int32(timeCons),
 		ConsumptionMb:   sdkutils.PgFloat64ToNumeric(dataCons),
-		StartedAt:       pgtype.Timestamp{Time: *started},
-		ExpDays:         pgtype.Int4{Int32: int32(*exp)},
+		StartedAt:       startedAtTime,
+		ExpDays:         expDays,
 		DownMbits:       int32(downMbit),
 		UpMbits:         int32(upMbit),
 		UseGlobal:       g,
@@ -100,26 +97,7 @@ func (self *SessionModel) AvlForDev(ctx context.Context, devId pgtype.UUID) (*Se
 		return nil, err
 	}
 
-	expDays := uint(sRow.ExpDays.Int32)
-
-	session := NewSession(self.db, self.models)
-	session.id = sRow.ID
-	session.deviceId = sRow.DeviceID
-	session.sessionType = uint8(sRow.SessionType)
-	session.timeSecs = uint(sRow.TimeSecs.Int32)
-	session.dataMb = sdkutils.PgNumericToFloat64(sRow.DataMbytes)
-	session.timeCons = uint(sRow.ConsumptionSecs.Int32)
-	session.dataCons = sdkutils.PgNumericToFloat64(sRow.ConsumptionMb)
-	session.startedAt = &sRow.StartedAt.Time
-	session.expDays = &expDays
-	// TODO: proper calculation for expiry date
-	// session.expiresAt = sRow.ExpiresAt
-
-	session.downMbits = int(sRow.DownMbits)
-	session.upMbits = int(sRow.UpMbits)
-	session.useGlobal = sRow.UseGlobal
-	session.createdAt = sRow.CreatedAt.Time
-
+	session := NewSession(self.db, self.models, &sRow)
 	return session, nil
 }
 
@@ -130,32 +108,10 @@ func (self *SessionModel) SessionsForDev(ctx context.Context, devId pgtype.UUID)
 		return nil, err
 	}
 
-	sessions := []*Session{}
+	sessions := make([]*Session, len(sRows))
 
-	// Parse queried sessions
-	for _, s := range sRows {
-		expDays := uint(s.ExpDays.Int32)
-
-		sessions = append(sessions, &Session{
-			db:          self.db,
-			models:      self.models,
-			id:          s.ID,
-			deviceId:    s.DeviceID,
-			sessionType: uint8(s.SessionType),
-			timeSecs:    uint(s.TimeSecs.Int32),
-			dataMb:      sdkutils.PgNumericToFloat64(s.DataMbytes),
-			timeCons:    uint(s.ConsumptionSecs.Int32),
-			dataCons:    sdkutils.PgNumericToFloat64(s.ConsumptionMb),
-			startedAt:   &s.StartedAt.Time,
-			expDays:     &expDays,
-			// TODO: calculate properly the expiry date
-			// expiresAt   *time.Time
-
-			downMbits: int(s.DownMbits),
-			upMbits:   int(s.UpMbits),
-			useGlobal: s.UseGlobal,
-			createdAt: s.CreatedAt.Time,
-		})
+	for i, s := range sRows {
+		sessions[i] = NewSession(self.db, self.models, &s)
 	}
 
 	return sessions, nil

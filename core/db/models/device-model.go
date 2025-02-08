@@ -7,6 +7,7 @@ import (
 	"core/db"
 	"core/db/queries"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -20,17 +21,25 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 }
 
 func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
-	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
+	tx, err := self.db.SqlDB().Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := self.db.Queries.WithTx(tx)
+
+	dId, err := qtx.CreateDevice(ctx, queries.CreateDeviceParams{
 		MacAddress: mac,
 		IpAddress:  ip,
-		Hostname:   pgtype.Text{String: hostname},
+		Hostname:   hostname,
 	})
 	if err != nil {
 		log.Println("error creating new device:", err)
 		return nil, err
 	}
 
-	d, err := self.db.Queries.FindDevice(ctx, dId)
+	d, err := qtx.FindDevice(ctx, dId)
 	if err != nil {
 		log.Printf("error finding device %v: %v\n", dId, err)
 		return nil, err
@@ -42,8 +51,21 @@ func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, host
 		id:        d.ID,
 		macaddr:   d.MacAddress,
 		ipaddr:    d.IpAddress,
-		hostname:  d.Hostname.String,
+		hostname:  d.Hostname,
 		createdAt: d.CreatedAt.Time,
+	}
+
+	_, err = qtx.CreateWallet(ctx, queries.CreateWalletParams{
+		DeviceID: dId,
+		Balance:  sdkutils.PgFloat64ToNumeric(0),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return dev, nil
@@ -60,7 +82,7 @@ func (self *DeviceModel) Find(ctx context.Context, id pgtype.UUID) (*Device, err
 	device.id = d.ID
 	device.macaddr = d.MacAddress
 	device.ipaddr = d.IpAddress
-	device.hostname = d.Hostname.String
+	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
 
 	// log.Printf("Found device: %+v", device)
@@ -79,7 +101,7 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 	device.id = d.ID
 	device.macaddr = d.MacAddress
 	device.ipaddr = d.IpAddress
-	device.hostname = d.Hostname.String
+	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
 
 	// log.Printf("Found device: %+v", device)
@@ -88,10 +110,10 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 
 func (self *DeviceModel) Update(ctx context.Context, id pgtype.UUID, mac string, ip string, hostname string) error {
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
-		Hostname:   pgtype.Text{String: hostname, Valid: hostname != ""},
-		IpAddress:  ip,
-		MacAddress: mac,
 		ID:         id,
+		MacAddress: mac,
+		IpAddress:  ip,
+		Hostname:   hostname,
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", id, err)

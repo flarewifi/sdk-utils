@@ -9,17 +9,26 @@ package sdkapi
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+const (
+	SessionTypeTime       string = "time"
+	SessionTypeData       string = "data"
+	SessionTypeTimeOrData string = "time-or-data"
 )
 
 type SessionData struct {
+	Id             pgtype.UUID
 	Provider       string
-	Type           uint8
-	TimeSecs       uint
+	Type           string
+	TimeSecs       int
 	DataMb         float64
-	TimeCons       uint
+	TimeCons       int
 	DataCons       float64
 	StartedAt      *time.Time
-	ExpDays        *uint
+	ExpDays        *int
 	DownMbits      int
 	UpMbits        int
 	UseGlobalSpeed bool

@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS devices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ip_address VARCHAR(15) NOT NULL,
-    mac_address CHAR(17) NOT NULL,
-    hostname VARCHAR(64),
+    ip_address VARCHAR(15) NOT NULL DEFAULT '',
+    mac_address CHAR(17) NOT NULL DEFAULT '',
+    hostname VARCHAR(64) NOT NULL DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

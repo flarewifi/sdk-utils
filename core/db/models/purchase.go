@@ -10,16 +10,53 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+	"github.com/goccy/go-json"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	// sdkpayments "sdk/api/payments"
 )
 
-func NewPurchase(dtb *db.Database, mdls *Models) *Purchase {
-	return &Purchase{
+func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase, error) {
+	purchase := &Purchase{
 		db:     dtb,
 		models: mdls,
 	}
+
+	if p != nil {
+		purchase.id = p.ID
+		purchase.deviceId = p.DeviceID
+		purchase.sku = p.Sku
+		purchase.name = p.Name
+		purchase.description = p.Description
+		purchase.price = sdkutils.PgNumericToFloat64(p.Price)
+		purchase.anyPrice = p.AnyPrice
+		purchase.callbackPluginPkg = p.CallbackPlugin
+		purchase.callbackRoute = p.CallbackRoute
+
+		metadata := make(map[string]string)
+		if err := json.Unmarshal(p.Metadata, &metadata); err != nil {
+			return nil, err
+		}
+
+		purchase.metadata = metadata
+		purchase.walletDebit = sdkutils.PgNumericToFloat64(p.WalletDebit)
+		purchase.cancelledReason = &p.CancelledReason
+
+		if p.WalletTxID.Valid {
+			purchase.walletTxId = &p.WalletTxID
+		}
+
+		if p.ConfirmedAt.Valid {
+			purchase.confirmedAt = &p.ConfirmedAt.Time
+		}
+		if p.CancelledAt.Valid {
+			purchase.cancelledAt = &p.CancelledAt.Time
+		}
+		if p.CreatedAt.Valid {
+			purchase.createdAt = p.CreatedAt.Time
+		}
+	}
+
+	return purchase, nil
 }
 
 type Purchase struct {
@@ -99,7 +136,7 @@ func (self *Purchase) CallbackPluginPkg() string {
 	return self.callbackPluginPkg
 }
 
-func (self *Purchase) CallbackVueRouteName() string {
+func (self *Purchase) CallbackRoute() string {
 	return self.callbackRoute
 }
 
@@ -280,12 +317,30 @@ func (self *Purchase) TotalPayment(ctx context.Context) (float64, error) {
 }
 
 func (self *Purchase) Update(ctx context.Context, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
+	var wtxid pgtype.UUID
+	if txid != nil {
+		wtxid = *txid
+	}
+
+	var cancelledTime, confirmedTime pgtype.Timestamp
+	if cancelledAt != nil {
+		cancelledTime = pgtype.Timestamp{Time: *cancelledAt, Valid: true}
+	}
+	if confirmedAt != nil {
+		confirmedTime = pgtype.Timestamp{Time: *confirmedAt, Valid: true}
+	}
+
+	var cancelledReason string
+	if reason != nil {
+		cancelledReason = *reason
+	}
+
 	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
 		WalletDebit:     sdkutils.PgFloat64ToNumeric(dbt),
-		WalletTxID:      *txid,
-		CancelledAt:     pgtype.Timestamp{Time: *cancelledAt},
-		ConfirmedAt:     pgtype.Timestamp{Time: *confirmedAt},
-		CancelledReason: pgtype.Text{String: *reason},
+		WalletTxID:      wtxid,
+		CancelledAt:     cancelledTime,
+		ConfirmedAt:     confirmedTime,
+		CancelledReason: cancelledReason,
 		ID:              self.id,
 	})
 	if err != nil {

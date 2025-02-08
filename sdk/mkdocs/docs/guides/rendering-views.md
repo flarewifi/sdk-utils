@@ -86,3 +86,22 @@ func (w http.ResponseWriter, r *http.Request) {
     })
 }
 ```
+
+## Adding global plugin assets
+
+To add a global assets that is available to all the views in your plugin, you can add the assets to the `global.js` and `global.css` keys in the [portal manifest](../api/assets-manifest.md#portal-manifest) or [admin manifest](../api/assets-manifest.md#admin-manifest) file. For example:
+
+```json title="plugins/com.mydomain.myplugin/resources/assets/manifest.portal.json"
+{
+    "global.js": [
+        "./js/global.js"
+    ],
+    "global.css": [
+        "./css/global.css"
+    ]
+}
+```
+
+In this example, the `global.js` and `global.css` assets will be available to all the portal views in the plugin.
+
+To add global assets to the admin web interface, you should add the assets to the `global.js` and `global.css` keys in the [admin manifest](../api/assets-manifest.md#admin-manifest) file.

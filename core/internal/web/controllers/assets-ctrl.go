@@ -4,15 +4,15 @@ import (
 	"net/http"
 	"os"
 
-	"core/internal/plugins"
+	"core/internal/api"
 )
 
-func NewAssetsCtrl(g *plugins.CoreGlobals) *AssetsCtrl {
+func NewAssetsCtrl(g *api.CoreGlobals) *AssetsCtrl {
 	return &AssetsCtrl{g}
 }
 
 type AssetsCtrl struct {
-	g *plugins.CoreGlobals
+	g *api.CoreGlobals
 }
 
 func (ctrl *AssetsCtrl) GetFavicon(w http.ResponseWriter, r *http.Request) {

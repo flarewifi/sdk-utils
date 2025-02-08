@@ -56,7 +56,7 @@ func (self *Device) Reload(ctx context.Context) error {
 	if err != nil {
 		log.Printf("error finding device with id %v: %v", self.id, err)
 	}
-	self.hostname = dRow.Hostname.String
+	self.hostname = dRow.Hostname
 	self.macaddr = dRow.IpAddress
 	self.ipaddr = dRow.MacAddress
 
@@ -65,7 +65,7 @@ func (self *Device) Reload(ctx context.Context) error {
 
 func (self *Device) Update(ctx context.Context, mac string, ip string, hostname string) error {
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
-		Hostname:   pgtype.Text{String: hostname, Valid: hostname != ""},
+		Hostname:   hostname,
 		IpAddress:  ip,
 		MacAddress: mac,
 		ID:         self.id,
@@ -105,64 +105,21 @@ func (self *Device) NextSession(ctx context.Context) (*Session, error) {
 		return nil, err
 	}
 
-	expDaysUint := uint(sRow.ExpDays.Int32)
-	expDays := &expDaysUint
-
-	session := &Session{
-		db:          self.db,
-		models:      self.models,
-		id:          sRow.ID,
-		deviceId:    sRow.DeviceID,
-		sessionType: uint8(sRow.SessionType),
-		timeSecs:    uint(sRow.TimeSecs.Int32),
-		dataMb:      sdkutils.PgNumericToFloat64(sRow.DataMbytes),
-		timeCons:    uint(sRow.ConsumptionSecs.Int32),
-		dataCons:    sdkutils.PgNumericToFloat64(sRow.ConsumptionMb),
-		startedAt:   &sRow.StartedAt.Time,
-		expDays:     expDays,
-		// TODO: find out the proper calculation of this field
-		// expiresAt:   sRow.ExpiresAt,
-		downMbits: int(sRow.DownMbits),
-		upMbits:   int(sRow.DownMbits),
-		useGlobal: sRow.UseGlobal,
-		createdAt: sRow.CreatedAt.Time,
-	}
-
+	session := NewSession(self.db, self.models, &sRow)
 	return session, nil
 }
 
 func (self *Device) Sessions(ctx context.Context) ([]*Session, error) {
-	var sessions []*Session
-
 	sessionsRow, err := self.db.Queries.FindSessionsForDev(ctx, self.id)
 	if err != nil {
 		log.Printf("error finding sessions for dev %v: %v", self.id, err)
 		return nil, err
 	}
 
+	sessions := make([]*Session, len(sessionsRow))
 	// Parse queried session rows
-	for _, s := range sessionsRow {
-		expDays := uint(s.ExpDays.Int32)
-
-		sessions = append(sessions, &Session{
-			db:          self.db,
-			models:      self.models,
-			id:          s.ID,
-			deviceId:    s.DeviceID,
-			sessionType: uint8(s.SessionType),
-			timeSecs:    uint(s.TimeSecs.Int32),
-			dataMb:      sdkutils.PgNumericToFloat64(s.DataMbytes),
-			timeCons:    uint(s.ConsumptionSecs.Int32),
-			dataCons:    sdkutils.PgNumericToFloat64(s.ConsumptionMb),
-			startedAt:   &s.StartedAt.Time,
-			expDays:     &expDays,
-			// TODO: find out the proper calculation of this field
-			// expiresAt: s.ExpiresAt,
-			downMbits: int(s.DownMbits),
-			upMbits:   int(s.UpMbits),
-			useGlobal: s.UseGlobal,
-			createdAt: s.CreatedAt.Time,
-		})
+	for i, s := range sessionsRow {
+		sessions[i] = NewSession(self.db, self.models, &s)
 	}
 
 	return sessions, nil

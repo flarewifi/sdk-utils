@@ -25,13 +25,13 @@ type LocalSession struct {
 	mdls      *models.Models
 	id        pgtype.UUID
 	devId     pgtype.UUID
-	t         uint8
-	timeSecs  uint
+	t         string
+	timeSecs  int
 	dataMb    float64
-	timeCons  uint
+	timeCons  int
 	dataCons  float64
 	startedAt *time.Time
-	expDays   *uint
+	expDays   *int
 	downMbits int
 	upMbits   int
 	useGlobal bool
@@ -43,6 +43,7 @@ func (self *LocalSession) Data() sdkapi.SessionData {
 	defer self.mu.RUnlock()
 
 	return sdkapi.SessionData{
+		Id:             self.id,
 		Provider:       "local",
 		Type:           self.t,
 		TimeSecs:       self.timeSecs,

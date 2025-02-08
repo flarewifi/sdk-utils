@@ -2,7 +2,7 @@ package adminctrl
 
 import (
 	"core/db/models"
-	"core/internal/plugins"
+	"core/internal/api"
 	logsview "core/resources/views/admin/logs"
 	"core/resources/views/bs5utils"
 	"net/http"
@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-func LogsIndex(g *plugins.CoreGlobals) http.HandlerFunc {
+func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
 		pkg := params.Get("package")
@@ -85,7 +85,7 @@ func LogsIndex(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func LogsPostSearch(g *plugins.CoreGlobals) http.HandlerFunc {
+func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		searchForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm("logs-form", r)
 		if err != nil {

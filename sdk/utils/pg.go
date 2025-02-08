@@ -32,6 +32,14 @@ func PgNumericToFloat64(numeric pgtype.Numeric) float64 {
 		return math.NaN()
 	}
 
+	if numeric.Int == nil {
+		return math.NaN()
+	}
+
+	if !numeric.Valid {
+		return math.NaN()
+	}
+
 	// Convert Int to *big.Float
 	bigFloat := new(big.Float).SetInt(numeric.Int)
 
@@ -49,9 +57,12 @@ func PgNumericToFloat64(numeric pgtype.Numeric) float64 {
 
 func PgFloat64ToNumeric(value float64) pgtype.Numeric {
 	var numeric pgtype.Numeric
-	if err := numeric.Scan(fmt.Sprintf("%f", value)); err != nil {
+
+	if err := numeric.Scan(fmt.Sprintf("%.2f", value)); err != nil {
 		log.Println("Error converting float64 to pgtype.Numeric:", err)
+		numeric.Valid = true
 		return numeric // Return empty numeric if conversion failed.
 	}
+	numeric.Valid = true
 	return numeric
 }

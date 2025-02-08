@@ -3,7 +3,7 @@ package routes
 import (
 	"net/http"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	webutils "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/middlewares"
@@ -11,7 +11,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func AssetsRoutes(g *plugins.CoreGlobals) {
+func AssetsRoutes(g *api.CoreGlobals) {
 	cacheMw := middlewares.CacheResponse(365)
 	assetsCtrl := controllers.NewAssetsCtrl(g)
 
@@ -43,7 +43,7 @@ func AssetsRoutes(g *plugins.CoreGlobals) {
 	webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 }
 
-func CoreAssets(g *plugins.CoreGlobals) {
+func CoreAssets(g *api.CoreGlobals) {
 	assetsDir := g.CoreAPI.Utl.Resource("assets")
 	fs := http.FileServer(http.Dir(assetsDir))
 	prefix := g.CoreAPI.Http().Helpers().AssetPath("")

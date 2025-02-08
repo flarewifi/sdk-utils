@@ -12,7 +12,7 @@ type Device struct {
 	ID         pgtype.UUID
 	IpAddress  string
 	MacAddress string
-	Hostname   pgtype.Text
+	Hostname   string
 	CreatedAt  pgtype.Timestamp
 }
 
@@ -27,11 +27,11 @@ type Log struct {
 }
 
 type Payment struct {
-	ID         pgtype.UUID
-	PurchaseID pgtype.UUID
-	Amount     pgtype.Numeric
-	Optname    string
-	CreatedAt  pgtype.Timestamp
+	ID            pgtype.UUID
+	PurchaseID    pgtype.UUID
+	Amount        pgtype.Numeric
+	PaymentMethod string
+	CreatedAt     pgtype.Timestamp
 }
 
 type Purchase struct {
@@ -39,7 +39,7 @@ type Purchase struct {
 	DeviceID        pgtype.UUID
 	Sku             string
 	Name            string
-	Description     pgtype.Text
+	Description     string
 	Price           pgtype.Numeric
 	AnyPrice        bool
 	CallbackPlugin  string
@@ -49,17 +49,17 @@ type Purchase struct {
 	WalletTxID      pgtype.UUID
 	ConfirmedAt     pgtype.Timestamp
 	CancelledAt     pgtype.Timestamp
-	CancelledReason pgtype.Text
+	CancelledReason string
 	CreatedAt       pgtype.Timestamp
 }
 
 type Session struct {
 	ID              pgtype.UUID
 	DeviceID        pgtype.UUID
-	SessionType     int16
-	TimeSecs        pgtype.Int4
+	SessionType     string
+	TimeSecs        int32
 	DataMbytes      pgtype.Numeric
-	ConsumptionSecs pgtype.Int4
+	ConsumptionSecs int32
 	ConsumptionMb   pgtype.Numeric
 	StartedAt       pgtype.Timestamp
 	ExpDays         pgtype.Int4
@@ -81,6 +81,6 @@ type WalletTransaction struct {
 	WalletID    pgtype.UUID
 	Amount      pgtype.Numeric
 	NewBalance  pgtype.Numeric
-	Description pgtype.Text
+	Description string
 	CreatedAt   pgtype.Timestamp
 }

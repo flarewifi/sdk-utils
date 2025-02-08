@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"core/db/models"
 	"core/internal/network"
 	jobque "core/internal/utils/job-que"
 	"core/internal/utils/tc"
@@ -311,12 +310,12 @@ func (self *RunningSession) isConsumed() bool {
 	s := self.session
 	t := s.Type()
 
-	if t == models.SessionTypeTime || t == models.SessionTypeTimeOrData {
+	if t == sdkapi.SessionTypeTime || t == sdkapi.SessionTypeTimeOrData {
 		isTimeConsumed := s.TimeConsumption() >= s.TimeSecs()
 		return isTimeConsumed || self.expired()
 	}
 
-	if t == models.SessionTypeData || t == models.SessionTypeTimeOrData {
+	if t == sdkapi.SessionTypeData || t == sdkapi.SessionTypeTimeOrData {
 		isDataConsumed := s.DataConsumption() >= s.DataMb()
 		return isDataConsumed || self.expired()
 	}

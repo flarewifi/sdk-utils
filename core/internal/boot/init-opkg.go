@@ -1,7 +1,7 @@
 package boot
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	"core/internal/utils/cmd"
 	"fmt"
 	"os"
@@ -10,7 +10,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func InitOpkg(bp *plugins.BootProgress) {
+func InitOpkg(bp *api.BootProgress) {
 	var files []string
 
 	packagesDir := filepath.Join(sdkutils.PathAppDir, "packages")
