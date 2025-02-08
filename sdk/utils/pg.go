@@ -29,15 +29,15 @@ func PgNumericToFloat64(numeric pgtype.Numeric) float64 {
 	// Check for NaN
 	if numeric.NaN {
 		log.Println("numeric is NaN, returning 0")
-		return math.NaN()
+		return float64(0)
 	}
 
 	if numeric.Int == nil {
-		return math.NaN()
+		return float64(0)
 	}
 
 	if !numeric.Valid {
-		return math.NaN()
+		return float64(0)
 	}
 
 	// Convert Int to *big.Float

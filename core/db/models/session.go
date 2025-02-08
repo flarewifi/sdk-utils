@@ -45,21 +45,30 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 			expDays = &val
 		}
 
+		var startedAt *time.Time
+		if s.StartedAt.Valid {
+			startedAt = &s.StartedAt.Time
+		}
+
 		session.id = s.ID
 		session.deviceId = s.DeviceID
 		session.timeSecs = int(s.TimeSecs)
 		session.dataMb = sdkutils.PgNumericToFloat64(s.DataMbytes)
 		session.timeCons = int(s.ConsumptionSecs)
 		session.dataCons = sdkutils.PgNumericToFloat64(s.ConsumptionMb)
-		session.startedAt = &s.StartedAt.Time
 		session.expDays = expDays
+		session.startedAt = startedAt
+
 		// TODO: fix proper expiry calculation
 		// session.expiresAt = sRow.ExpiresAt
 
 		session.downMbits = int(s.DownMbits)
 		session.upMbits = int(s.UpMbits)
 		session.useGlobal = s.UseGlobal
-		session.createdAt = s.CreatedAt.Time
+
+		if s.CreatedAt.Valid {
+			session.createdAt = s.CreatedAt.Time
+		}
 	}
 
 	return session
