@@ -88,7 +88,7 @@ func (p *PluginApi) Init() error {
     return nil
 }`, AUTO_GENERATED_HEADER, importModules, coreInfo.Package, pluginSwitchCases)
 
-	pluginInitMonoPath := filepath.Join("core/internal/plugins/plugin-init_mono.go")
+	pluginInitMonoPath := filepath.Join("core/internal/api/plugin-init_mono.go")
 
 	var pluginInitMonoContent string
 	if b, err := os.ReadFile(pluginInitMonoPath); err == nil {
