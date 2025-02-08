@@ -1,12 +1,12 @@
 package navs
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	"net/http"
 	sdkapi "sdk/api"
 )
 
-func SetAdminNavs(g *plugins.CoreGlobals) {
+func SetAdminNavs(g *api.CoreGlobals) {
 	coreNavs := g.CoreAPI.HttpAPI.Navs()
 
 	coreNavs.AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {

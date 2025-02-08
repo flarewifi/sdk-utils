@@ -22,9 +22,9 @@ func NewPaymentModel(dtb *db.Database, mdls *Models) *PaymentModel {
 
 func (self *PaymentModel) Create(ctx context.Context, purid pgtype.UUID, amt float64, mtd string) (*Payment, error) {
 	pId, err := self.db.Queries.CreatePayment(ctx, queries.CreatePaymentParams{
-		PurchaseID: purid,
-		Amount:     sdkutils.PgFloat64ToNumeric(amt),
-		Optname:    mtd,
+		PurchaseID:    purid,
+		Amount:        sdkutils.PgFloat64ToNumeric(amt),
+		PaymentMethod: mtd,
 	})
 	if err != nil {
 		log.Println("error creating payment:", err)
@@ -41,7 +41,7 @@ func (self *PaymentModel) Create(ctx context.Context, purid pgtype.UUID, amt flo
 	payment.id = p.ID
 	payment.purchaseId = p.PurchaseID
 	payment.amount = sdkutils.PgNumericToFloat64(p.Amount)
-	payment.optname = p.Optname
+	payment.optname = p.PaymentMethod
 	payment.createdAt = p.CreatedAt.Time
 
 	return payment, nil
@@ -58,7 +58,7 @@ func (self *PaymentModel) Find(ctx context.Context, id pgtype.UUID) (*Payment, e
 	payment.id = p.ID
 	payment.purchaseId = p.PurchaseID
 	payment.amount = sdkutils.PgNumericToFloat64(p.Amount)
-	payment.optname = p.Optname
+	payment.optname = p.PaymentMethod
 	payment.createdAt = p.CreatedAt.Time
 
 	return payment, nil
@@ -79,7 +79,7 @@ func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId pgtype.UU
 		nP.id = p.ID
 		nP.purchaseId = p.PurchaseID
 		nP.amount = sdkutils.PgNumericToFloat64(p.Amount)
-		nP.optname = p.Optname
+		nP.optname = p.PaymentMethod
 		nP.createdAt = p.CreatedAt.Time
 		payments = append(payments, nP)
 	}

@@ -4,11 +4,11 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	sse "core/internal/utils/sse"
 )
 
-func PortalIndexPage(g *plugins.CoreGlobals) http.Handler {
+func PortalIndexPage(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
@@ -23,7 +23,7 @@ func PortalIndexPage(g *plugins.CoreGlobals) http.Handler {
 	})
 }
 
-func PortalSseHandler(g *plugins.CoreGlobals) http.HandlerFunc {
+func PortalSseHandler(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := sse.NewSocket(w, r)
 		if err != nil {

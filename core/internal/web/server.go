@@ -4,20 +4,20 @@ import (
 	"log"
 	"net/http"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	webutil "core/internal/utils/web"
 	forms "core/internal/web/forms"
 	"core/internal/web/navs"
 	"core/internal/web/routes"
 )
 
-func SetupBootRoutes(g *plugins.CoreGlobals) {
+func SetupBootRoutes(g *api.CoreGlobals) {
 	routes.AssetsRoutes(g)
 	routes.BootRoutes(g)
 	routes.CoreAssets(g)
 }
 
-func SetupAllRoutes(g *plugins.CoreGlobals) {
+func SetupAllRoutes(g *api.CoreGlobals) {
 	routes.AssetsRoutes(g)
 	routes.PortalRoutes(g)
 	routes.AdminRoutes(g)

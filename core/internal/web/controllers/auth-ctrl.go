@@ -1,13 +1,13 @@
 package controllers
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"net/http"
 	sdkapi "sdk/api"
 )
 
-func AdminLoginCtrl(g *plugins.CoreGlobals) http.Handler {
+func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := g.CoreAPI.HttpAPI.Auth().IsAuthenticated(r); err == nil {
 			http.Redirect(w, r, "/admin", http.StatusSeeOther)
@@ -33,7 +33,7 @@ func AdminLoginCtrl(g *plugins.CoreGlobals) http.Handler {
 	})
 }
 
-func AdminAuthenticateCtrl(g *plugins.CoreGlobals) http.Handler {
+func AdminAuthenticateCtrl(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
 			// TODO: Handle error

@@ -4,11 +4,11 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	paymentsview "core/resources/views/portal/payments"
 )
 
-func PaymentOptionsCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func PaymentOptionsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.HttpResponse()
 		result := g.PaymentsMgr.AllOptions(r)

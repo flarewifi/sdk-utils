@@ -1,12 +1,12 @@
 package coreforms
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	"net/http"
 	sdkapi "sdk/api"
 )
 
-func RegisterLogsForm(g *plugins.CoreGlobals) error {
+func RegisterLogsForm(g *api.CoreGlobals) error {
 	return g.CoreAPI.HttpAPI.Forms().RegisterForm("logs-form", func(r *http.Request) sdkapi.HttpForm {
 
 		params := r.URL.Query()
@@ -60,9 +60,9 @@ func RegisterLogsForm(g *plugins.CoreGlobals) error {
 							Options: func() []sdkapi.FormListFieldOption {
 								return []sdkapi.FormListFieldOption{
 									{Label: "All", Value: ""},
-									{Label: "Info", Value: plugins.LogLevelInfo},
-									{Label: "Debug", Value: plugins.LogLevelDebug},
-									{Label: "Error", Value: plugins.LogLevelError},
+									{Label: "Info", Value: api.LogLevelInfo},
+									{Label: "Debug", Value: api.LogLevelDebug},
+									{Label: "Error", Value: api.LogLevelError},
 								}
 							},
 							ValueFn: func() interface{} {

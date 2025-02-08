@@ -3,7 +3,7 @@ package adminctrl
 import (
 	"net/http"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	"core/internal/utils/logger"
 )
 
@@ -14,7 +14,7 @@ type LogViewerData struct {
 
 // Gets the logs based on the requested current page and
 // per page queries
-func GetLogs(g *plugins.CoreGlobals) http.HandlerFunc {
+func GetLogs(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 
@@ -55,7 +55,7 @@ func GetLogs(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func ClearLogs(g *plugins.CoreGlobals) http.HandlerFunc {
+func ClearLogs(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 		// err := logger.ClearLogs()

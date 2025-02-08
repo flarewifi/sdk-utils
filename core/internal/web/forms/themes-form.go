@@ -1,8 +1,8 @@
 package coreforms
 
 import (
+	"core/internal/api"
 	"core/internal/config"
-	"core/internal/plugins"
 	"net/http"
 	sdkapi "sdk/api"
 )
@@ -11,7 +11,7 @@ const (
 	ThemesFormName = "themes"
 )
 
-func RegisterThemesForm(g *plugins.CoreGlobals) (err error) {
+func RegisterThemesForm(g *api.CoreGlobals) (err error) {
 	allPlugins := g.PluginMgr.All()
 	adminThemes := []sdkapi.IPluginApi{}
 	portalThemes := []sdkapi.IPluginApi{}

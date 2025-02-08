@@ -12,34 +12,29 @@ import (
 )
 
 const createPayment = `-- name: CreatePayment :one
-INSERT INTO payments (purchase_id, amount, optname) 
-VALUES 
+INSERT INTO payments (purchase_id, amount, payment_method)
+VALUES
   ($1, $2, $3) RETURNING id
 `
 
 type CreatePaymentParams struct {
-	PurchaseID pgtype.UUID
-	Amount     pgtype.Numeric
-	Optname    string
+	PurchaseID    pgtype.UUID
+	Amount        pgtype.Numeric
+	PaymentMethod string
 }
 
 func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, createPayment, arg.PurchaseID, arg.Amount, arg.Optname)
+	row := q.db.QueryRow(ctx, createPayment, arg.PurchaseID, arg.Amount, arg.PaymentMethod)
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
 const findAllPaymentsByPurchaseId = `-- name: FindAllPaymentsByPurchaseId :many
-SELECT 
-  id, 
-  purchase_id, 
-  amount, 
-  optname, 
-  created_at 
-FROM 
-  payments 
-WHERE 
+SELECT id, purchase_id, amount, payment_method, created_at
+FROM
+  payments
+WHERE
   purchase_id = $1
 `
 
@@ -56,7 +51,7 @@ func (q *Queries) FindAllPaymentsByPurchaseId(ctx context.Context, purchaseID pg
 			&i.ID,
 			&i.PurchaseID,
 			&i.Amount,
-			&i.Optname,
+			&i.PaymentMethod,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -70,17 +65,12 @@ func (q *Queries) FindAllPaymentsByPurchaseId(ctx context.Context, purchaseID pg
 }
 
 const findPayment = `-- name: FindPayment :one
-SELECT 
-  id, 
-  purchase_id, 
-  amount, 
-  optname, 
-  created_at 
-FROM 
-  payments 
-WHERE 
-  id = $1 
-LIMIT 
+SELECT id, purchase_id, amount, payment_method, created_at
+FROM
+  payments
+WHERE
+  id = $1
+LIMIT
   1
 `
 
@@ -91,18 +81,18 @@ func (q *Queries) FindPayment(ctx context.Context, id pgtype.UUID) (Payment, err
 		&i.ID,
 		&i.PurchaseID,
 		&i.Amount,
-		&i.Optname,
+		&i.PaymentMethod,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const updatePayment = `-- name: UpdatePayment :exec
-UPDATE 
-  payments 
-SET 
-  amount = $1 
-WHERE 
+UPDATE
+  payments
+SET
+  amount = $1
+WHERE
   id = $2
 `
 

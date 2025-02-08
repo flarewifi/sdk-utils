@@ -30,7 +30,7 @@ services:
       flare_network:
 
   pgadmin:
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:9
     ports:
       - 3001:80
     depends_on:

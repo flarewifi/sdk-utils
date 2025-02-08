@@ -1,12 +1,12 @@
 package routes
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	"core/internal/web/controllers"
 	sdkapi "sdk/api"
 )
 
-func PaymentRoutes(g *plugins.CoreGlobals) {
+func PaymentRoutes(g *api.CoreGlobals) {
 
 	portalR := g.CoreAPI.HttpAPI.HttpRouter().PluginRouter()
 	paymentsCtrl := controllers.PaymentOptionsCtrl(g)

@@ -4,13 +4,13 @@ import (
 	"log"
 	"net/http"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/routes/urls"
 )
 
-func BootRoutes(g *plugins.CoreGlobals) {
+func BootRoutes(g *api.CoreGlobals) {
 	bootCtrl := controllers.NewBootCtrl(g, g.PluginMgr, g.CoreAPI)
 	r := webutil.BootingRouter
 	r.Use(bootCtrl.Middleware)

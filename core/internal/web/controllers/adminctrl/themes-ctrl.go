@@ -4,13 +4,13 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 
+	"core/internal/api"
 	"core/internal/config"
-	"core/internal/plugins"
 	coreforms "core/internal/web/forms"
 	"core/resources/views/admin/themes"
 )
 
-func GetAvailableThemes(g *plugins.CoreGlobals) http.HandlerFunc {
+func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.HttpResponse()
 		formTpl, err := g.CoreAPI.HttpAPI.Forms().GetFormTemplate(coreforms.ThemesFormName, r)
@@ -24,7 +24,7 @@ func GetAvailableThemes(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func SaveThemeSettings(g *plugins.CoreGlobals) http.HandlerFunc {
+func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.HttpResponse()
 		httpForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm(coreforms.ThemesFormName, r)

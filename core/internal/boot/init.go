@@ -5,13 +5,13 @@ import (
 	"log"
 	"time"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	"core/internal/utils/pkg"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func Init(g *plugins.CoreGlobals) {
+func Init(g *api.CoreGlobals) {
 	bp := g.BootProgress
 	now := time.Now()
 

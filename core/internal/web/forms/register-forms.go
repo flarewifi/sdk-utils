@@ -1,10 +1,10 @@
 package coreforms
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 )
 
-func RegisterForms(g *plugins.CoreGlobals) {
+func RegisterForms(g *api.CoreGlobals) {
 	if err := RegisterThemesForm(g); err != nil {
 		panic(err)
 	}

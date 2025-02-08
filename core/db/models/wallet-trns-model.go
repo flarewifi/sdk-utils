@@ -25,7 +25,7 @@ func (self *WalletTrnsModel) Create(ctx context.Context, wltId pgtype.UUID, amou
 		WalletID:    wltId,
 		Amount:      sdkutils.PgFloat64ToNumeric(amount),
 		NewBalance:  sdkutils.PgFloat64ToNumeric(newBal),
-		Description: pgtype.Text{String: desc},
+		Description: desc,
 	})
 	if err != nil {
 		log.Println("error creating wallet transaction:", err)
@@ -39,7 +39,7 @@ func (self *WalletTrnsModel) Create(ctx context.Context, wltId pgtype.UUID, amou
 		walletId:    wt.WalletID,
 		amount:      sdkutils.PgNumericToFloat64(wt.Amount),
 		newBalance:  sdkutils.PgNumericToFloat64(wt.NewBalance),
-		description: wt.Description.String,
+		description: wt.Description,
 		createdAt:   wt.CreatedAt.Time,
 	}, nil
 }
@@ -58,7 +58,7 @@ func (self *WalletTrnsModel) Find(ctx context.Context, id pgtype.UUID) (*WalletT
 		walletId:    wt.WalletID,
 		amount:      sdkutils.PgNumericToFloat64(wt.Amount),
 		newBalance:  sdkutils.PgNumericToFloat64(wt.NewBalance),
-		description: wt.Description.String,
+		description: wt.Description,
 		createdAt:   wt.CreatedAt.Time,
 	}, nil
 }

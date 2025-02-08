@@ -1,12 +1,14 @@
 package themes
 
 type AdminAssets struct {
-	GlobalCssHref string
-	GlobalJsSrc   string
-	ThemeCssHref  string
-	ThemeJsSrc    string
-	PageCssHref   string
-	PageJsSrc     string
+	GlobalCssHref       string
+	GlobalJsSrc         string
+	ThemeCssHref        string
+	ThemeJsSrc          string
+	PluginGlobalCssHref string
+	PluginGlobalJsSrc   string
+	PageCssHref         string
+	PageJsSrc           string
 }
 
 type AdminLayoutData struct {
@@ -24,9 +26,18 @@ templ AdminThemeLayout(data AdminLayoutData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>Fixed top navbar example · Bootstrap v5.3</title>
 			<!-- Theme Stylesheets -->
-			<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>
-			<link rel="stylesheet" href={ data.Assets.ThemeCssHref }/>
-			<link rel="stylesheet" href={ data.Assets.PageCssHref }/>
+			if data.Assets.GlobalCssHref != "" {
+				<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>
+			}
+			if data.Assets.ThemeCssHref != "" {
+				<link rel="stylesheet" href={ data.Assets.ThemeCssHref }/>
+			}
+			if data.Assets.PluginGlobalCssHref != "" {
+				<link rel="stylesheet" href={ data.Assets.PluginGlobalCssHref }/>
+			}
+			if data.Assets.PageCssHref != "" {
+				<link rel="stylesheet" href={ data.Assets.PageCssHref }/>
+			}
 			<!-- Theme Head -->
 			@data.Head
 		</head>

@@ -1,7 +1,7 @@
 package adminctrl
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	"net/http"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -27,7 +27,7 @@ type PluginData struct {
 	Releases           []PluginRelease
 }
 
-func PluginsIndexCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
@@ -37,7 +37,7 @@ func PluginsIndexCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func PluginsStoreIndexCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func PluginsStoreIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 
@@ -73,7 +73,7 @@ func PluginsStoreIndexCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func ViewPluginCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func ViewPluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 
@@ -128,7 +128,7 @@ func ViewPluginCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func UploadFileCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func UploadFileCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.HttpResponse()
 
@@ -181,7 +181,7 @@ func UploadFileCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 }
 
 // TODO: update for multiple files for future use-case
-func UploadFilesCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func UploadFilesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.HttpResponse()
 
@@ -191,7 +191,7 @@ func UploadFilesCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func PluginsInstallCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func PluginsInstallCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 
@@ -237,7 +237,7 @@ func PluginsInstallCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 // return plugins
 // }
 
-func UninstallPluginCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func UninstallPluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 		// // read post body as json
@@ -259,7 +259,7 @@ func UninstallPluginCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func UpdatePluginCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func UpdatePluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 
@@ -283,7 +283,7 @@ func UpdatePluginCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func CheckPluginUpdatesCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 

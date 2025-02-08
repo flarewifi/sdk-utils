@@ -9,30 +9,35 @@ package sdkapi
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // IClientSession represents a client's internet connection session.
 type IClientSession interface {
+	// Returns the session's ID.
+	Id() pgtype.UUID
+
 	// REturns the provider of the session record.
 	Provider() string
 
 	// Returns the session type.
-	Type() uint8
+	Type() string
 
 	// Return the session's available time in seconds.
-	TimeSecs() (sec uint)
+	TimeSecs() (sec int)
 
 	// Returns the session's available data in megabytes.
 	DataMb() (mbytes float64)
 
 	// Returns the session's time consumption in seconds.
-	TimeConsumption() (sec uint)
+	TimeConsumption() (sec int)
 
 	// Returns the session's data consumption in megabytes.
 	DataConsumption() (mbytes float64)
 
 	// Returns the session's remaining time in seconds.
-	RemainingTime() (sec uint)
+	RemainingTime() (sec int)
 
 	// Returns the session's remaining data in megabytes.
 	RemainingData() (mbytes float64)
@@ -45,7 +50,7 @@ type IClientSession interface {
 
 	// Returns the session's expiration time in days.
 	// If session has no expiration, it returns nil.
-	ExpDays() *uint
+	ExpDays() *int
 
 	// Returns the time when session will expire.
 	// If session has no expiration, it returns nil.
@@ -63,7 +68,7 @@ type IClientSession interface {
 
 	// Increases the session's time consumption in seconds.
 	// This value is not saved until Save() method is called.
-	IncTimeCons(sec uint)
+	IncTimeCons(sec int)
 
 	// Increases the session's data consumption in megabytes.
 	// This value is not saved until Save() method is called.
@@ -71,7 +76,7 @@ type IClientSession interface {
 
 	// Sets the session's available time in seconds.
 	// This value is not saved until Save() method is called.
-	SetTimeSecs(sec uint)
+	SetTimeSecs(sec int)
 
 	// Sets the session's available data in megabytes.
 	// This value is not saved until Save() method is called.
@@ -79,7 +84,7 @@ type IClientSession interface {
 
 	// Sets the session's time consumption in seconds.
 	// This value is not saved until Save() method is called.
-	SetTimeCons(sec uint)
+	SetTimeCons(sec int)
 
 	// Sets the session's data consumption in megabytes.
 	// This value is not saved until Save() method is called.
@@ -91,7 +96,7 @@ type IClientSession interface {
 
 	// Sets the session's expiration time in days.
 	// This value is not saved until Save() method is called.
-	SetExpDays(exp *uint)
+	SetExpDays(exp *int)
 
 	// Sets the session's download speed limit in megabits per second.
 	// This value is not saved until Save() method is called.

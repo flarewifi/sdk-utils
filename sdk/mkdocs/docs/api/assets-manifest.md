@@ -52,3 +52,19 @@ The files `./admin/admin.css` and other files in the list are relative to `manif
 Similar to [portal assets manifest](#portal-manifest), `index.css` and `index.js` files are a bundle of assets which can be [rendered in the views](./http-response.md#view-assets).
 
 The `index.css` and `index.js` can be used with any views that is rendered using the [IHttpResponse.AdminView](../api/http-response.md#adminview) method.
+
+## Global assets {#global-assets}
+
+To add global assets to either portal or admin views of your plugin, you can add the assets to the `global.js` and `global.css` keys in the [portal manifest](#portal-manifest) or [admin-manifest](#admin-manifest) file. For example:
+```json
+{
+  "global.js": [
+    "./global/global.js",
+    "./global/another-file.js"
+  ],
+  "global.css": [
+    "./global/global.css",
+    "./global/another-file.css"
+  ]
+}
+```

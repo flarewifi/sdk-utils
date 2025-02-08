@@ -1,14 +1,14 @@
 package adminctrl
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	"log"
 	"net/http"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func FetchUpdatesCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func FetchUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 
@@ -23,7 +23,7 @@ func FetchUpdatesCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func GetCurrentCoreVersionCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func GetCurrentCoreVersionCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 
@@ -38,7 +38,7 @@ func GetCurrentCoreVersionCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func DownloadUpdatesCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func DownloadUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 
@@ -93,7 +93,7 @@ func downloadFile(src string, dest string) error {
 	return nil
 }
 
-func UpdateCoreCtrl(g *plugins.CoreGlobals) http.HandlerFunc {
+func UpdateCoreCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// res := g.CoreAPI.HttpAPI.VueResponse()
 

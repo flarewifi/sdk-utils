@@ -4,20 +4,20 @@ import (
 	"log"
 	"net/http"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	sse "core/internal/utils/sse"
 	"core/internal/web/helpers"
 	"core/internal/web/routes/urls"
 )
 
-func NewBootCtrl(g *plugins.CoreGlobals, pmgr *plugins.PluginsMgr, api *plugins.PluginApi) BootCtrl {
+func NewBootCtrl(g *api.CoreGlobals, pmgr *api.PluginsMgr, api *api.PluginApi) BootCtrl {
 	return BootCtrl{g.BootProgress, pmgr, api}
 }
 
 type BootCtrl struct {
-	bp   *plugins.BootProgress
-	pmgr *plugins.PluginsMgr
-	api  *plugins.PluginApi
+	bp   *api.BootProgress
+	pmgr *api.PluginsMgr
+	api  *api.PluginApi
 }
 
 func (ctrl *BootCtrl) IndexPage(w http.ResponseWriter, r *http.Request) {

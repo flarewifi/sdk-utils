@@ -6,11 +6,14 @@ import (
 	"time"
 
 	sdkapi "sdk/api"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func NewClientSession(src sdkapi.ISessionSource) *ClientSession {
 	s := src.Data()
 	return &ClientSession{
+		id:        s.Id,
 		provider:  s.Provider,
 		t:         s.Type,
 		timeSecs:  s.TimeSecs,
@@ -30,14 +33,15 @@ func NewClientSession(src sdkapi.ISessionSource) *ClientSession {
 
 type ClientSession struct {
 	mu        sync.RWMutex
+	id        pgtype.UUID
 	provider  string
-	t         uint8
-	timeSecs  uint
+	t         string
+	timeSecs  int
 	dataMb    float64
-	timeCons  uint
+	timeCons  int
 	dataCons  float64
 	startedAt *time.Time
-	expDays   *uint
+	expDays   *int
 	downMbits int
 	upMbits   int
 	useGlobal bool
@@ -46,19 +50,25 @@ type ClientSession struct {
 	reload    func(context.Context) (sdkapi.SessionData, error)
 }
 
+func (self *ClientSession) Id() pgtype.UUID {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.id
+}
+
 func (self *ClientSession) Provider() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.provider
 }
 
-func (self *ClientSession) Type() uint8 {
+func (self *ClientSession) Type() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.t
 }
 
-func (self *ClientSession) TimeSecs() uint {
+func (self *ClientSession) TimeSecs() int {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.timeSecs
@@ -70,7 +80,7 @@ func (self *ClientSession) DataMb() float64 {
 	return self.dataMb
 }
 
-func (self *ClientSession) TimeConsumption() uint {
+func (self *ClientSession) TimeConsumption() int {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.timeCons
@@ -82,7 +92,7 @@ func (self *ClientSession) DataConsumption() float64 {
 	return self.dataCons
 }
 
-func (self *ClientSession) RemainingTime() uint {
+func (self *ClientSession) RemainingTime() int {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.timeSecs - self.timeCons
@@ -100,7 +110,7 @@ func (self *ClientSession) StartedAt() *time.Time {
 	return self.startedAt
 }
 
-func (self *ClientSession) ExpDays() *uint {
+func (self *ClientSession) ExpDays() *int {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.expDays
@@ -145,7 +155,7 @@ func (self *ClientSession) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *ClientSession) IncTimeCons(sec uint) {
+func (self *ClientSession) IncTimeCons(sec int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.timeCons += sec
@@ -157,7 +167,7 @@ func (self *ClientSession) IncDataCons(mbytes float64) {
 	self.dataCons += mbytes
 }
 
-func (self *ClientSession) SetTimeSecs(sec uint) {
+func (self *ClientSession) SetTimeSecs(sec int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.timeSecs = sec
@@ -169,7 +179,7 @@ func (self *ClientSession) SetDataMb(mbytes float64) {
 	self.dataMb = mbytes
 }
 
-func (self *ClientSession) SetTimeCons(sec uint) {
+func (self *ClientSession) SetTimeCons(sec int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.timeCons = sec
@@ -187,7 +197,7 @@ func (self *ClientSession) SetStartedAt(started *time.Time) {
 	self.startedAt = started
 }
 
-func (self *ClientSession) SetExpDays(exp *uint) {
+func (self *ClientSession) SetExpDays(exp *int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.expDays = exp
