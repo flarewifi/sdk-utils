@@ -34,8 +34,20 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 	navs := self.api.HttpAPI.navsApi.GetAdminNavs(r)
 	assets := self.api.Utl.GetAdminAssetsForPage(v)
 
+	var flash *sdkapi.FlashMsg
+	flashType, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_type")
+	flashMsg, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_message")
+	if flashType != "" && flashMsg != "" {
+		flash = &sdkapi.FlashMsg{
+			Type:    flashType,
+			Message: flashMsg,
+		}
+		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_type", "")
+		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_message", "")
+	}
+
 	layoutBuilder := &ThemesLayoutBuilder{
-		FlashMessage: sdkapi.FlashMsg{},
+		FlashMessage: flash,
 		PageContent:  v.PageContent,
 		ContentWrapper: func(head, layout templ.Component) {
 			data := themes.AdminLayoutData{
@@ -72,8 +84,20 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	sseURL := self.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:sse")
 	assets := self.api.Utl.GetPortalAssetsForPage(v)
 
+	var flash *sdkapi.FlashMsg
+	flashType, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_type")
+	flashMsg, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_message")
+	if flashType != "" && flashMsg != "" {
+		flash = &sdkapi.FlashMsg{
+			Type:    flashType,
+			Message: flashMsg,
+		}
+		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_type", "")
+		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_message", "")
+	}
+
 	layoutBuilder := &ThemesLayoutBuilder{
-		FlashMessage: sdkapi.FlashMsg{},
+		FlashMessage: flash,
 		PageContent:  v.PageContent,
 		ContentWrapper: func(head, layout templ.Component) {
 			data := themes.PortalLayoutData{
@@ -113,7 +137,8 @@ func (self *HttpResponse) Json(w http.ResponseWriter, r *http.Request, data inte
 }
 
 func (self *HttpResponse) FlashMsg(w http.ResponseWriter, r *http.Request, msg string, t string) {
-
+	self.api.HttpAPI.Cookie().SetCookie(w, "flash_type", t)
+	self.api.HttpAPI.Cookie().SetCookie(w, "flash_message", msg)
 }
 
 func (self *HttpResponse) Redirect(w http.ResponseWriter, r *http.Request, routeName string, pairs ...string) {

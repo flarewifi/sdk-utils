@@ -51,6 +51,7 @@ func AdminAuthenticateCtrl(g *api.CoreGlobals) http.Handler {
 		}
 
 		g.CoreAPI.HttpAPI.Auth().SignIn(w, acct)
+		g.CoreAPI.HttpAPI.HttpResponse().FlashMsg(w, r, "Logged in successfully", sdkapi.FlashMsgSuccess)
 		http.Redirect(w, r, "/admin", http.StatusSeeOther)
 	})
 }
