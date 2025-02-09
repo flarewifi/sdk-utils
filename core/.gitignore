@@ -1,5 +1,6 @@
 .DS_Store
 /node_modules
 /resources/assets/dist
+plugin-init_mono.go
 *.so
 main_mono.go

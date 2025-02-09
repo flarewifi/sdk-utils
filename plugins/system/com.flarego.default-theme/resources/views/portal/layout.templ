@@ -1,14 +1,16 @@
 package portal
 
-import (
-	"sdk/api"
-)
-
 templ PortalHead() {
 }
 
-templ PortalLayout(data sdkapi.PortalLayoutData) {
+type PortalLayoutData struct {
+	Flash       templ.Component
+	PageContent templ.Component
+}
+
+templ PortalLayout(data PortalLayoutData) {
 	<div style="padding: 10px; background: gray;">
-		@data.Builder.Content()
+		@data.Flash
+		@data.PageContent
 	</div>
 }

@@ -54,6 +54,7 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		api.NewGlobals().CoreAPI.HttpAPI.HttpResponse().FlashMsg(w, r, "Settings saved successfully", sdkapi.FlashMsgSuccess)
 		themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
 		http.Redirect(w, r, themesIndexUrl, http.StatusSeeOther)
 	}

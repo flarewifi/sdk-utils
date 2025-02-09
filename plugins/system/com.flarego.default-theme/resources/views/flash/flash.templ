@@ -1,0 +1,28 @@
+package flash
+
+import (
+    "sdk/api"
+)
+
+func alertClass(t string) string {
+	switch t {
+	case sdkapi.FlashMsgInfo:
+		return "alert alert-info"
+	case sdkapi.FlashMsgWarning:
+		return "alert alert-warning"
+	case sdkapi.FlashMsgSuccess:
+		return "alert alert-success"
+	case sdkapi.FlashMsgError:
+		return "alert alert-danger"
+	}
+
+	return ""
+}
+
+templ FlashMsg(flash *sdkapi.FlashMsg) {
+    if flash != nil {
+        <div class={ alertClass(flash.Type) }>
+            { flash.Message }
+        </div>
+    }
+}
