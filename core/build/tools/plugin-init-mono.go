@@ -71,14 +71,15 @@ func MakePluginInitMono() {
 
 %s
 
-package plugins
+package api
 import (
     "log"
     %s
 )
 
 func (p *PluginApi) Init() error {
-    switch p.Pkg() {
+    info := p.Info()
+    switch info.Package {
         case "%s":
             log.Println("core package, skipping plugin.Init()...")
 %s

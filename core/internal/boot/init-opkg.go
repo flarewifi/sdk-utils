@@ -10,6 +10,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
+// Install ipk files in ./packages directory
 func InitOpkg(bp *api.BootProgress) {
 	var files []string
 

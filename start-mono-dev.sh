@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 BUILD_TAGS="dev mono"
+LINK_NODE_MODULES="./core/cmd/link-node-modules"
 CREATE_MONO="./core/cmd/make-mono/main.go"
 MONO_SERVER="./core/cmd/mono-server/main.go"
 CLI_MAIN="./core/internal/cli/main.go"

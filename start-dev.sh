@@ -3,7 +3,6 @@
 BUILD_TAGS="dev"
 BUILD_CORE_MAIN="./core/cmd/build-core"
 BUILD_CLI_MAIN="./core/cmd/build-cli"
-BUILD_TEMPLATES="./core/cmd/build-templates"
 LINK_NODE_MODULES="./core/cmd/link-node-modules"
 FLARE_BIN="./bin/flare"
 
