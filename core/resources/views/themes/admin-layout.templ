@@ -1,5 +1,9 @@
 package themes
 
+import (
+    "sdk/api"
+)
+
 type AdminAssets struct {
 	GlobalCssHref       string
 	GlobalJsSrc         string
@@ -14,6 +18,7 @@ type AdminAssets struct {
 type AdminLayoutData struct {
 	Assets AdminAssets
 	SseURL string
+    Flash *sdkapi.FlashMsg
 	Head   templ.Component
 	Layout templ.Component
 }
@@ -53,6 +58,10 @@ templ AdminThemeLayout(data AdminLayoutData) {
 			}
 			if data.Assets.PageJsSrc != "" {
 				<script src={ data.Assets.PageJsSrc }></script>
+			}
+
+			if data.Flash != nil {
+				<script id="flash-message" data-flash-type={ data.Flash.Type } data-flash-message={ data.Flash.Message } type="text/template"></script>
 			}
 		</body>
 	</html>

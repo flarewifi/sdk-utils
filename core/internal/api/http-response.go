@@ -47,12 +47,12 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 	}
 
 	layoutBuilder := &ThemesLayoutBuilder{
-		FlashMessage: flash,
-		PageContent:  v.PageContent,
+		PageContent: v.PageContent,
 		ContentWrapper: func(head, layout templ.Component) {
 			data := themes.AdminLayoutData{
 				Assets: assets,
 				SseURL: sseURL,
+				Flash:  flash,
 				Head:   head,
 				Layout: layout,
 			}
@@ -75,6 +75,9 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 }
 
 func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
+	q := r.URL.Query()
+	pageUUID := q.Get("t") // Prevent caching
+
 	_, themeApi, err := self.api.PluginsMgrApi.GetPortalTheme()
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
@@ -97,14 +100,15 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	}
 
 	layoutBuilder := &ThemesLayoutBuilder{
-		FlashMessage: flash,
-		PageContent:  v.PageContent,
+		PageContent: v.PageContent,
 		ContentWrapper: func(head, layout templ.Component) {
 			data := themes.PortalLayoutData{
-				Assets: assets,
-				SseURL: sseURL,
-				Head:   head,
-				Layout: layout,
+				PageUUID: pageUUID,
+				Assets:   assets,
+				SseURL:   sseURL,
+				Flash:    flash,
+				Head:     head,
+				Layout:   layout,
 			}
 
 			page := themes.PortalThemeLayout(data)
@@ -143,8 +147,11 @@ func (self *HttpResponse) FlashMsg(w http.ResponseWriter, r *http.Request, msg s
 
 func (self *HttpResponse) Redirect(w http.ResponseWriter, r *http.Request, routeName string, pairs ...string) {
 	url := self.api.HttpAPI.Helpers().UrlForRoute(routeName, pairs...)
-	w.Header().Set("HX-Redirect", url)
 	http.Redirect(w, r, url, http.StatusSeeOther)
+}
+
+func (self *HttpResponse) RedirectToPortal(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/?t="+sdkutils.RandomStr(16), http.StatusSeeOther)
 }
 
 func (self *HttpResponse) Error(w http.ResponseWriter, r *http.Request, err error, status int) {

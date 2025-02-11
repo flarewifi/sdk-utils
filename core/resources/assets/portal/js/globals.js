@@ -1,18 +1,17 @@
-'use strict'
+'use strict';
 
-var htmx = require('../../lib/vendor/htmx-v1.9.12.js')
+window.$flare = window.$flare || {};
+
+var jQuery = require('@flarehotspot/lib/vendor/jquery-v1.12.4.js')
+window.$ = jQuery;
+window.jQuery = jQuery;
+
+var htmx = require('@flarehotspot/lib/vendor/htmx-v1.9.12.js');
 window.htmx = htmx;
 
-htmx.createEventSource = function(url) {
-  var eventSource = new EventSource(url);
-
-  // Bug: https://bugzilla.mozilla.org/show_bug.cgi?id=833462
-  window.onbeforeunload = function() {
-    eventSource.close();
-  };
-
-  return eventSource;
-};
-
-require('../../lib/vendor/htmx-ext-sse-v1.19.12.js')
+require('@flarehotspot/lib/events.js');
+require('@flarehotspot/lib/vendor/htmx-ext-sse-v1.19.12.js');
+require('./notify.js');
+require('./sessions.js');
+require('./flash.js');
 

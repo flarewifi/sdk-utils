@@ -34,7 +34,6 @@ func PortalHead() templ.Component {
 }
 
 type PortalLayoutData struct {
-	Flash       templ.Component
 	PageContent templ.Component
 }
 
@@ -60,10 +59,6 @@ func PortalLayout(data PortalLayoutData) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div style=\"padding: 10px; background: gray;\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = data.Flash.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

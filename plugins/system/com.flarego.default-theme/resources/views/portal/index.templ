@@ -6,7 +6,7 @@ templ PortalIndexPage(navs []sdkapi.PortalNavItem) {
 	<ul>
 		for _, nav := range navs {
             <li>
-                <a href={ templ.SafeURL(nav.RouteUrl) }>
+                <a id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) }>
                     { nav.Label }
                 </a>
             </li>

@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"log"
+	sdkapi "sdk/api"
 	"time"
 
 	"core/db"
@@ -67,6 +68,16 @@ func (self *SessionModel) Update(ctx context.Context, id pgtype.UUID, devId pgty
 		startedAtTime = pgtype.Timestamp{Time: *started, Valid: true}
 	}
 
+	types := []string{
+		sdkapi.SessionTypeTime,
+		sdkapi.SessionTypeData,
+		sdkapi.SessionTypeTimeOrData,
+	}
+
+	if !sdkutils.SliceContains(types, t) {
+		return sdkapi.ErrInvalidSessionType
+	}
+
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		DeviceID:        devId,
 		SessionType:     t,
@@ -90,8 +101,8 @@ func (self *SessionModel) Update(ctx context.Context, id pgtype.UUID, devId pgty
 	return nil
 }
 
-func (self *SessionModel) AvlForDev(ctx context.Context, devId pgtype.UUID) (*Session, error) {
-	sRow, err := self.db.Queries.FindAvlSessionForDev(ctx, devId)
+func (self *SessionModel) AvailableForDevice(ctx context.Context, devId pgtype.UUID) (*Session, error) {
+	sRow, err := self.db.Queries.FindAvailableSessionForDevice(ctx, devId)
 	if err != nil {
 		log.Printf("error finding available session for dev %v: %v", devId, err)
 		return nil, err

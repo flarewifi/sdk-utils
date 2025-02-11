@@ -8,6 +8,7 @@ package sdkapi
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,10 +20,14 @@ const (
 	SessionTypeTimeOrData string = "time-or-data"
 )
 
+var (
+	ErrInvalidSessionType = errors.New("invalid session type")
+)
+
 type SessionData struct {
 	Id             pgtype.UUID
 	Provider       string
-	Type           string
+	SessionType    string
 	TimeSecs       int
 	DataMb         float64
 	TimeCons       int

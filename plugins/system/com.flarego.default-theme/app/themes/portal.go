@@ -5,7 +5,6 @@ import (
 	sdkapi "sdk/api"
 
 	"com.flarego.default-theme/resources/views/auth"
-	"com.flarego.default-theme/resources/views/flash"
 	"com.flarego.default-theme/resources/views/portal"
 )
 
@@ -16,10 +15,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 		CssFile: "theme.css",
 		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalLayoutData) {
 			head := portal.PortalHead()
-			flashMsg := data.Builder.FlashMsg()
-			flashTpl := flash.FlashMsg(flashMsg)
 			layout := portal.PortalLayout(portal.PortalLayoutData{
-				Flash:       flashTpl,
 				PageContent: data.Builder.Content(),
 			})
 			data.Builder.Render(head, layout)
