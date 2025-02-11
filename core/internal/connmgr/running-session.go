@@ -158,7 +158,7 @@ func (self *RunningSession) CleanupTc() error {
 	return <-errCh
 }
 
-func (self *RunningSession) UpdateData(stats *sdkapi.TrafficData) {
+func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
@@ -200,7 +200,8 @@ func (self *RunningSession) initTimeTicker() {
 
 					s.IncTimeCons(1)
 
-					log.Println("time tick...")
+					remaining := s.TimeSecs() - s.TimeConsumption()
+					log.Printf("time tick: %d remaining...\n", remaining)
 
 					// save every 15s
 					if s.TimeConsumption()%15 == 0 {

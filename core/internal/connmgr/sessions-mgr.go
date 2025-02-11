@@ -2,7 +2,6 @@ package connmgr
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -48,7 +48,7 @@ func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
 				defer self.mu.RUnlock()
 
 				for _, s := range self.sessions {
-					s.UpdateData(data)
+					s.UpdateDataConsumption(data)
 				}
 			}(&data)
 		}
@@ -184,8 +184,6 @@ func (self *SessionsMgr) loopSessions(clnt sdkapi.IClientDevice) {
 				return
 			}
 
-			log.Println("Got new session from : " + cs.Provider())
-
 			self.mu.RLock()
 			rs, ok := self.getRunningSession(clnt)
 			self.mu.RUnlock()
@@ -312,9 +310,9 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 	}
 
 	localClient := clnt.(*ClientDevice)
-	s, err := self.mdl.Session().AvlForDev(ctx, localClient.id)
+	s, err := self.mdl.Session().AvailableForDevice(ctx, localClient.id)
 	if err != nil {
-		if errors.Is(sql.ErrNoRows, err) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("No more available sessions")
 		}
 		return nil, err

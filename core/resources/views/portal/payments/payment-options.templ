@@ -6,7 +6,9 @@ type PaymentOption struct {
 }
 
 templ PaymentOptions(opts []PaymentOption) {
-	<h1>Payment Options</h1>
+	<h1>Pending Purchase</h1>
+    <hr>
+    <h3>Choose a payment option:</h3>
 	<hr/>
 	<ul>
 		for _, opt := range opts {

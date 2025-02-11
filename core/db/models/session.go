@@ -52,6 +52,7 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 
 		session.id = s.ID
 		session.deviceId = s.DeviceID
+		session.sessionType = s.SessionType
 		session.timeSecs = int(s.TimeSecs)
 		session.dataMb = sdkutils.PgNumericToFloat64(s.DataMbytes)
 		session.timeCons = int(s.ConsumptionSecs)

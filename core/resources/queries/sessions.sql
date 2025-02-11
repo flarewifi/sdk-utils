@@ -23,28 +23,28 @@ LIMIT
 UPDATE
   sessions
 SET
-  device_id = $1,
-  session_type = $2,
-  time_secs = $3,
-  data_mbytes = $4,
-  consumption_secs = $5,
-  consumption_mb = $6,
-  started_at = $7,
-  exp_days = $8,
-  down_mbits = $9,
-  up_mbits = $10,
-  use_global = $11
+    device_id = @device_id,
+    session_type = @session_type,
+    time_secs = @time_secs,
+    data_mbytes = @data_mbytes,
+    consumption_secs = @consumption_secs,
+    consumption_mb = @consumption_mb,
+    started_at = @started_at,
+    exp_days = @exp_days,
+    down_mbits = @down_mbits,
+    up_mbits = @up_mbits,
+    use_global = @use_global
 WHERE
-  id = $12;
+  id = @id;
 
 
--- name: FindAvlSessionForDev :one
+-- name: FindAvailableSessionForDevice :one
 SELECT
     *
 FROM
   sessions
 WHERE
-  device_id = $1
+  device_id = @device_id
   AND (
     (
       session_type = 'time'

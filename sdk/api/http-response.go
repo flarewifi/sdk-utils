@@ -48,6 +48,9 @@ type IHttpResponse interface {
 	// Send HTTP redirect response to a given route name.
 	Redirect(w http.ResponseWriter, r *http.Request, routeName string, pairs ...string)
 
+	// Redirect to portal
+	RedirectToPortal(w http.ResponseWriter, r *http.Request)
+
 	// Used to send flash messages.
 	// For example, if you want to send a success message, you can use Flash(w, r, "Payment successful", sdkapi.FlashMsgSuccess)
 	// Note that this does not send the http response immediately.

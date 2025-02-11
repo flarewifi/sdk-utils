@@ -31,7 +31,6 @@ type FlashMsg struct {
 }
 
 type ILayoutBuilder interface {
-	FlashMsg() *FlashMsg
 	Content() templ.Component
 	Render(head, layout templ.Component)
 }

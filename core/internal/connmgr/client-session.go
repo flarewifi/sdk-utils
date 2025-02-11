@@ -13,41 +13,41 @@ import (
 func NewClientSession(src sdkapi.ISessionSource) *ClientSession {
 	s := src.Data()
 	return &ClientSession{
-		id:        s.Id,
-		provider:  s.Provider,
-		t:         s.Type,
-		timeSecs:  s.TimeSecs,
-		dataMb:    s.DataMb,
-		timeCons:  s.TimeCons,
-		dataCons:  s.DataCons,
-		startedAt: s.StartedAt,
-		expDays:   s.ExpDays,
-		downMbits: s.DownMbits,
-		upMbits:   s.UpMbits,
-		useGlobal: s.UseGlobalSpeed,
-		createdAt: s.CreatedAt,
-		save:      src.Save,
-		reload:    src.Reload,
+		id:          s.Id,
+		provider:    s.Provider,
+		sessionType: s.SessionType,
+		timeSecs:    s.TimeSecs,
+		dataMb:      s.DataMb,
+		timeCons:    s.TimeCons,
+		dataCons:    s.DataCons,
+		startedAt:   s.StartedAt,
+		expDays:     s.ExpDays,
+		downMbits:   s.DownMbits,
+		upMbits:     s.UpMbits,
+		useGlobal:   s.UseGlobalSpeed,
+		createdAt:   s.CreatedAt,
+		save:        src.Save,
+		reload:      src.Reload,
 	}
 }
 
 type ClientSession struct {
-	mu        sync.RWMutex
-	id        pgtype.UUID
-	provider  string
-	t         string
-	timeSecs  int
-	dataMb    float64
-	timeCons  int
-	dataCons  float64
-	startedAt *time.Time
-	expDays   *int
-	downMbits int
-	upMbits   int
-	useGlobal bool
-	createdAt time.Time
-	save      func(context.Context, sdkapi.SessionData) error
-	reload    func(context.Context) (sdkapi.SessionData, error)
+	mu          sync.RWMutex
+	id          pgtype.UUID
+	provider    string
+	sessionType string
+	timeSecs    int
+	dataMb      float64
+	timeCons    int
+	dataCons    float64
+	startedAt   *time.Time
+	expDays     *int
+	downMbits   int
+	upMbits     int
+	useGlobal   bool
+	createdAt   time.Time
+	save        func(context.Context, sdkapi.SessionData) error
+	reload      func(context.Context) (sdkapi.SessionData, error)
 }
 
 func (self *ClientSession) Id() pgtype.UUID {
@@ -65,7 +65,7 @@ func (self *ClientSession) Provider() string {
 func (self *ClientSession) Type() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
-	return self.t
+	return self.sessionType
 }
 
 func (self *ClientSession) TimeSecs() int {
@@ -227,7 +227,7 @@ func (self *ClientSession) Save(ctx context.Context) error {
 
 	data := sdkapi.SessionData{
 		Provider:       self.provider,
-		Type:           self.t,
+		SessionType:    self.sessionType,
 		TimeSecs:       self.timeSecs,
 		DataMb:         self.dataMb,
 		TimeCons:       self.timeCons,
@@ -253,7 +253,7 @@ func (self *ClientSession) Reload(ctx context.Context) error {
 	}
 
 	self.provider = s.Provider
-	self.t = s.Type
+	self.sessionType = s.SessionType
 	self.timeSecs = s.TimeSecs
 	self.dataMb = s.DataMb
 	self.timeCons = s.TimeCons

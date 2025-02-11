@@ -1,4 +1,6 @@
 {
   "js": ["./portal/js/globals.js"],
-  "css": []
+  "css": [
+    "./portal/css/globals.css"
+  ]
 }

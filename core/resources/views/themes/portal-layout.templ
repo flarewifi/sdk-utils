@@ -1,5 +1,7 @@
 package themes
 
+import sdkapi "sdk/api"
+
 type PortalAssets struct {
 	GlobalCssHref       string
 	GlobalJsSrc         string
@@ -12,8 +14,10 @@ type PortalAssets struct {
 }
 
 type PortalLayoutData struct {
+    PageUUID string
 	Assets PortalAssets
 	SseURL string
+	Flash  *sdkapi.FlashMsg
 	Head   templ.Component
 	Layout templ.Component
 }
@@ -24,7 +28,9 @@ templ PortalThemeLayout(data PortalLayoutData) {
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>Fixed top navbar example · Bootstrap v5.3</title>
+            <!-- Prevent page from being cached -->
+            <meta name="pageuuid" content={ data.PageUUID } />
+			<title>Flare Hotspot</title>
 			<!-- Theme Stylesheets -->
 			if data.Assets.GlobalCssHref != "" {
 				<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>
@@ -56,6 +62,9 @@ templ PortalThemeLayout(data PortalLayoutData) {
 			}
 			if data.Assets.PageJsSrc != "" {
 				<script src={ data.Assets.PageJsSrc }></script>
+			}
+			if data.Flash != nil {
+				<script id="flash-message" data-flash-type={ data.Flash.Type } data-flash-message={ data.Flash.Message } type="text/template"></script>
 			}
 		</body>
 	</html>

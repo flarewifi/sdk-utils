@@ -7,7 +7,6 @@ import (
 	sdkapi "sdk/api"
 
 	"com.flarego.default-theme/resources/views/admin"
-	"com.flarego.default-theme/resources/views/flash"
 )
 
 func SetAdminTheme(api sdkapi.IPluginApi) {
@@ -17,10 +16,7 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 		CssLib:  sdkapi.CssLibBootstrap5,
 		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.AdminLayoutData) {
 			head := admin.AdminHead()
-			flashMsg := data.Builder.FlashMsg()
-			flashTpl := flash.FlashMsg(flashMsg)
 			layout := admin.AdminLayout(admin.AdminLayoutData{
-				Flash:       flashTpl,
 				Navs:        data.Navs,
 				PageContent: data.Builder.Content(),
 			})

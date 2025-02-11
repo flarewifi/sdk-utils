@@ -1,20 +1,12 @@
 package api
 
 import (
-	sdkapi "sdk/api"
-
 	"github.com/a-h/templ"
 )
 
 type ThemesLayoutBuilder struct {
-	FlashMessage   *sdkapi.FlashMsg
 	PageContent    templ.Component
 	ContentWrapper func(head, layout templ.Component)
-}
-
-// FlashMsg returns the flash message.
-func (self *ThemesLayoutBuilder) FlashMsg() *sdkapi.FlashMsg {
-	return self.FlashMessage
 }
 
 // Returns the page content

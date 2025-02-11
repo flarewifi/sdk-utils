@@ -155,7 +155,7 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 		if err != nil {
 			return
 		}
-		indexCss += "import '" + relPath + "';\n"
+		indexCss += "@import '" + relPath + "';\n"
 	}
 
 	if err = os.WriteFile(indexFile, []byte(indexCss), sdkutils.PermFile); err != nil {
@@ -167,7 +167,9 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 	result := EsbuildCss(indexFile, outfile)
 
 	if len(result.Errors) > 0 {
-		err = fmt.Errorf("failed to compile global css file: %v", result.Errors)
+		for _, e := range result.Errors {
+			err = fmt.Errorf("failed to compile global css file: %v", e)
+		}
 		return
 	}
 

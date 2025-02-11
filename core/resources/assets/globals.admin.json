@@ -2,5 +2,7 @@
   "js": [
     "./admin/js/globals.js"
   ],
-  "css": []
+  "css": [
+    "./admin/css/global.css"
+  ]
 }

@@ -20,22 +20,22 @@ func NewLocalSession(dtb *db.Database, mdls *models.Models, s *models.Session) s
 }
 
 type LocalSession struct {
-	mu        sync.RWMutex
-	db        *db.Database
-	mdls      *models.Models
-	id        pgtype.UUID
-	devId     pgtype.UUID
-	t         string
-	timeSecs  int
-	dataMb    float64
-	timeCons  int
-	dataCons  float64
-	startedAt *time.Time
-	expDays   *int
-	downMbits int
-	upMbits   int
-	useGlobal bool
-	createdAt time.Time
+	mu          sync.RWMutex
+	db          *db.Database
+	mdls        *models.Models
+	id          pgtype.UUID
+	devId       pgtype.UUID
+	sessionType string
+	timeSecs    int
+	dataMb      float64
+	timeCons    int
+	dataCons    float64
+	startedAt   *time.Time
+	expDays     *int
+	downMbits   int
+	upMbits     int
+	useGlobal   bool
+	createdAt   time.Time
 }
 
 func (self *LocalSession) Data() sdkapi.SessionData {
@@ -45,7 +45,7 @@ func (self *LocalSession) Data() sdkapi.SessionData {
 	return sdkapi.SessionData{
 		Id:             self.id,
 		Provider:       "local",
-		Type:           self.t,
+		SessionType:    self.sessionType,
 		TimeSecs:       self.timeSecs,
 		DataMb:         self.dataMb,
 		TimeCons:       self.timeCons,
@@ -65,7 +65,7 @@ func (self *LocalSession) Save(ctx context.Context, data sdkapi.SessionData) err
 
 	id := self.id
 	devId := self.devId
-	t := data.Type
+	t := data.SessionType
 	timeSecs := data.TimeSecs
 	dataMb := data.DataMb
 	timeCons := data.TimeCons
@@ -101,7 +101,7 @@ func (self *LocalSession) Reload(ctx context.Context) (sdkapi.SessionData, error
 func (self *LocalSession) data() sdkapi.SessionData {
 	return sdkapi.SessionData{
 		Provider:       "local",
-		Type:           self.t,
+		SessionType:    self.sessionType,
 		TimeSecs:       self.timeSecs,
 		DataMb:         self.dataMb,
 		TimeCons:       self.timeCons,
@@ -118,7 +118,7 @@ func (self *LocalSession) data() sdkapi.SessionData {
 func (self *LocalSession) load(s *models.Session) {
 	self.id = s.Id()
 	self.devId = s.DeviceId()
-	self.t = s.SessionType()
+	self.sessionType = s.SessionType()
 	self.timeSecs = s.TimeSecs()
 	self.dataMb = s.DataMbyte()
 	self.timeCons = s.TimeConsumed()

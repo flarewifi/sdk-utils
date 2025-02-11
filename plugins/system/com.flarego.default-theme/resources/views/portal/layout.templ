@@ -4,13 +4,11 @@ templ PortalHead() {
 }
 
 type PortalLayoutData struct {
-	Flash       templ.Component
 	PageContent templ.Component
 }
 
 templ PortalLayout(data PortalLayoutData) {
 	<div style="padding: 10px; background: gray;">
-		@data.Flash
 		@data.PageContent
 	</div>
 }

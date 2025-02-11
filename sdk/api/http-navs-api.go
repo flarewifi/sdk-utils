@@ -61,6 +61,7 @@ type AdminNavItem struct {
 }
 
 type PortalNavItem struct {
+	ID       string
 	Label    string
 	IconUrl  string
 	RouteUrl string

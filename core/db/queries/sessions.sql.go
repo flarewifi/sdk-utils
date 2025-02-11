@@ -48,7 +48,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (p
 	return id, err
 }
 
-const findAvlSessionForDev = `-- name: FindAvlSessionForDev :one
+const findAvailableSessionForDevice = `-- name: FindAvailableSessionForDevice :one
 SELECT
     id, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, started_at, exp_days, down_mbits, up_mbits, use_global, created_at
 FROM
@@ -85,8 +85,8 @@ LIMIT
   1
 `
 
-func (q *Queries) FindAvlSessionForDev(ctx context.Context, deviceID pgtype.UUID) (Session, error) {
-	row := q.db.QueryRow(ctx, findAvlSessionForDev, deviceID)
+func (q *Queries) FindAvailableSessionForDevice(ctx context.Context, deviceID pgtype.UUID) (Session, error) {
+	row := q.db.QueryRow(ctx, findAvailableSessionForDevice, deviceID)
 	var i Session
 	err := row.Scan(
 		&i.ID,
@@ -258,17 +258,17 @@ const updateSession = `-- name: UpdateSession :exec
 UPDATE
   sessions
 SET
-  device_id = $1,
-  session_type = $2,
-  time_secs = $3,
-  data_mbytes = $4,
-  consumption_secs = $5,
-  consumption_mb = $6,
-  started_at = $7,
-  exp_days = $8,
-  down_mbits = $9,
-  up_mbits = $10,
-  use_global = $11
+    device_id = $1,
+    session_type = $2,
+    time_secs = $3,
+    data_mbytes = $4,
+    consumption_secs = $5,
+    consumption_mb = $6,
+    started_at = $7,
+    exp_days = $8,
+    down_mbits = $9,
+    up_mbits = $10,
+    use_global = $11
 WHERE
   id = $12
 `

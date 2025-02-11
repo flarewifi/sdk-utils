@@ -99,7 +99,7 @@ func (self *Device) Wallet(ctx context.Context) (*Wallet, error) {
 }
 
 func (self *Device) NextSession(ctx context.Context) (*Session, error) {
-	sRow, err := self.db.Queries.FindAvlSessionForDev(ctx, self.id)
+	sRow, err := self.db.Queries.FindAvailableSessionForDevice(ctx, self.id)
 	if err != nil {
 		log.Printf("error finding available session for device %v: %v", self.id, err)
 		return nil, err

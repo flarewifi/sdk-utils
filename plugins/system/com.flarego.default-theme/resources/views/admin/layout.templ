@@ -6,7 +6,6 @@ templ AdminHead() {
 }
 
 type AdminLayoutData struct {
-	Flash       templ.Component
 	Navs        []sdkapi.AdminNavList
 	PageContent templ.Component
 }
@@ -15,7 +14,6 @@ templ AdminLayout(data AdminLayoutData) {
 	@colorSchemeToggle()
 	@adminNavsTpl(data.Navs)
 	<main class="container">
-        @data.Flash
 		@data.PageContent
 	</main>
 }
