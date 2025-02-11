@@ -42,8 +42,8 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 			Type:    flashType,
 			Message: flashMsg,
 		}
-		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_type", "")
-		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_message", "")
+		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_type")
+		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
 	}
 
 	layoutBuilder := &ThemesLayoutBuilder{
@@ -94,8 +94,8 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 			Type:    flashType,
 			Message: flashMsg,
 		}
-		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_type", "")
-		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_message", "")
+		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_type")
+		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
 	}
 
 	layoutBuilder := &ThemesLayoutBuilder{

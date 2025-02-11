@@ -6,6 +6,19 @@ The `IHttpCookie` provides methods to set and read cookie values.
 
 Below are the methods available in `IHttpCookie`:
 
+### SetCookie
+
+Sets the cookie value for a given cookie name
+
+```go
+// http handler
+func (w http.ResponseWriter, r *http.Request) {
+    cookieAPI := api.Http().Cookie()
+    cookieAPI.SetCookie(w, "auth-token", "**token-string**")
+    http.WriteHeader(http.StatusOK)
+}
+```
+
 ### GetCookie
 
 Returns the string value of the cookie
@@ -22,15 +35,14 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### SetCookie
+### DeleteCookie
 
-Sets the cookie value for a given cookie name
-
+Deletes the cookie value for a given cookie name
 ```go
 // http handler
 func (w http.ResponseWriter, r *http.Request) {
     cookieAPI := api.Http().Cookie()
-    cookieAPI.SetCookie(w, "auth-token", "**token-string**")
+    cookieAPI.DeleteCookie(w, "auth-token")
     http.WriteHeader(http.StatusOK)
 }
 ```
