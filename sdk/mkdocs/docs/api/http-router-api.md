@@ -4,6 +4,8 @@ The `IHttpRouterApi` is the backend for http routing in Flare Hotspot. There are
 - `AdminRouter` - a router for the admin pages of the plugin that uses the [AdminAuth](#admin-auth) middleware.
 - `PluginRouter` - a router for general purpose routing within the plugin
 
+---
+
 ## IHttpRouterApi methods {#http-router-api}
 
 Below are the available methods in `IHttpRouterApi`:
@@ -51,6 +53,8 @@ This method is used to generate the url for third-party plugin route name. This 
 ```go
 url := api.Http().HttpRouter().UrlForPkgRoute("com.mydomain.myplugin", "portal.welcome", "name", "John")
 ```
+
+---
 
 ## IHttpRouterInstance {#router-instance}
 
@@ -100,6 +104,8 @@ router.Post("/settings/save", func(w http.ResponseWriter, r *http.Request) {
 This method is used to add a [middleware](#middlewares) to the router. It accepts a list of middlewares.
 All routes defined after the `Use` method will use the middleware.
 
+---
+
 ## Handler Function {#handler-function}
 
 A handler function is a function that executes when a URL pattern in the HTTP request is matched.
@@ -122,6 +128,8 @@ pluginRouter.Get("/welcome", func (w http.ResponseWriter, r *http.Request) {
     w.Write([]byte("Welcome to Flare Hotspot!"))
 }).name("portal:welcome")
 ```
+
+---
 
 ## Middlewares {#middlewares}
 
