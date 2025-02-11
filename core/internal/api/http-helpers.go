@@ -29,7 +29,7 @@ func (self *HttpHelpers) Translate(msgtype string, msgk string, pairs ...interfa
 
 func (self *HttpHelpers) AssetPath(p string) string {
 	// TODO: refer to the dist manifest file
-	return path.Join("/plugin", self.api.info.Package, self.api.info.Version, "assets/dist", p)
+	return path.Join("/plugin", self.api.info.Package, self.api.info.Version, "assets", "dist", p)
 }
 
 func (self *HttpHelpers) ResourcePath(p string) string {
