@@ -13,7 +13,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
-		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalLayoutData) {
+		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalThemeData) {
 			head := portal.PortalHead()
 			layout := portal.PortalLayout(portal.PortalLayoutData{
 				PageContent: data.Builder.Content(),
@@ -25,7 +25,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 			page := auth.LoginPage(csrfHtml, data)
 			return sdkapi.ViewPage{PageContent: page}
 		},
-		IndexPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalIndexData) sdkapi.ViewPage {
+		IndexPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalPageData) sdkapi.ViewPage {
 			page := portal.PortalIndexPage(data.Navs)
 			return sdkapi.ViewPage{PageContent: page}
 		},

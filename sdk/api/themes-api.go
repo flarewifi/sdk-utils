@@ -12,13 +12,12 @@ import (
 	"github.com/a-h/templ"
 )
 
-const (
-	CssLibBootstrap5 AdminCssLib  = "bootstrap5"
-	CssLibBootstrap3 PortalCssLib = "bootstrap3"
-)
+type CSSLib string
 
-type AdminCssLib string
-type PortalCssLib string
+const (
+	CssLibBootstrap5 CSSLib = "bootstrap5"
+	CssLibBootstrap3 CSSLib = "bootstrap3"
+)
 
 type IThemesApi interface {
 	NewAdminTheme(AdminThemeOpts)
@@ -35,40 +34,38 @@ type ILayoutBuilder interface {
 	Render(head, layout templ.Component)
 }
 
-type AdminLayoutData struct {
-	Api     IPluginApi
-	Navs    []AdminNavList
-	Builder ILayoutBuilder
-}
-
-type PortalLayoutData struct {
-	Api     IPluginApi
-	Builder ILayoutBuilder
-}
-
 type LoginPageData struct {
 	LoginUrl    string
 	UsernameErr error
 	PasswordErr error
 }
 
-type PortalIndexData struct {
-	Navs []PortalNavItem
+type AdminThemeData struct {
+	Navs    []AdminNavList
+	Builder ILayoutBuilder
 }
 
 type AdminThemeOpts struct {
+	CssLib           CSSLib
 	JsFile           string
 	CssFile          string
-	CssLib           AdminCssLib
-	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data AdminLayoutData)
+	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data AdminThemeData)
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
+}
+
+type PortalPageData struct {
+	Navs []PortalNavItem
+}
+
+type PortalThemeData struct {
+	Builder ILayoutBuilder
 }
 
 type PortalThemeOpts struct {
 	JsFile           string
 	CssFile          string
-	CssLib           PortalCssLib
-	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data PortalLayoutData)
+	CssLib           CSSLib
+	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data PortalThemeData)
 	LoginPageFactory func(w http.ResponseWriter, r *http.Request, data LoginPageData) ViewPage
-	IndexPageFactory func(w http.ResponseWriter, r *http.Request, data PortalIndexData) ViewPage
+	IndexPageFactory func(w http.ResponseWriter, r *http.Request, data PortalPageData) ViewPage
 }

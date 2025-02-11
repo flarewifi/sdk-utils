@@ -14,7 +14,7 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
 		CssLib:  sdkapi.CssLibBootstrap5,
-		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.AdminLayoutData) {
+		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.AdminThemeData) {
 			head := admin.AdminHead()
 			layout := admin.AdminLayout(admin.AdminLayoutData{
 				Navs:        data.Navs,

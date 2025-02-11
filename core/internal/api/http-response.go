@@ -64,8 +64,7 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 		},
 	}
 
-	data := sdkapi.AdminLayoutData{
-		Api:     self.api,
+	data := sdkapi.AdminThemeData{
 		Builder: layoutBuilder,
 		Navs:    navs,
 	}
@@ -118,8 +117,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		},
 	}
 
-	data := sdkapi.PortalLayoutData{
-		Api:     self.api,
+	data := sdkapi.PortalThemeData{
 		Builder: layoutBuilder,
 	}
 

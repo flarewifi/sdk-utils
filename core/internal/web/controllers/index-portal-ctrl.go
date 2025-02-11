@@ -17,7 +17,7 @@ func PortalIndexPage(g *api.CoreGlobals) http.Handler {
 		}
 
 		navs := g.CoreAPI.HttpAPI.Navs().GetPortalItems(r)
-		data := sdkapi.PortalIndexData{Navs: navs}
+		data := sdkapi.PortalPageData{Navs: navs}
 		page := t.PortalTheme.IndexPageFactory(w, r, data)
 		g.CoreAPI.HttpAPI.HttpResponse().PortalView(w, r, page)
 	})
