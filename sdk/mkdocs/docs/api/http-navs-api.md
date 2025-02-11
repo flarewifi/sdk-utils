@@ -49,10 +49,10 @@ Below is an example of registering a function that generates portal navigation m
 ```go
 navsAPI := api.Http().Navs()
 navsAPI.PortalNavsFactory(func(r *http.Request) []PortalNavItemOpt {
-    return []sdkapi.AdminNavItemOpt{
+    return []sdkapi.PortalNavItemOpt{
         {
             Label:     "Welcome",                       // Menu display text
-            IconUrl: api.Http().Helpers().ResourcePath("assets/images/some-image.jpg"),
+            IconFile: "some-image.jpg",                 // File in the resources/images folder
             RouteName: "portal:welcome",                // Link to the route
             RouteParams: map[string]string{
                 "name": "John",

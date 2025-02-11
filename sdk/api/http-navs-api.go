@@ -45,7 +45,7 @@ type AdminNavItemOpt struct {
 
 type PortalNavItemOpt struct {
 	Label       string
-	IconUrl     string
+	IconFile    string
 	RouteName   string
 	RouteParams map[string]string
 }

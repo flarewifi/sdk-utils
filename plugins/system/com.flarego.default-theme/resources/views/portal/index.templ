@@ -6,7 +6,11 @@ templ PortalIndexPage(navs []sdkapi.PortalNavItem) {
 	<ul>
 		for _, nav := range navs {
             <li>
-                <a id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) }>
+                <a class="btn btn-primary" id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) }>
+                    if nav.IconUrl != "" {
+                        <img src={ nav.IconUrl } style="max-width: 50px;" />
+                    }
+
                     { nav.Label }
                 </a>
             </li>

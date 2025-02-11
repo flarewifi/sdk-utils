@@ -22,7 +22,7 @@ func AssetsRoutes(g *api.CoreGlobals) {
 		assetsDist := p.Resource("assets/dist")
 		fs := http.FileServer(http.Dir(assetsDist))
 		prefix := p.Http().Helpers().AssetPath("")
-		fileserver := middlewares.AssetPath(http.StripPrefix(prefix, fs))
+		fileserver := http.StripPrefix(prefix, fs)
 		webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 	}
 
@@ -30,16 +30,16 @@ func AssetsRoutes(g *api.CoreGlobals) {
 		resourcesDir := p.Resource("")
 		fs := http.FileServer(http.Dir(resourcesDir))
 		prefix := p.Http().Helpers().ResourcePath("")
-		fileserver := middlewares.AssetPath(http.StripPrefix(prefix, fs))
+		fileserver := http.StripPrefix(prefix, fs)
 		webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 	}
 
 	// set public static files
-	assetPathMw := middlewares.AssetPath
+	// assetPathMw := middlewares.AssetPath
 	publicDir := sdkutils.PathPublicDir
 	fs := http.FileServer(http.Dir(publicDir))
 	prefix := "/public"
-	fileserver := cacheMw(assetPathMw(http.StripPrefix(prefix, fs)))
+	fileserver := cacheMw(http.StripPrefix(prefix, fs))
 	webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 }
 
@@ -47,6 +47,6 @@ func CoreAssets(g *api.CoreGlobals) {
 	assetsDir := g.CoreAPI.Utl.Resource("assets")
 	fs := http.FileServer(http.Dir(assetsDir))
 	prefix := g.CoreAPI.Http().Helpers().AssetPath("")
-	fileserver := middlewares.AssetPath(http.StripPrefix(prefix, fs))
+	fileserver := http.StripPrefix(prefix, fs)
 	webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 }
