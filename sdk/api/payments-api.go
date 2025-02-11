@@ -10,6 +10,12 @@ import (
 	"net/http"
 )
 
+// List of supported currencies
+const (
+	CurrencyPhilippinePeso string = "PHP"
+	CurrencyUsDollar       string = "USD"
+)
+
 // IPaymentsApi is used to handle customer payments.
 type IPaymentsApi interface {
 
