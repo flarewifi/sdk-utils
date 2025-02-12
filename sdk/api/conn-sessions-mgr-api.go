@@ -12,6 +12,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ClientSessionSummary struct {
+	RemainingTimeSecs   int
+	RemainingDataMbytes float64
+}
+
 // ISessionsMgrApi is used to manage client devices.
 type ISessionsMgrApi interface {
 
@@ -29,7 +34,7 @@ type ISessionsMgrApi interface {
 	CreateSession(
 		ctx context.Context,
 		devId pgtype.UUID,
-		t string,
+		sessionType string,
 		timeSecs int,
 		dataMbytes float64,
 		expDays *int,
@@ -43,6 +48,9 @@ type ISessionsMgrApi interface {
 
 	// Returns unconsumed session (if any) for the client device.
 	GetSession(ctx context.Context, clnt IClientDevice) (IClientSession, error)
+
+	// SessionSummary returns the session summary for the client device.
+	SessionSummary(ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
 
 	// Register a hook to find a session for a client device.
 	RegisterSessionProvider(ISessionProvider)

@@ -322,6 +322,11 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 	return NewClientSession(localSrc), nil
 }
 
+// SessionSummary
+func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
+	return self.mdl.Session().Summary(ctx, clnt.Id())
+}
+
 func (self *SessionsMgr) RegisterSessionProvider(provider sdkapi.ISessionProvider) {
 	self.mu.Lock()
 	defer self.mu.Unlock()

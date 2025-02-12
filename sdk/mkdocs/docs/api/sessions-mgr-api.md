@@ -101,6 +101,18 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### SessionSummary
+
+Returns the remaining session duration and data for the given [IClientDevice](./client-device.md).
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    clnt, _ := api.Http().GetClientDevice(r)
+    summary, err = api.SessionsMgr().SessionSummary(r.Context(), clnt)
+}
+```
+
+
 ### RegisterSessionProvider
 
 Used to register a [session provider](./session-provider.md).

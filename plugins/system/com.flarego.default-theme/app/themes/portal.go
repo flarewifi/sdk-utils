@@ -26,23 +26,20 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 			return sdkapi.ViewPage{PageContent: page}
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalPageData) sdkapi.ViewPage {
-			page := portal.PortalIndexPage(data.Navs)
+			clnt, err := api.Http().GetClientDevice(r)
+			if err != nil {
+				api.Logger().Error("Error in getting client device: " + err.Error())
+				return sdkapi.ViewPage{}
+			}
+
+			summary, err := api.SessionsMgr().SessionSummary(r.Context(), clnt)
+			if err != nil {
+				api.Logger().Error("Error in session summary query: " + err.Error())
+				return sdkapi.ViewPage{}
+			}
+
+			page := portal.PortalIndexPage(data.Navs, summary)
 			return sdkapi.ViewPage{PageContent: page}
 		},
 	})
-
-	// api.Themes().NewPortalTheme(sdkthemes.PortalTheme{
-	// 	LayoutComponent: sdkthemes.ThemeComponent{
-	// 		Component: "portal/ThemeLayout.vue",
-	// 	},
-	// 	IndexComponent: sdkthemes.ThemeComponent{
-	// 		Component: "portal/ThemeIndex.vue",
-	// 	},
-	// 	ThemeAssets: &sdkthemes.ThemeAssets{
-	// 		Styles: []string{
-	// 			"vendor/bootstrap-4.6.1/bootstrap.min.css",
-	//                "portal/style.css",
-	// 		},
-	// 	},
-	// })
 }
