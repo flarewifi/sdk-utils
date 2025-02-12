@@ -1,6 +1,7 @@
 package connmgr
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -51,7 +52,7 @@ func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, host
 	ctx := r.Context()
 	dev, err := reg.mdls.Device().FindByMac(ctx, mac)
 	if err != nil {
-		if err == pgx.ErrNoRows && dev == nil {
+		if errors.Is(err, pgx.ErrNoRows) && dev == nil {
 			log.Println("no device found by mac, creating new device...")
 			// create new device record
 			dev, err = reg.mdls.Device().Create(ctx, mac, ip, hostname)

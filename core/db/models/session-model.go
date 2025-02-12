@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"errors"
 	"log"
 	sdkapi "sdk/api"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -141,4 +143,20 @@ func (self *SessionModel) UpdateAllBandwidth(ctx context.Context, downMbit int, 
 
 	log.Println("Successfully updated all bandwidth of valid sessions")
 	return nil
+}
+
+func (self *SessionModel) Summary(ctx context.Context, deviceID pgtype.UUID) (*sdkapi.ClientSessionSummary, error) {
+	summary, err := self.db.Queries.SessionSummary(ctx, deviceID)
+	if err != nil && errors.Is(pgx.ErrNoRows, err) {
+		return &sdkapi.ClientSessionSummary{}, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &sdkapi.ClientSessionSummary{
+		RemainingTimeSecs:   int(summary.RemainingTimeSecs),
+		RemainingDataMbytes: summary.RemainingDataMb,
+	}, nil
 }

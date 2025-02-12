@@ -1,8 +1,9 @@
 package portal
 
 import "sdk/api"
+import "fmt"
 
-templ PortalIndexPage(navs []sdkapi.PortalNavItem) {
+templ PortalIndexPage(navs []sdkapi.PortalNavItem, summary *sdkapi.ClientSessionSummary) {
 	<ul>
 		for _, nav := range navs {
             <li>
@@ -16,4 +17,10 @@ templ PortalIndexPage(navs []sdkapi.PortalNavItem) {
             </li>
 		}
 	</ul>
+
+    <h3>
+        Session Summary
+    </h3>
+    <p>Remaining Time: { fmt.Sprintf("%d", summary.RemainingTimeSecs) }s</p>
+    <p>Remaining Data: { fmt.Sprintf("%.2f", summary.RemainingDataMbytes) }MB</p>
 }
