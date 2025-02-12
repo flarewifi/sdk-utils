@@ -1,7 +1,6 @@
 package themes
 
 import (
-	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
 
@@ -33,33 +32,14 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				return sdkapi.ViewPage{}
 			}
 
-			fmt.Println("Client: ", clnt)
-
 			summary, err := api.SessionsMgr().SessionSummary(r.Context(), clnt)
 			if err != nil {
 				api.Logger().Error("Error in session summary query: " + err.Error())
 				return sdkapi.ViewPage{}
 			}
 
-			fmt.Println("Summary: ", summary)
-
 			page := portal.PortalIndexPage(data.Navs, summary)
 			return sdkapi.ViewPage{PageContent: page}
 		},
 	})
-
-	// api.Themes().NewPortalTheme(sdkthemes.PortalTheme{
-	// 	LayoutComponent: sdkthemes.ThemeComponent{
-	// 		Component: "portal/ThemeLayout.vue",
-	// 	},
-	// 	IndexComponent: sdkthemes.ThemeComponent{
-	// 		Component: "portal/ThemeIndex.vue",
-	// 	},
-	// 	ThemeAssets: &sdkthemes.ThemeAssets{
-	// 		Styles: []string{
-	// 			"vendor/bootstrap-4.6.1/bootstrap.min.css",
-	//                "portal/style.css",
-	// 		},
-	// 	},
-	// })
 }
