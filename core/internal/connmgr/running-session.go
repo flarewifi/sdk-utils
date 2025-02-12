@@ -45,6 +45,8 @@ type RunningSession struct {
 	timeTicker *time.Ticker
 	tickerDone chan bool
 	session    sdkapi.IClientSession
+	diffTime   int
+	diffMb     float64
 	callbacks  []chan error
 }
 
@@ -73,6 +75,12 @@ func (self *RunningSession) Done() <-chan error {
 	ch := make(chan error)
 	self.callbacks = append(self.callbacks, ch)
 	return ch
+}
+
+func (self *RunningSession) Diff() (secs int, mb float64) {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.diffTime, self.diffMb
 }
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
@@ -169,6 +177,7 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 		dataconMb := float64(download.Bytes+upload.Bytes) / (1 * 1000 * 1000)
 		log.Println("CONSUMPTION MB: ", dataconMb)
 		self.session.IncDataCons(dataconMb)
+		self.diffMb += dataconMb
 
 		if self.isConsumed() {
 			log.Println("Session data is consumed!!!")
@@ -199,6 +208,7 @@ func (self *RunningSession) initTimeTicker() {
 					defer self.mu.RUnlock()
 
 					s.IncTimeCons(1)
+					self.diffTime++
 
 					remaining := s.TimeSecs() - s.TimeConsumption()
 					log.Printf("time tick: %d remaining...\n", remaining)
@@ -211,6 +221,9 @@ func (self *RunningSession) initTimeTicker() {
 							go self.Stop(context.Background())
 							return
 						}
+						// reset diff counters
+						self.diffTime = 0
+						self.diffMb = 0
 					}
 
 					if self.isConsumed() {
