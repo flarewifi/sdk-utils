@@ -24,36 +24,40 @@ func (self *ThemesApi) NewPortalTheme(theme sdkapi.PortalThemeOpts) {
 }
 
 func (self *ThemesApi) GetAdminAssets() (jsSrc string, cssHref string) {
-	manifest := self.api.AssetsManifest
+	// manifest := self.api.AssetsManifest
 
 	if self.AdminTheme != nil {
-		scriptFile, ok := manifest.AdminAssets.Scripts[self.AdminTheme.JsFile]
-		if ok {
-			jsSrc = self.api.HttpAPI.Helpers().AssetPath(scriptFile)
-		}
+		// scriptFile, ok := manifest.AdminAssets.Scripts[self.AdminTheme.JsFile]
+		// if ok {
+		// 	jsSrc = self.api.HttpAPI.Helpers().ResourcePath(path.Join("assets", "dist", scriptFile))
+		// }
 
-		cssFile, ok := manifest.AdminAssets.Styles[self.AdminTheme.CssFile]
-		if ok {
-			cssHref = self.api.HttpAPI.Helpers().AssetPath(cssFile)
-		}
+		// cssFile, ok := manifest.AdminAssets.Styles[self.AdminTheme.CssFile]
+		// if ok {
+		// 	cssHref = self.api.HttpAPI.Helpers().ResourcePath(path.Join("assets", "dist", cssFile))
+		// }
+		jsSrc = self.api.HttpAPI.Helpers().AdminAssetPath(self.AdminTheme.JsFile)
+		cssHref = self.api.HttpAPI.Helpers().AdminAssetPath(self.AdminTheme.CssFile)
 	}
 
 	return
 }
 
 func (self *ThemesApi) GetPortalAssets() (jsSrc string, cssHref string) {
-	manifest := self.api.AssetsManifest
+	// manifest := self.api.AssetsManifest
 
 	if self.PortalTheme != nil {
-		scriptFile, ok := manifest.PortalAssets.Scripts[self.PortalTheme.JsFile]
-		if ok {
-			jsSrc = self.api.HttpAPI.Helpers().AssetPath(scriptFile)
-		}
+		// scriptFile, ok := manifest.PortalAssets.Scripts[self.PortalTheme.JsFile]
+		// if ok {
+		// 	jsSrc = self.api.HttpAPI.Helpers().ResourcePath(path.Join("assets", "dist", scriptFile))
+		// }
 
-		cssFile, ok := manifest.PortalAssets.Styles[self.PortalTheme.CssFile]
-		if ok {
-			cssHref = self.api.HttpAPI.Helpers().AssetPath(cssFile)
-		}
+		// cssFile, ok := manifest.PortalAssets.Styles[self.PortalTheme.CssFile]
+		// if ok {
+		// 	cssHref = self.api.HttpAPI.Helpers().ResourcePath(path.Join("assets", "dist", cssFile))
+		// }
+		jsSrc = self.api.HttpAPI.Helpers().PortalAssetPath(self.PortalTheme.JsFile)
+		cssHref = self.api.HttpAPI.Helpers().PortalAssetPath(self.PortalTheme.CssFile)
 	}
 
 	return

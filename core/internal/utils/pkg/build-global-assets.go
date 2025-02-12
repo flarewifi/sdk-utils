@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -133,7 +134,7 @@ func compileGlobalJsAssets(jsfiles []string, target api.Target) (resultFile stri
 		fmt.Printf("Outputfile written to: %s\n", outpath)
 
 		if filepath.Ext(f) == ".js" {
-			resultFile = filepath.Join("globals/js", f)
+			resultFile = path.Join("globals", "js", f)
 		}
 	}
 
@@ -190,7 +191,7 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 		fmt.Printf("Outputfile written to: %s\n", outpath)
 
 		if filepath.Ext(f) == ".css" {
-			resultFile = filepath.Join("globals/css", f)
+			resultFile = path.Join("globals", "css", f)
 		}
 	}
 

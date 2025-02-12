@@ -19,14 +19,6 @@ func AssetsRoutes(g *api.CoreGlobals) {
 
 	allPlugins := g.PluginMgr.All()
 	for _, p := range allPlugins {
-		assetsDist := p.Resource("assets/dist")
-		fs := http.FileServer(http.Dir(assetsDist))
-		prefix := p.Http().Helpers().AssetPath("")
-		fileserver := http.StripPrefix(prefix, fs)
-		webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
-	}
-
-	for _, p := range allPlugins {
 		resourcesDir := p.Resource("")
 		fs := http.FileServer(http.Dir(resourcesDir))
 		prefix := p.Http().Helpers().ResourcePath("")
@@ -35,7 +27,6 @@ func AssetsRoutes(g *api.CoreGlobals) {
 	}
 
 	// set public static files
-	// assetPathMw := middlewares.AssetPath
 	publicDir := sdkutils.PathPublicDir
 	fs := http.FileServer(http.Dir(publicDir))
 	prefix := "/public"
@@ -44,9 +35,9 @@ func AssetsRoutes(g *api.CoreGlobals) {
 }
 
 func CoreAssets(g *api.CoreGlobals) {
-	assetsDir := g.CoreAPI.Utl.Resource("assets")
-	fs := http.FileServer(http.Dir(assetsDir))
-	prefix := g.CoreAPI.Http().Helpers().AssetPath("")
+	resourcesDir := g.CoreAPI.Utl.Resource("")
+	fs := http.FileServer(http.Dir(resourcesDir))
+	prefix := g.CoreAPI.Http().Helpers().ResourcePath("")
 	fileserver := http.StripPrefix(prefix, fs)
 	webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 }

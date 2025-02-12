@@ -17,6 +17,7 @@ type PortalLayoutData struct {
     PageUUID string
 	Assets PortalAssets
 	SseURL string
+    SsePolyfillURL string
 	Flash  *sdkapi.FlashMsg
 	Head   templ.Component
 	Layout templ.Component
@@ -44,6 +45,8 @@ templ PortalThemeLayout(data PortalLayoutData) {
 			if data.Assets.PageCssHref != "" {
 				<link rel="stylesheet" href={ data.Assets.PageCssHref }/>
 			}
+            <script nomodule="" src={ data.SsePolyfillURL }></script>
+
 			<!-- Theme Head -->
 			@data.Head
 		</head>

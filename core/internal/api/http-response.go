@@ -74,6 +74,7 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 }
 
 func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
+	api := self.api.CoreAPI
 	q := r.URL.Query()
 	pageUUID := q.Get("t") // Prevent caching
 
@@ -83,8 +84,12 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		return
 	}
 
-	sseURL := self.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:sse")
-	assets := self.api.Utl.GetPortalAssetsForPage(v)
+	sseURL := api.HttpAPI.Helpers().UrlForRoute("portal:sse")
+	ssePolyfillURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
+	assets := api.Utl.GetPortalAssetsForPage(v)
+
+	fmt.Println("SSE Polyfill URL: ", ssePolyfillURL)
+	fmt.Printf("Manifest: %+v\n", self.api.AssetsManifest.PortalAssets)
 
 	var flash *sdkapi.FlashMsg
 	flashType, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_type")
@@ -102,12 +107,13 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		PageContent: v.PageContent,
 		ContentWrapper: func(head, layout templ.Component) {
 			data := themes.PortalLayoutData{
-				PageUUID: pageUUID,
-				Assets:   assets,
-				SseURL:   sseURL,
-				Flash:    flash,
-				Head:     head,
-				Layout:   layout,
+				PageUUID:       pageUUID,
+				Assets:         assets,
+				SseURL:         sseURL,
+				SsePolyfillURL: ssePolyfillURL,
+				Flash:          flash,
+				Head:           head,
+				Layout:         layout,
 			}
 
 			page := themes.PortalThemeLayout(data)

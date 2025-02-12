@@ -58,6 +58,7 @@ func (self *PluginsMgr) RegisterPlugin(p *PluginApi) {
 		self.plugins = append(self.plugins, p)
 	} else {
 		p.Initialize(self.CoreAPI)
+		p.LoadAssetsManifest()
 		self.plugins = append(self.plugins, p)
 	}
 }
