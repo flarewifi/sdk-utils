@@ -10,14 +10,20 @@ helprs := api.Http().Helpers()
 
 Below are the methods available in the `IHttpHelpers`:
 
-### AssetPath
+### AdminAssetPath
 
-Returns the URI path of a manifest index filename.
-For example to get the uri path of the file defined `resources/assets/css/style.css`:
+Returns the URI path of a manifest index filename in [admin manifest](./assets-manifest.md#admin-manifest).
 
 ```go
-uri := api.Http().Helpers().AssetPath("css/style.css")
-fmt.Println(uri) // /plugins/your-plugin-id/0.0.1/assets/css/style.css
+url := api.Http().Helpers().AdminAssetPath("css/style.css")
+```
+
+### PortalAssetPath
+
+Returns the URI path of a manifest index filename in [portal manifest](./assets-manifest.md#portal-manifest).
+
+```go
+url := api.Http().Helpers().AdminAssetPath("css/style.css")
 ```
 
 ### ResourcePath
