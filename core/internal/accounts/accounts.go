@@ -42,7 +42,7 @@ func DefaultAdminAcct() Account {
 	}
 
 	var acct Account
-	if err := sdkutils.FsReadJson(f, &acct); err != nil {
+	if err := sdkutils.JsonRead(f, &acct); err != nil {
 		return defAcct
 	}
 
@@ -174,7 +174,7 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 
 	f := FilepathForUser(newName)
 
-	err = sdkutils.FsWriteJson(f, acct)
+	err = sdkutils.JsonWrite(f, acct)
 	if err != nil {
 		return nil, err
 	}

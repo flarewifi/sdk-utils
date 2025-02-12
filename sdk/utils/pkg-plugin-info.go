@@ -15,7 +15,7 @@ type PluginInfo struct {
 
 func GetPluginInfoFromPath(src string) (PluginInfo, error) {
 	var info PluginInfo
-	if err := FsReadJson(filepath.Join(src, "plugin.json"), &info); err != nil {
+	if err := JsonRead(filepath.Join(src, "plugin.json"), &info); err != nil {
 		return PluginInfo{}, err
 	}
 

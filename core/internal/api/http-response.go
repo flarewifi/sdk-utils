@@ -32,7 +32,11 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 
 	sseURL := self.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:sse")
 	navs := self.api.HttpAPI.navsApi.GetAdminNavs(r)
-	assets := self.api.Utl.GetAdminAssetsForPage(v)
+	assets, err := self.api.Utl.GetAdminAssetsForPage(v)
+	if err != nil {
+		self.Error(w, r, err, http.StatusInternalServerError)
+		return
+	}
 
 	var flash *sdkapi.FlashMsg
 	flashType, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_type")
@@ -86,7 +90,11 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 
 	sseURL := api.HttpAPI.Helpers().UrlForRoute("portal:sse")
 	ssePolyfillURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
-	assets := api.Utl.GetPortalAssetsForPage(v)
+	assets, err := api.Utl.GetPortalAssetsForPage(v)
+	if err != nil {
+		self.Error(w, r, err, http.StatusInternalServerError)
+		return
+	}
 
 	var flash *sdkapi.FlashMsg
 	flashType, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_type")

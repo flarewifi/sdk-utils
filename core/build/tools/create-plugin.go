@@ -43,7 +43,7 @@ require (
 	}
 
 	pluginJson := filepath.Join(pluginDir, "plugin.json")
-	if err := sdkutils.FsWriteJson(pluginJson, &info); err != nil {
+	if err := sdkutils.JsonWrite(pluginJson, &info); err != nil {
 		panic(err)
 	}
 

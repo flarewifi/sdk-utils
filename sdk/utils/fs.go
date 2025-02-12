@@ -243,7 +243,7 @@ func FsCopy(src string, dst string) error {
 	}
 }
 
-func FsWriteJson(f string, v any) error {
+func JsonWrite(f string, v any) error {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
@@ -251,7 +251,7 @@ func FsWriteJson(f string, v any) error {
 	return os.WriteFile(f, b, PermFile)
 }
 
-func FsReadJson(f string, v any) error {
+func JsonRead(f string, v any) error {
 	b, err := os.ReadFile(f)
 	if err != nil {
 		return err

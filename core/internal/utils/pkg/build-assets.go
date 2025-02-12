@@ -43,7 +43,7 @@ func GetAssetManifest(pluginDir string) OutputManifest {
 	}
 
 	var manifest OutputManifest
-	if err := sdkutils.FsReadJson(manifestFile, &manifest); err != nil {
+	if err := sdkutils.JsonRead(manifestFile, &manifest); err != nil {
 		return emptyManifest
 	}
 
@@ -68,7 +68,7 @@ func BuildAssets(pluginDir string) (err error) {
 	adminManifestPath := filepath.Join(pluginDir, AdminManifestJson)
 	if sdkutils.FsExists(adminManifestPath) {
 		var manifest Manifest
-		if err = sdkutils.FsReadJson(adminManifestPath, &manifest); err != nil {
+		if err = sdkutils.JsonRead(adminManifestPath, &manifest); err != nil {
 			return err
 		}
 		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
@@ -83,7 +83,7 @@ func BuildAssets(pluginDir string) (err error) {
 	portalManifestPath := filepath.Join(pluginDir, PortalManifestJson)
 	if sdkutils.FsExists(portalManifestPath) {
 		var manifest Manifest
-		if err = sdkutils.FsReadJson(portalManifestPath, &manifest); err != nil {
+		if err = sdkutils.JsonRead(portalManifestPath, &manifest); err != nil {
 			return err
 		}
 		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
@@ -100,7 +100,7 @@ func BuildAssets(pluginDir string) (err error) {
 		return err
 	}
 
-	if err = sdkutils.FsWriteJson(outManifestFile, outManifest); err != nil {
+	if err = sdkutils.JsonWrite(outManifestFile, outManifest); err != nil {
 		return err
 	}
 

@@ -31,7 +31,7 @@ type GlobalBundleManifest struct {
 }
 
 func ReadGlobalAssetsManifest() (g GlobalBundleManifest) {
-	sdkutils.FsReadJson(CoreGlobalsBundleManifest, &g)
+	sdkutils.JsonRead(CoreGlobalsBundleManifest, &g)
 	return
 }
 
@@ -46,7 +46,7 @@ func BuildGlobalAssets() (err error) {
 	if sdkutils.FsExists(CoreAdminGlobalsManifest) {
 		var manifest GlobalAssetsManifest
 		var resultFile string
-		if err = sdkutils.FsReadJson(CoreAdminGlobalsManifest, &manifest); err != nil {
+		if err = sdkutils.JsonRead(CoreAdminGlobalsManifest, &manifest); err != nil {
 			return
 		}
 
@@ -64,7 +64,7 @@ func BuildGlobalAssets() (err error) {
 	if sdkutils.FsExists(CorePortalGlobalsManifest) {
 		var manifest GlobalAssetsManifest
 		var resultFile string
-		if err = sdkutils.FsReadJson(CorePortalGlobalsManifest, &manifest); err != nil {
+		if err = sdkutils.JsonRead(CorePortalGlobalsManifest, &manifest); err != nil {
 			return
 		}
 
@@ -79,7 +79,7 @@ func BuildGlobalAssets() (err error) {
 		bundleFile.PortalCssFile = resultFile
 	}
 
-	if err = sdkutils.FsWriteJson(CoreGlobalsBundleManifest, bundleFile); err != nil {
+	if err = sdkutils.JsonWrite(CoreGlobalsBundleManifest, bundleFile); err != nil {
 		return
 	}
 
