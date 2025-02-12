@@ -27,9 +27,30 @@ func (self *HttpHelpers) Translate(msgtype string, msgk string, pairs ...interfa
 	return self.api.Utl.Translate(msgtype, msgk, pairs...)
 }
 
-func (self *HttpHelpers) AssetPath(p string) string {
-	// TODO: refer to the dist manifest file
-	return path.Join("/plugin", self.api.info.Package, self.api.info.Version, "assets", "dist", p)
+func (self *HttpHelpers) AdminAssetPath(p string) string {
+	assets := self.api.AssetsManifest.AdminAssets
+	if f, ok := assets.Scripts[p]; ok {
+		return self.ResourcePath(path.Join("assets", "dist", f))
+	}
+
+	if f, ok := assets.Styles[p]; ok {
+		return self.ResourcePath(path.Join("assets", "dist", f))
+	}
+
+	return ""
+}
+
+func (self *HttpHelpers) PortalAssetPath(p string) string {
+	assets := self.api.AssetsManifest.PortalAssets
+	if f, ok := assets.Scripts[p]; ok {
+		return self.ResourcePath(path.Join("assets", "dist", f))
+	}
+
+	if f, ok := assets.Styles[p]; ok {
+		return self.ResourcePath(path.Join("assets", "dist", f))
+	}
+
+	return ""
 }
 
 func (self *HttpHelpers) ResourcePath(p string) string {

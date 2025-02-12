@@ -245,7 +245,7 @@ func parseLog(logLine []string) (*LogLine, error) {
 	}
 
 	var pluginInfo sdkutils.PluginInfo
-	err := sdkutils.FsReadJson(filepath.Join(pluginpath, "plugin.json"), &pluginInfo)
+	err := sdkutils.JsonRead(filepath.Join(pluginpath, "plugin.json"), &pluginInfo)
 	if err != nil {
 		return nil, err
 	}

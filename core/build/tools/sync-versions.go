@@ -15,12 +15,12 @@ func SyncCoreVersion() {
 	version := pkg.GetCoreInfo().Version
 	packageJson := "package.json"
 	var pkg map[string]interface{}
-	err := sdkutils.FsReadJson(packageJson, &pkg)
+	err := sdkutils.JsonRead(packageJson, &pkg)
 	if err != nil {
 		panic(err)
 	}
 	pkg["version"] = version
-	err = sdkutils.FsWriteJson(packageJson, pkg)
+	err = sdkutils.JsonWrite(packageJson, pkg)
 	if err != nil {
 		panic(err)
 	}

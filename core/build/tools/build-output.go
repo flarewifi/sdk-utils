@@ -64,7 +64,7 @@ func (b *BuildOutput) Run() error {
 		Files:     contentList,
 	}
 
-	if err := sdkutils.FsWriteJson(b.metadataPath(), md); err != nil {
+	if err := sdkutils.JsonWrite(b.metadataPath(), md); err != nil {
 		return err
 	}
 

@@ -83,7 +83,7 @@ func BuildPluginSo(pluginSrcDir string, workdir string) error {
 
 	var info sdkutils.PluginInfo
 
-	if err := sdkutils.FsReadJson(filepath.Join(pluginSrcDir, "plugin.json"), &info); err != nil {
+	if err := sdkutils.JsonRead(filepath.Join(pluginSrcDir, "plugin.json"), &info); err != nil {
 		return err
 	}
 

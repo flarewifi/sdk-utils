@@ -26,7 +26,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 		if page != "" {
 			ipage, err = strconv.Atoi(page)
 			if err != nil {
-				g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+				g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -37,7 +37,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 		if perPage != "" {
 			iPerPage, err = strconv.Atoi(perPage)
 			if err != nil {
-				g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+				g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -55,7 +55,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 
 		result, err := g.Models.Log().Paginate(r.Context(), opts)
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
@@ -73,13 +73,13 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 
 		searchFormTpl, err := g.CoreAPI.HttpAPI.Forms().GetFormTemplate("logs-form", r)
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
 		logsIndex := logsview.Index(result.Logs, searchFormTpl, pagination)
 
-		g.CoreAPI.HttpAPI.HttpResponse().AdminView(w, r, sdkapi.ViewPage{
+		g.CoreAPI.HttpAPI.Response().AdminView(w, r, sdkapi.ViewPage{
 			PageContent: logsIndex,
 		})
 	}
@@ -89,13 +89,13 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		searchForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm("logs-form", r)
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
 		pkg, err := searchForm.GetStringValue("search", "package")
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
@@ -109,7 +109,7 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 
 		level, err := searchForm.GetStringValue("search", "level")
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
@@ -119,7 +119,7 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 
 		searchTxt, err := searchForm.GetStringValue("search", "search_text")
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 

@@ -8,7 +8,7 @@ import (
 
 func PaymentRoutes(g *api.CoreGlobals) {
 
-	portalR := g.CoreAPI.HttpAPI.HttpRouter().PluginRouter()
+	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
 	paymentsCtrl := controllers.PaymentOptionsCtrl(g)
 
 	portalR.Group("/payments", func(subrouter sdkapi.IHttpRouterInstance) {

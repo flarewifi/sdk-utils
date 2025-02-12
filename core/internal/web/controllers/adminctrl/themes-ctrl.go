@@ -12,7 +12,7 @@ import (
 
 func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		res := g.CoreAPI.HttpAPI.HttpResponse()
+		res := g.CoreAPI.HttpAPI.Response()
 		formTpl, err := g.CoreAPI.HttpAPI.Forms().GetFormTemplate(coreforms.ThemesFormName, r)
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
@@ -26,7 +26,7 @@ func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 
 func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		res := g.CoreAPI.HttpAPI.HttpResponse()
+		res := g.CoreAPI.HttpAPI.Response()
 		httpForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm(coreforms.ThemesFormName, r)
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
@@ -54,7 +54,7 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		api.NewGlobals().CoreAPI.HttpAPI.HttpResponse().FlashMsg(w, r, "Settings saved successfully", sdkapi.FlashMsgSuccess)
+		api.NewGlobals().CoreAPI.HttpAPI.Response().FlashMsg(w, r, "Settings saved successfully", sdkapi.FlashMsgSuccess)
 		themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
 		http.Redirect(w, r, themesIndexUrl, http.StatusSeeOther)
 	}

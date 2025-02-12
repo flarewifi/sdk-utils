@@ -28,9 +28,9 @@ window.htmx.createEventSource = function(url) {
   var eventSource = new EventSource(url);
 
   eventSource.addEventListener('open', function() {
-    readyCallbacks.forEach(function(callback) {
-      callback();
-    });
+    for (var i=0; i<readyCallbacks.length; i++) {
+      readyCallbacks[i]();
+    }
     readyCallbacks = [];
   });
 

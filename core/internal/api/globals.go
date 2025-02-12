@@ -52,6 +52,7 @@ func NewGlobals() *CoreGlobals {
 	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, clntMgr, trfcMgr)
 	coreApi := NewPluginApi(sdkutils.PathCoreDir, info, plgnMgr, trfcMgr)
 	plgnMgr.InitCoreApi(coreApi)
+	plgnMgr.RegisterPlugin(coreApi)
 
 	return &CoreGlobals{
 		db,

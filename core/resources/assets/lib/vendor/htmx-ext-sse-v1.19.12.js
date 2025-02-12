@@ -6,7 +6,6 @@ Server Sent Events Extension
 This extension adds support for Server Sent Events to htmx.  See /www/extensions/sse.md for usage instructions.
 
 */
-
 (function () {
   /** @type {import("../htmx").HtmxInternalApi} */
   var api;
@@ -105,8 +104,8 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
    * @param {HTMLElement} elt
    */
   function registerSSE(elt) {
-    // Add message handlers for every `sse-swap` attribute
-    queryAttributeOnThisOrChildren(elt, "sse-swap").forEach(function (child) {
+    var _a = queryAttributeOnThisOrChildren(elt, "sse-swap");
+    var _f = function _f(child) {
       // Find closest existing event source
       var sourceElement = api.getClosestMatch(child, hasEventSource);
       if (sourceElement == null) {
@@ -149,10 +148,16 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
         api.getInternalData(child).sseEventListener = _listener;
         source.addEventListener(sseEventName, _listener);
       }
-    });
+    };
+    for (var _i = 0; _i < _a.length; _i++) {
+      _f(_a[_i], _i, _a);
+    }
+    // Add message handlers for every `sse-swap` attribute
+    undefined;
 
     // Add message handlers for every `hx-trigger="sse:*"` attribute
-    queryAttributeOnThisOrChildren(elt, "hx-trigger").forEach(function (child) {
+    var _a2 = queryAttributeOnThisOrChildren(elt, "hx-trigger");
+    var _f2 = function _f2(child) {
       // Find closest existing event source
       var sourceElement = api.getClosestMatch(child, hasEventSource);
       if (sourceElement == null) {
@@ -183,7 +188,11 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
           source.removeEventListener(sseEventName, listener);
         }
       };
-    });
+    };
+    for (var _i2 = 0; _i2 < _a2.length; _i2++) {
+      _f2(_a2[_i2], _i2, _a2);
+    }
+    undefined;
   }
 
   /**
@@ -200,22 +209,32 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
     }
 
     // handle extension source creation attribute
-    queryAttributeOnThisOrChildren(elt, "sse-connect").forEach(function (child) {
+    var _a3 = queryAttributeOnThisOrChildren(elt, "sse-connect");
+    var _f3 = function _f3(child) {
       var sseURL = api.getAttributeValue(child, "sse-connect");
       if (sseURL == null) {
         return;
       }
       ensureEventSource(child, sseURL, retryCount);
-    });
+    };
+    for (var _i3 = 0; _i3 < _a3.length; _i3++) {
+      _f3(_a3[_i3], _i3, _a3);
+    }
+    undefined;
 
     // handle legacy sse, remove for HTMX2
-    queryAttributeOnThisOrChildren(elt, "hx-sse").forEach(function (child) {
+    var _a4 = queryAttributeOnThisOrChildren(elt, "hx-sse");
+    var _f4 = function _f4(child) {
       var sseURL = getLegacySSEURL(child);
       if (sseURL == null) {
         return;
       }
       ensureEventSource(child, sseURL, retryCount);
-    });
+    };
+    for (var _i4 = 0; _i4 < _a4.length; _i4++) {
+      _f4(_a4[_i4], _i4, _a4);
+    }
+    undefined;
     registerSSE(elt);
   }
   function ensureEventSource(elt, url, retryCount) {
@@ -283,9 +302,14 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
     }
 
     // Search all child nodes that match the requested attribute
-    elt.querySelectorAll("[" + attributeName + "], [data-" + attributeName + "]").forEach(function (node) {
+    var _a5 = elt.querySelectorAll("[" + attributeName + "], [data-" + attributeName + "]");
+    var _f5 = function _f5(node) {
       result.push(node);
-    });
+    };
+    for (var _i5 = 0; _i5 < _a5.length; _i5++) {
+      _f5(_a5[_i5], _i5, _a5);
+    }
+    undefined;
     return result;
   }
 
@@ -301,12 +325,17 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
     var target = api.getTarget(elt);
     var settleInfo = api.makeSettleInfo(elt);
     api.selectAndSwap(swapSpec.swapStyle, target, elt, content, settleInfo);
-    settleInfo.elts.forEach(function (elt) {
+    var _a6 = settleInfo.elts;
+    var _f6 = function _f6(elt) {
       if (elt.classList) {
         elt.classList.add(htmx.config.settlingClass);
       }
       api.triggerEvent(elt, 'htmx:beforeSettle');
-    });
+    };
+    for (var _i6 = 0; _i6 < _a6.length; _i6++) {
+      _f6(_a6[_i6], _i6, _a6);
+    }
+    undefined;
 
     // Handle settle tasks (with delay if requested)
     if (swapSpec.settleDelay > 0) {
@@ -325,15 +354,25 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
    */
   function doSettle(settleInfo) {
     return function () {
-      settleInfo.tasks.forEach(function (task) {
+      var _a7 = settleInfo.tasks;
+      var _f7 = function _f7(task) {
         task.call();
-      });
-      settleInfo.elts.forEach(function (elt) {
+      };
+      for (var _i7 = 0; _i7 < _a7.length; _i7++) {
+        _f7(_a7[_i7], _i7, _a7);
+      }
+      undefined;
+      var _a8 = settleInfo.elts;
+      var _f8 = function _f8(elt) {
         if (elt.classList) {
           elt.classList.remove(htmx.config.settlingClass);
         }
         api.triggerEvent(elt, 'htmx:afterSettle');
-      });
+      };
+      for (var _i8 = 0; _i8 < _a8.length; _i8++) {
+        _f8(_a8[_i8], _i8, _a8);
+      }
+      undefined;
     };
   }
   function hasEventSource(node) {

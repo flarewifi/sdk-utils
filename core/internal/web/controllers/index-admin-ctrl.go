@@ -11,11 +11,11 @@ func AdminIndexPage(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, t, err := g.PluginMgr.GetAdminTheme()
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, 500)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, 500)
 			return
 		}
 		page := t.AdminTheme.IndexPageFactory(w, r)
-		g.CoreAPI.HttpAPI.HttpResponse().AdminView(w, r, page)
+		g.CoreAPI.HttpAPI.Response().AdminView(w, r, page)
 	})
 }
 

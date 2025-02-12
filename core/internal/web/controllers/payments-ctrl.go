@@ -10,7 +10,7 @@ import (
 
 func PaymentOptionsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		res := g.CoreAPI.HttpAPI.HttpResponse()
+		res := g.CoreAPI.HttpAPI.Response()
 		result := g.PaymentsMgr.AllOptions(r)
 		opts := make([]paymentsview.PaymentOption, len(result))
 

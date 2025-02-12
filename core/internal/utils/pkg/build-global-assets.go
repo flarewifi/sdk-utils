@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -30,7 +31,7 @@ type GlobalBundleManifest struct {
 }
 
 func ReadGlobalAssetsManifest() (g GlobalBundleManifest) {
-	sdkutils.FsReadJson(CoreGlobalsBundleManifest, &g)
+	sdkutils.JsonRead(CoreGlobalsBundleManifest, &g)
 	return
 }
 
@@ -45,7 +46,7 @@ func BuildGlobalAssets() (err error) {
 	if sdkutils.FsExists(CoreAdminGlobalsManifest) {
 		var manifest GlobalAssetsManifest
 		var resultFile string
-		if err = sdkutils.FsReadJson(CoreAdminGlobalsManifest, &manifest); err != nil {
+		if err = sdkutils.JsonRead(CoreAdminGlobalsManifest, &manifest); err != nil {
 			return
 		}
 
@@ -63,7 +64,7 @@ func BuildGlobalAssets() (err error) {
 	if sdkutils.FsExists(CorePortalGlobalsManifest) {
 		var manifest GlobalAssetsManifest
 		var resultFile string
-		if err = sdkutils.FsReadJson(CorePortalGlobalsManifest, &manifest); err != nil {
+		if err = sdkutils.JsonRead(CorePortalGlobalsManifest, &manifest); err != nil {
 			return
 		}
 
@@ -78,7 +79,7 @@ func BuildGlobalAssets() (err error) {
 		bundleFile.PortalCssFile = resultFile
 	}
 
-	if err = sdkutils.FsWriteJson(CoreGlobalsBundleManifest, bundleFile); err != nil {
+	if err = sdkutils.JsonWrite(CoreGlobalsBundleManifest, bundleFile); err != nil {
 		return
 	}
 
@@ -133,7 +134,7 @@ func compileGlobalJsAssets(jsfiles []string, target api.Target) (resultFile stri
 		fmt.Printf("Outputfile written to: %s\n", outpath)
 
 		if filepath.Ext(f) == ".js" {
-			resultFile = filepath.Join("globals/js", f)
+			resultFile = path.Join("globals", "js", f)
 		}
 	}
 
@@ -190,7 +191,7 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 		fmt.Printf("Outputfile written to: %s\n", outpath)
 
 		if filepath.Ext(f) == ".css" {
-			resultFile = filepath.Join("globals/css", f)
+			resultFile = path.Join("globals", "css", f)
 		}
 	}
 

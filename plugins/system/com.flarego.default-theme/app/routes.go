@@ -16,7 +16,7 @@ const (
 
 func SetupRoutes(api sdkapi.IPluginApi) {
 	// pluginRouter := api.Http().HttpRouter().PluginRouter()
-	adminRouter := api.Http().HttpRouter().AdminRouter()
+	adminRouter := api.Http().Router().AdminRouter()
 	// pluginRouter.Get("/test", controllers.IndexCtrl(api)).Name("index")
 	adminRouter.Get("/test/{name}", controllers.TestCtrl(api)).Name("test")
 	// pluginRouter.Group("/auth", func(subrouter sdkhttp.HttpRouterInstance) {

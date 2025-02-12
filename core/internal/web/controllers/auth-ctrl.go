@@ -14,7 +14,7 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 			return
 		}
 
-		res := g.CoreAPI.HttpAPI.HttpResponse()
+		res := g.CoreAPI.HttpAPI.Response()
 		_, t, err := g.PluginMgr.GetAdminTheme()
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
@@ -29,7 +29,7 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 		}
 
 		page := t.PortalTheme.LoginPageFactory(w, r, data)
-		g.CoreAPI.HttpAPI.HttpResponse().PortalView(w, r, page)
+		g.CoreAPI.HttpAPI.Response().PortalView(w, r, page)
 	})
 }
 
@@ -51,7 +51,7 @@ func AdminAuthenticateCtrl(g *api.CoreGlobals) http.Handler {
 		}
 
 		g.CoreAPI.HttpAPI.Auth().SignIn(w, acct)
-		g.CoreAPI.HttpAPI.HttpResponse().FlashMsg(w, r, "Logged in successfully", sdkapi.FlashMsgSuccess)
+		g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, "Logged in successfully", sdkapi.FlashMsgSuccess)
 		http.Redirect(w, r, "/admin", http.StatusSeeOther)
 	})
 }

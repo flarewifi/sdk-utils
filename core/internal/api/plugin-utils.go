@@ -2,6 +2,7 @@ package api
 
 import (
 	"log"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -59,41 +60,26 @@ func (self *PluginUtils) Resource(path string) string {
 	return filepath.Join(self.api.dir, "resources", path)
 }
 
-func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets themes.AdminAssets) {
-
-	manifest := self.api.AssetsManifest
-	globals := pkg.ReadGlobalAssetsManifest()
-	globalJsSrc := self.api.CoreAPI.Http().Helpers().AssetPath(globals.AdminJsFile)
-	globalCssHref := self.api.CoreAPI.Http().Helpers().AssetPath(globals.AdminCssFile)
-
-	var themeJsSrc, themeCssHref string
+func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets themes.AdminAssets, err error) {
 	_, themesApi, err := self.api.PluginsMgrApi.GetAdminTheme()
 	if err != nil {
 		return
-	} else {
-		themeJsSrc, themeCssHref = themesApi.GetAdminAssets()
 	}
 
-	var pluginGlobalJsSrc, pluginGlobalCssHref string
-	pluginGlobalJsFile, ok := manifest.AdminAssets.Scripts["global.js"]
-	if ok {
-		pluginGlobalJsSrc = self.api.HttpAPI.Helpers().AssetPath(pluginGlobalJsFile)
-	}
-	pluginGlobalCssFile, ok := manifest.AdminAssets.Styles["global.css"]
-	if ok {
-		pluginGlobalCssHref = self.api.HttpAPI.Helpers().AssetPath(pluginGlobalCssFile)
+	globals := pkg.ReadGlobalAssetsManifest()
+	globalJsSrc := self.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.AdminJsFile))
+	globalCssHref := self.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.AdminCssFile))
+
+	var themeJsSrc, themeCssHref string
+	if themesApi.AdminTheme != nil {
+		themeJsSrc = themesApi.api.HttpAPI.Helpers().AdminAssetPath(themesApi.AdminTheme.JsFile)
+		themeCssHref = themesApi.api.HttpAPI.Helpers().AdminAssetPath(themesApi.AdminTheme.CssFile)
 	}
 
-	var pageJsSrc, pageCssHref string
-	jsFile, ok := manifest.AdminAssets.Scripts[v.Assets.JsFile]
-	if ok {
-		pageJsSrc = self.api.HttpAPI.Helpers().AssetPath(jsFile)
-	}
-
-	cssFile, ok := manifest.AdminAssets.Styles[v.Assets.CssFile]
-	if ok {
-		pageCssHref = self.api.HttpAPI.Helpers().AssetPath(cssFile)
-	}
+	pluginGlobalJsSrc := self.api.HttpAPI.Helpers().AdminAssetPath("global.js")
+	pluginGlobalCssHref := self.api.HttpAPI.Helpers().AdminAssetPath("global.css")
+	pageJsSrc := self.api.HttpAPI.Helpers().AdminAssetPath(v.Assets.JsFile)
+	pageCssHref := self.api.HttpAPI.Helpers().AdminAssetPath(v.Assets.CssFile)
 
 	return themes.AdminAssets{
 		GlobalCssHref:       globalCssHref,
@@ -104,45 +90,29 @@ func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets themes
 		PluginGlobalJsSrc:   pluginGlobalJsSrc,
 		PageCssHref:         pageCssHref,
 		PageJsSrc:           pageJsSrc,
-	}
+	}, nil
 }
 
-func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets themes.PortalAssets) {
-
-	manifest := self.api.AssetsManifest
-	globals := pkg.ReadGlobalAssetsManifest()
-	globalJsSrc := self.api.CoreAPI.Http().Helpers().AssetPath(globals.PortalJsFile)
-	globalCssHref := self.api.CoreAPI.Http().Helpers().AssetPath(globals.PortalCssFile)
-
-	var themeJsSrc, themeCssHref string
+func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets themes.PortalAssets, err error) {
 	_, themesApi, err := self.api.PluginsMgrApi.GetPortalTheme()
 	if err != nil {
 		return
-	} else {
-		themeJsSrc, themeCssHref = themesApi.GetPortalAssets()
 	}
 
-	var pluginGlobalJsSrc, pluginGlobalCssHref string
-	pluginGlobalJsFile, ok := manifest.PortalAssets.Scripts["global.js"]
-	if ok {
-		pluginGlobalJsSrc = self.api.HttpAPI.Helpers().AssetPath(pluginGlobalJsFile)
+	globals := pkg.ReadGlobalAssetsManifest()
+	globalJsSrc := self.api.CoreAPI.Http().Helpers().ResourcePath(filepath.Join("assets", "dist", globals.PortalJsFile))
+	globalCssHref := self.api.CoreAPI.Http().Helpers().ResourcePath(filepath.Join("assets", "dist", globals.PortalCssFile))
+
+	var themeJsSrc, themeCssHref string
+	if themesApi.PortalTheme != nil {
+		themeJsSrc = themesApi.api.HttpAPI.Helpers().PortalAssetPath(themesApi.PortalTheme.JsFile)
+		themeCssHref = themesApi.api.HttpAPI.Helpers().PortalAssetPath(themesApi.PortalTheme.CssFile)
 	}
 
-	pluginGlobalCssFile, ok := manifest.PortalAssets.Styles["global.css"]
-	if ok {
-		pluginGlobalCssHref = self.api.HttpAPI.Helpers().AssetPath(pluginGlobalCssFile)
-	}
-
-	var pageJsSrc, pageCssHref string
-	jsFile, ok := manifest.PortalAssets.Scripts[v.Assets.JsFile]
-	if ok {
-		pageJsSrc = self.api.HttpAPI.Helpers().AssetPath(jsFile)
-	}
-
-	cssFile, ok := manifest.PortalAssets.Styles[v.Assets.CssFile]
-	if ok {
-		pageCssHref = self.api.HttpAPI.Helpers().AssetPath(cssFile)
-	}
+	pluginGlobalJsSrc := self.api.HttpAPI.Helpers().PortalAssetPath("global.js")
+	pluginGlobalCssHref := self.api.HttpAPI.Helpers().PortalAssetPath("global.css")
+	pageJsSrc := self.api.HttpAPI.Helpers().PortalAssetPath(v.Assets.JsFile)
+	pageCssHref := self.api.HttpAPI.Helpers().PortalAssetPath(v.Assets.CssFile)
 
 	return themes.PortalAssets{
 		GlobalCssHref:       globalCssHref,
@@ -153,5 +123,5 @@ func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets theme
 		PluginGlobalJsSrc:   pluginGlobalJsSrc,
 		PageCssHref:         pageCssHref,
 		PageJsSrc:           pageJsSrc,
-	}
+	}, nil
 }

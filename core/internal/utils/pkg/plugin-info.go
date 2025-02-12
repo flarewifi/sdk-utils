@@ -18,7 +18,7 @@ func GetInfoFromDef(def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err er
 func GetCoreInfo() sdkutils.PluginInfo {
 	pluginJsonPath := filepath.Join(sdkutils.PathCoreDir, "plugin.json")
 	var pluginDef sdkutils.PluginInfo
-	if err := sdkutils.FsReadJson(pluginJsonPath, &pluginDef); err != nil {
+	if err := sdkutils.JsonRead(pluginJsonPath, &pluginDef); err != nil {
 		panic(err)
 	}
 	return pluginDef

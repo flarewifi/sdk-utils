@@ -15,10 +15,13 @@ import (
 // For example, to use the Translate() method in html templates, use <% .Helpers.Translate "label" "network_settings" %>.
 type IHttpHelpers interface {
 
-	// Returns the uri of a file defined in asset manifest
-	AssetPath(path string) (uri string)
+	// Returns the URI path of a file defined in admin assets manifest
+	AdminAssetPath(path string) (uri string)
 
-	// Returns the uri of a resource file
+	// Returns the URI path of a file defined in portal assets manifest
+	PortalAssetPath(path string) (uri string)
+
+	// Returns the URI path of a resource file
 	ResourcePath(path string) (uri string)
 
 	// Returns the html for the ads view.

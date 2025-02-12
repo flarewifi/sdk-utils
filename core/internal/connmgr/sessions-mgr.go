@@ -324,7 +324,21 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 
 // SessionSummary
 func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
-	return self.mdl.Session().Summary(ctx, clnt.Id())
+	summary, err := self.mdl.Session().Summary(ctx, clnt.Id())
+	if err != nil {
+		return nil, err
+	}
+
+	rs, ok := self.getRunningSession(clnt)
+	if !ok {
+		return summary, nil
+	}
+
+	timeDiff, mbDiff := rs.Diff()
+	return &sdkapi.ClientSessionSummary{
+		RemainingTimeSecs:   summary.RemainingTimeSecs - timeDiff,
+		RemainingDataMbytes: summary.RemainingDataMbytes - mbDiff,
+	}, nil
 }
 
 func (self *SessionsMgr) RegisterSessionProvider(provider sdkapi.ISessionProvider) {
