@@ -12,14 +12,14 @@ func PortalIndexPage(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, 500)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, 500)
 			return
 		}
 
 		navs := g.CoreAPI.HttpAPI.Navs().GetPortalItems(r)
 		data := sdkapi.PortalPageData{Navs: navs}
 		page := t.PortalTheme.IndexPageFactory(w, r, data)
-		g.CoreAPI.HttpAPI.HttpResponse().PortalView(w, r, page)
+		g.CoreAPI.HttpAPI.Response().PortalView(w, r, page)
 	})
 }
 

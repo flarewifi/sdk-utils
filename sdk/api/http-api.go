@@ -29,10 +29,10 @@ type IHttpApi interface {
 	Helpers() IHttpHelpers
 
 	// Returns the router API.
-	HttpRouter() IHttpRouterApi
+	Router() IHttpRouterApi
 
 	// Returns the http response writer API.
-	HttpResponse() IHttpResponse
+	Response() IHttpResponse
 
 	// Returns the http variables in your routes. For example, if your route path is "/some/path/{varname}",
 	// then you can get the value of "varname" by calling GetMuxVars(r)["varname"].

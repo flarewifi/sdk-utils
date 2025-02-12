@@ -88,9 +88,6 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	ssePolyfillURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
 	assets := api.Utl.GetPortalAssetsForPage(v)
 
-	fmt.Println("SSE Polyfill URL: ", ssePolyfillURL)
-	fmt.Printf("Manifest: %+v\n", self.api.AssetsManifest.PortalAssets)
-
 	var flash *sdkapi.FlashMsg
 	flashType, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_type")
 	flashMsg, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_message")

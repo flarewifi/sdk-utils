@@ -11,7 +11,7 @@ import (
 func AdminRoutes(g *api.CoreGlobals) {
 	authMw := g.CoreAPI.HttpAPI.Middlewares().AdminAuth()
 	rootR := webutil.RootRouter
-	adminR := g.CoreAPI.HttpAPI.HttpRouter().AdminRouter()
+	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
 
 	adminIndexCtrl := controllers.AdminIndexPage(g)
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)

@@ -91,7 +91,7 @@ func (self *Purchase) Execute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("CallbackPkg: ", callbackPkg)
-	callbackPkg.Http().HttpResponse().Redirect(w, r, self.purchase.CallbackRoute())
+	callbackPkg.Http().Response().Redirect(w, r, self.purchase.CallbackRoute())
 }
 
 func (self *Purchase) Confirm() error {

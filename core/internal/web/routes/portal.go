@@ -10,7 +10,7 @@ import (
 func PortalRoutes(g *api.CoreGlobals) {
 	deviceMw := middlewares.DeviceMiddleware(g.Db, g.ClientRegister)
 	rootR := webutil.RootRouter
-	portalR := g.CoreAPI.HttpAPI.HttpRouter().PluginRouter()
+	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
 	pendingPurchaseMw := g.CoreAPI.HttpAPI.Middlewares().PendingPurchase()
 
 	portalIndexCtrl := controllers.PortalIndexPage(g)

@@ -46,20 +46,20 @@ It returns an instance of the [IHttpHelpers](./http-helpers.md).
 helpers := api.Http().Helpers()
 ```
 
-### HttpRouter
+### Router
 
 It returns an instance of [IHttpRouterApi](./http-router-api.md).
 
 ```go
-httpRouter := api.Http().HttpRouter()
+httpRouter := api.Http().Router()
 ```
 
-### HttpResponse
+### Response
 
 Returns an instance of [IHttpResponse](./http-response.md).
 
 ```go
-httpResponse := api.Http().HttpResponse()
+httpResponse := api.Http().Response()
 ```
 
 ### MuxVars

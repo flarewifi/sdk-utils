@@ -37,7 +37,6 @@ type PluginsMgr struct {
 
 func (self *PluginsMgr) InitCoreApi(coreApi *PluginApi) {
 	self.CoreAPI = coreApi
-	self.RegisterPlugin(coreApi)
 }
 
 func (self *PluginsMgr) Plugins() []*PluginApi {
@@ -52,15 +51,12 @@ func (self *PluginsMgr) RegisterPlugin(p *PluginApi) {
 			// TODO: set plugin as broken
 			return
 		}
-
-		p.Initialize(self.CoreAPI)
-		p.LoadAssetsManifest()
-		self.plugins = append(self.plugins, p)
-	} else {
-		p.Initialize(self.CoreAPI)
-		p.LoadAssetsManifest()
-		self.plugins = append(self.plugins, p)
 	}
+
+	p.Initialize(self.CoreAPI)
+	p.LoadAssetsManifest()
+	self.plugins = append(self.plugins, p)
+
 }
 
 func (self *PluginsMgr) FindByName(name string) (sdkplugin.IPluginApi, bool) {

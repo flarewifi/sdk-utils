@@ -55,7 +55,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 		}
 
 		coreApi := self.api.CoreAPI
-		coreApi.HttpAPI.HttpResponse().Redirect(w, r, "payments:options")
+		coreApi.HttpAPI.Response().Redirect(w, r, "payments:options")
 	}
 
 	purMw := self.api.HttpAPI.middlewares.PendingPurchase()

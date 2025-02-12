@@ -75,7 +75,6 @@ type PluginApi struct {
 
 func (self *PluginApi) Initialize(coreApi *PluginApi) {
 	self.CoreAPI = coreApi
-	self.LoadAssetsManifest()
 	self.HttpAPI.Initialize()
 }
 

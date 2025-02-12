@@ -60,7 +60,7 @@ func (self *HttpApi) Auth() sdkapi.IHttpAuth {
 	return self.auth
 }
 
-func (self *HttpApi) HttpRouter() sdkapi.IHttpRouterApi {
+func (self *HttpApi) Router() sdkapi.IHttpRouterApi {
 	return self.httpRouter
 }
 
@@ -76,7 +76,7 @@ func (self *HttpApi) Middlewares() sdkapi.IHttpMiddlewares {
 	return self.middlewares
 }
 
-func (self *HttpApi) HttpResponse() sdkapi.IHttpResponse {
+func (self *HttpApi) Response() sdkapi.IHttpResponse {
 	return self.httpResp
 }
 
