@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	EVENT_CONNECTED    string = "session:connected"
-	EVENT_DISCONNECTED string = "session:disconnected"
+	EventSessionConnected    string = "session:connected"
+	EventSessionDisconnected string = "session:disconnected"
 )
 
 func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
@@ -57,6 +57,7 @@ func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
 
 func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error {
 	errCh := make(chan error)
+
 	go func() {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
@@ -82,6 +83,7 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 
 		errCh <- nil
 	}()
+
 	return <-errCh
 }
 
@@ -137,7 +139,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 
 		go self.loopSessions(clnt)
 
-		clnt.Emit(EVENT_CONNECTED, notify)
+		clnt.Emit(EventSessionConnected, notify)
 		errCh <- nil
 	}()
 
@@ -150,7 +152,7 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 		return err
 	}
 
-	clnt.Emit(EVENT_DISCONNECTED, notify)
+	clnt.Emit(EventSessionDisconnected, notify)
 	return nil
 }
 
