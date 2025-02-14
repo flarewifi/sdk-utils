@@ -9,9 +9,15 @@ const (
     EventSessionSync string = "sessions.sync"
 )
 
-templ PortalIndexPage(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem, summary *sdkapi.ClientSessionSummary) {
+type PortalIndexData struct {
+    Navs    []sdkapi.PortalNavItem
+    SessionSummary *sdkapi.ClientSessionSummary
+    IsSessionRunning bool
+}
+
+templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
 	<ul>
-		for _, nav := range navs {
+		for _, nav := range data.Navs {
 			<li>
 				<a class="btn btn-primary" id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) }>
 					if nav.IconUrl != "" {
@@ -23,16 +29,32 @@ templ PortalIndexPage(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem, summar
 		}
 	</ul>
     <div hx-get={ api.Http().Helpers().UrlForRoute("sessions.summary") } hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, sse:%s", sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected, EventSessionSync) }>
-		@SessionSummary(summary)
+		@SessionSummary(api, SessionSummaryData{
+            SessionSummary: data.SessionSummary,
+            IsSessionRunning: data.IsSessionRunning,
+        })
 	</div>
-
-    @templ.JSONScript("portal-data", map[string]string{"session_sync_url": api.Http().Helpers().UrlForRoute("sessions.sync")})
 }
 
-templ SessionSummary(summary *sdkapi.ClientSessionSummary) {
+type SessionSummaryData struct {
+    SessionSummary *sdkapi.ClientSessionSummary
+    IsSessionRunning bool
+}
+
+templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
 	<h3>
 		Session Summary
 	</h3>
-	<p>Remaining Time: { fmt.Sprintf("%d", summary.RemainingTimeSecs) }s</p>
-	<p>Remaining Data: { fmt.Sprintf("%.2f", summary.RemainingDataMbytes) }MB</p>
+    <p>Remaining Time: <span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>{ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }</span>s</p>
+	<p>Remaining Data: { fmt.Sprintf("%.2f", data.SessionSummary.RemainingDataMbytes) }MB</p>
+
+
+    {{
+    data := map[string]interface{}{
+        "session_running": data.IsSessionRunning,
+        "session_sync_url": api.Http().Helpers().UrlForRoute("sessions.sync"),
+        "session_time_secs": data.SessionSummary.RemainingTimeSecs,
+    }
+    }}
+    @templ.JSONScript("portal-data", data)
 }

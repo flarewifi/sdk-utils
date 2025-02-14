@@ -23,7 +23,13 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 			return
 		}
 
-		summaryView := portal.SessionSummary(summary)
+		_, ok := api.SessionsMgr().CurrSession(clnt)
+
+		summaryView := portal.SessionSummary(api, portal.SessionSummaryData{
+			SessionSummary:   summary,
+			IsSessionRunning: ok,
+		})
+
 		if err := summaryView.Render(r.Context(), w); err != nil {
 			fmt.Println("Error rendering session summary: ", err)
 		}

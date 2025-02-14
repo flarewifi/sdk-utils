@@ -38,7 +38,13 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				return sdkapi.ViewPage{}
 			}
 
-			page := portal.PortalIndexPage(api, data.Navs, summary)
+			_, ok := api.SessionsMgr().CurrSession(clnt)
+
+			page := portal.PortalIndexPage(api, portal.PortalIndexData{
+				Navs:             data.Navs,
+				SessionSummary:   summary,
+				IsSessionRunning: ok,
+			})
 			return sdkapi.ViewPage{
 				Assets: sdkapi.ViewAssets{
 					JsFile: "portal/index.js",
