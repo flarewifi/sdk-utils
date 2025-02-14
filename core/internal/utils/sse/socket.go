@@ -53,14 +53,14 @@ type SseSocket struct {
 
 type SseData struct {
 	MsgType string
-	Data    string
+	Data    []byte
 }
 
 func (s *SseSocket) Id() string {
 	return s.id
 }
 
-func (s *SseSocket) Emit(typ string, data string) (err error) {
+func (s *SseSocket) Emit(typ string, data []byte) (err error) {
 	s.msgCh <- SseData{typ, data}
 	return nil
 }
@@ -97,7 +97,7 @@ func (s *SseSocket) pingLoop() {
 	for {
 		select {
 		case <-time.After(5 * time.Second):
-			s.Emit("ping", "")
+			s.Emit("ping", []byte(""))
 		case <-s.Done():
 			return
 		}

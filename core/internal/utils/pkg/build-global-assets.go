@@ -109,7 +109,7 @@ func compileGlobalJsAssets(jsfiles []string, target api.Target) (resultFile stri
 	}
 	defer os.Remove(indexFile)
 
-	outfile := filepath.Join(distPath, "globals.js")
+	outfile := filepath.Join(distPath, "core-globals.js")
 	result := EsbuildJs(indexFile, outfile, target)
 
 	if len(result.Errors) > 0 {
@@ -164,7 +164,7 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 	}
 	defer os.Remove(indexFile)
 
-	outfile := filepath.Join(distPath, "globals.css")
+	outfile := filepath.Join(distPath, "core-globals.css")
 	result := EsbuildCss(indexFile, outfile)
 
 	if len(result.Errors) > 0 {

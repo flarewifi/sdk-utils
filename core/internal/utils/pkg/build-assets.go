@@ -113,6 +113,11 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		Styles:  make(map[string]string),
 	}
 
+	pluginAbsPath, err := filepath.Abs(pluginDir)
+	if err != nil {
+		return
+	}
+
 	// Gather global files
 	var globalScrips, globalStyles []string
 	for k, files := range manifest {
@@ -197,16 +202,15 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		}
 
 		for _, out := range result.OutputFiles {
-			f := filepath.Base(out.Path)
-			outpath := filepath.Join(distPath, f)
-			if err = sdkutils.FsEnsureDir(filepath.Dir(outpath)); err != nil {
+			fmt.Println("OutputFile: ", out.Path)
+
+			if err = sdkutils.FsWriteFile(out.Path, out.Contents); err != nil {
 				return
 			}
-			if err = os.WriteFile(outpath, out.Contents, sdkutils.PermFile); err != nil {
-				return
-			}
+
 			if filepath.Ext(out.Path) == ext {
-				fileIndex := filepath.Join(strings.TrimPrefix(ext, "."), f)
+				distPathPrefix := filepath.Join(pluginAbsPath, AssetsDir, "dist")
+				fileIndex := strings.TrimPrefix(out.Path, distPathPrefix)
 
 				switch filepath.Ext(out.Path) {
 				case ".js":

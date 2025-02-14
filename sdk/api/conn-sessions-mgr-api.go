@@ -12,6 +12,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const (
+	EventSessionConnected    string = "session:connected"
+	EventSessionDisconnected string = "session:disconnected"
+)
+
 type ClientSessionSummary struct {
 	RemainingTimeSecs   int
 	RemainingDataMbytes float64

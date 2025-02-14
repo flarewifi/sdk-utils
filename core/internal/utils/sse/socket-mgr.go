@@ -53,7 +53,7 @@ func RemoveSocket(key string, socket *SseSocket) {
 	}
 }
 
-func Emit(key string, event string, data string) {
+func Emit(key string, event string, data []byte) {
 	v, ok := socketStore.Load(key)
 	if ok {
 		sockets := v.([]*SseSocket)
@@ -63,7 +63,7 @@ func Emit(key string, event string, data string) {
 	}
 }
 
-func Broadcast(event string, data string) {
+func Broadcast(event string, data []byte) {
 	socketStore.Range(func(key, value interface{}) bool {
 		sockets := value.([]*SseSocket)
 		for _, s := range sockets {

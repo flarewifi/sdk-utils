@@ -38,8 +38,13 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				return sdkapi.ViewPage{}
 			}
 
-			page := portal.PortalIndexPage(data.Navs, summary)
-			return sdkapi.ViewPage{PageContent: page}
+			page := portal.PortalIndexPage(api, data.Navs, summary)
+			return sdkapi.ViewPage{
+				Assets: sdkapi.ViewAssets{
+					JsFile: "portal/index.js",
+				},
+				PageContent: page,
+			}
 		},
 	})
 }

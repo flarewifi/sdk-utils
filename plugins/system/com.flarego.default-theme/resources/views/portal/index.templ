@@ -1,26 +1,38 @@
 package portal
 
-import "sdk/api"
-import "fmt"
+import (
+	"fmt"
+	sdkapi "sdk/api"
+)
 
-templ PortalIndexPage(navs []sdkapi.PortalNavItem, summary *sdkapi.ClientSessionSummary) {
+const (
+    EventSessionSync string = "sessions.sync"
+)
+
+templ PortalIndexPage(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem, summary *sdkapi.ClientSessionSummary) {
 	<ul>
 		for _, nav := range navs {
-            <li>
-                <a class="btn btn-primary" id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) }>
-                    if nav.IconUrl != "" {
-                        <img src={ nav.IconUrl } style="max-width: 50px;" />
-                    }
-
-                    { nav.Label }
-                </a>
-            </li>
+			<li>
+				<a class="btn btn-primary" id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) }>
+					if nav.IconUrl != "" {
+						<img src={ nav.IconUrl } style="max-width: 50px;"/>
+					}
+					{ nav.Label }
+				</a>
+			</li>
 		}
 	</ul>
+    <div hx-get={ api.Http().Helpers().UrlForRoute("sessions.summary") } hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, sse:%s", sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected, EventSessionSync) }>
+		@SessionSummary(summary)
+	</div>
 
-    <h3>
-        Session Summary
-    </h3>
-    <p>Remaining Time: { fmt.Sprintf("%d", summary.RemainingTimeSecs) }s</p>
-    <p>Remaining Data: { fmt.Sprintf("%.2f", summary.RemainingDataMbytes) }MB</p>
+    @templ.JSONScript("portal-data", map[string]string{"session_sync_url": api.Http().Helpers().UrlForRoute("sessions.sync")})
+}
+
+templ SessionSummary(summary *sdkapi.ClientSessionSummary) {
+	<h3>
+		Session Summary
+	</h3>
+	<p>Remaining Time: { fmt.Sprintf("%d", summary.RemainingTimeSecs) }s</p>
+	<p>Remaining Data: { fmt.Sprintf("%.2f", summary.RemainingDataMbytes) }MB</p>
 }
