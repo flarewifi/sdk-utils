@@ -8,6 +8,7 @@ import (
 )
 
 func PortalRoutes(g *api.CoreGlobals) {
+	noCacheMw := middlewares.NoCache()
 	deviceMw := middlewares.DeviceMiddleware(g.Db, g.ClientRegister)
 	rootR := webutil.RootRouter
 	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
@@ -16,6 +17,6 @@ func PortalRoutes(g *api.CoreGlobals) {
 	portalIndexCtrl := controllers.PortalIndexPage(g)
 	portalSseCtrl := controllers.PortalSseHandler(g)
 
-	rootR.Handle("/", pendingPurchaseMw(deviceMw(portalIndexCtrl))).Methods("GET").Name("portal.index")
+	rootR.Handle("/", pendingPurchaseMw(deviceMw(noCacheMw(portalIndexCtrl)))).Methods("GET").Name("portal.index")
 	portalR.Get("/events", portalSseCtrl).Name("portal:sse")
 }

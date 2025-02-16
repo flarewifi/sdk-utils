@@ -22,7 +22,7 @@ func AssetsRoutes(g *api.CoreGlobals) {
 		resourcesDir := p.Resource("")
 		fs := http.FileServer(http.Dir(resourcesDir))
 		prefix := p.Http().Helpers().ResourcePath("")
-		fileserver := http.StripPrefix(prefix, fs)
+		fileserver := cacheMw(http.StripPrefix(prefix, fs))
 		webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 	}
 
@@ -35,9 +35,10 @@ func AssetsRoutes(g *api.CoreGlobals) {
 }
 
 func CoreAssets(g *api.CoreGlobals) {
-	resourcesDir := g.CoreAPI.Utl.Resource("")
+	cacheMw := middlewares.CacheResponse(365)
+	resourcesDir := g.CoreAPI.Resource("")
 	fs := http.FileServer(http.Dir(resourcesDir))
 	prefix := g.CoreAPI.Http().Helpers().ResourcePath("")
-	fileserver := http.StripPrefix(prefix, fs)
+	fileserver := cacheMw(http.StripPrefix(prefix, fs))
 	webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 }
