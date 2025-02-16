@@ -43,17 +43,3 @@ func PortalNavItemsHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 		navsView.Render(r.Context(), w)
 	}
 }
-
-func TriggerSessionSync(api sdkapi.IPluginApi) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		res := api.Http().Response()
-		clnt, err := api.Http().GetClientDevice(r)
-		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		clnt.Emit(portal.EventSessionSync, []byte(""))
-		w.WriteHeader(http.StatusOK)
-	}
-}

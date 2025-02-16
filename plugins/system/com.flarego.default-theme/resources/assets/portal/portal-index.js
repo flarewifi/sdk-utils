@@ -6,18 +6,6 @@
     setInterval(function() {
       var scriptEl = $('#portal-data');
       var data = JSON.parse(scriptEl.text());
-      var url = data.session_sync_url;
-
-      $.ajax({
-        url: url,
-        method: 'GET'
-      });
-    }, 10 * 1000);
-
-
-    setInterval(function() {
-      var scriptEl = $('#portal-data');
-      var data = JSON.parse(scriptEl.text());
       var running = data.session_running;
       if (running) {
         var timeEl = $('#session-time');

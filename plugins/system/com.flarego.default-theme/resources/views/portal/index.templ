@@ -5,10 +5,6 @@ import (
 	sdkapi "sdk/api"
 )
 
-const (
-	EventSessionSync string = "sessions.sync"
-)
-
 type PortalIndexData struct {
 	Navs             []sdkapi.PortalNavItem
 	SessionSummary   *sdkapi.ClientSessionSummary
@@ -25,8 +21,8 @@ templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
 	</div>
 	<div
 		hx-get={ api.Http().Helpers().UrlForRoute("sessions.summary") }
-		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, sse:%s",
-    sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected, EventSessionSync) }
+		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, every 5s",
+    sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
 	>
 		@SessionSummary(api, SessionSummaryData{
 			SessionSummary:   data.SessionSummary,
@@ -70,7 +66,6 @@ templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
 	{{
 data := map[string]interface{}{
 	"session_running":   data.IsSessionRunning,
-	"session_sync_url":  api.Http().Helpers().UrlForRoute("sessions.sync"),
 	"session_time_secs": data.SessionSummary.RemainingTimeSecs,
 }
 	}}
