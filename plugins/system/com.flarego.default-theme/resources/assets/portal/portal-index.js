@@ -2,9 +2,8 @@
   'use strict';
 
   $(document).ready(function() {
-    var syncInterval = 10 * 1000;
 
-    function syncSessions() {
+    setInterval(function() {
       var scriptEl = $('#portal-data');
       var data = JSON.parse(scriptEl.text());
       var url = data.session_sync_url;
@@ -13,9 +12,7 @@
         url: url,
         method: 'GET'
       });
-    }
-
-    setInterval(syncSessions, syncInterval);
+    }, 10 * 1000);
 
 
     setInterval(function() {
