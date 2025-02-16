@@ -52,6 +52,7 @@ func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
 
 func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error {
 	errCh := make(chan error)
+
 	go func() {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
@@ -77,6 +78,7 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 
 		errCh <- nil
 	}()
+
 	return <-errCh
 }
 
