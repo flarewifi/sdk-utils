@@ -31,7 +31,6 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 	}
 
 	sseURL := self.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:sse")
-	navs := self.api.HttpAPI.navsApi.GetAdminNavs(r)
 	assets, err := self.api.Utl.GetAdminAssetsForPage(v)
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
@@ -68,13 +67,8 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 		},
 	}
 
-	data := sdkapi.AdminThemeData{
-		Builder: layoutBuilder,
-		Navs:    navs,
-	}
-
 	w.Header().Set("Content-Type", "text/html")
-	themeApi.AdminTheme.LayoutFactory(w, r, data)
+	themeApi.AdminTheme.LayoutBuilder(w, r, layoutBuilder)
 }
 
 func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
@@ -129,12 +123,8 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		},
 	}
 
-	data := sdkapi.PortalThemeData{
-		Builder: layoutBuilder,
-	}
-
 	w.Header().Set("Content-Type", "text/html")
-	themeApi.PortalTheme.LayoutFactory(w, r, data)
+	themeApi.PortalTheme.LayoutBuilder(w, r, layoutBuilder)
 }
 
 func (self *HttpResponse) View(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {

@@ -29,7 +29,7 @@ type FlashMsg struct {
 	Message string
 }
 
-type ILayoutBuilder interface {
+type IViewBuilder interface {
 	Content() templ.Component
 	Render(head, layout templ.Component)
 }
@@ -40,32 +40,19 @@ type LoginPageData struct {
 	PasswordErr error
 }
 
-type AdminThemeData struct {
-	Navs    []AdminNavList
-	Builder ILayoutBuilder
-}
-
 type AdminThemeOpts struct {
 	CssLib           CSSLib
 	JsFile           string
 	CssFile          string
-	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data AdminThemeData)
+	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IViewBuilder)
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
-}
-
-type PortalPageData struct {
-	Navs []PortalNavItem
-}
-
-type PortalThemeData struct {
-	Builder ILayoutBuilder
 }
 
 type PortalThemeOpts struct {
 	JsFile           string
 	CssFile          string
 	CssLib           CSSLib
-	LayoutFactory    func(w http.ResponseWriter, r *http.Request, data PortalThemeData)
+	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IViewBuilder)
 	LoginPageFactory func(w http.ResponseWriter, r *http.Request, data LoginPageData) ViewPage
-	IndexPageFactory func(w http.ResponseWriter, r *http.Request, data PortalPageData) ViewPage
+	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
 }

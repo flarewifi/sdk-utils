@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	sdkapi "sdk/api"
 
 	"core/internal/api"
 	sse "core/internal/utils/sse"
@@ -16,9 +15,7 @@ func PortalIndexPage(g *api.CoreGlobals) http.Handler {
 			return
 		}
 
-		navs := g.CoreAPI.HttpAPI.Navs().GetPortalItems(r)
-		data := sdkapi.PortalPageData{Navs: navs}
-		page := t.PortalTheme.IndexPageFactory(w, r, data)
+		page := t.PortalTheme.IndexPageFactory(w, r)
 		g.CoreAPI.HttpAPI.Response().PortalView(w, r, page)
 	})
 }
