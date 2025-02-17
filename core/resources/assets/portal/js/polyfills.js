@@ -1,6 +1,4 @@
 'use strict';
 
-import { SSE } from '@flarehotspot/lib/vendor/event-source-polyfill';
-window.EventSource = window.EventSource || SSE;
-
+require('@flarehotspot/lib/vendor/event-source-polyfill');
 require('@flarehotspot/lib/vendor/domparser-polyfill');
