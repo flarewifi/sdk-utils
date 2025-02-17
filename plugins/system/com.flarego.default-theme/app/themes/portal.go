@@ -13,19 +13,19 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
-		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalThemeData) {
+		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, b sdkapi.IViewBuilder) {
 			head := portal.PortalHead()
 			layout := portal.PortalLayout(portal.PortalLayoutData{
-				PageContent: data.Builder.Content(),
+				PageContent: b.Content(),
 			})
-			data.Builder.Render(head, layout)
+			b.Render(head, layout)
 		},
 		LoginPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.LoginPageData) sdkapi.ViewPage {
 			csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)
 			page := auth.LoginPage(csrfHtml, data)
 			return sdkapi.ViewPage{PageContent: page}
 		},
-		IndexPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.PortalPageData) sdkapi.ViewPage {
+		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
 			clnt, err := api.Http().GetClientDevice(r)
 			if err != nil {
 				api.Logger().Error("Error in getting client device: " + err.Error())
@@ -39,12 +39,13 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 			}
 
 			_, ok := api.SessionsMgr().CurrSession(clnt)
-
+			navs := api.Http().Navs().GetPortalItems(r)
 			page := portal.PortalIndexPage(api, portal.PortalIndexData{
-				Navs:             data.Navs,
+				Navs:             navs,
 				SessionSummary:   summary,
 				IsSessionRunning: ok,
 			})
+
 			return sdkapi.ViewPage{
 				Assets: sdkapi.ViewAssets{
 					JsFile: "portal/index.js",

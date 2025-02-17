@@ -14,13 +14,14 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
 		CssLib:  sdkapi.CssLibBootstrap5,
-		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.AdminThemeData) {
+		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, b sdkapi.IViewBuilder) {
 			head := admin.AdminHead()
+			navs := api.Http().Navs().GetAdminNavs(r)
 			layout := admin.AdminLayout(admin.AdminLayoutData{
-				Navs:        data.Navs,
-				PageContent: data.Builder.Content(),
+				Navs:        navs,
+				PageContent: b.Content(),
 			})
-			data.Builder.Render(head, layout)
+			b.Render(head, layout)
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
 			page := admin.AdminIndexPage()
@@ -38,30 +39,4 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 			},
 		}
 	})
-
-	// api.Themes().NewAdminTheme(themes.AdminTheme{
-	// 	CssLib: themes.CssLibBootstrap4,
-	// 	DashboardComponent: themes.ThemeComponent{
-	// 		RouteName: "dashboard",
-	// 		Component: "admin/Dashboard.vue",
-	// 	},
-	// 	LayoutComponent: themes.ThemeComponent{
-	// 		Component: "admin/ThemeLayout.vue",
-	// 	},
-	// 	LoginComponent: themes.ThemeComponent{
-	// 		RouteName: "login",
-	// 		Component: "admin/ThemeLogin.vue",
-	// 	},
-	// 	ThemeAssets: &themes.ThemeAssets{
-	// 		Scripts: []string{
-	// 			"vendor/polyfills/intersection-observer.js",
-	// 			"vendor/polyfills/intersection-observer-enable-polling.js",
-	// 			"vendor/bootstrap-vue/bootstrap-vue-2.23.1.umd.min.js",
-	// 			"vendor/bootstrap-vue/bootstrap-vue-icons-2.23.1.umd.min.js",
-	// 		},
-	// 		Styles: []string{
-	// 			"vendor/bootstrap-4.6.1/bootstrap.min.css",
-	// 		},
-	// 	},
-	// })
 }
