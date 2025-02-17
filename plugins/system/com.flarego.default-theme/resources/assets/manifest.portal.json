@@ -4,5 +4,8 @@
   ],
   "theme.js": [
     "./portal/portal.js"
+  ],
+  "portal/index.js": [
+    "./portal/portal-index.js"
   ]
 }

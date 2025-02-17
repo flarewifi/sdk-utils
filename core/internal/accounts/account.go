@@ -68,7 +68,7 @@ func (acct *Account) AddSocket(s *sse.SseSocket) {
 }
 
 // Emit emits an event to the account that will propage to the browser
-func (acct *Account) Emit(event string, data string) {
+func (acct *Account) Emit(event string, data []byte) {
 	sse.Emit(acct.Username(), event, data)
 }
 

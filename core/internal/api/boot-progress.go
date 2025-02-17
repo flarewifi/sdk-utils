@@ -95,7 +95,7 @@ func (bp *BootProgress) emit() {
 	data := "BootProgData{bp.logs, bp.done.Load()}"
 
 	for _, s := range bp.sockets {
-		err := s.Emit("boot:progress", data)
+		err := s.Emit("boot:progress", []byte(data))
 		if err != nil {
 			log.Println("Boot Progress socket error:", err)
 		}

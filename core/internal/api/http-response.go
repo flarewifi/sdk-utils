@@ -82,15 +82,13 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	q := r.URL.Query()
 	pageUUID := q.Get("t") // Prevent caching
 
-	_, themeApi, err := self.api.PluginsMgrApi.GetPortalTheme()
+	pluginApi, themeApi, err := self.api.PluginsMgrApi.GetPortalTheme()
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
-	sseURL := api.HttpAPI.Helpers().UrlForRoute("portal:sse")
-	ssePolyfillURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
-	assets, err := api.Utl.GetPortalAssetsForPage(v)
+	assets, err := pluginApi.Utl.GetPortalAssetsForPage(v)
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
@@ -111,14 +109,17 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	layoutBuilder := &ThemesLayoutBuilder{
 		PageContent: v.PageContent,
 		ContentWrapper: func(head, layout templ.Component) {
+			sseURL := api.HttpAPI.Helpers().UrlForRoute("portal:sse")
+			polyfillsURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
+
 			data := themes.PortalLayoutData{
-				PageUUID:       pageUUID,
-				Assets:         assets,
-				SseURL:         sseURL,
-				SsePolyfillURL: ssePolyfillURL,
-				Flash:          flash,
-				Head:           head,
-				Layout:         layout,
+				PageUUID:     pageUUID,
+				Assets:       assets,
+				SseURL:       sseURL,
+				PolyfillsURL: polyfillsURL,
+				Flash:        flash,
+				Head:         head,
+				Layout:       layout,
 			}
 
 			page := themes.PortalThemeLayout(data)

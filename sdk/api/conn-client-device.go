@@ -32,11 +32,10 @@ type IClientDevice interface {
 
 	// Emits a socket event to a client device.
 	// The event will be propagated to the client's browser via server-sent events.
-	Emit(event string, data string)
+	Emit(event string, data []byte)
 
 	// Subscribes to events for this client device.
 	// It returns a channel that will receive data when the event is emitted.
-	// The data is a JSON encoded byte slice.
 	Subscribe(event string) <-chan []byte
 
 	// Unsubscribes from events for this client device.

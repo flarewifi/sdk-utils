@@ -22,13 +22,13 @@ type PortalAssets struct {
 }
 
 type PortalLayoutData struct {
-	PageUUID       string
-	Assets         PortalAssets
-	SseURL         string
-	SsePolyfillURL string
-	Flash          *sdkapi.FlashMsg
-	Head           templ.Component
-	Layout         templ.Component
+	PageUUID     string
+	Assets       PortalAssets
+	SseURL       string
+	PolyfillsURL string
+	Flash        *sdkapi.FlashMsg
+	Head         templ.Component
+	Layout       templ.Component
 }
 
 func PortalThemeLayout(data PortalLayoutData) templ.Component {
@@ -150,9 +150,9 @@ func PortalThemeLayout(data PortalLayoutData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.SsePolyfillURL)
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.PolyfillsURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 48, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 48, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {

@@ -17,11 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const (
-	EventSessionConnected    string = "session:connected"
-	EventSessionDisconnected string = "session:disconnected"
-)
-
 func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
 	return &SessionsMgr{
 		mu:        sync.RWMutex{},
@@ -139,7 +134,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 
 		go self.loopSessions(clnt)
 
-		clnt.Emit(EventSessionConnected, notify)
+		clnt.Emit(sdkapi.EventSessionConnected, []byte(notify))
 		errCh <- nil
 	}()
 
@@ -152,7 +147,7 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 		return err
 	}
 
-	clnt.Emit(EventSessionDisconnected, notify)
+	clnt.Emit(sdkapi.EventSessionDisconnected, []byte(notify))
 	return nil
 }
 
