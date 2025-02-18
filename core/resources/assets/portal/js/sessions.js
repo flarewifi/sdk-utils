@@ -1,6 +1,6 @@
 'use strict'
 
-var events = require('@flarehotspot/lib/events')
+var events = require('../../lib/events')
 var notify = require('./notify.js')
 
 events.ready(function() {
