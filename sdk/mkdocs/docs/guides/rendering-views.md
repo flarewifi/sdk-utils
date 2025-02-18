@@ -73,7 +73,7 @@ The path to `script.js` and `style.css` file is relative to the `manifest.portal
 We can then render these assets together with our template:
 
 !!! note "Caveats"
-    Javascripts for the captive portal does not support `es6` synatx and must be written using `es5` syntax to support older devices.
+    Javascripts for the captive portal must be written using `ES5` syntax to support older devices. The assets builder may throw an error if you use `ES6` syntax.
 
 ```go
 // handler
