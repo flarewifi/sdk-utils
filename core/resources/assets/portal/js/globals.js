@@ -2,7 +2,7 @@
 
 window.$flare = window.$flare || {};
 
-var jQuery = require('@flarehotspot/lib/vendor/jquery-v1.12.4.js')
+var jQuery = require('../../lib/vendor/jquery-v1.12.4.js')
 window.$ = jQuery;
 window.jQuery = jQuery;
 
