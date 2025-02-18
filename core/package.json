@@ -1,0 +1,8 @@
+{
+  "name": "System Core",
+  "version": "0.1.2-pre",
+  "description": "System Core",
+  "license": "ISC",
+  "main": "index.js",
+  "author": "Flarego Technologies Corporation"
+}
