@@ -34,3 +34,4 @@ go.work.sum
 __debug_bin*
 main.exe
 *:Zone.Identifier
+/plugins/cache

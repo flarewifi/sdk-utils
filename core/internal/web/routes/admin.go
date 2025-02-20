@@ -17,17 +17,11 @@ func AdminRoutes(g *api.CoreGlobals) {
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
 	adminAuthCtrl := controllers.AdminAuthenticateCtrl(g)
 	adminSseCtrl := controllers.AdminSseHandler(g)
-	// adminFormsCtrl := adminctrl.NewFormsCtrl(g)
 
 	rootR.Handle("/admin", authMw(adminIndexCtrl)).Methods("GET").Name("admin:index")
 	// TODO: enable csrf protection
 	rootR.Handle("/login", adminLoginCtrl).Methods("GET").Name("admin:login")
 	rootR.Handle("/login", adminAuthCtrl).Methods("POST").Name("admin:authenticate")
-
-	// adminR.Group("/forms", func(subrouter sdkhttp.IHttpRouterInstance) {
-	// 	subrouter.Post("/save", adminFormsCtrl.SaveForm).Queries("pkg", "{pkg}", "name", "{name}").Name("admin:forms:save")
-	// })
-
 	adminR.Get("/events", adminSseCtrl).Name("admin:sse")
 
 	adminR.Group("/themes", func(subrouter sdkapi.IHttpRouterInstance) {
@@ -40,17 +34,14 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Post("/search", adminctrl.LogsPostSearch(g)).Name("admin:logs:search")
 	})
 
-	// adminR.Group("/core", func(subrouter sdkhttp.HttpRouterInstance) {
-	// 	subrouter.Get("/fetch", adminctrl.FetchUpdatesCtrl(g)).Name("admin:core:fetch")
-	// 	subrouter.Get("/current", adminctrl.GetCurrentCoreVersionCtrl(g)).Name("admin:core:current")
-	// 	subrouter.Post("/download", adminctrl.DownloadUpdatesCtrl(g)).Name("admin:core:download")
-	// 	subrouter.Post("/update", adminctrl.UpdateCoreCtrl(g)).Name("admin:core:update")
-	// })
-
-	// adminR.Group("/logs", func(subrouter sdkhttp.HttpRouterInstance) {
-	// 	subrouter.Get("/index", adminctrl.GetLogs(g)).Name("admin:logs:index")
-	// 	subrouter.Post("/clear", adminctrl.ClearLogs(g)).Name("admin:logs:clear")
-	// })
+	adminR.Group("/plugins", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/", adminctrl.PluginsIndexCtrl(g)).Name("admin.plugins.index")
+		subrouter.Get("/install", adminctrl.PluginInstallCtrl(g)).Name("admin.plugins.install")
+		subrouter.Post("/install/zip", adminctrl.PluginInstallFromZip(g)).Name("admin.plugins.install.zip")
+		// TODO: Implement install from github
+		subrouter.Post("/install/github", adminctrl.PluginInstallFromZip(g)).Name("admin.plugins.install.github")
+		subrouter.Get("/uninstall/{pkg}", adminctrl.UninstallPluginCtrl(g)).Name("admin.plugins.uninstall")
+	})
 
 	// adminR.Group("/plugins", func(subrouter sdkhttp.HttpRouterInstance) {
 	// 	subrouter.Get("/index", adminctrl.PluginsIndexCtrl(g)).
@@ -123,29 +114,4 @@ func AdminRoutes(g *api.CoreGlobals) {
 	// 		Component: "admin/CoreUpdates.vue",
 	// 	},
 	// }...)
-
-	// g.CoreAPI.HttpAPI.VueRouter().AdminNavsFunc(func(acct sdkacct.Account) []sdkhttp.VueAdminNav {
-	// 	return []sdkhttp.VueAdminNav{
-	// 		{
-	// 			Category:  sdkhttp.NavCategoryThemes,
-	// 			Label:     "Select Theme",
-	// 			RouteName: "theme-picker",
-	// 		},
-	// 		{
-	// 			Category:  sdkhttp.NavCategorySystem,
-	// 			Label:     "View Logs",
-	// 			RouteName: "log-viewer",
-	// 		},
-	// 		{
-	// 			Category:  sdkhttp.NavCategorySystem,
-	// 			Label:     "Manage Plugins",
-	// 			RouteName: "plugins-index",
-	// 		},
-	// 		{
-	// 			Category:  sdkhttp.NavCategorySystem,
-	// 			Label:     "System Updates",
-	// 			RouteName: "core-updates",
-	// 		},
-	// 	}
-	// })
 }

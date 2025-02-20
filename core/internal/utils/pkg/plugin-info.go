@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"core/internal/config"
 	"path/filepath"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -13,6 +14,21 @@ func GetInfoFromDef(def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err er
 	}
 
 	return sdkutils.GetPluginInfoFromPath(path)
+}
+
+func GetPluginDef(pkg string) (def sdkutils.PluginSrcDef, err error) {
+	pluginsCfg, err := config.ReadPluginsConfig()
+	if err != nil {
+		return def, err
+	}
+
+	for _, metadata := range pluginsCfg.Metadata {
+		if metadata.Package == pkg {
+			return metadata.Def, nil
+		}
+	}
+
+	return def, ErrNotInstalled
 }
 
 func GetCoreInfo() sdkutils.PluginInfo {

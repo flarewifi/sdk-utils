@@ -34,13 +34,20 @@ func InitPlugins(g *api.CoreGlobals) {
 		recompile := pkg.NeedsRecompile(def)
 		installed = installed && (pkg.ValidateInstallPath(installPath) == nil)
 		if installed {
-			// TODO: handle error
-			info, _ = sdkutils.GetPluginInfoFromPath(installPath)
+			pluginInfo, err := sdkutils.GetPluginInfoFromPath(installPath)
+			if err != nil {
+				bp.AppendLog(fmt.Sprintf("%s: Error getting plugin info: %s", def.String(), err.Error()))
+				continue
+			}
+			info = pluginInfo
 		}
 
-		if pkg.IsToBeRemoved(info.Package) {
+		toBeRemoved := pkg.IsToBeRemoved(info.Package)
+		fmt.Printf("%s is to be removed? %t\n", info.Package, toBeRemoved)
+
+		if toBeRemoved {
 			bp.AppendLog(fmt.Sprintf("%s: Plugin is marked for removal, uninstalling...", info.Package))
-			if err := pkg.RemovePlugin(info.Package, g.CoreAPI.SqlDb()); err != nil {
+			if err := pkg.UninstallPlugin(info.Package, g.CoreAPI.SqlDb()); err != nil {
 				bp.AppendLog(fmt.Sprintf("%s: Error removing plugin: %s", info.Package, err.Error()))
 			} else {
 				bp.AppendLog(fmt.Sprintf("%s: Successfully removed plugin", info.Package))
