@@ -351,7 +351,7 @@ func IsToBeRemoved(pkg string) bool {
 	return sdkutils.FsExists(uninstallFile)
 }
 
-func RemovePlugin(pkg string, pool *pgxpool.Pool) error {
+func UninstallPlugin(pkg string, pool *pgxpool.Pool) error {
 	meta, err := ReadMetadata(pkg)
 	if err != nil {
 		return err
