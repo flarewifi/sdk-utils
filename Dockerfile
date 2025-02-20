@@ -36,6 +36,7 @@ CMD cp go.work.default go.work && \
         -R '^config\/.*' \
         -R 'resources\/assets\/dist' \
         -R 'plugins\/installed\/.*' \
+        -R 'plugins\/cache\/.*' \
         -R 'plugins\/update\/.*' \
         -R 'plugins\/backup\/.*' \
         -s -- sh -c './start-dev.sh' -v

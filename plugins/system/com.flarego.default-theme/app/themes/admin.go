@@ -31,12 +31,12 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 
 	api.Http().Navs().AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
 		return []sdkapi.AdminNavItemOpt{
-			{
-				Label:       "Test",
-				Category:    sdkapi.NavCategorySystem,
-				RouteName:   "test",
-				RouteParams: map[string]string{"name": "test"},
-			},
+			// {
+			// 	Label:       "Test",
+			// 	Category:    sdkapi.NavCategorySystem,
+			// 	RouteName:   "test",
+			// 	RouteParams: map[string]string{"name": "test"},
+			// },
 		}
 	})
 }

@@ -23,8 +23,6 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, pmgr *PluginsMgr, trfkMg
 		ClntMgr:       pmgr.clntMgr,
 	}
 
-	pluginApi.Utl = NewPluginUtils(pluginApi)
-
 	info, err := sdkutils.GetPluginInfoFromPath(dir)
 	if err != nil {
 		log.Println("Error getting plugin info: ", err.Error())
@@ -32,6 +30,8 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, pmgr *PluginsMgr, trfkMg
 	}
 
 	pluginApi.info = info
+
+	pluginApi.Utl = NewPluginUtils(pluginApi)
 	pluginApi.models = pmgr.models
 
 	NewAcctApi(pluginApi)

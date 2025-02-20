@@ -1,0 +1,67 @@
+package pluginsview
+
+import (
+	"fmt"
+	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkapi "sdk/api"
+)
+
+type PluginData struct {
+	Info               sdkutils.PluginInfo
+	Src                sdkutils.PluginSrcDef
+	HasPendingUpdate   bool
+	HasUpdates         bool
+	ToBeRemoved        bool
+	StorePluginVersion string
+}
+
+type IndexPageData struct {
+	Plugins []PluginData
+}
+
+templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
+	<h1>Plugins</h1>
+	<hr/>
+	<div class="pb-3">
+		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.install")) }>
+			Install Plugin
+		</a>
+	</div>
+	<table class="table table-bordered">
+		<thead>
+			<tr>
+				<th>Name</th>
+				<th>Status</th>
+				<th>More</th>
+				<th>Actions</th>
+			</tr>
+		</thead>
+		<tbody>
+			for _, p := range data.Plugins {
+				<tr>
+					<td>{ p.Info.Name }</td>
+					<td>
+						if !p.ToBeRemoved {
+							<span>Installed</span>
+						} else {
+							<span style="color: red;">For Removal</span>
+						}
+					</td>
+					<td>
+						{ fmt.Sprintf("%+v", p.Info) }
+					</td>
+					<td>
+						if !p.ToBeRemoved {
+							<a
+								href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg" ,
+                    p.Info.Package)) }
+							>
+								Uninstall
+							</a>
+						}
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}

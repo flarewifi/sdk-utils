@@ -27,9 +27,8 @@ templ AdminThemeLayout(data AdminLayoutData) {
 	<!DOCTYPE html>
 	<html lang="en" data-bs-theme="auto">
 		<head>
-			<meta charset="utf-8"/>
+			<title>Web Admin</title>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>Fixed top navbar example · Bootstrap v5.3</title>
 			<!-- Theme Stylesheets -->
 			if data.Assets.GlobalCssHref != "" {
 				<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>

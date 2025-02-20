@@ -56,7 +56,6 @@ func (self *PluginsMgr) RegisterPlugin(p *PluginApi) {
 	p.Initialize(self.CoreAPI)
 	p.LoadAssetsManifest()
 	self.plugins = append(self.plugins, p)
-
 }
 
 func (self *PluginsMgr) FindByName(name string) (sdkplugin.IPluginApi, bool) {

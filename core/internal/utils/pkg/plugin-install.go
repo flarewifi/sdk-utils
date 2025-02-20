@@ -346,7 +346,8 @@ func MarkToRemove(pkg string) error {
 }
 
 func IsToBeRemoved(pkg string) bool {
-	uninstallFile := filepath.Join(GetInstallPath(pkg), "uninstall")
+	installPath := GetInstallPath(pkg)
+	uninstallFile := filepath.Join(installPath, "uninstall")
 	return sdkutils.FsExists(uninstallFile)
 }
 
@@ -356,13 +357,15 @@ func RemovePlugin(pkg string, pool *pgxpool.Pool) error {
 		return err
 	}
 
-	if meta.Def.Src == sdkutils.PluginSrcLocal || meta.Def.Src == sdkutils.PluginSrcSystem {
-		return os.RemoveAll(meta.Def.LocalPath)
-	}
-
 	installPath := GetInstallPath(pkg)
 	if err := migrate.MigrateDown(installPath, pool); err != nil {
 		return err
+	}
+
+	if meta.Def.Src == sdkutils.PluginSrcLocal || meta.Def.Src == sdkutils.PluginSrcSystem {
+		if err := os.RemoveAll(meta.Def.LocalPath); err != nil {
+			return err
+		}
 	}
 
 	if err := os.RemoveAll(installPath); err != nil {
