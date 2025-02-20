@@ -36,10 +36,10 @@ func AdminRoutes(g *api.CoreGlobals) {
 
 	adminR.Group("/plugins", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/", adminctrl.PluginsIndexCtrl(g)).Name("admin.plugins.index")
-		subrouter.Get("/install", adminctrl.PluginInstallCtrl(g)).Name("admin.plugins.install")
-		subrouter.Post("/install/zip", adminctrl.PluginInstallFromZip(g)).Name("admin.plugins.install.zip")
+		subrouter.Get("/install", adminctrl.PluginInstallIndexCtrl(g)).Name("admin.plugins.install")
+		subrouter.Post("/install/zip", adminctrl.PluginInstallFromZipCtrl(g)).Name("admin.plugins.install.zip")
 		// TODO: Implement install from github
-		subrouter.Post("/install/github", adminctrl.PluginInstallFromZip(g)).Name("admin.plugins.install.github")
+		subrouter.Post("/install/github", adminctrl.PluginInstallFromZipCtrl(g)).Name("admin.plugins.install.github")
 		subrouter.Get("/uninstall/{pkg}", adminctrl.UninstallPluginCtrl(g)).Name("admin.plugins.uninstall")
 	})
 
