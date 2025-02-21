@@ -147,8 +147,12 @@ func (self *HttpResponse) FlashMsg(w http.ResponseWriter, r *http.Request, msg s
 
 func (self *HttpResponse) Redirect(w http.ResponseWriter, r *http.Request, routeName string, pairs ...string) {
 	url := self.api.HttpAPI.Helpers().UrlForRoute(routeName, pairs...)
-	w.Header().Add("Hx-Redirect", url)
-	http.Redirect(w, r, url, http.StatusSeeOther)
+	if r.Header.Get("Hx-Request") == "true" {
+		w.Header().Add("Hx-Redirect", url)
+		w.WriteHeader(http.StatusOK)
+	} else {
+		http.Redirect(w, r, url, http.StatusSeeOther)
+	}
 }
 
 func (self *HttpResponse) RedirectToPortal(w http.ResponseWriter, r *http.Request) {
