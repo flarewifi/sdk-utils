@@ -147,6 +147,7 @@ func (self *HttpResponse) FlashMsg(w http.ResponseWriter, r *http.Request, msg s
 
 func (self *HttpResponse) Redirect(w http.ResponseWriter, r *http.Request, routeName string, pairs ...string) {
 	url := self.api.HttpAPI.Helpers().UrlForRoute(routeName, pairs...)
+	w.Header().Add("Hx-Redirect", url)
 	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 

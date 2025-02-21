@@ -168,8 +168,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Redirect to the plugins index page
 		coreApi.HttpAPI.Response().FlashMsg(w, r, "Plugin installed successfully", sdkapi.FlashMsgSuccess)
-		indexURL := coreApi.HttpAPI.Helpers().UrlForRoute("admin.plugins.index")
-		http.Redirect(w, r, indexURL, http.StatusSeeOther)
+		res.Redirect(w, r, "admin.plugins.index")
 	}
 }
 
