@@ -53,8 +53,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
 					<td>
 						if !p.ToBeRemoved {
 							<a
-								href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg" ,
-                    p.Info.Package)) }
+								href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg" , p.Info.Package)) }
 							>
 								Uninstall
 							</a>

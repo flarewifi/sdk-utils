@@ -28,7 +28,6 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 					g.CoreAPI.LoggerAPI.Error(err.Error())
 					continue
 				}
-
 				toBeRemoved := pkg.IsToBeRemoved(info.Package)
 				pluginData = append(pluginData, views.PluginData{
 					Info:        info,
@@ -37,16 +36,13 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				})
 			}
 		}
-
 		data := views.IndexPageData{
 			Plugins: pluginData,
 		}
-
 		page := views.IndexPage(g.CoreAPI, data)
 		view := sdkapi.ViewPage{
 			PageContent: page,
 		}
-
 		res.AdminView(w, r, view)
 	}
 }
@@ -221,8 +217,7 @@ func UninstallPluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		api.HttpAPI.Response().FlashMsg(w, r, "Plugin will be removed after the next reboot.", sdkapi.FlashMsgSuccess)
-		indexURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.index")
-		http.Redirect(w, r, indexURL, http.StatusSeeOther)
+		res.FlashMsg(w, r, "Plugin will be removed after the next reboot.", sdkapi.FlashMsgSuccess)
+		res.Redirect(w, r, "admin.plugins.index")
 	}
 }
