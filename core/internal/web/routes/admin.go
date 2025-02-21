@@ -38,8 +38,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Get("/", adminctrl.PluginsIndexCtrl(g)).Name("admin.plugins.index")
 		subrouter.Get("/install", adminctrl.PluginInstallIndexCtrl(g)).Name("admin.plugins.install")
 		subrouter.Post("/install/zip", adminctrl.PluginInstallFromZipCtrl(g)).Name("admin.plugins.install.zip")
-		// TODO: Implement install from github
-		subrouter.Post("/install/github", adminctrl.PluginInstallFromZipCtrl(g)).Name("admin.plugins.install.github")
+		subrouter.Post("/install/github", adminctrl.PluginsInstallFromGitCtrl(g)).Name("admin.plugins.install.github")
 		subrouter.Get("/uninstall/{pkg}", adminctrl.UninstallPluginCtrl(g)).Name("admin.plugins.uninstall")
 	})
 

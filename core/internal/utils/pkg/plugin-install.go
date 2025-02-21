@@ -162,6 +162,7 @@ func InstallFromGitSrc(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef)
 		log.Println("Error cloning: ", err)
 		return sdkutils.PluginInfo{}, err
 	}
+	defer os.RemoveAll(clonePath)
 
 	info, err := sdkutils.GetPluginInfoFromPath(clonePath)
 	if err != nil {
@@ -170,7 +171,7 @@ func InstallFromGitSrc(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef)
 	}
 
 	cachePath := filepath.Join(sdkutils.PathAppDir, "plugins", "cache", info.Package)
-	if err := sdkutils.FsMoveDir(clonePath, cachePath); err != nil {
+	if err := sdkutils.FsCopy(clonePath, cachePath); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 

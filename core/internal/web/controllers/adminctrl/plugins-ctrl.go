@@ -79,14 +79,16 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// upload of 10 MB files.
 		err := r.ParseMultipartForm(10 << 20)
 		if err != nil {
-			res.Error(w, r, err, http.StatusBadRequest)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
 		// Retrieve the file from the form field "file"
 		file, header, err := r.FormFile("plugin_zip_file")
 		if err != nil {
-			http.Error(w, "Failed to get file from request", http.StatusBadRequest)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 		defer file.Close()
@@ -95,7 +97,8 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		saveDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "uploads")
 		err = sdkutils.FsEnsureDir(saveDir) // Ensure the directory exists
 		if err != nil {
-			http.Error(w, "Failed to create upload directory", http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
@@ -105,7 +108,8 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Create a new file in the specified directory
 		dst, err := os.Create(filePath)
 		if err != nil {
-			http.Error(w, "Failed to create destination file", http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 		defer dst.Close()
@@ -113,32 +117,37 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Copy the uploaded file data to the new file
 		_, err = io.Copy(dst, file)
 		if err != nil {
-			http.Error(w, "Failed to save file", http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
 		// Extract the zip file to the plugins/local directory
 		pluginTmpDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted", sdkutils.RandomStr(16))
 		if err = sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
-			http.Error(w, "Failed to extract zip file", http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
 		pluginSrc, err := sdkutils.FindPluginSrc(pluginTmpDir)
 		if err != nil {
-			http.Error(w, "Failed to extract zip file", http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
 		info, err := sdkutils.GetPluginInfoFromPath(pluginSrc)
 		if err != nil {
-			http.Error(w, "Failed to extract zip file", http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
 		pluginCachePath := filepath.Join(sdkutils.PathAppDir, "plugins", "cache", info.Package)
 		if err = sdkutils.FsCopy(pluginSrc, pluginCachePath); err != nil {
-			http.Error(w, "Failed to extract zip file", http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
@@ -148,7 +157,8 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		if _, err := pkg.InstallFromLocalPath(os.Stdout, g.CoreAPI.SqlDb(), def); err != nil {
-			http.Error(w, "Failed to extract zip file", http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
@@ -163,14 +173,15 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func PluginsInstallGithubCtrl(g *api.CoreGlobals) http.HandlerFunc {
+func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
 		// Parse our multipart form, 10 << 20 specifies a maximum
 		// upload of 10 MB files.
 		err := r.ParseMultipartForm(10 << 20)
 		if err != nil {
-			res.Error(w, r, err, http.StatusBadRequest)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
@@ -184,13 +195,17 @@ func PluginsInstallGithubCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		})
 
 		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
 		installPath := pkg.GetInstallPath(info.Package)
 		p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 		g.PluginMgr.RegisterPlugin(p)
+
+		res.FlashMsg(w, r, "Plugin installed successfully", sdkapi.FlashMsgSuccess)
+		res.Redirect(w, r, "admin.plugins.index")
 	}
 }
 
