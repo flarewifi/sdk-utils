@@ -4,15 +4,15 @@ package boot
 
 import (
 	"core/internal/api"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func InitPlugins(g *api.CoreGlobals) {
-	systemDefs := pkg.SystemPluginSrcDefs()
-	localDefs := pkg.LocalPluginSrcDefs()
+	systemDefs := plugins.SystemPluginSrcDefs()
+	localDefs := plugins.LocalPluginSrcDefs()
 	for _, def := range append(systemDefs, localDefs...) {
 		info, err := sdkutils.GetPluginInfoFromPath(def.LocalPath)
 		if err != nil {
