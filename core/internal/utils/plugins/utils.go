@@ -162,7 +162,7 @@ func WriteMetadata(def sdkutils.PluginSrcDef, pkg string) error {
 func ReadMetadata(pkg string) (metadata sdkutils.PluginMetadata, err error) {
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
-		return
+		return metadata, err
 	}
 
 	for _, m := range cfg.Metadata {
@@ -172,6 +172,23 @@ func ReadMetadata(pkg string) (metadata sdkutils.PluginMetadata, err error) {
 	}
 
 	return metadata, ErrNotInstalled
+}
+
+func RemoveMetadata(pkg string) error {
+	cfg, err := config.ReadPluginsConfig()
+	if err != nil {
+		return err
+	}
+
+	// Remove metadata from the list of installed plugins
+	for i, m := range cfg.Metadata {
+		if m.Package == pkg {
+			cfg.Metadata = append(cfg.Metadata[:i], cfg.Metadata[i+1:]...)
+			break
+		}
+	}
+
+	return config.WritePluginsConfig(cfg)
 }
 
 func IsPackageInstalled(pkg string) bool {

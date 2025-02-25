@@ -131,7 +131,7 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</tbody></table>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</tbody></table><div class=\"alert alert-info\">Plugins marked with \"To Be Removed\" will be removed on the next reboot.</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
