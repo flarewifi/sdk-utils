@@ -8,9 +8,10 @@ package pluginsview
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "fmt"
-
-import sdkapi "sdk/api"
+import (
+	"fmt"
+	sdkapi "sdk/api"
+)
 
 type FormRoutes struct {
 	SelectedAction         string `json:"action_url"`
@@ -46,7 +47,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 16, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 17, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -59,7 +60,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.PluginInstallGithubURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 26, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 22, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -72,7 +73,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.PluginInstallZipURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 27, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 23, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -83,28 +84,28 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("action_url == '%s'", data.PluginInstallGithubURL))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("action_url=='%s'", data.PluginInstallGithubURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 30, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 26, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"form-group mb-3\"><label>Github URL</label> <input type=\"text\" name=\"github_url\" class=\"form-control\"></div></template><template x-if=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div><div class=\" form-group mb-3\"><label>Github URL:</label> <input type=\"text\" name=\"github_repo_url\" class=\"form-control\"></div><div class=\"form-group mb-3\"><label>Branch/Commit Hash:</label> <input type=\"text\" name=\"github_ref\" class=\"form-control\"></div></div></template><template x-if=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("action_url == '%s'", data.PluginInstallZipURL))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("action_url=='%s'", data.PluginInstallZipURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 36, Col: 88}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 38, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"form-group mb-3\"><label>Plugin Zip File:</label> <input type=\"file\" name=\"plugin_zip_file\" class=\"form-control\"></div></template><div class=\"form-group\"><button type=\"submit\" class=\"btn btn-primary\">Install</button></div></form></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\" form-group mb-3\"><label>Plugin Zip File:</label> <input type=\"file\" name=\"plugin_zip_file\" class=\"form-control\"></div></template><div class=\"form-group\"><button type=\"submit\" class=\"btn btn-primary\">Install</button></div></form></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
