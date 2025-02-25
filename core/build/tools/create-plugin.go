@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +10,7 @@ import (
 )
 
 func CreatePlugin(pack string, name string, desc string) {
-	coreInfo := pkg.GetCoreInfo()
+	coreInfo := plugins.GetCoreInfo()
 	info := sdkutils.PluginInfo{
 		Name:           name,
 		Package:        pack,
@@ -200,7 +200,7 @@ sql:
 
 	CreateGoWorkspace()
 
-	if err := pkg.ValidateSrcPath(pluginDir); err != nil {
+	if err := plugins.ValidateSrcPath(pluginDir); err != nil {
 		panic("Error validating newly created plugin: " + err.Error())
 	}
 

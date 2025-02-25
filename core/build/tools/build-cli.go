@@ -2,7 +2,7 @@ package tools
 
 import (
 	"core/env"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
 
@@ -22,7 +22,7 @@ func BuildFlareCLI() {
 	cliPath := "bin/flare"
 	workdir, _ := os.Getwd()
 	opts := sdkutils.GoBuildOpts{
-		GoBinPath: pkg.GoBin(),
+		GoBinPath: plugins.GoBin(),
 		WorkDir:   workdir,
 		BuildTags: env.BuildTags,
 	}

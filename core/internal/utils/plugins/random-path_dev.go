@@ -1,6 +1,6 @@
 //go:build dev
 
-package pkg
+package plugins
 
 import (
 	"path/filepath"

@@ -1,4 +1,4 @@
-package pkg
+package plugins
 
 import (
 	"core/internal/config"

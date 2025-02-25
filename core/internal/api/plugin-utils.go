@@ -11,7 +11,7 @@ import (
 
 	"core/internal/config"
 	"core/internal/utils/flaretmpl"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"core/resources/views/themes"
 )
 
@@ -67,7 +67,7 @@ func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets themes
 		return
 	}
 
-	globals := pkg.ReadGlobalAssetsManifest()
+	globals := plugins.ReadGlobalAssetsManifest()
 	globalJsSrc := self.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.AdminJsFile))
 	globalCssHref := self.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.AdminCssFile))
 
@@ -100,7 +100,7 @@ func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets theme
 		return
 	}
 
-	globals := pkg.ReadGlobalAssetsManifest()
+	globals := plugins.ReadGlobalAssetsManifest()
 	globalJsSrc := self.api.CoreAPI.Http().Helpers().ResourcePath(filepath.Join("assets", "dist", globals.PortalJsFile))
 	globalCssHref := self.api.CoreAPI.Http().Helpers().ResourcePath(filepath.Join("assets", "dist", globals.PortalCssFile))
 

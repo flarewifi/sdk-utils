@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +12,7 @@ import (
 )
 
 func SyncCoreVersion() {
-	version := pkg.GetCoreInfo().Version
+	version := plugins.GetCoreInfo().Version
 	packageJson := "package.json"
 	var pkg map[string]interface{}
 	err := sdkutils.JsonRead(packageJson, &pkg)

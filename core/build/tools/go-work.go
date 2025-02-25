@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"log"
 	"os"
@@ -46,7 +46,7 @@ use (
 					continue
 				}
 
-				if pkg.ValidateSrcPath(pluginDir) == nil {
+				if plugins.ValidateSrcPath(pluginDir) == nil {
 					goWork += "\n    ./" + pluginDir
 				}
 			}

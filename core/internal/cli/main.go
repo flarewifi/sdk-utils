@@ -12,7 +12,7 @@ import (
 
 	tools "core/build/tools"
 	"core/env"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"core/internal/utils/updates"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -124,7 +124,7 @@ func CreatePlugin() {
 }
 
 func CreateMigration() {
-	pluginDefs := pkg.LocalPluginSrcDefs()
+	pluginDefs := plugins.LocalPluginSrcDefs()
 	pluginPkgs := make([]string, len(pluginDefs))
 
 	for i, def := range pluginDefs {
@@ -172,7 +172,7 @@ func CreateMigration() {
 func BuildPlugin() {
 	var err error
 	if len(os.Args) < 3 {
-		err = pkg.BuildLocalPlugins()
+		err = plugins.BuildLocalPlugins()
 	} else {
 		searchPath := os.Args[2]
 		pluginPath, err := sdkutils.FindPluginSrc(searchPath)
@@ -182,7 +182,7 @@ func BuildPlugin() {
 		}
 
 		workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(pluginPath))
-		err = pkg.BuildPluginSo(pluginPath, workdir)
+		err = plugins.BuildPluginSo(pluginPath, workdir)
 		if err != nil {
 			log.Fatalf("Error building plugin: %s\n", err.Error())
 			return

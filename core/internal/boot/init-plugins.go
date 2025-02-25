@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"core/internal/api"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -28,11 +28,11 @@ func InitPlugins(g *api.CoreGlobals) {
 	db := g.CoreAPI.SqlDb()
 	inst := &InstallStatus{bp: bp}
 
-	for _, def := range pkg.AllPluginSrcDefs() {
+	for _, def := range plugins.AllPluginSrcDefs() {
 		var info sdkutils.PluginInfo
-		installPath, installed := pkg.FindDefInstallPath(def)
-		recompile := pkg.NeedsRecompile(def)
-		installed = installed && (pkg.ValidateInstallPath(installPath) == nil)
+		installPath, installed := plugins.FindDefInstallPath(def)
+		recompile := plugins.NeedsRecompile(def)
+		installed = installed && (plugins.ValidateInstallPath(installPath) == nil)
 		if installed {
 			pluginInfo, err := sdkutils.GetPluginInfoFromPath(installPath)
 			if err != nil {
@@ -42,12 +42,12 @@ func InitPlugins(g *api.CoreGlobals) {
 			info = pluginInfo
 		}
 
-		toBeRemoved := pkg.IsToBeRemoved(info.Package)
+		toBeRemoved := plugins.IsToBeRemoved(info.Package)
 		fmt.Printf("%s is to be removed? %t\n", info.Package, toBeRemoved)
 
 		if toBeRemoved {
 			bp.AppendLog(fmt.Sprintf("%s: Plugin is marked for removal, uninstalling...", info.Package))
-			if err := pkg.UninstallPlugin(info.Package, g.CoreAPI.SqlDb()); err != nil {
+			if err := plugins.UninstallPlugin(info.Package, g.CoreAPI.SqlDb()); err != nil {
 				bp.AppendLog(fmt.Sprintf("%s: Error removing plugin: %s", info.Package, err.Error()))
 			} else {
 				bp.AppendLog(fmt.Sprintf("%s: Successfully removed plugin", info.Package))
@@ -55,9 +55,9 @@ func InitPlugins(g *api.CoreGlobals) {
 			}
 		}
 
-		if pkg.HasPendingUpdate(info.Package) {
+		if plugins.HasPendingUpdate(info.Package) {
 			bp.AppendLog(fmt.Sprintf("%s: Plugin has a pending update, installing...", info.Package))
-			err := pkg.MovePendingUpdate(info.Package)
+			err := plugins.MovePendingUpdate(info.Package)
 			if err != nil {
 				bp.AppendLog(fmt.Sprintf("%s: Error installing pending update: %s", info.Package, err.Error()))
 			} else {
@@ -75,7 +75,7 @@ func InitPlugins(g *api.CoreGlobals) {
 
 		// create backup, since we are going to reinstall or recompile the plugin
 		if installed {
-			if err := pkg.CreateBackup(info.Package); err != nil {
+			if err := plugins.CreateBackup(info.Package); err != nil {
 				bp.AppendLog(fmt.Sprintf("%s: Error creating backup for plugin: %s", info.Package, err.Error()))
 				continue
 			}
@@ -86,22 +86,22 @@ func InitPlugins(g *api.CoreGlobals) {
 			}
 		}
 
-		info, err := pkg.InstallSrcDef(inst, db, def)
+		info, err := plugins.InstallSrcDef(inst, db, def)
 		if err != nil {
 			bp.AppendLog(fmt.Sprintf("%s: Error installing plugin: %s", def.String(), err.Error()))
-			if pkg.HasBackup(info.Package) {
+			if plugins.HasBackup(info.Package) {
 				bp.AppendLog(fmt.Sprintf("%s: Restoring backup for plugin", info.Package))
-				if err := pkg.RestoreBackup(info.Package); err != nil {
+				if err := plugins.RestoreBackup(info.Package); err != nil {
 					bp.AppendLog(fmt.Sprintf("%s: Error restoring backup for plugin: %s", info.Package, err.Error()))
 				}
 			}
 		} else {
 			bp.AppendLog(fmt.Sprintf("%s: Successfully installed plugin", info.Package))
-			if pkg.HasBackup(info.Package) {
-				pkg.RemoveBackup(info.Package)
+			if plugins.HasBackup(info.Package) {
+				plugins.RemoveBackup(info.Package)
 			}
-			if pkg.HasPendingUpdate(info.Package) {
-				pkg.RemovePendingUpdate(info.Package)
+			if plugins.HasPendingUpdate(info.Package) {
+				plugins.RemovePendingUpdate(info.Package)
 			}
 		}
 
@@ -109,7 +109,7 @@ func InitPlugins(g *api.CoreGlobals) {
 	}
 
 	// Load plugins
-	pluginDirs := pkg.InstalledPluginDirs()
+	pluginDirs := plugins.InstalledPluginDirs()
 	log.Println("Installed plugin directories:", pluginDirs)
 	for _, dir := range pluginDirs {
 		log.Println("Loading plugin from :", dir)

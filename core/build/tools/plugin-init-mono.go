@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,8 +20,8 @@ type PluginModule struct {
 func CreateMonoFiles() {
 	CreateGoWorkspace()
 
-	localDefs := pkg.LocalPluginSrcDefs()
-	systemDefs := pkg.SystemPluginSrcDefs()
+	localDefs := plugins.LocalPluginSrcDefs()
+	systemDefs := plugins.SystemPluginSrcDefs()
 
 	pluginDirs := []string{filepath.Join(sdkutils.PathAppDir, "core")}
 	for _, def := range append(systemDefs, localDefs...) {
@@ -39,14 +39,14 @@ func MakePluginInitMono() {
 	pluginPaths := []string{"core"}
 	pluginDirs := []string{}
 
-	localDefs := pkg.LocalPluginSrcDefs()
-	systemDefs := pkg.SystemPluginSrcDefs()
+	localDefs := plugins.LocalPluginSrcDefs()
+	systemDefs := plugins.SystemPluginSrcDefs()
 	for _, def := range append(systemDefs, localDefs...) {
 		pluginDirs = append(pluginDirs, def.LocalPath)
 	}
 
 	pluginPaths = append(pluginPaths, pluginDirs...)
-	coreInfo := pkg.GetCoreInfo()
+	coreInfo := plugins.GetCoreInfo()
 
 	pluginMods := []PluginModule{}
 	for _, dir := range pluginDirs {

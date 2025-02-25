@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"path/filepath"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -10,7 +10,7 @@ import (
 func BuildTemplates() {
 	pluginDirs := []string{}
 
-	defs := pkg.AllPluginSrcDefs()
+	defs := plugins.AllPluginSrcDefs()
 	for _, def := range defs {
 		if def.Src == sdkutils.PluginSrcLocal || def.Src == sdkutils.PluginSrcSystem {
 			pluginDirs = append(pluginDirs, def.LocalPath)
@@ -21,6 +21,6 @@ func BuildTemplates() {
 	pluginDirs = append(pluginDirs, corePath)
 
 	for _, p := range pluginDirs {
-		pkg.BuildTemplates(p)
+		plugins.BuildTemplates(p)
 	}
 }
