@@ -7,7 +7,7 @@ import (
 	"core/db/models"
 	"core/internal/connmgr"
 	"core/internal/network"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -70,7 +70,7 @@ type PluginApi struct {
 	UciAPI           *UciApi
 	Utl              *PluginUtils
 	LoggerAPI        *LoggerApi
-	AssetsManifest   pkg.OutputManifest
+	AssetsManifest   plugins.OutputManifest
 }
 
 func (self *PluginApi) Initialize(coreApi *PluginApi) {
@@ -162,5 +162,5 @@ func (self *PluginApi) Logger() sdkapi.ILoggerApi {
 }
 
 func (self *PluginApi) LoadAssetsManifest() {
-	self.AssetsManifest = pkg.GetAssetManifest(self.dir)
+	self.AssetsManifest = plugins.GetAssetManifest(self.dir)
 }

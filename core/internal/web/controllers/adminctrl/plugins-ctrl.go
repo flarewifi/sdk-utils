@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"core/internal/api"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	views "core/resources/views/admin/plugins"
 
 	sdkapi "sdk/api"
@@ -18,17 +18,17 @@ import (
 func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
-		plugins := g.PluginMgr.All()
+		allPlugins := g.PluginMgr.All()
 		pluginData := []views.PluginData{}
-		for _, p := range plugins {
+		for _, p := range allPlugins {
 			info := p.Info()
 			if p.Info().Package != g.CoreAPI.Info().Package {
-				def, err := pkg.GetPluginDef(info.Package)
+				def, err := plugins.GetPluginDef(info.Package)
 				if err != nil {
 					g.CoreAPI.LoggerAPI.Error(err.Error())
 					continue
 				}
-				toBeRemoved := pkg.IsToBeRemoved(info.Package)
+				toBeRemoved := plugins.IsToBeRemoved(info.Package)
 				pluginData = append(pluginData, views.PluginData{
 					Info:        info,
 					Src:         def,
@@ -152,13 +152,13 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			LocalPath: pluginCachePath,
 		}
 
-		if _, err := pkg.InstallFromLocalPath(os.Stdout, g.CoreAPI.SqlDb(), def); err != nil {
+		if _, err := plugins.InstallFromLocalPath(os.Stdout, g.CoreAPI.SqlDb(), def); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			return
 		}
 
-		installPath := pkg.GetInstallPath(info.Package)
+		installPath := plugins.GetInstallPath(info.Package)
 		p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 		g.PluginMgr.RegisterPlugin(p)
 
@@ -183,7 +183,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		repoURL := r.FormValue("github_repo_url")
 		gitRef := r.FormValue("github_ref")
 
-		info, err := pkg.InstallFromGitSrc(os.Stdout, g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
+		info, err := plugins.InstallFromGitSrc(os.Stdout, g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
 			Src:    sdkutils.PluginSrcGit,
 			GitURL: repoURL,
 			GitRef: gitRef,
@@ -195,7 +195,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		installPath := pkg.GetInstallPath(info.Package)
+		installPath := plugins.GetInstallPath(info.Package)
 		p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 		g.PluginMgr.RegisterPlugin(p)
 
@@ -211,7 +211,7 @@ func UninstallPluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		vars := api.HttpAPI.MuxVars(r)
 		pluginPkg := vars["pkg"]
 
-		err := pkg.MarkToRemove(pluginPkg)
+		err := plugins.MarkToRemove(pluginPkg)
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return

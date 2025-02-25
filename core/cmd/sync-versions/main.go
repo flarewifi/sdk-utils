@@ -2,7 +2,7 @@ package main
 
 import (
 	"core/build/tools"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"os"
 	"path/filepath"
 
@@ -12,7 +12,7 @@ import (
 func main() {
 	tools.SyncCoreVersion()
 	tools.SyncGoVersion()
-	version := pkg.GetCoreInfo().Version
+	version := plugins.GetCoreInfo().Version
 	releaseNotePath := filepath.Join(sdkutils.PathCoreDir, "build", "release-notes", version+".md")
 	if !sdkutils.FsExists(releaseNotePath) {
 		if err := os.WriteFile(releaseNotePath, []byte("## "+version+"\n\n"), 0644); err != nil {

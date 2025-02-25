@@ -2,7 +2,7 @@ package tools
 
 import (
 	"core/env"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +16,7 @@ func BuildCoreBins() {
 
 	goversion := sdkutils.GO_VERSION
 	tags := sdkutils.Slugify(env.BuildTags, "-")
-	info := pkg.GetCoreInfo()
+	info := plugins.GetCoreInfo()
 
 	build := &BuildOutput{
 		OutputDirName: filepath.Join("core-binaries", fmt.Sprintf("core_arch_bin-%s-%s-go%s-%s", info.Version, sdkutils.GOARCH, goversion, tags)),
@@ -35,19 +35,19 @@ func BuildCore() {
 	workdir := filepath.Join(sdkutils.PathTmpDir, "b/core", sdkutils.RandomStr(16))
 	defer os.RemoveAll(workdir)
 
-	if err := pkg.BuildTemplates(sdkutils.PathCoreDir); err != nil {
+	if err := plugins.BuildTemplates(sdkutils.PathCoreDir); err != nil {
 		panic(err)
 	}
 
-	if err := pkg.BuildQueries(sdkutils.PathCoreDir); err != nil {
+	if err := plugins.BuildQueries(sdkutils.PathCoreDir); err != nil {
 		panic(err)
 	}
 
-	if err := pkg.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {
+	if err := plugins.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {
 		panic(err)
 	}
 
-	if err := pkg.BuildGlobalAssets(); err != nil {
+	if err := plugins.BuildGlobalAssets(); err != nil {
 		panic(err)
 	}
 }

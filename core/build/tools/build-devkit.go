@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"core/env"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -37,7 +37,7 @@ var (
 func init() {
 	goversion := sdkutils.GO_VERSION
 	tags := sdkutils.Slugify(env.BuildTags, "-")
-	devkitReleaseDir = filepath.Join(sdkutils.PathAppDir, "output/devkit", fmt.Sprintf("devkit-%s-%s-go%s-%s", pkg.GetCoreInfo().Version, runtime.GOARCH, goversion, tags))
+	devkitReleaseDir = filepath.Join(sdkutils.PathAppDir, "output/devkit", fmt.Sprintf("devkit-%s-%s-go%s-%s", plugins.GetCoreInfo().Version, runtime.GOARCH, goversion, tags))
 }
 
 func CreateDevkit() {

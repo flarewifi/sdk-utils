@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	rpc "core/internal/rpc"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -248,8 +248,8 @@ func CheckForPluginUpdates(def sdkutils.PluginSrcDef, info sdkutils.PluginInfo) 
 }
 
 func CheckUpdatesFromGithub(def sdkutils.PluginSrcDef, info sdkutils.PluginInfo) (bool, error) {
-	author := pkg.GetAuthorNameFromGitUrl(def)
-	repo := pkg.GetRepoFromGitUrl(def)
+	author := plugins.GetAuthorNameFromGitUrl(def)
+	repo := plugins.GetRepoFromGitUrl(def)
 
 	// NOTE: release tags should adhere to sdkutils
 

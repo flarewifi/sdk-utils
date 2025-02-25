@@ -1,7 +1,7 @@
 package main
 
-import "core/internal/utils/pkg"
+import "core/internal/utils/plugins"
 
 func main() {
-	pkg.BuildLocalPlugins()
+	plugins.BuildLocalPlugins()
 }

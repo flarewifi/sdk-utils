@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"core/internal/api"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -18,7 +18,7 @@ func Init(g *api.CoreGlobals) {
 	InitDirs()
 
 	go func() {
-		pkg.LinkNodeModulesLib(sdkutils.PathAppDir)
+		plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
 
 		InitOpkg(bp)
 

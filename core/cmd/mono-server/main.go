@@ -2,7 +2,7 @@ package main
 
 import (
 	"core/env"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	goBin := pkg.GoBin()
+	goBin := plugins.GoBin()
 	buildArgs := sdkutils.DefaultGoBuildArgs(env.BuildTags)
 	runCmd := []string{"run"}
 	runCmd = append(runCmd, buildArgs...)
