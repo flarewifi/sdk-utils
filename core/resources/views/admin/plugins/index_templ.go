@@ -108,12 +108,16 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if !p.ToBeRemoved {
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<a class=\"btn btn-sm btn-danger\" hx-confirm=\"Are you sure you want to uninstall this plugin?\" href=\"")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<a class=\"btn btn-sm btn-danger\" hx-confirm=\"Are you sure you want to uninstall this plugin?\" hx-post=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var5 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg", p.Info.Package))
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var5)))
+				var templ_7745c5c3_Var5 string
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg", p.Info.Package))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 58, Col: 100}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
