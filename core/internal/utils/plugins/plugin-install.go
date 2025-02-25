@@ -356,6 +356,10 @@ func UninstallPlugin(pkg string, pool *pgxpool.Pool) error {
 		return err
 	}
 
+	if err := RemoveMetadata(pkg); err != nil {
+		return err
+	}
+
 	installPath := GetInstallPath(pkg)
 	if err := migrate.MigrateDown(installPath, pool); err != nil {
 		return err

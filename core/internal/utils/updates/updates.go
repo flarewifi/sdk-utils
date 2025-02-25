@@ -284,10 +284,6 @@ func CheckUpdatesFromGithub(def sdkutils.PluginSrcDef, info sdkutils.PluginInfo)
 	fmt.Printf("Latest plugin release version: %v\n", latestPRVersion)
 
 	currentPRVersion := semver.MustParse(info.Version)
-	if err != nil {
-		log.Println("Error parsing string version to sdkutils version: ", err)
-		return false, err
-	}
 
 	hasUpdates := currentPRVersion.LessThan(latestPRVersion)
 	return hasUpdates, nil
@@ -305,10 +301,6 @@ func CheckUpdatesFromStore(def sdkutils.PluginSrcDef, info sdkutils.PluginInfo) 
 	}
 
 	currVersion := semver.MustParse(info.Version)
-	if err != nil {
-		log.Printf("Error parsing raw version of plugin: %s: %s\n", info.Package, err.Error())
-		return false, err
-	}
 
 	// update plugin release zip file url def temporarily
 	// def.StoreZipUrl = qPlugins.PluginRelease.ZipFileUrl
