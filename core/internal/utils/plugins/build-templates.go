@@ -1,6 +1,6 @@
 //go:build !dev
 
-package pkg
+package plugins
 
 // We don't build template on production
 func BuildTemplates(pluginDir string) (err error) {

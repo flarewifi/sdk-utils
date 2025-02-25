@@ -1,6 +1,7 @@
 /config/accounts
 /config/plugins
 /config/*.json
+/config/*.zip
 /plugins/local/com.sample.plugin
 /plugins/installed
 /plugins/update

@@ -1,6 +1,6 @@
 //go:build !dev
 
-package pkg
+package plugins
 
 // We don't run sqlc generate on production
 func BuildQueries(pluginSrc string) error {
