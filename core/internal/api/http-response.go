@@ -103,7 +103,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	layoutBuilder := &ThemesLayoutBuilder{
 		PageContent: v.PageContent,
 		ContentWrapper: func(head, layout templ.Component) {
-			sseURL := api.HttpAPI.Helpers().UrlForRoute("portal:sse")
+			sseURL := api.HttpAPI.Helpers().UrlForRoute("portal.sse")
 			polyfillsURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
 
 			data := themes.PortalLayoutData{
