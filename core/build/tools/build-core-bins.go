@@ -23,6 +23,7 @@ func BuildCoreBins() {
 		Files: []string{
 			"bin/flare",
 			"core/plugin.so",
+			"core/resources/assets/dist",
 		},
 	}
 
