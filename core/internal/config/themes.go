@@ -4,8 +4,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
@@ -65,6 +64,6 @@ func WriteThemesConfig(cfg ThemesConfig) error {
 }
 
 func isThemeValid(themePkg string) bool {
-	themePath := filepath.Join(sdkpaths.PluginsDir, themePkg)
-	return sdkfs.Exists(themePath)
+	themePath := filepath.Join(sdkutils.PathPluginsDir, themePkg)
+	return sdkutils.FsExists(themePath)
 }

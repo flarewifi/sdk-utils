@@ -5,18 +5,17 @@ import (
 	"net/http"
 
 	"core/internal/connmgr"
-	"sdk/api/connmgr"
-	"sdk/api/http"
 	"core/internal/utils/hostfinder"
+	sdkapi "sdk/api"
 )
 
-func CurrentClient(clntMgr *connmgr.ClientRegister, r *http.Request) (sdkconnmgr.IClientDevice, error) {
-	clntSym := r.Context().Value(sdkhttp.ClientCtxKey)
+func CurrentClient(clntMgr *connmgr.ClientRegister, r *http.Request) (sdkapi.IClientDevice, error) {
+	clntSym := r.Context().Value(sdkapi.ClientCtxKey)
 	if clntSym != nil {
-        clnt, ok := clntSym.(sdkconnmgr.IClientDevice)
-        if ok {
-            return clnt, nil
-        }
+		clnt, ok := clntSym.(sdkapi.IClientDevice)
+		if ok {
+			return clnt, nil
+		}
 	}
 
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)

@@ -1,9 +1,7 @@
 package app
 
 import (
-	sdkplugin "sdk/api/plugin"
-
-	"com.flarego.default-theme/app/controllers"
+	sdkapi "sdk/api"
 )
 
 const (
@@ -14,17 +12,13 @@ const (
 	RoutePayments    = "save.settings"
 )
 
-func SetupRoutes(api sdkplugin.IPluginApi) {
-	// pluginRouter := api.Http().HttpRouter().PluginRouter()
-	adminRouter := api.Http().HttpRouter().AdminRouter()
-	// pluginRouter.Get("/test", controllers.IndexCtrl(api)).Name("index")
-	adminRouter.Get("/test", controllers.TestCtrl(api)).Name("test")
-	// pluginRouter.Group("/auth", func(subrouter sdkhttp.HttpRouterInstance) {
-	// 	subrouter.Post("/login", controllers.LoginCtrl(api)).Name(RouteNameLogin)
-	// 	subrouter.Post("/logout", controllers.LogoutCtrl(api)).Name(RouteNameLogout)
-	// })
+func SetupRoutes(api sdkapi.IPluginApi) {
+	pluginRouter := api.Http().Router().PluginRouter()
+	pluginRouter.Get("/sessions/summary", PortalSessionSyncHandler(api)).Name("sessions.summary")
 
-	// adminRouter := api.Http().HttpRouter().AdminRouter()
-	// adminRouter.Get("/navs", controllers.GetAdminNavs(api)).Name(RouteAdminNavs)
+	pluginRouter.Group("/sessions", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/summary", PortalSessionSyncHandler(api)).Name("sessions.summary")
+		subrouter.Get("/navs", PortalNavItemsHandler(api)).Name("portal.navs")
+	})
 
 }

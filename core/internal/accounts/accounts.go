@@ -5,35 +5,30 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	sdkapi "sdk/api"
 	"sync"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/goccy/go-json"
-
-	accounts "sdk/api/accounts"
-
-	fs "github.com/flarehotspot/go-utils/fs"
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	paths "github.com/flarehotspot/go-utils/paths"
 )
 
 const (
 	AdminUsername = "admin"
 	AdminPassword = "admin"
-	PermAdmin     = "admin"
 )
 
 var (
 	perms        sync.Map
-	DefaultPerms = []string{PermAdmin}
+	DefaultPerms = []string{sdkapi.AcctPermMaster}
 	ErrNoAccount = errors.New("Account does not exist")
 )
 
 func init() {
-	perms.Store(PermAdmin, "Manage Users")
+	perms.Store(sdkapi.AcctPermMaster, "Manage Users")
 }
 
 func DefaultAdminAcct() Account {
-	f := filepath.Join(paths.DefaultsDir, "admin.json")
+	f := filepath.Join(sdkutils.PathDefaultsDir, "admin.json")
 
 	perms := []string{}
 	for _, p := range DefaultPerms {
@@ -47,7 +42,7 @@ func DefaultAdminAcct() Account {
 	}
 
 	var acct Account
-	if err := sdkfs.ReadJson(f, &acct); err != nil {
+	if err := sdkutils.JsonRead(f, &acct); err != nil {
 		return defAcct
 	}
 
@@ -56,13 +51,13 @@ func DefaultAdminAcct() Account {
 
 func EnsureAdminAcct() error {
 	f := FilepathForUser(AdminUsername)
-	if !fs.Exists(f) {
+	if !sdkutils.FsExists(f) {
 		acct := DefaultAdminAcct()
 		content, err := json.Marshal(acct)
 		if err != nil {
 			return err
 		}
-		err = os.WriteFile(f, content, sdkfs.PermFile)
+		err = os.WriteFile(f, content, sdkutils.PermFile)
 		if err != nil {
 			return err
 		}
@@ -72,7 +67,7 @@ func EnsureAdminAcct() error {
 
 func All() (accounts []*Account, err error) {
 	files := []string{}
-	if err := fs.LsFiles(AcctDir, &files, false); err != nil {
+	if err := sdkutils.FsListFiles(AcctDir, &files, false); err != nil {
 		return nil, err
 	}
 
@@ -102,7 +97,7 @@ func AllAdmins() ([]*Account, error) {
 
 	admins := []*Account{}
 	for _, acct := range accts {
-		if acct.IsAdmin() {
+		if acct.IsMaster() {
 			admins = append(admins, acct)
 		}
 	}
@@ -137,11 +132,11 @@ func Create(uname string, passwd string, perms []string) (*Account, error) {
 	}
 
 	f := FilepathForUser(uname)
-	if fs.Exists(f) {
+	if sdkutils.FsExists(f) {
 		return nil, fmt.Errorf("Account with username \"%s\" already exists", uname)
 	}
 
-	err = os.WriteFile(f, b, sdkfs.PermFile)
+	err = sdkutils.FsWriteFile(f, b)
 	if err != nil {
 		return nil, err
 	}
@@ -173,13 +168,13 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 		Perms:  perms,
 	}
 
-	if acct.Uname == AdminUsername && !HasAllPerms(&acct, PermAdmin) {
+	if acct.Uname == AdminUsername && !HasAllPerms(&acct, sdkapi.AcctPermMaster) {
 		return nil, errors.New("Super admin account must have manage users permission.")
 	}
 
 	f := FilepathForUser(newName)
 
-	err = sdkfs.WriteJson(f, acct)
+	err = sdkutils.JsonWrite(f, acct)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +194,7 @@ func Delete(uname string) error {
 	}
 
 	files := []string{}
-	if err := fs.LsFiles(AcctDir, &files, false); err != nil {
+	if err := sdkutils.FsListFiles(AcctDir, &files, false); err != nil {
 		return err
 	}
 
@@ -239,7 +234,7 @@ func PermDesc(perm string) string {
 }
 
 // Check if account has all permissions
-func HasAllPerms(acct accounts.IAccount, perms ...string) bool {
+func HasAllPerms(acct sdkapi.IAccount, perms ...string) bool {
 	count := 0
 	for _, perm := range perms {
 		for _, acctPerm := range acct.Permissions() {
@@ -253,7 +248,7 @@ func HasAllPerms(acct accounts.IAccount, perms ...string) bool {
 }
 
 // Check if account has any of the permissions
-func HasAnyPerm(acct accounts.IAccount, perms ...string) bool {
+func HasAnyPerm(acct sdkapi.IAccount, perms ...string) bool {
 	for _, perm := range perms {
 		for _, acctPerm := range acct.Permissions() {
 			if perm == acctPerm {

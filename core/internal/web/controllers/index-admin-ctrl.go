@@ -3,23 +3,23 @@ package controllers
 import (
 	"net/http"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	sse "core/internal/utils/sse"
 )
 
-func AdminIndexPage(g *plugins.CoreGlobals) http.Handler {
+func AdminIndexPage(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, t, err := g.PluginMgr.GetAdminTheme()
 		if err != nil {
-			g.CoreAPI.HttpAPI.HttpResponse().Error(w, r, err, 500)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, err, 500)
 			return
 		}
 		page := t.AdminTheme.IndexPageFactory(w, r)
-		g.CoreAPI.HttpAPI.HttpResponse().AdminView(w, r, page)
+		g.CoreAPI.HttpAPI.Response().AdminView(w, r, page)
 	})
 }
 
-func AdminSseHandler(g *plugins.CoreGlobals) http.HandlerFunc {
+func AdminSseHandler(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := sse.NewSocket(w, r)
 		if err != nil {

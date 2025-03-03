@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
@@ -17,7 +17,7 @@ func GitCheckoutMain() {
 	dirPaths := []string{"core"}
 
 	var pluginDirs []string
-	sdkfs.LsDirs("plugins", &pluginDirs, false)
+	sdkutils.FsListDirs("plugins", &pluginDirs, false)
 	dirPaths = append(dirPaths, pluginDirs...)
 
 	for _, dirPath := range dirPaths {

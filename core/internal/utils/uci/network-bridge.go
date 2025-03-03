@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	uci "sdk/api/uci"
+	sdkapi "sdk/api"
 )
 
 // bridge
@@ -38,11 +38,11 @@ func (self *UciNetworkApi) GetBridgePorts(section string) (ports []string, err e
 	types, ok := UciTree.Get("network", section, "type")
 	if !ok {
 		log.Println("Device " + section + " type is not a bridge")
-		return nil, uci.ErrNotBridge
+		return nil, sdkapi.ErrNotBridge
 	}
 
 	if len(types) == 0 || (len(types) > 0 && types[0] != "bridge") {
-		return nil, uci.ErrNotBridge
+		return nil, sdkapi.ErrNotBridge
 	}
 
 	ports, _ = UciTree.Get("network", section, "ports")
@@ -53,11 +53,11 @@ func (self *UciNetworkApi) GetBridgePorts(section string) (ports []string, err e
 func (self *UciNetworkApi) SetBridgePorts(section string, ports []string) error {
 	types, ok := UciTree.Get("network", section, "type")
 	if !ok {
-		return uci.ErrNotBridge
+		return sdkapi.ErrNotBridge
 	}
 
 	if len(types) > 0 && types[0] != "bridge" {
-		return uci.ErrNotBridge
+		return sdkapi.ErrNotBridge
 	}
 
 	ok = UciTree.Set("network", section, "ports", ports...)

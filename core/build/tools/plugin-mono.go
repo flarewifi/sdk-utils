@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func MakePluginMainMono(pluginDir string) {
@@ -17,12 +17,14 @@ func MakePluginMainMono(pluginDir string) {
 		panic(err)
 	}
 	newMainContent := addBuildTags(string(mainData), "!mono")
-	err = os.WriteFile(mainFile, []byte(newMainContent), 0644)
-	if err != nil {
-		panic(err)
-	}
 
-	fmt.Printf("%s has been updated.\n", mainFile)
+	if string(mainData) != newMainContent {
+		err = os.WriteFile(mainFile, []byte(newMainContent), 0644)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%s has been updated.\n", mainFile)
+	}
 
 	// Create mono version of main.go
 	createMonoFile(pluginDir)
@@ -60,7 +62,7 @@ func createMonoFile(pluginDir string) string {
 	}
 	mainContent := string(mainData)
 	packageReg := regexp.MustCompile(`package\s+(\w+)`)
-	monoPackageName := sdkstr.Slugify(filepath.Base(pluginDir), "_")
+	monoPackageName := sdkutils.Slugify(filepath.Base(pluginDir), "_")
 	newMainContent := packageReg.ReplaceAllString(mainContent, fmt.Sprintf("package %s", monoPackageName))
 	newMainContent = fmt.Sprintf("%s\n%s", AUTO_GENERATED_HEADER, newMainContent)
 	newMainContent = strings.ReplaceAll(newMainContent, "!mono", "mono")
@@ -71,12 +73,19 @@ func createMonoFile(pluginDir string) string {
 	newMainContent = mainFuncReg.ReplaceAllString(newMainContent, "")
 
 	monoFile := filepath.Join(pluginDir, "main_mono.go")
-	err = os.WriteFile(monoFile, []byte(newMainContent), 0644)
-	if err != nil {
-		panic(err)
+
+	var monoContent string
+	if b, err := os.ReadFile(monoFile); err == nil {
+		monoContent = string(b)
 	}
 
-	fmt.Printf("%s has been created.\n", monoFile)
+	if newMainContent != monoContent {
+		err = os.WriteFile(monoFile, []byte(newMainContent), 0644)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%s has been created.\n", monoFile)
+	}
 
 	return newMainContent
 }

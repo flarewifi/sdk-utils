@@ -2,8 +2,6 @@ package events
 
 import (
 	"sync"
-
-	"github.com/goccy/go-json"
 )
 
 var (
@@ -38,17 +36,12 @@ func Unsubscribe(event string, ch <-chan []byte) {
 	}
 }
 
-func Emit(event string, data interface{}) error {
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
+func Emit(event string, data []byte) error {
 	v, ok := subscribers.Load(event)
 	if ok {
 		channels := v.([]chan []byte)
 		for _, ch := range channels {
-			ch <- bytes
+			ch <- data
 		}
 	}
 

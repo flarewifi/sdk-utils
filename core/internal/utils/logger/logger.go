@@ -18,13 +18,8 @@ import (
 	"time"
 
 	jobque "core/internal/utils/job-que"
-	sdkplugin "sdk/api/plugin"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
-	sdkstr "github.com/flarehotspot/go-utils/strings"
-
-	"github.com/flarehotspot/go-utils/wsv"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
@@ -64,17 +59,17 @@ type LogLine struct {
 
 var (
 	LineCount   atomic.Int64
-	logFilePath = filepath.Join(sdkpaths.TmpDir, "logs", logFilename)
+	logFilePath = filepath.Join(sdkutils.PathTmpDir, "logs", logFilename)
 	que         = jobque.NewJobQue()
 )
 
 func init() {
 	logdir := filepath.Dir(logFilePath)
-	if !sdkfs.Exists(logdir) {
-		os.MkdirAll(logdir, sdkfs.PermDir)
+	if !sdkutils.FsExists(logdir) {
+		os.MkdirAll(logdir, sdkutils.PermDir)
 	}
 
-	if !sdkfs.Exists(logFilePath) {
+	if !sdkutils.FsExists(logFilePath) {
 		os.Create(logFilePath)
 	}
 
@@ -96,7 +91,7 @@ func GetCallerFileLine(calldepth int) (file string, line int) {
 // Returns the total number of lines of the current log file
 func GetLogLines(logFile string) int {
 	lines, err := que.Exec(func() (interface{}, error) {
-		logFilePathToRead := filepath.Join(sdkpaths.TmpDir, "logs", logFile)
+		logFilePathToRead := filepath.Join(sdkutils.PathTmpDir, "logs", logFile)
 
 		file, err := os.Open(logFilePathToRead)
 		if err != nil {
@@ -160,7 +155,7 @@ func ReadLogs(start int, end int) ([]*LogLine, error) {
 			}
 
 			// read of line successful
-			dataInLine, err := wsv.ParseLineAsArray(l)
+			dataInLine, err := sdkutils.ParseLineAsArray(l)
 			if err != nil {
 				log.Println("Core Logger: error parsing raw log file to wsv: ", err)
 				return nil, err
@@ -193,7 +188,7 @@ func ReadLogs(start int, end int) ([]*LogLine, error) {
 
 func ClearLogs() error {
 	_, err := que.Exec(func() (interface{}, error) {
-		err := os.WriteFile(logFilePath, []byte(""), sdkfs.PermFile)
+		err := os.WriteFile(logFilePath, []byte(""), sdkutils.PermFile)
 		return nil, err
 	})
 	return err
@@ -231,7 +226,7 @@ func parseLog(logLine []string) (*LogLine, error) {
 	}
 
 	pathRaw := logLine[9] // raw file path
-	relativePath := sdkpaths.StripRoot(pathRaw)
+	relativePath := sdkutils.StripRootPath(pathRaw)
 	subpaths := strings.Split(relativePath, "/")
 
 	var plugin, filename, filepluginpath, pluginpath string
@@ -249,8 +244,8 @@ func parseLog(logLine []string) (*LogLine, error) {
 		pluginpath = strings.Join(subpaths[:1], "/")
 	}
 
-	var pluginInfo sdkplugin.PluginInfo
-	err := sdkfs.ReadJson(filepath.Join(pluginpath, "plugin.json"), &pluginInfo)
+	var pluginInfo sdkutils.PluginInfo
+	err := sdkutils.JsonRead(filepath.Join(pluginpath, "plugin.json"), &pluginInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -261,17 +256,17 @@ func parseLog(logLine []string) (*LogLine, error) {
 		body = logLine[flarelogBaseMetadataCount+1:]
 	}
 
-	level := sdkstr.AtoiOrDefault(logLine[0], 0)
+	level := sdkutils.AtoiOrDefault(logLine[0], 0)
 	title := logLine[1]
-	year := sdkstr.AtoiOrDefault(logLine[2], 0)
-	month := sdkstr.AtoiOrDefault(logLine[3], 0)
-	day := sdkstr.AtoiOrDefault(logLine[4], 0)
-	hour := sdkstr.AtoiOrDefault(logLine[5], 0)
-	minute := sdkstr.AtoiOrDefault(logLine[6], 0)
-	second := sdkstr.AtoiOrDefault(logLine[7], 0)
-	nano := sdkstr.AtoiOrDefault(logLine[8], 0)
-	fullPath := sdkpaths.StripRoot(logLine[9])
-	line := sdkstr.AtoiOrDefault(logLine[10], 0)
+	year := sdkutils.AtoiOrDefault(logLine[2], 0)
+	month := sdkutils.AtoiOrDefault(logLine[3], 0)
+	day := sdkutils.AtoiOrDefault(logLine[4], 0)
+	hour := sdkutils.AtoiOrDefault(logLine[5], 0)
+	minute := sdkutils.AtoiOrDefault(logLine[6], 0)
+	second := sdkutils.AtoiOrDefault(logLine[7], 0)
+	nano := sdkutils.AtoiOrDefault(logLine[8], 0)
+	fullPath := sdkutils.StripRootPath(logLine[9])
+	line := sdkutils.AtoiOrDefault(logLine[10], 0)
 
 	return &LogLine{
 		Level:      level,
@@ -391,7 +386,7 @@ func LogToFile(file string, line int, level int, title string, body ...any) erro
 		content = append(content, logInfo)
 
 		// serialize
-		serialized := wsv.Serialize(content)
+		serialized := sdkutils.Serialize(content)
 
 		// actual logging to file
 		_, err = logFile.WriteString(serialized + "\n")

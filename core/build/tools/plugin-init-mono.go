@@ -1,15 +1,14 @@
 package tools
 
 import (
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type PluginModule struct {
@@ -21,10 +20,16 @@ type PluginModule struct {
 func CreateMonoFiles() {
 	CreateGoWorkspace()
 
-	pluginDirs := pkg.LocalPluginPaths()
-	pluginDirs = append(pluginDirs, "core")
-	for _, dir := range pluginDirs {
-		MakePluginMainMono(dir)
+	localDefs := plugins.LocalPluginSrcDefs()
+	systemDefs := plugins.SystemPluginSrcDefs()
+
+	pluginDirs := []string{filepath.Join(sdkutils.PathAppDir, "core")}
+	for _, def := range append(systemDefs, localDefs...) {
+		pluginDirs = append(pluginDirs, def.LocalPath)
+	}
+
+	for _, p := range pluginDirs {
+		MakePluginMainMono(p)
 	}
 
 	MakePluginInitMono()
@@ -32,13 +37,20 @@ func CreateMonoFiles() {
 
 func MakePluginInitMono() {
 	pluginPaths := []string{"core"}
-	pluginDirs := pkg.LocalPluginPaths()
+	pluginDirs := []string{}
+
+	localDefs := plugins.LocalPluginSrcDefs()
+	systemDefs := plugins.SystemPluginSrcDefs()
+	for _, def := range append(systemDefs, localDefs...) {
+		pluginDirs = append(pluginDirs, def.LocalPath)
+	}
+
 	pluginPaths = append(pluginPaths, pluginDirs...)
-	coreInfo := pkg.CoreInfo()
+	coreInfo := plugins.GetCoreInfo()
 
 	pluginMods := []PluginModule{}
 	for _, dir := range pluginDirs {
-		modVar := sdkstr.Slugify(filepath.Base(dir), "_")
+		modVar := sdkutils.Slugify(filepath.Base(dir), "_")
 		modPath := getGoModule(dir)
 		pkgName := getPackage(dir)
 		mod := PluginModule{modVar, modPath, pkgName}
@@ -59,14 +71,15 @@ func MakePluginInitMono() {
 
 %s
 
-package plugins
+package api
 import (
     "log"
     %s
 )
 
 func (p *PluginApi) Init() error {
-    switch p.Pkg() {
+    info := p.Info()
+    switch info.Package {
         case "%s":
             log.Println("core package, skipping plugin.Init()...")
 %s
@@ -76,10 +89,18 @@ func (p *PluginApi) Init() error {
     return nil
 }`, AUTO_GENERATED_HEADER, importModules, coreInfo.Package, pluginSwitchCases)
 
-	pluginInitMonoPath := filepath.Join("core/internal/plugins/plugin-init_mono.go")
-	err := os.WriteFile(pluginInitMonoPath, []byte(pluginMonoInit), 0644)
-	if err != nil {
-		panic(err)
+	pluginInitMonoPath := filepath.Join("core/internal/api/plugin-init_mono.go")
+
+	var pluginInitMonoContent string
+	if b, err := os.ReadFile(pluginInitMonoPath); err == nil {
+		pluginInitMonoContent = string(b)
+	}
+
+	if pluginMonoInit != pluginInitMonoContent {
+		err := os.WriteFile(pluginInitMonoPath, []byte(pluginMonoInit), 0644)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	fmt.Println(pluginInitMonoPath, "has been created.")
@@ -87,7 +108,7 @@ func (p *PluginApi) Init() error {
 
 func getGoModule(pluginDir string) string {
 	goModFile := filepath.Join(pluginDir, "go.mod")
-	modContent, err := sdkfs.ReadFile(goModFile)
+	modContent, err := sdkutils.FsReadFile(goModFile)
 	if err != nil {
 		panic(err)
 	}
@@ -102,7 +123,7 @@ func getGoModule(pluginDir string) string {
 }
 
 func getPackage(pluginDir string) string {
-	info, err := pkg.GetSrcInfo(pluginDir)
+	info, err := sdkutils.GetPluginInfoFromPath(pluginDir)
 	if err != nil {
 		panic(err)
 	}

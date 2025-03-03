@@ -8,7 +8,7 @@ import (
 )
 
 func AskCmdInput(question string) (string, error) {
-	fmt.Printf("%s:\n", question)
+	fmt.Printf("\n%s:\n", question)
 	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
 	if err != nil {

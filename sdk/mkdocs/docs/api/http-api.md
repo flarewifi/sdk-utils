@@ -2,33 +2,37 @@
 
 The `HttpApi` is used to access various HTTP server functionalities including authentication, routing, and http responses.
 
-## 1. HttpApi Methods {#httpapi-methods}
+## 1. HttpApi methods {#httpapi-methods}
 
 The following are the available methods in `HttpApi`:
 
 ### GetClientDevice
 
-Get the [client device](./client-device.md) info from the http request:
+Get the [IClientDevice](./client-device.md) from the http request:
 
 ```go
-// handler
+// http handler
 func (w http.ResponseWriter, r *http.Request) {
     clnt, err := api.Http().GetClientDevice(r)
-    fmt.Println(clnt) // ClientDevice
+    fmt.Println(clnt) // IClientDevice
 }
 ```
 
 ### Auth
 
-It returns an instance of the [HttpAuth](./http-auth.md).
+It returns an instance of the [IHttpAuth](./http-auth.md).
 
 ```go
 auth := api.Http().Auth()
 ```
 
+### Cookie
+
+It returns an instance of [IHttpCookie](./http-cookie.md).
+
 ### Middlewares
 
-It returns an instance of [HttpMiddlewares](./http-middlewares.md) that contains the built-in middlewares.
+It returns an instance of [IHttpMiddlewares](./http-router-api.md#middlewares) that contains the built-in middlewares.
 
 ```go
 middlewares := api.Http().Middlewares()
@@ -36,47 +40,33 @@ middlewares := api.Http().Middlewares()
 
 ### Helpers
 
-It returns an instance of the [HttpHelpers](./http-helpers.md).
+It returns an instance of the [IHttpHelpers](./http-helpers.md).
 
 ```go
 helpers := api.Http().Helpers()
 ```
 
-### HttpRouter
+### Router
 
-It returns an instance of [HttpRouterApi](./http-router-api.md).
+It returns an instance of [IHttpRouterApi](./http-router-api.md).
 
 ```go
-httpRouter := api.Http().HttpRouter()
+httpRouter := api.Http().Router()
 ```
 
-### HttpResponse
+### Response
 
-Returns an instance of [HttpResponse](./http-response.md).
-
-```go
-httpResponse := api.Http().HttpResponse()
-```
-
-### VueRouter
-
-It returns an instance of [VueRouterApi](./vue-router-api.md).
+Returns an instance of [IHttpResponse](./http-response.md).
 
 ```go
-vueRouter := api.Http().VueRouter()
-```
-
-### VueResponse
-
-Returns an instance of [VueResponse](./vue-response.md).
-
-```go
-vueResponse := api.Http().VueResponse()
+httpResponse := api.Http().Response()
 ```
 
 ### MuxVars
 
-Returns a `map[string]string` of variables from the request path. Below is an example to get the value if `id` in the route path `/sessions/:id`
+Returns a `map[string]string` of variables from the request path.
+
+Below is an example to get the value if `id` in the route path `/sessions/:id`
 
 ```go
 // handler
@@ -88,69 +78,26 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### GetAdminNavs
+### Navs
 
-Returns a slice of [AdminNavList](#adminnavlist)
-
-```go
-// handler
-func (w http.ResponseWriter, r *http.Request) {
-    // other logic...
-    acct, _ := api.Http().Auth().CurrentAccount(r)
-    navList := api.Http().GetAdminNavs(acct)
-    fmt.Println(navList) // []AdminNavList
-}
-```
-
-### GetPortalItems
-
-Returns a slice of [PortalItem](#portalitem)
+Returns an instance of [INavsApi](./http-navs-api.md).
 
 ```go
 // handler
 func (w http.ResponseWriter, r *http.Request) {
-    // other logic...
-    clnt, _ := api.Http().GetClientDevice(r)
-    portalItems := api.Http().GetPortalItems(clnt)
-    fmt.Println(portalItems) // []PortalItem
+    navsAPI := api.Http().Navs()
+    fmt.Println(navsAPI) // INavsApi
 }
 ```
 
-## 2. Admin Nav List {#adminnavlist}
+### Forms
 
-`AdminNavList` contains a list of [items](#adminnavitem) for the admin navigation. It has the following fields:
-
-```go
-type AdminNavList struct {
-	Label string         `json:"label"`
-	Items []AdminNavItem `json:"items"`
-}
-```
-
-## 3. Admin Nav Item {#adminnavitem}
-
-`AdminNavItem` is an item for the admin navigation. It has the following fields:
+Returns an instance of [IHttpFormsApi](./http-forms-api.md)
 
 ```go
-type AdminNavItem struct {
-	Category       INavCategory      `json:"category"`
-	Label          string            `json:"label"`
-	VueRouteName   string            `json:"route_name"`
-	VueRoutePath   string            `json:"route_path"`
-	VueRouteParams map[string]string `json:"route_params"`
-}
-```
-
-## 4. Portal Item {#portalitem}
-
-`PortalItem` is an item for the portal navigation. It has the following fields:
-
-```go
-type PortalItem struct {
-	IconUri        string            `json:"icon_uri"`
-	Label          string            `json:"label"`
-	VueRouteName   string            `json:"route_name"`
-	VueRoutePath   string            `json:"route_path"`
-	VueRouteParams map[string]string `json:"route_params"`
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    formsAPI := api.Http().Forms()
+    fmt.Println(formsAPI) // IHttpFormsApi
 }
 ```

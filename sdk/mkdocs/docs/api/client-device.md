@@ -1,27 +1,28 @@
-# ClientDevice
+# IClientDevice
 
-The `ClientDevice` represents a client device/host connected in your network and is possibly accessing the captive portal using a browser.
+The `IClientDevice` represents a client device/host connected in your network and is possibly accessing the captive portal using a browser.
 It can be retrieved using the [Http.GetClientDevice](./http-api.md#getclientdevice) method in your [handler](../guides/routes-and-links.md#handlerfunc).
 
 ```go title="main.go"
 // http handler
 func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
+    fmt.Println(clnt) // IClientDevice
 }
 ```
 
-The `clnt` variable is an instance of the `ClientDevice` interface.
+The `clnt` variable is an instance of the `IClientDevice` interface.
 
-## 1. ClientDevice Methods {#clientdevice-methods}
+## 1. IClientDevice Methods {#clientdevice-methods}
 
-Below are the methods available on the `ClientDevice` instance.
+Below are the methods available on the `IClientDevice` instance.
 
 ### Id
 
-Returns a `int64` value of the client device ID.
+Returns the database `pgtype.UUID` of the client device.
 
 ```go
-id := clnt.Id()
+uuid := clnt.Id()
 ```
 
 ### Hostname
@@ -60,8 +61,9 @@ func (w http.ResponseWriter, r *http.Request) {
     newIp := "192.168.1.123"
     newHostname := "new-hostname"
 
-    err := clnt.Update(ctx, newMac, newIp, newHostname)
-    // handle error
+    if err := clnt.Update(ctx, newMac, newIp, newHostname); err != nil {
+        // handle error
+    }
 }
 ```
 

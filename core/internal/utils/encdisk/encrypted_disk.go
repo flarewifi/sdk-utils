@@ -3,7 +3,7 @@
 package encdisk
 
 import (
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type EncryptedDisk struct {
@@ -18,6 +18,6 @@ func NewEncrypedDisk(file string, mountpath string, name string) *EncryptedDisk 
 		mountpath: mountpath,
 		file:      file,
 		name:      name,
-		pass:      sdkstr.Rand(16),
+		pass:      sdkutils.RandomStr(16),
 	}
 }

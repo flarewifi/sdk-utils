@@ -9,6 +9,8 @@
 (function () {
   'use strict';
 
+  var themes = ['light', 'dark', 'auto'];
+
   var getStoredTheme = function getStoredTheme() {
     return localStorage.getItem('theme');
   };
@@ -17,7 +19,7 @@
   };
   var getPreferredTheme = function getPreferredTheme() {
     var storedTheme = getStoredTheme();
-    if (storedTheme) {
+    if (storedTheme && themes.includes(storedTheme)) {
       return storedTheme;
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -60,7 +62,8 @@
     }
   });
   window.addEventListener('DOMContentLoaded', function () {
-    showActiveTheme(getPreferredTheme());
+    var theme = getPreferredTheme();
+    showActiveTheme(theme);
     document.querySelectorAll('[data-bs-theme-value]').forEach(function (toggle) {
       toggle.addEventListener('click', function () {
         var theme = toggle.getAttribute('data-bs-theme-value');

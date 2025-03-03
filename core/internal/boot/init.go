@@ -5,30 +5,22 @@ import (
 	"log"
 	"time"
 
-	"core/internal/plugins"
-	"core/internal/utils/pkg"
+	"core/internal/api"
+	"core/internal/utils/plugins"
 
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func Init(g *plugins.CoreGlobals) {
+func Init(g *api.CoreGlobals) {
 	bp := g.BootProgress
 	now := time.Now()
 
 	InitDirs()
 
 	go func() {
-		pkg.LinkNodeModulesLib(sdkpaths.AppDir)
+		plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
 
-		bp.AppendLog("Initializing plugins...")
-		// time.Sleep(1000 * 3 * time.Millisecond)
-		InitPlugins(g)
-
-		// delay boot
-		// time.Sleep(1000 * 3 * time.Millisecond)
-
-		bp.AppendLog("Initializing storage...")
-		InitStorage()
+		InitOpkg(bp)
 
 		// delay boot
 		// time.Sleep(1000 * 3 * time.Millisecond)
@@ -36,8 +28,9 @@ func Init(g *plugins.CoreGlobals) {
 		bp.AppendLog("Running core migrations...")
 		RunCoreMigrations(g)
 
-		// delay boot
+		bp.AppendLog("Initializing plugins...")
 		// time.Sleep(1000 * 3 * time.Millisecond)
+		InitPlugins(g)
 
 		bp.AppendLog("Initializing admin accounts...")
 		InitAccounts()

@@ -2,17 +2,16 @@ package routes
 
 import (
 	"net/http"
-	"path/filepath"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	webutils "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/middlewares"
 
-	paths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func AssetsRoutes(g *plugins.CoreGlobals) {
+func AssetsRoutes(g *api.CoreGlobals) {
 	cacheMw := middlewares.CacheResponse(365)
 	assetsCtrl := controllers.NewAssetsCtrl(g)
 
@@ -20,26 +19,26 @@ func AssetsRoutes(g *plugins.CoreGlobals) {
 
 	allPlugins := g.PluginMgr.All()
 	for _, p := range allPlugins {
-		assetsDist := filepath.Join(p.Resource("assets/dist"))
-		fs := http.FileServer(http.Dir(assetsDist))
-		prefix := p.Http().Helpers().AssetPath("")
-		fileserver := middlewares.AssetPath(http.StripPrefix(prefix, fs))
+		resourcesDir := p.Resource("")
+		fs := http.FileServer(http.Dir(resourcesDir))
+		prefix := p.Http().Helpers().ResourcePath("")
+		fileserver := cacheMw(http.StripPrefix(prefix, fs))
 		webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 	}
 
 	// set public static files
-	assetPathMw := middlewares.AssetPath
-	publicDir := paths.PublicDir
+	publicDir := sdkutils.PathPublicDir
 	fs := http.FileServer(http.Dir(publicDir))
 	prefix := "/public"
-	fileserver := cacheMw(assetPathMw(http.StripPrefix(prefix, fs)))
+	fileserver := cacheMw(http.StripPrefix(prefix, fs))
 	webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 }
 
-func CoreAssets(g *plugins.CoreGlobals) {
-	assetsDir := g.CoreAPI.Utl.Resource("assets")
-	fs := http.FileServer(http.Dir(assetsDir))
-	prefix := g.CoreAPI.Http().Helpers().AssetPath("")
-	fileserver := middlewares.AssetPath(http.StripPrefix(prefix, fs))
+func CoreAssets(g *api.CoreGlobals) {
+	cacheMw := middlewares.CacheResponse(365)
+	resourcesDir := g.CoreAPI.Resource("")
+	fs := http.FileServer(http.Dir(resourcesDir))
+	prefix := g.CoreAPI.Http().Helpers().ResourcePath("")
+	fileserver := cacheMw(http.StripPrefix(prefix, fs))
 	webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
 }

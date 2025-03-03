@@ -1,0 +1,49 @@
+package pluginsview
+
+import (
+	"fmt"
+	sdkapi "sdk/api"
+)
+
+type FormRoutes struct {
+	SelectedAction         string `json:"action_url"`
+	PluginInstallZipURL    string `json:"plugin_install_zip_url"`
+	PluginInstallGithubURL string `json:"plugin_install_github_url"`
+}
+
+templ InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) {
+	<h1>Install Plugin</h1>
+	<hr/>
+	<div x-data={ templ.JSONString(data) }>
+		<form class="form" method="POST" enctype="multipart/form-data" x-bind:action="action_url">
+			<div class="form-group mb-3">
+				<label>Source:</label>
+				<select name="src" class="form-control" x-model="action_url">
+					<option value={ data.PluginInstallGithubURL }>GitHub</option>
+					<option value={ data.PluginInstallZipURL }>Zip File</option>
+				</select>
+			</div>
+			<template x-if={ fmt.Sprintf("action_url=='%s'", data.PluginInstallGithubURL) }>
+				<div>
+					<div class=" form-group mb-3">
+						<label>Github URL:</label>
+						<input type="text" name="github_repo_url" class="form-control"/>
+					</div>
+					<div class="form-group mb-3">
+						<label>Branch/Commit Hash:</label>
+						<input type="text" name="github_ref" class="form-control"/>
+					</div>
+				</div>
+			</template>
+			<template x-if={ fmt.Sprintf("action_url=='%s'", data.PluginInstallZipURL) }>
+				<div class=" form-group mb-3">
+					<label>Plugin Zip File:</label>
+					<input type="file" name="plugin_zip_file" class="form-control"/>
+				</div>
+			</template>
+			<div class="form-group">
+				<button type="submit" class="btn btn-primary">Install</button>
+			</div>
+		</form>
+	</div>
+}

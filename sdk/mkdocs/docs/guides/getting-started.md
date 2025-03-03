@@ -2,16 +2,18 @@
 
 ## 1. Install Docker Desktop {#install-docker}
 
-All we need to run Flare Hotspot development runtime is [Docker](https://www.docker.com/). You can download it from [here](https://www.docker.com/products/docker-desktop).
-
-For a detailed instruction to install Docker Desktop, please refer to the [official documentation](https://docs.docker.com/desktop/) or follow our beginner-friendly tutorial for [windows](./install-docker-windows.md).
+You can download docker from the official [docker website](https://docs.docker.com/desktop/) or follow our beginner-friendly tutorial for [windows](./install-docker-windows.md).
 
 !!!note
-    For Linux/Mac users, you can install Docker using the package manager of your distribution.
+    For Linux users, you can install Docker using the package manager of your distribution. For `Ubuntu` users, you can follow [these instructions](https://docs.docker.com/engine/install/ubuntu/).
 
-## 2. Download Flare Hotspot SDK {#download-sdk}
+## 2. Download the SDK {#download-sdk}
 
-Download the latest **devkit-x.x.xzip** file from [https://sdk/releases](https://sdk/releases) repository. Select the appropriate zip file that's compatible with your CPU architecture. Windows computers are most likely be running Intel or AMD x86 CPUs, so just select `devkit-0.0.13-pre-amd64.zip` (whatever is the latest release file).
+Download the latest **devkit-x.x.xzip** file from [devkit releases repository](https://github.com/flarehotspot/devkit/releases).
+Instructions for downloading the SDK:
+
+- If you are using Windows on x86/64 CPU architecture (non-arm CPU), choose the file with **amd64** in the file name.
+- If you are using Windows on Arm or Mac OS on M-series CPU, choose the file with **arm64** in the file name.
 
 ![Download Flare Hotspot SDK](./img/01-select-latest-release.png)
 
@@ -22,16 +24,16 @@ After downloading, extract the zip file to your desired location.
 
 ![Extract Flare Hotspot Sdk](./img/03-extract-devkit.png)
 
-## 3. Start The SDK Runtime {#start-sdk}
+## 3. Starting The SDK {#start-sdk}
 
 To start the SDK runtime, open windows `CMD` or `PowerShell` and navigate to the extracted file's root directory then run:
-```sh
+```sh title="PowerShell"
 docker compose up --build
 ```
 
-For [VSCode](https://code.visualstudio.com/) users, you can also do this in the terminal.
-
 ![Run docker compose up](./img/04-docker-compose-up.png)
+
+For [VSCode](https://code.visualstudio.com/) users, you can also do this in the `vscode` terminal.
 
 Docker may take sometime to download and install the container and its dependencies. Wait for the message `Listening on port :3000` which indicates that the server is already running and ready to accept connections.
 
@@ -41,21 +43,14 @@ Now you can access the Flare Hotspot web interface:
 
 - Captive Portal: [http://localhost:3000](http://localhost:3000)
 - Admin Dashboard: [http://localhost:3000/admin](http://localhost:3000/admin)
-- Database Management: [http://localhost:8080](http://localhost:8080)
+    - username: `admin`
+    - password: `admin`
+- Database Management: [http://localhost:3001](http://localhost:3001)
+- Documentation: [http://localhost:3002](http://localhost:3002)
 
-To restart the server and recompile the code, open a new terminal then run:
-```sh
-docker compose restart app
-```
-
-!!!note
-    The default login for the admin dashboard is:
-    ```
-    username: admin
-    password: admin
-    ```
+The server will automatically recompile and restart when you make changes to any of the plugins. You have to refresh the browser to see the changes.
 
 ## 4. Upgrading The SDK {#upgrade-sdk}
 
-To upgrade the SDK, download the latest release from the [SDK releases page](https://sdk/releases) and extract the contents to your desired destination. Then copy your plugin directory into the `plugins` directory inside the new SDK. Make sure to stop the previous SDK runtime then [start](#start-sdk) the new SDK runtime.
+To upgrade the SDK, download the latest release from the [devkit releases page](https://github.com/flarehotspot/devkit/releases) and extract the contents to your desired destination. Then copy your plugin directory into the `plugins` directory inside the new SDK. Make sure to stop the previous SDK runtime then [start](#start-sdk) the new SDK runtime.
 

@@ -3,23 +3,22 @@ package bootstrap5
 import (
 	"fmt"
 
-	"sdk/api/http"
-	"sdk/api/forms"
+	sdkapi "sdk/api"
 
-	"github.com/flarehotspot/go-utils/slices"
+	"github.com/flarehotspot/sdk-utils"
 	"reflect"
 )
 
-templ ListInputField(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) {
-	{{ lf, ok := fld.(sdkforms.ListField) }}
+templ ListInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
+	{{ lf, ok := fld.(sdkapi.FormListField) }}
 	if ok {
 		@listOptionFields(form, sec, lf)
 	} else {
-		<span>{ fmt.Sprintf("list field %s in section %s is not a list field", fld.GetName(), sec.Name) }</span>
+		<span>{ fmt.Sprintf("list field %s in section %s is not a list field", fld.GetName(), sec.GetName()) }</span>
 	}
 }
 
-templ listOptionFields(form sdkhttp.IHttpForm, sec sdkforms.FormSection, lf sdkforms.ListField) {
+templ listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.FormListField) {
 	<legend>{ lf.Label }</legend>
 	{{
 	var optType string
@@ -34,7 +33,7 @@ templ listOptionFields(form sdkhttp.IHttpForm, sec sdkforms.FormSection, lf sdkf
 			<input
 				class="form-check-input"
 				type={ optType }
-				name={ fmt.Sprintf("%s:%s", sec.Name, lf.Name) }
+				name={ fmt.Sprintf("%s:%s", sec.GetName(), lf.Name) }
 				value={ parseListOptValue(lf, opt) }
 				checked?={ isListOptSelected(form, sec, lf, opt) }
 			/>
@@ -45,28 +44,28 @@ templ listOptionFields(form sdkhttp.IHttpForm, sec sdkforms.FormSection, lf sdkf
 	}
 }
 
-func isListOptSelected(form sdkhttp.IHttpForm, sec sdkforms.FormSection, lf sdkforms.ListField, opt sdkforms.ListOption) bool {
+func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) bool {
 	switch lf.Type {
-	case sdkforms.FormFieldTypeText:
+	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)
 		if !ok {
 			return false
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetStringValues(sec.Name, lf.Name)
+			vals, err := form.GetStringValues(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
-			return sdkslices.Contains(vals, v)
+			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetStringValue(sec.Name, lf.Name)
+			val, err := form.GetStringValue(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
 			return val == v
 		}
-	case sdkforms.FormFieldTypeDecimal:
+	case sdkapi.FormFieldTypeDecimal:
 		var v float64
 		k := reflect.TypeOf(opt.Value).Kind()
 
@@ -75,6 +74,8 @@ func isListOptSelected(form sdkhttp.IHttpForm, sec sdkforms.FormSection, lf sdkf
 			v = float64(opt.Value.(int))
 		case reflect.Int32:
 			v = float64(opt.Value.(int32))
+		case reflect.Int64:
+			v = float64(opt.Value.(int64))
 		case reflect.Float32:
 			v = float64(opt.Value.(float32))
 		case reflect.Float64:
@@ -82,13 +83,13 @@ func isListOptSelected(form sdkhttp.IHttpForm, sec sdkforms.FormSection, lf sdkf
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetFloatValues(sec.Name, lf.Name)
+			vals, err := form.GetFloatValues(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
-			return sdkslices.Contains(vals, v)
+			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetFloatValue(sec.Name, lf.Name)
+			val, err := form.GetFloatValue(sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
@@ -97,15 +98,16 @@ func isListOptSelected(form sdkhttp.IHttpForm, sec sdkforms.FormSection, lf sdkf
 	}
 	return false
 }
-func parseListOptValue(lf sdkforms.ListField, opt sdkforms.ListOption) (val string) {
+
+func parseListOptValue(lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) (val string) {
 	switch lf.Type {
-	case sdkforms.FormFieldTypeText:
+	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)
 		if !ok {
 			return ""
 		}
 		return v
-	case sdkforms.FormFieldTypeDecimal:
+	case sdkapi.FormFieldTypeDecimal:
 		t := reflect.TypeOf(opt.Value)
 		switch t.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
@@ -118,14 +120,16 @@ func parseListOptValue(lf sdkforms.ListField, opt sdkforms.ListOption) (val stri
 	}
 	return
 }
-func getListInputField(fld sdkforms.IFormField) (lf sdkforms.ListField) {
-	lf, _ = fld.(sdkforms.ListField)
+
+func getListInputField(fld sdkapi.IFormField) (lf sdkapi.FormListField) {
+	lf, _ = fld.(sdkapi.FormListField)
 	return lf
 }
-func getListFieldInputType(fld sdkforms.IFormField) string {
-	listField, ok := fld.(sdkforms.ListField)
-	if !ok {
+
+func getListFieldInputType(fld sdkapi.IFormField) string {
+    listField, ok := fld.(sdkapi.FormListField); if !ok {
 		return "not a list field"
 	}
+
 	return listField.Type
 }

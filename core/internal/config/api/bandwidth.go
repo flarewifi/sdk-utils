@@ -2,31 +2,27 @@ package cfgapi
 
 import (
 	"core/internal/config"
-	"sdk/api/config"
+	sdkapi "sdk/api"
 )
 
-func NewBandwdCfgApi(ifname string) *BandwdCfgApi {
-	return &BandwdCfgApi{
-		ifname: ifname,
-	}
+func NewBandwdCfgApi() *BandwdCfgApi {
+	return &BandwdCfgApi{}
 }
 
-type BandwdCfgApi struct {
-	ifname string
-}
+type BandwdCfgApi struct{}
 
-func (c *BandwdCfgApi) Get() (sdkcfg.IBandwdCfg, bool) {
+func (c *BandwdCfgApi) Get(ifname string) (sdkapi.IBandwdCfg, bool) {
 	cfg, err := config.ReadBandwidthConfig()
 	if err != nil {
-		return sdkcfg.IBandwdCfg{}, false
+		return sdkapi.IBandwdCfg{}, false
 	}
 
-	bcfg, ok := cfg.Lans[c.ifname]
+	bcfg, ok := cfg.Lans[ifname]
 	if !ok {
-		return sdkcfg.IBandwdCfg{}, false
+		return sdkapi.IBandwdCfg{}, false
 	}
 
-	return sdkcfg.IBandwdCfg{
+	return sdkapi.IBandwdCfg{
 		UseGlobal:       bcfg.UseGlobal,
 		GlobalDownMbits: bcfg.GlobalDownMbits,
 		GlobalUpMbits:   bcfg.GlobalUpMbits,
@@ -35,13 +31,13 @@ func (c *BandwdCfgApi) Get() (sdkcfg.IBandwdCfg, bool) {
 	}, true
 }
 
-func (c *BandwdCfgApi) Save(cfg sdkcfg.IBandwdCfg) error {
+func (c *BandwdCfgApi) Save(ifname string, cfg sdkapi.IBandwdCfg) error {
 	oldCfg, err := config.ReadBandwidthConfig()
 	if err != nil {
 		return err
 	}
 
-	oldCfg.Lans[c.ifname] = config.IfCfg{
+	oldCfg.Lans[ifname] = config.IfCfg{
 		UseGlobal:       cfg.UseGlobal,
 		GlobalDownMbits: cfg.GlobalDownMbits,
 		GlobalUpMbits:   cfg.GlobalUpMbits,

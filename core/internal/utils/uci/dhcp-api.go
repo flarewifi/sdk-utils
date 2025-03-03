@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	uci "sdk/api/uci"
+	sdkapi "sdk/api"
 )
 
 type UciDhcpApi struct{}
@@ -32,7 +32,7 @@ func (self *UciDhcpApi) GetSection(ifname string) (section string, ok bool) {
 
 }
 
-func (self *UciDhcpApi) GetConfig(section string) (dhcp *uci.DhcpCfg, ok bool) {
+func (self *UciDhcpApi) GetConfig(section string) (dhcp *sdkapi.DhcpCfg, ok bool) {
 	ifaces, ok := UciTree.Get("dhcp", section, "interface")
 	if !ok {
 		return nil, false
@@ -68,7 +68,7 @@ func (self *UciDhcpApi) GetConfig(section string) (dhcp *uci.DhcpCfg, ok bool) {
 		return nil, false
 	}
 
-	return &uci.DhcpCfg{
+	return &sdkapi.DhcpCfg{
 		Ifname:    ifaces[0],
 		Section:   section,
 		StartIp:   startIps[0],
@@ -78,7 +78,7 @@ func (self *UciDhcpApi) GetConfig(section string) (dhcp *uci.DhcpCfg, ok bool) {
 
 }
 
-func (self *UciDhcpApi) SetConfig(ifname string, cfg *uci.DhcpCfg) error {
+func (self *UciDhcpApi) SetConfig(ifname string, cfg *sdkapi.DhcpCfg) error {
 	section, ok := self.GetSection(ifname)
 	if !ok {
 		return errors.New("Failed to get dhcp section of " + ifname)

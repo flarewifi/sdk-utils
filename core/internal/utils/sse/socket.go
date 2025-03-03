@@ -11,12 +11,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/goccy/go-json"
+	"time"
 
 	// "time"
 
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewSocket(w http.ResponseWriter, r *http.Request) (s *SseSocket, err error) {
@@ -32,7 +31,7 @@ func NewSocket(w http.ResponseWriter, r *http.Request) (s *SseSocket, err error)
 	w.Header().Set("Connection", "keep-alive")
 	f.Flush()
 
-	id := sdkstr.Rand(32)
+	id := sdkutils.RandomStr(8)
 
 	return &SseSocket{
 		id:      id,
@@ -61,13 +60,8 @@ func (s *SseSocket) Id() string {
 	return s.id
 }
 
-func (s *SseSocket) Emit(t string, jsonData interface{}) (err error) {
-	bytes, err := json.Marshal(jsonData)
-	if err != nil {
-		log.Printf("Unable to marshal json: %s\n", err)
-		return err
-	}
-	s.msgCh <- SseData{t, bytes}
+func (s *SseSocket) Emit(typ string, data []byte) (err error) {
+	s.msgCh <- SseData{typ, data}
 	return nil
 }
 
@@ -81,14 +75,15 @@ func (s *SseSocket) Flush() {
 
 func (s *SseSocket) Listen() {
 
-	// go s.pingLoop()
+	// Prevents the connection from being closed by the browser
+	go s.pingLoop()
 
 	for {
 		select {
 		case d := <-s.msgCh:
 			data := string(d.Data)
 			payload := fmt.Sprintf("id: %d\nevent: %s\ndata: %s\n\n", s.msgId, d.MsgType, data)
-			log.Println("Socket data:", payload)
+			log.Println("Socket data:", fmt.Sprintf("id: %d, event: %s, data: %s", s.msgId, d.MsgType, data))
 			fmt.Fprint(s.res, payload)
 			s.Flush()
 			s.msgId += 1
@@ -98,14 +93,14 @@ func (s *SseSocket) Listen() {
 	}
 }
 
-// func (s *SseSocket) pingLoop() {
-// 	for {
-// 		select {
-// 		case <-time.After(5 * time.Second):
-// 			s.Emit("ping", nil)
-// 		case <-s.Done():
-// 			return
-// 		}
+func (s *SseSocket) pingLoop() {
+	for {
+		select {
+		case <-time.After(5 * time.Second):
+			s.Emit("ping", []byte(""))
+		case <-s.Done():
+			return
+		}
 
-// 	}
-// }
+	}
+}

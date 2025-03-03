@@ -1,73 +1,73 @@
-# HttpResponse
-The `HttpResponse` has utility functions which can be used to send html, json, and file response to the client.
+# IHttpResponse
+The `IHttpResponse` has utility functions which can be used to send html, json, and file response to the client.
 
-## 1. HttpResponse Methods {#httpresponse-methods}
+## IHttpResponse methods {#httpresponse-methods}
 
 ### PortalView
-This method is used to render views as plain html from `resources/views/portal` directory in your plugin.
-For example if you have a view in `resources/views/portal/index.html`,
-then you can render it with:
+
+This method is used to render html using the [portal theme](./themes-api.md#portal-theme) as the layout. Given that you already have a [view template](#template-parsing), the view template can be rendered using:
 
 ```go
 // handler
 func (w http.ResponseWriter, r *http.Request) {
-    data := map[string]interface{}{
-        "title": "Dashboard",
-    }
-    api.Http().HttpResponse().PortalView(w, r, "dashboard/index.html", data)
+    name := "John"
+    welcomePage := views.WelcomePage(name)
+    api.Http().HttpResponse().PortalView(w, r, sdkapi.ViewPage{
+        PageContent: welcomePage,
+    })
 }
-```
-
-It uses the file `resources/views/portal/layout.html` as the [layout](#layout-view). You must create this file in order to use the `PortalView` method.
-The view has access to the [HttpHelpers](./http-helpers.md) instance. Below is an example of how to access the data and helpers in the view:
-
-```html title="resources/views/portal/index.html"
-<a href='<% .Helpers.UrlForRoute "dashboard" %>'>
-    <% .Data.title %>
-</a>
 ```
 
 ### AdminView
-This method is very similar to [PortalView](#portalview) but it is used to render views from `resources/views/admin` directory in your plugin. It also uses the file `resources/views/admin/layout.html` as the [layout](#layout-view). You must create this file in order to use the `AdminView` method.
 
-Below is an example of how to render a view from the admin directory:
+This method is used to render html using the [admin theme](./themes-api.md#admin-theme) as the layout. Given that you already have a [view template](#template-parsing), the view template can be rendered using:
 
 ```go
 // handler
 func (w http.ResponseWriter, r *http.Request) {
-    data := map[string]interface{}{
-        "title": "Dashboard",
-    }
-    api.Http().HttpResponse().PortalView(w, r, "dashboard/index.html", data)
+    name := "Admin"
+    welcomePage := views.WelcomePage(name)
+    api.Http().HttpResponse().AdminView(w, r, sdkapi.ViewPage{
+        PageContent: welcomePage,
+    })
 }
-```
-
-```html title="resources/views/admin/index.html"
-<a href='<% .Helpers.UrlForRoute "dashboard" %>'>
-    <% .Data.title %>
-</a>
 ```
 
 ### View
-This method is similar to [PortalView](#portalview) and [AdminView](#adminview) but it is used to render any views from the `resources/views` directory in your plugin as plain html. It does not use any layout view. It also has access to the [HttpHelpers](./http-helpers.md) instance and data.
 
-### File
-This method is used to render text and asset files from the `resources` directory. Just like [PortalView](#portalview) and [AdminView](#adminview) methods, the template files have access to the [HttpHelpers](./http-helpers.md) instance and data. The response header's `Content-Type` will be automatically derived from the filename. Below is an example of how to render a file:
+This method is similar to [PortalView](#portalview) and [AdminView](#adminview) but it renders the views **without** using any layout. Therefore you must enclose your [view templates](#template-parsing) with proper `html` tag and document type:
 
-```js title="resources/assets/js/app.js"
-var url = '<% .Helpers.UrlForRoute .Data.title %>';
-console.log(url);
+```templ title="plugins/local/com.mydomain.myplugin/resources/views/sample.templ"
+package views
+
+templ SamplePage(name string) {
+    !DOCTYPE html
+    <html>
+        <head>
+            <title>Sample Page</title>
+        </head>
+        <body>
+            <p>Welcome, { name }</p>
+        </body>
+    </html>
+}
 ```
 
 ```go title="main.go"
-data := map[string]string{}
-    "title": "Dashboard",
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    name := "Admin"
+    samplePage := views.SamplePage(name)
+    api.Http().HttpResponse().View(w, r, sdkapi.ViewPage{
+        PageContent: samplePage,
+    })
 }
-api.Http().HttpResponse().File(w, r, "assets/js/app.js", data)
 ```
 
 ### Json
+
 This method is used to send json response to the client. Below is an example of how to send json response:
+
 ```go
 // handler
 func (w http.ResponseWriter, r *http.Request) {
@@ -78,22 +78,99 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-## 2. Template Parsing {#template-parsing}
-The views are parsed using the [html/template](https://pkg.go.dev/html/template) package. But instead of using `{{ }}` as delimiters, we are using `<% %>` as delimiters. This is to avoid conflicts with the `{{ }}` delimiters used in the frontend framework.
+### Redirect
 
-## 3. Layout View {#layout-view}
-In order to use [HttpResponse.PortalView](#portalview) and [HttpResponse.AdminView](#adminview) methods, a layout view must be created first.
-The portal layout view must be created in `resources/views/portal/layout.html` and the admin layout view must be created in `resources/views/admin/layout.html` inside your plugin directory.
+This method is used to redirect a user to another route using the route name as parameter.
 
-The layout view is used to define the common structure of the view. For example, the layout view can be used to define the header, footer, and sidebar of the page. Below is an example of how to define the layout view:
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    routename := "portal:welcome"
+    user := "John"
+    api.Http().HttpResponse().Redirect(w, r, routename, "name", user)
+    // Will redirect to route named "portal:welcome" with GET params name=John
+}
+```
 
-```html title="resources/views/portal/layout.html"
-<!doctype html>
-<html lang="en">
-    <head></head>
-    <body>
-        <h1>Portal Layout</h1>
-        <div class="container"> <% .ContentHtml %> </div>
-    </body>
-</html>
+### FlashMsg
+
+This method is used to set flash messages to the views. But it does not send an HTTP response so you must use redirect or render a view response to show the flash message.
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    msg := "Payment successfull!"
+    t := sdkapi.FlasMsgSuccess
+    api.Http().HttpResponse().FlashMsg(w, r, msg, t)
+    api.Http().HttpResponse().Redirect(w, r, "portal:welcome")
+}
+```
+
+The available flash message types are:
+
+- `FlashMsgSuccess`
+- `FlashMsgInfo`
+- `FlashMsgWarning`
+- `FlashMsgError`
+
+### Error
+
+This method is used to show consistent error page for unknown errors in your application.
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    err := errors.New("Something went wrong!")
+    api.Http().HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+}
+```
+
+## View Templates {#template-parsing}
+
+We use [Templ](https://templ.guide) in generating our views. To create a sample view for your plugin, create a file in `resources/views/welcome.templ` with the following contents:
+
+```templ title="plugins/local/com.mydomain.myplugin/resources/views/welcome.templ"
+package views
+
+templ WelcomePage(name string) {
+    <p>Welcome { name }!</p>
+}
+```
+
+The SDK runtime will automatically detect the new file and watch for changes. It will then generate
+a file called `resources/views/welcome_templ.go` that can be imported and used in rendering [portal views](#portalview) and [admin views](#adminview).
+
+## View Assets
+
+To add assets to a [view template](#template-parsing), you need to register your assets first in the portal or admin [assets manifest](./assets-manifest.md).
+After registering your assets in the manifest, you can then use the assets in your views.
+
+For example, given the following portal assets manifest:
+
+```json title="plugins/local/com.mydomain.myplugin/resources/assets/manifest.portal.json"
+{
+  "index.css": [
+    "./portal/portal.css"
+  ],
+  "index.js": [
+    "./portal/portal.js"
+  ]
+}
+```
+
+Then you can render a view together with assets `index.css` and `index.js`:
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    name := "John"
+    welcomePage := views.WelcomePage(name)
+    api.Http().HttpResponse().PortalView(w, r, sdkapi.ViewPage{
+        Assets: sdkapi.ViewAssets{
+            CssFile: "index.css",
+            JsFile: "index.js",
+        },
+        PageContent: welcomePage,
+    })
+}
 ```

@@ -1,169 +1,98 @@
+//go:build !dev
+
 package pg
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	stdstr "strings"
-	"time"
 
+	"core/internal/config"
 	"core/internal/utils/cmd"
 
 	gouci "github.com/digineo/go-uci"
-	fs "github.com/flarehotspot/go-utils/fs"
-	paths "github.com/flarehotspot/go-utils/paths"
-	"github.com/goccy/go-json"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
-	configPath = filepath.Join(paths.ConfigDir, "database.json")
-	srvPgDir   = "/srv/pg/"
+	pgDataDir  = "/srv/postgresql/data"
+	pgLogFile  = "/srv/postgresql/data/postgresql.log"
+	pgPassFile = filepath.Join(sdkutils.PathTmpDir, "pg-pass.txt")
 )
 
-// Sets up all necessary postgresql database requirements
-func SetupDb(dbpass string, dbname string) error {
-	if isInstalled() {
+// Sets up all necessary postgresql server requirements
+func SetupServer(dbpass string, dbname string) error {
+	// Check if postgres is already setup
+	var hasDbConfig bool
+	_, err := config.ReadDatabaseConfig()
+	if err == nil {
+		hasDbConfig = true
+	}
+
+	isInstalled := sdkutils.FsExists(pgDataDir) && hasDbConfig
+	if isInstalled {
+		fmt.Println("Postgres is already setup.")
 		return nil
 	}
 
-	if err := prepPgSrvDir(); err != nil {
+	// Prepare pg data directory
+	if err := sdkutils.FsEnsureDir(pgDataDir); err != nil {
 		return err
 	}
 
-	if err := prepPgConf(); err != nil {
+	if err := cmd.Exec("chown -R postgres:postgres "+pgDataDir, nil); err != nil {
 		return err
 	}
 
-	if err := prepPgSrvConf(); err != nil {
-		rmPgSrvDir()
+	// Configure postgres service
+	if ok := gouci.Set("postgresql", "config", "PGDATA", pgDataDir); !ok {
+		return errors.New("uci: unable to set postgresql config PGDATA value")
+	}
+
+	if ok := gouci.Set("postgresql", "config", "PGLOG", pgLogFile); !ok {
+		return errors.New("uci: unable to set postgresql config PGLOG value")
+	}
+
+	if err := gouci.Commit(); err != nil {
+		fmt.Println("unable to commit postgresql config")
 		return err
 	}
 
-	if err := installPg(); err != nil {
-		rmPgSrvDir()
-		stopDb()
+	if err := os.WriteFile(pgPassFile, []byte(dbpass), sdkutils.PermFile); err != nil {
+		fmt.Println("unable to write pg password file")
+		return err
+	}
+	// don't forget to remove password file
+	defer os.Remove(pgPassFile)
+
+	initDbCmd := fmt.Sprintf("sudo -u postgres LC_COLLATE='C' initdb --pwfile=%s -D %s", pgPassFile, pgDataDir)
+	if err := cmd.Exec(initDbCmd, &cmd.ExecOpts{
+		Stdout: os.Stdout,
+	}); err != nil {
 		return err
 	}
 
-	if err := setRootPass(dbpass); err != nil {
+	// Write config file
+	if err := config.WriteDatabaseConfig(config.DbConfig{
+		Host:     "localhost",
+		Username: "postgres",
+		Password: dbpass,
+		Database: dbname,
+	}); err != nil {
 		return err
 	}
 
-	if err := createDb(dbname); err != nil {
+	// Enable postgresql service
+	if err := cmd.Exec("service postgresql enable", nil); err != nil {
+		fmt.Println("unable to enable postgresql service")
 		return err
 	}
 
-	if err := writeConfig(dbpass, dbname); err != nil {
-		rmPgSrvDir()
+	if err := cmd.Exec("service postgresql start", nil); err != nil {
+		fmt.Println("unable to start postgresql service")
 		return err
 	}
 
 	return nil
-}
-
-func isInstalled() bool {
-	return fs.Exists(srvPgDir) && fs.Exists(configPath)
-}
-
-func prepPgConf() error {
-	pgConfPath := "/var/lib/postgresql/data/pgdata/postgresql.conf"
-	bytes, err := os.ReadFile(pgConfPath)
-	if err != nil {
-		return err
-	}
-
-	content := string(bytes)
-	if stdstr.Contains(content, "data_directory") {
-		return nil
-	}
-
-	content += "\n"
-	content += fmt.Sprintf("data_directory = '%s'\n", srvPgDir)
-	content += "log_directory = '/var/log/postgresql'\n"
-	content += "log_filename = 'postgresql.log'\n"
-
-	return os.WriteFile(pgConfPath, []byte(content), 0644)
-}
-
-func prepPgSrvDir() error {
-	commands := []string{
-		"mkdir -p " + srvPgDir,
-		"chown -R postgres:postgres " + srvPgDir,
-	}
-
-	for _, c := range commands {
-		err := cmd.Exec(c, nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func prepPgSrvConf() error {
-	values, ok := gouci.Get("postgresql", "general", "enabled")
-	enabled := ok && len(values) > 0 && values[0] == "1"
-	if !enabled {
-		gouci.Set("postgresql", "general", "enabled", "1")
-		return gouci.Commit()
-	}
-	return nil
-}
-
-func installPg() error {
-	commands := []string{
-		"pg_ctl initdb -D" + srvPgDir,
-		"chown -R postgres:postgres " + srvPgDir,
-		"service postgresql start",
-		"service postgresql enable",
-	}
-
-	for _, c := range commands {
-		err := cmd.Exec(c, nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	// allowance time for postgres to boot first
-	// sleep 3s
-	time.Sleep(3 * time.Second)
-
-	return nil
-
-}
-
-func rmPgSrvDir() {
-	cmd.Exec("rm -rf "+srvPgDir, nil)
-}
-
-func stopDb() {
-	cmd.Exec("service postgresql stop", nil)
-}
-
-func setRootPass(dbpass string) error {
-	command := fmt.Sprintf("postgres psql -c \"ALTER USER postgres WITH PASSWORD '%s';\"", dbpass)
-	return cmd.Exec(command, nil)
-}
-
-func createDb(dbname string) error {
-	command := fmt.Sprintf("postgres createdb %s ", dbname)
-	return cmd.Exec(command, nil)
-}
-
-func writeConfig(dbpass string, dbname string) error {
-	cfg := map[string]string{
-		"host":     "localhost",
-		"username": "postgres",
-		"password": dbpass,
-		"database": dbname,
-	}
-
-	bytes, err := json.Marshal(&cfg)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(configPath, bytes, 6004)
 }

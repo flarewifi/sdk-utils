@@ -1,8 +1,10 @@
 package bootstrap5
 
-import "sdk/api/forms"
-import "fmt"
-import "sdk/api/http"
+import (
+	"fmt"
+	"sdk/api"
+	"github.com/flarehotspot/sdk-utils"
+)
 
 type TextInputFieldAttrs struct {
 	Label string
@@ -11,18 +13,18 @@ type TextInputFieldAttrs struct {
 	Error error
 }
 
-templ TextInputField(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) {
+templ TextInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	{{ attrs := getTextInputFieldAttrs(form, sec, fld) }}
 	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
-	<input type="text" class="form-control" id={ attrs.Name } name={ attrs.Name } value={ attrs.Value }/>
+    <textarea class="form-control" rows="3" id={ sdkutils.Slugify(attrs.Name, "_") } name={ attrs.Name }>{ attrs.Value }</textarea>
 	if attrs.Error != nil {
 		<div class="invalid-feedback">{ attrs.Error.Error() }</div>
 	}
 }
 
-func getTextInputFieldAttrs(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) (attrs TextInputFieldAttrs) {
-	attrs.Name = fmt.Sprintf("%s:%s", sec.Name, fld.GetName())
+func getTextInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs TextInputFieldAttrs) {
+	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
 	attrs.Label = fld.GetLabel()
-	attrs.Value, attrs.Error = form.GetStringValue(sec.Name, fld.GetName())
+	attrs.Value, attrs.Error = form.GetStringValue(sec.GetName(), fld.GetName())
 	return
 }

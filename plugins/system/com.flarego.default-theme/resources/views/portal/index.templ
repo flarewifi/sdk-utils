@@ -1,5 +1,73 @@
 package portal
 
-templ PortalIndexPage() {
-	<h1>Portal Index</h1>
+import (
+	"fmt"
+	sdkapi "sdk/api"
+)
+
+type PortalIndexData struct {
+	Navs             []sdkapi.PortalNavItem
+	SessionSummary   *sdkapi.ClientSessionSummary
+	IsSessionRunning bool
+}
+
+templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
+	<div
+		hx-get={ api.Http().Helpers().UrlForRoute("portal.navs") }
+		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s",
+    sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+	>
+		@NavItems(api, data.Navs)
+	</div>
+	<div
+		hx-get={ api.Http().Helpers().UrlForRoute("sessions.summary") }
+		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, every 5s",
+    sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+	>
+		@SessionSummary(api, SessionSummaryData{
+			SessionSummary:   data.SessionSummary,
+			IsSessionRunning: data.IsSessionRunning,
+		})
+	</div>
+}
+
+templ NavItems(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem) {
+	<ul>
+		for _, nav := range navs {
+			<li>
+				<a class="btn btn-primary" id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) }>
+					if nav.IconUrl != "" {
+						<img src={ nav.IconUrl } style="max-width: 50px;"/>
+					}
+					{ nav.Label }
+				</a>
+			</li>
+		}
+	</ul>
+}
+
+type SessionSummaryData struct {
+	SessionSummary   *sdkapi.ClientSessionSummary
+	IsSessionRunning bool
+}
+
+templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
+	<h3>
+		Session Summary
+	</h3>
+	<p>
+		Remaining Time:
+		<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
+			{
+        fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }
+		</span>s
+	</p>
+	<p>Remaining Data: { fmt.Sprintf("%.2f", data.SessionSummary.RemainingDataMbytes) }MB</p>
+	{{
+data := map[string]interface{}{
+	"session_running":   data.IsSessionRunning,
+	"session_time_secs": data.SessionSummary.RemainingTimeSecs,
+}
+	}}
+	@templ.JSONScript("portal-data", data)
 }

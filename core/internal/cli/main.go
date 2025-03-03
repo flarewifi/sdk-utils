@@ -12,10 +12,10 @@ import (
 
 	tools "core/build/tools"
 	"core/env"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"core/internal/utils/updates"
 
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
@@ -59,16 +59,12 @@ func main() {
 		tools.BuildTemplates()
 		return
 
-	case "fix-workspace":
-		tools.CreateGoWorkspace()
+	case "build-queries":
+		tools.BuildQueries()
 		return
 
-	case "install-go":
-		var installPath string
-		if len(os.Args) > 2 {
-			installPath = os.Args[2]
-		}
-		tools.InstallGo(installPath)
+	case "fix-workspace":
+		tools.CreateGoWorkspace()
 		return
 
 	case "update":
@@ -99,17 +95,22 @@ func CreatePlugin() {
 		pluginDesc string
 	)
 
+	var (
+		domainSample     = "com.mydomain.myplugin"
+		pluginNameSample = "My Plugin"
+	)
+
 	for len(strings.Split(pluginPkg, ".")) < 3 {
-		pluginPkg, err = tools.AskCmdInput("Enter the plugin package name, e.g. com.mydomain.plugin")
+		pluginPkg, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin package name, for example \"%s\"", domainSample))
 		if err != nil {
 			panic(err)
 		}
 		if len(strings.Split(pluginPkg, ".")) < 3 {
-			fmt.Println("Error: Package name must be at least 3 segments. For example: com.my-domain.my-plugin")
+			fmt.Printf("\nError: Package name must be at least 3 segments, for example \"%s\".\n", domainSample)
 		}
 	}
 
-	pluginName, err = tools.AskCmdInput("Enter the plugin name, e.g. MyPlugin")
+	pluginName, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin name, for example: \"%s\"", pluginNameSample))
 	if err != nil {
 		panic(err)
 	}
@@ -123,10 +124,17 @@ func CreatePlugin() {
 }
 
 func CreateMigration() {
-	pluginPaths := pkg.LocalPluginPaths()
-	pluginPkgs := make([]string, len(pluginPaths))
-	for i, pluginPath := range pluginPaths {
-		pluginPkgs[i] = filepath.Base(pluginPath)
+	pluginDefs := plugins.LocalPluginSrcDefs()
+	pluginPkgs := make([]string, len(pluginDefs))
+
+	for i, def := range pluginDefs {
+		info, err := sdkutils.GetPluginInfoFromPath(def.LocalPath)
+		if err != nil {
+			fmt.Println("Warning: Error getting plugin info:", err)
+			continue
+		} else {
+			pluginPkgs[i] = info.Package
+		}
 	}
 
 	pluginNums := make([]string, len(pluginPkgs))
@@ -164,11 +172,21 @@ func CreateMigration() {
 func BuildPlugin() {
 	var err error
 	if len(os.Args) < 3 {
-		err = pkg.BuildLocalPlugins()
+		err = plugins.BuildLocalPlugins()
 	} else {
-		pluginPath := os.Args[2]
-		workdir := filepath.Join(sdkpaths.TmpDir, "builds", filepath.Base(pluginPath))
-		err = pkg.BuildPluginSo(pluginPath, workdir)
+		searchPath := os.Args[2]
+		pluginPath, err := sdkutils.FindPluginSrc(searchPath)
+		if err != nil {
+			log.Fatalf("Error finding plugin source in %s: %s\n", searchPath, err.Error())
+			return
+		}
+
+		workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(pluginPath))
+		err = plugins.BuildPluginSo(pluginPath, workdir)
+		if err != nil {
+			log.Fatalf("Error building plugin: %s\n", err.Error())
+			return
+		}
 	}
 	if err != nil {
 		fmt.Println("Error building plugin: " + err.Error())
@@ -177,7 +195,7 @@ func BuildPlugin() {
 }
 
 func Server() {
-	corePath := filepath.Join(sdkpaths.AppDir, "core/plugin.so")
+	corePath := filepath.Join(sdkutils.PathAppDir, "core/plugin.so")
 	p, err := plugin.Open(corePath)
 	if err != nil {
 		log.Println("Error loading core plugin:", err)
@@ -273,11 +291,9 @@ list of commands:
 
     build-templates                     Compile templ files to golang.
 
-    fix-workspace                       Re-generate the go.work file
+    build-queries                       Compile sql queries to golang.
 
-    install-go  <install path>          Install Go to the given path. If install path argument is not defined, then it will install in
-                                        the "$GO_CUSTOM_PATH" if defined, else it will install in "go" directory under the
-                                        current working directory.
+    fix-workspace                       Re-generate the go.work file
 
     update                              Updates the flare system
 `

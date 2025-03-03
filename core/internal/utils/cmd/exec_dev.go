@@ -17,11 +17,14 @@ var (
 		"modprobe",
 		"ip",
 		"tc",
+		"opkg",
 	}
 )
 
 func Exec(command string, opts *ExecOpts) error {
 	log.Println("Executing:", command)
+
+	// don't execute some commands in dev mode
 	for _, ignoreCmd := range ignoreCmdsStart {
 		if strings.HasPrefix(command, ignoreCmd) {
 			return nil

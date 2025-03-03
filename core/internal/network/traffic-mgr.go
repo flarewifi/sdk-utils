@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"core/internal/utils/nftables"
-	"sdk/api/network"
+	sdkapi "sdk/api"
 )
 
 type TrafficMgr struct {
 	mu        sync.RWMutex
 	ticker    *time.Ticker
-	listners  []chan sdknet.TrafficData
+	listners  []chan sdkapi.TrafficData
 	prevStats *nftables.StatResult
 }
 
@@ -32,12 +32,12 @@ func (self *TrafficMgr) Start() {
 	}()
 }
 
-func (self *TrafficMgr) Listen() <-chan sdknet.TrafficData {
-	retCh := make(chan chan sdknet.TrafficData)
+func (self *TrafficMgr) Listen() <-chan sdkapi.TrafficData {
+	retCh := make(chan chan sdkapi.TrafficData)
 	go func() {
 		self.mu.Lock()
 		defer self.mu.Unlock()
-		ch := make(chan sdknet.TrafficData)
+		ch := make(chan sdkapi.TrafficData)
 		self.listners = append(self.listners, ch)
 		retCh <- ch
 	}()
@@ -68,9 +68,9 @@ func (self *TrafficMgr) MakeTrafficData() {
 		prevStats = self.prevStats
 	}
 
-	trfc := sdknet.TrafficData{
-		Download: make(map[string]sdknet.ClientStat),
-		Upload:   make(map[string]sdknet.ClientStat),
+	trfc := sdkapi.TrafficData{
+		Download: make(map[string]sdkapi.ClientStat),
+		Upload:   make(map[string]sdkapi.ClientStat),
 	}
 
 	for mac, stat := range stats.MacStats {
@@ -79,15 +79,15 @@ func (self *TrafficMgr) MakeTrafficData() {
 			// If current stat is less than prev, user may have been reconnected.
 			// In this case we discard previous stats.
 			if stat.Packets < prev.Packets || stat.Bytes < prev.Bytes {
-				trfc.Upload[mac] = sdknet.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
+				trfc.Upload[mac] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
 				continue
 			}
 
 			pkts := stat.Packets - prev.Packets
 			byts := stat.Bytes - prev.Bytes
-			trfc.Upload[mac] = sdknet.ClientStat{Packets: pkts, Bytes: byts}
+			trfc.Upload[mac] = sdkapi.ClientStat{Packets: pkts, Bytes: byts}
 		} else {
-			trfc.Upload[mac] = sdknet.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
+			trfc.Upload[mac] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
 		}
 	}
 
@@ -97,15 +97,15 @@ func (self *TrafficMgr) MakeTrafficData() {
 			// If current stat is less than prev, user may have been reconnected.
 			// In this case we discard previous stats.
 			if stat.Packets < prev.Packets || stat.Bytes < prev.Bytes {
-				trfc.Download[ip] = sdknet.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
+				trfc.Download[ip] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
 				continue
 			}
 
 			pkts := stat.Packets - prev.Packets
 			byts := stat.Bytes - prev.Bytes
-			trfc.Download[ip] = sdknet.ClientStat{Packets: pkts, Bytes: byts}
+			trfc.Download[ip] = sdkapi.ClientStat{Packets: pkts, Bytes: byts}
 		} else {
-			trfc.Download[ip] = sdknet.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
+			trfc.Download[ip] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
 		}
 	}
 

@@ -1,15 +1,15 @@
 package coreforms
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 )
 
-func RegisterForms(g *plugins.CoreGlobals) {
-
-	themesForm, err := GetThemeForm(g)
-	if err != nil {
+func RegisterForms(g *api.CoreGlobals) {
+	if err := RegisterThemesForm(g); err != nil {
 		panic(err)
 	}
 
-	g.CoreAPI.HttpAPI.Forms().RegisterHttpForms(themesForm)
+	if err := RegisterLogsForm(g); err != nil {
+		panic(err)
+	}
 }

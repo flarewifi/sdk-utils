@@ -3,15 +3,16 @@
 package main
 
 import (
-	"com.flarego.default-theme/app/themes"
+	sdkapi "sdk/api"
+
 	"com.flarego.default-theme/app"
-	plugin "sdk/api/plugin"
+	"com.flarego.default-theme/app/themes"
 )
 
 func main() {}
 
-func Init(api plugin.IPluginApi) {
-    app.SetupRoutes(api)
+func Init(api sdkapi.IPluginApi) {
+	app.SetupRoutes(api)
 	themes.SetPortalTheme(api)
-    themes.SetAdminTheme(api)
+	themes.SetAdminTheme(api)
 }

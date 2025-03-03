@@ -6,25 +6,24 @@ import (
 	"path/filepath"
 	"sync"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	paths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func InitDirs() {
 	dirs := []string{
-		paths.ConfigDir,
-		paths.CacheDir,
-		paths.PublicDir,
-		filepath.Join(paths.CacheDir, "assets"),
-		filepath.Join(paths.ConfigDir, "plugins"),
-		filepath.Join(paths.ConfigDir, "accounts"),
+		sdkutils.PathConfigDir,
+		sdkutils.PathCacheDir,
+		sdkutils.PathPublicDir,
+		filepath.Join(sdkutils.PathCacheDir, "assets"),
+		filepath.Join(sdkutils.PathConfigDir, "plugins"),
+		filepath.Join(sdkutils.PathConfigDir, "accounts"),
 	}
 	wg := sync.WaitGroup{}
 	wg.Add(len(dirs))
 	for _, d := range dirs {
 		go func(d string) {
 			defer wg.Done()
-			if err := os.MkdirAll(d, sdkfs.PermDir); err != nil {
+			if err := os.MkdirAll(d, sdkutils.PermDir); err != nil {
 				log.Fatal(err)
 			}
 		}(d)

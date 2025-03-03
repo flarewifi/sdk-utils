@@ -3,12 +3,12 @@ package uci
 import (
 	"errors"
 
-	uci "sdk/api/uci"
+	sdkapi "sdk/api"
 )
 
 // interface
-func (self *UciNetworkApi) GetInterface(section string) (iface *uci.INetIface, err error) {
-	var ifdata uci.INetIface
+func (self *UciNetworkApi) GetInterface(section string) (iface *sdkapi.INetIface, err error) {
+	var ifdata sdkapi.INetIface
 
 	ifdata.Section = section
 
@@ -54,7 +54,7 @@ func (self *UciNetworkApi) GetInterfaceSecs() (sections []string) {
 	return secs
 }
 
-func (self *UciNetworkApi) GetInterfaces() (ifaces []*uci.INetIface, err error) {
+func (self *UciNetworkApi) GetInterfaces() (ifaces []*sdkapi.INetIface, err error) {
 	secs, _ := UciTree.GetSections("network", "interface")
 
 	for _, s := range secs {
@@ -68,7 +68,7 @@ func (self *UciNetworkApi) GetInterfaces() (ifaces []*uci.INetIface, err error) 
 	return ifaces, nil
 }
 
-func (self *UciNetworkApi) SetInterface(section string, cfg *uci.INetIface) error {
+func (self *UciNetworkApi) SetInterface(section string, cfg *sdkapi.INetIface) error {
 	var ok bool
 
 	ok = UciTree.Set("network", section, "proto", cfg.Proto)

@@ -6,12 +6,12 @@ import (
 	"log"
 	"os"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func (d *EncryptedDisk) Mount() error {
 	log.Println("Initializing encrypted disk: ", d.mountpath)
-	return sdkfs.EmptyDir(d.mountpath)
+	return sdkutils.FsEmptyDir(d.mountpath)
 }
 
 func (d *EncryptedDisk) Unmount() error {

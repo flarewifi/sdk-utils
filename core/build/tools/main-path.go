@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func MainFile() string {
@@ -15,5 +15,5 @@ func MainFile() string {
 }
 
 func MainPath() string {
-	return filepath.Join(sdkpaths.AppDir, "main", MainFile())
+	return filepath.Join(sdkutils.PathAppDir, "main", MainFile())
 }

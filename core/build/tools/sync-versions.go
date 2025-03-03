@@ -1,27 +1,26 @@
 package tools
 
 import (
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func SyncCoreVersion() {
-	version := pkg.CoreInfo().Version
+	version := plugins.GetCoreInfo().Version
 	packageJson := "package.json"
 	var pkg map[string]interface{}
-	err := sdkfs.ReadJson(packageJson, &pkg)
+	err := sdkutils.JsonRead(packageJson, &pkg)
 	if err != nil {
 		panic(err)
 	}
 	pkg["version"] = version
-	err = sdkfs.WriteJson(packageJson, pkg)
+	err = sdkutils.JsonWrite(packageJson, pkg)
 	if err != nil {
 		panic(err)
 	}
@@ -30,7 +29,7 @@ func SyncCoreVersion() {
 }
 
 func SyncGoVersion() {
-	b, err := os.ReadFile(filepath.Join(sdkpaths.AppDir, ".go-version"))
+	b, err := os.ReadFile(filepath.Join(sdkutils.PathAppDir, ".go-version"))
 	if err != nil {
 		panic(err)
 	}
@@ -45,7 +44,7 @@ func SyncGoVersion() {
 	}
 
 	for _, f := range files {
-		file := filepath.Join(sdkpaths.AppDir, f)
+		file := filepath.Join(sdkutils.PathAppDir, f)
 		if err := ReplaceGoVersion(goVersion, file); err != nil {
 			panic(err)
 		}

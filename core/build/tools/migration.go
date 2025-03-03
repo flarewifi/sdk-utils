@@ -7,8 +7,7 @@ import (
 	"strings"
 	"time"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func MigrationCreate(pluginDir string, name string) {
@@ -17,11 +16,11 @@ func MigrationCreate(pluginDir string, name string) {
 	timestamp = strings.Replace(timestamp, ".", "", 1)
 	migrationsDir := filepath.Join(pluginDir, "resources/migrations")
 
-	name = sdkstr.Slugify(name, "_")
+	name = sdkutils.Slugify(name, "_")
 	migrationUpPath := filepath.Join(migrationsDir, timestamp+"_"+name+".up.sql")
 	migrationDownPath := filepath.Join(migrationsDir, timestamp+"_"+name+".down.sql")
 
-	err := sdkfs.EnsureDir(migrationsDir)
+	err := sdkutils.FsEnsureDir(migrationsDir)
 	if err != nil {
 		panic(err)
 	}
@@ -29,11 +28,11 @@ func MigrationCreate(pluginDir string, name string) {
 	contentUp := "-- Write your sql for up migration here\n"
 	contentDown := "-- Write your sql for down migration here\n"
 
-	if err := os.WriteFile(migrationUpPath, []byte(contentUp), sdkfs.PermFile); err != nil {
+	if err := os.WriteFile(migrationUpPath, []byte(contentUp), sdkutils.PermFile); err != nil {
 		panic(err)
 	}
 
-	if err := os.WriteFile(migrationDownPath, []byte(contentDown), sdkfs.PermFile); err != nil {
+	if err := os.WriteFile(migrationDownPath, []byte(contentDown), sdkutils.PermFile); err != nil {
 		panic(err)
 	}
 

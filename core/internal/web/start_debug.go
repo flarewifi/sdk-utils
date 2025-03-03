@@ -23,13 +23,15 @@ func StartServer(r *mux.Router, forever bool) *http.Server {
 
 	printRoutes(r)
 
-	addr := fmt.Sprintf(":%d", env.HTTP_PORT)
-	log.Println("Listening on port", addr)
+	port := fmt.Sprintf(":%d", env.HTTP_PORT)
+	fmt.Printf("********************************************\n")
+	fmt.Printf("********* Listening on port %s **********\n", port)
+	fmt.Printf("********************************************\n")
 	// log.Fatal(http.ListenAndServe(port, router.RootRouter()))
 
 	srv := &http.Server{
 		Handler: r,
-		Addr:    addr,
+		Addr:    port,
 		// Good practice: enforce timeouts for servers you create!
 		// WriteTimeout: 30 * time.Second,
 		// ReadTimeout:  30 * time.Second,

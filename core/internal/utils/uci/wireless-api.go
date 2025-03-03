@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	uci "sdk/api/uci"
+	sdkapi "sdk/api"
 )
 
 type UciWirelessApi struct{}
@@ -24,8 +24,8 @@ func (self *UciWirelessApi) GetIfaceSecs() (sections []string) {
 	return secs
 }
 
-func (self *UciWirelessApi) GetDevice(section string) (dev *uci.WifiDev, err error) {
-	var wdev uci.WifiDev
+func (self *UciWirelessApi) GetDevice(section string) (dev *sdkapi.WifiDev, err error) {
+	var wdev sdkapi.WifiDev
 
 	wdev.Section = section
 
@@ -68,8 +68,8 @@ func (self *UciWirelessApi) GetDevice(section string) (dev *uci.WifiDev, err err
 	return &wdev, nil
 }
 
-func (self *UciWirelessApi) GetIface(section string) (iface *uci.WifiIface, err error) {
-	var wlan uci.WifiIface
+func (self *UciWirelessApi) GetIface(section string) (iface *sdkapi.WifiIface, err error) {
+	var wlan sdkapi.WifiIface
 
 	wlan.Section = section
 
@@ -110,7 +110,7 @@ func (self *UciWirelessApi) GetIface(section string) (iface *uci.WifiIface, err 
 	return &wlan, nil
 }
 
-func (self *UciWirelessApi) GetDevices() (devs []*uci.WifiDev) {
+func (self *UciWirelessApi) GetDevices() (devs []*sdkapi.WifiDev) {
 	secs := self.GetDeviceSecs()
 
 	for _, s := range secs {
@@ -123,7 +123,7 @@ func (self *UciWirelessApi) GetDevices() (devs []*uci.WifiDev) {
 	return devs
 }
 
-func (self *UciWirelessApi) GetIfaces() (ifaces []*uci.WifiIface) {
+func (self *UciWirelessApi) GetIfaces() (ifaces []*sdkapi.WifiIface) {
 	secs := self.GetIfaceSecs()
 
 	for _, s := range secs {
@@ -136,7 +136,7 @@ func (self *UciWirelessApi) GetIfaces() (ifaces []*uci.WifiIface) {
 	return ifaces
 }
 
-func (self *UciWirelessApi) SetDevice(section string, cfg *uci.WifiDev) error {
+func (self *UciWirelessApi) SetDevice(section string, cfg *sdkapi.WifiDev) error {
 	var ok bool
 
 	disabled := "0"
@@ -171,7 +171,7 @@ func (self *UciWirelessApi) SetDevice(section string, cfg *uci.WifiDev) error {
 	return nil
 }
 
-func (self *UciWirelessApi) SetIface(section string, cfg *uci.WifiIface) error {
+func (self *UciWirelessApi) SetIface(section string, cfg *sdkapi.WifiIface) error {
 	var ok bool
 
 	if cfg.Device != "" {

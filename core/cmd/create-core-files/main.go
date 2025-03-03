@@ -9,14 +9,12 @@ func main() {
 			"config/.defaults",
 			"core/go.mod",
 			"core/plugin.json",
-			"core/support.json",
 			"core/resources",
 			"plugins/system",
 			"sdk",
-			// "utils",
 			"go.work.default",
 		},
-		ExtraFiles: []tools.ExtraFiles{
+		CustomFiles: []tools.CustomFiles{
 			{
 				Src:  "go.work.default",
 				Dest: "go.work",

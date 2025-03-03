@@ -1,8 +1,8 @@
 package network
 
 import (
-	"sdk/api/network"
 	"core/internal/utils/ubus"
+	sdkapi "sdk/api"
 )
 
 type NetworkDevice struct {
@@ -13,8 +13,8 @@ func (self *NetworkDevice) Name() string {
 	return self.netdev.Name
 }
 
-func (self *NetworkDevice) Type() sdknet.NetDevType {
-	return sdknet.NetDevType(self.netdev.Type)
+func (self *NetworkDevice) Type() sdkapi.NetDevType {
+	return sdkapi.NetDevType(self.netdev.Type)
 }
 
 func (self *NetworkDevice) MacAddr() string {
@@ -41,6 +41,6 @@ func (self *NetworkDevice) TxBytes() uint {
 	return self.netdev.Stats.TxBytes
 }
 
-func NewNetworkDevice(d *ubus.NetworkDevice) sdknet.INetworkDevice {
+func NewNetworkDevice(d *ubus.NetworkDevice) sdkapi.INetworkDevice {
 	return &NetworkDevice{d}
 }

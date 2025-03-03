@@ -1,1 +1,1 @@
-DROP TABLE IF NOT EXISTS purchases;
+DROP TABLE IF EXISTS purchases;

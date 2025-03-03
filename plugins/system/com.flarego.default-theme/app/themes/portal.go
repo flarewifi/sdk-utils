@@ -2,46 +2,56 @@ package themes
 
 import (
 	"net/http"
-	sdkhttp "sdk/api/http"
-	sdkplugin "sdk/api/plugin"
+	sdkapi "sdk/api"
 
 	"com.flarego.default-theme/resources/views/auth"
 	"com.flarego.default-theme/resources/views/portal"
-	"github.com/a-h/templ"
 )
 
-func SetPortalTheme(api sdkplugin.IPluginApi) {
+func SetPortalTheme(api sdkapi.IPluginApi) {
 
-	api.Themes().NewPortalTheme(sdkhttp.PortalThemeOpts{
+	api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
-		LayoutFactory: func(w http.ResponseWriter, r *http.Request, data sdkhttp.PortalLayoutData) templ.Component {
-			layout := portal.PortalLayout(data)
-			return layout
+		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, b sdkapi.IViewBuilder) {
+			head := portal.PortalHead()
+			layout := portal.PortalLayout(portal.PortalLayoutData{
+				PageContent: b.Content(),
+			})
+			b.Render(head, layout)
 		},
-		LoginPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkhttp.LoginPageData) sdkhttp.ViewPage {
+		LoginPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.LoginPageData) sdkapi.ViewPage {
 			csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)
 			page := auth.LoginPage(csrfHtml, data)
-			return sdkhttp.ViewPage{PageContent: page}
+			return sdkapi.ViewPage{PageContent: page}
 		},
-		IndexPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkhttp.PortalIndexData) sdkhttp.ViewPage {
-			page := portal.PortalIndexPage()
-			return sdkhttp.ViewPage{PageContent: page}
+		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
+			clnt, err := api.Http().GetClientDevice(r)
+			if err != nil {
+				api.Logger().Error("Error in getting client device: " + err.Error())
+				return sdkapi.ViewPage{}
+			}
+
+			summary, err := api.SessionsMgr().SessionSummary(r.Context(), clnt)
+			if err != nil {
+				api.Logger().Error("Error in session summary query: " + err.Error())
+				return sdkapi.ViewPage{}
+			}
+
+			_, ok := api.SessionsMgr().CurrSession(clnt)
+			navs := api.Http().Navs().GetPortalItems(r)
+			page := portal.PortalIndexPage(api, portal.PortalIndexData{
+				Navs:             navs,
+				SessionSummary:   summary,
+				IsSessionRunning: ok,
+			})
+
+			return sdkapi.ViewPage{
+				Assets: sdkapi.ViewAssets{
+					JsFile: "portal/index.js",
+				},
+				PageContent: page,
+			}
 		},
 	})
-
-	// api.Themes().NewPortalTheme(sdkthemes.PortalTheme{
-	// 	LayoutComponent: sdkthemes.ThemeComponent{
-	// 		Component: "portal/ThemeLayout.vue",
-	// 	},
-	// 	IndexComponent: sdkthemes.ThemeComponent{
-	// 		Component: "portal/ThemeIndex.vue",
-	// 	},
-	// 	ThemeAssets: &sdkthemes.ThemeAssets{
-	// 		Styles: []string{
-	// 			"vendor/bootstrap-4.6.1/bootstrap.min.css",
-	//                "portal/style.css",
-	// 		},
-	// 	},
-	// })
 }

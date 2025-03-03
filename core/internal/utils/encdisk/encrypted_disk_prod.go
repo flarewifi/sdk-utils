@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func (d *EncryptedDisk) Mount() error {
@@ -20,7 +20,7 @@ func (d *EncryptedDisk) Mount() error {
 		return err
 	}
 
-	if !sdkfs.Exists(d.file) {
+	if !sdkutils.FsExists(d.file) {
 		if err := cmd.Exec(fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=50", d.file), nil); err != nil {
 			return err
 		}

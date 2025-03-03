@@ -1,11 +1,11 @@
 package main
 
 import (
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func main() {
-	pkg.LinkNodeModulesLib(sdkpaths.AppDir)
+	plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
 }

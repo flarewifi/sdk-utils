@@ -2,45 +2,41 @@ package bootstrap5
 
 import (
 	"fmt"
-	"sdk/api/forms"
-	"sdk/api/http"
+	sdkapi "sdk/api"
 )
 
-templ HtmlForm(form sdkhttp.IHttpForm, csrfTag string, submitUrl string) {
-	{{ json, err := form.JsonData() }}
-	if err != nil {
-		<p>Error: { err.Error() }</p>
-		{{ return }}
-	}
-	<form id="form" method="POST" action={ templ.SafeURL(submitUrl) } data-json={ templ.JSONString(json) }>
+templ HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitText string) {
+	<form id="form" method="POST" action={ templ.SafeURL(submitUrl) }>
 		@templ.Raw(csrfTag)
 		for _, sec := range form.GetSections() {
-			<legend>{ sec.Name }</legend>
-			for _, fld := range sec.Fields {
-				switch fld.GetType() {
-					case sdkforms.FormFieldTypeText:
-						@TextInputField(form, sec, fld)
-					case sdkforms.FormFieldTypeInteger:
-						@IntegerInputField(form, sec, fld)
-					case sdkforms.FormFieldTypeDecimal:
-						@DecimalInputField(form, sec, fld)
-					case sdkforms.FormFieldTypeBoolean:
-						@BooleanInputField(form, sec, fld)
-					case sdkforms.FormFieldTypeList:
-						@ListInputField(form, sec, fld)
-					case sdkforms.FormFieldTypeMulti:
-						@MultiInputField(form, sec, fld)
-					default:
-						<p>{ fmt.Sprintf("unsupported field type: %s", fld.GetType()) }</p>
-				}
-				<br/>
+			<legend>{ sec.GetLabel() }</legend>
+			for _, fld := range sec.GetFields() {
+				<div class="mt-1">
+					switch fld.GetType() {
+						case sdkapi.FormFieldTypeString:
+							@StringInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeText:
+							@TextInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeInteger:
+							@IntegerInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeDecimal:
+							@DecimalInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeBoolean:
+							@BooleanInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeList:
+							@ListInputField(form, sec, fld)
+						case sdkapi.FormFieldTypeMulti:
+							@MultiInputField(form, sec, fld)
+						default:
+							<p>{ fmt.Sprintf("unsupported field type: %s", fld.GetType()) }</p>
+					}
+				</div>
 			}
-			<hr/>
 		}
-		<button type="submit">Submit</button>
+		<div class="mt-3">
+			<button class="btn btn-primary" type="submit">
+				{ submitText }
+			</button>
+		</div>
 	</form>
-	<script type="text/javascript">
-  var str = document.getElementById('form').getAttribute('data-json');
-  console.log(JSON.parse(str));
-</script>
 }

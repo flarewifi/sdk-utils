@@ -1,7 +1,7 @@
-/core/internal/db/sqlc
 /config/accounts
 /config/plugins
 /config/*.json
+/config/*.zip
 /plugins/local/com.sample.plugin
 /plugins/installed
 /plugins/update
@@ -19,6 +19,7 @@
 /go
 /plugins/installed/*
 /bin
+/packages
 .null*
 
 .DS_Store
@@ -34,3 +35,4 @@ go.work.sum
 __debug_bin*
 main.exe
 *:Zone.Identifier
+/plugins/cache

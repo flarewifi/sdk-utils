@@ -4,13 +4,13 @@ import (
 	"net/http"
 
 	acct "core/internal/accounts"
-	"sdk/api/http"
+	sdkapi "sdk/api"
 )
 
 func PermsMiddleware(perms []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			acctsym := r.Context().Value(sdkhttp.SysAcctCtxKey)
+			acctsym := r.Context().Value(sdkapi.SysAcctCtxKey)
 			if acctsym == nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				return

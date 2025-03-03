@@ -2,7 +2,7 @@ package cfgapi
 
 import (
 	"core/internal/config"
-	"sdk/api/config"
+	sdkapi "sdk/api"
 )
 
 func NewAppCfgApi() *AppCfgApi {
@@ -11,20 +11,20 @@ func NewAppCfgApi() *AppCfgApi {
 
 type AppCfgApi struct{}
 
-func (c *AppCfgApi) Get() (sdkcfg.AppCfg, error) {
+func (c *AppCfgApi) Get() (sdkapi.AppCfg, error) {
 	cfg, err := config.ReadApplicationConfig()
 	if err != nil {
-		return sdkcfg.AppCfg{}, err
+		return sdkapi.AppCfg{}, err
 	}
 
-	return sdkcfg.AppCfg{
+	return sdkapi.AppCfg{
 		Lang:     cfg.Lang,
 		Currency: cfg.Currency,
 		Secret:   cfg.Secret,
 	}, nil
 }
 
-func (c *AppCfgApi) Save(cfg sdkcfg.AppCfg) error {
+func (c *AppCfgApi) Save(cfg sdkapi.AppCfg) error {
 	data := config.AppConfig{
 		Lang:     cfg.Lang,
 		Currency: cfg.Currency,

@@ -1,81 +1,104 @@
-# AccountsApi
+ # IAccountsApi
 
-The `AccountsApi` let's you create, modify, remove and manage system user accounts and permissions.
+The `IAccountsApi` allows you to create, modify, remove, and manage admin accounts and permissions. There are two types of admin accounts:
 
-## 1. AccountsApi Methods {#accounts-api-methods}
+- **normal**: A normal admin account with limited permissions.
+- **master**: An admin account that can create, modify, and delete other admin accounts and permissions.
 
-The following are the available methods in `AccountsApi`:
+To obtain an instance of the `IAccountsApi`:
+
+```go title="main.go"
+import (
+    sdkapi "sdk/api"
+)
+func Init(api sdkapi.IPluginApi) {
+    acctAPI := api.Acct()
+    fmt.Println(acctAPI) // IAccountsApi
+}
+```
+
+## 1. IAccountsApi {#accounts-api}
+
+The following are the available methods in `IAccountsApi`:
 
 ### Create
 
-It creates a new user account with the given username, password and [permissions](#permissions). It returns an [Account](#account-instance) instance and an `error` object.
+It creates a new user account with the given username, password and [permissions](#permissions). It returns an [IAccount](#account-instance) instance and an `error` object.
 
 ```go
+acctAPI := api.Acct()
+
 username := "admin"
 password := "admin"
-permissions := []string{"admin"}
-acct, err := api.Acct().Create(username, password, permissions)
+permissions := []string{sdkapi.AcctPermMaster} // grant "master" permission
+
+acct, err := acctAPI.Create(username, password, permissions)
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
-fmt.Println(acct) // Account
+fmt.Println(acct) // admin account
 ```
 
 ### Find
 
-It finds an user account by the given username. It returns an [Account](#account-instance) instance and an `error` object.
+It finds an user account by the given username. It returns an [IAccount](#account-instance) instance and an `error` object.
 
 ```go
-acct, err := api.Acct().Find("admin")
+acctAPI := api.Acct()
+acct, err := acctAPI.Find("admin")
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
-fmt.Println(acct) // Account
+fmt.Println(acct) // IAccount
 ```
 
 ### GetAll
 
-It returns all the user accounts, admin and non-admin. It returns a slice of [Account](#account-instance) instance and an `error` object.
+It returns all the normal and master accounts, admin and non-admin. It returns a slice of [IAccount](#account-instance) instance and an `error` object.
 
 ```go
-accts, err := api.Acct().GetAll()
+acctAPI := api.Acct()
+accts, err := acctAPI.GetAll()
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
-fmt.Println(accts) // []Account
+fmt.Println(accts) // []IAccount
 ```
 
-### GetAdmins
+### GetMasterAccts
 
-It returns all the user accounts. It returns a slice of [Account](#account-instance) instance and an `error` object.
+Get only the master accounts. It returns a slice of [IAccount](#account-instance) instance and an `error` object.
 
 ```go
-accts, err := api.Acct().GetAdmins()
+acctAPI := api.Acct()
+accts, err := acctAPI.GetMasterAccts()
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
-fmt.Println(accts) // []Account
+fmt.Println(accts) // []IAccount
 ```
 
 ### NewPerm
 
-It creates a new permission with the given name and description. It returns an `error` object.
+It creates a new permission with the given name and description. It returns an `error` object when an error occured or when the permission already exists.
 
 ```go
 name := "newperm"
 desc := "New permission"
-err := api.Acct().NewPerm(name, desc)
+acctAPI := api.Acct()
+err := acctAPI.NewPerm(name, desc)
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
 ```
 
-### GetPerms
+### GetAllPerms
 
-It returns all the available permissions, including custom ones from plugins. The return type is `map[string]string` (name and description pairs of permissions).
+It returns all the available permissions, including custom ones from all plugins. The return type is `map[string]string` (name and description pairs of permissions).
 
 ```go
-perms := api.Acct().GetPerms()
+acctAPI := api.Acct()
+perms := acctAPI.GetAllPerms()
 fmt.Println(perms) // map[string]string{"admin": "The admin permission"}
 ```
 
@@ -86,23 +109,23 @@ Returns the description of the given permission. It returns a `string` and an `e
 ```go
 desc, err := api.Acct().PermDesc("newperm")
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
 fmt.Println(desc) // "New permission"
 ```
 
-______________________________________________________________________
+---
 
-## 2. Account Instance {#account-instance}
+## 2. IAccount {#account-instance}
 
-Account instance represents a system user account. First, find an user account by username:
+`IAccount` represents a system user account. To get an account instance, find an account identified by a username:
 
 ```go
 acct, err := api.Acct().Find("admin")
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
-fmt.Println(acct) // Account
+fmt.Println(acct) // IAccount
 ```
 
 Given an user account instance, you can access the following properties and methods:
@@ -120,47 +143,19 @@ acct.Username() // "admin"
 It returns the [permissions](#permissions-sec) of the user account.
 
 ```go
-acct.Permissions() // []string{"admin"}
-```
-
-### HasAllPerms
-
-Returns `true` if the user account has all the given permissions. It can be used to check if an user account has all the required permissions to access a certain part of the system.
-
-```go
-acct, _ := api.Acct().Find("admin")
-hasAll := acct.HasAllPerms([]string{"admin"})
-fmt.Println(hasAll) // true
-```
-
-### HasAnyPerm
-
-It returns `true` if the user account has any of the given permissions. It can be used to check if an user account has any of the required permissions to access a certain part of the system.
-
-```go
-acct, _ := api.Acct().Find("admin")
-hasAny := acct.HasAnyPerm([]string{"admin"})
-fmt.Println(hasAny) // true
-```
-
-### IsAdmin
-
-It returns `true` if the user account has the `admin` permission.
-
-```go
-acct.IsAdmin() // true
+acct.Permissions() // []string{"master"}
 ```
 
 ### Update
 
-It updates the user account with the given username, password and [permissions](#permissions). It returns an `error` object.
+It updates the user account with the given username, password and [permissions](#permissions). If you don't want to modify the existing account permissions, just pass `nil` value to the permissions parameter. It returns an `error` object.
 
 ```go
 newUsername := "newadmin"
 newPassword := "********"
-err := acct.Update(newUsername, newPassword, []string{"admin"})
+err := acct.Update(newUsername, newPassword, []string{"master"})
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
 ```
 
@@ -171,8 +166,36 @@ It deletes the user account. It returns an `error` object. Note: You cannot dele
 ```go
 err := acct.Delete()
 if err != nil {
-    fmt.Println(err) // Error
+    // handle error
 }
+```
+
+### IsMaster
+
+It returns `true` if the user account has the `master` permission.
+
+```go
+acct.IsMaster() // true
+```
+
+### HasAllPerms
+
+Returns `true` if the user account has all the given permissions. It can be used to check if an user account has all the required permissions to access a certain part of the system resource or page.
+
+```go
+acct, _ := api.Acct().Find("admin")
+hasAll := acct.HasAllPerms([]string{"master"})
+fmt.Println(hasAll) // true
+```
+
+### HasAnyPerm
+
+It returns `true` if the user account has any of the given permissions. It can be used to check if an user account has any of the required permissions to access a certain part of the system.
+
+```go
+acct, _ := api.Acct().Find("admin")
+hasAny := acct.HasAnyPerm([]string{"master"})
+fmt.Println(hasAny) // true
 ```
 
 ### Emit
@@ -205,6 +228,8 @@ ch := acct.Subscribe("some_event")
 acct.Unsubscribe("some_event", ch)
 ```
 
+---
+
 ## 3. Permissions {#permissions-sec}
 
 Permissions are used to control the access to various parts of the system. Users without the appropriate permissions will not be able to access the restricted parts of the system.
@@ -213,7 +238,9 @@ These are the default permissions that you can assign to an user account. Althou
 
 | Permission | Description
 | --- | --- |
-| `admin` | The admin permission grants full access to the system. |
+| `master` | Grants full control and access of the system resources. This is aliased by `sdkapi.AcctPermMaster` constant variable. |
+
+---
 
 ## 4. Events {#events}
 

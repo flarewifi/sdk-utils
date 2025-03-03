@@ -2,29 +2,28 @@ package tools
 
 import (
 	"core/env"
-	"core/internal/utils/pkg"
+	"core/internal/utils/plugins"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
-	sdkruntime "github.com/flarehotspot/go-utils/runtime"
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func BuildCoreBins() {
 	BuildFlareCLI()
 	BuildCore()
 
-	goversion := sdkruntime.GO_VERSION
-	tags := sdkstr.Slugify(env.BuildTags, "-")
+	goversion := sdkutils.GO_VERSION
+	tags := sdkutils.Slugify(env.BuildTags, "-")
+	info := plugins.GetCoreInfo()
 
 	build := &BuildOutput{
-		OutputDirName: filepath.Join("core-binaries", fmt.Sprintf("%s-%s-go%s-%s", pkg.CoreInfo().Version, sdkruntime.GOARCH, goversion, tags)),
+		OutputDirName: filepath.Join("core-binaries", fmt.Sprintf("core_arch_bin-%s-%s-go%s-%s", info.Version, sdkutils.GOARCH, goversion, tags)),
 		Files: []string{
 			"bin/flare",
 			"core/plugin.so",
+			"core/resources/assets/dist",
 		},
 	}
 
@@ -34,28 +33,22 @@ func BuildCoreBins() {
 }
 
 func BuildCore() {
-	workdir := filepath.Join(sdkpaths.TmpDir, "b/core", sdkstr.Rand(16))
+	workdir := filepath.Join(sdkutils.PathTmpDir, "b/core", sdkutils.RandomStr(16))
 	defer os.RemoveAll(workdir)
 
-	InstallSqlc()
-
-	cmd := exec.Command(sdkpaths.SqlcBin, "generate")
-	cmd.Dir = sdkpaths.AppDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := plugins.BuildTemplates(sdkutils.PathCoreDir); err != nil {
 		panic(err)
 	}
 
-	if err := pkg.BuildTemplates(sdkpaths.CoreDir); err != nil {
+	if err := plugins.BuildQueries(sdkutils.PathCoreDir); err != nil {
 		panic(err)
 	}
 
-	if err := pkg.BuildPluginSo(sdkpaths.CoreDir, workdir); err != nil {
+	if err := plugins.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {
 		panic(err)
 	}
 
-	if err := pkg.BuildGlobalAssets(); err != nil {
+	if err := plugins.BuildGlobalAssets(); err != nil {
 		panic(err)
 	}
 }

@@ -1,63 +1,65 @@
-# PluginApi
+# IPluginApi
 
-The `PluginApi` is the root interface of Flare Hotspot SDK. It provides access to methods used to manipulate system accounts, network devices, theme configuration, user sessions, payment system and more. Each plugin is provided with an instance of `PluginApi`.
+The `IPluginApi` is the root Go interface of Flare Hotspot SDK. It provides access to methods used to manipulate system accounts, network devices, theme configuration, user sessions, payment system and more. Each plugin is provided with an instance of `IPluginApi`.
 
-When the plugin is first loaded into the system, the system looks for the `Init` function of the plugin's `main` package. The `PluginApi` object is then passed to the plugin's `Init` function. From here, you can start configuring the routes and components of your plugin. An example of a plugin's init function:
+When the plugin is first loaded into the system, the system looks for the `Init` function of the plugin's `main` package. The `IPluginApi` instance is then passed to the plugin's `Init` function. From there, you can start configuring the routes and components of your plugin. An example of a plugin's init function:
 
 ```go title="plugins/com.mydomain.myplugin/main.go"
 package main
 
 import (
-	sdkplugin "sdk/api/plugin"
+	sdkapi "sdk/api"
 )
 
+// Required for main package
 func main() {}
 
-func Init(api sdkplugin.PluginApi) {
+// Plugin entry point
+func Init(api sdkapi.IPluginApi) {
     // You can start using the SDK here.
     // You can configure your routes, define your plugin components
-    // and register items in the portal and admin nav menu, and more.
+    // and register items in the portal and admin navigation menu, and more.
 }
 ```
 
-## PluginApi Methods
+## IPluginApi Methods
 
-The following are the available methods in `PluginApi`.
+The following are the available methods in `IPluginApi`.
 
-### Pkg
+### Acct
 
-It returns the `package` field defined in [plugin.json](./plugin.json.md).
+It returns the [IAccountsApi](./accounts-api.md) object which is used to access and modify the system admin accounts.
 
 ```go
-pkg := api.Pkg()
-fmt.Println(pkg) // "com.mydomain.myplugin"
+acct := api.Acct()
+fmt.Println(acct) // IAccountsApi
 ```
 
-### Name
+### Ads
 
-It returns the `name` field defined in [plugin.json](./plugin.json.md).
+It returns the [IAdsApi](./ads-api.md) object which is used to create and manage ads.
 
 ```go
-name := api.Name()
-fmt.Println(name) // "My Plugin"
+ads := api.Ads()
+fmt.Println(ads) // IAdsApi
 ```
 
-### Version
+### Config
 
-It returns the `version` field defined in [plugin.json](./plugin.json.md).
+It returns the [IConfigApi](./config-api.md) object which is used to access and modify the system configuration.
 
 ```go
-version := api.Version()
-fmt.Println(version) // "1.0.0"
+config := api.Config()
+fmt.Println(config) // IConfigApi
 ```
 
-### Description
+### DeviceHooks
 
-It returns the `description` field defined in [plugin.json](./plugin.json.md).
+It returns the [IDeviceHooksApi](./device-hooks-api.md) object which is used to manage device registration hooks.
 
 ```go
-description := api.Description()
-fmt.Println(description) // "My plugin description"
+deviceHooks := api.DeviceHooks()
+fmt.Println(deviceHooks) // IDeviceHooksApi
 ```
 
 ### Dir
@@ -67,6 +69,124 @@ It returns the absolute path of the plugin's installation directory.
 ```go
 dir := api.Dir()
 fmt.Println(dir) // "/path/to/com.mydomain.myplugin"
+```
+
+### Features
+
+Returns the available features of the plugin.
+
+```go
+features := api.Features()
+fmt.Println(features) // []string{"theme:admin", "theme:portal"}
+```
+
+Below are the available features and their descriptions:
+
+| Feature | Description |
+| --- | --- |
+| `theme:admin` | Plugin provides an admin theme
+| `theme:portal` | Plugin provides a portal theme
+
+### Http
+
+It returns the [IHttpApi](./http-api.md) object which is used to configure routes and serve HTTP requests.
+
+```go
+http := api.Http()
+fmt.Println(http) // IHttpApi
+```
+
+### InAppPurchases
+
+It returns the [IInAppPurchasesApi](./in-app-purchases-api.md) object which is used to create and manage in-app purchases.
+
+```go
+inAppPurchases := api.InAppPurchases()
+fmt.Println(inAppPurchases) // IInAppPurchasesApi
+```
+
+### Info
+
+It returns the [sdkutils.PluginInfo](../api/plugin-info.md) field defined in [plugin.json](./plugin.json.md).
+
+```go
+info := api.Info()
+fmt.Println(info)
+//  {
+//    Name: "My Plugin",
+//    Package: "com.mydomain.myplugin",
+//    Version: "0.0.1",
+//    Description: "My plugin description",
+//    SystemPackages: [],
+//    SDK: "1.0.0"
+//  }
+```
+
+### Logger
+
+It returns the [ILoggerAPI](./logger-api.md) object which is used to log events in a plugin.
+
+### Network
+
+It returns the [INetworkApi](../network-api/) object which is used to manage the network.
+
+```go
+network := api.Network()
+fmt.Println(network) // INetworkApi
+```
+
+### Payments
+
+It return the [IPaymentsApi](./payments-api.md) object which is used to create payment options or create system transactions.
+
+```go
+payments := api.Payments()
+fmt.Println(payments) // IPaymentsApi
+```
+
+### PluginsMgr
+
+It returns the [IPluginsMgrApi](./plugins-mgr-api.md) object which is used to manage plugins.
+
+```go
+pluginsMgr := api.PluginsMgr()
+fmt.Println(pluginsMgr) // IPluginsMgrApi
+```
+
+### Resource
+
+It returns the absolute path of the file under the plugin's resource directory.
+
+```go
+resource := api.Resource("/my-resource.txt")
+fmt.Println(resource) // "/path/to/com.mydomain.myplugin/resources/my-resource.txt"
+```
+
+### SessionsMgr
+
+It returns the [ISessionsMgrApi](./sessions-mgr-api.md) object which is used to manage user sessions.
+
+```go
+sessionsMgr := api.SessionsMgr()
+fmt.Println(sessionsMgr) // ISessionsMgrApi
+```
+
+### SqlDb
+
+It returns [\*sql.DB](http://go-database-sql.org/overview.html) instance which is used to query, insert, update and delete database entities.
+
+```go
+db := api.SqlDb()
+fmt.Println(db) // *sql.DB
+```
+
+### Themes
+
+It returns the [`IThemesApi`](./themes-api.md) object which is used to manage system UI themes.
+
+```go
+themes := api.Themes()
+fmt.Println(themes) // IThemesApi
 ```
 
 ### Translate
@@ -86,155 +206,11 @@ Sometimes we want to put variables inside the translation message. In this examp
 Payment received: USD <% .amount %>
 ```
 
-### Resource
-
-It returns the absolute path of the file under the plugin's resource directory.
-
-```go
-resource := api.Resource("/my-resource.txt")
-fmt.Println(resource) // "/path/to/com.mydomain.myplugin/resources/my-resource.txt"
-```
-
-### SqlDb
-
-It returns [\*sql.DB](http://go-database-sql.org/overview.html) instance which is used to query, insert, update and delete database entities.
-
-```go
-db := api.SqlDb()
-fmt.Println(db) // *sql.DB
-```
-
-### Migrate
-
-It looks for any `.sql` scripts in the plugin's `resources/migrations` directory and runs them on the database. The scripts are run in alphabetical order.
-
-```go
-err := api.Migrate()
-// handle err
-```
-
-See [Database Migrations](../guides/database-migrations.md) for more information on how to create and run database migrations.
-
-### Acct
-
-It returns the [AccountsApi](./accounts-api.md) object which is used to access and modify the system admin accounts.
-
-```go
-acct := api.Acct()
-fmt.Println(acct) // AccountsApi
-```
-
-### Http
-
-It returns the [`HttpApi`](./http-api.md) object which is used to configure routes and serve HTTP requests.
-
-```go
-http := api.Http()
-fmt.Println(http) // HttpApi
-```
-
-### Config
-
-It returns the [`ConfigApi`](./config-api.md) object which is used to access and modify the system configuration.
-
-```go
-config := api.Config()
-fmt.Println(config) // ConfigApi
-```
-
-### Payments
-
-It return the [`PaymentsApi`](./payments-api.md) object which is used to create payment options or create system transactions.
-
-```go
-payments := api.Payments()
-fmt.Println(payments) // PaymentsApi
-```
-
-### InAppPurchases
-
-It returns the [`InAppPurchasesApi`](./in-app-purchases-api.md) object which is used to create and manage in-app purchases.
-
-```go
-inAppPurchases := api.InAppPurchases()
-fmt.Println(inAppPurchases) // InAppPurchasesApi
-```
-
-### Ads
-
-It returns the [`AdsApi`](./ads-api.md) object which is used to create and manage ads.
-
-```go
-ads := api.Ads()
-fmt.Println(ads) // AdsApi
-```
-
-### PluginsMgr
-
-It returns the [`PluginsMgrApi`](./plugins-mgr-api.md) object which is used to manage plugins.
-
-```go
-pluginsMgr := api.PluginsMgr()
-fmt.Println(pluginsMgr) // PluginsMgrApi
-```
-
-### Network
-
-It returns the [`NetworkApi`](../network-api/) object which is used to manage the network.
-
-```go
-network := api.Network()
-fmt.Println(network) // NetworkApi
-```
-
-### DeviceHooks
-
-It returns the [`DeviceHooksApi`](../device-hooks-api/) object which is used to manage device registration hooks.
-
-```go
-deviceHooks := api.DeviceHooks()
-fmt.Println(deviceHooks) // DeviceHooksApi
-```
-
-### SessionsMgr
-
-It returns the [SessionsMgrApi](./sessions-mgr-api.md) object which is used to manage user sessions.
-
-```go
-sessionsMgr := api.SessionsMgr()
-fmt.Println(sessionsMgr) // SessionsMgrApi
-```
-
 ### Uci
 
-It returns the [`UciApi`](./uci-api.md) object which is a wrapper to [OpenWRT's UCI](https://openwrt.org/docs/guide-user/base-system/uci).
+It returns the [IUciApi](./uci-api.md) object which is a wrapper to [OpenWRT's UCI](https://openwrt.org/docs/guide-user/base-system/uci).
 
 ```go
 uci := api.Uci()
-fmt.Println(uci) // UciApi
+fmt.Println(uci) // IUciApi
 ```
-
-### Themes
-
-It returns the [`ThemesApi`](./themes-api.md) object which is used to manage system UI themes.
-
-```go
-themes := api.Themes()
-fmt.Println(themes) // ThemesApi
-```
-
-### Features
-
-Returns the implement features of the plugin.
-
-```go
-features := api.Features()
-fmt.Println(features) // []string{"theme:admin", "theme:portal"}
-```
-
-Below are the available features and their descriptions:
-
-| Feature | Description |
-| --- | --- |
-| `theme:admin` | Plugin provides an admin theme
-| `theme:portal` | Plugin provides a portal theme

@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"core/internal/utils/ubus"
-	"sdk/api/network"
+	sdkapi "sdk/api"
 )
 
 type NetworkInterface struct {
@@ -22,7 +22,7 @@ func (self *NetworkInterface) Ifname() string {
 	return self.name
 }
 
-func (self *NetworkInterface) Device() (d sdknet.INetworkDevice, err error) {
+func (self *NetworkInterface) Device() (d sdkapi.INetworkDevice, err error) {
 	info, err := self.getInfo()
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func (self *NetworkInterface) Device() (d sdknet.INetworkDevice, err error) {
 	return d, nil
 }
 
-func (self *NetworkInterface) IpV4Addr() (*sdknet.NetworkIpv4, error) {
+func (self *NetworkInterface) IpV4Addr() (*sdkapi.NetworkIpv4, error) {
 	info, err := self.getInfo()
 	if err != nil {
 		log.Println(err)
@@ -44,7 +44,7 @@ func (self *NetworkInterface) IpV4Addr() (*sdknet.NetworkIpv4, error) {
 
 	if len(info.IpV4Addresses) > 0 {
 		addr := info.IpV4Addresses[0]
-		return &sdknet.NetworkIpv4{
+		return &sdkapi.NetworkIpv4{
 			Addr:    addr.Addr,
 			Netmask: addr.Netmask,
 		}, nil

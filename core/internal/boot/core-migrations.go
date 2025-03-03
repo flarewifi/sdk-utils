@@ -4,13 +4,13 @@ import (
 	"log"
 	"path/filepath"
 
-	"core/internal/plugins"
+	"core/internal/api"
 	"core/internal/utils/migrate"
 
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func RunCoreMigrations(g *plugins.CoreGlobals) {
+func RunCoreMigrations(g *api.CoreGlobals) {
 	db := g.Db.SqlDB()
 
 	err := migrate.Init(db)
@@ -19,7 +19,7 @@ func RunCoreMigrations(g *plugins.CoreGlobals) {
 		return
 	}
 
-	err = migrate.MigrateUp(db, filepath.Join(sdkpaths.CoreDir, "resources/migrations"))
+	err = migrate.MigrateUp(db, filepath.Join(sdkutils.PathCoreDir, "resources/migrations"))
 	if err != nil {
 		log.Printf("Core migrations error: %s", err.Error())
 	} else {

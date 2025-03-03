@@ -6,16 +6,16 @@ import (
 	"net"
 	"net/http"
 
+	"core/db"
 	"core/internal/connmgr"
-	"core/internal/db"
 	"core/internal/utils/hostfinder"
-	sdkhttp "sdk/api/http"
+	sdkapi "sdk/api"
 )
 
 func DeviceMiddleware(dtb *db.Database, clntMgr *connmgr.ClientRegister) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			clntSym := r.Context().Value(sdkhttp.ClientCtxKey)
+			clntSym := r.Context().Value(sdkapi.ClientCtxKey)
 			if clntSym != nil {
 				next.ServeHTTP(w, r)
 				return
@@ -41,7 +41,7 @@ func DeviceMiddleware(dtb *db.Database, clntMgr *connmgr.ClientRegister) func(ne
 
 			fmt.Println("DeviceMiddleware: ", clnt)
 
-			ctx := context.WithValue(r.Context(), sdkhttp.ClientCtxKey, clnt)
+			ctx := context.WithValue(r.Context(), sdkapi.ClientCtxKey, clnt)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -6,20 +6,17 @@ import (
 	"sync"
 	"time"
 
-	"core/internal/db/models"
 	"core/internal/network"
 	jobque "core/internal/utils/job-que"
 	"core/internal/utils/tc"
-	connmgr "sdk/api/connmgr"
-	sdkconnmgr "sdk/api/connmgr"
-	sdknet "sdk/api/network"
+	sdkapi "sdk/api"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var sessionQ *jobque.JobQue = jobque.NewJobQue()
 
-func NewRunningSession(clnt sdkconnmgr.IClientDevice, s connmgr.IClientSession) (*RunningSession, error) {
+func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*RunningSession, error) {
 	lan, err := network.FindByIp(clnt.IpAddr())
 	if err != nil {
 		return nil, err
@@ -47,7 +44,9 @@ type RunningSession struct {
 	tcFilter   *tc.TcFilter
 	timeTicker *time.Ticker
 	tickerDone chan bool
-	session    connmgr.IClientSession
+	session    sdkapi.IClientSession
+	diffTime   int
+	diffMb     float64
 	callbacks  []chan error
 }
 
@@ -57,7 +56,7 @@ func (self *RunningSession) ClientId() pgtype.UUID {
 	return self.clntId
 }
 
-func (self *RunningSession) GetSession() connmgr.IClientSession {
+func (self *RunningSession) GetSession() sdkapi.IClientSession {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.session
@@ -78,7 +77,13 @@ func (self *RunningSession) Done() <-chan error {
 	return ch
 }
 
-func (self *RunningSession) Start(ctx context.Context, s connmgr.IClientSession) error {
+func (self *RunningSession) Diff() (secs int, mb float64) {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.diffTime, self.diffMb
+}
+
+func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
 	_, err := sessionQ.Exec(func() (interface{}, error) {
 		self.mu.Lock()
 		defer self.mu.Unlock()
@@ -161,7 +166,7 @@ func (self *RunningSession) CleanupTc() error {
 	return <-errCh
 }
 
-func (self *RunningSession) UpdateData(stats *sdknet.TrafficData) {
+func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
@@ -172,6 +177,7 @@ func (self *RunningSession) UpdateData(stats *sdknet.TrafficData) {
 		dataconMb := float64(download.Bytes+upload.Bytes) / (1 * 1000 * 1000)
 		log.Println("CONSUMPTION MB: ", dataconMb)
 		self.session.IncDataCons(dataconMb)
+		self.diffMb += dataconMb
 
 		if self.isConsumed() {
 			log.Println("Session data is consumed!!!")
@@ -202,8 +208,10 @@ func (self *RunningSession) initTimeTicker() {
 					defer self.mu.RUnlock()
 
 					s.IncTimeCons(1)
+					self.diffTime++
 
-					log.Println("time tick...")
+					remaining := s.TimeSecs() - s.TimeConsumption()
+					log.Printf("time tick: %d remaining...\n", remaining)
 
 					// save every 15s
 					if s.TimeConsumption()%15 == 0 {
@@ -213,6 +221,9 @@ func (self *RunningSession) initTimeTicker() {
 							go self.Stop(context.Background())
 							return
 						}
+						// reset diff counters
+						self.diffTime = 0
+						self.diffMb = 0
 					}
 
 					if self.isConsumed() {
@@ -313,12 +324,12 @@ func (self *RunningSession) isConsumed() bool {
 	s := self.session
 	t := s.Type()
 
-	if t == models.SessionTypeTime || t == models.SessionTypeTimeOrData {
+	if t == sdkapi.SessionTypeTime || t == sdkapi.SessionTypeTimeOrData {
 		isTimeConsumed := s.TimeConsumption() >= s.TimeSecs()
 		return isTimeConsumed || self.expired()
 	}
 
-	if t == models.SessionTypeData || t == models.SessionTypeTimeOrData {
+	if t == sdkapi.SessionTypeData || t == sdkapi.SessionTypeTimeOrData {
 		isDataConsumed := s.DataConsumption() >= s.DataMb()
 		return isDataConsumed || self.expired()
 	}

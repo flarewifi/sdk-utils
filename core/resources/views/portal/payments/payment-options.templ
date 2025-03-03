@@ -1,0 +1,22 @@
+package paymentsview
+
+type PaymentOption struct {
+	Name string
+	URL  string
+}
+
+templ PaymentOptions(opts []PaymentOption) {
+	<h1>Pending Purchase</h1>
+    <hr>
+    <h3>Choose a payment option:</h3>
+	<hr/>
+	<ul>
+		for _, opt := range opts {
+			<li>
+				<a href={ templ.SafeURL(opt.URL) }>
+					{ opt.Name }
+				</a>
+			</li>
+		}
+	</ul>
+}

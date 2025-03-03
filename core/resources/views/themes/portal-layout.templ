@@ -1,0 +1,74 @@
+package themes
+
+import sdkapi "sdk/api"
+
+type PortalAssets struct {
+	GlobalCssHref       string
+	GlobalJsSrc         string
+	ThemeCssHref        string
+	ThemeJsSrc          string
+	PluginGlobalCssHref string
+	PluginGlobalJsSrc   string
+	PageCssHref         string
+	PageJsSrc           string
+}
+
+type PortalLayoutData struct {
+    PageUUID string
+	Assets PortalAssets
+	SseURL string
+    PolyfillsURL string
+	Flash  *sdkapi.FlashMsg
+	Head   templ.Component
+	Layout templ.Component
+}
+
+templ PortalThemeLayout(data PortalLayoutData) {
+	<!DOCTYPE html>
+	<html lang="en" data-bs-theme="auto">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <!-- Prevent page from being cached -->
+            <meta name="pageuuid" content={ data.PageUUID } />
+			<title>Flare Hotspot</title>
+			<!-- Theme Stylesheets -->
+			if data.Assets.GlobalCssHref != "" {
+				<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>
+			}
+			if data.Assets.ThemeCssHref != "" {
+				<link rel="stylesheet" href={ data.Assets.ThemeCssHref }/>
+			}
+			if data.Assets.PluginGlobalCssHref != "" {
+				<link rel="stylesheet" href={ data.Assets.PluginGlobalCssHref }/>
+			}
+			if data.Assets.PageCssHref != "" {
+				<link rel="stylesheet" href={ data.Assets.PageCssHref }/>
+			}
+            <script nomodule="" src={ data.PolyfillsURL }></script>
+
+			<!-- Theme Head -->
+			@data.Head
+		</head>
+		<body hx-ext="sse" sse-connect={ data.SseURL }>
+			<!-- Theme Layout -->
+			@data.Layout
+			<!-- Theme Scripts -->
+			if data.Assets.GlobalJsSrc != "" {
+				<script src={ data.Assets.GlobalJsSrc }></script>
+			}
+			if data.Assets.ThemeJsSrc != "" {
+				<script src={ data.Assets.ThemeJsSrc }></script>
+			}
+			if data.Assets.PluginGlobalJsSrc != "" {
+				<script src={ data.Assets.PluginGlobalJsSrc }></script>
+			}
+			if data.Assets.PageJsSrc != "" {
+				<script src={ data.Assets.PageJsSrc }></script>
+			}
+			if data.Flash != nil {
+				<script id="flash-message" data-flash-type={ data.Flash.Type } data-flash-message={ data.Flash.Message } type="text/template"></script>
+			}
+		</body>
+	</html>
+}

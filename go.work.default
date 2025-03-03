@@ -1,4 +1,4 @@
-go 1.21.13
+go 1.21
 
 use (
     ./main
@@ -12,5 +12,5 @@ use (
     ./sdk/libs/pgx-5.7.1
     ./sdk/libs/templ-0.2.793
     ./sdk/libs/validator-10.22.1
-    ./sdk/libs/sqlc-1.26.0
+    ./sdk/libs/semver-3.3.1
 )

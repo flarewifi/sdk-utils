@@ -1,20 +1,30 @@
 package navs
 
 import (
-	"core/internal/plugins"
+	"core/internal/api"
 	"net/http"
-	sdkhttp "sdk/api/http"
+	sdkapi "sdk/api"
 )
 
-func SetAdminNavs(g *plugins.CoreGlobals) {
+func SetAdminNavs(g *api.CoreGlobals) {
 	coreNavs := g.CoreAPI.HttpAPI.Navs()
 
-	coreNavs.AdminNavsFactory(func(r *http.Request) []sdkhttp.AdminNavItemOpt {
-		return []sdkhttp.AdminNavItemOpt{
+	coreNavs.AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
+		return []sdkapi.AdminNavItemOpt{
 			{
-				Category:  sdkhttp.NavCategorySystem,
+				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "themes"),
 				RouteName: "admin:themes:index",
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "plugins"),
+				RouteName: "admin.plugins.index",
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "logs"),
+				RouteName: "admin:logs:index",
 			},
 		}
 	})

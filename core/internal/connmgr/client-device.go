@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"core/internal/db"
-	"core/internal/db/models"
+	"core/db"
+	"core/db/models"
 	"core/internal/utils/events"
 	"core/internal/utils/sse"
 
@@ -28,8 +28,8 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 		db:       dtb,
 		mdls:     mdls,
 		id:       d.Id(),
-		mac:      d.MacAddress(),
-		ip:       d.IpAddress(),
+		mac:      d.MacAddr(),
+		ip:       d.IpAddr(),
 		hostname: d.Hostname(),
 	}
 }
@@ -74,7 +74,7 @@ func (self *ClientDevice) Update(ctx context.Context, mac string, ip string, hos
 	return nil
 }
 
-func (self *ClientDevice) Emit(event string, data interface{}) {
+func (self *ClientDevice) Emit(event string, data []byte) {
 	channel := self.GetEventChannel(event)
 	sse.Emit(self.MacAddr(), event, data)
 	events.Emit(channel, data)

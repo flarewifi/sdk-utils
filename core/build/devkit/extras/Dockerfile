@@ -1,33 +1,40 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-# Description: Dockerfile for running the devkit.
-
 FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y \
-        wget curl gcc ca-certificates
+    wget tar gzip make gcc git sudo tar
 
-ENV GOPATH=/build/.tmp/gopath
-ENV GOCACHE=/build/.tmp/gocache
-ENV GO_CUSTOM_PATH=/build/.tmp/go
-ENV PATH=${GO_CUSTOM_PATH}/bin:${PATH}
-ENV PATH=${PATH}:/build/.tmp/gopath/bin
+ENV PATH=${PATH}:/home/ubuntu/go/bin
+ENV PATH=${PATH}:/usr/local/go/bin
 
-WORKDIR /build
+# Install go
+COPY .go-version .
+RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architecture).tar.gz\
+        -O golang.tar.gz && \
+        rm -rf /usr/local/go && \
+        tar -C /usr/local -xzf golang.tar.gz && \
+        rm -rf golang.tar.gz
 
+WORKDIR /app
+USER ubuntu
+
+# Install additional tools
+COPY ./scripts/install-tools.sh .
+COPY ./sdk/libs ./sdk/libs
+RUN ./install-tools.sh
+
+# Watch and recompile server on file change
 CMD cp go.work.default go.work && \
-    ./tools.sh && \
     reflex \
-        -r '\.go$' \
-        -R '\.tmp\/*.' \
-        -R 'core\/main\.go' \
-        -R 'plugins\/installed' \
-        -R 'plugins\/system\/.*\/main\.go' \
-        -R 'plugins\/local\/.*\/main\.go' \
-        -R 'plugins\/update\/.*\/main\.go' \
-        -R 'plugins\/backup\/.*\/main\.go' \
-        -R '(.*)mono\.go' \
-        -s -- sh -c './start.sh' -v
-
+        -r '\.(go|templ|sql|js|css|json)$' \
+        -R 'db\/queries\/.*' \
+        -R 'node_modules' \
+        -R '_templ\.go$' \
+        -R '\.tmp\/.*' \
+        -R '^output\/.*' \
+        -R '^bin\/.*' \
+        -R '^config\/.*' \
+        -R 'resources\/assets\/dist' \
+        -R 'plugins\/installed\/.*' \
+        -R 'plugins\/update\/.*' \
+        -R 'plugins\/backup\/.*' \
+        -s -- sh -c './start-devkit.sh' -v

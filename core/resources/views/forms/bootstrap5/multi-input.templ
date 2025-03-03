@@ -1,19 +1,18 @@
 package bootstrap5
 
 import (
-	"sdk/api/forms"
 	"fmt"
-	"sdk/api/http"
+	sdkapi "sdk/api"
 )
 
-templ MultiInputField(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkforms.IFormField) {
+templ MultiInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	<legend>{ fld.GetLabel() }</legend>
-	{{ mfval, err := form.GetMultiField(sec.Name, fld.GetName()) }}
+	{{ mfval, err := form.GetMultiField(sec.GetName(), fld.GetName()) }}
 	if err != nil {
 		<p>{ fmt.Sprintf("unable to get multi-field value: %s", err.Error()) }</p>
 		{{ return }}
 	}
-	{{ mfld, ok := fld.(sdkforms.MultiField) }}
+	{{ mfld, ok := fld.(sdkapi.FormMultiField) }}
 	if !ok {
 		<p>{ fmt.Sprintf("field %s is not a multi-field", fld.GetName()) }</p>
 		{{ return }}
@@ -38,7 +37,7 @@ templ MultiInputField(form sdkhttp.IHttpForm, sec sdkforms.FormSection, fld sdkf
 	</div>
 }
 
-templ multiFieldRow(sec sdkforms.FormSection, mfld sdkforms.MultiField, mfval sdkforms.IMultiField, row int) {
+templ multiFieldRow(sec sdkapi.IFormSection, mfld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int) {
 	<template x-if="!row.deleted">
 		<div class="row mb-2">
 			for _, col := range mfld.Columns() {
@@ -58,11 +57,11 @@ templ multiFieldRow(sec sdkforms.FormSection, mfld sdkforms.MultiField, mfval sd
 	</template>
 }
 
-templ multiFieldCol(sec sdkforms.FormSection, fld sdkforms.MultiField, mfval sdkforms.IMultiField, row int, col sdkforms.MultiFieldCol) {
+templ multiFieldCol(sec sdkapi.IFormSection, fld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int, col sdkapi.FormMultiFieldCol) {
 	<div class="col">
 		{{ colName := mfColName(sec, fld, col) }}
 		switch col.Type {
-			case sdkforms.FormFieldTypeText:
+			case sdkapi.FormFieldTypeString:
 				{{ var val string }}
 				{{ var err error }}
 				if row < 0 {
@@ -74,8 +73,8 @@ templ multiFieldCol(sec sdkforms.FormSection, fld sdkforms.MultiField, mfval sdk
 				if err != nil {
 					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get string value from field %s, column %s", fld.Name, col.Name) }</p>
 				}
-			case sdkforms.FormFieldTypeInteger:
-				{{ var val int }}
+			case sdkapi.FormFieldTypeInteger:
+				{{ var val int64 }}
 				{{ var err error }}
 				if row > -1 {
 					{{ val, err = mfval.GetIntValue(row, col.Name) }}
@@ -86,7 +85,7 @@ templ multiFieldCol(sec sdkforms.FormSection, fld sdkforms.MultiField, mfval sdk
 				if err != nil {
 					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err) }</p>
 				}
-			case sdkforms.FormFieldTypeDecimal:
+			case sdkapi.FormFieldTypeDecimal:
 				{{ var val float64 }}
 				{{ var err error }}
 				if row > -1 {
@@ -98,7 +97,7 @@ templ multiFieldCol(sec sdkforms.FormSection, fld sdkforms.MultiField, mfval sdk
 				if err != nil {
 					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err) }</p>
 				}
-			case sdkforms.FormFieldTypeBoolean:
+			case sdkapi.FormFieldTypeBoolean:
 				{{ var val bool }}
 				{{ var err error }}
 				if row < 0 {
@@ -119,6 +118,6 @@ templ multiFieldCol(sec sdkforms.FormSection, fld sdkforms.MultiField, mfval sdk
 	</div>
 }
 
-func mfColName(sec sdkforms.FormSection, fld sdkforms.IFormField, col sdkforms.MultiFieldCol) string {
-	return sec.Name + ":" + fld.GetName() + ":" + col.Name
+func mfColName(sec sdkapi.IFormSection, fld sdkapi.IFormField, col sdkapi.FormMultiFieldCol) string {
+	return sec.GetName() + ":" + fld.GetName() + ":" + col.Name
 }

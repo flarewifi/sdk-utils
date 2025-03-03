@@ -1,10 +1,10 @@
 package auth
 
 import (
-	"sdk/api/http"
+	"sdk/api"
 )
 
-templ LoginPage(csrfHTML string, data sdkhttp.LoginPageData) {
+templ LoginPage(csrfHTML string, data sdkapi.LoginPageData) {
 	<div class="container">
 		<div class="row">
 			<div class="col-md-6 offset-md-3">

@@ -6,14 +6,14 @@ import (
 	"strconv"
 	"strings"
 
-	uci "sdk/api/uci"
+	sdkapi "sdk/api"
 
-	sdkstr "github.com/flarehotspot/go-utils/strings"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 // bridge-vlan
-func (self *UciNetworkApi) CreateBrVlan(brvlan *uci.BrVlan, ports []*uci.BrVlanPort) error {
-	sec := sdkstr.Rand(16)
+func (self *UciNetworkApi) CreateBrVlan(brvlan *sdkapi.BrVlan, ports []*sdkapi.BrVlanPort) error {
+	sec := sdkutils.RandomStr(16)
 
 	if _, ok := self.GetBrVlanSec(brvlan); !ok {
 		if err := UciTree.AddSection("network", sec, "bridge-vlan"); err != nil {
@@ -53,7 +53,7 @@ func (self *UciNetworkApi) GetBrVlanSecs() (sections []string) {
 	return sections
 }
 
-func (self *UciNetworkApi) GetBrVlanSec(brvlan *uci.BrVlan) (section string, ok bool) {
+func (self *UciNetworkApi) GetBrVlanSec(brvlan *sdkapi.BrVlan) (section string, ok bool) {
 	sections, ok := UciTree.GetSections("network", "bridge-vlan")
 	if !ok {
 		return "", false
@@ -74,7 +74,7 @@ func (self *UciNetworkApi) GetBrVlanSec(brvlan *uci.BrVlan) (section string, ok 
 	return "", false
 }
 
-func (self *UciNetworkApi) GetBrVlanID(brvlan *uci.BrVlan) (vlanid int, ok bool) {
+func (self *UciNetworkApi) GetBrVlanID(brvlan *sdkapi.BrVlan) (vlanid int, ok bool) {
 	sec, ok := self.GetBrVlanSec(brvlan)
 	if !ok {
 		return 0, false
@@ -92,16 +92,16 @@ func (self *UciNetworkApi) GetBrVlanID(brvlan *uci.BrVlan) (vlanid int, ok bool)
 	return 0, false
 }
 
-func (self *UciNetworkApi) GetBrVlanPorts(brvlan *uci.BrVlan) (ports []*uci.BrVlanPort, err error) {
+func (self *UciNetworkApi) GetBrVlanPorts(brvlan *sdkapi.BrVlan) (ports []*sdkapi.BrVlanPort, err error) {
 	sec, ok := self.GetBrVlanSec(brvlan)
 	if !ok {
-		return nil, uci.ErrNotBrVlan
+		return nil, sdkapi.ErrNotBrVlan
 	}
 
 	ethTags, ok := UciTree.Get("network", sec, "port")
 	if ok {
 		for _, d := range ethTags {
-			var port uci.BrVlanPort
+			var port sdkapi.BrVlanPort
 
 			ethTag := strings.Split(d, ":")
 
@@ -130,14 +130,14 @@ func (self *UciNetworkApi) GetBrVlanPorts(brvlan *uci.BrVlan) (ports []*uci.BrVl
 		return ports, nil
 	}
 
-	return nil, uci.ErrNotBrVlan
+	return nil, sdkapi.ErrNotBrVlan
 
 }
 
-func (self *UciNetworkApi) SetBrVlanPorts(brvlan *uci.BrVlan, ports []*uci.BrVlanPort) error {
+func (self *UciNetworkApi) SetBrVlanPorts(brvlan *sdkapi.BrVlan, ports []*sdkapi.BrVlanPort) error {
 	sec, ok := self.GetBrVlanSec(brvlan)
 	if !ok {
-		return uci.ErrNotBrVlan
+		return sdkapi.ErrNotBrVlan
 	}
 
 	var portstr []string
@@ -154,7 +154,7 @@ func (self *UciNetworkApi) SetBrVlanPorts(brvlan *uci.BrVlan, ports []*uci.BrVla
 
 }
 
-func (self *UciNetworkApi) DeleteBrVlan(brvlan *uci.BrVlan) {
+func (self *UciNetworkApi) DeleteBrVlan(brvlan *sdkapi.BrVlan) {
 	if sec, ok := self.GetBrVlanSec(brvlan); ok {
 		UciTree.DelSection("network", sec)
 	}

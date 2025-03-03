@@ -13,5 +13,5 @@
   "license": "ISC",
   "main": "index.js",
   "name": "@flarehotspot/devkit",
-  "version": "0.1.1-pre"
+  "version": "0.1.2-pre"
 }

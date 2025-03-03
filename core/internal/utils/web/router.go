@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	sdkhttp "sdk/api/http"
+	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
 )
@@ -27,7 +27,7 @@ func init() {
 	AssetsRouter = RootRouter.PathPrefix("/assets").Subrouter()
 }
 
-func UrlForRoute(muxname sdkhttp.MuxRouteName, pairs ...string) (string, error) {
+func UrlForRoute(muxname sdkapi.MuxRouteName, pairs ...string) (string, error) {
 	route := FindRoute(muxname)
 	if route != nil {
 		if url, err := route.URL(pairs...); err == nil {
@@ -37,6 +37,6 @@ func UrlForRoute(muxname sdkhttp.MuxRouteName, pairs ...string) (string, error) 
 	return "", errors.New(fmt.Sprintf("Route name not found: \"%s\"", muxname))
 }
 
-func FindRoute(muxname sdkhttp.MuxRouteName) *mux.Route {
+func FindRoute(muxname sdkapi.MuxRouteName) *mux.Route {
 	return RootRouter.Get(string(muxname))
 }

@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type ExecOpts struct {
@@ -22,7 +22,7 @@ var shell string
 func init() {
 	var shells = []string{"/bin/ash", "/bin/bash", "/bin/zsh"}
 	for _, s := range shells {
-		if sdkfs.Exists(s) {
+		if sdkutils.FsExists(s) {
 			shell = s
 			break
 		}

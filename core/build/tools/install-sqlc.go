@@ -5,8 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	sdkfs "github.com/flarehotspot/go-utils/fs"
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
@@ -14,9 +13,9 @@ const (
 )
 
 func InstallSqlc() {
-	if !sdkfs.Exists(sdkpaths.SqlcBin) {
-		cmd := exec.Command("go", "build", "-buildvcs=false", "-o", sdkpaths.SqlcBin, filepath.Join(sdkpaths.SdkDir, "libs/sqlc-"+SqlcVersion+"/cmd/sqlc"))
-		cmd.Dir = sdkpaths.AppDir
+	if !sdkutils.FsExists(sdkutils.PathSqlcBin) {
+		cmd := exec.Command("go", "build", "-buildvcs=false", "-o", sdkutils.PathSqlcBin, filepath.Join(sdkutils.PathSdkDir, "libs/sqlc-"+SqlcVersion+"/cmd/sqlc"))
+		cmd.Dir = sdkutils.PathAppDir
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {

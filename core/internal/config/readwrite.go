@@ -4,17 +4,16 @@ import (
 	"os"
 	"path/filepath"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/goccy/go-json"
-
-	sdkpaths "github.com/flarehotspot/go-utils/paths"
 )
 
 func readConfigFile(f string, out interface{}) error {
-	location := filepath.Join(sdkpaths.ConfigDir, f)
+	location := filepath.Join(sdkutils.PathConfigDir, f)
 	bytes, err := os.ReadFile(location)
 	if err != nil {
 		// read from defaults
-		location = filepath.Join(sdkpaths.ConfigDir, ".defaults", f)
+		location = filepath.Join(sdkutils.PathConfigDir, ".defaults", f)
 		bytes, err = os.ReadFile(location)
 		if err != nil {
 			return err
@@ -30,6 +29,6 @@ func writeConfigFile(f string, config interface{}) error {
 		return err
 	}
 
-	location := filepath.Join(sdkpaths.ConfigDir, f)
+	location := filepath.Join(sdkutils.PathConfigDir, f)
 	return os.WriteFile(location, bytes, 0644)
 }

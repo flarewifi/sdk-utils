@@ -4,8 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	fs "github.com/flarehotspot/go-utils/fs"
-	slices "github.com/flarehotspot/go-utils/slices"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type MigDirection int
@@ -17,7 +16,7 @@ const (
 
 func listFiles(dir string, d MigDirection) (files []string, err error) {
 	list := []string{}
-	if err = fs.LsFiles(dir, &list, false); err != nil {
+	if err = sdkutils.FsListFiles(dir, &list, false); err != nil {
 		return files, err
 	}
 
@@ -28,7 +27,7 @@ func listFiles(dir string, d MigDirection) (files []string, err error) {
 				files = append(files, f)
 			}
 		}
-		slices.ReverseString(files)
+		sdkutils.SliceReverseString(files)
 	} else {
 		for _, f := range list {
 			if strings.HasSuffix(f, ".up.sql") && !strings.HasPrefix(f, ".") {
