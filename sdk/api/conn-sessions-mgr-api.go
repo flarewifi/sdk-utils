@@ -9,6 +9,7 @@ package sdkapi
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -37,6 +38,7 @@ type ISessionsMgrApi interface {
 
 	// Create a session for the client device
 	CreateSession(
+		tx pgx.Tx,
 		ctx context.Context,
 		devId pgtype.UUID,
 		sessionType string,
@@ -52,10 +54,10 @@ type ISessionsMgrApi interface {
 	CurrSession(clnt IClientDevice) (cs IClientSession, ok bool)
 
 	// Returns unconsumed session (if any) for the client device.
-	GetSession(ctx context.Context, clnt IClientDevice) (IClientSession, error)
+	GetSession(tx pgx.Tx, ctx context.Context, clnt IClientDevice) (IClientSession, error)
 
 	// SessionSummary returns the session summary for the client device.
-	SessionSummary(ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
+	SessionSummary(tx pgx.Tx, ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
 
 	// Register a hook to find a session for a client device.
 	RegisterSessionProvider(ISessionProvider)

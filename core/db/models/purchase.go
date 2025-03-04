@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -152,13 +151,13 @@ func (self *Purchase) FixedPrice() (float64, bool) {
 	return self.price, !self.anyPrice
 }
 
-func (self *Purchase) DeviceTx(tx pgx.Tx, ctx context.Context) (*Device, error) {
+func (self *Purchase) Device(tx pgx.Tx, ctx context.Context) (*Device, error) {
 	dev, err := self.models.deviceModel.Find(ctx, self.deviceId)
 	return dev, err
 }
 
-func (self *Purchase) ConfirmTx(tx pgx.Tx, ctx context.Context) error {
-	dev, err := self.DeviceTx(tx, ctx)
+func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
+	dev, err := self.Device(tx, ctx)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -190,11 +189,11 @@ func (self *Purchase) ConfirmTx(tx pgx.Tx, ctx context.Context) error {
 	}
 
 	now := time.Now()
-	return self.Update(ctx, dbt, txid, nil, &now, nil)
+	return self.Update(tx, ctx, dbt, txid, nil, &now, nil)
 }
 
-func (self *Purchase) CancelTx(tx pgx.Tx, ctx context.Context) error {
-	dev, err := self.DeviceTx(tx, ctx)
+func (self *Purchase) Cancel(tx pgx.Tx, ctx context.Context) error {
+	dev, err := self.Device(tx, ctx)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -205,7 +204,7 @@ func (self *Purchase) CancelTx(tx pgx.Tx, ctx context.Context) error {
 		return err
 	}
 
-	desc := "Cancelled purchase: " + self.description
+	reason := "Cancelled purchase: " + self.description
 	dbt := self.walletDebit
 	cancelledAt := time.Now()
 
@@ -222,17 +221,17 @@ func (self *Purchase) CancelTx(tx pgx.Tx, ctx context.Context) error {
 			return err
 		}
 
-		trns, err := self.models.walletTrnsModel.Create(ctx, wallet.Id(), pmtTotal, wallet.Balance(), "Refund for "+desc)
+		trns, err := self.models.walletTrnsModel.Create(ctx, wallet.Id(), pmtTotal, wallet.Balance(), "Refund for "+reason)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 
 		trnsId := trns.Id()
-		return self.Update(ctx, dbt, &trnsId, &cancelledAt, nil, &desc)
+		return self.Update(tx, ctx, dbt, &trnsId, &cancelledAt, nil, &reason)
 	}
 
-	return self.Update(ctx, dbt, nil, &cancelledAt, nil, &desc)
+	return self.Update(tx, ctx, dbt, nil, &cancelledAt, nil, &reason)
 }
 
 func (self *Purchase) PaymentsTx(tx pgx.Tx, ctx context.Context) ([]*Payment, error) {
@@ -256,102 +255,7 @@ func (self *Purchase) TotalPaymentsTx(tx pgx.Tx, ctx context.Context) (float64, 
 	return total, nil
 }
 
-func (self *Purchase) Cancel(ctx context.Context) error {
-	tx, err := self.db.SqlDB().Begin(ctx)
-	if err != nil {
-		log.Println(err)
-		return fmt.Errorf("could not begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		}
-	}()
-
-	err = self.CancelTx(tx, ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (self *Purchase) Confirm(ctx context.Context) error {
-	tx, err := self.db.SqlDB().Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("could not begin transaction: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		}
-	}()
-
-	err = self.ConfirmTx(tx, ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (self *Purchase) TotalPayment(ctx context.Context) (float64, error) {
-	tx, err := self.db.SqlDB().Begin(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("could not begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		}
-	}()
-
-	total, err := self.TotalPaymentsTx(tx, ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	return total, nil
-}
-
-func (self *Purchase) Update(ctx context.Context, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
-	var wtxid pgtype.UUID
-	if txid != nil {
-		wtxid = *txid
-	}
-
-	var cancelledTime, confirmedTime pgtype.Timestamp
-	if cancelledAt != nil {
-		cancelledTime = pgtype.Timestamp{Time: *cancelledAt, Valid: true}
-	}
-	if confirmedAt != nil {
-		confirmedTime = pgtype.Timestamp{Time: *confirmedAt, Valid: true}
-	}
-
-	var cancelledReason string
-	if reason != nil {
-		cancelledReason = *reason
-	}
-
-	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
-		WalletDebit:     sdkutils.PgFloat64ToNumeric(dbt),
-		WalletTxID:      wtxid,
-		CancelledAt:     cancelledTime,
-		ConfirmedAt:     confirmedTime,
-		CancelledReason: cancelledReason,
-		ID:              self.id,
-	})
-	if err != nil {
-		log.Printf("error updating purchase %v: %v", self.id, err)
-		return err
-	}
-
-	self.walletDebit = dbt
-	self.walletTxId = txid
-	self.cancelledAt = cancelledAt
-	self.confirmedAt = confirmedAt
-
-	return nil
+func (self *Purchase) Update(tx pgx.Tx, ctx context.Context, dbt float64, trnsID *pgtype.UUID, cancelledAt, confirmedAt *time.Time, reason *string) error {
+	err := self.models.purchaseModel.Update(tx, ctx, self.id, dbt, trnsID, cancelledAt, confirmedAt, reason)
+	return err
 }

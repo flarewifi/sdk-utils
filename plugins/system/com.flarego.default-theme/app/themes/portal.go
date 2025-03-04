@@ -32,19 +32,31 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				return sdkapi.ViewPage{}
 			}
 
-			summary, err := api.SessionsMgr().SessionSummary(r.Context(), clnt)
+			ctx := r.Context()
+			tx, err := api.SqlDb().Begin(ctx)
+			if err != nil {
+				api.Logger().Error("Error initializing transaction: " + err.Error())
+				return sdkapi.ViewPage{}
+			}
+
+			summary, err := api.SessionsMgr().SessionSummary(tx, ctx, clnt)
 			if err != nil {
 				api.Logger().Error("Error in session summary query: " + err.Error())
 				return sdkapi.ViewPage{}
 			}
 
-			_, ok := api.SessionsMgr().CurrSession(clnt)
+			_, ok := api.SessionsMgr().CurrSession(tx, ctx, clnt)
 			navs := api.Http().Navs().GetPortalItems(r)
 			page := portal.PortalIndexPage(api, portal.PortalIndexData{
 				Navs:             navs,
 				SessionSummary:   summary,
 				IsSessionRunning: ok,
 			})
+
+			if err := tx.Commit(ctx); err != nil {
+				api.Logger().Error("Error committing db transaction: " + err.Error())
+				return sdkapi.ViewPage{}
+			}
 
 			return sdkapi.ViewPage{
 				Assets: sdkapi.ViewAssets{

@@ -17,14 +17,25 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 			return
 		}
 
-		summary, err := api.SessionsMgr().SessionSummary(r.Context(), clnt)
+		ctx := r.Context()
+		tx, err := api.SqlDb().Begin(ctx)
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
-		_, ok := api.SessionsMgr().CurrSession(clnt)
+		summary, err := api.SessionsMgr().SessionSummary(tx, ctx, clnt)
+		if err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
 
+		if err := tx.Commit(ctx); err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		_, ok := api.SessionsMgr().CurrSession(tx, ctx, clnt)
 		summaryView := portal.SessionSummary(api, portal.SessionSummaryData{
 			SessionSummary:   summary,
 			IsSessionRunning: ok,
@@ -32,6 +43,10 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 
 		if err := summaryView.Render(r.Context(), w); err != nil {
 			fmt.Println("Error rendering session summary: ", err)
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			api.Logger().Error(err.Error())
 		}
 	}
 }

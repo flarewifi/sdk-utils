@@ -11,6 +11,7 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -82,7 +83,7 @@ func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId pgtype.U
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) Update(ctx context.Context, id pgtype.UUID, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
+func (self *PurchaseModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
 	var cancellReason string
 	if reason != nil {
 		cancellReason = *reason
@@ -101,7 +102,8 @@ func (self *PurchaseModel) Update(ctx context.Context, id pgtype.UUID, dbt float
 		confirmedAtTime = pgtype.Timestamp{Time: *confirmedAt, Valid: true}
 	}
 
-	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
+	qtx := self.db.Queries.WithTx(tx)
+	err := qtx.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
 		WalletDebit:     sdkutils.PgFloat64ToNumeric(dbt),
 		WalletTxID:      wtxid,
 		CancelledAt:     cancelledAtTime,

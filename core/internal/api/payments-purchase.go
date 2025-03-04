@@ -9,6 +9,7 @@ import (
 	"core/db/models"
 	sdkapi "sdk/api"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -48,12 +49,12 @@ func (self *Purchase) CreatePayment(amount float64, optname string) error {
 	return err
 }
 
-func (self *Purchase) PayWithWallet(dbt float64) error {
-	err := self.purchase.Update(self.ctx, dbt, nil, self.purchase.CancelledAt(), self.purchase.ConfirmedAt(), nil)
+func (self *Purchase) PayWithWallet(tx pgx.Tx, dbt float64) error {
+	err := self.purchase.Update(tx, self.ctx, dbt, nil, self.purchase.CancelledAt(), self.purchase.ConfirmedAt(), nil)
 	return err
 }
 
-func (self *Purchase) State() (sdkapi.PurchaseState, error) {
+func (self *Purchase) State(tx pgx.Tx) (sdkapi.PurchaseState, error) {
 	state := sdkapi.PurchaseState{}
 
 	device, err := self.api.models.Device().Find(self.ctx, self.deviceId)
@@ -66,7 +67,7 @@ func (self *Purchase) State() (sdkapi.PurchaseState, error) {
 		return state, err
 	}
 
-	total, err := self.purchase.TotalPayment(self.ctx)
+	total, err := self.purchase.TotalPayment(tx, self.ctx)
 	if err != nil {
 		return state, err
 	}
@@ -94,12 +95,12 @@ func (self *Purchase) Execute(w http.ResponseWriter, r *http.Request) {
 	callbackPkg.Http().Response().Redirect(w, r, self.purchase.CallbackRoute())
 }
 
-func (self *Purchase) Confirm() error {
-	return self.purchase.Confirm(self.ctx)
+func (self *Purchase) Confirm(tx pgx.Tx) error {
+	return self.purchase.Confirm(tx, self.ctx)
 }
 
-func (self *Purchase) Cancel() error {
-	return self.purchase.Cancel(self.ctx)
+func (self *Purchase) Cancel(tx pgx.Tx, ctx context.Context) error {
+	return self.purchase.Cancel(tx, ctx)
 }
 
 func (self *Purchase) ErrorPage(w http.ResponseWriter, err error) {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	queries "core/db/queries"
@@ -18,7 +17,6 @@ import (
 )
 
 type Database struct {
-	mu      sync.RWMutex
 	db      *pgxpool.Pool
 	Queries queries.Queries
 }
@@ -123,13 +121,9 @@ func CheckDatabaseConnection(pool *pgxpool.Pool) error {
 }
 
 func (d *Database) SqlDB() (db *pgxpool.Pool) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
 	return d.db
 }
 
 func (d *Database) SetSql(db *pgxpool.Pool) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	d.db = db
 }
