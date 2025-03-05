@@ -33,7 +33,7 @@ func (self *PaymentModel) Create(tx pgx.Tx, ctx context.Context, purid pgtype.UU
 		return nil, err
 	}
 
-	p, err := self.db.Queries.FindPayment(ctx, pId)
+	p, err := qtx.FindPayment(ctx, pId)
 	if err != nil {
 		log.Printf("error finding payemnt %v: %v", pId, err)
 		return nil, err
