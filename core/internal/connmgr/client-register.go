@@ -85,10 +85,6 @@ func (reg *ClientRegister) Register(dbpool *pgxpool.Pool, r *http.Request, mac s
 			return clnt, nil
 		}
 
-		if err := tx.Commit(ctx); err != nil {
-			return nil, err
-		}
-
 		log.Println("error finding device by mac:", err)
 		return nil, err
 	}
