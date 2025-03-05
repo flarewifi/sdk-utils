@@ -26,6 +26,7 @@ RUN ./install-tools.sh
 CMD cp go.work.default go.work && \
     reflex \
         -r '\.(go|templ|sql|js|css|json)$' \
+        -R '(plugin|package).json$' \
         -R 'db\/queries\/.*' \
         -R 'node_modules' \
         -R '_templ\.go$' \
