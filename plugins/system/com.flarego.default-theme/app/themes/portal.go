@@ -45,7 +45,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				return sdkapi.ViewPage{}
 			}
 
-			_, ok := api.SessionsMgr().CurrSession(tx, ctx, clnt)
+			_, ok := api.SessionsMgr().CurrSession(clnt)
 			navs := api.Http().Navs().GetPortalItems(r)
 			page := portal.PortalIndexPage(api, portal.PortalIndexData{
 				Navs:             navs,
