@@ -22,7 +22,6 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 }
 
 func (self *DeviceModel) Create(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
-	tx, err := self.db.SqlDB().Begin(ctx)
 	qtx := self.db.Queries.WithTx(tx)
 	dId, err := qtx.CreateDevice(ctx, queries.CreateDeviceParams{
 		MacAddress: mac,
