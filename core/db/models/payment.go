@@ -9,6 +9,7 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -49,8 +50,9 @@ func (self *Payment) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Payment) Update(ctx context.Context, amt float64) error {
-	err := self.db.Queries.UpdatePayment(ctx, queries.UpdatePaymentParams{
+func (self *Payment) Update(tx pgx.Tx, ctx context.Context, amt float64) error {
+	qtx := self.db.Queries.WithTx(tx)
+	err := qtx.UpdatePayment(ctx, queries.UpdatePaymentParams{
 		Amount: sdkutils.PgFloat64ToNumeric(amt),
 		ID:     self.id,
 	})

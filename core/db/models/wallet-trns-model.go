@@ -8,6 +8,7 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -20,8 +21,9 @@ func NewWalletTrnsModel(dtb *db.Database, mdls *Models) *WalletTrnsModel {
 	return &WalletTrnsModel{dtb, mdls}
 }
 
-func (self *WalletTrnsModel) Create(ctx context.Context, wltId pgtype.UUID, amount float64, newBal float64, desc string) (*WalletTrns, error) {
-	wt, err := self.db.Queries.CreateWalletTrns(ctx, queries.CreateWalletTrnsParams{
+func (self *WalletTrnsModel) Create(tx pgx.Tx, ctx context.Context, wltId pgtype.UUID, amount float64, newBal float64, desc string) (*WalletTrns, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	wt, err := qtx.CreateWalletTrns(ctx, queries.CreateWalletTrnsParams{
 		WalletID:    wltId,
 		Amount:      sdkutils.PgFloat64ToNumeric(amount),
 		NewBalance:  sdkutils.PgFloat64ToNumeric(newBal),
@@ -44,8 +46,9 @@ func (self *WalletTrnsModel) Create(ctx context.Context, wltId pgtype.UUID, amou
 	}, nil
 }
 
-func (self *WalletTrnsModel) Find(ctx context.Context, id pgtype.UUID) (*WalletTrns, error) {
-	wt, err := self.db.Queries.FindWalletTrns(ctx, id)
+func (self *WalletTrnsModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*WalletTrns, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	wt, err := qtx.FindWalletTrns(ctx, id)
 	if err != nil {
 		log.Printf("error finding wallet transaction %v: %v\n", id, err)
 		return nil, err

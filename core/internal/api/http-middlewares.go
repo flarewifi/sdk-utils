@@ -56,20 +56,27 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 			ctx := r.Context()
 			errCode := http.StatusInternalServerError
 
-			client, err := helpers.CurrentClient(self.api.ClntReg, r)
+			tx, err := self.api.SqlDb().Begin(ctx)
+			if err != nil {
+				self.ErrorPage(w, err, errCode)
+				return
+			}
+			defer tx.Rollback(ctx)
+
+			client, err := helpers.CurrentClient(self.api.ClntReg, self.api.SqlDb(), r)
 			if err != nil {
 				self.ErrorPage(w, err, errCode)
 				return
 			}
 
 			mdls := self.api.models
-			device, err := mdls.Device().Find(ctx, client.Id())
+			device, err := mdls.Device().Find(tx, ctx, client.Id())
 			if err != nil {
 				self.ErrorPage(w, err, errCode)
 				return
 			}
 
-			purchase, err := mdls.Purchase().PendingPurchase(ctx, device.Id())
+			purchase, err := mdls.Purchase().PendingPurchase(tx, ctx, device.Id())
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				self.ErrorPage(w, err, errCode)
 				return
@@ -77,6 +84,11 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 
 			if purchase != nil {
 				self.api.HttpAPI.Response().Redirect(w, r, "payments:options")
+				return
+			}
+
+			if err := tx.Commit(ctx); err != nil {
+				self.ErrorPage(w, err, errCode)
 				return
 			}
 

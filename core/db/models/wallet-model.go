@@ -42,11 +42,12 @@ func (self *WalletModel) CreateTx(tx pgx.Tx, ctx context.Context, devId pgtype.U
 		return nil, err
 	}
 
-	return self.Find(ctx, wId)
+	return self.Find(tx, ctx, wId)
 }
 
-func (self *WalletModel) Find(ctx context.Context, id pgtype.UUID) (*Wallet, error) {
-	w, err := self.db.Queries.FindWallet(ctx, id)
+func (self *WalletModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*Wallet, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	w, err := qtx.FindWallet(ctx, id)
 	if err != nil {
 		log.Printf("error finding wallet %v: %v", id, err)
 		return nil, err
@@ -61,8 +62,9 @@ func (self *WalletModel) Find(ctx context.Context, id pgtype.UUID) (*Wallet, err
 	return wallet, nil
 }
 
-func (self *WalletModel) Update(ctx context.Context, id pgtype.UUID, bal float64) error {
-	err := self.db.Queries.UpdateWallet(ctx, queries.UpdateWalletParams{
+func (self *WalletModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, bal float64) error {
+	qtx := self.db.Queries.WithTx(tx)
+	err := qtx.UpdateWallet(ctx, queries.UpdateWalletParams{
 		Balance: sdkutils.PgFloat64ToNumeric(bal),
 		ID:      id,
 	})
@@ -76,8 +78,9 @@ func (self *WalletModel) Update(ctx context.Context, id pgtype.UUID, bal float64
 	return nil
 }
 
-func (self *WalletModel) findByDevice(ctx context.Context, devId pgtype.UUID) (*Wallet, error) {
-	w, err := self.db.Queries.FindWalletByDeviceId(ctx, devId)
+func (self *WalletModel) findByDevice(tx pgx.Tx, ctx context.Context, devId pgtype.UUID) (*Wallet, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	w, err := qtx.FindWalletByDeviceId(ctx, devId)
 	if err != nil {
 		log.Printf("error finding wallet by device %v: %v", devId, err)
 		return nil, err

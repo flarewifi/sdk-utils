@@ -9,6 +9,7 @@ package sdkapi
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -28,7 +29,7 @@ type IClientDevice interface {
 	MacAddr() string
 
 	// Updates the client device.
-	Update(ctx context.Context, mac string, ip string, hostname string) error
+	Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string) error
 
 	// Emits a socket event to a client device.
 	// The event will be propagated to the client's browser via server-sent events.

@@ -17,6 +17,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+var (
+	ErrSessionQuery = errors.New("Error in session query")
+	ErrSessionEmpty = errors.New("Device has no more available sessions.")
+)
+
 func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
 	return &SessionsMgr{
 		mu:        sync.RWMutex{},
@@ -121,7 +126,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 
 		_, err := self.GetSession(ctx, clnt)
 		if err != nil {
-			errCh <- errors.New("Device has no more available sessions.")
+			errCh <- ErrSessionEmpty
 			return
 		}
 
@@ -175,6 +180,7 @@ func (self *SessionsMgr) loopSessions(clnt sdkapi.IClientDevice) {
 		errCh := make(chan error)
 
 		go func() {
+
 			cs, err := self.GetSession(ctx, clnt)
 			if err != nil {
 				errCh <- err
@@ -280,6 +286,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 }
 
 func (self *SessionsMgr) CreateSession(
+	tx pgx.Tx,
 	ctx context.Context,
 	devId pgtype.UUID,
 	t string,
@@ -290,7 +297,7 @@ func (self *SessionsMgr) CreateSession(
 	upMbits int,
 	useGlobal bool,
 ) error {
-	_, err := self.mdl.Session().Create(ctx, devId, t, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
+	_, err := self.mdl.Session().Create(tx, ctx, devId, t, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
 	return err
 }
 
@@ -306,12 +313,22 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 		}
 	}
 
+	tx, err := self.db.SqlDB().Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
 	localClient := clnt.(*ClientDevice)
-	s, err := self.mdl.Session().AvailableForDevice(ctx, localClient.id)
+	s, err := self.mdl.Session().AvailableForDevice(tx, ctx, localClient.id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("No more available sessions")
 		}
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 
@@ -320,8 +337,8 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 }
 
 // SessionSummary
-func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
-	summary, err := self.mdl.Session().Summary(ctx, clnt.Id())
+func (self *SessionsMgr) SessionSummary(tx pgx.Tx, ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
+	summary, err := self.mdl.Session().Summary(tx, ctx, clnt.Id())
 	if err != nil {
 		return nil, err
 	}
