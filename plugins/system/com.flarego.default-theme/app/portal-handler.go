@@ -23,6 +23,7 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
+		defer tx.Rollback(ctx)
 
 		summary, err := api.SessionsMgr().SessionSummary(tx, ctx, clnt)
 		if err != nil {

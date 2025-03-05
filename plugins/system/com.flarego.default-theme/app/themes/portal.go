@@ -38,6 +38,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				api.Logger().Error("Error initializing transaction: " + err.Error())
 				return sdkapi.ViewPage{}
 			}
+			defer tx.Rollback(ctx)
 
 			summary, err := api.SessionsMgr().SessionSummary(tx, ctx, clnt)
 			if err != nil {
