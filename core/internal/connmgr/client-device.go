@@ -10,6 +10,7 @@ import (
 	"core/internal/utils/events"
 	"core/internal/utils/sse"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -58,11 +59,11 @@ func (self *ClientDevice) IpAddr() string {
 	return self.ip
 }
 
-func (self *ClientDevice) Update(ctx context.Context, mac string, ip string, hostname string) error {
+func (self *ClientDevice) Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	err := self.mdls.Device().Update(ctx, self.id, self.mac, self.ip, self.hostname)
+	err := self.mdls.Device().Update(tx, ctx, self.id, self.mac, self.ip, self.hostname)
 	if err != nil {
 		return err
 	}

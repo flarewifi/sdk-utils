@@ -8,6 +8,7 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -20,15 +21,9 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 	return &DeviceModel{database, mdls}
 }
 
-func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
+func (self *DeviceModel) Create(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
 	tx, err := self.db.SqlDB().Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
 	qtx := self.db.Queries.WithTx(tx)
-
 	dId, err := qtx.CreateDevice(ctx, queries.CreateDeviceParams{
 		MacAddress: mac,
 		IpAddress:  ip,
@@ -71,8 +66,9 @@ func (self *DeviceModel) Create(ctx context.Context, mac string, ip string, host
 	return dev, nil
 }
 
-func (self *DeviceModel) Find(ctx context.Context, id pgtype.UUID) (*Device, error) {
-	d, err := self.db.Queries.FindDevice(ctx, id)
+func (self *DeviceModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*Device, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	d, err := qtx.FindDevice(ctx, id)
 	if err != nil {
 		log.Printf("error finding device %v: %v", id, err)
 		return nil, err
@@ -89,10 +85,10 @@ func (self *DeviceModel) Find(ctx context.Context, id pgtype.UUID) (*Device, err
 	return device, nil
 }
 
-func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, error) {
+func (self *DeviceModel) FindByMac(tx pgx.Tx, ctx context.Context, mac string) (*Device, error) {
+	qtx := self.db.Queries.WithTx(tx)
 	device := NewDevice(self.db, self.models)
-
-	d, err := self.db.Queries.FindDeviceByMac(ctx, mac)
+	d, err := qtx.FindDeviceByMac(ctx, mac)
 	if err != nil {
 		log.Printf("error finding device %s: %v", mac, err)
 		return nil, err
@@ -104,12 +100,12 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
 
-	// log.Printf("Found device: %+v", device)
 	return device, nil
 }
 
-func (self *DeviceModel) Update(ctx context.Context, id pgtype.UUID, mac string, ip string, hostname string) error {
-	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
+func (self *DeviceModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, mac string, ip string, hostname string) error {
+	qtx := self.db.Queries.WithTx(tx)
+	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		ID:         id,
 		MacAddress: mac,
 		IpAddress:  ip,

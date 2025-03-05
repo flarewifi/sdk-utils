@@ -25,13 +25,12 @@ func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 }
 
 func (self *SessionModel) Create(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, t string, timeSecs int, dataMbytes float64, exp *int, downMbit int, upMbit int, g bool) (*Session, error) {
-	qtx := self.db.Queries.WithTx(tx)
-
 	var expDays pgtype.Int4
 	if exp != nil {
 		expDays = pgtype.Int4{Int32: int32(*exp), Valid: true}
 	}
 
+	qtx := self.db.Queries.WithTx(tx)
 	sId, err := qtx.CreateSession(ctx, queries.CreateSessionParams{
 		DeviceID:    devId,
 		SessionType: t,
@@ -127,7 +126,6 @@ func (self *SessionModel) SessionsForDev(tx pgx.Tx, ctx context.Context, devId p
 	}
 
 	sessions := make([]*Session, len(sRows))
-
 	for i, s := range sRows {
 		sessions[i] = NewSession(self.db, self.models, &s)
 	}

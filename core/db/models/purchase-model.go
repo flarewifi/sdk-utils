@@ -24,8 +24,7 @@ func NewPurchaseModel(dtb *db.Database, mdls *Models) *PurchaseModel {
 	return &PurchaseModel{dtb, mdls}
 }
 
-func (self *PurchaseModel) Create(ctx context.Context, deviceId pgtype.UUID, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string, metadata map[string]string) (*Purchase, error) {
-
+func (self *PurchaseModel) Create(tx pgx.Tx, ctx context.Context, deviceId pgtype.UUID, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string, metadata map[string]string) (*Purchase, error) {
 	b, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, err
@@ -45,17 +44,19 @@ func (self *PurchaseModel) Create(ctx context.Context, deviceId pgtype.UUID, sku
 
 	fmt.Printf("Create Purchase: %+v\n", params)
 
-	pId, err := self.db.Queries.CreatePurchase(ctx, params)
+	qtx := self.db.Queries.WithTx(tx)
+	pId, err := qtx.CreatePurchase(ctx, params)
 	if err != nil {
 		log.Println("error creating purchase: %w", err)
 		return nil, err
 	}
 
-	return self.Find(ctx, pId)
+	return self.Find(tx, ctx, pId)
 }
 
-func (self *PurchaseModel) Find(ctx context.Context, id pgtype.UUID) (*Purchase, error) {
-	p, err := self.db.Queries.FindPurchase(ctx, id)
+func (self *PurchaseModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*Purchase, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	p, err := qtx.FindPurchase(ctx, id)
 	if err != nil {
 		log.Println("error finding purchase: %w", err)
 		return nil, err
@@ -63,8 +64,9 @@ func (self *PurchaseModel) Find(ctx context.Context, id pgtype.UUID) (*Purchase,
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
-	p, err := self.db.Queries.FindPendingPurchase(ctx, deviceId)
+func (self *PurchaseModel) PendingPurchase(tx pgx.Tx, ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	p, err := qtx.FindPendingPurchase(ctx, deviceId)
 	if err != nil {
 		log.Printf("error finding pending purchase with dev id %v: %v\n", deviceId, err)
 		return nil, err
@@ -73,8 +75,9 @@ func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId pgtype.
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
-	p, err := self.db.Queries.FindPurchaseByDeviceId(ctx, deviceId)
+func (self *PurchaseModel) FindByDeviceId(tx pgx.Tx, ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	p, err := qtx.FindPurchaseByDeviceId(ctx, deviceId)
 	if err != nil {
 		log.Printf("error finding purchase by device id %v: %v", deviceId, err)
 		return nil, err

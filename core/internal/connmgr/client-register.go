@@ -12,6 +12,7 @@ import (
 	sdkapi "sdk/api"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -48,14 +49,20 @@ func (reg *ClientRegister) ClientChangedHook(fn ...sdkapi.ClientChangedHookFn) {
 	reg.changedHooks = append(reg.changedHooks, fn...)
 }
 
-func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, hostname string) (sdkapi.IClientDevice, error) {
+func (reg *ClientRegister) Register(dbpool *pgxpool.Pool, r *http.Request, mac string, ip string, hostname string) (sdkapi.IClientDevice, error) {
 	ctx := r.Context()
-	dev, err := reg.mdls.Device().FindByMac(ctx, mac)
+	tx, err := dbpool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	dev, err := reg.mdls.Device().FindByMac(tx, ctx, mac)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) && dev == nil {
 			log.Println("no device found by mac, creating new device...")
 			// create new device record
-			dev, err = reg.mdls.Device().Create(ctx, mac, ip, hostname)
+			dev, err = reg.mdls.Device().Create(tx, ctx, mac, ip, hostname)
 			if err != nil {
 				return nil, err
 			}
@@ -71,7 +78,15 @@ func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, host
 				}
 			}
 
+			if err := tx.Commit(ctx); err != nil {
+				return nil, err
+			}
+
 			return clnt, nil
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return nil, err
 		}
 
 		log.Println("error finding device by mac:", err)
@@ -93,7 +108,7 @@ func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, host
 		}
 
 		old := NewClientDevice(reg.db, reg.mdls, dev.Clone())
-		err := dev.Update(ctx, mac, ip, hostname)
+		err := dev.Update(tx, ctx, mac, ip, hostname)
 		if err != nil {
 			fmt.Println("error updating dev: ", err)
 			return nil, fmt.Errorf("could not update dev: %w", err)
@@ -115,6 +130,10 @@ func (reg *ClientRegister) Register(r *http.Request, mac string, ip string, host
 				return nil, err
 			}
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return clnt, nil

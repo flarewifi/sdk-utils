@@ -56,7 +56,8 @@ func (self *WalletTrns) CreatedAt() time.Time {
 }
 
 func (self *WalletTrns) UpdateTx(tx pgx.Tx, ctx context.Context, walletId pgtype.UUID, amount float64, newbal float64, desc string) error {
-	err := self.db.Queries.UpdateWalletTrns(ctx, queries.UpdateWalletTrnsParams{
+	qtx := self.db.Queries.WithTx(tx)
+	err := qtx.UpdateWalletTrns(ctx, queries.UpdateWalletTrnsParams{
 		WalletID:    walletId,
 		Amount:      sdkutils.PgFloat64ToNumeric(amount),
 		NewBalance:  sdkutils.PgFloat64ToNumeric(newbal),

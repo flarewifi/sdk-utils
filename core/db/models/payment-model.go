@@ -8,6 +8,7 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -20,8 +21,9 @@ func NewPaymentModel(dtb *db.Database, mdls *Models) *PaymentModel {
 	return &PaymentModel{dtb, mdls}
 }
 
-func (self *PaymentModel) Create(ctx context.Context, purid pgtype.UUID, amt float64, mtd string) (*Payment, error) {
-	pId, err := self.db.Queries.CreatePayment(ctx, queries.CreatePaymentParams{
+func (self *PaymentModel) Create(tx pgx.Tx, ctx context.Context, purid pgtype.UUID, amt float64, mtd string) (*Payment, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	pId, err := qtx.CreatePayment(ctx, queries.CreatePaymentParams{
 		PurchaseID:    purid,
 		Amount:        sdkutils.PgFloat64ToNumeric(amt),
 		PaymentMethod: mtd,
@@ -47,8 +49,9 @@ func (self *PaymentModel) Create(ctx context.Context, purid pgtype.UUID, amt flo
 	return payment, nil
 }
 
-func (self *PaymentModel) Find(ctx context.Context, id pgtype.UUID) (*Payment, error) {
-	p, err := self.db.Queries.FindPayment(ctx, id)
+func (self *PaymentModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*Payment, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	p, err := qtx.FindPayment(ctx, id)
 	if err != nil {
 		log.Printf("error finding payment %v: %v", id, err)
 		return nil, err
@@ -64,10 +67,10 @@ func (self *PaymentModel) Find(ctx context.Context, id pgtype.UUID) (*Payment, e
 	return payment, nil
 }
 
-func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId pgtype.UUID) ([]*Payment, error) {
+func (self *PaymentModel) FindAllByPurchase(tx pgx.Tx, ctx context.Context, purId pgtype.UUID) ([]*Payment, error) {
+	qtx := self.db.Queries.WithTx(tx)
 	payments := []*Payment{}
-
-	pRows, err := self.db.Queries.FindAllPaymentsByPurchaseId(ctx, purId)
+	pRows, err := qtx.FindAllPaymentsByPurchaseId(ctx, purId)
 	if err != nil {
 		log.Printf("error finding payments by purchase id %v: %v", purId, err)
 		return nil, err
@@ -87,8 +90,9 @@ func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId pgtype.UU
 	return payments, nil
 }
 
-func (self *PaymentModel) Update(ctx context.Context, id pgtype.UUID, amt float64, dbt *float64, txid *int64) error {
-	err := self.db.Queries.UpdatePayment(ctx, queries.UpdatePaymentParams{
+func (self *PaymentModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, amt float64, dbt *float64, txid *int64) error {
+	qtx := self.db.Queries.WithTx(tx)
+	err := qtx.UpdatePayment(ctx, queries.UpdatePaymentParams{
 		Amount: sdkutils.PgFloat64ToNumeric(amt),
 		ID:     id,
 	})

@@ -152,8 +152,7 @@ func (self *Purchase) FixedPrice() (float64, bool) {
 }
 
 func (self *Purchase) Device(tx pgx.Tx, ctx context.Context) (*Device, error) {
-	dev, err := self.models.deviceModel.Find(ctx, self.deviceId)
-	return dev, err
+	return self.models.deviceModel.Find(tx, ctx, self.deviceId)
 }
 
 func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
@@ -163,7 +162,7 @@ func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
 		return err
 	}
 
-	wallet, err := dev.Wallet(ctx)
+	wallet, err := dev.Wallet(tx, ctx)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -173,13 +172,13 @@ func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
 	dbt := self.walletDebit
 	if dbt > 0 {
 		newBal := wallet.Balance() - dbt
-		err = wallet.UpdateTx(tx, ctx, newBal)
+		err = wallet.Update(tx, ctx, newBal)
 		if err != nil {
 			return nil
 		}
 
 		desc := "Partial payment for " + self.description
-		trns, err := self.models.walletTrnsModel.Create(ctx, wallet.Id(), -dbt, newBal, desc)
+		trns, err := self.models.walletTrnsModel.Create(tx, ctx, wallet.Id(), -dbt, newBal, desc)
 		if err != nil {
 			return err
 		}
@@ -199,7 +198,7 @@ func (self *Purchase) Cancel(tx pgx.Tx, ctx context.Context) error {
 		return err
 	}
 
-	pmtTotal, err := self.TotalPaymentsTx(tx, ctx)
+	pmtTotal, err := self.TotalPayment(tx, ctx)
 	if err != nil {
 		return err
 	}
@@ -209,19 +208,19 @@ func (self *Purchase) Cancel(tx pgx.Tx, ctx context.Context) error {
 	cancelledAt := time.Now()
 
 	if pmtTotal > 0 {
-		wallet, err := dev.Wallet(ctx)
+		wallet, err := dev.Wallet(tx, ctx)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 
-		err = wallet.IncBalanceTx(tx, ctx, pmtTotal)
+		err = wallet.IncBalance(tx, ctx, pmtTotal)
 		if err != nil {
 			log.Println("Error updating wallet balance: ", err)
 			return err
 		}
 
-		trns, err := self.models.walletTrnsModel.Create(ctx, wallet.Id(), pmtTotal, wallet.Balance(), "Refund for "+reason)
+		trns, err := self.models.walletTrnsModel.Create(tx, ctx, wallet.Id(), pmtTotal, wallet.Balance(), "Refund for "+reason)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -234,12 +233,12 @@ func (self *Purchase) Cancel(tx pgx.Tx, ctx context.Context) error {
 	return self.Update(tx, ctx, dbt, nil, &cancelledAt, nil, &reason)
 }
 
-func (self *Purchase) PaymentsTx(tx pgx.Tx, ctx context.Context) ([]*Payment, error) {
-	return self.models.paymentModel.FindAllByPurchase(ctx, self.id)
+func (self *Purchase) Payments(tx pgx.Tx, ctx context.Context) ([]*Payment, error) {
+	return self.models.paymentModel.FindAllByPurchase(tx, ctx, self.id)
 }
 
-func (self *Purchase) TotalPaymentsTx(tx pgx.Tx, ctx context.Context) (float64, error) {
-	pmts, err := self.PaymentsTx(tx, ctx)
+func (self *Purchase) TotalPayment(tx pgx.Tx, ctx context.Context) (float64, error) {
+	pmts, err := self.Payments(tx, ctx)
 	if err != nil {
 		return 0, err
 	}
