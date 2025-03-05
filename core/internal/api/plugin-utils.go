@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"log"
 	"path"
 	"path/filepath"
@@ -115,8 +114,6 @@ func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets theme
 
 	pageJsSrc := self.api.HttpAPI.Helpers().PortalAssetPath(v.Assets.JsFile)
 	pageCssHref := self.api.HttpAPI.Helpers().PortalAssetPath(v.Assets.CssFile)
-
-	fmt.Printf("Assets: %+v\n", v.Assets)
 
 	return themes.PortalAssets{
 		GlobalCssHref:       globalCssHref,

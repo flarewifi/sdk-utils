@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"sync"
+	"sync/atomic"
 
 	"core/db"
 	"core/db/models"
@@ -116,34 +117,43 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 }
 
 func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
-	errCh := make(chan error)
+	errReturnCh := make(chan error)
 
 	go func() {
 		if _, ok := self.CurrSession(clnt); ok {
-			errCh <- errors.New("Device is already connected.")
+			errReturnCh <- errors.New("Device is already connected.")
 			return
 		}
 
 		_, err := self.GetSession(ctx, clnt)
 		if err != nil {
-			errCh <- ErrSessionEmpty
+			errReturnCh <- ErrSessionEmpty
 			return
 		}
 
 		if !nftables.IsConnected(clnt.MacAddr()) {
 			if err := nftables.Connect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
-				errCh <- err
+				errReturnCh <- err
 				return
 			}
 		}
 
-		go self.loopSessions(clnt)
+		startCh := make(chan error)
+		go self.loopSessions(startCh, clnt)
+
+		err = <-startCh
+		close(startCh)
+
+		if err != nil {
+			errReturnCh <- err
+			return
+		}
 
 		clnt.Emit(sdkapi.EventSessionConnected, []byte(notify))
-		errCh <- nil
+		errReturnCh <- nil
 	}()
 
-	return <-errCh
+	return <-errReturnCh
 }
 
 func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
@@ -173,14 +183,14 @@ func (self *SessionsMgr) CurrSession(clnt sdkapi.IClientDevice) (cs sdkapi.IClie
 	return nil, false
 }
 
-func (self *SessionsMgr) loopSessions(clnt sdkapi.IClientDevice) {
+func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClientDevice) {
+	var callbackDone atomic.Bool
 	ctx := context.Background()
 
 	for nftables.IsConnected(clnt.MacAddr()) {
 		errCh := make(chan error)
 
 		go func() {
-
 			cs, err := self.GetSession(ctx, clnt)
 			if err != nil {
 				errCh <- err
@@ -217,14 +227,22 @@ func (self *SessionsMgr) loopSessions(clnt sdkapi.IClientDevice) {
 				}
 			}
 
-			err = <-rs.Done()
-			log.Println("Running session is done: ", err)
+			// Start was successful
+			if !callbackDone.Load() {
+				resultCh <- nil
+				callbackDone.Store(true)
+			}
 
+			err = <-rs.Done()
 			errCh <- err
 		}()
 
 		err := <-errCh
-		log.Println("Session done!!! ", err)
+
+		if !callbackDone.Load() {
+			resultCh <- err
+			callbackDone.Store(true)
+		}
 
 		if err != nil {
 			log.Println("Error in session loop: ", err)
