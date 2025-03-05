@@ -124,20 +124,9 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 			return
 		}
 
-		tx, err := self.db.SqlDB().Begin(ctx)
-		if err != nil {
-			errCh <- ErrSessionQuery
-			return
-		}
-
-		_, err = self.GetSession(tx, ctx, clnt)
+		_, err := self.GetSession(ctx, clnt)
 		if err != nil {
 			errCh <- ErrSessionEmpty
-			return
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			errCh <- ErrSessionQuery
 			return
 		}
 
@@ -191,19 +180,9 @@ func (self *SessionsMgr) loopSessions(clnt sdkapi.IClientDevice) {
 		errCh := make(chan error)
 
 		go func() {
-			tx, err := self.db.SqlDB().Begin(ctx)
-			if err != nil {
-				errCh <- err
-				return
-			}
 
-			cs, err := self.GetSession(tx, ctx, clnt)
+			cs, err := self.GetSession(ctx, clnt)
 			if err != nil {
-				errCh <- err
-				return
-			}
-
-			if err = tx.Commit(ctx); err != nil {
 				errCh <- err
 				return
 			}
@@ -322,7 +301,7 @@ func (self *SessionsMgr) CreateSession(
 	return err
 }
 
-func (self *SessionsMgr) GetSession(tx pgx.Tx, ctx context.Context, clnt sdkapi.IClientDevice) (sdkapi.IClientSession, error) {
+func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevice) (sdkapi.IClientSession, error) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
@@ -334,12 +313,22 @@ func (self *SessionsMgr) GetSession(tx pgx.Tx, ctx context.Context, clnt sdkapi.
 		}
 	}
 
+	tx, err := self.db.SqlDB().Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
 	localClient := clnt.(*ClientDevice)
 	s, err := self.mdl.Session().AvailableForDevice(tx, ctx, localClient.id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("No more available sessions")
 		}
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 

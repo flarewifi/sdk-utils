@@ -54,7 +54,7 @@ type ISessionsMgrApi interface {
 	CurrSession(clnt IClientDevice) (cs IClientSession, ok bool)
 
 	// Returns unconsumed session (if any) for the client device.
-	GetSession(tx pgx.Tx, ctx context.Context, clnt IClientDevice) (IClientSession, error)
+	GetSession(ctx context.Context, clnt IClientDevice) (IClientSession, error)
 
 	// SessionSummary returns the session summary for the client device.
 	SessionSummary(tx pgx.Tx, ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
