@@ -254,7 +254,17 @@ func (self *Purchase) TotalPayment(tx pgx.Tx, ctx context.Context) (float64, err
 	return total, nil
 }
 
-func (self *Purchase) Update(tx pgx.Tx, ctx context.Context, dbt float64, trnsID *pgtype.UUID, cancelledAt, confirmedAt *time.Time, reason *string) error {
-	err := self.models.purchaseModel.Update(tx, ctx, self.id, dbt, trnsID, cancelledAt, confirmedAt, reason)
+func (self *Purchase) Update(tx pgx.Tx, ctx context.Context, dbt float64, wtxID *pgtype.UUID, cancelledAt, confirmedAt *time.Time, reason *string) error {
+	err := self.models.purchaseModel.Update(tx, ctx, self.id, dbt, wtxID, cancelledAt, confirmedAt, reason)
+	if err != nil {
+		return err
+	}
+
+	self.walletDebit = dbt
+	self.walletTxId = wtxID
+	self.cancelledAt = cancelledAt
+	self.confirmedAt = confirmedAt
+	self.cancelledReason = reason
+
 	return err
 }
