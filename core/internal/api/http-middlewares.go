@@ -82,13 +82,13 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 				return
 			}
 
-			if err := tx.Commit(ctx); err != nil {
-				self.ErrorPage(w, err, errCode)
+			if purchase != nil {
+				self.api.HttpAPI.Response().Redirect(w, r, "payments:options")
 				return
 			}
 
-			if purchase != nil {
-				self.api.HttpAPI.Response().Redirect(w, r, "payments:options")
+			if err := tx.Commit(ctx); err != nil {
+				self.ErrorPage(w, err, errCode)
 				return
 			}
 

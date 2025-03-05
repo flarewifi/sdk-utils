@@ -15,16 +15,14 @@ import (
 
 func NewPurchase(api *PluginApi, ctx context.Context, deviceId pgtype.UUID, p *models.Purchase) *Purchase {
 	return &Purchase{
-		api: api,
-		// ctx:      ctx,
+		api:      api,
 		deviceId: deviceId,
 		purchase: p,
 	}
 }
 
 type Purchase struct {
-	api *PluginApi
-	// ctx      context.Context
+	api      *PluginApi
 	deviceId pgtype.UUID
 	purchase *models.Purchase
 }
