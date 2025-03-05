@@ -266,5 +266,5 @@ func (self *Purchase) Update(tx pgx.Tx, ctx context.Context, dbt float64, wtxID 
 	self.confirmedAt = confirmedAt
 	self.cancelledReason = reason
 
-	return err
+	return nil
 }
