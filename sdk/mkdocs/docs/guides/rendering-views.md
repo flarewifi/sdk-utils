@@ -72,9 +72,6 @@ We must add these files into the [portal manifest file](../api/assets-manifest.m
 The path to `script.js` and `style.css` file is relative to the `manifest.portal.json` manifest file. These will then be bundled into `index.css` and `index.js` file respectively.
 We can then render these assets together with our template:
 
-!!! note "Caveats"
-    Javascripts for the captive portal must be written using `ES5` syntax to support older devices. The assets builder may throw an error if you use `ES6` syntax.
-
 ```go
 // handler
 func (w http.ResponseWriter, r *http.Request) {
@@ -89,6 +86,9 @@ func (w http.ResponseWriter, r *http.Request) {
     })
 }
 ```
+
+!!! note "Caveats"
+    Javascripts for the captive portal must be written using `ES5` syntax to support older devices. The assets builder may throw an error if you use `ES6` syntax.
 
 ## Adding global plugin assets
 
