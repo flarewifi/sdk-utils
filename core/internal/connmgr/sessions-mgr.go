@@ -99,7 +99,7 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 		}
 
 		if lan.Name() == iface {
-			rs.Stop(context.Background())
+			rs.Stop(ctx)
 		}
 
 		return true
