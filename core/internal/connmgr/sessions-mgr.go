@@ -13,7 +13,6 @@ import (
 	"core/internal/utils/nftables"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -24,20 +23,19 @@ var (
 )
 
 func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
-	return &SessionsMgr{
-		mu:        sync.RWMutex{},
+	sessionMgr := &SessionsMgr{
 		db:        dtb,
 		mdl:       mdl,
-		sessions:  []*RunningSession{},
+		sessions:  sync.Map{},
 		providers: []sdkapi.ISessionProvider{},
 	}
+	return sessionMgr
 }
 
 type SessionsMgr struct {
-	mu        sync.RWMutex
 	db        *db.Database
 	mdl       *models.Models
-	sessions  []*RunningSession
+	sessions  sync.Map
 	providers []sdkapi.ISessionProvider
 }
 
@@ -45,12 +43,11 @@ func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
 	go func() {
 		for data := range trfk.Listen() {
 			go func(data *sdkapi.TrafficData) {
-				self.mu.RLock()
-				defer self.mu.RUnlock()
-
-				for _, s := range self.sessions {
-					s.UpdateDataConsumption(data)
-				}
+				self.sessions.Range(func(key, value any) bool {
+					rs := value.(*RunningSession)
+					rs.UpdateDataConsumption(data)
+					return true
+				})
 			}(&data)
 		}
 	}()
@@ -60,10 +57,8 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 	errCh := make(chan error)
 
 	go func() {
-		self.mu.RLock()
-		defer self.mu.RUnlock()
-
-		for _, rs := range self.sessions {
+		self.sessions.Range(func(key, value any) bool {
+			rs := value.(*RunningSession)
 			lan := rs.Lan()
 
 			if lan.Name() == iface {
@@ -71,16 +66,18 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 				err := cs.Reload(ctx)
 				if err != nil {
 					errCh <- err
-					break
+					return false
 				}
 
 				err = rs.Start(ctx, cs)
 				if err != nil {
 					errCh <- err
-					break
+					return false
 				}
 			}
-		}
+
+			return true
+		})
 
 		errCh <- nil
 	}()
@@ -89,31 +86,24 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 }
 
 func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason string) {
-	done := make(chan bool)
-	go func() {
-		self.mu.Lock()
-		defer self.mu.Unlock()
-		defer func() {
-			done <- true
-		}()
-
-		for _, rs := range self.sessions {
-			err := nftables.Disconnect(rs.mac, reason)
-			if err != nil {
-				log.Println(err)
-			}
-
-			lan, err := network.FindByIp(rs.ip)
-			if err != nil {
-				log.Println(err)
-			}
-
-			if lan.Name() == iface {
-				rs.Stop(context.Background())
-			}
+	self.sessions.Range(func(key, value any) bool {
+		rs := value.(*RunningSession)
+		err := nftables.Disconnect(rs.mac, reason)
+		if err != nil {
+			log.Println(err)
 		}
-	}()
-	<-done
+
+		lan, err := network.FindByIp(rs.ip)
+		if err != nil {
+			log.Println(err)
+		}
+
+		if lan.Name() == iface {
+			rs.Stop(context.Background())
+		}
+
+		return true
+	})
 }
 
 func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
@@ -171,16 +161,17 @@ func (self *SessionsMgr) IsConnected(clnt sdkapi.IClientDevice) (connected bool)
 }
 
 func (self *SessionsMgr) CurrSession(clnt sdkapi.IClientDevice) (cs sdkapi.IClientSession, ok bool) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-
-	for _, rs := range self.sessions {
-		if rs.ClientId() == clnt.Id() {
-			return rs.session, true
-		}
+	v, ok := self.sessions.Load(clnt.Id())
+	if !ok {
+		return nil, false
 	}
 
-	return nil, false
+	rs, ok := v.(*RunningSession)
+	if !ok {
+		return nil, false
+	}
+
+	return rs.session, true
 }
 
 func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClientDevice) {
@@ -197,10 +188,7 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 				return
 			}
 
-			self.mu.RLock()
 			rs, ok := self.getRunningSession(clnt)
-			self.mu.RUnlock()
-
 			if !ok {
 				rs, err = NewRunningSession(clnt, cs)
 				if err != nil {
@@ -215,9 +203,7 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 					return
 				}
 
-				self.mu.Lock()
-				self.sessions = append(self.sessions, rs)
-				self.mu.Unlock()
+				self.sessions.Store(clnt.Id(), rs)
 			} else {
 				err = rs.Start(ctx, cs)
 				log.Println("Start session error: ", err)
@@ -253,12 +239,17 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 }
 
 func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *RunningSession, ok bool) {
-	for _, rs := range self.sessions {
-		if rs.ClientId() == clnt.Id() {
-			return rs, true
-		}
+	v, ok := self.sessions.Load(clnt.Id())
+	if !ok {
+		return nil, false
 	}
-	return nil, false
+
+	rs, ok = v.(*RunningSession)
+	if !ok {
+		return nil, false
+	}
+
+	return rs, true
 }
 
 func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevice) error {
@@ -273,9 +264,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 			}
 		}
 
-		self.mu.RLock()
 		rs, ok := self.getRunningSession(clnt)
-		self.mu.RUnlock()
 
 		if ok {
 			err := rs.Stop(ctx)
@@ -291,11 +280,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 			}
 		}
 
-		self.mu.Lock()
-		self.sessions = sdkutils.SliceFilter(self.sessions, func(rs *RunningSession) bool {
-			return rs.ClientId() != clnt.Id()
-		})
-		self.mu.Unlock()
+		self.sessions.Delete(clnt.Id())
 
 		errCh <- nil
 	}()
@@ -320,9 +305,6 @@ func (self *SessionsMgr) CreateSession(
 }
 
 func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevice) (sdkapi.IClientSession, error) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-
 	if len(self.providers) > 0 {
 		for _, provider := range self.providers {
 			if remoteSrc, ok := provider.GetSession(ctx, clnt); remoteSrc != nil && ok {
@@ -374,7 +356,5 @@ func (self *SessionsMgr) SessionSummary(tx pgx.Tx, ctx context.Context, clnt sdk
 }
 
 func (self *SessionsMgr) RegisterSessionProvider(provider sdkapi.ISessionProvider) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
 	self.providers = append(self.providers, provider)
 }
