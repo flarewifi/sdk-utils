@@ -2,6 +2,7 @@ package network
 
 import (
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -85,9 +86,9 @@ func (self *TrafficMgr) MakeTrafficData() {
 
 			pkts := stat.Packets - prev.Packets
 			byts := stat.Bytes - prev.Bytes
-			trfc.Upload[mac] = sdkapi.ClientStat{Packets: pkts, Bytes: byts}
+			trfc.Upload[strings.ToUpper(mac)] = sdkapi.ClientStat{Packets: pkts, Bytes: byts}
 		} else {
-			trfc.Upload[mac] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
+			trfc.Upload[strings.ToUpper(mac)] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
 		}
 	}
 

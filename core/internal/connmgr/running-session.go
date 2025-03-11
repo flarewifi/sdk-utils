@@ -172,7 +172,7 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	defer self.mu.Unlock()
 
 	download, dlok := stats.Download[self.ip]
-	upload, ulok := stats.Upload[strings.ToLower(self.mac)]
+	upload, ulok := stats.Upload[strings.ToUpper(self.mac)]
 
 	if dlok && ulok {
 		dataconMb := float64(download.Bytes+upload.Bytes) / (1 * 1000 * 1000)
