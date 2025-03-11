@@ -7,7 +7,6 @@ services:
     volumes:
       - ./:/app
       - ./files/etc/config:/etc/config
-      - app_tmp:/app/.tmp
     environment:
       - GOCACHE=/app/.tmp/go/cache
       - GOMODCACHE=/app/.tmp/go/mod
@@ -49,4 +48,3 @@ services:
 
 volumes:
   pgdata:
-  app_tmp:

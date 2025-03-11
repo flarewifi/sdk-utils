@@ -6,7 +6,12 @@
 
 package sdkapi
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+
+	"github.com/jackc/pgx/v5"
+)
 
 type PurchaseState struct {
 	TotalPayment    float64 `json:"total_payment"`
@@ -39,15 +44,15 @@ type IPurchaseRequest interface {
 	IsFixedPrice() bool
 
 	// Create a payment for the purchase.
-	CreatePayment(amount float64, optname string) error
+	CreatePayment(tx pgx.Tx, ctx context.Context, amount float64, optname string) error
 
 	// Pay using the customers wallet.
 	// The amount will be debitted from the wallet once the purchase request has been confirmed.
-	PayWithWallet(amount float64) error
+	PayWithWallet(tx pgx.Tx, ctx context.Context, amount float64) error
 
 	// Returns the state of the purchase.
 	// The state includes the total accumulated payment for the purchase and other important details.
-	State() (PurchaseState, error)
+	State(tx pgx.Tx, ctx context.Context) (PurchaseState, error)
 
 	// Executes the payment for the purchase.
 	// This will redirect the user to the callback URL of purchase request.
@@ -55,9 +60,9 @@ type IPurchaseRequest interface {
 
 	// Confirm the purchase.
 	// This must be executed in the purchase callback handler.
-	Confirm() error
+	Confirm(tx pgx.Tx, ctx context.Context) error
 
 	// Cancel the purchase.
 	// This must be executed in the purchase callback handler.
-	Cancel() error
+	Cancel(tx pgx.Tx, ctx context.Context) error
 }

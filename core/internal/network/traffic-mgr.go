@@ -2,6 +2,7 @@ package network
 
 import (
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -75,19 +76,19 @@ func (self *TrafficMgr) MakeTrafficData() {
 
 	for mac, stat := range stats.MacStats {
 		prev, ok := prevStats.MacStats[mac]
+		macUpper := strings.ToUpper(mac)
 		if ok {
 			// If current stat is less than prev, user may have been reconnected.
 			// In this case we discard previous stats.
 			if stat.Packets < prev.Packets || stat.Bytes < prev.Bytes {
-				trfc.Upload[mac] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
-				continue
+				trfc.Upload[macUpper] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
+			} else {
+				pkts := stat.Packets - prev.Packets
+				byts := stat.Bytes - prev.Bytes
+				trfc.Upload[macUpper] = sdkapi.ClientStat{Packets: pkts, Bytes: byts}
 			}
-
-			pkts := stat.Packets - prev.Packets
-			byts := stat.Bytes - prev.Bytes
-			trfc.Upload[mac] = sdkapi.ClientStat{Packets: pkts, Bytes: byts}
 		} else {
-			trfc.Upload[mac] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
+			trfc.Upload[macUpper] = sdkapi.ClientStat{Packets: stat.Packets, Bytes: stat.Bytes}
 		}
 	}
 

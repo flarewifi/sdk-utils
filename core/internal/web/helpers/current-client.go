@@ -7,9 +7,11 @@ import (
 	"core/internal/connmgr"
 	"core/internal/utils/hostfinder"
 	sdkapi "sdk/api"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func CurrentClient(clntMgr *connmgr.ClientRegister, r *http.Request) (sdkapi.IClientDevice, error) {
+func CurrentClient(clntMgr *connmgr.ClientRegister, dbpool *pgxpool.Pool, r *http.Request) (sdkapi.IClientDevice, error) {
 	clntSym := r.Context().Value(sdkapi.ClientCtxKey)
 	if clntSym != nil {
 		clnt, ok := clntSym.(sdkapi.IClientDevice)
@@ -28,7 +30,7 @@ func CurrentClient(clntMgr *connmgr.ClientRegister, r *http.Request) (sdkapi.ICl
 		return nil, err
 	}
 
-	clnt, err := clntMgr.Register(r, h.MacAddr, h.IpAddr, h.Hostname)
+	clnt, err := clntMgr.Register(dbpool, r, h.MacAddr, h.IpAddr, h.Hostname)
 	if err != nil {
 		return nil, err
 	}

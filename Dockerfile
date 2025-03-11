@@ -24,9 +24,9 @@ RUN ./install-tools.sh
 
 # Watch and recompile server on file change
 CMD cp go.work.default go.work && \
-    go run --tags=dev ./core/cmd/sync-versions/main.go && \
     reflex \
         -r '\.(go|templ|sql|js|css|json)$' \
+        -R '(plugin|package).json$' \
         -R 'db\/queries\/.*' \
         -R 'node_modules' \
         -R '_templ\.go$' \

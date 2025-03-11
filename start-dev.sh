@@ -3,6 +3,7 @@
 BUILD_TAGS="dev"
 BUILD_CORE_MAIN="./core/cmd/build-core"
 BUILD_CLI_MAIN="./core/cmd/build-cli"
+SYNC_VERSION="./core/cmd/sync-versions/main.go"
 LINK_NODE_MODULES="./core/cmd/link-node-modules"
 FLARE_BIN="./bin/flare"
 
@@ -11,6 +12,7 @@ cp go.work.default go.work && \
     rm -rf core/internal/db/sqlc && \
     go run -tags="${BUILD_TAGS}" $LINK_NODE_MODULES && \
     go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN && \
+    go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
     sh -c "$FLARE_BIN fix-workspace" && \
     sh -c "$FLARE_BIN build-templates" && \
     go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN && \

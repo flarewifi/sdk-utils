@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"path"
@@ -43,8 +42,6 @@ func (self *HttpHelpers) AdminAssetPath(p string) string {
 
 func (self *HttpHelpers) PortalAssetPath(p string) string {
 	assets := self.api.AssetsManifest.PortalAssets
-	fmt.Printf("Portal Assets: %v\n", assets)
-
 	if f, ok := assets.Scripts[p]; ok {
 		return self.ResourcePath(path.Join("assets", "dist", f))
 	}

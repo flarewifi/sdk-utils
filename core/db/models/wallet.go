@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"core/db"
@@ -43,9 +42,9 @@ func (self *Wallet) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Wallet) IncBalanceTx(tx pgx.Tx, ctx context.Context, bal float64) error {
+func (self *Wallet) IncBalance(tx pgx.Tx, ctx context.Context, bal float64) error {
 	newbal := self.balance + bal
-	err := self.UpdateTx(tx, ctx, newbal)
+	err := self.Update(tx, ctx, newbal)
 	if err != nil {
 		return err
 	}
@@ -54,8 +53,8 @@ func (self *Wallet) IncBalanceTx(tx pgx.Tx, ctx context.Context, bal float64) er
 	return nil
 }
 
-func (self *Wallet) UpdateTx(tx pgx.Tx, ctx context.Context, bal float64) error {
-	err := self.models.walletModel.Update(ctx, self.id, bal)
+func (self *Wallet) Update(tx pgx.Tx, ctx context.Context, bal float64) error {
+	err := self.models.walletModel.Update(tx, ctx, self.id, bal)
 	if err != nil {
 		return err
 	}
@@ -63,72 +62,12 @@ func (self *Wallet) UpdateTx(tx pgx.Tx, ctx context.Context, bal float64) error 
 	return nil
 }
 
-func (self *Wallet) AvailableBalTx(tx pgx.Tx, ctx context.Context) (float64, error) {
-	pending, err := self.models.purchaseModel.PendingPurchase(ctx, self.deviceId)
+func (self *Wallet) AvailableBal(tx pgx.Tx, ctx context.Context) (float64, error) {
+	pending, err := self.models.purchaseModel.PendingPurchase(tx, ctx, self.deviceId)
 	if err != nil {
 		return 0, nil
 	}
 
 	dbt := pending.WalletDebit()
 	return self.balance - dbt, nil
-}
-
-func (self *Wallet) IncBalance(ctx context.Context, bal float64) error {
-	tx, err := self.db.SqlDB().Begin(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		}
-	}()
-
-	err = self.IncBalanceTx(tx, ctx, bal)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (self *Wallet) Update(ctx context.Context, bal float64) error {
-	tx, err := self.db.SqlDB().Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("could not begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		}
-	}()
-
-	err = self.UpdateTx(tx, ctx, bal)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (self *Wallet) AvailableBal(ctx context.Context) (float64, error) {
-	tx, err := self.db.SqlDB().Begin(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("could not begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		}
-	}()
-
-	bal, err := self.AvailableBalTx(tx, ctx)
-	if err != nil {
-		return 0, nil
-	}
-
-	return bal, nil
 }

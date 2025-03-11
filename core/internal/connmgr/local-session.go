@@ -76,25 +76,43 @@ func (self *LocalSession) Save(ctx context.Context, data sdkapi.SessionData) err
 	u := data.UpMbits
 	g := data.UseGlobalSpeed
 
-	err := self.mdls.Session().Update(ctx, id, devId, t, timeSecs, dataMb, timeCons, dataCons, started, exp, d, u, g)
+	tx, err := self.db.SqlDB().Begin(ctx)
 	if err != nil {
-		log.Println("Session save error: ", err)
+		return err
 	}
 
-	return err
+	err = self.mdls.Session().Update(tx, ctx, id, devId, t, timeSecs, dataMb, timeCons, dataCons, started, exp, d, u, g)
+	if err != nil {
+		log.Println("Session save error: ", err)
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (self *LocalSession) Reload(ctx context.Context) (sdkapi.SessionData, error) {
+func (self *LocalSession) Reload(ctx context.Context) (data sdkapi.SessionData, err error) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	s, err := self.mdls.Session().Find(ctx, self.id)
+	tx, err := self.db.SqlDB().Begin(ctx)
+	if err != nil {
+		return
+	}
+
+	s, err := self.mdls.Session().Find(tx, ctx, self.id)
 	if err != nil {
 		return self.data(), err
 	}
 
-	self.load(s)
+	if err = tx.Commit(ctx); err != nil {
+		return
+	}
 
+	self.load(s)
 	return self.data(), nil
 }
 

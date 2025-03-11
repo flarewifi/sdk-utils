@@ -48,6 +48,7 @@ type PortalNavItemOpt struct {
 	IconFile    string
 	RouteName   string
 	RouteParams map[string]string
+	Metadata    interface{}
 }
 
 type AdminNavList struct {

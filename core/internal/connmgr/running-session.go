@@ -3,6 +3,7 @@ package connmgr
 import (
 	"context"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -170,10 +171,10 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	download, dlok := stats.Download[self.ip]
-	upload, ulok := stats.Upload[self.mac]
+	download, dlOK := stats.Download[self.ip]
+	upload, upOK := stats.Upload[strings.ToUpper(self.mac)]
 
-	if dlok && ulok {
+	if dlOK && upOK {
 		dataconMb := float64(download.Bytes+upload.Bytes) / (1 * 1000 * 1000)
 		log.Println("CONSUMPTION MB: ", dataconMb)
 		self.session.IncDataCons(dataconMb)

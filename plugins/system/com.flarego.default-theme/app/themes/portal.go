@@ -32,7 +32,15 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				return sdkapi.ViewPage{}
 			}
 
-			summary, err := api.SessionsMgr().SessionSummary(r.Context(), clnt)
+			ctx := r.Context()
+			tx, err := api.SqlDb().Begin(ctx)
+			if err != nil {
+				api.Logger().Error("Error initializing transaction: " + err.Error())
+				return sdkapi.ViewPage{}
+			}
+			defer tx.Rollback(ctx)
+
+			summary, err := api.SessionsMgr().SessionSummary(tx, ctx, clnt)
 			if err != nil {
 				api.Logger().Error("Error in session summary query: " + err.Error())
 				return sdkapi.ViewPage{}
@@ -45,6 +53,11 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				SessionSummary:   summary,
 				IsSessionRunning: ok,
 			})
+
+			if err := tx.Commit(ctx); err != nil {
+				api.Logger().Error("Error committing db transaction: " + err.Error())
+				return sdkapi.ViewPage{}
+			}
 
 			return sdkapi.ViewPage{
 				Assets: sdkapi.ViewAssets{

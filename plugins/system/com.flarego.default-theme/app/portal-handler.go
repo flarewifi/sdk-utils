@@ -17,14 +17,26 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 			return
 		}
 
-		summary, err := api.SessionsMgr().SessionSummary(r.Context(), clnt)
+		ctx := r.Context()
+		tx, err := api.SqlDb().Begin(ctx)
+		if err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback(ctx)
+
+		summary, err := api.SessionsMgr().SessionSummary(tx, ctx, clnt)
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
-		_, ok := api.SessionsMgr().CurrSession(clnt)
+		if err := tx.Commit(ctx); err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
 
+		_, ok := api.SessionsMgr().CurrSession(clnt)
 		summaryView := portal.SessionSummary(api, portal.SessionSummaryData{
 			SessionSummary:   summary,
 			IsSessionRunning: ok,

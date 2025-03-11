@@ -29,14 +29,23 @@ func (self *PaymentsApi) NewPaymentProvider(provider sdkapi.IPaymentProvider) {
 
 func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdkapi.PurchaseRequest) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		clnt, err := helpers.CurrentClient(self.api.ClntReg, r)
+		ctx := r.Context()
+		clnt, err := helpers.CurrentClient(self.api.ClntReg, self.api.SqlDb(), r)
 		if err != nil {
 			log.Println("helpers.CurrentClient error:", err)
 			self.ErrorPage(w, err)
 			return
 		}
 
+		tx, err := self.api.SqlDb().Begin(ctx)
+		if err != nil {
+			self.ErrorPage(w, err)
+			return
+		}
+		defer tx.Rollback(ctx)
+
 		_, err = self.api.models.Purchase().Create(
+			tx,
 			r.Context(),
 			clnt.Id(),
 			p.Sku,
@@ -54,6 +63,11 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 			return
 		}
 
+		if err := tx.Commit(ctx); err != nil {
+			self.ErrorPage(w, err)
+			return
+		}
+
 		coreApi := self.api.CoreAPI
 		coreApi.HttpAPI.Response().Redirect(w, r, "payments:options")
 	}
@@ -63,14 +77,21 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 }
 
 func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRequest, error) {
+	ctx := r.Context()
 	mdls := self.api.models
-	clnt, err := helpers.CurrentClient(self.api.ClntReg, r)
+	clnt, err := helpers.CurrentClient(self.api.ClntReg, self.api.SqlDb(), r)
 	if err != nil {
 		log.Println("helpers.CurrentClient error:", err)
 		return nil, err
 	}
 
-	p, err := mdls.Purchase().PendingPurchase(r.Context(), clnt.Id())
+	tx, err := self.api.SqlDb().Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	p, err := mdls.Purchase().PendingPurchase(tx, r.Context(), clnt.Id())
 	if err != nil {
 		log.Println("mdls.Purchase().FindByDeviceId error:", err)
 		return nil, err
@@ -79,6 +100,10 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 	if p.IsCancelled() || p.IsConfirmed() {
 		log.Println("Purchase is already processed")
 		return nil, errors.New("Purchase is already processed")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	purchase := NewPurchase(self.api, r.Context(), clnt.Id(), p)
