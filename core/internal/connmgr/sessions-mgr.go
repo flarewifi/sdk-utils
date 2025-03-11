@@ -3,6 +3,7 @@ package connmgr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -42,6 +43,7 @@ type SessionsMgr struct {
 func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
 	go func() {
 		for data := range trfk.Listen() {
+			fmt.Printf("Traffic Data: %+v\n", data)
 			go func(data *sdkapi.TrafficData) {
 				self.sessions.Range(func(key, value any) bool {
 					rs := value.(*RunningSession)
