@@ -1,6 +1,8 @@
 package adminctrl
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -42,6 +44,39 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		page := views.IndexPage(g.CoreAPI, data)
 		view := sdkapi.ViewPage{
 			PageContent: page,
+		}
+		res.AdminView(w, r, view)
+	}
+}
+
+type Release struct {
+	TagName string `json:"tag_name"`
+	Name    string `json:"name"`
+	Body    string `json:"body"`
+}
+
+func GetReleases(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.Http().Response()
+		vars := api.HttpAPI.MuxVars(r)
+		githubURL := vars["github_url"]
+
+		// Send GET request to GitHub API
+		resp, err := http.Get(fmt.Sprintf("%s/releases/", githubURL))
+		if err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+		}
+		defer resp.Body.Close()
+
+		// Decode the JSON response
+		var releases []views.Release
+		if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+		}
+
+		view := sdkapi.ViewPage{
+			PageContent: views.ReleasesPage(releases),
 		}
 		res.AdminView(w, r, view)
 	}

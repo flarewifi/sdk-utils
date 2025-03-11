@@ -53,20 +53,28 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
 					<td hx-boost="true">
 						if !p.ToBeRemoved {
 							<a
-                                class="btn btn-sm btn-danger"
+								class="btn btn-sm btn-danger"
 								hx-confirm="Are you sure you want to uninstall this plugin?"
 								hx-post={ api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg", p.Info.Package) }
 							>
 								Uninstall
 							</a>
+							//	if p.Src.GitURL != "" {
+							<a
+								class="btn btn-sm btn-primary"
+								href={ templ.URL(api.Http().Helpers().UrlForRoute("admin.plugins.release.github", "github_url", p.Src.GitURL)) }
+							>
+								Check For Updates
+							</a>
+
+							//		}
 						}
 					</td>
 				</tr>
 			}
 		</tbody>
 	</table>
-
-    <div class="alert alert-info">
-        Plugins marked with "To Be Removed" will be removed on the next reboot.
-    </div>
+	<div class="alert alert-info">
+		Plugins marked with "To Be Removed" will be removed on the next reboot.
+	</div>
 }
