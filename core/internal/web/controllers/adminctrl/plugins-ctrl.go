@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -49,34 +50,42 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-type Release struct {
-	TagName string `json:"tag_name"`
-	Name    string `json:"name"`
-	Body    string `json:"body"`
-}
-
-func GetReleases(g *api.CoreGlobals) http.HandlerFunc {
+func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
 		res := api.Http().Response()
+
 		vars := api.HttpAPI.MuxVars(r)
-		githubURL := vars["github_url"]
+		pluginPkg := vars["pkg"]
+
+		def, err := plugins.GetPluginDef(pluginPkg)
+		if err != nil {
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+		}
+
+		author := plugins.GetAuthorNameFromGitUrl(def)
+		repo := plugins.GetRepoFromGitUrl(def)
 
 		// Send GET request to GitHub API
-		resp, err := http.Get(fmt.Sprintf("%s/releases/", githubURL))
+		resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", author, repo))
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 		}
-		defer resp.Body.Close()
-
-		// Decode the JSON response
-		var releases []views.Release
-		if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
+		if resp.Body != nil {
+			defer resp.Body.Close()
 		}
 
+		var releases []views.Release
+		if resp.StatusCode == http.StatusOK {
+			if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+				log.Println("error decoding: ", err)
+				res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			}
+		}
+
+		page := views.ReleasesPage(releases)
 		view := sdkapi.ViewPage{
-			PageContent: views.ReleasesPage(releases),
+			PageContent: page,
 		}
 		res.AdminView(w, r, view)
 	}

@@ -1,18 +1,32 @@
 package pluginsview
 
-type Release struct {
-	TagName string `json:"tag_name"`
-	Name    string `json:"name"`
-	Body    string `json:"body"`
+type ReleaseAsset struct {
+Name string `json:"name"`
+Size int `json:"size"`
+DownloadCount int `json:"download_count"`
 }
 
+type Release struct {
+ID int `json:"id"`
+TagName string `json:"tag_name"`
+Name string `json:"name"`
+PublishedAt string `json:"published_at"`
+Assets []ReleaseAsset `json:"assets"`
+}
+
+
 templ ReleasesPage(data []Release) {
-	<div>Github Releases </div>
-	for _, release := range data {
-		<div>
-			Tag: { release.TagName }
-			Name: { release.Name }
-			Body: { release.Body }
-		</div>
-	}
+<h1>Github Releases</h1>
+if len(data) == 0 {
+<h2>No available releases</h2>
+} else {
+for _, release := range data {
+<div>
+	ID: { string(release.ID) }
+	Tag Name: { release.TagName }
+	Name: { release.Name }
+	Published At: { release.PublishedAt }
+</div>
+}
+}
 }
