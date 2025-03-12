@@ -50,18 +50,20 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
 			<td>
 				{ fmt.Sprintf("%+v", p.Info) }
 			</td>
-			<td hx-boost="true">
+			<td >
 				if !p.ToBeRemoved {
-				<a class="btn btn-sm btn-danger" hx-confirm="Are you sure you want to uninstall this plugin?" hx-post={
-					api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg" , p.Info.Package) }>
-					Uninstall
-				</a>
+					<span hx-boost="true">
+						<a class="btn btn-sm btn-danger" hx-confirm="Are you sure you want to uninstall this plugin?" hx-post={
+						api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg" , p.Info.Package) }>
+						Uninstall
+						</a>
+					</span>
 				}
 
 
 				if p.Src.GitURL != "" {
 				<a class="btn btn-sm btn-primary" href={
-					templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.checkupdates", "pkg" ,
+					templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.checkupdates", "pkg" ,
 					p.Info.Package)) }>
 					Check For Updates
 				</a>
@@ -73,5 +75,8 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
 </table>
 <div class="alert alert-info">
 	Plugins marked with "To Be Removed" will be removed on the next reboot.
+</div>
+<div class="alert alert-info">
+	Plugins marked with "To Be Updated" will be updated on the next reboot.
 </div>
 }

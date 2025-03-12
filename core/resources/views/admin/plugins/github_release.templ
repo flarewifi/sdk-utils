@@ -1,32 +1,58 @@
 package pluginsview
 
-type ReleaseAsset struct {
-Name string `json:"name"`
-Size int `json:"size"`
-DownloadCount int `json:"download_count"`
-}
+import (
+	"time"
+	"log"
+
+	sdkapi "sdk/api"
+)
+
 
 type Release struct {
-ID int `json:"id"`
-TagName string `json:"tag_name"`
-Name string `json:"name"`
-PublishedAt string `json:"published_at"`
-Assets []ReleaseAsset `json:"assets"`
+	TagName string `json:"tag_name"`
+	Name string `json:"name"`
+	Body string `json:"body"`
+	PublishedAt string `json:"published_at"`
+	TarballURL string `json:"tarball_url"`
 }
 
 
-templ ReleasesPage(data []Release) {
-<h1>Github Releases</h1>
-if len(data) == 0 {
-<h2>No available releases</h2>
-} else {
-for _, release := range data {
-<div>
-	ID: { string(release.ID) }
-	Tag Name: { release.TagName }
-	Name: { release.Name }
-	Published At: { release.PublishedAt }
-</div>
-}
-}
+templ ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) {
+	<h1>Github Releases</h1>
+	if len(data) == 0 {
+		<h2>No available releases</h2>
+	}
+	<div>
+		<table class="table table-bordered">
+			<thead>
+				<td>Tag Name</td>
+				<td>Name</td>
+				<td>Description</td>
+				<td>Published Date</td>
+				<td>Download Link</td>
+			</thead>
+			<tbody>
+				for _, release := range data {
+					{{ publishedDate, err := time.Parse(time.RFC3339, release.PublishedAt) }}
+					if err != nil {
+						{{ log.Println("err: error") }}
+					}
+
+					<tr>
+						<td>{ release.TagName }</td>
+						<td>{ release.Name }</td>
+						<td>{ release.Body }</td>
+						<td>{ publishedDate.Format("January 02, 2006") }</td>
+						<td>
+							{{ pairs := []string{"pkg", pluginPkg, "tag" , release.TagName }}}
+							{{ url := api.Http().Helpers().UrlForRoute("admin.plugins.getupdate", pairs...) }}
+							<a hx-boost="true" href={ templ.SafeURL(url) }>
+								Click Here
+							</a>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
 }

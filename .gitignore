@@ -5,6 +5,7 @@
 /plugins/local/com.sample.plugin
 /plugins/installed
 /plugins/update
+/plugins/system/updates
 /plugins/backup
 /plugins/local
 /output

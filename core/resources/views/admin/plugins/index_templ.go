@@ -103,12 +103,12 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</td><td hx-boost=\"true\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</td><td>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if !p.ToBeRemoved {
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<a class=\"btn btn-sm btn-danger\" hx-confirm=\"Are you sure you want to uninstall this plugin?\" hx-post=\"")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span hx-boost=\"true\"><a class=\"btn btn-sm btn-danger\" hx-confirm=\"Are you sure you want to uninstall this plugin?\" hx-post=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -116,13 +116,13 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(
 					api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg", p.Info.Package))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 56, Col: 88}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 57, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">Uninstall</a> ")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">Uninstall</a></span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -132,7 +132,7 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var6 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.checkupdates", "pkg",
+				var templ_7745c5c3_Var6 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.checkupdates", "pkg",
 					p.Info.Package))
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var6)))
 				if templ_7745c5c3_Err != nil {
@@ -148,7 +148,7 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</tbody></table><div class=\"alert alert-info\">Plugins marked with \"To Be Removed\" will be removed on the next reboot.</div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</tbody></table><div class=\"alert alert-info\">Plugins marked with \"To Be Removed\" will be removed on the next reboot.</div><div class=\"alert alert-info\">Plugins marked with \"To Be Updated\" will be updated on the next reboot.</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

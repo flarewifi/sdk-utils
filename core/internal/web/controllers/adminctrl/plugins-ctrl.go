@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -50,6 +51,103 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
+func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.Http().Response()
+		vars := api.HttpAPI.MuxVars(r)
+
+		pluginPkg := vars["pkg"]
+		def, err := plugins.GetPluginDef(pluginPkg)
+		if err != nil {
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+		}
+
+		author := plugins.GetAuthorNameFromGitUrl(def)
+		repo := strings.TrimSuffix(plugins.GetRepoFromGitUrl(def), ".git")
+
+		tagName := vars["tag"]
+
+		tarballURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/tarball/%s", author, repo, tagName)
+		log.Println("tarball link: ", tarballURL)
+
+		if err := downloadTarball(pluginPkg, tarballURL); err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
+			log.Println("download error: ", err)
+
+			return
+		}
+
+		res.FlashMsg(w, r, "Github updates successfully downloaded.", sdkapi.FlashMsgSuccess)
+		res.Redirect(w, r, "admin.plugins.index")
+	}
+}
+
+func downloadTarball(pluginPkg, tarballURL string) error {
+	tarballFilename := fmt.Sprintf("%s.tar.gz", pluginPkg)
+	tarballSavedDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", tarballFilename)
+	err := sdkutils.FsEnsureDir(tarballSavedDir) // Ensure the directory exists
+	if err != nil {
+		return err
+	}
+
+	downloader := sdkutils.NewDownloader(tarballURL, tarballSavedDir)
+	if err := downloader.Download(); err != nil {
+		return fmt.Errorf("downloading error: %w", err)
+	}
+
+	extractedPluginTempDir, err := extractDownloadedFile(tarballSavedDir)
+	if err != nil {
+		return fmt.Errorf("unable to extract: %w", err)
+	}
+
+	if err := moveExtractedPlugin(extractedPluginTempDir, pluginPkg); err != nil {
+		return fmt.Errorf("unable to move file: %w", err)
+	}
+
+	return nil
+}
+
+func extractDownloadedFile(tarballSavedDir string) (string, error) {
+	// Extract the tar file to the /tmp/plugins/extracted directory.
+	extractedPluginTempDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted")
+	if err := sdkutils.FsEnsureDir(extractedPluginTempDir); err != nil {
+		return "", fmt.Errorf("ensure dir exists error: %w", err)
+	}
+
+	if err := sdkutils.FsExtract(tarballSavedDir, extractedPluginTempDir); err != nil {
+		return "", fmt.Errorf("extracting error: %w", err)
+	}
+
+	return extractedPluginTempDir, nil
+}
+
+func moveExtractedPlugin(extractedPluginTempDir, pkgName string) error {
+	files, err := os.ReadDir(extractedPluginTempDir)
+	if err != nil {
+		return fmt.Errorf("failed to read extract directory: %w", err)
+	}
+
+	var extractedDirName string
+	for _, file := range files {
+		if file.IsDir() {
+			if strings.Contains(file.Name(), pkgName) {
+				extractedDirName = file.Name()
+			}
+			break
+		}
+	}
+
+	src := filepath.Join(extractedPluginTempDir, extractedDirName)
+	dst := filepath.Join(sdkutils.PathPluginsDir, "system", "updates", pkgName)
+	if err := sdkutils.FsMoveDir(src, dst); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
@@ -64,13 +162,13 @@ func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		author := plugins.GetAuthorNameFromGitUrl(def)
-		repo := plugins.GetRepoFromGitUrl(def)
+		repo := strings.TrimSuffix(plugins.GetRepoFromGitUrl(def), ".git")
 
-		// Send GET request to GitHub API
 		resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", author, repo))
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 		}
+		log.Println("status code from gh: ", resp.StatusCode)
 		if resp.Body != nil {
 			defer resp.Body.Close()
 		}
@@ -83,7 +181,7 @@ func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
-		page := views.ReleasesPage(releases)
+		page := views.ReleasesPage(g.CoreAPI, releases, pluginPkg)
 		view := sdkapi.ViewPage{
 			PageContent: page,
 		}
