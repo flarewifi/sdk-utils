@@ -62,14 +62,14 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		pluginPkg := vars["pkg"]
 		tagName := vars["tag"]
 
-		tarballSavedDir, err := downloadTarball(pluginPkg, tagName)
+		downloadedTarballPath, err := downloadTarball(pluginPkg, tagName)
 		if err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
 			log.Println("unable to download: ", err)
 			return
 		}
 
-		extractedPluginTempDir, err := extractDownloadedFile(tarballSavedDir)
+		extractedPluginTempDir, err := extractDownloadedFile(downloadedTarballPath)
 		if err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
 			log.Println("unable to extract: ", err)
@@ -88,8 +88,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 }
 
 func downloadTarball(pluginPkg, tagName string) (string, error) {
-	tarballFilename := fmt.Sprintf("%s.tar.gz", pluginPkg)
-	tarballSavedDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", tarballFilename)
+	tarballSavedDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads")
 	if err := sdkutils.FsEnsureDir(tarballSavedDir); err != nil {
 		return "", fmt.Errorf("ensure dir error: %w", err)
 	}
@@ -99,12 +98,13 @@ func downloadTarball(pluginPkg, tagName string) (string, error) {
 		return "", fmt.Errorf("get src url error: %w", err)
 	}
 
-	downloader := sdkutils.NewDownloader(tarballURL, tarballSavedDir)
+	tarballSavedPath := filepath.Join(tarballSavedDir, fmt.Sprintf("%s.tar.gz", pluginPkg))
+	downloader := sdkutils.NewDownloader(tarballURL, tarballSavedPath)
 	if err := downloader.Download(); err != nil {
 		return "", fmt.Errorf("downloading error: %w", err)
 	}
 
-	return tarballSavedDir, nil
+	return tarballSavedPath, nil
 }
 
 func getSrcURL(pluginPkg, tagName string) (string, error) {

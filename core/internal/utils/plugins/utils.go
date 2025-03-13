@@ -105,7 +105,7 @@ func SearchPluginDirs(searchPath string) (pluginDirs []string) {
 	return
 }
 
-// InstalledPluginDirs returns the list of installed plugins in the plugins directory. The path of each plugin is an aboslute path.
+// InstalledPluginDirs returns the list of installed plugins in the plugins directory. The path of each plugin is an absolute path.
 func InstalledPluginDirs() (pluginDirs []string) {
 	installedPluginsPath := filepath.Join(sdkutils.PathPluginsDir, "installed")
 
@@ -267,11 +267,7 @@ func MovePendingUpdate(pkg string) error {
 	if err := os.RemoveAll(updatePath); err != nil {
 		return err
 	}
-	if HasBackup(pkg) {
-		if err := RemoveBackup(pkg); err != nil {
-			return err
-		}
-	}
+
 	return nil
 }
 

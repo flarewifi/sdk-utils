@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -109,6 +111,7 @@ func InitPlugins(g *api.CoreGlobals) {
 	}
 
 	// Load plugins
+	installedPluginsPath := filepath.Join(sdkutils.PathPluginsDir, "installed")
 	pluginDirs := plugins.InstalledPluginDirs()
 	log.Println("Installed plugin directories:", pluginDirs)
 	for _, dir := range pluginDirs {
@@ -117,10 +120,45 @@ func InitPlugins(g *api.CoreGlobals) {
 		if err != nil {
 			fmt.Println("Error getting plugin info: ", err)
 			fmt.Println("Plugin not loaded: ", dir)
+
+			pkg := strings.TrimPrefix(dir, installedPluginsPath)
+			if err := LoadFromBackup(g, pkg); err != nil {
+				fmt.Println("Error loading from backup: ", err)
+				fmt.Println("Plugin not loaded: ", dir)
+			}
+
 			continue
-		} else {
-			p := api.NewPluginApi(dir, info, g.PluginMgr, g.TrafficMgr)
-			g.PluginMgr.RegisterPlugin(p)
+		}
+
+		p := api.NewPluginApi(dir, info, g.PluginMgr, g.TrafficMgr)
+		err = g.PluginMgr.RegisterPlugin(p)
+		if err != nil {
+			if err := LoadFromBackup(g, info.Package); err != nil {
+				fmt.Println("Error loading from backup: ", err)
+			}
+
+			fmt.Println(dir, " plugin not loaded: ", err)
 		}
 	}
+}
+
+func LoadFromBackup(g *api.CoreGlobals, pkg string) error {
+	if err := plugins.RestoreBackup(pkg); err != nil {
+		return fmt.Errorf("%w: Error restoring backup for plugin: %s", err, pkg)
+	}
+
+	pkgInstallDir := plugins.GetInstallPath(pkg)
+	info, err := sdkutils.GetPluginInfoFromPath(pkgInstallDir)
+	if err != nil {
+		return fmt.Errorf("error getting plugin info: %w", err)
+	}
+
+	p := api.NewPluginApi(pkgInstallDir, info, g.PluginMgr, g.TrafficMgr)
+	if err := g.PluginMgr.RegisterPlugin(p); err != nil {
+		return err
+	}
+
+	plugins.RemoveBackup(pkg)
+
+	return nil
 }
