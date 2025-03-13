@@ -50,7 +50,7 @@ func CreateDb(ctx context.Context, conn *pgx.Conn) (err error) {
 	}
 
 	log.Println("Creating database " + cfg.Database + "...")
-	_, err = conn.Exec(context.Background(), "CREATE DATABASE "+cfg.Database)
+	_, err = conn.Exec(ctx, "CREATE DATABASE "+cfg.Database)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			log.Println("Database already exists, skipping creation.")
