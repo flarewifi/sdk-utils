@@ -46,7 +46,7 @@ templ ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) {
 						<td>
 							{{ pairs := []string{"pkg", pluginPkg, "tag" , release.TagName }}}
 							{{ url := api.Http().Helpers().UrlForRoute("admin.plugins.getupdate", pairs...) }}
-							<a hx-boost="true" href={ templ.SafeURL(url) }>
+							<a href={ templ.SafeURL(url) }>
 								Click Here
 							</a>
 						</td>

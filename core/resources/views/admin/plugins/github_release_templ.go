@@ -121,7 +121,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 			}
 			pairs := []string{"pkg", pluginPkg, "tag", release.TagName}
 			url := api.Http().Helpers().UrlForRoute("admin.plugins.getupdate", pairs...)
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<a hx-boost=\"true\" href=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

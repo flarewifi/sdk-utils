@@ -10,6 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	sdkapi "sdk/api"
 )
@@ -69,7 +70,7 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.Info.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 42, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 43, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -79,13 +80,20 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if !p.ToBeRemoved {
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span>Installed</span>")
+			if p.ToBeRemoved {
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span style=\"color: red;\">To Be Removed</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			} else {
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span style=\"color: red;\">For Removal</span>")
+			}
+			if p.HasPendingUpdate {
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span style=\"color: green;\">To Be Updated</span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			if !p.ToBeRemoved && !p.HasPendingUpdate {
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span>Installed</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -97,7 +105,7 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%+v", p.Info))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 51, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 58, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -116,7 +124,7 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData) templ.Component {
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(
 					api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg", p.Info.Package))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 57, Col: 89}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 64, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {

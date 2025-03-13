@@ -33,10 +33,12 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 					continue
 				}
 				toBeRemoved := plugins.IsToBeRemoved(info.Package)
+				hasPendingUpdate := plugins.HasPendingUpdate(info.Package)
 				pluginData = append(pluginData, views.PluginData{
-					Info:        info,
-					Src:         def,
-					ToBeRemoved: toBeRemoved,
+					Info:             info,
+					Src:              def,
+					ToBeRemoved:      toBeRemoved,
+					HasPendingUpdate: hasPendingUpdate,
 				})
 			}
 		}
@@ -58,55 +60,64 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		vars := api.HttpAPI.MuxVars(r)
 
 		pluginPkg := vars["pkg"]
-		def, err := plugins.GetPluginDef(pluginPkg)
-		if err != nil {
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-		}
-
-		author := plugins.GetAuthorNameFromGitUrl(def)
-		repo := strings.TrimSuffix(plugins.GetRepoFromGitUrl(def), ".git")
-
 		tagName := vars["tag"]
 
-		tarballURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/tarball/%s", author, repo, tagName)
-		log.Println("tarball link: ", tarballURL)
-
-		if err := downloadTarball(pluginPkg, tarballURL); err != nil {
+		tarballSavedDir, err := downloadTarball(pluginPkg, tagName)
+		if err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.index")
-			log.Println("download error: ", err)
-
+			log.Println("unable to download: ", err)
 			return
 		}
 
-		res.FlashMsg(w, r, "Github updates successfully downloaded.", sdkapi.FlashMsgSuccess)
+		extractedPluginTempDir, err := extractDownloadedFile(tarballSavedDir)
+		if err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			log.Println("unable to extract: ", err)
+			return
+		}
+
+		if err := moveExtractedPlugin(extractedPluginTempDir, pluginPkg); err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			log.Println("unable to move plugin dir: ", err)
+			return
+		}
+
+		res.FlashMsg(w, r, "Github update has been successfully downloaded.", sdkapi.FlashMsgSuccess)
 		res.Redirect(w, r, "admin.plugins.index")
 	}
 }
 
-func downloadTarball(pluginPkg, tarballURL string) error {
+func downloadTarball(pluginPkg, tagName string) (string, error) {
 	tarballFilename := fmt.Sprintf("%s.tar.gz", pluginPkg)
 	tarballSavedDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", tarballFilename)
-	err := sdkutils.FsEnsureDir(tarballSavedDir) // Ensure the directory exists
+	if err := sdkutils.FsEnsureDir(tarballSavedDir); err != nil {
+		return "", fmt.Errorf("ensure dir error: %w", err)
+	}
+
+	tarballURL, err := getSrcURL(pluginPkg, tagName)
 	if err != nil {
-		return err
+		return "", fmt.Errorf("get src url error: %w", err)
 	}
 
 	downloader := sdkutils.NewDownloader(tarballURL, tarballSavedDir)
 	if err := downloader.Download(); err != nil {
-		return fmt.Errorf("downloading error: %w", err)
+		return "", fmt.Errorf("downloading error: %w", err)
 	}
 
-	extractedPluginTempDir, err := extractDownloadedFile(tarballSavedDir)
+	return tarballSavedDir, nil
+}
+
+func getSrcURL(pluginPkg, tagName string) (string, error) {
+	def, err := plugins.GetPluginDef(pluginPkg)
 	if err != nil {
-		return fmt.Errorf("unable to extract: %w", err)
+		return "", fmt.Errorf("unable to get plugin src def")
 	}
 
-	if err := moveExtractedPlugin(extractedPluginTempDir, pluginPkg); err != nil {
-		return fmt.Errorf("unable to move file: %w", err)
-	}
+	author := plugins.GetAuthorNameFromGitUrl(def)
+	repo := strings.TrimSuffix(plugins.GetRepoFromGitUrl(def), ".git")
+	tarballURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/tarball/%s", author, repo, tagName)
 
-	return nil
+	return tarballURL, nil
 }
 
 func extractDownloadedFile(tarballSavedDir string) (string, error) {
@@ -140,7 +151,7 @@ func moveExtractedPlugin(extractedPluginTempDir, pkgName string) error {
 	}
 
 	src := filepath.Join(extractedPluginTempDir, extractedDirName)
-	dst := filepath.Join(sdkutils.PathPluginsDir, "system", "updates", pkgName)
+	dst := filepath.Join(sdkutils.PathPluginsDir, "update", pkgName)
 	if err := sdkutils.FsMoveDir(src, dst); err != nil {
 		return err
 	}
