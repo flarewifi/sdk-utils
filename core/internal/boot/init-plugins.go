@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -111,7 +110,6 @@ func InitPlugins(g *api.CoreGlobals) {
 	}
 
 	// Load plugins
-	installedPluginsPath := filepath.Join(sdkutils.PathPluginsDir, "installed")
 	pluginDirs := plugins.InstalledPluginDirs()
 	log.Println("Installed plugin directories:", pluginDirs)
 	for _, dir := range pluginDirs {
@@ -121,7 +119,7 @@ func InitPlugins(g *api.CoreGlobals) {
 			fmt.Println("Error getting plugin info: ", err)
 			fmt.Println("Plugin not loaded: ", dir)
 
-			pkg := strings.TrimPrefix(dir, installedPluginsPath)
+			pkg := filepath.Base(dir)
 			if err := LoadFromBackup(g, pkg); err != nil {
 				g.CoreAPI.Logger().Error(fmt.Sprintf("Error loading from backup: %v", err))
 			}
