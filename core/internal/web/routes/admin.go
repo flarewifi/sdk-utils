@@ -40,6 +40,8 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Post("/install/zip", adminctrl.PluginInstallFromZipCtrl(g)).Name("admin.plugins.install.zip")
 		subrouter.Post("/install/github", adminctrl.PluginsInstallFromGitCtrl(g)).Name("admin.plugins.install.github")
 		subrouter.Post("/uninstall/{pkg}", adminctrl.UninstallPluginCtrl(g)).Name("admin.plugins.uninstall")
+		subrouter.Get("/checkupdates/{pkg}", adminctrl.CheckPluginUpdatesCtrl(g)).Name("admin.plugins.checkupdates")
+		subrouter.Get("/getupdate/{pkg}/{tag}", adminctrl.DownloadPluginUpdatesCtrl(g)).Name("admin.plugins.getupdate")
 	})
 
 	// adminR.Group("/plugins", func(subrouter sdkhttp.HttpRouterInstance) {

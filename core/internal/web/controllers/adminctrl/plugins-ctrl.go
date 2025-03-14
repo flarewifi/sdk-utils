@@ -1,15 +1,17 @@
 package adminctrl
 
 import (
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
-	views "core/resources/views/admin/plugins"
 
+	views "core/resources/views/admin/plugins"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -29,10 +31,12 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 					continue
 				}
 				toBeRemoved := plugins.IsToBeRemoved(info.Package)
+				hasPendingUpdate := plugins.HasPendingUpdate(info.Package)
 				pluginData = append(pluginData, views.PluginData{
-					Info:        info,
-					Src:         def,
-					ToBeRemoved: toBeRemoved,
+					Info:             info,
+					Src:              def,
+					ToBeRemoved:      toBeRemoved,
+					HasPendingUpdate: hasPendingUpdate,
 				})
 			}
 		}
@@ -40,6 +44,103 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			Plugins: pluginData,
 		}
 		page := views.IndexPage(g.CoreAPI, data)
+		view := sdkapi.ViewPage{
+			PageContent: page,
+		}
+		res.AdminView(w, r, view)
+	}
+}
+
+func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.Http().Response()
+		vars := api.HttpAPI.MuxVars(r)
+
+		pluginPkg := vars["pkg"]
+		tagName := vars["tag"]
+
+		tarballDownloadURL, err := plugins.GetTarballDownloadURL(tagName, pluginPkg)
+		if err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
+			log.Println("unable to get src URL: ", err)
+			return
+		}
+
+		tarball, err := plugins.GetTarballDownloadPath(pluginPkg)
+		if err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
+			log.Println("unable to get src URL: ", err)
+			return
+		}
+
+		if err := sdkutils.DownloadGitHubTarball(tarballDownloadURL, tarball); err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
+			log.Println("unable to download: ", err)
+			return
+		}
+
+		if err := plugins.CompileDownloadedTarball(tarball, pluginPkg); err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
+			log.Println("unable to compile: ", err)
+			return
+		}
+
+		src, err := sdkutils.FindPluginSrc(filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", pluginPkg))
+		if err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			log.Println("unable to find src: ", err)
+			res.Redirect(w, r, "admin.plugins.index")
+			return
+		}
+
+		dst := filepath.Join(sdkutils.PathPluginsDir, "update", pluginPkg)
+		if err := sdkutils.CopyPluginFiles(src, dst); err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
+			log.Println("unable to copy plugin files: ", err)
+			return
+		}
+
+		// Remove the source directory after successfully moving its contents
+		if err := plugins.CleanupDownload(); err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
+			log.Println("unable to remove downloads: ", err)
+		}
+
+		res.FlashMsg(w, r, "Github update has been successfully downloaded.", sdkapi.FlashMsgSuccess)
+		res.Redirect(w, r, "admin.plugins.index")
+	}
+}
+
+func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.Http().Response()
+
+		vars := api.HttpAPI.MuxVars(r)
+		pluginPkg := vars["pkg"]
+
+		def, err := plugins.GetPluginDef(pluginPkg)
+		if err != nil {
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("get plugin def error: %v", err))
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		releases, err := plugins.GetGithubReleases(def.GitURL)
+		if err != nil {
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("get plugin def error: %v", err))
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		page := views.ReleasesPage(g.CoreAPI, releases, pluginPkg)
 		view := sdkapi.ViewPage{
 			PageContent: page,
 		}
