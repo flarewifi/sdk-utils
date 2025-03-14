@@ -62,101 +62,52 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		pluginPkg := vars["pkg"]
 		tagName := vars["tag"]
 
-		downloadedTarballPath, err := downloadTarball(pluginPkg, tagName)
+		gitURL, err := plugins.GetGithubSrcURL(pluginPkg)
 		if err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			log.Println("unable to get src URL: ", err)
+			return
+		}
+
+		repoURL := fmt.Sprintf("%s?ref=%s", gitURL, tagName)
+		tarball, err := plugins.GetTarballDownloadPath(pluginPkg)
+		if err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			log.Println("unable to get src URL: ", err)
+			return
+		}
+
+		if err := sdkutils.DownloadGitHubTarball(repoURL, tarball); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
 			log.Println("unable to download: ", err)
 			return
 		}
 
-		extractedPluginTempDir, err := extractDownloadedFile(downloadedTarballPath)
-		if err != nil {
+		if err := plugins.CompileDownloadedTarball(tarball, pluginPkg); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
-			log.Println("unable to extract: ", err)
+			log.Println("unable to compile: ", err)
 			return
 		}
 
-		if err := moveExtractedPlugin(extractedPluginTempDir, pluginPkg); err != nil {
+		src := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", pluginPkg)
+		dst := filepath.Join(sdkutils.PathPluginsDir, "update", pluginPkg)
+		if err := sdkutils.CopyPluginFiles(src, dst); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
-			log.Println("unable to move plugin dir: ", err)
+			log.Println("unable to copy plugin files: ", err)
+			return
+		}
+
+		// Remove the source directory after successfully moving its contents
+		err = os.RemoveAll(src)
+		if err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			log.Println("unable to remove from src: ", err)
 			return
 		}
 
 		res.FlashMsg(w, r, "Github update has been successfully downloaded.", sdkapi.FlashMsgSuccess)
 		res.Redirect(w, r, "admin.plugins.index")
 	}
-}
-
-func downloadTarball(pluginPkg, tagName string) (string, error) {
-	tarballSavedDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads")
-	if err := sdkutils.FsEnsureDir(tarballSavedDir); err != nil {
-		return "", fmt.Errorf("ensure dir error: %w", err)
-	}
-
-	tarballURL, err := getSrcURL(pluginPkg, tagName)
-	if err != nil {
-		return "", fmt.Errorf("get src url error: %w", err)
-	}
-
-	tarballSavedPath := filepath.Join(tarballSavedDir, fmt.Sprintf("%s.tar.gz", pluginPkg))
-	downloader := sdkutils.NewDownloader(tarballURL, tarballSavedPath)
-	if err := downloader.Download(); err != nil {
-		return "", fmt.Errorf("downloading error: %w", err)
-	}
-
-	return tarballSavedPath, nil
-}
-
-func getSrcURL(pluginPkg, tagName string) (string, error) {
-	def, err := plugins.GetPluginDef(pluginPkg)
-	if err != nil {
-		return "", fmt.Errorf("unable to get plugin src def")
-	}
-
-	author := plugins.GetAuthorNameFromGitUrl(def)
-	repo := strings.TrimSuffix(plugins.GetRepoFromGitUrl(def), ".git")
-	tarballURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/tarball/%s", author, repo, tagName)
-
-	return tarballURL, nil
-}
-
-func extractDownloadedFile(tarballSavedDir string) (string, error) {
-	// Extract the tar file to the /tmp/plugins/extracted directory.
-	extractedPluginTempDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted")
-	if err := sdkutils.FsEnsureDir(extractedPluginTempDir); err != nil {
-		return "", fmt.Errorf("ensure dir exists error: %w", err)
-	}
-
-	if err := sdkutils.FsExtract(tarballSavedDir, extractedPluginTempDir); err != nil {
-		return "", fmt.Errorf("extracting error: %w", err)
-	}
-
-	return extractedPluginTempDir, nil
-}
-
-func moveExtractedPlugin(extractedPluginTempDir, pkgName string) error {
-	files, err := os.ReadDir(extractedPluginTempDir)
-	if err != nil {
-		return fmt.Errorf("failed to read extract directory: %w", err)
-	}
-
-	var extractedDirName string
-	for _, file := range files {
-		if file.IsDir() {
-			if strings.Contains(file.Name(), pkgName) {
-				extractedDirName = file.Name()
-			}
-			break
-		}
-	}
-
-	src := filepath.Join(extractedPluginTempDir, extractedDirName)
-	dst := filepath.Join(sdkutils.PathPluginsDir, "update", pkgName)
-	if err := sdkutils.FsMoveDir(src, dst); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
