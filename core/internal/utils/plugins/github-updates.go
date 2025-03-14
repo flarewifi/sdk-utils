@@ -22,7 +22,7 @@ func GetGithubSrcURL(pkg string) (string, error) {
 
 func GetTarballDownloadPath(pkg string) (string, error) {
 	tarballSavedDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads")
-	if err := sdkutils.FsEnsureDir(tarballSavedDir); err != nil {
+	if err := sdkutils.FsEmptyDir(tarballSavedDir); err != nil {
 		return "", fmt.Errorf("ensure dir error: %w", err)
 	}
 
@@ -36,13 +36,13 @@ func CompileDownloadedTarball(tarball, pkg string) error {
 		return err
 	}
 
-	srcPath := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", pkg)
-	if err := BuildAssets(srcPath); err != nil {
-		return fmt.Errorf("unable to build assets: %w", err)
+	srcPath, err := sdkutils.FindPluginSrc(filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", pkg))
+	if err != nil {
+		return fmt.Errorf("unable to find plugin source: %w", err)
 	}
 
-	if err := BuildTemplates(srcPath); err != nil {
-		return fmt.Errorf("unable to build templates: %w", err)
+	if err := BuildAssets(srcPath); err != nil {
+		return fmt.Errorf("unable to build assets: %w", err)
 	}
 
 	workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(srcPath))
@@ -95,4 +95,14 @@ func renameTarball(pkg string) error {
 
 	return os.Rename(oldName, newName)
 
+}
+
+// Removes the download directory.
+func CleanupDownload() error {
+	downloadsDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads")
+	if err := os.RemoveAll(downloadsDir); err != nil {
+		return fmt.Errorf("unable to remove from src: %w", err)
+	}
+
+	return nil
 }

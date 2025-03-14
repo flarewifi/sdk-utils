@@ -123,8 +123,7 @@ func InitPlugins(g *api.CoreGlobals) {
 
 			pkg := strings.TrimPrefix(dir, installedPluginsPath)
 			if err := LoadFromBackup(g, pkg); err != nil {
-				fmt.Println("Error loading from backup: ", err)
-				fmt.Println("Plugin not loaded: ", dir)
+				g.CoreAPI.Logger().Error(fmt.Sprintf("Error loading from backup: %v", err))
 			}
 
 			continue
@@ -134,7 +133,7 @@ func InitPlugins(g *api.CoreGlobals) {
 		err = g.PluginMgr.RegisterPlugin(p)
 		if err != nil {
 			if err := LoadFromBackup(g, info.Package); err != nil {
-				fmt.Println("Error loading from backup: ", err)
+				g.CoreAPI.Logger().Error(fmt.Sprintf("Error loading from backup: %v", err))
 			}
 
 			fmt.Println(dir, " plugin not loaded: ", err)

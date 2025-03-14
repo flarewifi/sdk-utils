@@ -65,6 +65,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		gitURL, err := plugins.GetGithubSrcURL(pluginPkg)
 		if err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
 			log.Println("unable to get src URL: ", err)
 			return
 		}
@@ -73,36 +74,46 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		tarball, err := plugins.GetTarballDownloadPath(pluginPkg)
 		if err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
 			log.Println("unable to get src URL: ", err)
 			return
 		}
 
 		if err := sdkutils.DownloadGitHubTarball(repoURL, tarball); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
 			log.Println("unable to download: ", err)
 			return
 		}
 
 		if err := plugins.CompileDownloadedTarball(tarball, pluginPkg); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
 			log.Println("unable to compile: ", err)
 			return
 		}
 
-		src := filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", pluginPkg)
+		src, err := sdkutils.FindPluginSrc(filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", pluginPkg))
+		if err != nil {
+			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			log.Println("unable to find src: ", err)
+			res.Redirect(w, r, "admin.plugins.index")
+			return
+		}
+
 		dst := filepath.Join(sdkutils.PathPluginsDir, "update", pluginPkg)
 		if err := sdkutils.CopyPluginFiles(src, dst); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.index")
 			log.Println("unable to copy plugin files: ", err)
 			return
 		}
 
 		// Remove the source directory after successfully moving its contents
-		err = os.RemoveAll(src)
-		if err != nil {
+		if err := plugins.CleanupDownload(); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
-			log.Println("unable to remove from src: ", err)
-			return
+			res.Redirect(w, r, "admin.plugins.index")
+			log.Println("unable to remove downloads: ", err)
 		}
 
 		res.FlashMsg(w, r, "Github update has been successfully downloaded.", sdkapi.FlashMsgSuccess)
