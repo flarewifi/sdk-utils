@@ -1,19 +1,17 @@
 package adminctrl
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
-	views "core/resources/views/admin/plugins"
 
+	views "core/resources/views/admin/plugins"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -62,7 +60,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		pluginPkg := vars["pkg"]
 		tagName := vars["tag"]
 
-		gitURL, err := plugins.GetGithubSrcURL(pluginPkg)
+		tarballDownloadURL, err := plugins.GetTarballDownloadURL(tagName, pluginPkg)
 		if err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.index")
@@ -70,7 +68,6 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		repoURL := fmt.Sprintf("%s?ref=%s", gitURL, tagName)
 		tarball, err := plugins.GetTarballDownloadPath(pluginPkg)
 		if err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
@@ -79,7 +76,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		if err := sdkutils.DownloadGitHubTarball(repoURL, tarball); err != nil {
+		if err := sdkutils.DownloadGitHubTarball(tarballDownloadURL, tarball); err != nil {
 			res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.index")
 			log.Println("unable to download: ", err)
@@ -131,27 +128,16 @@ func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		def, err := plugins.GetPluginDef(pluginPkg)
 		if err != nil {
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-		}
-
-		author := plugins.GetAuthorNameFromGitUrl(def)
-		repo := strings.TrimSuffix(plugins.GetRepoFromGitUrl(def), ".git")
-
-		resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", author, repo))
-		if err != nil {
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("get plugin def error: %v", err))
 			res.Error(w, r, err, http.StatusInternalServerError)
-		}
-		log.Println("status code from gh: ", resp.StatusCode)
-		if resp.Body != nil {
-			defer resp.Body.Close()
+			return
 		}
 
-		var releases []views.Release
-		if resp.StatusCode == http.StatusOK {
-			if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-				log.Println("error decoding: ", err)
-				res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
-			}
+		releases, err := plugins.GetGithubReleases(def.GitURL)
+		if err != nil {
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("get plugin def error: %v", err))
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
 		}
 
 		page := views.ReleasesPage(g.CoreAPI, releases, pluginPkg)

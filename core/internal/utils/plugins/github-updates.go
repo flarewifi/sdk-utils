@@ -1,23 +1,56 @@
 package plugins
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	views "core/resources/views/admin/plugins"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func GetGithubSrcURL(pkg string) (string, error) {
+func GetGithubReleases(gitURL string) ([]views.Release, error) {
+	repo, err := sdkutils.ParseGitSource(gitURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse git source error: %w", err)
+	}
+
+	resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", repo.Owner, repo.Repo))
+	if err != nil {
+		return nil, fmt.Errorf("get releases error: %w", err)
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("invaid response from github")
+
+	}
+
+	var releases []views.Release
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, fmt.Errorf("unable to decode response body: %w", err)
+	}
+
+	return releases, nil
+}
+
+func GetTarballDownloadURL(ref, pkg string) (string, error) {
 	def, err := GetPluginDef(pkg)
 	if err != nil {
 		return "", fmt.Errorf("unable to download: %w", err)
 	}
 
-	repoURL := sdkutils.NeutralizeGitURL(def.GitURL)
+	gitURL := sdkutils.NeutralizeGitURL(def.GitURL)
+	tarballDownloadURL := fmt.Sprintf("%s?ref=%s", gitURL, ref)
 
-	return repoURL, nil
+	return tarballDownloadURL, nil
 }
 
 func GetTarballDownloadPath(pkg string) (string, error) {

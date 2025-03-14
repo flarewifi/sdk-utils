@@ -7,15 +7,13 @@ import (
 	sdkapi "sdk/api"
 )
 
-
 type Release struct {
-	TagName string `json:"tag_name"`
-	Name string `json:"name"`
-	Body string `json:"body"`
+	TagName     string `json:"tag_name"`
+	Name        string `json:"name"`
+	Body        string `json:"body"`
 	PublishedAt string `json:"published_at"`
-	TarballURL string `json:"tarball_url"`
+	TarballURL  string `json:"tarball_url"`
 }
-
 
 templ ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) {
 	<h1>Github Releases</h1>
