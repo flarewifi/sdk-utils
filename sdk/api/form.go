@@ -21,8 +21,6 @@ type IFormField interface {
 	GetLabel() string
 	GetType() string
 	GetValue() interface{}
-	IsReadOnly() bool
-	IsPassword() bool
 }
 
 type IHttpForm interface {

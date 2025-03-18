@@ -40,14 +40,6 @@ func (col FormMultiFieldCol) GetValue() interface{} {
 	return nil
 }
 
-func (f FormMultiFieldCol) IsReadOnly() bool {
-	return false
-}
-
-func (f FormMultiFieldCol) IsPassword() bool {
-	return false
-}
-
 type FormMultiField struct {
 	Name    string
 	Label   string
@@ -72,12 +64,4 @@ func (f FormMultiField) GetValue() interface{} {
 		return f.ValueFn()
 	}
 	return [][]FormFieldData{}
-}
-
-func (f FormMultiField) IsReadOnly() bool {
-	return false
-}
-
-func (f FormMultiField) IsPassword() bool {
-	return false
 }

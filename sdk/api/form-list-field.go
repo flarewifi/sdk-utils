@@ -38,11 +38,3 @@ func (f FormListField) GetValue() interface{} {
 	}
 	return nil
 }
-
-func (f FormListField) IsReadOnly() bool {
-	return false
-}
-
-func (f FormListField) IsPassword() bool {
-	return false
-}
