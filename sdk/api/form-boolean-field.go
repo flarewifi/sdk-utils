@@ -30,3 +30,11 @@ func (f FormBooleanField) GetValue() interface{} {
 	}
 	return false
 }
+
+func (f FormBooleanField) IsReadOnly() bool {
+	return false
+}
+
+func (f FormBooleanField) IsPassword() bool {
+	return false
+}

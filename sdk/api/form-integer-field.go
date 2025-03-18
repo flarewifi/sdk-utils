@@ -30,3 +30,11 @@ func (f FormIntegerField) GetValue() interface{} {
 	}
 	return 0
 }
+
+func (f FormIntegerField) GetIsReadOnly() bool {
+	return false
+}
+
+func (f FormIntegerField) GetIsPassword() bool {
+	return false
+}

@@ -170,7 +170,7 @@ Below are the available fields that can be used in the `HttpForm` definition whi
 | `sdkapi.FormFieldTypeInteger` | `int64` | [FormListField](#list-field), [FormMultiField](#multi-field) | Represents an integer field.
 | `sdkapi.FormFieldTypeList` | `[]any` | `N/A` | Represents a [list field](#list-field).
 | `sdkapi.FormFieldTypeMulti` | `[][]any` | `N/A` | Represents a tabulated [multi-field](#multi-field).
-| `sdkapi.FormFieldTypeString` | `string` | [FormListField](#list-field), [FormMultiField](#multi-field) | Represents a text input field.
+| `sdkapi.FormFieldTypeString` | `string` | [FormListField](#list-field), [FormMultiField](#multi-field) | Represents a text or password input field.
 | `sdkapi.FormFieldTypeText` | `string` | [FormListField](#list-field), [FormMultiField](#multi-field) | Represents a large text field.
 
 ### Boolean Field
@@ -436,7 +436,7 @@ sdkapi.FormMultiField{
 
 ### String Field
 
-The `FormStringField` represents a text input field in a form.
+The `FormStringField` represents a text or password input field in a form.
 
 #### Definition
 
@@ -445,6 +445,8 @@ type FormTextField struct {
 	Name    string
 	Label   string
 	ValueFn func() string
+	ReadOnly bool // indicates if the field is read-only
+	Password bool // indicates if the field is a password field
 }
 ```
 
@@ -454,6 +456,8 @@ type FormTextField struct {
 |--- | --- |
 | `Name`  | The name of the input field. |
 | `Label` | The label displayed for the input field. |
+| `ReadOnly` | Indicates if the field is read-only. |
+| `Password` | Indicates if the field is a password field. |
 | `ValueFn` | Function that returns the value for the input field. |
 
 #### Usage Example
@@ -462,6 +466,8 @@ type FormTextField struct {
 sdkapi.FormStringField{
     Name: "fname",
     Label: "First Name",
+    ReadOnly: true,
+    Password: true,
     ValueFn: func () string {
         return "John Doe"
     }

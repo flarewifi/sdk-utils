@@ -32,3 +32,11 @@ func (f FormDecimalField) GetValue() interface{} {
 	}
 	return 0.0
 }
+
+func (f FormDecimalField) IsReadOnly() bool {
+	return false
+}
+
+func (f FormDecimalField) IsPassword() bool {
+	return false
+}

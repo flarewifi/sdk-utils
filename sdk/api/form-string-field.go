@@ -7,9 +7,11 @@
 package sdkapi
 
 type FormStringField struct {
-	Name    string
-	Label   string
-	ValueFn func() string
+	Name     string
+	Label    string
+	ReadOnly bool
+	Password bool
+	ValueFn  func() string
 }
 
 func (f FormStringField) GetName() string {
@@ -29,4 +31,12 @@ func (f FormStringField) GetValue() interface{} {
 		return f.ValueFn()
 	}
 	return ""
+}
+
+func (f FormStringField) IsReadOnly() bool {
+	return f.ReadOnly
+}
+
+func (f FormStringField) IsPassword() bool {
+	return f.Password
 }
