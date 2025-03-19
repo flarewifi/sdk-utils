@@ -97,6 +97,18 @@ sections := []sdkapi.FormSection{
                         return string(b)
                     },
                 },
+                // String Field
+                sdkapi.FormStringField{
+                    Name:  "Username",
+                    Label: "Username",
+                    IsReadOnly: true,
+                    IsPassword: false,
+                    ValueFn: func() string {
+                        username := ""
+                        // Your custom specific string logic
+                        return username
+                    },
+                },
             },
         },
     },
