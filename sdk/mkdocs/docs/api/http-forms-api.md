@@ -445,8 +445,8 @@ type FormTextField struct {
 	Name    string
 	Label   string
 	ValueFn func() string
-	ReadOnly bool // indicates if the field is read-only
-	Password bool // indicates if the field is a password field
+	IsReadOnly bool // indicates if the field is read-only
+	IsPassword bool // indicates if the field is a password field
 }
 ```
 
@@ -456,8 +456,8 @@ type FormTextField struct {
 |--- | --- |
 | `Name`  | The name of the input field. |
 | `Label` | The label displayed for the input field. |
-| `ReadOnly` | Indicates if the field is read-only. |
-| `Password` | Indicates if the field is a password field. |
+| `IsReadOnly` | Indicates if the field is read-only. |
+| `IsPassword` | Indicates if the field is a password field. |
 | `ValueFn` | Function that returns the value for the input field. |
 
 #### Usage Example
@@ -466,8 +466,8 @@ type FormTextField struct {
 sdkapi.FormStringField{
     Name: "fname",
     Label: "First Name",
-    ReadOnly: true,
-    Password: true,
+    IsReadOnly: true,
+    IsPassword: true,
     ValueFn: func () string {
         return "John Doe"
     }
