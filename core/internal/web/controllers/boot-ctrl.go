@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"core/internal/api"
+	"core/internal/utils/plugins"
 	sse "core/internal/utils/sse"
 	"core/internal/web/helpers"
 	"core/internal/web/routes/urls"
@@ -23,12 +24,9 @@ type BootCtrl struct {
 }
 
 func (ctrl *BootCtrl) IndexPage(w http.ResponseWriter, r *http.Request) {
-	jsSrc := ctrl.api.HttpAPI.Helpers().ResourcePath(path.Join("assets", "booting", "js", "booting.js"))
-	cssSrc := ctrl.api.HttpAPI.Helpers().ResourcePath(path.Join("assets", "booting", "css", "style.css"))
-
-	// globals := plugins.ReadGlobalAssetsManifest()
-	// jsSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingJsFile))
-	// cssSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingCssFile))
+	globals := plugins.ReadGlobalAssetsManifest()
+	jsSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingJsFile))
+	cssSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingCssFile))
 
 	page := boot.BootPage(&boot.BootPageData{
 		SseURL: urls.BOOT_STATUS_URL,
@@ -60,7 +58,7 @@ func (ctrl *BootCtrl) Middleware(next http.Handler) http.Handler {
 		isAssetPath := helpers.IsAssetPath(r.URL.Path)
 		log.Printf("Is asset path: %s => %v", r.URL.Path, isAssetPath)
 
-		if r.Method == "GET" && !isAssetPath {
+		if r.Method == http.MethodGet && !isAssetPath {
 			if !done && r.URL.Path != urls.BOOT_URL && r.URL.Path != urls.BOOT_STATUS_URL {
 				http.Redirect(w, r, urls.BOOT_URL, http.StatusSeeOther)
 				return

@@ -40,5 +40,5 @@ func CoreAssets(g *api.CoreGlobals) {
 	fs := http.FileServer(http.Dir(resourcesDir))
 	prefix := g.CoreAPI.Http().Helpers().ResourcePath("")
 	fileserver := cacheMw(http.StripPrefix(prefix, fs))
-	webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
+	webutils.BootingRouter.PathPrefix(prefix).Handler(fileserver)
 }

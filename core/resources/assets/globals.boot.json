@@ -1,0 +1,8 @@
+{
+  "js": [
+    "./booting/js/booting.js"
+  ],
+  "css": [
+    "./booting/css/style.css"
+  ]
+}
