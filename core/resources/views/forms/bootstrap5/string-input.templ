@@ -6,16 +6,33 @@ import (
 )
 
 type StringInputFieldAttrs struct {
-	Label string
-	Name  string
-	Value string
-	Error error
+	Label    string
+	Name     string
+	Value    string
+	Error    error
+	ReadOnly bool
+	IsPassword bool
 }
 
 templ StringInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
 	{{ attrs := getStringInputFieldAttrs(form, sec, fld) }}
 	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
-	<input type="text" class="form-control" id={ attrs.Name } name={ attrs.Name } value={ attrs.Value }/>
+
+	{{ inputType := "text" }}
+	if attrs.IsPassword {
+		{{ inputType = "password" }}
+	}
+
+	<input
+		readonly?={ attrs.ReadOnly }
+		disabled?={ attrs.ReadOnly }
+		type={ inputType }
+		class="form-control"
+		id={ attrs.Name }
+		name={ attrs.Name }
+		value={ attrs.Value }
+	/>
+
 	if attrs.Error != nil {
 		<div class="invalid-feedback">{ attrs.Error.Error() }</div>
 	}
@@ -25,5 +42,10 @@ func getStringInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fl
 	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
 	attrs.Label = fld.GetLabel()
 	attrs.Value, attrs.Error = form.GetStringValue(sec.GetName(), fld.GetName())
+
+	stringFld := fld.(sdkapi.FormStringField)
+	attrs.IsPassword = stringFld.IsPassword
+	attrs.ReadOnly = stringFld.IsReadOnly
+
 	return
 }
