@@ -2,24 +2,47 @@ package adminctrl
 
 import (
 	"core/internal/api"
+	"core/internal/utils/updates"
+	updatesview "core/resources/views/admin/updates"
 	"log"
 	"net/http"
+	sdkapi "sdk/api"
 
+	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func FetchUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// res := g.CoreAPI.HttpAPI.VueResponse()
+		api := g.CoreAPI
+		res := api.HttpAPI.Response()
+		coreInfo := api.Info()
+		currentVersion, err := semver.NewVersion(coreInfo.Version)
+		if err != nil {
+			log.Println("Error:", err)
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
 
-		// latestCoreRelease, err := updates.FetchLatestCoreRelease()
-		// if err != nil {
-		// 	log.Println("Error fetching latest core release:", err)
-		// 	res.Error(w, err.Error(), http.StatusInternalServerError)
-		// 	return
-		// }
+		result, err := updates.CheckCoreReleaseUpdate(currentVersion)
+		if err != nil {
+			log.Println("Error:", err)
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
 
-		// res.Json(w, latestCoreRelease, http.StatusOK)
+		var update *updatesview.SoftwareUpdate
+		if result.HasUpdate {
+			update = &updatesview.SoftwareUpdate{
+				Version: result.Version.String(),
+			}
+		}
+
+		page := updatesview.ShowUpdates(update, nil)
+		res.AdminView(w, r, sdkapi.ViewPage{
+			PageContent: page,
+		})
+
 	}
 }
 

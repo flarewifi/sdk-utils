@@ -1,4 +1,4 @@
-package rpc
+package rpc_flarehotspot_v1
 
 import (
 	"context"
@@ -10,19 +10,7 @@ import (
 )
 
 func GetCoreTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
-	isDev := true
-
-	proto := "http"
-	prefix := "v0.0.1"
-	domain := "flarehotspot.com"
-	subdomain := "rpc-machines"
-
-	if isDev {
-		domain = "flarehotspot-dev.com"
-	}
-
-	baseUrl := subdomain + "." + domain
-	url := proto + "://" + baseUrl + "/" + prefix
+	url := env.RPC_BASE_URL + "/" + env.RPC_API_VERSION
 
 	srv := NewFlarehotspotServiceProtobufClient(url, &http.Client{})
 	header := make(http.Header)

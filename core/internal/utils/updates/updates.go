@@ -1,7 +1,7 @@
 package updates
 
 import (
-	"core/internal/rpc"
+	rpc "core/internal/rpc"
 	"fmt"
 
 	"github.com/Masterminds/semver/v3"

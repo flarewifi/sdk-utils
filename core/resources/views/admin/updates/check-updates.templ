@@ -1,0 +1,17 @@
+package updatesview
+
+type SoftwareUpdate struct {
+	Version string
+}
+
+templ ShowUpdates(update *SoftwareUpdate, err error) {
+	if err != nil {
+		<div class="alert alert-danger" role="alert">
+			<strong>Error:</strong> { err.Error() }
+		</div>
+	} else {
+		<div class="alert alert-success" role="alert">
+			<strong>Success:</strong> New version { update.Version } is available.
+		</div>
+	}
+}

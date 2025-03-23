@@ -10,6 +10,7 @@ import (
 
 	"core/internal/utils/events"
 	sse "core/internal/utils/sse"
+	"slices"
 )
 
 var (
@@ -44,12 +45,7 @@ func (acct *Account) Permissions() []string {
 
 // IsMaster returns true if the account is admin
 func (acct *Account) IsMaster() bool {
-	for _, p := range acct.Perms {
-		if p == sdkapi.AcctPermMaster {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(acct.Perms, sdkapi.AcctPermMaster)
 }
 
 // HasAllPerms

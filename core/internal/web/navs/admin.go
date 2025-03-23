@@ -26,6 +26,11 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Label:     g.CoreAPI.Translate("label", "logs"),
 				RouteName: "admin:logs:index",
 			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "software_updates"),
+				RouteName: "system.updates.check",
+			},
 		}
 	})
 }
