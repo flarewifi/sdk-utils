@@ -9,7 +9,7 @@ import (
 	"github.com/twitchtv/twirp"
 )
 
-func GetCoreMachineTwirpServiceAndCtx() (CoreMachineService, context.Context) {
+func GetCoreTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
 	isDev := true
 
 	proto := "http"
@@ -24,7 +24,7 @@ func GetCoreMachineTwirpServiceAndCtx() (CoreMachineService, context.Context) {
 	baseUrl := subdomain + "." + domain
 	url := proto + "://" + baseUrl + "/" + prefix
 
-	srv := NewCoreMachineServiceProtobufClient(url, &http.Client{})
+	srv := NewFlarehotspotServiceProtobufClient(url, &http.Client{})
 	header := make(http.Header)
 	header.Set("Authorization", "Bearer "+env.RPC_TOKEN)
 
