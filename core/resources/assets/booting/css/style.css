@@ -14,39 +14,48 @@
 
 html,
 body {
-  background-color: #000;
-  color: #333;
+    background-color: #000;
+    color: #FFF;
 }
+
 .center {
-  margin: 0;
-  position: absolute;
-  top: 50%;
-  /* left: 50%; */
-  /* -ms-transform: translate(-50%, -50%); */
-  /* transform: translate(-50%, -50%); */
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    /* left: 50%; */
+    /* -ms-transform: translate(-50%, -50%); */
+    /* transform: translate(-50%, -50%); */
 }
+
 #progressbar {
-  height: 26px;
-  width: 300px;
-  background: #fff;
-  border-radius: 10px;
-  padding: 2px;
+    height: 26px;
+    width: 300px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 2px;
 }
+
 #percent {
-  transition: all 500ms ease;
-  height: 20px;
-  width: calc(0% - 10px);
-  border-radius: 8px;
-  background: #80005e;
-  position: absolute;
-  margin: 3px;
-  display: inline-block;
-  animation: load 15s ease infinite;
+    transition: all 500ms ease;
+    height: 20px;
+    width: calc(0% - 10px);
+    border-radius: 8px;
+    background: #80005e;
+    position: absolute;
+    margin: 3px;
+    display: inline-block;
+    animation: load 15s ease infinite;
 }
+
 #status-text {
-  color: #fff;
-  font-family: Arial;
-  font-weight: bold;
-  text-align: center;
-  margin-top: -30px;
+    color: #fff;
+    font-family: Arial;
+    font-weight: bold;
+    text-align: left;
+    margin-top: -30px;
+}
+
+hr {
+    clear: both;
+    visibility: hidden;
 }

@@ -13,8 +13,8 @@ import (
 
 func SetupBootRoutes(g *api.CoreGlobals) {
 	routes.AssetsRoutes(g)
-	routes.BootRoutes(g)
 	routes.CoreAssets(g)
+	routes.BootRoutes(g)
 }
 
 func SetupAllRoutes(g *api.CoreGlobals) {

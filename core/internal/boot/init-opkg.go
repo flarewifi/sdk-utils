@@ -3,7 +3,7 @@ package boot
 import (
 	"core/internal/api"
 	"core/internal/utils/cmd"
-	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -16,7 +16,7 @@ func InitOpkg(bp *api.BootProgress) {
 
 	packagesDir := filepath.Join(sdkutils.PathAppDir, "packages")
 	if err := sdkutils.FsListFiles(packagesDir, &files, true); err != nil {
-		bp.AppendLog(fmt.Sprintf("Error listing files in packages in %s: %v", packagesDir, err.Error()))
+		log.Printf("Error listing files in packages in %s: %v", packagesDir, err.Error())
 		return
 	}
 
@@ -28,7 +28,7 @@ func InitOpkg(bp *api.BootProgress) {
 				Stdout: os.Stdout,
 				Stderr: os.Stderr,
 			}); err != nil {
-				bp.AppendLog(fmt.Sprintf("Error installing ipk file %s: %v", f, err.Error()))
+				log.Printf("Error installing ipk file %s: %v", f, err.Error())
 				return
 			}
 
