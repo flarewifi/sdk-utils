@@ -7,12 +7,13 @@ import (
 	"log"
 	"net/http"
 	sdkapi "sdk/api"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func FetchUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
+func ShowUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
@@ -38,11 +39,43 @@ func FetchUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
-		page := updatesview.ShowUpdates(update, nil)
+		page := updatesview.ShowUpdates(api, update, nil)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
 
+	}
+}
+
+func QueryUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.HttpAPI.Response()
+		coreInfo := api.Info()
+		currentVersion, err := semver.NewVersion(coreInfo.Version)
+		if err != nil {
+			log.Println("Error:", err)
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		result, err := updates.CheckCoreReleaseUpdate(currentVersion)
+		if err != nil {
+			log.Println("Error:", err)
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		var update *updatesview.SoftwareUpdate
+		if result.HasUpdate {
+			update = &updatesview.SoftwareUpdate{
+				Version: result.Version.String(),
+			}
+		}
+
+		time.Sleep(3 * time.Second)
+		page := updatesview.QueryUpdate(api, update, nil)
+		page.Render(r.Context(), w)
 	}
 }
 

@@ -26,7 +26,8 @@ func AdminRoutes(g *api.CoreGlobals) {
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Group("/updates", func(subrouter sdkapi.IHttpRouterInstance) {
-			subrouter.Get("/check", adminctrl.FetchUpdatesCtrl(g)).Name("system.updates.check")
+			subrouter.Get("/check", adminctrl.ShowUpdatesCtrl(g)).Name("system.updates.check")
+			subrouter.Post("/query", adminctrl.QueryUpdatesCtrl(g)).Name("system.updates.query")
 		})
 	})
 

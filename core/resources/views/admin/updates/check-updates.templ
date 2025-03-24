@@ -1,17 +1,29 @@
 package updatesview
 
+import "sdk/api"
+
 type SoftwareUpdate struct {
 	Version string
 }
 
-templ ShowUpdates(update *SoftwareUpdate, err error) {
+templ ShowUpdates(api sdkapi.IPluginApi, update *SoftwareUpdate, err error) {
+	<div id="page">
+		<div data-loading>checking for updates...</div>
+		<button class="btn btn-primary" type="button" hx-target="#page" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } data-loading-disable>Check for updates</button>
+	</div>
+}
+
+templ QueryUpdate(api sdkapi.IPluginApi, update *SoftwareUpdate, err error) {
 	if err != nil {
-		<div class="alert alert-danger" role="alert">
-			<strong>Error:</strong> { err.Error() }
-		</div>
-	} else {
-		<div class="alert alert-success" role="alert">
-			<strong>Success:</strong> New version { update.Version } is available.
-		</div>
+		<div class="alert alert-danger">{ err.Error() }</div>
+		{{ 	return }}
 	}
+	if update == nil {
+		<div class="alert alert-success">Software is up to date</div>
+		{{ return }}
+	}
+	<div>
+		<div>Current version: { update.Version }</div>
+		<button type="button" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.download") } data-loading-disable>Download update</button>
+	</div>
 }
