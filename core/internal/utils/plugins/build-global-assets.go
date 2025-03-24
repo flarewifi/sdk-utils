@@ -15,6 +15,7 @@ var (
 	CoreGlobalsDist           = filepath.Join(CoreAssetsDir, "dist/globals")
 	CoreAdminGlobalsManifest  = filepath.Join(sdkutils.PathCoreDir, "resources/assets/globals.admin.json")
 	CorePortalGlobalsManifest = filepath.Join(sdkutils.PathCoreDir, "resources/assets/globals.portal.json")
+	CoreBootGlobalsManifest   = filepath.Join(sdkutils.PathCoreDir, "resources/assets/globals.boot.json")
 	CoreGlobalsBundleManifest = filepath.Join(CoreGlobalsDist, "globals.manifest.json")
 )
 
@@ -24,10 +25,12 @@ type GlobalAssetsManifest struct {
 }
 
 type GlobalBundleManifest struct {
-	AdminJsFile   string `json:"admin_js"`
-	AdminCssFile  string `json:"admin_css"`
-	PortalJsFile  string `json:"portal_js"`
-	PortalCssFile string `json:"portal_css"`
+	AdminJsFile    string `json:"admin_js"`
+	AdminCssFile   string `json:"admin_css"`
+	PortalJsFile   string `json:"portal_js"`
+	PortalCssFile  string `json:"portal_css"`
+	BootingJsFile  string `json:"booting_js"`
+	BootingCssFile string `json:"booting_css"`
 }
 
 func ReadGlobalAssetsManifest() (g GlobalBundleManifest) {
@@ -77,6 +80,24 @@ func BuildGlobalAssets() (err error) {
 			return
 		}
 		bundleFile.PortalCssFile = resultFile
+	}
+
+	if sdkutils.FsExists(CoreBootGlobalsManifest) {
+		var manifest GlobalAssetsManifest
+		var resultFile string
+		if err = sdkutils.JsonRead(CoreBootGlobalsManifest, &manifest); err != nil {
+			return
+		}
+
+		if resultFile, err = compileGlobalJsAssets(manifest.Js, api.ES2017); err != nil {
+			return
+		}
+		bundleFile.BootingJsFile = resultFile
+
+		if resultFile, err = compileGlobalCssAssets(manifest.Css); err != nil {
+			return
+		}
+		bundleFile.BootingCssFile = resultFile
 	}
 
 	if err = sdkutils.JsonWrite(CoreGlobalsBundleManifest, bundleFile); err != nil {

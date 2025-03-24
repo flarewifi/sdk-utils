@@ -1,0 +1,24 @@
+package boot
+
+type BootPageData struct {
+	SseURL string
+	JsSrc string
+	CssSrc string
+}
+
+templ BootPage(data *BootPageData) {
+	<!DOCTYPE html>
+	<html lang="en" data-bs-theme="auto">
+		<head>
+			<title>Boot Progress</title>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<link rel="stylesheet" href={ data.CssSrc } />
+		</head>
+		<body>
+			<script src={ data.JsSrc }></script>
+			<div> <h2> Boot Progress Status: </h2> </div>
+			<hr/>
+			<div id="status-text" hx-ext="sse" sse-connect={ data.SseURL }></div>
+		</body>
+	</html>
+}

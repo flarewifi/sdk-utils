@@ -3,11 +3,14 @@ package controllers
 import (
 	"log"
 	"net/http"
+	"path"
 
 	"core/internal/api"
+	"core/internal/utils/plugins"
 	sse "core/internal/utils/sse"
 	"core/internal/web/helpers"
 	"core/internal/web/routes/urls"
+	"core/resources/views/boot"
 )
 
 func NewBootCtrl(g *api.CoreGlobals, pmgr *api.PluginsMgr, api *api.PluginApi) BootCtrl {
@@ -21,14 +24,19 @@ type BootCtrl struct {
 }
 
 func (ctrl *BootCtrl) IndexPage(w http.ResponseWriter, r *http.Request) {
-	// data := map[string]any{
-	// 	"title":  "Booting",
-	// 	"logs":   ctrl.bp.Logs(),
-	// 	"sseUrl": urls.BOOT_STATUS_URL,
-	// 	"done":   ctrl.bp.IsDone(),
-	// }
+	globals := plugins.ReadGlobalAssetsManifest()
+	jsSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingJsFile))
+	cssSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingCssFile))
 
-	// ctrl.api.Http().HttpResponse().View(w, r, "booting/index.html", data)
+	page := boot.BootPage(&boot.BootPageData{
+		SseURL: urls.BOOT_STATUS_URL,
+		JsSrc:  jsSrc,
+		CssSrc: cssSrc,
+	})
+
+	if err := page.Render(r.Context(), w); err != nil {
+		w.Write([]byte("\n\nTemplate Error:" + err.Error()))
+	}
 }
 
 func (ctrl *BootCtrl) SseHandler(w http.ResponseWriter, r *http.Request) {
@@ -37,6 +45,7 @@ func (ctrl *BootCtrl) SseHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	ctrl.bp.AddSocket(s)
 	s.Listen()
 }
@@ -48,7 +57,7 @@ func (ctrl *BootCtrl) Middleware(next http.Handler) http.Handler {
 		isAssetPath := helpers.IsAssetPath(r.URL.Path)
 		log.Printf("Is asset path: %s => %v", r.URL.Path, isAssetPath)
 
-		if r.Method == "GET" && !isAssetPath {
+		if r.Method == http.MethodGet && !isAssetPath {
 			if !done && r.URL.Path != urls.BOOT_URL && r.URL.Path != urls.BOOT_STATUS_URL {
 				http.Redirect(w, r, urls.BOOT_URL, http.StatusSeeOther)
 				return

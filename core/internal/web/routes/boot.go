@@ -1,17 +1,17 @@
 package routes
 
 import (
-	"log"
-	"net/http"
-
 	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/routes/urls"
+	"log"
+	"net/http"
 )
 
 func BootRoutes(g *api.CoreGlobals) {
 	bootCtrl := controllers.NewBootCtrl(g, g.PluginMgr, g.CoreAPI)
+
 	r := webutil.BootingRouter
 	r.Use(bootCtrl.Middleware)
 	r.HandleFunc(urls.BOOT_URL, bootCtrl.IndexPage).Methods("GET")
