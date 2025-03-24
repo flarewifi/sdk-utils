@@ -42,10 +42,10 @@ window.addEventListener('load', function () {
     }
     logsEl += '</ul>';
     document.getElementById('status-text').innerHTML = logsEl;
+    sessionStorage.setItem("savedLogs", logsEl);
   }
 
-  var evt = new EventSource('<% .Data %>');
-
+  var evt = new EventSource('/boot/status');
   evt.addEventListener('boot:progress', function (res) {
     var data = JSON.parse(res.data);
     console.log(data);
@@ -60,3 +60,10 @@ window.addEventListener('load', function () {
     setTimeout(redirectHome, 1000);
   };
 });
+
+window.onload = () => {
+  const savedLogs = sessionStorage.getItem("savedLogs");
+  if (savedLogs) {
+    document.getElementById('status-text').innerHTML = savedLogs;
+  }
+};

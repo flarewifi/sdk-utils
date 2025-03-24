@@ -34,7 +34,6 @@ func (ctrl *BootCtrl) IndexPage(w http.ResponseWriter, r *http.Request) {
 		CssSrc: cssSrc,
 	})
 
-	w.Header().Set("Content-Type", "text/html")
 	if err := page.Render(r.Context(), w); err != nil {
 		w.Write([]byte("\n\nTemplate Error:" + err.Error()))
 	}

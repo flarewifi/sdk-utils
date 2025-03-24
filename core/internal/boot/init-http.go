@@ -3,7 +3,6 @@ package boot
 import (
 	"context"
 	"log"
-	"net/http"
 	"time"
 
 	"core/internal/api"
@@ -11,14 +10,10 @@ import (
 	"core/internal/web"
 )
 
-func InitBootRouteHttpServer(g *api.CoreGlobals) *http.Server {
+func InitHttpServer(g *api.CoreGlobals) {
 	web.SetupBootRoutes(g)
 	server := web.StartServer(webutil.BootingRouter, false)
 
-	return server
-}
-
-func InitAllRoutesHttpServer(g *api.CoreGlobals, bootServer *http.Server) {
 	err := <-g.BootProgress.DONE_C
 	if err != nil {
 		log.Println("Error while booting:", err)
@@ -32,7 +27,7 @@ func InitAllRoutesHttpServer(g *api.CoreGlobals, bootServer *http.Server) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = bootServer.Shutdown(ctx)
+	err = server.Shutdown(ctx)
 	if err != nil {
 		log.Printf("Server shutdown error: %v\n", err)
 	} else {
@@ -44,33 +39,3 @@ func InitAllRoutesHttpServer(g *api.CoreGlobals, bootServer *http.Server) {
 	log.Println("Starting server...")
 	web.StartServer(webutil.RootRouter, true)
 }
-
-// func InitHttpServer(g *api.CoreGlobals) {
-// 	web.SetupBootRoutes(g)
-// 	server := web.StartServer(webutil.BootingRouter, false)
-
-// 	err := <-g.BootProgress.DONE_C
-// 	if err != nil {
-// 		log.Println("Error while booting:", err)
-// 		// TODO: Show recovery page
-// 		return
-// 	}
-
-// 	log.Println("Boot progress done. Need to restart server...")
-
-// 	// Gracefully shut down the server to clear booting routes
-// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-// 	defer cancel()
-
-// 	err = server.Shutdown(ctx)
-// 	if err != nil {
-// 		log.Printf("Server shutdown error: %v\n", err)
-// 	} else {
-// 		log.Println("Server gracefully stopped")
-// 	}
-
-// 	// Restart the server with all routes
-// 	web.SetupAllRoutes(g)
-// 	log.Println("Starting server...")
-// 	web.StartServer(webutil.RootRouter, true)
-// }

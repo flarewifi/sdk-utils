@@ -2,7 +2,6 @@ package boot
 
 type BootPageData struct {
 	SseURL string
-	GlobalJsSrc string
 	JsSrc string
 	CssSrc string
 }
@@ -15,12 +14,11 @@ templ BootPage(data *BootPageData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<link rel="stylesheet" href={ data.CssSrc } />
 		</head>
-		<body hx-ext="sse" sse-connect={ data.SseURL }>
-			<div>
-				<h2> Boot Progress Status: </h2>
-				<div id="status-text"></div>
-			</div>
-			<script src={ data.JsSrc } type='text/javascript'></script>
+		<body>
+			<script src={ data.JsSrc }></script>
+			<div> <h2> Boot Progress Status: </h2> </div>
+			<hr/>
+			<div id="status-text" hx-ext="sse" sse-connect={ data.SseURL }></div>
 		</body>
 	</html>
 }

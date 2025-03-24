@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -34,8 +35,7 @@ func (bp *BootProgress) AppendLog(s string) {
 	go func() {
 		bp.mu.Lock()
 		defer bp.mu.Unlock()
-		// add timestamp to log
-		s = fmt.Sprintf("%s %s", time.Now().Format("2006-01-02 15:04:05"), s)
+		s = fmt.Sprintf("%s %s", time.Now().Format("01-02-2006 15:04:05"), s)
 		bp.logs = append(bp.logs, s)
 		bp.emit()
 	}()
@@ -92,10 +92,15 @@ func (bp *BootProgress) AddSocket(s *sse.SseSocket) {
 }
 
 func (bp *BootProgress) emit() {
-	data := "BootProgData{bp.logs, bp.done.Load()}"
+	bootProgData := BootProgData{bp.logs, bp.done.Load()}
+
+	data, err := json.Marshal(bootProgData)
+	if err != nil {
+		log.Println("Boot Progress JSON error:", err)
+	}
 
 	for _, s := range bp.sockets {
-		err := s.Emit("boot:progress", []byte(data))
+		err := s.Emit("boot:progress", data)
 		if err != nil {
 			log.Println("Boot Progress socket error:", err)
 		}

@@ -89,7 +89,7 @@ func BuildGlobalAssets() (err error) {
 			return
 		}
 
-		if resultFile, err = compileGlobalJsAssets(manifest.Js, api.ES5); err != nil {
+		if resultFile, err = compileGlobalJsAssets(manifest.Js, api.ES2017); err != nil {
 			return
 		}
 		bundleFile.BootingJsFile = resultFile

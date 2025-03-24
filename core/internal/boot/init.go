@@ -1,7 +1,6 @@
 package boot
 
 import (
-	"fmt"
 	"time"
 
 	"core/internal/api"
@@ -16,37 +15,39 @@ func Init(g *api.CoreGlobals) {
 
 	InitDirs()
 
-	bootServer := InitBootRouteHttpServer(g)
-
 	go func() {
-		plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
+		bp.AppendLog("Start booting processes...")
+		time.Sleep(10 * time.Second)
 
+		bp.AppendLog("Linking node modules...")
+		plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
+		time.Sleep(10 * time.Second)
+
+		bp.AppendLog("Installing internet packages...")
 		InitOpkg(bp)
+		time.Sleep(10 * time.Second)
 
 		bp.AppendLog("Running core migrations...")
-		time.Sleep(30 * time.Second)
 		RunCoreMigrations(g)
+		time.Sleep(10 * time.Second)
 
 		bp.AppendLog("Initializing plugins...")
-
-		time.Sleep(30 * time.Second)
 		InitPlugins(g)
+		time.Sleep(10 * time.Second)
 
 		bp.AppendLog("Initializing admin accounts...")
-		time.Sleep(30 * time.Second)
 		InitAccounts()
+		time.Sleep(10 * time.Second)
 
 		bp.AppendLog("Setting up network interfaces...")
-		time.Sleep(30 * time.Second)
 		InitNetwork()
+		time.Sleep(10 * time.Second)
 
-		s := fmt.Sprintf("Done booting in %v", time.Since(now))
-		time.Sleep(30 * time.Second)
-		bp.AppendLog(s)
+		doneMsg := constructDoneMsg(now)
+		bp.AppendLog(doneMsg)
 
-		time.Sleep(90 * time.Second)
 		bp.Done(nil)
 	}()
 
-	InitAllRoutesHttpServer(g, bootServer)
+	InitHttpServer(g)
 }
