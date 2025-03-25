@@ -47,7 +47,8 @@ func CheckUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		var update *updatesview.SoftwareUpdate
 		if result.HasUpdate {
 			update = &updatesview.SoftwareUpdate{
-				Version: result.Version.String(),
+				NewVersion:     result.Version.String(),
+				CurrentVersion: currentVersion.String(),
 			}
 		}
 
