@@ -8,12 +8,10 @@ import (
 	"plugin"
 	"strconv"
 	"strings"
-	"time"
 
 	tools "core/build/tools"
 	"core/env"
 	"core/internal/utils/plugins"
-	"core/internal/utils/updates"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -207,57 +205,7 @@ func Server() {
 }
 
 func Update() {
-	fmt.Println("Updating flare system's core..")
-
-	if updates.IsSpawnedFromFlare() {
-		fmt.Println("Spawned from flare")
-		fmt.Println("killing spawner..")
-
-		// get flare cli pid
-		ppid := os.Getppid()
-		pproc, err := os.FindProcess(ppid)
-		if err != nil {
-			log.Println("Error finding parent procces id:", err)
-			return
-		}
-
-		// stop the flare cli, if running
-		if updates.IsProcRunning(pproc) {
-			// kill the spawner
-			err := pproc.Kill()
-			if err != nil {
-				log.Println("Error finding :", err)
-				return
-			}
-
-			fmt.Println("flare cli (spawner) killed")
-			time.Sleep(1 * time.Second)
-		}
-	}
-
-	// TODO: implement file checking
-	if err := updates.EnsureUpdateFilesExist(); err != nil {
-		log.Println("Error in ensuring core release files exist: ", err)
-		os.Exit(1)
-	}
-
-	// update the system by copying and replacing
-	fmt.Println("updating system..")
-	if err := updates.Update(); err != nil {
-		log.Println("Error updating system:", err)
-		os.Exit(1)
-	}
-
-	// run the copied flare
-	fmt.Println("running new flare..")
-	if err := updates.ExecuteFlare(); err != nil {
-		log.Println("Error executing new flare cli:", err)
-		os.Exit(1)
-	}
-
-	// finish update
-	fmt.Println("Core System Updated Successfully!")
-	os.Exit(0)
+	panic("Update() - not implemented yet.")
 }
 
 func GoEnvToString(e int8) string {

@@ -24,6 +24,13 @@ func AdminRoutes(g *api.CoreGlobals) {
 	rootR.Handle("/login", adminAuthCtrl).Methods("POST").Name("admin:authenticate")
 	adminR.Get("/events", adminSseCtrl).Name("admin:sse")
 
+	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Group("/updates", func(subrouter sdkapi.IHttpRouterInstance) {
+			subrouter.Get("/check", adminctrl.ShowUpdatesCtrl(g)).Name("system.updates.check")
+			subrouter.Post("/query", adminctrl.CheckUpdatesCtrl(g)).Name("system.updates.query")
+		})
+	})
+
 	adminR.Group("/themes", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/index", adminctrl.GetAvailableThemes(g)).Name("admin:themes:index")
 		subrouter.Post("/save", adminctrl.SaveThemeSettings(g)).Name("admin:themes:save")
@@ -43,76 +50,4 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Get("/checkupdates/{pkg}", adminctrl.CheckPluginUpdatesCtrl(g)).Name("admin.plugins.checkupdates")
 		subrouter.Get("/getupdate/{pkg}/{tag}", adminctrl.DownloadPluginUpdatesCtrl(g)).Name("admin.plugins.getupdate")
 	})
-
-	// adminR.Group("/plugins", func(subrouter sdkhttp.HttpRouterInstance) {
-	// 	subrouter.Get("/index", adminctrl.PluginsIndexCtrl(g)).
-	// 		Name("admin:plugins:index")
-
-	// 	subrouter.Group("/store", func(storeSubrouter sdkhttp.HttpRouterInstance) {
-	// 		storeSubrouter.Get("/index", adminctrl.PluginsStoreIndexCtrl(g)).
-	// 			Name("admin:plugins:store:index")
-
-	// 		storeSubrouter.Get("/plugins/plugin", adminctrl.ViewPluginCtrl(g)).
-	// 			Name("admin:plugins:store:plugin")
-	// 	})
-
-	// 	subrouter.Post("/install", adminctrl.PluginsInstallCtrl(g)).
-	// 		Name("admin:plugins:install")
-
-	// 	subrouter.Post("/uninstall", adminctrl.UninstallPluginCtrl(g)).
-	// 		Name("admin:plugins:uninstall")
-
-	// 	subrouter.Post("/update", adminctrl.UpdatePluginCtrl(g)).
-	// 		Name("admin:plugins:update")
-
-	// 	subrouter.Get("/checkupdates", adminctrl.CheckPluginUpdatesCtrl(g)).
-	// 		Name("admin:plugins:checkupdates")
-	// })
-
-	// adminR.Group("/upload", func(subrouter sdkhttp.HttpRouterInstance) {
-	// 	subrouter.Post("/file", adminctrl.UploadFileCtrl(g)).
-	// 		Name("admin:upload:file")
-
-	// TODO: for future use-case
-	// subrouter.Post("/files", adminctrl.UploadFilesCtrl(g)).
-	// Name("admin:upload:files")
-	// })
-
-	// g.CoreAPI.HttpAPI.VueRouter().RegisterAdminRoutes([]sdkhttp.VueAdminRoute{
-	// 	{
-	// 		RouteName: "theme-picker",
-	// 		RoutePath: "/theme-picker",
-	// 		Component: "admin/ThemePicker.vue",
-	// 	},
-	// 	{
-	// 		RouteName: "log-viewer",
-	// 		RoutePath: "/log-viewer",
-	// 		Component: "admin/LogViewer.vue",
-	// 	},
-	// 	{
-	// 		RouteName: "plugins-index",
-	// 		RoutePath: "/plugins",
-	// 		Component: "admin/plugins/Index.vue",
-	// 	},
-	// 	{
-	// 		RouteName: "plugins-new",
-	// 		RoutePath: "/plugins/new",
-	// 		Component: "admin/plugins/NewInstall.vue",
-	// 	},
-	// 	{
-	// 		RouteName: "plugins-store",
-	// 		RoutePath: "/plugins/store",
-	// 		Component: "admin/plugins/PluginsStore.vue",
-	// 	},
-	// 	{
-	// 		RouteName: "plugin",
-	// 		RoutePath: "/plugins/store/plugin",
-	// 		Component: "admin/plugins/PluginDetail.vue",
-	// 	},
-	// 	{
-	// 		RouteName: "core-updates",
-	// 		RoutePath: "/system-updates",
-	// 		Component: "admin/CoreUpdates.vue",
-	// 	},
-	// }...)
 }

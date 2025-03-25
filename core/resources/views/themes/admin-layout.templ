@@ -45,7 +45,7 @@ templ AdminThemeLayout(data AdminLayoutData) {
 			<!-- Theme Head -->
 			@data.Head
 		</head>
-		<body hx-ext="sse" sse-connect={ data.SseURL }>
+		<body hx-ext="sse,loading-states" sse-connect={ data.SseURL }>
 			<!-- Theme Layout -->
 			@data.Layout
 			<!-- Theme Scripts -->

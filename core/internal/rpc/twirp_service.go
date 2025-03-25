@@ -1,4 +1,4 @@
-package rpc
+package rpc_flarehotspot_v1
 
 import (
 	"context"
@@ -9,22 +9,10 @@ import (
 	"github.com/twitchtv/twirp"
 )
 
-func GetCoreMachineTwirpServiceAndCtx() (CoreMachineService, context.Context) {
-	isDev := true
+func GetCoreTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
+	url := env.RPC_BASE_URL + "/" + env.RPC_API_VERSION
 
-	proto := "http"
-	prefix := "v0.0.1"
-	domain := "flarehotspot.com"
-	subdomain := "rpc-machines"
-
-	if isDev {
-		domain = "flarehotspot-dev.com"
-	}
-
-	baseUrl := subdomain + "." + domain
-	url := proto + "://" + baseUrl + "/" + prefix
-
-	srv := NewCoreMachineServiceProtobufClient(url, &http.Client{})
+	srv := NewFlarehotspotServiceProtobufClient(url, &http.Client{})
 	header := make(http.Header)
 	header.Set("Authorization", "Bearer "+env.RPC_TOKEN)
 
