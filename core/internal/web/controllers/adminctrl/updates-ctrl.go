@@ -17,29 +17,7 @@ func ShowUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
-		coreInfo := api.Info()
-		currentVersion, err := semver.NewVersion(coreInfo.Version)
-		if err != nil {
-			log.Println("Error:", err)
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		result, err := updates.CheckCoreReleaseUpdate(currentVersion)
-		if err != nil {
-			log.Println("Error:", err)
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
-		}
-
-		var update *updatesview.SoftwareUpdate
-		if result.HasUpdate {
-			update = &updatesview.SoftwareUpdate{
-				Version: result.Version.String(),
-			}
-		}
-
-		page := updatesview.ShowUpdates(api, update, nil)
+		page := updatesview.ShowUpdates(api)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
@@ -47,7 +25,7 @@ func ShowUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func QueryUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
+func CheckUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()

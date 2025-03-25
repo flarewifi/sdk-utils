@@ -6,7 +6,7 @@ type SoftwareUpdate struct {
 	Version string
 }
 
-templ ShowUpdates(api sdkapi.IPluginApi, update *SoftwareUpdate, err error) {
+templ ShowUpdates(api sdkapi.IPluginApi) {
 	<div id="page">
 		<div data-loading>checking for updates...</div>
 		<button class="btn btn-primary" type="button" hx-target="#page" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } data-loading-disable>Check for updates</button>
