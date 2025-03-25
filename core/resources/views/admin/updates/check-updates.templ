@@ -15,7 +15,7 @@ templ ShowUpdates(api sdkapi.IPluginApi) {
 	</div>
 }
 
-templ QueryUpdate(api sdkapi.IPluginApi, update *SoftwareUpdate, err error) {
+templ CheckForUpdate(api sdkapi.IPluginApi, update *SoftwareUpdate, err error) {
 	if err != nil {
 		<div class="alert alert-danger">{ err.Error() }</div>
 		{{ 	return }}
