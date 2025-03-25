@@ -3,13 +3,13 @@ package updatesview
 import "sdk/api"
 
 type SoftwareUpdate struct {
-    CurrentVersion string
-	NewVersion string
+	CurrentVersion string
+	NewVersion     string
 }
 
 templ ShowUpdates(api sdkapi.IPluginApi) {
 	<div id="page">
-		@CheckUpdatesButton(api)
+		<button class="btn btn-primary" type="button" hx-target="#page" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } data-loading-disable>Check for updates</button>
 		<br/>
 		<div data-loading>Checking for updates...</div>
 	</div>
@@ -26,13 +26,9 @@ templ QueryUpdate(api sdkapi.IPluginApi, update *SoftwareUpdate, err error) {
 	}
 	<div>
 		<div>New Version: { update.NewVersion }</div>
-        <div>
-            <small>Current Version: { update.CurrentVersion }</small>
-        </div>
+		<div>
+			<small>Current Version: { update.CurrentVersion }</small>
+		</div>
 		<button type="button" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.download") } data-loading-disable>Download update</button>
 	</div>
-}
-
-templ CheckUpdatesButton(api sdkapi.IPluginApi) {
-	<button class="btn btn-primary" type="button" hx-target="#page" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } data-loading-disable>Check for updates</button>
 }
