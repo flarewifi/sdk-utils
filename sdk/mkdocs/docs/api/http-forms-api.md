@@ -446,6 +446,7 @@ type FormTextField struct {
 	Label   string
 	ValueFn func() string
 	IsReadOnly bool // indicates if the field is read-only
+	Extractble bool // Indicates whether a read-only field value can be extracted.
 	IsPassword bool // indicates if the field is a password field
 }
 ```
@@ -457,6 +458,7 @@ type FormTextField struct {
 | `Name`  | The name of the input field. |
 | `Label` | The label displayed for the input field. |
 | `IsReadOnly` | Indicates if the field is read-only. |
+| `Extractable` | Indicates whether a read-only field value can be extracted. |
 | `IsPassword` | Indicates if the field is a password field. |
 | `ValueFn` | Function that returns the value for the input field. |
 
@@ -467,6 +469,7 @@ sdkapi.FormStringField{
     Name: "fname",
     Label: "First Name",
     IsReadOnly: true,
+    Extractable: true,
     IsPassword: true,
     ValueFn: func () string {
         return "John Doe"

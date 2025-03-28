@@ -102,6 +102,7 @@ sections := []sdkapi.FormSection{
                     Name:  "Username",
                     Label: "Username",
                     IsReadOnly: true,
+                    Extractable: true,
                     IsPassword: false,
                     ValueFn: func() string {
                         username := ""

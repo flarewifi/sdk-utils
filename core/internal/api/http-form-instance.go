@@ -159,11 +159,19 @@ func (self *HttpFormInstance) GetIntValue(section string, field string) (val int
 	if err != nil {
 		return
 	}
+	if v == nil {
+		return
+	}
+
 	t := reflect.TypeOf(v)
 	switch t.Kind() {
 	case reflect.Float32, reflect.Float64:
 		return int64(v.(float64)), nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if val, ok := v.(int); ok {
+			return int64(val), nil
+		}
+
 		return v.(int64), nil
 	}
 	return val, errors.New(fmt.Sprintf("section %s, field %s is not an int", section, field))
@@ -420,7 +428,7 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 		for i, v := range valstr {
 			vals[i], err = strconv.ParseInt(v, 10, 64)
 			if err != nil {
-				return 0, nil
+				return 0, fmt.Errorf("parsing error: %w", err)
 			}
 		}
 		val = vals
@@ -431,6 +439,7 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 			}
 			val = 0
 		}
+
 		return
 
 	case sdkapi.FormFieldTypeDecimal:
@@ -438,7 +447,7 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 		for i, v := range valstr {
 			vals[i], err = strconv.ParseFloat(v, 64)
 			if err != nil {
-				return 0, nil
+				return 0, fmt.Errorf("parse float error: %w", err)
 			}
 		}
 		val = vals

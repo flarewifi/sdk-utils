@@ -7,11 +7,12 @@
 package sdkapi
 
 type FormStringField struct {
-	Name       string
-	Label      string
-	IsReadOnly bool
-	IsPassword bool
-	ValueFn    func() string
+	Name        string
+	Label       string
+	IsReadOnly  bool
+	Extractable bool // Indicate whether we can extract value of a read-only field.
+	IsPassword  bool
+	ValueFn     func() string
 }
 
 func (f FormStringField) GetName() string {
