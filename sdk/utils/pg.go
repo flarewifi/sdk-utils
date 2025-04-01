@@ -22,7 +22,9 @@ func PgStringToUUID(s string) pgtype.UUID {
 		return uuid // Return empty UUID if decoding failed.
 	}
 	copy(uuid.Bytes[:], b) // Copy decoded bytes into pgtype.UUID's Bytes.
-	return uuid            // No errors occured, return filled out UUID.
+	uuid.Valid = true
+
+	return uuid // No errors occured, return filled out UUID.
 }
 
 func PgNumericToFloat64(numeric pgtype.Numeric) float64 {

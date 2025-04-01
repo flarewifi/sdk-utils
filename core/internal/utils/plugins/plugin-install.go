@@ -214,6 +214,11 @@ func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
 		return err
 	}
 
+	if err := RunMigrations(db, pluginSrc); err != nil {
+		log.Println("Error running migrations: ", err)
+		return err
+	}
+
 	if err := BuildQueries(pluginSrc); err != nil {
 		log.Println("Error building plugin sqlc: ", err)
 		return err

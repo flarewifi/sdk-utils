@@ -19,7 +19,6 @@ func BuildQueries(pluginSrc string) error {
 	// fmt.Println("Checking: ", sqlcPath)
 
 	if sdkutils.FsExists(sqlcPath, migrationsPath, queriesPath) {
-
 		info, err := sdkutils.GetPluginInfoFromPath(pluginSrc)
 		if err != nil {
 			return err
