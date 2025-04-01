@@ -446,7 +446,6 @@ type FormTextField struct {
 	Label   string
 	ValueFn func() string
 	IsReadOnly bool // indicates if the field is read-only
-	Extractble bool // Indicates whether a read-only field value can be extracted.
 	IsPassword bool // indicates if the field is a password field
 }
 ```
