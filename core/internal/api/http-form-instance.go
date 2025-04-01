@@ -362,11 +362,16 @@ func ParseBasicValue(fld sdkapi.IFormField, valstr []string) (val interface{}, e
 	switch fld.GetType() {
 	case sdkapi.FormFieldTypeString,
 		sdkapi.FormFieldTypeText:
+
+		stringFld, ok := fld.(sdkapi.FormStringField)
+		if ok && stringFld.IsReadOnly {
+			return stringFld.GetValue(), nil
+		}
+
 		if len(valstr) < 1 {
 			return "", nil
 		}
 		val = valstr[0]
-
 	case sdkapi.FormFieldTypeInteger:
 		if len(valstr) < 1 {
 			return 0, nil

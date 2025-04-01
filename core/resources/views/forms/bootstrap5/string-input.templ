@@ -11,7 +11,6 @@ type StringInputFieldAttrs struct {
 	Value    string
 	Error    error
 	ReadOnly bool
-	Extractable bool
 	IsPassword bool
 }
 
@@ -24,14 +23,9 @@ templ StringInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkap
 		{{ inputType = "password" }}
 	}
 
-	{{ disabled := attrs.ReadOnly }}
-	if attrs.Extractable {
-		{{ disabled = false }}
-	}
-
 	<input
 		readonly?={ attrs.ReadOnly }
-		disabled?={ disabled }
+		disabled?={ attrs.ReadOnly }
 		type={ inputType }
 		class="form-control"
 		id={ attrs.Name }
@@ -52,7 +46,6 @@ func getStringInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fl
 	stringFld := fld.(sdkapi.FormStringField)
 	attrs.IsPassword = stringFld.IsPassword
 	attrs.ReadOnly = stringFld.IsReadOnly
-	attrs.Extractable = stringFld.Extractable
 
 	return
 }
