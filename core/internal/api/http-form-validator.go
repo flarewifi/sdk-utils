@@ -307,11 +307,17 @@ func (validtr *HTTPFormValidator) validateDecimal(val any, min, max int, label s
 
 func (validtr *HTTPFormValidator) validateString(val string, min, max int, label string) (errStr string) {
 	valStr := fmt.Sprint(val)
+	if valStr == "" {
+		errStr = fmt.Sprintf("%v must not be empty.", label)
+
+		return
+	}
+
 	if len(valStr) < min {
 		errStr = fmt.Sprintf("%v must have at least %v characters.", label, min)
 	}
 
-	if len(valStr) > max {
+	if max != 0 && len(valStr) > max {
 		errStr = fmt.Sprintf("%v must not exceed %v characters.", label, max)
 	}
 
@@ -328,7 +334,7 @@ func (validtr *HTTPFormValidator) validateMultipleList(val any, min, max int, la
 			errStr = fmt.Sprintf("Must choose at least %v of the %vs.", min, label)
 		}
 
-		if count > max {
+		if max != 0 && count > max {
 			errStr = fmt.Sprintf("Must choose at most %v of the %vs.", max, label)
 		}
 

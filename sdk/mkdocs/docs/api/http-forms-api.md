@@ -219,6 +219,9 @@ type FormDecimalField struct {
     Label     string
     Step      float64   // controls the increment/decrement value of the input field
     Precision int       // controls the precision of the decimal value or how many decimal places it accepts
+   	Required  bool			// indicates whether an input value is required
+    Minimum   int				// the minimum value allowed for the input value
+    Maximum   int				// the maximum value allowed for the input value
     ValueFn   func() float64
 }
 ```
@@ -231,6 +234,9 @@ type FormDecimalField struct {
 | `Label` | The label for the input. |
 | `Step` | The increment/decrement value of the input field. |
 | `Precision` | The number of decimal fields for the input value. |
+| `Required` | Indicates whether an input value is required. |
+| `Minimum` | The minimum value allowed for the input value. |
+| `Maximum` | The maximum value allowed for the input value. |
 | `ValueFn` | This function should return the current value of the input field. |
 
 #### Usage Example
@@ -241,6 +247,9 @@ priceField := FormDecimalField{
     Label:     "Product Price",
     Step:      0.01,
     Precision: 2,
+    Required: true,
+    Minimum: 1,
+    Maximum: 10,
     ValueFn: func() float64 {
         return 99.99
     },
@@ -257,6 +266,9 @@ The `FormIntegerField` represents an integer input field in an HTML form.
 type FormIntegerField struct {
 	Name    string
 	Label   string
+	Required  bool			// indicates whether an input value is required
+	Minimum   int				// the minimum value allowed for the input value
+	Maximum   int				// the maximum value allowed for the input value
 	ValueFn func() int64
 }
 ```
@@ -267,6 +279,9 @@ type FormIntegerField struct {
 | ---- | ----|
 | `Name` | The unique name of the field within the section scope. |
 | `Label` | The label for the input. |
+| `Required` | Indicates whether an input value is required. |
+| `Minimum` | The minimum value allowed for the input value. |
+| `Maximum` | The maximum value allowed for the input value. |
 | `ValueFn` | This function should return the current value of the input field. |
 
 #### Usage Example
@@ -275,6 +290,9 @@ type FormIntegerField struct {
 ageField := FormIntegerField{
     Name:  "age",
     Label: "User Age",
+    Required: true,
+    Minimum: 1,
+    Maximum: 10,
     ValueFn: func() int64 {
         return 25
     },
@@ -298,6 +316,9 @@ type FormListField struct {
 	Label    string
 	Type     string     // type of the list options
 	Multiple bool
+	Required  bool			// Application for single option; indicate whether a selection is required.
+	Minimum   int				// Applicable for multiple option; the minimum number of selections allowed.
+	Maximum   int				//  Applicable for multiple option; the maximum number of selections allowed.
 	Options  func() []FormListFieldOption
 	ValueFn  func() interface{}
 }
@@ -311,6 +332,9 @@ type FormListField struct {
 | `Label` | The label for the input. |
 | `Type` | The type of the input fields. See [Field Types](#field-types) for the available types. |
 | `Multiple` | Indicates whether the field allows multiple selections. |
+| `Required` | Application for single option; indicate whether a selection is required. |
+| `Minimum` | Applicable for multiple option; the minimum number of selections allowed. |
+| `Maximum` | Applicable for multiple option; the maximum number of selections allowed. |
 | `Options` | A function that returns a list of options for the field. See [List Field Options](#list-field-options) |
 | `ValueFn` | This function should return the current value of the input field. |
 
@@ -341,6 +365,8 @@ countryField := sdkapi.FormListField{
     Label:    "Select Country",
     Type:     "string",
     Multiple: false,
+    Minimum: 1,
+    Maximum: 2,
     Options: func() []sdkapi.FormListFieldOption {
         return []sdkapi.FormListFieldOption{
             {Label: "Philippines", Value: "PH"},
@@ -357,6 +383,7 @@ countryField := sdkapi.FormListField{
 listField := sdkapi.FormListField{
     Name:  "experience_level",
     Label: "Select Experience Level",
+    Required: true,
     Type:  "int", // Specifies that the values are integers
     OptionsFn: func() []sdkapi.FormListFieldOption {
         return []sdkapi.FormListFieldOption{
@@ -382,6 +409,9 @@ The `FormMultiField` represents a structured form field that consists of multipl
 type FormMultiField struct {
 	Name    string
 	Label   string
+	Required bool
+	Minimum  int
+	Maximum  int
 	Columns func() []FormMultiFieldCol
 	ValueFn func() [][]FormFieldData
 }
@@ -393,6 +423,9 @@ type FormMultiField struct {
 | ---- | ---- |
 | `Name` | The name of the multi-field form. |
 | `Label` | The label displayed for the multi-field form. |
+| `Required` | Indicates if multi-field rows are required. |
+| `Minimum` | The mininum number of rows allowed for the multi-field form. |
+| `Maximum` | The maximum number of rows allowed for the multi-field form. |
 | `Columns` | Function returning a list of [column definitions](#multi-field-column). |
 | `ValueFn` | Function returning the values for each row and column. |
 
@@ -407,6 +440,9 @@ sdkapi.FormMultiField{
             {
                 Name:  "amount",
                 Label: "Amount",
+               	Required: true
+                Minimum: 1,
+                Maximum: 10,
                 Type:  sdkapi.FormFieldTypeDecimal,
                 ValueFn: func() interface{} {
                     return float64(0.0) // Default value
@@ -430,6 +466,15 @@ sdkapi.FormMultiField{
             },
         }
     },
+   	ValueFn: func() [][]sdkapi.FormFieldData {
+				return [][]sdkapi.FormFieldData{
+					{
+						{Name: amount, Value: 1.0},
+						{Name: wifi_time_seconds, Value: 60.0},
+						{Name: wifi_data_mb, Value: 10.0},
+					},
+				}
+			}
 }
 ```
 
@@ -519,6 +564,9 @@ type FormMultiFieldCol struct {
 	Name    string
 	Label   string
 	Type    string
+	Required bool
+	Minimum  int
+	Maximum  int
 	ValueFn func() interface{}
 }
 ```
@@ -529,6 +577,9 @@ type FormMultiFieldCol struct {
 | ----  | ---- |
 | `Name`  | The name of the column. |
 | `Label` | The label displayed for the column. |
+| `Required` | Indicates whether an input value is required. |
+| `Minimum` | Follows the validation requirement for minimum of corresponding column type. |
+| `Maximum` | Follows the validation requirement for maximum of corresponding column type. |
 | `Type` | The [data type](#field-types) of the column. |
 | `ValueFn` | Function that returns the default value for the column. |
 

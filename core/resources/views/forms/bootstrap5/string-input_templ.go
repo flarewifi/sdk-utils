@@ -248,7 +248,9 @@ func getStringInputFieldAttrs(cfg *inputFieldConfig) (attrs StringInputFieldAttr
 		return
 	}
 
-	attrs.Value, attrs.Error = cfg.form.GetStringValue(cfg.sec.GetName(), cfg.fld.GetName())
+	if attrs.Value == "" {
+		attrs.Value, attrs.Error = cfg.form.GetStringValue(cfg.sec.GetName(), cfg.fld.GetName())
+	}
 
 	return
 }

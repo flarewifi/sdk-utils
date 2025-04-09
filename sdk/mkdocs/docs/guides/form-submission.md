@@ -35,6 +35,9 @@ sections := []sdkapi.FormSection{
                     Label:     "Product Price",
                     Step:      0.01,
                     Precision: 2,
+                    Required: true,
+                    Minimum: 1,
+                    MaximumL 10,
                     ValueFn: func() float64 {
                         // your custom specific decimal form logic
                         return 99.99
@@ -44,6 +47,9 @@ sections := []sdkapi.FormSection{
                 ageField := sdkapi.FormIntegerField{
                     Name:  "age",
                     Label: "User Age",
+                    Required: true,
+                    Minimum: 18,
+                    MaximumL 100,
                     ValueFn: func() int64 {
                         // your custom integer specific logic
                         return 25
@@ -53,6 +59,7 @@ sections := []sdkapi.FormSection{
                 listField := sdkapi.FormListField{
                     Name:  "experience_level",
                     Label: "Select Experience Level",
+                    Required: true,
                     Type:  "int", // Specifies that the values are integers
                     OptionsFn: func() []sdkapi.FormListFieldOption {
                         return []sdkapi.FormListFieldOption{
@@ -70,11 +77,14 @@ sections := []sdkapi.FormSection{
                 sdkapi.FormMultiField{
                     Name:  "items",
                     Label: "Order Items",
+                    Required: true,
+                    Minimum: 2,
+                    MaximumL 10,
                     Columns: func() []sdkapi.FormMultiFieldCol {
                         return []sdkapi.FormMultiFieldCol{
-                            {Name: "item_name", Label: "Item Name", Type: "string"},
-                            {Name: "quantity", Label: "Quantity", Type: "int"},
-                            {Name: "price", Label: "Price", Type: "float"},
+                            {Name: "item_name", Label: "Item Name", Type: "string", Minimum: 5, Maximum: 15},
+                            {Name: "quantity", Label: "Quantity", Type: "int", Minimum: 1},
+                            {Name: "price", Label: "Price", Type: "float", Minimum: 0},
                         }
                     },
                     ValueFn: func() [][]sdkapi.FormFieldData {
@@ -89,6 +99,9 @@ sections := []sdkapi.FormSection{
                 sdkapi.FormTextField{
                     Name:  "banner_text",
                     Label: "Banner Text",
+                    Requird: true,
+                    Minimum: 1,
+                    Maximum: 100,
                     ValueFn: func() string {
                         b, err := pluginConfigAPI.Read("banner_text")
                         if err != nil {
@@ -103,6 +116,9 @@ sections := []sdkapi.FormSection{
                     Label: "Username",
                     IsReadOnly: true,
                     IsPassword: false,
+                    Requird: true,
+                    Minimum: 5,
+                    Maximum: 20,
                     ValueFn: func() string {
                         username := ""
                         // Your custom specific string logic
