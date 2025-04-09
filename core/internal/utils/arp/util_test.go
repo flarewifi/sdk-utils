@@ -8,23 +8,23 @@ func TestPadMacString(t *testing.T) {
 	var validInput []string
 	var expectedResult []string
 
-	validInput = append(validInput,"0:0:0:0:0:0")
+	validInput = append(validInput, "0:0:0:0:0:0")
 	expectedResult = append(expectedResult, "00:00:00:00:00:00")
-	validInput = append(validInput,"00:00:00:00:00:00")
+	validInput = append(validInput, "00:00:00:00:00:00")
 	expectedResult = append(expectedResult, "00:00:00:00:00:00")
-	validInput = append(validInput,"a:b:c:D:E:F")
+	validInput = append(validInput, "a:b:c:D:E:F")
 	expectedResult = append(expectedResult, "0a:0b:0c:0D:0E:0F")
-	validInput = append(validInput,"0-0-0-0-0-0")
+	validInput = append(validInput, "0-0-0-0-0-0")
 	expectedResult = append(expectedResult, "00-00-00-00-00-00")
-	validInput = append(validInput,"00-00-00-00-00-00")
+	validInput = append(validInput, "00-00-00-00-00-00")
 	expectedResult = append(expectedResult, "00-00-00-00-00-00")
-	validInput = append(validInput,"a-b-c-D-E-F")
+	validInput = append(validInput, "a-b-c-D-E-F")
 	expectedResult = append(expectedResult, "0a-0b-0c-0D-0E-0F")
-	validInput = append(validInput,"0.00.000")
+	validInput = append(validInput, "0.00.000")
 	expectedResult = append(expectedResult, "0000.0000.0000")
-	validInput = append(validInput,"0000.0000.0000")
+	validInput = append(validInput, "0000.0000.0000")
 	expectedResult = append(expectedResult, "0000.0000.0000")
-	validInput = append(validInput,"0.0a.abc")
+	validInput = append(validInput, "0.0a.abc")
 	expectedResult = append(expectedResult, "0000.000a.0abc")
 
 	for i := range validInput {

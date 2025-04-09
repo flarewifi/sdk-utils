@@ -2,7 +2,8 @@ package bootstrap5
 
 import (
 	"fmt"
-	"sdk/api"
+	"errors"
+
 	"github.com/flarehotspot/sdk-utils"
 )
 
@@ -13,18 +14,41 @@ type TextInputFieldAttrs struct {
 	Error error
 }
 
-templ TextInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
-	{{ attrs := getTextInputFieldAttrs(form, sec, fld) }}
-	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
-    <textarea class="form-control" rows="3" id={ sdkutils.Slugify(attrs.Name, "_") } name={ attrs.Name }>{ attrs.Value }</textarea>
-	if attrs.Error != nil {
-		<div class="invalid-feedback">{ attrs.Error.Error() }</div>
-	}
+templ TextInputField(cfg *inputFieldConfig) {
+	<div class="pb-3">
+		{{
+			attrs := getTextInputFieldAttrs(cfg)
+
+			textAreaClass := "form-control"
+			labelClass := "form-label"
+			if attrs.Error != nil {
+				textAreaClass += " is-invalid"
+				labelClass += " text-danger"
+			}
+		}}
+
+		<label for={ attrs.Name } class={ labelClass }>{ attrs.Label }</label>
+	    <textarea class={ textAreaClass } rows="3" id={ sdkutils.Slugify(attrs.Name, "_") } name={ attrs.Name }>{ attrs.Value }</textarea>
+		if attrs.Error != nil {
+			<div class="invalid-feedback">{ attrs.Error.Error() }</div>
+		}
+	</div>
 }
 
-func getTextInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs TextInputFieldAttrs) {
-	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
-	attrs.Label = fld.GetLabel()
-	attrs.Value, attrs.Error = form.GetStringValue(sec.GetName(), fld.GetName())
+func getTextInputFieldAttrs(cfg *inputFieldConfig) (attrs TextInputFieldAttrs) {
+	attrs.Name = fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName())
+	attrs.Label = cfg.fld.GetLabel()
+
+	attrs.Value = cfg.value
+	if cfg.error != "" {
+		attrs.Error = errors.New(cfg.error)
+	}
+
+	if attrs.Error != nil {
+		return
+	}
+
+	attrs.Value, attrs.Error = cfg.form.GetStringValue(cfg.sec.GetName(), cfg.fld.GetName())
+
 	return
 }

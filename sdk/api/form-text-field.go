@@ -7,9 +7,12 @@
 package sdkapi
 
 type FormTextField struct {
-	Name    string
-	Label   string
-	ValueFn func() string
+	Name     string
+	Label    string
+	Required bool
+	Minimum  int
+	Maximum  int
+	ValueFn  func() string
 }
 
 func (f FormTextField) GetName() string {
@@ -29,4 +32,8 @@ func (f FormTextField) GetValue() interface{} {
 		return f.ValueFn()
 	}
 	return ""
+}
+
+func (f FormTextField) IsRequired() bool {
+	return f.Required
 }

@@ -49,7 +49,7 @@ func (self *HttpFormApi) GetFormTemplate(name string, r *http.Request) (templ.Co
 	return httpForm.GetTemplate(r), nil
 }
 
-func (self *HttpFormApi) ParseForm(name string, r *http.Request) (form sdkapi.IHttpForm, err error) {
+func (self *HttpFormApi) ParseForm(name string, w http.ResponseWriter, r *http.Request) (form sdkapi.IHttpForm, err error) {
 	f, ok := self.forms.Load(name)
 	if !ok {
 		return form, fmt.Errorf("Unable to find form with name %s", name)
@@ -64,7 +64,7 @@ func (self *HttpFormApi) ParseForm(name string, r *http.Request) (form sdkapi.IH
 
 	httpForm := NewHttpForm(self.api, formDef)
 
-	if err := httpForm.ParseForm(r); err != nil {
+	if err := httpForm.ParseForm(w, r); err != nil {
 		return nil, err
 	}
 

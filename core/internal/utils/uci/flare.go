@@ -57,5 +57,5 @@ func SetFlareStorageExpanded(expanded bool) error {
 		return fmt.Errorf("failed to set storage expanded")
 	}
 
-  return nil
+	return nil
 }

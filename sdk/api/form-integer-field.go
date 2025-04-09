@@ -7,9 +7,12 @@
 package sdkapi
 
 type FormIntegerField struct {
-	Name    string
-	Label   string
-	ValueFn func() int64
+	Name     string
+	Label    string
+	Required bool
+	Minimum  int
+	Maximum  int
+	ValueFn  func() int64
 }
 
 func (f FormIntegerField) GetName() string {
@@ -29,4 +32,8 @@ func (f FormIntegerField) GetValue() interface{} {
 		return f.ValueFn()
 	}
 	return 0
+}
+
+func (f FormIntegerField) IsRequired() bool {
+	return f.Required
 }

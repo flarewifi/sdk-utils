@@ -6,6 +6,8 @@
 
 package sdkapi
 
+import "errors"
+
 const (
 	FormFieldTypeBoolean string = "bool"
 	FormFieldTypeDecimal string = "decimal"
@@ -15,6 +17,8 @@ const (
 	FormFieldTypeString  string = "string"
 	FormFieldTypeText    string = "text"
 )
+
+var ErrFormParse = errors.New("parsing error")
 
 type IFormField interface {
 	GetName() string

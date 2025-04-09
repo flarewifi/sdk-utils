@@ -2,46 +2,75 @@ package bootstrap5
 
 import (
 	"fmt"
+
 	sdkapi "sdk/api"
 )
 
-templ MultiInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
+type multiFieldConfig struct {
+	form  sdkapi.IHttpForm
+	sec   sdkapi.IFormSection
+	fld   sdkapi.IFormField
+	value map[string]string
+	error map[string]string
+}
+
+templ MultiInputField(cfg *multiFieldConfig) {
+	{{
+		form := cfg.form
+		sec := cfg.sec
+		fld := cfg.fld
+
+		rowValidationErr := cfg.error[fmt.Sprintf("%v_%v_error", cfg.sec.GetName(), cfg.fld.GetName())]
+	}}
+
 	<legend>{ fld.GetLabel() }</legend>
 	{{ mfval, err := form.GetMultiField(sec.GetName(), fld.GetName()) }}
 	if err != nil {
 		<p>{ fmt.Sprintf("unable to get multi-field value: %s", err.Error()) }</p>
 		{{ return }}
 	}
+
 	{{ mfld, ok := fld.(sdkapi.FormMultiField) }}
 	if !ok {
 		<p>{ fmt.Sprintf("field %s is not a multi-field", fld.GetName()) }</p>
 		{{ return }}
 	}
+
 	<div class="row">
 		for _, col := range mfld.Columns() {
 			<div class="col">{ col.Label }</div>
 		}
 		<div class="col">Options</div>
 	</div>
+
+
 	for  i := 0; i < mfval.NumRows(); i++ {
 		<div x-data="{row: {deleted: false}}">
-			@multiFieldRow(sec, mfld, mfval, i)
+			@multiFieldRow(cfg, mfld, mfval, i)
 		</div>
 	}
+
+	@displayValuesFromCookies(cfg, mfld, mfval.NumRows())
+
 	<div x-data="{newrows: []}">
 		<template x-for="row in newrows">
-			@multiFieldRow(sec, mfld, mfval, -1)
+			@multiFieldRow(cfg, mfld, mfval, -1)
 		</template>
+
+		if rowValidationErr != "" {
+			<p class="invalid-feedback d-block fs-6">{ rowValidationErr }</p>
+		}
+
 		<hr/>
 		<button type="button" class="" x-on:click="newrows.push({ deleted: false })">Add Item</button>
 	</div>
 }
 
-templ multiFieldRow(sec sdkapi.IFormSection, mfld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int) {
+templ multiFieldRow(cfg *multiFieldConfig, mfld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int) {
 	<template x-if="!row.deleted">
 		<div class="row mb-2">
 			for _, col := range mfld.Columns() {
-				@multiFieldCol(sec, mfld, mfval, row, col)
+				@multiFieldCol(cfg, mfld, mfval, row, col)
 			}
 			<div class="col">
 				<button type="button" class="btn btn-secondary">Edit</button>
@@ -57,60 +86,213 @@ templ multiFieldRow(sec sdkapi.IFormSection, mfld sdkapi.FormMultiField, mfval s
 	</template>
 }
 
-templ multiFieldCol(sec sdkapi.IFormSection, fld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int, col sdkapi.FormMultiFieldCol) {
+templ displayValuesFromCookies(cfg *multiFieldConfig, mfld sdkapi.FormMultiField, startRow int) {
+	{{ var timeToBreak bool }}
+	for {
+		<div x-data="{row: {deleted: false}}">
+			<template x-if="!row.deleted">
+				<div class="row mb-2">
+					{{ shouldDisplayButtons := false }}
+					for _, col := range mfld.Columns() {
+						{{
+							var val, errStr string
+
+							errorCookieName := fmt.Sprintf("%s_%s_%s_field_error%v", cfg.sec.GetName(), mfld.GetName(), col.Name, startRow)
+							_, errorCookieExist := cfg.error[errorCookieName]
+							if errorCookieExist {
+									errStr = cfg.error[errorCookieName]
+							}
+
+							valueCookieName := fmt.Sprintf("%s_%s_%s_field_value%v", cfg.sec.GetName(), mfld.GetName(), col.Name, startRow)
+							_, valueCookieExist := cfg.value[valueCookieName]
+							if valueCookieExist {
+								val = cfg.value[valueCookieName]
+							}
+
+
+							// All values are placed in cookie so this will be enough to check if we should stop the loop.
+							timeToBreak = !valueCookieExist
+						}}
+
+						if !timeToBreak {
+							@multiFieldColFromCookie(cfg, mfld, col, val, errStr)
+							{{ shouldDisplayButtons = true }}
+						} else {
+							{{ break }}
+						}
+					}
+
+					if shouldDisplayButtons {
+						<div class="col">
+							<button type="button" class="btn btn-secondary">Edit</button>
+							<button
+								type="button"
+								class="btn btn-danger"
+								x-on:click="row.deleted = true"
+							>
+								Delete
+							</button>
+						</div>
+					}
+				</div>
+			</template>
+		</div>
+
+		if timeToBreak {
+	 		{{ break }}
+		} else {
+			{{ 	startRow++ }}
+		}
+	}
+}
+
+templ multiFieldColFromCookie(cfg *multiFieldConfig, fld sdkapi.FormMultiField, col sdkapi.FormMultiFieldCol, val, errStr string) {
 	<div class="col">
-		{{ colName := mfColName(sec, fld, col) }}
+		{{
+			colName := mfColName(cfg.sec, fld, col)
+
+			inputClass := "form-control"
+			if errStr != "" {
+				inputClass += " is-invalid"
+			}
+		}}
+
 		switch col.Type {
 			case sdkapi.FormFieldTypeString:
-				{{ var val string }}
-				{{ var err error }}
-				if row < 0 {
-					{{ val = "" }}
-				} else {
-					{{ val, err = mfval.GetStringValue(row, col.Name) }}
+				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				if errStr != "" {
+					<p class="text text-danger text-small">{ errStr }</p>
 				}
-				<input type="text" class="form-control" name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
-				if err != nil {
-					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get string value from field %s, column %s", fld.Name, col.Name) }</p>
-				}
+
 			case sdkapi.FormFieldTypeInteger:
-				{{ var val int64 }}
-				{{ var err error }}
-				if row > -1 {
-					{{ val, err = mfval.GetIntValue(row, col.Name) }}
-				} else {
-					{{ val = 0 }}
+				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				if errStr != "" {
+					<p class="text text-danger text-small">{ errStr }</p>
 				}
-				<input type="text" class="form-control" name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ fmt.Sprintf("%d", val) }/>
-				if err != nil {
-					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err) }</p>
-				}
+
 			case sdkapi.FormFieldTypeDecimal:
-				{{ var val float64 }}
-				{{ var err error }}
-				if row > -1 {
-					{{ val, err = mfval.GetFloatValue(row, col.Name) }}
-				} else {
-					{{ val = 0 }}
+				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				if errStr != "" {
+					<p class="text text-danger text-small">{ errStr }</p>
 				}
-				<input type="text" class="form-control" name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ fmt.Sprintf("%.2f", val) }/>
-				if err != nil {
-					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err) }</p>
+			default:
+				<p>{ fmt.Sprintf("unsupported column type: %s", col.Type) }</p>
+		}
+	</div>
+}
+
+templ multiFieldCol(cfg *multiFieldConfig, fld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int, col sdkapi.FormMultiFieldCol) {
+	<div class="col">
+		{{
+			colName := mfColName(cfg.sec, fld, col)
+			errorCookieName := fmt.Sprintf("%s_%s_%s_field_error%v", cfg.sec.GetName(), fld.GetName(), col.Name, row)
+			valueCookieName := fmt.Sprintf("%s_%s_%s_field_value%v", cfg.sec.GetName(), fld.GetName(), col.Name, row)
+			noCookie := cfg.value[valueCookieName] == "" && cfg.error[errorCookieName] == ""
+
+			val := cfg.value[valueCookieName]
+			errStr := cfg.error[errorCookieName]
+		}}
+
+		switch col.Type {
+			case sdkapi.FormFieldTypeString:
+				{{
+					if row < 0 {
+						val = ""
+					} else {
+						if noCookie {
+							var err error
+
+							val, err = mfval.GetStringValue(row, col.Name)
+							if err != nil {
+								errStr = fmt.Sprintf("unable to get string value from field %s, column %s", fld.Name, col.Name)
+							}
+						}
+					}
+
+					inputClass := "form-control"
+					if errStr != "" {
+						inputClass += " is-invalid"
+					}
+				}}
+
+				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				if errStr != "" {
+					<p class="text text-danger text-small">{ errStr }</p>
 				}
+
+			case sdkapi.FormFieldTypeInteger:
+				{{
+					if row > -1 {
+						if noCookie {
+							intVal, err := mfval.GetIntValue(row, col.Name)
+							if err != nil {
+								errStr = fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err)
+							}
+							val = fmt.Sprint(intVal)
+						}
+					} else {
+						val = "0"
+					}
+
+					inputClass := "form-control"
+					if errStr != "" {
+						inputClass += " is-invalid"
+					}
+				}}
+				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				if errStr != "" {
+					<p class="text text-danger text-small">{ errStr }</p>
+				}
+
+			case sdkapi.FormFieldTypeDecimal:
+				{{
+					if row > -1 {
+						if noCookie {
+							floatVal, err := mfval.GetFloatValue(row, col.Name)
+							if err != nil {
+								errStr = fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err)
+							}
+							val = fmt.Sprintf("%.2f", floatVal)
+						}
+					} else {
+						{{ val = "0" }}
+					}
+
+					inputClass := "form-control"
+					if errStr != "" {
+						inputClass += " is-invalid"
+					}
+				}}
+
+				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				if errStr != "" {
+					<p class="text text-danger text-small">{ errStr }</p>
+				}
+
 			case sdkapi.FormFieldTypeBoolean:
-				{{ var val bool }}
-				{{ var err error }}
-				if row < 0 {
-					{{ val = false }}
-				} else {
-					{{ val, err = mfval.GetBoolValue(row, col.Name) }}
-				}
-				<select class="form-control" name={ colName }>
-					<option value="true" selected?={ val }>Yes</option>
-					<option value="false" selected?={ !val }>No</option>
+				{{
+					var boolVal bool
+					var err error
+
+					if row >= 0 {
+						boolVal, err = mfval.GetBoolValue(row, col.Name)
+						if err != nil {
+							errStr = fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err)
+						}
+					}
+
+					inputClass := "form-control"
+					if errStr != "" {
+						inputClass += " is-invalid"
+					}
+				}}
+
+				<select class={ inputClass } name={ colName }>
+					<option value="true" selected?={ boolVal }>Yes</option>
+					<option value="false" selected?={ !boolVal }>No</option>
 				</select>
-				if err != nil {
-					<p class="text text-danger text-small">{ fmt.Sprintf("unable to get number value from field %s, column %s: %+v", fld.Name, col.Name, err) }</p>
+				if errStr != "" {
+					<p class="text text-danger text-small">{ errStr }</p>
 				}
 			default:
 				<p>{ fmt.Sprintf("unsupported column type: %s", col.Type) }</p>

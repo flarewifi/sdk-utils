@@ -10,14 +10,15 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 
 	sdkapi "sdk/api"
 
 	"github.com/flarehotspot/sdk-utils"
-	"reflect"
 )
 
-func ListInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) templ.Component {
+func ListInputField(cfg *inputFieldConfig) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -38,9 +39,9 @@ func ListInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.I
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		lf, ok := fld.(sdkapi.FormListField)
+		lf, ok := cfg.fld.(sdkapi.FormListField)
 		if ok {
-			templ_7745c5c3_Err = listOptionFields(form, sec, lf).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = listOptionFields(cfg, lf).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -50,9 +51,9 @@ func ListInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.I
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("list field %s in section %s is not a list field", fld.GetName(), sec.GetName()))
+			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("list field %s in section %s is not a list field", cfg.fld.GetName(), cfg.sec.GetName()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 17, Col: 102}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 18, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -67,7 +68,7 @@ func ListInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.I
 	})
 }
 
-func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.FormListField) templ.Component {
+func listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -88,41 +89,90 @@ func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<legend>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(lf.Label)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 22, Col: 19}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</legend>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"pb-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 
-		var optType string
+		legendClass := "fs-6 fw-normal"
+		inputClass := "form-check-input"
+		if cfg.error != "" {
+			inputClass += " is-invalid"
+			legendClass += " text-danger"
+		}
+
+		optType := "radio"
 		if lf.Multiple {
 			optType = "checkbox"
-		} else {
-			optType = "radio"
 		}
-		for _, opt := range lf.Options() {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"form-check\"><input class=\"form-check-input\" type=\"")
+		var templ_7745c5c3_Var4 = []any{legendClass}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<legend class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 string
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var4).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 string
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(lf.Label)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 38, Col: 42}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</legend> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for i, opt := range lf.Options() {
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"form-check\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(optType)
+			var templ_7745c5c3_Var7 = []any{inputClass}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var7...)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 35, Col: 18}
+				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<input class=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var8 string
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var7).String())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" type=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var9 string
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(optType)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 44, Col: 19}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -130,12 +180,12 @@ func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s:%s", sec.GetName(), lf.Name))
+			var templ_7745c5c3_Var10 string
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s:%s", cfg.sec.GetName(), lf.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 36, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 45, Col: 60}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -143,12 +193,12 @@ func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(parseListOptValue(lf, opt))
+			var templ_7745c5c3_Var11 string
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(parseListOptValue(lf, i, opt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 37, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 46, Col: 42}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -156,7 +206,7 @@ func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if isListOptSelected(form, sec, lf, opt) {
+			if isListOptSelected(cfg, lf, opt) {
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(" checked")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -166,12 +216,12 @@ func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
+			var templ_7745c5c3_Var12 string
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 41, Col: 15}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 50, Col: 16}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -180,11 +230,45 @@ func listOptionFields(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.
 				return templ_7745c5c3_Err
 			}
 		}
+		if cfg.error != "" {
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<p class=\"invalid-feedback d-block fs-6\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var13 string
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.error)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/list-input.templ`, Line: 55, Col: 55}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		return templ_7745c5c3_Err
 	})
 }
 
-func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) bool {
+func isListOptSelected(cfg *inputFieldConfig, lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) bool {
+	v := fmt.Sprint(opt.Value)
+
+	if cfg.value != "" {
+		if lf.Multiple {
+			vals := strings.Split(cfg.value, ",")
+			return sdkutils.SliceContains(vals, v)
+		}
+
+		return v == cfg.value
+	}
+
 	switch lf.Type {
 	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)
@@ -193,13 +277,13 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetStringValues(sec.GetName(), lf.Name)
+			vals, err := cfg.form.GetStringValues(cfg.sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
 			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetStringValue(sec.GetName(), lf.Name)
+			val, err := cfg.form.GetStringValue(cfg.sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
@@ -223,13 +307,13 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetFloatValues(sec.GetName(), lf.Name)
+			vals, err := cfg.form.GetFloatValues(cfg.sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
 			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetFloatValue(sec.GetName(), lf.Name)
+			val, err := cfg.form.GetFloatValue(cfg.sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
@@ -249,13 +333,13 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi
 		}
 
 		if lf.Multiple {
-			vals, err := form.GetIntValues(sec.GetName(), lf.Name)
+			vals, err := cfg.form.GetIntValues(cfg.sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
 			return sdkutils.SliceContains(vals, v)
 		} else {
-			val, err := form.GetIntValue(sec.GetName(), lf.Name)
+			val, err := cfg.form.GetIntValue(cfg.sec.GetName(), lf.Name)
 			if err != nil {
 				return false
 			}
@@ -266,7 +350,7 @@ func isListOptSelected(form sdkapi.IHttpForm, sec sdkapi.IFormSection, lf sdkapi
 	return false
 }
 
-func parseListOptValue(lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) (val string) {
+func parseListOptValue(lf sdkapi.FormListField, idx int, opt sdkapi.FormListFieldOption) (val string) {
 	switch lf.Type {
 	case sdkapi.FormFieldTypeString:
 		v, ok := opt.Value.(string)
@@ -289,20 +373,6 @@ func parseListOptValue(lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) 
 	}
 
 	return
-}
-
-func getListInputField(fld sdkapi.IFormField) (lf sdkapi.FormListField) {
-	lf, _ = fld.(sdkapi.FormListField)
-	return lf
-}
-
-func getListFieldInputType(fld sdkapi.IFormField) string {
-	listField, ok := fld.(sdkapi.FormListField)
-	if !ok {
-		return "not a list field"
-	}
-
-	return listField.Type
 }
 
 var _ = templruntime.GeneratedTemplate

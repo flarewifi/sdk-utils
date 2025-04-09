@@ -10,10 +10,21 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
+
 	sdkapi "sdk/api"
 )
 
-func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitText string) templ.Component {
+type HtmlFormConfig struct {
+	Form       sdkapi.IHttpForm
+	Cookie     sdkapi.IHttpCookie
+	CSRFTag    string
+	SubmitURL  string
+	SubmitText string
+	ValueMap   map[string]string
+	ErrorMap   map[string]string
+}
+
+func HtmlForm(cfg *HtmlFormConfig) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -38,7 +49,7 @@ func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTex
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var2 templ.SafeURL = templ.SafeURL(submitUrl)
+		var templ_7745c5c3_Var2 templ.SafeURL = templ.SafeURL(cfg.SubmitURL)
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var2)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -47,11 +58,11 @@ func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTex
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.Raw(csrfTag).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templ.Raw(cfg.CSRFTag).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, sec := range form.GetSections() {
+		for _, sec := range cfg.Form.GetSections() {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<legend>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -59,7 +70,7 @@ func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTex
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(sec.GetLabel())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 12, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 23, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -70,43 +81,59 @@ func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTex
 				return templ_7745c5c3_Err
 			}
 			for _, fld := range sec.GetFields() {
+
+				cookiePrefix := fmt.Sprintf("%s_%s", sec.GetName(), fld.GetName())
+				inputField := &inputFieldConfig{
+					form:  cfg.Form,
+					sec:   sec,
+					fld:   fld,
+					value: cfg.ValueMap[fmt.Sprintf("%v_field_value", cookiePrefix)],
+					error: cfg.ErrorMap[fmt.Sprintf("%v_field_error", cookiePrefix)],
+				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"mt-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				switch fld.GetType() {
 				case sdkapi.FormFieldTypeString:
-					templ_7745c5c3_Err = StringInputField(form, sec, fld).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = StringInputField(inputField).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				case sdkapi.FormFieldTypeText:
-					templ_7745c5c3_Err = TextInputField(form, sec, fld).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = TextInputField(inputField).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				case sdkapi.FormFieldTypeInteger:
-					templ_7745c5c3_Err = IntegerInputField(form, sec, fld).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = IntegerInputField(inputField).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				case sdkapi.FormFieldTypeDecimal:
-					templ_7745c5c3_Err = DecimalInputField(form, sec, fld).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = DecimalInputField(inputField).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				case sdkapi.FormFieldTypeBoolean:
-					templ_7745c5c3_Err = BooleanInputField(form, sec, fld).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = BooleanInputField(cfg.Form, sec, fld).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				case sdkapi.FormFieldTypeList:
-					templ_7745c5c3_Err = ListInputField(form, sec, fld).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = ListInputField(inputField).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				case sdkapi.FormFieldTypeMulti:
-					templ_7745c5c3_Err = MultiInputField(form, sec, fld).Render(ctx, templ_7745c5c3_Buffer)
+					multiFieldInput := &multiFieldConfig{
+						form:  cfg.Form,
+						sec:   sec,
+						fld:   fld,
+						value: cfg.ValueMap,
+						error: cfg.ErrorMap,
+					}
+					templ_7745c5c3_Err = MultiInputField(multiFieldInput).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -118,7 +145,7 @@ func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTex
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("unsupported field type: %s", fld.GetType()))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 31, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 62, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -140,9 +167,9 @@ func HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTex
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(submitText)
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.SubmitText)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 38, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 69, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

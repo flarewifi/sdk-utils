@@ -87,7 +87,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 
 func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		searchForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm("logs-form", r)
+		searchForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm("logs-form", w, r)
 		if err != nil {
 			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
 			return
