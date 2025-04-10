@@ -242,9 +242,7 @@ func getStringInputFieldAttrs(cfg *inputFieldConfig) (attrs StringInputFieldAttr
 	attrs.Value = cfg.value
 	if cfg.error != "" {
 		attrs.Error = errors.New(cfg.error)
-	}
 
-	if attrs.Error != nil {
 		return
 	}
 

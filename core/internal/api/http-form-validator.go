@@ -224,6 +224,8 @@ func (validtr *HTTPFormValidator) validateMultiFieldForm(
 		parseErr = fmt.Sprintf("Must not exceed  %v rows.", mfld.Maximum)
 	}
 
+	// This is to delete previous error in the cookie.
+	cookie.DeleteCookie(w, fmt.Sprintf("%v_%v_error", sec.Name, mfld.Name))
 	if parseErr != "" {
 		cookie.SetCookie(w, fmt.Sprintf("%v_%v_error", sec.Name, mfld.Name), parseErr)
 	}
@@ -306,7 +308,7 @@ func (validtr *HTTPFormValidator) validateDecimal(val any, min, max int, label s
 }
 
 func (validtr *HTTPFormValidator) validateString(val string, min, max int, label string) (errStr string) {
-	valStr := fmt.Sprint(val)
+	valStr := strings.TrimSpace(fmt.Sprint(val))
 	if valStr == "" {
 		errStr = fmt.Sprintf("%v must not be empty.", label)
 

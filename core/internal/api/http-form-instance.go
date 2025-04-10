@@ -68,9 +68,7 @@ func (self *HttpFormInstance) GetSections() []sdkapi.IFormSection {
 }
 
 func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) (err error) {
-	// Delete existing form cookies prior to processing new data.
-	self.validator.DeleteAllFormCookies(w, r, self)
-
+	var validationError error
 	if err := r.ParseForm(); err != nil {
 		return err
 	}
@@ -130,7 +128,8 @@ func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) 
 
 			valErr := self.validator.ValidateFormField(w, sec, fld, field.Value)
 			if valErr != nil {
-				err = valErr
+				// We'll handle the error after all form fields are validated.
+				validationError = valErr
 			}
 
 			sectionData.Fields[fidx] = field
@@ -141,12 +140,12 @@ func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) 
 
 	self.data = parsedData
 
-	if err == nil {
+	if validationError == nil {
 		// Delete cookies created during validation if parsing is successful.
 		self.validator.DeleteAllFormCookies(w, r, self)
 	}
 
-	return err
+	return validationError
 }
 
 func (self *HttpFormInstance) GetStringValue(section string, field string) (val string, err error) {
