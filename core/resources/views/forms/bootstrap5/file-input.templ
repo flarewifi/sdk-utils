@@ -1,0 +1,132 @@
+package bootstrap5
+
+import (
+	"fmt"
+	"strings"
+	"path/filepath"
+
+	sdkapi "sdk/api"
+)
+
+type FileInputFieldAttrs struct {
+	Label      string
+	Name       string
+	Accept     string
+	IsMultiple bool
+	Error      string
+	Valid      []string
+	Invalid    []invalid
+}
+
+type invalid struct {
+	value string
+	error string
+}
+
+type fileFieldConfig struct {
+	form   sdkapi.IHttpForm
+	sec    sdkapi.IFormSection
+	fld    sdkapi.IFormField
+	values map[string]string
+	errors map[string]string
+}
+
+templ FileInputField(cfg *fileFieldConfig) {
+	{{
+		attrs := getFileInputFieldAttrs(cfg)
+
+		inputClass := "form-control mb-2"
+		labelClass := "form-label"
+		if attrs.Error != "" {
+			inputClass += " is-invalid"
+			labelClass += " text-danger"
+		}
+	}}
+
+	<div class="pb-3">
+		<label for={ attrs.Name } class={ labelClass }>{ attrs.Label }</label>
+		<input
+			type="file"
+			class={ inputClass }
+			id={ attrs.Name }
+			name={ attrs.Name }
+			accept={ attrs.Accept }
+			multiple?={ attrs.IsMultiple }
+		/>
+
+		if attrs.Error != "" && len(attrs.Invalid) == 0 {
+			<div class="invalid-feedback">{ attrs.Error }</div>
+		}
+
+		if len(attrs.Valid) > 0 {
+			Valid File(s)
+			<ul>
+				for _, file := range attrs.Valid {
+					<li> { file } </li>
+				}
+			</ul>
+		}
+
+		if len(attrs.Invalid) > 0 {
+			Invalid File(s)
+			<ul>
+				for _, invalid := range attrs.Invalid {
+					<li> { invalid.value } </li>
+					<span class="invalid-feedback d-block">  { invalid.error } </span>
+				}
+			</ul>
+		}
+	</div>
+}
+
+func getFileInputFieldAttrs(cfg *fileFieldConfig) (attrs FileInputFieldAttrs) {
+	attrs.Label = cfg.fld.GetLabel()
+	attrs.Name = fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName())
+
+	fileFld := cfg.fld.(sdkapi.FormFileField)
+	attrs.Accept = strings.Join(fileFld.Accept, ", ")
+	attrs.IsMultiple = fileFld.Multiple
+
+	fldErrors := []string{}
+	for key, errStr := range cfg.errors {
+		if strings.HasPrefix(key, fmt.Sprintf("%v_%v",  cfg.sec.GetName(), cfg.fld.GetName())) {
+			fldErrors = append(fldErrors, errStr)
+		}
+
+		attrs.Error = errStr
+	}
+
+	if len(fldErrors) == 1 {
+		attrs.Error = fldErrors[0]
+	}
+
+	attrs.Valid = []string{}
+	attrs.Invalid = []invalid{}
+
+	i := 0
+	for key := range cfg.values {
+		prefix := fmt.Sprintf("%v_%v", cfg.sec.GetName(), cfg.fld.GetName())
+		valKey := fmt.Sprintf("%v_field_value%v", prefix, i)
+		errKey := fmt.Sprintf("%v_field_error%v", prefix, i)
+
+		if !strings.HasPrefix(key, prefix) {
+			continue
+		}
+
+		file := cfg.values[valKey]
+		errStr := cfg.errors[errKey]
+		if errStr == ""  {
+			attrs.Valid = append(attrs.Valid,  filepath.Base(file))
+		} else {
+			attrs.Invalid = append(	attrs.Invalid, invalid{value:  filepath.Base(file), error: errStr})
+		}
+
+		if file == "" {
+			break
+		}
+
+		i++
+	}
+
+	return
+}

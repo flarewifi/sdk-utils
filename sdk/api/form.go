@@ -16,6 +16,7 @@ const (
 	FormFieldTypeMulti   string = "multi"
 	FormFieldTypeString  string = "string"
 	FormFieldTypeText    string = "text"
+	FormFieldTypeFile    string = "file"
 )
 
 var ErrFormParse = errors.New("parsing error")
@@ -44,6 +45,8 @@ type IHttpForm interface {
 	GetBoolValues(section string, name string) ([]bool, error)
 
 	GetMultiField(section string, name string) (IFormMultiField, error)
+
+	GetFileValue(section string, name string) ([]string, error)
 }
 
 type HttpForm struct {

@@ -4,14 +4,19 @@ import (
 	formsview "core/resources/views/forms/bootstrap5"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"reflect"
 	sdkapi "sdk/api"
 	"strconv"
 	"strings"
 
 	"github.com/a-h/templ"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
@@ -116,6 +121,20 @@ func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) 
 					}
 					val = mfldval
 				}
+				field.Value = val
+
+			case sdkapi.FormFieldTypeFile:
+				ffld, ok := fld.(sdkapi.FormFileField)
+				if !ok {
+					return fmt.Errorf("section %s, field %s type is not multifield, instead %T", sec, fld.GetName(), fld)
+				}
+
+				val, err := ParseFile(r, sec, &ffld)
+				if err != nil {
+					log.Println("error parsing form file: ", err)
+					field.Value = ffld.GetValue()
+				}
+
 				field.Value = val
 
 			default:
@@ -283,6 +302,28 @@ func (self *HttpFormInstance) GetMultiField(section string, field string) (val s
 	return FormMultiFieldData{
 		Fields: data,
 	}, nil
+}
+
+func (self *HttpFormInstance) GetFileValue(section string, field string) ([]string, error) {
+	filePaths := []string{}
+	uploadDir := filepath.Join(sdkutils.PathTmpDir, "uploads", section, field)
+
+	if err := sdkutils.FsListFiles(uploadDir, &filePaths, false); err != nil {
+		log.Println("error listing files from: ", uploadDir)
+
+		ivals, err := self.getFieldValues(section, field)
+		if err != nil {
+			return []string{}, fmt.Errorf("unabel to get field values: %w", err)
+		}
+
+		if ivals == nil {
+			return []string{}, nil
+		}
+
+		return ivals.([]string), nil
+	}
+
+	return filePaths, nil
 }
 
 func (self *HttpFormInstance) getSection(section string) (sec sdkapi.FormSection, ok bool) {
@@ -571,7 +612,47 @@ func ParseMultiFieldValue(sec sdkapi.FormSection, f sdkapi.IFormField, form url.
 	}
 
 	return vals, nil
+}
 
+func ParseFile(r *http.Request, sec sdkapi.FormSection, fld *sdkapi.FormFileField) (urls []string, err error) {
+	// Parse up to 32MB in memory, rest in temp files
+	err = r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse multipart form: %w", err)
+	}
+
+	// Get the files from the form field "files"
+	files := r.MultipartForm.File[fmt.Sprintf("%s:%s", sec.Name, fld.GetName())]
+	uploadDir := filepath.Join(sdkutils.PathTmpDir, "uploads", sec.Name, fld.Name)
+	if err := sdkutils.FsEmptyDir(uploadDir); err != nil {
+		return nil, fmt.Errorf("ensure dir error: %w", err)
+	}
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
+		if err != nil {
+			log.Printf("%v: Failed to open file %s\n", err, fileHeader.Filename)
+			continue
+		}
+		defer file.Close()
+
+		filePath := filepath.Join(uploadDir, fileHeader.Filename)
+		dst, err := os.Create(filePath)
+		if err != nil {
+			log.Printf("%v: Failed to save file %s\n", err, fileHeader.Filename)
+			continue
+		}
+		defer dst.Close()
+
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			log.Printf("%v: Failed to open file %s\n", err, fileHeader.Filename)
+			continue
+		}
+
+		urls = append(urls, filePath)
+	}
+
+	return urls, nil
 }
 
 func GetTypeDefault(fld sdkapi.IFormField) interface{} {
@@ -594,6 +675,9 @@ func GetTypeDefault(fld sdkapi.IFormField) interface{} {
 
 	case sdkapi.FormFieldTypeMulti:
 		return map[string]interface{}{}
+
+	case sdkapi.FormFieldTypeFile:
+		return []string{}
 
 	default:
 		return nil

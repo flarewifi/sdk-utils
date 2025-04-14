@@ -22,6 +22,20 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 					Name:  "search",
 					Label: "System Logs",
 					Fields: []sdkapi.IFormField{
+						sdkapi.FormFileField{
+							Name:      "upload_file",
+							Label:     "Upload File",
+							Required:  true,
+							Multiple:  true,
+							MinFiles:  1,
+							MaxFiles:  3,
+							MinSizeMb: 1, // 1mb
+							MaxSizeMb: 10,
+							Accept:    []string{"application/zip", "image/png", "image/jpeg"},
+							ValueFn: func() []string {
+								return nil
+							},
+						},
 						sdkapi.FormStringField{
 							Name:     "search_text",
 							Label:    "Search Logs",

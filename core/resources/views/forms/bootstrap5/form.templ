@@ -17,7 +17,7 @@ type HtmlFormConfig struct {
 }
 
 templ HtmlForm(cfg *HtmlFormConfig) {
-	<form id="form" method="POST" action={ templ.SafeURL(cfg.SubmitURL) }>
+	<form id="form" method="POST" action={ templ.SafeURL(cfg.SubmitURL) } enctype="multipart/form-data">
 		@templ.Raw(cfg.CSRFTag)
 		for _, sec := range cfg.Form.GetSections() {
 			<legend>{ sec.GetLabel() }</legend>
@@ -58,6 +58,17 @@ templ HtmlForm(cfg *HtmlFormConfig) {
 								}
 							}}
 							@MultiInputField(multiFieldInput)
+						case sdkapi.FormFieldTypeFile:
+							{{
+								fileCfg := &fileFieldConfig{
+									form:  cfg.Form,
+									sec:   sec,
+									fld:   fld,
+									values: cfg.ValueMap,
+									errors: cfg.ErrorMap,
+								}
+							}}
+							@FileInputField(fileCfg)
 						default:
 							<p>{ fmt.Sprintf("unsupported field type: %s", fld.GetType()) }</p>
 					}

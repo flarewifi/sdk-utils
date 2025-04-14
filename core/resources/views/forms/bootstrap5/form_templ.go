@@ -54,7 +54,7 @@ func HtmlForm(cfg *HtmlFormConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" enctype=\"multipart/form-data\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -137,6 +137,18 @@ func HtmlForm(cfg *HtmlFormConfig) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
+				case sdkapi.FormFieldTypeFile:
+					fileCfg := &fileFieldConfig{
+						form:   cfg.Form,
+						sec:    sec,
+						fld:    fld,
+						values: cfg.ValueMap,
+						errors: cfg.ErrorMap,
+					}
+					templ_7745c5c3_Err = FileInputField(fileCfg).Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
 				default:
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<p>")
 					if templ_7745c5c3_Err != nil {
@@ -145,7 +157,7 @@ func HtmlForm(cfg *HtmlFormConfig) templ.Component {
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("unsupported field type: %s", fld.GetType()))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 62, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 73, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -169,7 +181,7 @@ func HtmlForm(cfg *HtmlFormConfig) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.SubmitText)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 69, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 80, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
