@@ -253,26 +253,26 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(invalid.value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 74, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 75, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</li><span class=\"invalid-feedback d-block\">")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(" : <span class=\"invalid-feedback d-inline\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(invalid.error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 75, Col: 61}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 75, Col: 83}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span>")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -298,17 +298,12 @@ func getFileInputFieldAttrs(cfg *fileFieldConfig) (attrs FileInputFieldAttrs) {
 	attrs.Accept = strings.Join(fileFld.Accept, ", ")
 	attrs.IsMultiple = fileFld.Multiple
 
-	fldErrors := []string{}
 	for key, errStr := range cfg.errors {
 		if strings.HasPrefix(key, fmt.Sprintf("%v_%v", cfg.sec.GetName(), cfg.fld.GetName())) {
-			fldErrors = append(fldErrors, errStr)
+			// We just need any matching error for this part.
+			attrs.Error = errStr
+			break
 		}
-
-		attrs.Error = errStr
-	}
-
-	if len(fldErrors) == 1 {
-		attrs.Error = fldErrors[0]
 	}
 
 	attrs.Valid = []string{}

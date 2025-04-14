@@ -71,8 +71,9 @@ templ FileInputField(cfg *fileFieldConfig) {
 			Invalid File(s)
 			<ul>
 				for _, invalid := range attrs.Invalid {
-					<li> { invalid.value } </li>
-					<span class="invalid-feedback d-block">  { invalid.error } </span>
+					<li>
+						{ invalid.value } : <span class="invalid-feedback d-inline">  { invalid.error } </span>
+					</li>
 				}
 			</ul>
 		}
@@ -87,17 +88,12 @@ func getFileInputFieldAttrs(cfg *fileFieldConfig) (attrs FileInputFieldAttrs) {
 	attrs.Accept = strings.Join(fileFld.Accept, ", ")
 	attrs.IsMultiple = fileFld.Multiple
 
-	fldErrors := []string{}
 	for key, errStr := range cfg.errors {
 		if strings.HasPrefix(key, fmt.Sprintf("%v_%v",  cfg.sec.GetName(), cfg.fld.GetName())) {
-			fldErrors = append(fldErrors, errStr)
+			// We just need any matching error for this part.
+			attrs.Error = errStr
+			break
 		}
-
-		attrs.Error = errStr
-	}
-
-	if len(fldErrors) == 1 {
-		attrs.Error = fldErrors[0]
 	}
 
 	attrs.Valid = []string{}

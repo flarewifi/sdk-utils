@@ -228,9 +228,45 @@ func (validtr *HTTPFormValidator) DeleteAllFormCookies(w http.ResponseWriter, r 
 				continue
 			}
 
+			if ffld, ok := fld.(sdkapi.FormFileField); ok {
+				validtr.DeletePreviousFileInputCookies(w, r, sec.GetName(), ffld, 0)
+			}
+
 			validtr.api.HttpAPI.httpCookie.DeleteCookie(w, errCookie)
 			validtr.api.HttpAPI.httpCookie.DeleteCookie(w, valueCookie)
 		}
+	}
+}
+
+func (validtr *HTTPFormValidator) DeletePreviousFileInputCookies(
+	w http.ResponseWriter,
+	r *http.Request,
+	sectionName string,
+	fld sdkapi.FormFileField,
+	startIndex int,
+) {
+	prefix := fmt.Sprintf("%v_%v", sectionName, fld.Name)
+	cookie := validtr.api.HttpAPI.httpCookie
+	errCookieName := fmt.Sprintf(errorCookieName, prefix)
+	valCookieName := fmt.Sprintf(valueCookieName, prefix)
+
+	cookie.DeleteCookie(w, errCookieName)
+	cookie.DeleteCookie(w, valCookieName)
+
+	i := startIndex
+	for {
+		errCookieName := fmt.Sprintf("%s%v", errCookieName, i)
+		valCookieName := fmt.Sprintf("%s%v", valCookieName, i)
+
+		_, err := cookie.GetCookie(r, valCookieName)
+		if errors.Is(err, http.ErrNoCookie) {
+			break
+		}
+
+		cookie.DeleteCookie(w, errCookieName)
+		cookie.DeleteCookie(w, valCookieName)
+
+		i++
 	}
 }
 
@@ -441,12 +477,6 @@ func (validtr *HTTPFormValidator) validateFile(
 		errCookieName := fmt.Sprintf("%s%v", errCookieName, i)
 		valCookieName := fmt.Sprintf("%s%v", valCookieName, i)
 
-		// Delete previous cookie with same name.
-		// We're doing this so that when new files are uploaded,
-		// the previous cookie will be discarded.
-		// cookie.DeleteCookie(w, errCookieName)
-		// cookie.DeleteCookie(w, valCookieName)
-
 		file, err := os.Open(path)
 		if err != nil {
 			log.Printf("%v: Failed to open file %s\n", err, file.Name())
@@ -462,14 +492,17 @@ func (validtr *HTTPFormValidator) validateFile(
 		fileSize := bytesToMB(stat.Size())
 		fileBaseName := filepath.Base(path)
 		if fld.MinSizeMb != 0 && fileSize < fld.MinSizeMb {
-			errStr = fmt.Sprintf("%v is less than the allowed file size of at least %v mb.", fileBaseName, fld.MinSizeMb)
+			errStr = fmt.Sprintf("%v is too small. The minimum allowed size is %v MB.", fileBaseName, fld.MinSizeMb)
 		}
 
 		if fld.MaxSizeMb != 0 && fileSize > fld.MaxSizeMb {
-			errStr = fmt.Sprintf("%v is more than the allowed file size of at most %v mb.", fileBaseName, fld.MaxSizeMb)
+			errStr = fmt.Sprintf("%v is too large. The maximum allowed size is %v MB.", fileBaseName, fld.MaxSizeMb)
 		}
 
 		cookie.SetCookie(w, valCookieName, path)
+
+		// Delete previous error with same cookie name.
+		cookie.DeleteCookie(w, errCookieName)
 		if errStr != "" {
 			cookie.SetCookie(w, errCookieName, errStr)
 			fileErr = sdkapi.ErrFormParse

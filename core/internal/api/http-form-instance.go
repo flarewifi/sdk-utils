@@ -126,7 +126,7 @@ func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) 
 			case sdkapi.FormFieldTypeFile:
 				ffld, ok := fld.(sdkapi.FormFileField)
 				if !ok {
-					return fmt.Errorf("section %s, field %s type is not multifield, instead %T", sec, fld.GetName(), fld)
+					return fmt.Errorf("section %s, field %s type is not form field, instead %T", sec, fld.GetName(), fld)
 				}
 
 				val, err := ParseFile(r, sec, &ffld)
@@ -136,6 +136,10 @@ func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) 
 				}
 
 				field.Value = val
+
+				// We'll discard previously uploaded file cookies every new parsing call.
+				startIndex := len(field.Value.([]string))
+				self.validator.DeletePreviousFileInputCookies(w, r, sec.Name, ffld, startIndex)
 
 			default:
 				return errors.New("invalid field type" + fld.GetType())
@@ -621,7 +625,6 @@ func ParseFile(r *http.Request, sec sdkapi.FormSection, fld *sdkapi.FormFileFiel
 		return nil, fmt.Errorf("failed to parse multipart form: %w", err)
 	}
 
-	// Get the files from the form field "files"
 	files := r.MultipartForm.File[fmt.Sprintf("%s:%s", sec.Name, fld.GetName())]
 	uploadDir := filepath.Join(sdkutils.PathTmpDir, "uploads", sec.Name, fld.Name)
 	if err := sdkutils.FsEmptyDir(uploadDir); err != nil {
