@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -63,7 +64,8 @@ func (validtr *HTTPFormValidator) ValidateFormField(
 		return validtr.validateMultiFieldForm(w, sec, v, val)
 	}
 
-	cookie.SetCookie(w, fmt.Sprintf(valueCookieName, prefix), valString)
+	encoded := base64.StdEncoding.EncodeToString([]byte(valString))
+	cookie.SetCookie(w, fmt.Sprintf(valueCookieName, prefix), encoded)
 	if errStr != "" {
 		cookie.SetCookie(w, fmt.Sprintf(errorCookieName, prefix), errStr)
 
@@ -109,6 +111,10 @@ func (validtr *HTTPFormValidator) GetValidatedValues(
 							valueCookieName := fmt.Sprintf("%s%v", fmt.Sprintf(valueCookieName, prefix), i)
 							valueCookie, valCookieErr := cookie.GetCookie(r, valueCookieName)
 
+							if decoded, err := base64.StdEncoding.DecodeString(valueCookie); err == nil {
+								valueCookie = string(decoded)
+							}
+
 							// No more cookie in this scenario.
 							if errors.Is(valCookieErr, http.ErrNoCookie) {
 								break
@@ -127,8 +133,14 @@ func (validtr *HTTPFormValidator) GetValidatedValues(
 			errCookie := fmt.Sprintf(errorCookieName, prefix)
 			valueCookie := fmt.Sprintf(valueCookieName, prefix)
 
-			errorMap[errCookie], _ = cookie.GetCookie(r, errCookie)
-			valueMap[valueCookie], _ = cookie.GetCookie(r, valueCookie)
+			if errStrCookie, err := cookie.GetCookie(r, errCookie); !errors.Is(err, http.ErrNoCookie) {
+				errorMap[errCookie] = errStrCookie
+			}
+			if valCookie, err := cookie.GetCookie(r, valueCookie); !errors.Is(err, http.ErrNoCookie) {
+				if decoded, err := base64.StdEncoding.DecodeString(valCookie); err == nil {
+					valueMap[valueCookie] = string(decoded)
+				}
+			}
 		}
 	}
 
@@ -289,6 +301,7 @@ func (validtr *HTTPFormValidator) validateDecimal(val any, min, max int, label s
 
 func (validtr *HTTPFormValidator) validateString(required bool, val, label string, min, max int) (errStr string) {
 	valStr := strings.TrimSpace(fmt.Sprint(val))
+
 	if required && valStr == "" {
 		errStr = fmt.Sprintf("%v must not be empty.", label)
 
