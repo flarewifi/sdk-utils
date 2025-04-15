@@ -17,7 +17,25 @@ type HtmlFormConfig struct {
 }
 
 templ HtmlForm(cfg *HtmlFormConfig) {
-	<form id="form" method="POST" action={ templ.SafeURL(cfg.SubmitURL) } enctype="multipart/form-data">
+	{{
+		fileExists := func() bool {
+			for _, sec := range cfg.Form.GetSections() {
+				for _, fld := range sec.GetFields() {
+					if fld.GetType() == sdkapi.FormFieldTypeFile {
+						return true
+					}
+				}
+			}
+
+			return false
+		}
+
+		enctype := ""
+		if fileExists() {
+			enctype = "multipart/form-data"
+		}
+	}}
+	<form id="form" method="POST" action={ templ.SafeURL(cfg.SubmitURL) } enctype={ enctype }>
 		@templ.Raw(cfg.CSRFTag)
 		for _, sec := range cfg.Form.GetSections() {
 			<legend>{ sec.GetLabel() }</legend>

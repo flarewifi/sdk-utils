@@ -308,7 +308,16 @@ func (self *HttpFormInstance) GetMultiField(section string, field string) (val s
 	}, nil
 }
 
-func (self *HttpFormInstance) GetFileValue(section string, field string) ([]string, error) {
+func (self *HttpFormInstance) GetFileURL(section string, field string) (string, error) {
+	urls, err := self.GetFileURLs(section, field)
+	if len(urls) > 0 {
+		return urls[0], nil
+	}
+
+	return "", err
+}
+
+func (self *HttpFormInstance) GetFileURLs(section string, field string) ([]string, error) {
 	filePaths := []string{}
 	uploadDir := filepath.Join(sdkutils.PathTmpDir, "uploads", section, field)
 
