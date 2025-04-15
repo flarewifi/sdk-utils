@@ -626,6 +626,10 @@ func ParseFile(r *http.Request, sec sdkapi.FormSection, fld *sdkapi.FormFileFiel
 	}
 
 	files := r.MultipartForm.File[fmt.Sprintf("%s:%s", sec.Name, fld.GetName())]
+	if len(files) == 0 {
+		return getPreviouslyUploadedFiles(sec, fld)
+	}
+
 	uploadDir := filepath.Join(sdkutils.PathTmpDir, "uploads", sec.Name, fld.Name)
 	if err := sdkutils.FsEmptyDir(uploadDir); err != nil {
 		return nil, fmt.Errorf("ensure dir error: %w", err)
@@ -653,6 +657,19 @@ func ParseFile(r *http.Request, sec sdkapi.FormSection, fld *sdkapi.FormFileFiel
 		}
 
 		urls = append(urls, filePath)
+	}
+
+	return urls, nil
+}
+
+func getPreviouslyUploadedFiles(
+	sec sdkapi.FormSection,
+	fld *sdkapi.FormFileField,
+) (urls []string, err error) {
+	uploadDir := filepath.Join(sdkutils.PathTmpDir, "uploads", sec.Name, fld.Name)
+
+	if err := sdkutils.FsListFiles(uploadDir, &urls, false); err != nil {
+		return urls, fmt.Errorf("unable to get uploaded files: %w", err)
 	}
 
 	return urls, nil
