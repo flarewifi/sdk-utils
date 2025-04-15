@@ -12,6 +12,9 @@ type FormDecimalField struct {
 	Step      float64
 	Precision int
 	ValueFn   func() float64
+	Required  bool
+	Minimum   int
+	Maximum   int
 }
 
 func (f FormDecimalField) GetName() string {
@@ -31,4 +34,8 @@ func (f FormDecimalField) GetValue() interface{} {
 		return f.ValueFn()
 	}
 	return 0.0
+}
+
+func (f FormDecimalField) IsRequired() bool {
+	return f.Required
 }

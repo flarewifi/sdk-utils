@@ -2,31 +2,62 @@ package bootstrap5
 
 import (
 	"fmt"
+
 	sdkapi "sdk/api"
 )
 
-templ HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitText string) {
-	<form id="form" method="POST" action={ templ.SafeURL(submitUrl) }>
-		@templ.Raw(csrfTag)
-		for _, sec := range form.GetSections() {
+type HtmlFormConfig struct {
+	Form       sdkapi.IHttpForm
+	Cookie     sdkapi.IHttpCookie
+	CSRFTag    string
+	SubmitURL  string
+	SubmitText string
+	ValueMap   map[string]string
+	ErrorMap   map[string]string
+}
+
+templ HtmlForm(cfg *HtmlFormConfig) {
+	<form id="form" method="POST" action={ templ.SafeURL(cfg.SubmitURL) }>
+		@templ.Raw(cfg.CSRFTag)
+		for _, sec := range cfg.Form.GetSections() {
 			<legend>{ sec.GetLabel() }</legend>
 			for _, fld := range sec.GetFields() {
+				{{
+					cookiePrefix := fmt.Sprintf("%s_%s", sec.GetName(), fld.GetName())
+					inputField := &inputFieldConfig{
+						form:  cfg.Form,
+						sec:   sec,
+						fld:   fld,
+						value: cfg.ValueMap[fmt.Sprintf("%v_field_value", cookiePrefix)],
+						error: cfg.ErrorMap[fmt.Sprintf("%v_field_error", cookiePrefix)],
+					}
+				}}
+
 				<div class="mt-1">
 					switch fld.GetType() {
 						case sdkapi.FormFieldTypeString:
-							@StringInputField(form, sec, fld)
+							@StringInputField(inputField)
 						case sdkapi.FormFieldTypeText:
-							@TextInputField(form, sec, fld)
+							@TextInputField(inputField)
 						case sdkapi.FormFieldTypeInteger:
-							@IntegerInputField(form, sec, fld)
+							@IntegerInputField(inputField)
 						case sdkapi.FormFieldTypeDecimal:
-							@DecimalInputField(form, sec, fld)
+							@DecimalInputField(inputField)
 						case sdkapi.FormFieldTypeBoolean:
-							@BooleanInputField(form, sec, fld)
+							@BooleanInputField(cfg.Form, sec, fld)
 						case sdkapi.FormFieldTypeList:
-							@ListInputField(form, sec, fld)
+							@ListInputField(inputField)
 						case sdkapi.FormFieldTypeMulti:
-							@MultiInputField(form, sec, fld)
+							{{
+								multiFieldInput := &multiFieldConfig{
+									form:  cfg.Form,
+									sec:   sec,
+									fld:   fld,
+									value: cfg.ValueMap,
+									error: cfg.ErrorMap,
+								}
+							}}
+							@MultiInputField(multiFieldInput)
 						default:
 							<p>{ fmt.Sprintf("unsupported field type: %s", fld.GetType()) }</p>
 					}
@@ -35,7 +66,7 @@ templ HtmlForm(form sdkapi.IHttpForm, csrfTag string, submitUrl string, submitTe
 		}
 		<div class="mt-3">
 			<button class="btn btn-primary" type="submit">
-				{ submitText }
+				{ cfg.SubmitText }
 			</button>
 		</div>
 	</form>

@@ -9,7 +9,9 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"errors"
 	"fmt"
+
 	sdkapi "sdk/api"
 )
 
@@ -20,7 +22,15 @@ type IntegerInputFieldAttrs struct {
 	Error error
 }
 
-func IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) templ.Component {
+type inputFieldConfig struct {
+	form  sdkapi.IHttpForm
+	sec   sdkapi.IFormSection
+	fld   sdkapi.IFormField
+	value string
+	error string
+}
+
+func IntegerInputField(cfg *inputFieldConfig) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -41,43 +51,95 @@ func IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkap
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		attrs := getIntegerInputFieldAttrs(form, sec, fld)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"pb-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+
+		attrs := getIntegerInputFieldAttrs(cfg)
+
+		inputClass := "form-control"
+		labelClass := "form-label"
+		if attrs.Error != nil {
+			inputClass += " is-invalid"
+			labelClass += " text-danger"
+		}
+		var templ_7745c5c3_Var2 = []any{labelClass}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<label for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 17, Col: 24}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"form-label\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Label)
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 17, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 38, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label> <input type=\"number\" class=\"form-control\" id=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var2).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 18, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 string
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Label)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 38, Col: 62}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 = []any{inputClass}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var6...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<input type=\"number\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var6).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" id=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var8 string
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 39, Col: 59}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -85,12 +147,12 @@ func IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkap
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
+		var templ_7745c5c3_Var9 string
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 18, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 39, Col: 79}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -98,12 +160,12 @@ func IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkap
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Value)
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 18, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 39, Col: 101}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -116,12 +178,12 @@ func IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkap
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Error.Error())
+			var templ_7745c5c3_Var11 string
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Error.Error())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 20, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/integer-input.templ`, Line: 41, Col: 54}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -130,19 +192,32 @@ func IntegerInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkap
 				return templ_7745c5c3_Err
 			}
 		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		return templ_7745c5c3_Err
 	})
 }
 
-func getIntegerInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs IntegerInputFieldAttrs) {
-	attrs.Label = fld.GetLabel()
-	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
-	var val int64
-	val, attrs.Error = form.GetIntValue(sec.GetName(), fld.GetName())
-	if attrs.Error != nil {
-		return
+func getIntegerInputFieldAttrs(cfg *inputFieldConfig) (attrs IntegerInputFieldAttrs) {
+	attrs.Label = cfg.fld.GetLabel()
+	attrs.Name = fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName())
+
+	attrs.Value = cfg.value
+	if cfg.error != "" {
+		attrs.Error = errors.New(cfg.error)
 	}
-	attrs.Value = fmt.Sprintf("%d", val)
+
+	if attrs.Value == "" {
+		val, err := cfg.form.GetIntValue(cfg.sec.GetName(), cfg.fld.GetName())
+		if err != nil {
+			attrs.Error = err
+		}
+
+		attrs.Value = fmt.Sprint(val)
+	}
+
 	return
 }
 

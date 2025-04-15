@@ -23,8 +23,9 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 					Label: "System Logs",
 					Fields: []sdkapi.IFormField{
 						sdkapi.FormStringField{
-							Name:  "search_text",
-							Label: "Search Logs",
+							Name:     "search_text",
+							Label:    "Search Logs",
+							Required: true,
 							ValueFn: func() string {
 								return searchText
 							},

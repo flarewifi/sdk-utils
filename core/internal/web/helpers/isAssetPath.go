@@ -11,4 +11,3 @@ func IsAssetPath(p string) bool {
 	}
 	return match
 }
-

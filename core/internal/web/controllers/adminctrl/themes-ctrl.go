@@ -27,7 +27,7 @@ func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
-		httpForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm(coreforms.ThemesFormName, r)
+		httpForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm(coreforms.ThemesFormName, w, r)
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return

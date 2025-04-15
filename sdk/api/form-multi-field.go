@@ -15,10 +15,13 @@ type IFormMultiField interface {
 }
 
 type FormMultiFieldCol struct {
-	Name    string
-	Label   string
-	Type    string
-	ValueFn func() interface{}
+	Name     string
+	Label    string
+	Type     string
+	Required bool
+	Minimum  int
+	Maximum  int
+	ValueFn  func() interface{}
 }
 
 func (col FormMultiFieldCol) GetName() string {
@@ -41,10 +44,13 @@ func (col FormMultiFieldCol) GetValue() interface{} {
 }
 
 type FormMultiField struct {
-	Name    string
-	Label   string
-	Columns func() []FormMultiFieldCol
-	ValueFn func() [][]FormFieldData
+	Name     string
+	Label    string
+	Required bool
+	Minimum  int
+	Maximum  int
+	Columns  func() []FormMultiFieldCol
+	ValueFn  func() [][]FormFieldData
 }
 
 func (f FormMultiField) GetName() string {
@@ -64,4 +70,8 @@ func (f FormMultiField) GetValue() interface{} {
 		return f.ValueFn()
 	}
 	return [][]FormFieldData{}
+}
+
+func (f FormMultiField) IsRequired() bool {
+	return f.Required
 }

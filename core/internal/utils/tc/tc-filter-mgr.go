@@ -1,7 +1,7 @@
 package tc
 
 type TcFilterMgr struct {
-	dev    string
+	dev      string
 	tcFilter *TcFilter
 }
 
@@ -38,5 +38,5 @@ func (self *TcFilterMgr) DeleteFilter(clientIp string) error {
 }
 
 func (self *TcFilterMgr) CleanUp() error {
-  return self.tcFilter.CleanUp()
+	return self.tcFilter.CleanUp()
 }

@@ -8,6 +8,6 @@ const (
 )
 
 type InterfaceEvent struct {
-	Ifname  string
-	Event ifAction
+	Ifname string
+	Event  ifAction
 }

@@ -9,13 +9,13 @@ import (
 
 type ipsegmt struct {
 	addr     netip.Addr
-	netmask   int
+	netmask  int
 	segments []byte
 }
 
 // Check if a given ip segment has host bits
 func (ipsg *ipsegmt) hostMasked(segIndex int) bool {
-  bitEnd := (segIndex * 8) + 8
+	bitEnd := (segIndex * 8) + 8
 	return bitEnd > ipsg.netmask
 }
 
@@ -130,7 +130,7 @@ func newIpsegmt(ip string, netmask int) (*ipsegmt, error) {
 	}
 
 	segments := &ipsegmt{
-		netmask:   netmask,
+		netmask:  netmask,
 		addr:     addr,
 		segments: addr.AsSlice(),
 	}

@@ -15,6 +15,9 @@ type FormListField struct {
 	Name     string
 	Label    string
 	Type     string
+	Required bool
+	Minimum  int
+	Maximum  int
 	Multiple bool
 	Options  func() []FormListFieldOption
 	ValueFn  func() interface{}
@@ -37,4 +40,8 @@ func (f FormListField) GetValue() interface{} {
 		return f.ValueFn()
 	}
 	return nil
+}
+
+func (f FormListField) IsRequired() bool {
+	return f.Required
 }

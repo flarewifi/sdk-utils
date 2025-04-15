@@ -1,8 +1,11 @@
 package bootstrap5
 
 import (
+	"errors"
 	"fmt"
-    sdkapi "sdk/api"
+	"strconv"
+
+	sdkapi "sdk/api"
 )
 
 type DecimalInputFieldAttrs struct {
@@ -13,34 +16,61 @@ type DecimalInputFieldAttrs struct {
 	Error error
 }
 
-templ DecimalInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
-	{{ attrs := getDecimalInputFieldAttrs(form, sec, fld) }}
-	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
-	<input type="number" step={ attrs.Step } class="form-control" id={ attrs.Name } name={ attrs.Name } value={ attrs.Value }/>
+templ DecimalInputField(cfg *inputFieldConfig) {
+	{{
+		attrs := getDecimalInputFieldAttrs(cfg)
+
+		inputClass := "form-control"
+		labelClass := "form-label"
+		if attrs.Error != nil {
+			inputClass += " is-invalid"
+			labelClass += " text-danger"
+		}
+	}}
+
+	<label for={ attrs.Name } class={ labelClass }>{ attrs.Label }</label>
+	<input type="number" step={ attrs.Step } class={ inputClass } id={ attrs.Name } name={ attrs.Name } value={ attrs.Value }/>
 	if attrs.Error != nil {
 		<div class="invalid-feedback">{ attrs.Error.Error() }</div>
 	}
 }
 
-func getDecimalInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs DecimalInputFieldAttrs) {
-	attrs.Label = fld.GetLabel()
-	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
-	var val float64
-	val, attrs.Error = form.GetFloatValue(sec.GetName(), fld.GetName())
-	if attrs.Error != nil {
-		return
+func getDecimalInputFieldAttrs(cfg *inputFieldConfig) (attrs DecimalInputFieldAttrs) {
+	attrs.Label = cfg.fld.GetLabel()
+	attrs.Name = fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName())
+	if cfg.error != "" {
+		attrs.Error = errors.New(cfg.error)
 	}
-	numfield, ok := fld.(sdkapi.FormDecimalField)
+
+	numfield, ok := cfg.fld.(sdkapi.FormDecimalField)
 	if !ok {
-		attrs.Error = fmt.Errorf("Field %s in section %s is not a number field", fld.GetName(), sec.GetName())
+		attrs.Error = fmt.Errorf("Field %s in section %s is not a number field", cfg.fld.GetName(), cfg.sec.GetName())
 		return
 	}
-	if numfield.Step == 0.0 {
-		attrs.Step = "1"
-	} else {
+
+	attrs.Step = "1"
+	if numfield.Step != 0.0 {
 		attrs.Step = fmt.Sprintf("%f", numfield.Step)
 	}
+
 	format := fmt.Sprintf("%%.%df", numfield.Precision)
-	attrs.Value = fmt.Sprintf(format, val)
+	if cfg.value != "" {
+		f, err := strconv.ParseFloat(cfg.value, 64)
+		if err != nil {
+			attrs.Error = errors.New("Not a valid decimal.")
+		} else {
+			attrs.Value = fmt.Sprintf(format, f)
+		}
+	}
+
+	if attrs.Value == "" {
+		val, err := cfg.form.GetFloatValue(cfg.sec.GetName(), cfg.fld.GetName())
+		if err != nil {
+			attrs.Error = err
+		}
+
+		attrs.Value =  fmt.Sprintf(format, val)
+	}
+
 	return
 }

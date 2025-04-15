@@ -11,6 +11,9 @@ type FormStringField struct {
 	Label      string
 	IsReadOnly bool
 	IsPassword bool
+	Required   bool
+	Minimum    int
+	Maximum    int
 	ValueFn    func() string
 }
 
@@ -31,4 +34,8 @@ func (f FormStringField) GetValue() interface{} {
 		return f.ValueFn()
 	}
 	return ""
+}
+
+func (f FormStringField) IsRequired() bool {
+	return f.Required
 }

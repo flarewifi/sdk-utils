@@ -9,6 +9,7 @@ import (
 	"reflect"
 	sdkapi "sdk/api"
 	"strconv"
+	"strings"
 
 	"github.com/a-h/templ"
 )
@@ -20,25 +21,33 @@ var (
 
 func NewHttpForm(api *PluginApi, form sdkapi.HttpForm) *HttpFormInstance {
 	return &HttpFormInstance{
-		api:  api,
-		form: form,
+		api:       api,
+		form:      form,
+		validator: NewHTTPFormValidator(api),
 	}
 }
 
 type HttpFormInstance struct {
-	api  *PluginApi
-	form sdkapi.HttpForm
-	data []sdkapi.SectionData
+	api       *PluginApi
+	form      sdkapi.HttpForm
+	data      []sdkapi.SectionData
+	validator *HTTPFormValidator
 }
 
 func (self *HttpFormInstance) GetTemplate(r *http.Request) templ.Component {
-	csrfTag := self.api.HttpAPI.Helpers().CsrfHtmlTag(r)
-	submitText := "Submit"
-	if self.form.SubmitLabel != "" {
-		submitText = self.form.SubmitLabel
+	if strings.TrimSpace(self.form.SubmitLabel) == "" {
+		self.form.SubmitLabel = "Submit"
 	}
-	submitUrl := self.api.HttpAPI.httpRouter.UrlForRoute(sdkapi.PluginRouteName(self.form.CallbackRoute))
-	return formsview.HtmlForm(self, csrfTag, submitUrl, submitText)
+
+	errorMap, valueMap := self.validator.GetValidatedValues(r, self)
+	return formsview.HtmlForm(&formsview.HtmlFormConfig{
+		Form:       self,
+		CSRFTag:    self.api.HttpAPI.Helpers().CsrfHtmlTag(r),
+		SubmitURL:  self.api.HttpAPI.httpRouter.UrlForRoute(sdkapi.PluginRouteName(self.form.CallbackRoute)),
+		SubmitText: self.form.SubmitLabel,
+		ValueMap:   valueMap,
+		ErrorMap:   errorMap,
+	})
 }
 
 func (self *HttpFormInstance) GetSection(section string) (sdkapi.IFormSection, bool) {
@@ -58,13 +67,13 @@ func (self *HttpFormInstance) GetSections() []sdkapi.IFormSection {
 	return sections
 }
 
-func (self *HttpFormInstance) ParseForm(r *http.Request) (err error) {
+func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) (err error) {
+	var validationError error
 	if err := r.ParseForm(); err != nil {
 		return err
 	}
 
 	parsedData := make([]sdkapi.SectionData, len(self.form.Sections))
-
 	for sidx, sec := range self.form.Sections {
 		sectionData := sdkapi.SectionData{
 			Name:   sec.Name,
@@ -76,7 +85,6 @@ func (self *HttpFormInstance) ParseForm(r *http.Request) (err error) {
 			valstr := r.Form[sec.Name+":"+fld.GetName()]
 
 			switch fld.GetType() {
-
 			case sdkapi.FormFieldTypeString,
 				sdkapi.FormFieldTypeText,
 				sdkapi.FormFieldTypeInteger,
@@ -118,6 +126,12 @@ func (self *HttpFormInstance) ParseForm(r *http.Request) (err error) {
 				field.Value = GetTypeDefault(fld)
 			}
 
+			valErr := self.validator.ValidateFormField(w, sec, fld, field.Value)
+			if valErr != nil {
+				// We'll handle the error after all form fields are validated.
+				validationError = valErr
+			}
+
 			sectionData.Fields[fidx] = field
 		}
 
@@ -125,7 +139,13 @@ func (self *HttpFormInstance) ParseForm(r *http.Request) (err error) {
 	}
 
 	self.data = parsedData
-	return nil
+
+	if validationError == nil {
+		// Delete cookies created during validation if parsing is successful.
+		self.validator.DeleteAllFormCookies(w, r, self)
+	}
+
+	return validationError
 }
 
 func (self *HttpFormInstance) GetStringValue(section string, field string) (val string, err error) {
@@ -414,7 +434,6 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 	}
 
 	switch listField.Type {
-
 	case sdkapi.FormFieldTypeString,
 		sdkapi.FormFieldTypeText:
 		vals := valstr
@@ -436,10 +455,12 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 				return 0, fmt.Errorf("parsing error: %w", err)
 			}
 		}
+
 		val = vals
 		if !listField.Multiple {
 			if len(vals) > 0 {
 				val = vals[0]
+
 				return
 			}
 			val = 0

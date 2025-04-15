@@ -15,5 +15,5 @@ import (
 type IHttpFormsApi interface {
 	RegisterForm(name string, factory func(r *http.Request) HttpForm) error
 	GetFormTemplate(name string, r *http.Request) (templ.Component, error)
-	ParseForm(name string, r *http.Request) (IHttpForm, error)
+	ParseForm(name string, w http.ResponseWriter, r *http.Request) (IHttpForm, error)
 }

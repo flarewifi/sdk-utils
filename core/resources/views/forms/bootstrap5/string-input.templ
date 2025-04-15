@@ -2,50 +2,72 @@ package bootstrap5
 
 import (
 	"fmt"
+	"errors"
 	"sdk/api"
 )
 
 type StringInputFieldAttrs struct {
-	Label    string
-	Name     string
-	Value    string
-	Error    error
-	ReadOnly bool
+	Label      string
+	Name       string
+	Value      string
+	Error      error
+	ReadOnly   bool
 	IsPassword bool
 }
 
-templ StringInputField(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) {
-	{{ attrs := getStringInputFieldAttrs(form, sec, fld) }}
-	<label for={ attrs.Name } class="form-label">{ attrs.Label }</label>
+templ StringInputField(cfg *inputFieldConfig) {
+	<div class="pb-3">
+		{{
+			attrs := getStringInputFieldAttrs(cfg)
 
-	{{ inputType := "text" }}
-	if attrs.IsPassword {
-		{{ inputType = "password" }}
-	}
+			inputClass := "form-control"
+			labelClass := "form-label"
+			if attrs.Error != nil {
+				inputClass += " is-invalid"
+				labelClass += " text-danger"
+			}
 
-	<input
-		readonly?={ attrs.ReadOnly }
-		disabled?={ attrs.ReadOnly }
-		type={ inputType }
-		class="form-control"
-		id={ attrs.Name }
-		name={ attrs.Name }
-		value={ attrs.Value }
-	/>
+			inputType := "text"
+			if attrs.IsPassword {
+				{{ inputType = "password" }}
+			}
+		}}
 
-	if attrs.Error != nil {
-		<div class="invalid-feedback">{ attrs.Error.Error() }</div>
-	}
+		<label for={ attrs.Name } class={ labelClass }>{ attrs.Label }</label>
+		<input
+			readonly?={ attrs.ReadOnly }
+			disabled?={ attrs.ReadOnly }
+			type={ inputType }
+			class={ inputClass }
+			id={ attrs.Name }
+			name={ attrs.Name }
+			value={ attrs.Value }
+		/>
+
+		if attrs.Error != nil {
+			<div class="invalid-feedback">{ attrs.Error.Error() }</div>
+		}
+	</div>
 }
 
-func getStringInputFieldAttrs(form sdkapi.IHttpForm, sec sdkapi.IFormSection, fld sdkapi.IFormField) (attrs StringInputFieldAttrs) {
-	attrs.Name = fmt.Sprintf("%s:%s", sec.GetName(), fld.GetName())
-	attrs.Label = fld.GetLabel()
-	attrs.Value, attrs.Error = form.GetStringValue(sec.GetName(), fld.GetName())
+func getStringInputFieldAttrs(cfg *inputFieldConfig) (attrs StringInputFieldAttrs) {
+	attrs.Name = fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName())
+	attrs.Label = cfg.fld.GetLabel()
 
-	stringFld := fld.(sdkapi.FormStringField)
+	stringFld := cfg.fld.(sdkapi.FormStringField)
 	attrs.IsPassword = stringFld.IsPassword
 	attrs.ReadOnly = stringFld.IsReadOnly
+
+	attrs.Value = cfg.value
+	if cfg.error != "" {
+		attrs.Error = errors.New(cfg.error)
+
+		return
+	}
+
+	if attrs.Value == "" {
+		attrs.Value, attrs.Error = cfg.form.GetStringValue(cfg.sec.GetName(), cfg.fld.GetName())
+	}
 
 	return
 }
