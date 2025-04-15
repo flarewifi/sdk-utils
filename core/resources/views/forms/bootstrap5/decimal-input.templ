@@ -3,6 +3,7 @@ package bootstrap5
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	sdkapi "sdk/api"
 )
@@ -27,7 +28,7 @@ templ DecimalInputField(cfg *inputFieldConfig) {
 		}
 	}}
 
-	<label for={ attrs.Name } class="form-label">{ labelClass }</label>
+	<label for={ attrs.Name } class={ labelClass }>{ attrs.Label }</label>
 	<input type="number" step={ attrs.Step } class={ inputClass } id={ attrs.Name } name={ attrs.Name } value={ attrs.Value }/>
 	if attrs.Error != nil {
 		<div class="invalid-feedback">{ attrs.Error.Error() }</div>
@@ -53,7 +54,14 @@ func getDecimalInputFieldAttrs(cfg *inputFieldConfig) (attrs DecimalInputFieldAt
 	}
 
 	format := fmt.Sprintf("%%.%df", numfield.Precision)
-	attrs.Value = fmt.Sprintf(format, cfg.value)
+	if cfg.value != "" {
+		f, err := strconv.ParseFloat(cfg.value, 64)
+		if err != nil {
+			attrs.Error = errors.New("Not a valid decimal.")
+		} else {
+			attrs.Value = fmt.Sprintf(format, f)
+		}
+	}
 
 	if attrs.Value == "" {
 		val, err := cfg.form.GetFloatValue(cfg.sec.GetName(), cfg.fld.GetName())

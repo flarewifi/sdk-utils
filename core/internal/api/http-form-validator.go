@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -45,28 +46,12 @@ func (validtr *HTTPFormValidator) ValidateFormField(
 		return nil
 
 	case sdkapi.FormTextField:
-		if !v.IsRequired() {
-			return nil
-		}
-
-		errStr = validtr.validateString(fmt.Sprint(val), v.Minimum, v.Maximum, fld.GetLabel())
+		errStr = validtr.validateString(v.IsRequired(), fmt.Sprint(val), fld.GetLabel(), v.Minimum, v.Maximum)
 	case sdkapi.FormStringField:
-		if !v.IsRequired() {
-			return nil
-		}
-
-		errStr = validtr.validateString(fmt.Sprint(val), v.Minimum, v.Maximum, fld.GetLabel())
+		errStr = validtr.validateString(v.IsRequired(), fmt.Sprint(val), fld.GetLabel(), v.Minimum, v.Maximum)
 	case sdkapi.FormIntegerField:
-		if !v.IsRequired() {
-			return nil
-		}
-
 		errStr = validtr.validateInteger(val, v.Minimum, v.Maximum, fld.GetLabel())
 	case sdkapi.FormDecimalField:
-		if !v.IsRequired() {
-			return nil
-		}
-
 		errStr = validtr.validateDecimal(val, v.Minimum, v.Maximum, fld.GetLabel())
 	case sdkapi.FormListField:
 		singleRequired := !v.Multiple && v.IsRequired()
@@ -85,7 +70,8 @@ func (validtr *HTTPFormValidator) ValidateFormField(
 		return validtr.validateFile(w, sec, v, val)
 	}
 
-	cookie.SetCookie(w, fmt.Sprintf(valueCookieName, prefix), valString)
+	encoded := base64.StdEncoding.EncodeToString([]byte(valString))
+	cookie.SetCookie(w, fmt.Sprintf(valueCookieName, prefix), encoded)
 	if errStr != "" {
 		cookie.SetCookie(w, fmt.Sprintf(errorCookieName, prefix), errStr)
 
@@ -130,6 +116,10 @@ func (validtr *HTTPFormValidator) GetValidatedValues(
 
 							valCookieName := fmt.Sprintf("%s%v", fmt.Sprintf(valueCookieName, prefix), i)
 							valueCookie, valCookieErr := cookie.GetCookie(r, valCookieName)
+
+							if decoded, err := base64.StdEncoding.DecodeString(valueCookie); err == nil {
+								valueCookie = string(decoded)
+							}
 
 							// No more cookie in this scenario.
 							if errors.Is(valCookieErr, http.ErrNoCookie) {
@@ -179,15 +169,16 @@ func (validtr *HTTPFormValidator) GetValidatedValues(
 			}
 
 			prefix := fmt.Sprintf("%s_%s", sec.GetName(), fld.GetName())
-			errCookieName := fmt.Sprintf(errorCookieName, prefix)
-			valCookieName := fmt.Sprintf(valueCookieName, prefix)
+			errCookie := fmt.Sprintf(errorCookieName, prefix)
+			valueCookie := fmt.Sprintf(valueCookieName, prefix)
 
-			if valCookie, err := cookie.GetCookie(r, valCookieName); !errors.Is(err, http.ErrNoCookie) {
-				valueMap[valCookieName] = valCookie
+			if errStrCookie, err := cookie.GetCookie(r, errCookie); !errors.Is(err, http.ErrNoCookie) {
+				errorMap[errCookie] = errStrCookie
 			}
-
-			if errCookie, err := cookie.GetCookie(r, errCookieName); !errors.Is(err, http.ErrNoCookie) {
-				errorMap[errCookieName] = errCookie
+			if valCookie, err := cookie.GetCookie(r, valueCookie); !errors.Is(err, http.ErrNoCookie) {
+				if decoded, err := base64.StdEncoding.DecodeString(valCookie); err == nil {
+					valueMap[valueCookie] = string(decoded)
+				}
 			}
 		}
 	}
@@ -281,10 +272,6 @@ func (validtr *HTTPFormValidator) validateMultiFieldForm(
 		cookie   = validtr.api.HttpAPI.httpCookie
 	)
 
-	if !mfld.IsRequired() {
-		return nil
-	}
-
 	var mfdata [][]sdkapi.FormFieldData
 	if val != nil {
 		data, ok := val.([][]sdkapi.FormFieldData)
@@ -319,7 +306,7 @@ func (validtr *HTTPFormValidator) validateMultiFieldForm(
 				if col.Name == data.Name {
 					switch col.GetType() {
 					case sdkapi.FormFieldTypeText, sdkapi.FormFieldTypeString:
-						errStr = validtr.validateString(fmt.Sprint(data.Value), col.Minimum, col.Maximum, col.Label)
+						errStr = validtr.validateString(col.Required, fmt.Sprint(data.Value), col.Label, col.Minimum, col.Maximum)
 
 					case sdkapi.FormFieldTypeDecimal:
 						errStr = validtr.validateDecimal(data.Value, col.Minimum, col.Maximum, col.Label)
@@ -387,20 +374,30 @@ func (validtr *HTTPFormValidator) validateDecimal(val any, min, max int, label s
 	return errStr
 }
 
-func (validtr *HTTPFormValidator) validateString(val string, min, max int, label string) (errStr string) {
+func (validtr *HTTPFormValidator) validateString(required bool, val, label string, min, max int) (errStr string) {
 	valStr := strings.TrimSpace(fmt.Sprint(val))
-	if valStr == "" {
+
+	if required && valStr == "" {
 		errStr = fmt.Sprintf("%v must not be empty.", label)
 
 		return
 	}
 
 	if len(valStr) < min {
-		errStr = fmt.Sprintf("%v must have at least %v characters.", label, min)
+		char := "character"
+		if min > 1 {
+			char += "s"
+		}
+		errStr = fmt.Sprintf("%v must have at least %v %s.", label, min, char)
 	}
 
 	if max != 0 && len(valStr) > max {
-		errStr = fmt.Sprintf("%v must not exceed %v characters.", label, max)
+		char := "character"
+		if max > 1 {
+			char += "s"
+		}
+
+		errStr = fmt.Sprintf("%v must not exceed %v %s.", label, max, char)
 	}
 
 	return errStr
