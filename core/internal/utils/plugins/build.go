@@ -114,11 +114,11 @@ func BuildPluginSo(pluginSrcDir string, workdir string) error {
 		return err
 	}
 
-	libs := []string{}
-	err := sdkutils.FsListDirs("sdk/libs", &libs, false)
-	if err != nil {
-		return err
-	}
+	// libs := []string{}
+	// err := sdkutils.FsListDirs("sdk/libs", &libs, false)
+	// if err != nil {
+	// 	return err
+	// }
 
 	goWork := fmt.Sprintf(`
 go %s
@@ -128,9 +128,9 @@ use (
     ./sdk/utils
     `, sdkutils.GO_VERSION)
 
-	for _, lib := range libs {
-		goWork += fmt.Sprintf("./sdk/libs/%s\n", filepath.Base(lib))
-	}
+	// for _, lib := range libs {
+	// 	goWork += fmt.Sprintf("./sdk/libs/%s\n", filepath.Base(lib))
+	// }
 
 	goWork += fmt.Sprintf("./plugins/%s\n)", info.Package)
 	goworkFile := filepath.Join(workdir, "go.work")

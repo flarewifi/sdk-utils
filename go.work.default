@@ -5,12 +5,4 @@ use (
     ./core
     ./sdk/api
     ./sdk/utils
-    ./sdk/libs/go-uci
-    ./sdk/libs/jwt-5.2.1
-    ./sdk/libs/go-json-0.10.3
-    ./sdk/libs/websocket-1.5.3
-    ./sdk/libs/pgx-5.7.1
-    ./sdk/libs/templ-0.2.793
-    ./sdk/libs/validator-10.22.1
-    ./sdk/libs/semver-3.3.1
 )

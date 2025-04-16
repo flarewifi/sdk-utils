@@ -3,6 +3,8 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y \
     wget tar gzip make gcc git sudo tar
 
+WORKDIR /app
+
 ENV PATH=${PATH}:/home/ubuntu/go/bin
 ENV PATH=${PATH}:/usr/local/go/bin
 
@@ -14,12 +16,15 @@ RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architectur
         tar -C /usr/local -xzf golang.tar.gz && \
         rm -rf golang.tar.gz
 
-WORKDIR /app
 USER ubuntu
+
+# Install core go modules
+COPY ./core/go.mod ./core/go.mod
+COPY ./core/go.sum ./core/go.sum
+RUN cd core && go mod download
 
 # Install additional tools
 COPY ./scripts/install-tools.sh .
-COPY ./sdk/libs ./sdk/libs
 RUN ./install-tools.sh
 
 # Watch and recompile server on file change
