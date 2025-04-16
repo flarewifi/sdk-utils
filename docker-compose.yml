@@ -10,6 +10,7 @@ services:
       - './core/build/devkit/extras/config/database.json:/app/config/database.json'
     environment:
       - GOCACHE=/app/.tmp/go/cache
+      - GOMODCACHE=/app/.tmp/go/mod
     ports:
       - 3000:3000
     networks:

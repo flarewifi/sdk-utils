@@ -23,6 +23,7 @@ var (
 		"bin/flare",
 		"config/.defaults",
 		"core/go.mod",
+		"core/go.sum",
 		"core/plugin.so",
 		"core/plugin.json",
 		"core/resources",
