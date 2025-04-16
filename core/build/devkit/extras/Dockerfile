@@ -19,7 +19,6 @@ USER ubuntu
 
 # Install additional tools
 COPY ./scripts/install-tools.sh .
-COPY ./sdk/libs ./sdk/libs
 RUN ./install-tools.sh
 
 # Watch and recompile server on file change

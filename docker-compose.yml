@@ -8,11 +8,10 @@ services:
       - ./:/app
       - './openwrt-files/etc/config:/etc/config'
       - './core/build/devkit/extras/config/database.json:/app/config/database.json'
-    ports:
-      - 3000:3000
     environment:
       - GOCACHE=/app/.tmp/go/cache
-      - GOMODCACHE=/app/.tmp/go/mod
+    ports:
+      - 3000:3000
     networks:
       flare_network:
 
