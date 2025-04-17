@@ -3,7 +3,6 @@ package tools
 import (
 	"core/internal/utils/plugins"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -20,17 +19,18 @@ use (
     ./sdk/api
     ./sdk/utils`, goVersion)
 
-	// insert libs paths
-	libs := []string{}
-	if err := sdkutils.FsListDirs("sdk/libs", &libs, false); err != nil {
-		log.Println(err)
-	}
+	// Insert libs paths
+	//
+	// libs := []string{}
+	// if err := sdkutils.FsListDirs("sdk/libs", &libs, false); err != nil {
+	// 	log.Println(err)
+	// }
 
-	for _, lib := range libs {
-		goWork += "\n    ./" + lib
-	}
+	// for _, lib := range libs {
+	// 	goWork += "\n    ./" + lib
+	// }
 
-	// insert plugin paths
+	// Insert plugin paths
 	pluginSearchPaths := []string{"plugins/system", "plugins/local"}
 	for _, searchPath := range pluginSearchPaths {
 		if sdkutils.FsExists(searchPath) {
@@ -61,4 +61,21 @@ use (
 
 	// fmt.Printf("go.work file created: \n%s\n", goWork)
 	fmt.Println("go.work file created.")
+
+	coreMods, err := plugins.GetRequiredGoModules(filepath.Join(sdkutils.PathAppDir, "core", "go.mod"))
+	if err != nil {
+		panic(err)
+	}
+
+	if err := plugins.UpdateRequiredModules(filepath.Join(sdkutils.PathSdkDir, "api", "go.mod"), coreMods); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Updated go.mod file in sdk/api")
+
+	if err := plugins.UpdateRequiredModules(filepath.Join(sdkutils.PathSdkDir, "utils", "go.mod"), coreMods); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Updated go.mod file in sdk/utils")
 }

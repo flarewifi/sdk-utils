@@ -209,6 +209,10 @@ func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
 		defer os.RemoveAll(parentpath)
 	}
 
+	if err := FixPluginDeps(pluginSrc); err != nil {
+		return err
+	}
+
 	if err := BuildTemplates(pluginSrc); err != nil {
 		log.Println("Error building plugin templates: ", err)
 		return err
