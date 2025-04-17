@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"reflect"
 	sdkapi "sdk/api"
 	"strings"
@@ -138,18 +137,15 @@ func (validtr *HTTPFormValidator) GetValidatedValues(
 			}
 
 			if _, ok := fld.(sdkapi.FormFileField); ok {
-				mainFldErrCookie := fmt.Sprintf("%v_%v%v", sec.GetName(), fld.GetName(), errorCookieName)
-				mainFieldErr, _ := cookie.GetCookie(r, mainFldErrCookie)
-				if mainFieldErr != "" {
-					errorMap[mainFldErrCookie] = mainFieldErr
+				errCookieName := fmt.Sprintf("%v_%v%v", sec.GetName(), fld.GetName(), errorCookieName)
+				if errCookie, err := cookie.GetCookie(r, errCookieName); err == nil {
+					errorMap[errCookieName] = errCookie
 				}
 
 				// We'll do this loop so that all values from the cookie will be fetched.
 				i := 0
 				for {
 					prefix := fmt.Sprintf("%s_%s", sec.GetName(), fld.GetName())
-					errCookieName := fmt.Sprintf("%s%v", fmt.Sprintf(errorCookieName, prefix), i)
-					errCookie, _ := cookie.GetCookie(r, errCookieName)
 
 					valCookieName := fmt.Sprintf("%s%v", fmt.Sprintf(valueCookieName, prefix), i)
 					valueCookie, valCookieErr := cookie.GetCookie(r, valCookieName)
@@ -159,11 +155,11 @@ func (validtr *HTTPFormValidator) GetValidatedValues(
 						break
 					}
 
-					valueMap[valCookieName] = valueCookie
-					if errCookie != "" {
-						errorMap[errCookieName] = errCookie
+					if decoded, err := base64.StdEncoding.DecodeString(valueCookie); err == nil {
+						valueCookie = string(decoded)
 					}
 
+					valueMap[valCookieName] = valueCookie
 					i++
 				}
 			}
@@ -246,7 +242,6 @@ func (validtr *HTTPFormValidator) DeletePreviousFileInputCookies(
 
 	i := startIndex
 	for {
-		errCookieName := fmt.Sprintf("%s%v", errCookieName, i)
 		valCookieName := fmt.Sprintf("%s%v", valCookieName, i)
 
 		_, err := cookie.GetCookie(r, valCookieName)
@@ -254,7 +249,6 @@ func (validtr *HTTPFormValidator) DeletePreviousFileInputCookies(
 			break
 		}
 
-		cookie.DeleteCookie(w, errCookieName)
 		cookie.DeleteCookie(w, valCookieName)
 
 		i++
@@ -324,7 +318,8 @@ func (validtr *HTTPFormValidator) validateMultiFieldForm(
 				}
 			}
 
-			cookie.SetCookie(w, fmt.Sprintf("%s%v", fmt.Sprintf(valueCookieName, prefix), i), fmt.Sprint(data.Value))
+			encoded := base64.StdEncoding.EncodeToString([]byte(fmt.Sprint(data.Value)))
+			cookie.SetCookie(w, fmt.Sprintf("%s%v", fmt.Sprintf(valueCookieName, prefix), i), encoded)
 			if errStr != "" {
 				cookie.SetCookie(w, fmt.Sprintf("%s%v", fmt.Sprintf(errorCookieName, prefix), i), errStr)
 				parseErr = errStr
@@ -384,20 +379,11 @@ func (validtr *HTTPFormValidator) validateString(required bool, val, label strin
 	}
 
 	if len(valStr) < min {
-		char := "character"
-		if min > 1 {
-			char += "s"
-		}
-		errStr = fmt.Sprintf("%v must have at least %v %s.", label, min, char)
+		errStr = fmt.Sprintf("%v must have at least %v character(s).", label, min)
 	}
 
 	if max != 0 && len(valStr) > max {
-		char := "character"
-		if max > 1 {
-			char += "s"
-		}
-
-		errStr = fmt.Sprintf("%v must not exceed %v %s.", label, max, char)
+		errStr = fmt.Sprintf("%v must not exceed %v character(s).", label, max)
 	}
 
 	return errStr
@@ -440,7 +426,6 @@ func (validtr *HTTPFormValidator) validateFile(
 	prefix := fmt.Sprintf("%v_%v", sec.Name, fld.Name)
 	cookie := validtr.api.HttpAPI.httpCookie
 	errCookieName := fmt.Sprintf(errorCookieName, prefix)
-
 	valCookieName := fmt.Sprintf(valueCookieName, prefix)
 
 	var errStr string
@@ -465,15 +450,11 @@ func (validtr *HTTPFormValidator) validateFile(
 	cookie.DeleteCookie(w, errCookieName)
 	if errStr != "" {
 		cookie.SetCookie(w, errCookieName, errStr)
-
 		return sdkapi.ErrFormParse
 	}
 
-	var fileErr error
-	for i, path := range paths {
-		errCookieName := fmt.Sprintf("%s%v", errCookieName, i)
-		valCookieName := fmt.Sprintf("%s%v", valCookieName, i)
-
+	var validCount int
+	for _, path := range paths {
 		file, err := os.Open(path)
 		if err != nil {
 			log.Printf("%v: Failed to open file %s\n", err, file.Name())
@@ -487,30 +468,26 @@ func (validtr *HTTPFormValidator) validateFile(
 		}
 
 		fileSize := bytesToMB(stat.Size())
-		fileBaseName := filepath.Base(path)
-		if fld.MinSizeMb != 0 && fileSize < fld.MinSizeMb {
-			errStr = fmt.Sprintf("%v is too small. The minimum allowed size is %v MB.", fileBaseName, fld.MinSizeMb)
-		}
-
-		if fld.MaxSizeMb != 0 && fileSize > fld.MaxSizeMb {
-			errStr = fmt.Sprintf("%v is too large. The maximum allowed size is %v MB.", fileBaseName, fld.MaxSizeMb)
-		}
-
-		cookie.SetCookie(w, valCookieName, path)
-
-		// Delete previous error with same cookie name.
-		cookie.DeleteCookie(w, errCookieName)
-		if errStr != "" {
-			cookie.SetCookie(w, errCookieName, errStr)
-			fileErr = sdkapi.ErrFormParse
-
-			errStr = "" // Set empty for next iteration.
-
+		belowMin := fld.MinSizeMb != 0 && fileSize < fld.MinSizeMb
+		exceedMax := fld.MaxSizeMb != 0 && fileSize > fld.MaxSizeMb
+		if belowMin || exceedMax {
+			if err := os.Remove(path); err != nil {
+				log.Printf("%v: Failed to remove file %s \n", err, file.Name())
+			}
 			continue
 		}
+
+		valCookieName := fmt.Sprintf("%s%v", valCookieName, validCount)
+		cookie.SetCookie(w, valCookieName, path)
+		validCount++
 	}
 
-	return fileErr
+	if validCount == 0 {
+		cookie.SetCookie(w, errCookieName, "No valid file found.")
+		return sdkapi.ErrFormParse
+	}
+
+	return nil
 }
 
 func bytesToMB(b int64) int {

@@ -7,6 +7,7 @@ import (
 )
 
 type HtmlFormConfig struct {
+	PluginAPI  sdkapi.IPluginApi
 	Form       sdkapi.IHttpForm
 	Cookie     sdkapi.IHttpCookie
 	CSRFTag    string
@@ -79,11 +80,12 @@ templ HtmlForm(cfg *HtmlFormConfig) {
 						case sdkapi.FormFieldTypeFile:
 							{{
 								fileCfg := &fileFieldConfig{
+									pluginAPI: cfg.PluginAPI,
 									form:  cfg.Form,
 									sec:   sec,
 									fld:   fld,
 									values: cfg.ValueMap,
-									errors: cfg.ErrorMap,
+									error: cfg.ErrorMap[fmt.Sprintf("%v_field_error", cookiePrefix)],
 								}
 							}}
 							@FileInputField(fileCfg)

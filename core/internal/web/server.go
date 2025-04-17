@@ -22,6 +22,7 @@ func SetupAllRoutes(g *api.CoreGlobals) {
 	routes.PortalRoutes(g)
 	routes.AdminRoutes(g)
 	routes.PaymentRoutes(g)
+	routes.FormRoutes(g)
 
 	navs.SetAdminNavs(g)
 	forms.RegisterForms(g)

@@ -46,6 +46,7 @@ func (self *HttpFormInstance) GetTemplate(r *http.Request) templ.Component {
 
 	errorMap, valueMap := self.validator.GetValidatedValues(r, self)
 	return formsview.HtmlForm(&formsview.HtmlFormConfig{
+		PluginAPI:  self.api,
 		Form:       self,
 		CSRFTag:    self.api.HttpAPI.Helpers().CsrfHtmlTag(r),
 		SubmitURL:  self.api.HttpAPI.httpRouter.UrlForRoute(sdkapi.PluginRouteName(self.form.CallbackRoute)),

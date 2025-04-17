@@ -3,6 +3,7 @@ package bootstrap5
 import (
 	"fmt"
 	"strings"
+	"net/url"
 	"path/filepath"
 
 	sdkapi "sdk/api"
@@ -14,21 +15,21 @@ type FileInputFieldAttrs struct {
 	Accept     string
 	IsMultiple bool
 	Error      string
-	Valid      []string
-	Invalid    []invalid
+	Valid      []valid
 }
 
-type invalid struct {
-	value string
-	error string
+type valid struct {
+	filePath string
+	cookieName string
 }
 
 type fileFieldConfig struct {
+	pluginAPI sdkapi.IPluginApi
 	form   sdkapi.IHttpForm
 	sec    sdkapi.IFormSection
 	fld    sdkapi.IFormField
 	values map[string]string
-	errors map[string]string
+	error string
 }
 
 templ FileInputField(cfg *fileFieldConfig) {
@@ -54,26 +55,38 @@ templ FileInputField(cfg *fileFieldConfig) {
 			multiple?={ attrs.IsMultiple }
 		/>
 
-		if attrs.Error != "" && len(attrs.Invalid) == 0 {
+		if attrs.Error != "" {
 			<div class="invalid-feedback">{ attrs.Error }</div>
 		}
 
 		if len(attrs.Valid) > 0 {
 			Valid File(s)
 			<ul>
-				for _, file := range attrs.Valid {
-					<li> { file } </li>
-				}
-			</ul>
-		}
-
-		if len(attrs.Invalid) > 0 {
-			Invalid File(s)
-			<ul>
-				for _, invalid := range attrs.Invalid {
+				for _, val := range attrs.Valid {
 					<li>
-						{ invalid.value } : <span class="invalid-feedback d-inline">  { invalid.error } </span>
-					</li>
+						{ filepath.Base(val.filePath) }
+
+						{{
+							query := url.Values{}
+							query.Add("filepath", val.filePath)
+							query.Add("cookie_name", val.cookieName)
+
+							deleteURL :=cfg.pluginAPI.Http().Helpers().UrlForRoute("forms.file.delete")
+							deleteURL += "?" + query.Encode()
+
+							fmt.Println("deleteURL: ",deleteURL)
+						}}
+
+						<span class="ms-2">
+							<a class="text-primary text-decoration-underline"
+								hx-confirm="Are you sure you want to remove this file?"
+								hx-post={ deleteURL }
+								hx-on="htmx:afterRequest: window.location.reload()"
+							>
+								Remove
+							</a>
+						</span>
+				 	</li>
 				}
 			</ul>
 		}
@@ -88,38 +101,31 @@ func getFileInputFieldAttrs(cfg *fileFieldConfig) (attrs FileInputFieldAttrs) {
 	attrs.Accept = strings.Join(fileFld.Accept, ", ")
 	attrs.IsMultiple = fileFld.Multiple
 
-	for key, errStr := range cfg.errors {
-		if strings.HasPrefix(key, fmt.Sprintf("%v_%v",  cfg.sec.GetName(), cfg.fld.GetName())) {
-			// We just need any matching error for this part.
-			attrs.Error = errStr
-			break
-		}
+	if cfg.error != "" {
+		attrs.Error = cfg.error
+		return
 	}
 
-	attrs.Valid = []string{}
-	attrs.Invalid = []invalid{}
+	attrs.Valid = []valid{}
 
 	i := 0
 	for key := range cfg.values {
 		prefix := fmt.Sprintf("%v_%v", cfg.sec.GetName(), cfg.fld.GetName())
 		valKey := fmt.Sprintf("%v_field_value%v", prefix, i)
-		errKey := fmt.Sprintf("%v_field_error%v", prefix, i)
 
 		if !strings.HasPrefix(key, prefix) {
 			continue
 		}
 
 		file := cfg.values[valKey]
-		errStr := cfg.errors[errKey]
-		if errStr == ""  {
-			attrs.Valid = append(attrs.Valid,  filepath.Base(file))
-		} else {
-			attrs.Invalid = append(	attrs.Invalid, invalid{value:  filepath.Base(file), error: errStr})
-		}
-
 		if file == "" {
 			break
 		}
+
+		attrs.Valid = append(attrs.Valid,  valid{
+			filePath: file,
+			cookieName: valKey,
+		})
 
 		i++
 	}

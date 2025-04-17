@@ -10,6 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -22,21 +23,21 @@ type FileInputFieldAttrs struct {
 	Accept     string
 	IsMultiple bool
 	Error      string
-	Valid      []string
-	Invalid    []invalid
+	Valid      []valid
 }
 
-type invalid struct {
-	value string
-	error string
+type valid struct {
+	filePath   string
+	cookieName string
 }
 
 type fileFieldConfig struct {
-	form   sdkapi.IHttpForm
-	sec    sdkapi.IFormSection
-	fld    sdkapi.IFormField
-	values map[string]string
-	errors map[string]string
+	pluginAPI sdkapi.IPluginApi
+	form      sdkapi.IHttpForm
+	sec       sdkapi.IFormSection
+	fld       sdkapi.IFormField
+	values    map[string]string
+	error     string
 }
 
 func FileInputField(cfg *fileFieldConfig) templ.Component {
@@ -85,7 +86,7 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 47, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 48, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +112,7 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 47, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 48, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -146,7 +147,7 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 51, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 52, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -159,7 +160,7 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 52, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 53, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -172,7 +173,7 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Accept)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 53, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 54, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -192,7 +193,7 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if attrs.Error != "" && len(attrs.Invalid) == 0 {
+		if attrs.Error != "" {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"invalid-feedback\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -200,7 +201,7 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(attrs.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 58, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 59, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -216,63 +217,43 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, file := range attrs.Valid {
+			for _, val := range attrs.Valid {
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var12 string
-				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(file)
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(filepath.Base(val.filePath))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 65, Col: 16}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 67, Col: 35}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</li>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		if len(attrs.Invalid) > 0 {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("Invalid File(s)<ul>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			for _, invalid := range attrs.Invalid {
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<li>")
+
+				query := url.Values{}
+				query.Add("filepath", val.filePath)
+				query.Add("cookie_name", val.cookieName)
+
+				deleteURL := cfg.pluginAPI.Http().Helpers().UrlForRoute("forms.file.delete")
+				deleteURL += "?" + query.Encode()
+
+				fmt.Println("deleteURL: ", deleteURL)
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span class=\"ms-2\"><a class=\"text-primary text-decoration-underline\" hx-confirm=\"Are you sure you want to remove this file?\" hx-post=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var13 string
-				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(invalid.value)
+				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(deleteURL)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 75, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 83, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(" : <span class=\"invalid-feedback d-inline\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var14 string
-				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(invalid.error)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 75, Col: 83}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></li>")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-on=\"htmx:afterRequest: window.location.reload()\">Remove</a></span></li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -298,38 +279,31 @@ func getFileInputFieldAttrs(cfg *fileFieldConfig) (attrs FileInputFieldAttrs) {
 	attrs.Accept = strings.Join(fileFld.Accept, ", ")
 	attrs.IsMultiple = fileFld.Multiple
 
-	for key, errStr := range cfg.errors {
-		if strings.HasPrefix(key, fmt.Sprintf("%v_%v", cfg.sec.GetName(), cfg.fld.GetName())) {
-			// We just need any matching error for this part.
-			attrs.Error = errStr
-			break
-		}
+	if cfg.error != "" {
+		attrs.Error = cfg.error
+		return
 	}
 
-	attrs.Valid = []string{}
-	attrs.Invalid = []invalid{}
+	attrs.Valid = []valid{}
 
 	i := 0
 	for key := range cfg.values {
 		prefix := fmt.Sprintf("%v_%v", cfg.sec.GetName(), cfg.fld.GetName())
 		valKey := fmt.Sprintf("%v_field_value%v", prefix, i)
-		errKey := fmt.Sprintf("%v_field_error%v", prefix, i)
 
 		if !strings.HasPrefix(key, prefix) {
 			continue
 		}
 
 		file := cfg.values[valKey]
-		errStr := cfg.errors[errKey]
-		if errStr == "" {
-			attrs.Valid = append(attrs.Valid, filepath.Base(file))
-		} else {
-			attrs.Invalid = append(attrs.Invalid, invalid{value: filepath.Base(file), error: errStr})
-		}
-
 		if file == "" {
 			break
 		}
+
+		attrs.Valid = append(attrs.Valid, valid{
+			filePath:   file,
+			cookieName: valKey,
+		})
 
 		i++
 	}
