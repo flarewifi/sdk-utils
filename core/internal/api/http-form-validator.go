@@ -134,11 +134,17 @@ func (validtr *HTTPFormValidator) GetValidatedValues(
 						}
 					}
 				}
+
+				continue
 			}
 
 			if _, ok := fld.(sdkapi.FormFileField); ok {
-				errCookieName := fmt.Sprintf("%v_%v%v", sec.GetName(), fld.GetName(), errorCookieName)
+				prefix := fmt.Sprintf("%v_%v", sec.GetName(), fld.GetName())
+				errCookieName := fmt.Sprintf(errorCookieName, prefix)
 				if errCookie, err := cookie.GetCookie(r, errCookieName); err == nil {
+					if decoded, err := base64.StdEncoding.DecodeString(errCookie); err == nil {
+						errCookie = string(decoded)
+					}
 					errorMap[errCookieName] = errCookie
 				}
 
@@ -162,6 +168,8 @@ func (validtr *HTTPFormValidator) GetValidatedValues(
 					valueMap[valCookieName] = valueCookie
 					i++
 				}
+
+				continue
 			}
 
 			prefix := fmt.Sprintf("%s_%s", sec.GetName(), fld.GetName())
@@ -482,8 +490,19 @@ func (validtr *HTTPFormValidator) validateFile(
 		validCount++
 	}
 
-	if validCount == 0 {
-		cookie.SetCookie(w, errCookieName, "No valid file found.")
+	if validCount == 0 && len(paths) > 0 {
+		var errMsg strings.Builder
+		errMsg.WriteString("No valid files found:\n")
+
+		if fld.MinSizeMb > 0 {
+			errMsg.WriteString(fmt.Sprintf("\t- Must be at least %d mb.\n", fld.MinSizeMb))
+		}
+		if fld.MaxSizeMb > 0 {
+			errMsg.WriteString(fmt.Sprintf("\t- Must not exceed %d mb.", fld.MaxSizeMb))
+		}
+
+		errStr = base64.StdEncoding.EncodeToString([]byte(errMsg.String()))
+		cookie.SetCookie(w, errCookieName, errStr)
 		return sdkapi.ErrFormParse
 	}
 

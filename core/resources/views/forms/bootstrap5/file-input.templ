@@ -56,7 +56,7 @@ templ FileInputField(cfg *fileFieldConfig) {
 		/>
 
 		if attrs.Error != "" {
-			<div class="invalid-feedback">{ attrs.Error }</div>
+			<div class="invalid-feedback"><pre>{ attrs.Error }</pre></div>
 		}
 
 		if len(attrs.Valid) > 0 {
