@@ -46,8 +46,8 @@ type IHttpForm interface {
 
 	GetMultiField(section string, name string) (IFormMultiField, error)
 
-	GetFileURL(section string, name string) (string, error)
-	GetFileURLs(section string, name string) ([]string, error)
+	GetFilePath(section string, name string) (string, error)
+	GetFilePaths(section string, name string) ([]string, error)
 }
 
 type HttpForm struct {

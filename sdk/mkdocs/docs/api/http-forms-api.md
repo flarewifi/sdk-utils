@@ -669,8 +669,8 @@ type IHttpForm interface {
 
 	GetMultiField(section string, name string) (IFormMultiField, error)
 
-	GetFileURL(section string, name string) (string, error)
-	GetFileURLs(section string, name string) ([]string, error)
+	GetFilePath(section string, name string) (string, error)
+	GetFilePaths(section string, name string) ([]string, error)
 }
 ```
 
@@ -776,20 +776,20 @@ Returns a slice of strings for [list fields](#list-field).
 vals, err := form.GetStringValues("section_name", "string_list_field_name")
 ```
 
-#### GetFileURL
+#### GetFilePath
 
-Returns the path url of a single file.
+Returns the path of a single file.
 
 ```go
-url, err := form.GetFileURL("file_section_name", "file_field_name")
+url, err := form.GetFilePath("file_section_name", "file_field_name")
 ```
 
-#### GetFileURLs
+#### GetFilePaths
 
-Returns a slice of urls for multiple files.
+Returns a slice of paths for multiple files.
 
 ```go
-urls, err := form.GetFileURLs("file_section_name", "file_field_name")
+urls, err := form.GetFilePaths("file_section_name", "file_field_name")
 ```
 
 ---
