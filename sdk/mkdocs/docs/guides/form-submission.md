@@ -125,6 +125,22 @@ sections := []sdkapi.FormSection{
                         return username
                     },
                 },
+                // File Field
+                sdkapi.FormFileField{
+                		Name:      "upload_file",
+                  	Label:     "Upload File",
+                   	Required:  true,
+                    Multiple:  true,
+                    MinFiles:  1,
+                    MaxFiles:  3,
+                    MinSizeMb: 1, // 1mb
+                    MaxSizeMb: 10,
+                    Accept:    []string{"application/zip", "image/png", "image/jpeg"},
+                    ValueFn: func() []string {
+                    		// Your custom specific string logic
+                      	return []string{}
+                    },
+                },
             },
         },
     },
@@ -195,7 +211,7 @@ pluginRouter.Post("/settings/save", func (w http.ResponseWriter, r *http.Request
     // Handle the form data...
 
     // Parse and validate the form input values
-    form, ok := api.Http().Forms().ParseForm("my-form", r)
+    form, ok := api.Http().Forms().ParseForm("my-form", w, r)
     if !ok {
         // handle error
     }

@@ -61,7 +61,7 @@ It parses the input values from the HTTP request and returns a [IHttpForm](#ihtt
 // handler
 func (w http.ResponseWriter, r *http.Request) {
     formsAPI := api.Http().Forms()
-    form, err := formsAPI.ParseForm("my-form", r)
+    form, err := formsAPI.ParseForm("my-form", w, r)
     if err != nil {
         // handle error
     }
@@ -122,6 +122,7 @@ formsAPI.RegisterForm("my-form", func (r *http.Request) sdkapi.HttpForm {
                     sdkapi.FormMultiField{},
                     sdkapi.FormStringField{},
                     sdkapi.FormTextField{},
+                    sdkapi.FormFileField{},
                 },
             },
         }
@@ -172,6 +173,7 @@ Below are the available fields that can be used in the `HttpForm` definition whi
 | `sdkapi.FormFieldTypeMulti` | `[][]any` | `N/A` | Represents a tabulated [multi-field](#multi-field).
 | `sdkapi.FormFieldTypeString` | `string` | [FormListField](#list-field), [FormMultiField](#multi-field) | Represents a text or password input field.
 | `sdkapi.FormFieldTypeText` | `string` | [FormListField](#list-field), [FormMultiField](#multi-field) | Represents a large text field.
+| `sdkapi.FormFieldTypeFile` | `file` | `N/A` | Represents a file field.
 
 ### Boolean Field
 
@@ -553,6 +555,61 @@ sdkapi.FormTextField{
 }
 ```
 
+### File Field
+
+The `FormFileField` represents a file field in a form.
+
+#### Definition
+
+```go
+type FormFileField struct {
+	Name      string          // name of the input field
+	Label     string          // label for the input field
+	ValueFn   func() []string // returns the URL paths of the files
+	Required  bool            // file is required
+	Multiple  bool            // accept multiple files, otherwise only 1
+	MinFiles  int             // (applicable only to multiple files) minimum number of files
+	MaxFiles  int             // (applicable only to multiple files) max number of files
+	MinSizeMb int             // minimum bytes
+	MaxSizeMb int             // maximum bytes
+	Accept    []string        // file types to accept
+}
+```
+
+#### Properties
+
+| Field | Description |
+|--- | --- |
+| `Name`  | The name of the input field. |
+| `Label` | The label displayed for the input field. |
+| `ValueFn` | Function that returns the URL paths of the files. |
+| `Required` | Indicates if a file input is required. |
+|	`Multiple` | Accept multiple files, otherwise only 1 |
+|	`MinFiles` | (applicable only to multiple files) minimum number of files |
+|	`MaxFiles` | (applicable only to multiple files) max number of files |
+|	`MinSizeMb` | Minimum bytes allowed for a file. |
+|	`MaxSizeMb` | Maximum bytes allowed for a file. |
+|	`Accept` | File types to accept in the field. |
+
+#### Usage Example
+
+```go
+sdkapi.FormFileField{
+	Name:      "upload_file",
+	Label:     "Upload File",
+	Required:  true,
+	Multiple:  true,
+	MinFiles:  1,
+	MaxFiles:  3,
+	MinSizeMb: 1, // 1mb
+	MaxSizeMb: 10,
+	Accept:    []string{"application/zip", "image/png", "image/jpeg"},
+	ValueFn: func() []string {
+		return []string{}
+	},
+},
+```
+
 ## FormMultiFieldCol {#multi-field-column}
 
 Represents a column in the [multi-field](#multi-field) form.
@@ -611,6 +668,9 @@ type IHttpForm interface {
 	GetBoolValues(section string, name string) ([]bool, error)
 
 	GetMultiField(section string, name string) (IFormMultiField, error)
+
+	GetFilePath(section string, name string) (string, error)
+	GetFilePaths(section string, name string) ([]string, error)
 }
 ```
 
@@ -716,6 +776,22 @@ Returns a slice of strings for [list fields](#list-field).
 vals, err := form.GetStringValues("section_name", "string_list_field_name")
 ```
 
+#### GetFilePath
+
+Returns the path of a single file.
+
+```go
+url, err := form.GetFilePath("file_section_name", "file_field_name")
+```
+
+#### GetFilePaths
+
+Returns a slice of paths for multiple files.
+
+```go
+urls, err := form.GetFilePaths("file_section_name", "file_field_name")
+```
+
 ---
 
 ## IFormSection
@@ -750,7 +826,7 @@ type IFormSection interface {
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
-    httpForm, err := api.Http().Forms().ParseForm("my-form", r)
+    httpForm, err := api.Http().Forms().ParseForm("my-form", w, r)
     if err != nil {
         // handle error
     }
@@ -870,7 +946,7 @@ type IFormMultiField interface {
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
-    httpForm, err := api.Http().Forms().ParseForm("my-form", r)
+    httpForm, err := api.Http().Forms().ParseForm("my-form", w, r)
     if err != nil {
         // handle error
     }
