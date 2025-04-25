@@ -40,7 +40,8 @@ func (acct *Account) Auth(pw string) bool {
 
 // Permissions returns the permissions of the account
 func (acct *Account) Permissions() []string {
-	return acct.Perms
+	// TODO: retrieve real permissions
+	return []string{sdkapi.AcctPermMaster}
 }
 
 // IsMaster returns true if the account is admin
