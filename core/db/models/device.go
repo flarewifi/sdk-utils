@@ -8,6 +8,8 @@ import (
 	"core/db"
 	"core/db/queries"
 
+	sdkapi "sdk/api"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,6 +22,7 @@ type Device struct {
 	ipaddr    string
 	macaddr   string
 	hostname  string
+	status    sdkapi.DeviceStatus
 	createdAt time.Time
 }
 
@@ -27,12 +30,13 @@ func NewDevice(d *db.Database, m *Models) *Device {
 	return &Device{db: d, models: m}
 }
 
-func BuildDevice(id pgtype.UUID, mac string, ip string, hostname string) *Device {
+func BuildDevice(id pgtype.UUID, mac string, ip string, hostname string, status int32) *Device {
 	return &Device{
 		id:       id,
 		ipaddr:   ip,
 		macaddr:  mac,
 		hostname: hostname,
+		status:   sdkapi.DeviceStatus(status),
 	}
 }
 
@@ -52,6 +56,10 @@ func (self *Device) MacAddr() string {
 	return self.macaddr
 }
 
+func (self *Device) Status() sdkapi.DeviceStatus {
+	return self.status
+}
+
 func (self *Device) Reload(tx pgx.Tx, ctx context.Context) error {
 	qtx := self.db.Queries.WithTx(tx)
 	dRow, err := qtx.FindDevice(ctx, self.id)
@@ -61,17 +69,19 @@ func (self *Device) Reload(tx pgx.Tx, ctx context.Context) error {
 	self.hostname = dRow.Hostname
 	self.macaddr = dRow.IpAddress
 	self.ipaddr = dRow.MacAddress
+	self.status = sdkapi.DeviceStatus(dRow.Status)
 
 	return nil
 }
 
-func (self *Device) Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string) error {
+func (self *Device) Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		Hostname:   hostname,
 		IpAddress:  ip,
 		MacAddress: mac,
 		ID:         self.id,
+		Status:     int32(status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", self.id, err)
@@ -81,6 +91,7 @@ func (self *Device) Update(tx pgx.Tx, ctx context.Context, mac string, ip string
 	self.hostname = hostname
 	self.ipaddr = ip
 	self.macaddr = mac
+	self.status = sdkapi.DeviceStatus(status)
 
 	return nil
 }
@@ -139,5 +150,6 @@ func (self *Device) Clone() *Device {
 		ipaddr:   self.ipaddr,
 		macaddr:  self.macaddr,
 		hostname: self.hostname,
+		status:   self.status,
 	}
 }

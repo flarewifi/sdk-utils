@@ -14,6 +14,7 @@ func PortalRoutes(g *api.CoreGlobals) {
 	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
 	pendingPurchaseMw := g.CoreAPI.HttpAPI.Middlewares().PendingPurchase()
 	redirectToLanIpMw := middlewares.RedirectToLanIP(g.CoreAPI)
+	checkDeviceStatusMw := middlewares.CheckDeviceStatus(g.CoreAPI)
 
 	portalSseCtrl := controllers.PortalSseHandler(g)
 	portalIndexCtrl := controllers.PortalIndexPage(g)
@@ -23,6 +24,7 @@ func PortalRoutes(g *api.CoreGlobals) {
 	portalIndexCtrl = deviceMw(portalIndexCtrl)
 	portalIndexCtrl = redirectToLanIpMw(portalIndexCtrl)
 	portalIndexCtrl = pendingPurchaseMw(portalIndexCtrl)
+	portalIndexCtrl = checkDeviceStatusMw(portalIndexCtrl)
 
 	rootR.Handle("/", portalIndexCtrl).Methods("GET").Name("portal.index")
 	portalR.Get("/events", portalSseCtrl).Name("portal.sse")

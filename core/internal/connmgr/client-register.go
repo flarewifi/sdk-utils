@@ -104,7 +104,8 @@ func (reg *ClientRegister) Register(dbpool *pgxpool.Pool, r *http.Request, mac s
 		}
 
 		old := NewClientDevice(reg.db, reg.mdls, dev.Clone())
-		err := dev.Update(tx, ctx, mac, ip, hostname)
+		// Devices are have disconnected status by default.
+		err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Disconnected))
 		if err != nil {
 			fmt.Println("error updating dev: ", err)
 			return nil, fmt.Errorf("could not update dev: %w", err)
@@ -124,6 +125,11 @@ func (reg *ClientRegister) Register(dbpool *pgxpool.Pool, r *http.Request, mac s
 			err := reg.mgr.Connect(ctx, clnt, "Device details changed, reconnected successfully!")
 			if err != nil {
 				return nil, err
+			}
+
+			if err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Connected)); err != nil {
+				fmt.Println("error updating dev to connected: ", err)
+				return nil, fmt.Errorf("could not update dev to connected: %w", err)
 			}
 		}
 	}

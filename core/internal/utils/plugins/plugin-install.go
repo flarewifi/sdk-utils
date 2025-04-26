@@ -334,6 +334,7 @@ func RunMigrations(db *pgxpool.Pool, pluginPath string) (err error) {
 
 	name := info.Name
 	migdir := filepath.Join(pluginPath, "resources/migrations")
+
 	err = migrate.MigrateUp(db, migdir)
 	if err != nil {
 		log.Println("Error in plugin migration "+name, ":", err.Error())

@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"log"
+	sdkapi "sdk/api"
 
 	"core/db"
 	"core/db/queries"
@@ -47,6 +48,7 @@ func (self *DeviceModel) Create(tx pgx.Tx, ctx context.Context, mac string, ip s
 		ipaddr:    d.IpAddress,
 		hostname:  d.Hostname,
 		createdAt: d.CreatedAt.Time,
+		status:    sdkapi.DeviceStatus(d.Status),
 	}
 
 	_, err = qtx.CreateWallet(ctx, queries.CreateWalletParams{
@@ -79,6 +81,7 @@ func (self *DeviceModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
+	device.status = sdkapi.DeviceStatus(d.Status)
 
 	// log.Printf("Found device: %+v", device)
 	return device, nil
@@ -98,17 +101,19 @@ func (self *DeviceModel) FindByMac(tx pgx.Tx, ctx context.Context, mac string) (
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
+	device.status = sdkapi.DeviceStatus(d.Status)
 
 	return device, nil
 }
 
-func (self *DeviceModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, mac string, ip string, hostname string) error {
+func (self *DeviceModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, mac string, ip string, hostname string, status int) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		ID:         id,
 		MacAddress: mac,
 		IpAddress:  ip,
 		Hostname:   hostname,
+		Status:     int32(status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", id, err)
