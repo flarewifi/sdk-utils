@@ -13,6 +13,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DeviceStatus int
+
+// List of device statuses.
+const (
+	Connected DeviceStatus = iota + 1
+	Disconnected
+	Blocked
+)
+
 // IClientDevice represents a client device connected to the network.
 type IClientDevice interface {
 
@@ -28,8 +37,11 @@ type IClientDevice interface {
 	// Returns the MAC address of the device.
 	MacAddr() string
 
+	// Returns the status device status.
+	Status() DeviceStatus
+
 	// Updates the client device.
-	Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string) error
+	Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error
 
 	// Emits a socket event to a client device.
 	// The event will be propagated to the client's browser via server-sent events.

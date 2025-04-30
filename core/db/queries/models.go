@@ -14,6 +14,7 @@ type Device struct {
 	MacAddress string
 	Hostname   string
 	CreatedAt  pgtype.Timestamp
+	Status     int32
 }
 
 type Log struct {

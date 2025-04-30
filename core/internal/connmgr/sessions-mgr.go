@@ -3,6 +3,7 @@ package connmgr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -109,6 +110,10 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
 	errReturnCh := make(chan error)
 
+	if clnt.Status() == sdkapi.Blocked {
+		return errors.New("Device is blocked.")
+	}
+
 	go func() {
 		if _, ok := self.CurrSession(clnt); ok {
 			errReturnCh <- errors.New("Device is already connected.")
@@ -143,7 +148,26 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 		errReturnCh <- nil
 	}()
 
-	return <-errReturnCh
+	err := <-errReturnCh
+	if err == nil {
+		tx, err := self.db.SqlDB().Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("unble to create db pool: %w", err)
+		}
+		defer tx.Rollback(ctx)
+
+		if err := clnt.Update(
+			tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Connected),
+		); err != nil {
+			return fmt.Errorf("unable to update device status to connected: %w", err)
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("unable to commit db transaction: %w", err)
+		}
+	}
+
+	return err
 }
 
 func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
@@ -153,6 +177,22 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 	}
 
 	clnt.Emit(sdkapi.EventSessionDisconnected, []byte(notify))
+
+	tx, err := self.db.SqlDB().Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("unble to create db pool: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	err = clnt.Update(tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Disconnected))
+	if err != nil {
+		return fmt.Errorf("unable to update device status to disconnected: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("unable to commit db transaction: %w", err)
+	}
+
 	return nil
 }
 

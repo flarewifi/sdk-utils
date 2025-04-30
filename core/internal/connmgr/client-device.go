@@ -12,6 +12,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+
+	sdkapi "sdk/api"
 )
 
 type ClientDevice struct {
@@ -22,6 +24,7 @@ type ClientDevice struct {
 	mac      string
 	ip       string
 	hostname string
+	status   sdkapi.DeviceStatus
 }
 
 func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *ClientDevice {
@@ -32,6 +35,7 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 		mac:      d.MacAddr(),
 		ip:       d.IpAddr(),
 		hostname: d.Hostname(),
+		status:   d.Status(),
 	}
 }
 
@@ -59,11 +63,17 @@ func (self *ClientDevice) IpAddr() string {
 	return self.ip
 }
 
-func (self *ClientDevice) Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string) error {
+func (self *ClientDevice) Status() sdkapi.DeviceStatus {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.status
+}
+
+func (self *ClientDevice) Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	err := self.mdls.Device().Update(tx, ctx, self.id, self.mac, self.ip, self.hostname)
+	err := self.mdls.Device().Update(tx, ctx, self.id, self.mac, self.ip, self.hostname, status)
 	if err != nil {
 		return err
 	}
@@ -71,6 +81,7 @@ func (self *ClientDevice) Update(tx pgx.Tx, ctx context.Context, mac string, ip 
 	self.hostname = hostname
 	self.mac = mac
 	self.ip = ip
+	self.status = sdkapi.DeviceStatus(status)
 
 	return nil
 }
