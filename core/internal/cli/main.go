@@ -123,7 +123,8 @@ func CreatePlugin() {
 
 func CreateMigration() {
 	pluginDefs := plugins.LocalPluginSrcDefs()
-	pluginPkgs := make([]string, len(pluginDefs))
+	pluginPkgs := make([]string, len(pluginDefs)+1)
+	pluginPkgs[0] = "core"
 
 	for i, def := range pluginDefs {
 		info, err := sdkutils.GetPluginInfoFromPath(def.LocalPath)
@@ -131,7 +132,7 @@ func CreateMigration() {
 			fmt.Println("Warning: Error getting plugin info:", err)
 			continue
 		} else {
-			pluginPkgs[i] = info.Package
+			pluginPkgs[i+1] = info.Package
 		}
 	}
 
@@ -163,7 +164,13 @@ func CreateMigration() {
 		panic(err)
 	}
 
-	pluginDir := filepath.Join("plugins", pluginPkg)
+	var pluginDir string
+	if pluginPkg == "core" {
+		pluginDir = filepath.Join("core")
+	} else {
+		pluginDir = filepath.Join("plugins", "local", pluginPkg)
+	}
+
 	tools.MigrationCreate(pluginDir, name)
 }
 
