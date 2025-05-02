@@ -445,6 +445,7 @@ sdkapi.FormMultiField{
                	Required: true
                 Minimum: 1,
                 Maximum: 10,
+                IsDisabled: true,
                 Type:  sdkapi.FormFieldTypeDecimal,
                 ValueFn: func() interface{} {
                     return float64(0.0) // Default value
@@ -624,6 +625,7 @@ type FormMultiFieldCol struct {
 	Required bool
 	Minimum  int
 	Maximum  int
+	IsDisabled bool
 	ValueFn func() interface{}
 }
 ```
@@ -639,6 +641,7 @@ type FormMultiFieldCol struct {
 | `Maximum` | Follows the validation requirement for maximum of corresponding column type. |
 | `Type` | The [data type](#field-types) of the column. |
 | `ValueFn` | Function that returns the default value for the column. |
+| `IsDisabled` | Indicates whether an input field is disabled. |
 
 ---
 
