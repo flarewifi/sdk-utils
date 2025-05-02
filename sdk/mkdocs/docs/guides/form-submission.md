@@ -82,7 +82,7 @@ sections := []sdkapi.FormSection{
                     MaximumL 10,
                     Columns: func() []sdkapi.FormMultiFieldCol {
                         return []sdkapi.FormMultiFieldCol{
-                            {Name: "item_name", Label: "Item Name", Type: "string", Minimum: 5, Maximum: 15},
+                            {Name: "item_name", Label: "Item Name", Type: "string", Minimum: 5, Maximum: 15, 	IsDisabled: true},
                             {Name: "quantity", Label: "Quantity", Type: "int", Minimum: 1},
                             {Name: "price", Label: "Price", Type: "float", Minimum: 0},
                         }

@@ -15,13 +15,14 @@ type IFormMultiField interface {
 }
 
 type FormMultiFieldCol struct {
-	Name     string
-	Label    string
-	Type     string
-	Required bool
-	Minimum  int
-	Maximum  int
-	ValueFn  func() interface{}
+	Name       string
+	Label      string
+	Type       string
+	IsDisabled bool
+	Required   bool
+	Minimum    int
+	Maximum    int
+	ValueFn    func() interface{}
 }
 
 func (col FormMultiFieldCol) GetName() string {
