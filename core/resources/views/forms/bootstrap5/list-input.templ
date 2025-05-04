@@ -29,28 +29,55 @@ templ listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) {
 				legendClass += " text-danger"
 			}
 
-			optType := "radio"
+			optType := lf.OptionType
+			if optType == "" {
+				optType = "radio" // default option type
+			}
+
 			if lf.Multiple {
-				optType = "checkbox"
+				optType = "checkbox" // default type for multiple
+
+				if lf.OptionType == sdkapi.OptionTypeSelect {
+					optType = sdkapi.OptionTypeSelect
+				}
 			}
 		}}
 
 		<legend class={ legendClass }>{ lf.Label }</legend>
 
-		for i, opt := range lf.Options() {
+		if optType == sdkapi.OptionTypeSelect  {
 			<div class="form-check">
-				<input
-					class={ inputClass }
-					type={ optType }
-					name={ fmt.Sprintf("%s:%s", cfg.sec.GetName(), lf.Name) }
-					value={ parseListOptValue(lf, i, opt) }
-					checked?={ isListOptSelected(cfg, lf, opt) }
-				/>
-				<label class="form-check-label">
-					{ opt.Label }
-				</label>
+				<select
+					class="form-select"
+					multiple?={ lf.Multiple }
+					name={ fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName()) }
+				>
+					for i, opt := range lf.Options() {
+						<option
+							value={ parseListOptValue(lf, i, opt) }
+							selected?={ isListOptSelected(cfg, lf, opt) }
+						>{ opt.Label }</option>
+					}
+				</select>
 			</div>
+		} else {
+			for i, opt := range lf.Options() {
+				<div class="form-check">
+					<input
+						class={ inputClass }
+						type={ fmt.Sprint(optType) }
+						name={ fmt.Sprintf("%s:%s", cfg.sec.GetName(), lf.Name) }
+						value={ parseListOptValue(lf, i, opt) }
+						checked?={ isListOptSelected(cfg, lf, opt) }
+						multiple?={ lf.Multiple }
+					/>
+					<label class="form-check-label">
+						{ opt.Label }
+					</label>
+				</div>
+			}
 		}
+
 		if cfg.error != "" {
 			<p class="invalid-feedback d-block fs-6">{ cfg.error }</p>
 		}

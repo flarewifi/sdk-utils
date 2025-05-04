@@ -11,16 +11,25 @@ type FormListFieldOption struct {
 	Value interface{}
 }
 
+type ListOptionType string
+
+const (
+	OptionTypeSelect   ListOptionType = "select"
+	OptionTypeRadio    ListOptionType = "radio"
+	OptionTypeCheckbox ListOptionType = "checkbox"
+)
+
 type FormListField struct {
-	Name     string
-	Label    string
-	Type     string
-	Required bool
-	Minimum  int
-	Maximum  int
-	Multiple bool
-	Options  func() []FormListFieldOption
-	ValueFn  func() interface{}
+	Name       string
+	Label      string
+	Type       string
+	OptionType ListOptionType
+	Required   bool
+	Minimum    int
+	Maximum    int
+	Multiple   bool
+	Options    func() []FormListFieldOption
+	ValueFn    func() interface{}
 }
 
 func (f FormListField) GetName() string {
