@@ -316,7 +316,8 @@ type FormListFieldOption struct {
 type FormListField struct {
 	Name     string
 	Label    string
-	Type     string     // type of the list options
+	Type     string     // The type of the input fields.
+	OptionType ListOptionType // The type of the list options.
 	Multiple bool
 	Required  bool			// Application for single option; indicate whether a selection is required.
 	Minimum   int				// Applicable for multiple option; the minimum number of selections allowed.
@@ -326,6 +327,13 @@ type FormListField struct {
 }
 ```
 
+## List Option Types
+The available `ListOptionType` options are:
+
+- `sdkapi.OptionTypeSelect`
+- `sdkapi.OptionTypeRadio`
+- `sdkapi.OptionTypeCheckbox`
+
 #### Properties
 
 | Property | Description |
@@ -333,6 +341,7 @@ type FormListField struct {
 | `Name` | The unique name of the field within the section scope. |
 | `Label` | The label for the input. |
 | `Type` | The type of the input fields. See [Field Types](#field-types) for the available types. |
+| `OptionType` | The type of the list option. See [List Option Types](#list-option-types) for the available types. |
 | `Multiple` | Indicates whether the field allows multiple selections. |
 | `Required` | Application for single option; indicate whether a selection is required. |
 | `Minimum` | Applicable for multiple option; the minimum number of selections allowed. |
