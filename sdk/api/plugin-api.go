@@ -73,4 +73,6 @@ type IPluginApi interface {
 
 	// Returns an instance of the uci API.
 	Uci() IUciApi
+
+	UI() IUIApi
 }
