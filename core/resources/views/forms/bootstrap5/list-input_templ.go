@@ -106,8 +106,8 @@ func listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) templ.Comp
 			optType = "checkbox" // default type for multiple
 		}
 
-		if lf.OptionType == sdkapi.OptionTypeSelect {
-			optType = string(sdkapi.OptionTypeSelect)
+		if lf.OptionType == sdkapi.FormListOptionSelect {
+			optType = string(sdkapi.FormListOptionSelect)
 		}
 		var templ_7745c5c3_Var4 = []any{legendClass}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
@@ -144,7 +144,7 @@ func listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) templ.Comp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if optType == string(sdkapi.OptionTypeSelect) {
+		if optType == string(sdkapi.FormListOptionSelect) {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"form-check\"><select class=\"form-select\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

@@ -34,14 +34,14 @@ templ listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) {
 				optType = "checkbox" // default type for multiple
 			}
 
-			if lf.OptionType == sdkapi.OptionTypeSelect {
-				optType = string(sdkapi.OptionTypeSelect)
+			if lf.OptionType == sdkapi.FormListOptionSelect {
+				optType = string(sdkapi.FormListOptionSelect)
 			}
 		}}
 
 		<legend class={ legendClass }>{ lf.Label }</legend>
 
-		if optType == string(sdkapi.OptionTypeSelect) {
+		if optType == string(sdkapi.FormListOptionSelect) {
 			<div class="form-check">
 				<select
 					class="form-select"
