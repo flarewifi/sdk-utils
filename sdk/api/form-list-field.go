@@ -11,19 +11,19 @@ type FormListFieldOption struct {
 	Value interface{}
 }
 
-type ListOptionType string
+type FormListOptionType string
 
 const (
-	OptionTypeSelect   ListOptionType = "select"
-	OptionTypeRadio    ListOptionType = "radio"
-	OptionTypeCheckbox ListOptionType = "checkbox"
+	FormListOptionSelect   FormListOptionType = "select"
+	FormListOptionRadio    FormListOptionType = "radio"
+	FormListOptionCheckbox FormListOptionType = "checkbox"
 )
 
 type FormListField struct {
 	Name       string
 	Label      string
 	Type       string
-	OptionType ListOptionType
+	OptionType FormListOptionType
 	Required   bool
 	Minimum    int
 	Maximum    int
