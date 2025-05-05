@@ -29,23 +29,19 @@ templ listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) {
 				legendClass += " text-danger"
 			}
 
-			optType := lf.OptionType
-			if optType == "" {
-				optType = "radio" // default option type
-			}
-
+			optType := "radio" // default option type
 			if lf.Multiple {
 				optType = "checkbox" // default type for multiple
+			}
 
-				if lf.OptionType == sdkapi.OptionTypeSelect {
-					optType = sdkapi.OptionTypeSelect
-				}
+			if lf.OptionType == sdkapi.OptionTypeSelect {
+				optType = string(sdkapi.OptionTypeSelect)
 			}
 		}}
 
 		<legend class={ legendClass }>{ lf.Label }</legend>
 
-		if optType == sdkapi.OptionTypeSelect  {
+		if optType == string(sdkapi.OptionTypeSelect) {
 			<div class="form-check">
 				<select
 					class="form-select"
@@ -65,7 +61,7 @@ templ listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) {
 				<div class="form-check">
 					<input
 						class={ inputClass }
-						type={ fmt.Sprint(optType) }
+						type={ optType }
 						name={ fmt.Sprintf("%s:%s", cfg.sec.GetName(), lf.Name) }
 						value={ parseListOptValue(lf, i, opt) }
 						checked?={ isListOptSelected(cfg, lf, opt) }
