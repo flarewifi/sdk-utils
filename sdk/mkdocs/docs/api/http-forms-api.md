@@ -314,11 +314,11 @@ type FormListFieldOption struct {
 }
 
 type FormListField struct {
-	Name     string
-	Label    string
-	Type     string     // The type of the input fields.
+	Name     	string
+	Label    	string
+	Type     	string     // The type of the option value fields.
 	OptionType ListOptionType // The type of the list options.
-	Multiple bool
+	Multiple 	bool
 	Required  bool			// Application for single option; indicate whether a selection is required.
 	Minimum   int				// Applicable for multiple option; the minimum number of selections allowed.
 	Maximum   int				//  Applicable for multiple option; the maximum number of selections allowed.
@@ -330,9 +330,11 @@ type FormListField struct {
 ## List Option Types
 The available `ListOptionType` options are:
 
-- `sdkapi.OptionTypeSelect`
-- `sdkapi.OptionTypeRadio`
-- `sdkapi.OptionTypeCheckbox`
+| Option Type | Description |
+| ---- | ----|
+| `sdkapi.OptionTypeSelect` | Optional for both multiple and non-multiple input values |
+| `sdkapi.OptionTypeRadio` | Default for non-multiple list field. Cannot be used for Multiple = true; default will apply. |
+| `sdkapi.OptionTypeCheckbox` | Default for multiple list field. Cannot be used for Multiple = false; default will apply. |
 
 #### Properties
 
@@ -376,6 +378,7 @@ countryField := sdkapi.FormListField{
     Label:    "Select Country",
     Type:     "string",
     Multiple: false,
+    OptionType: sdkapi.OptionTypeSelect,
     Minimum: 1,
     Maximum: 2,
     Options: func() []sdkapi.FormListFieldOption {

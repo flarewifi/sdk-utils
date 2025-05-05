@@ -55,10 +55,9 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 							},
 						},
 						sdkapi.FormListField{
-							Name:       "level",
-							Label:      "Level",
-							Type:       sdkapi.FormFieldTypeString,
-							OptionType: sdkapi.OptionTypeSelect,
+							Name:  "level",
+							Label: "Level",
+							Type:  sdkapi.FormFieldTypeString,
 							Options: func() []sdkapi.FormListFieldOption {
 								return []sdkapi.FormListFieldOption{
 									{Label: "All", Value: ""},
