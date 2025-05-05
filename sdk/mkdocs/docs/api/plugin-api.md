@@ -214,3 +214,12 @@ It returns the [IUciApi](./uci-api.md) object which is a wrapper to [OpenWRT's U
 uci := api.Uci()
 fmt.Println(uci) // IUciApi
 ```
+
+### UIApi
+
+It returns the [IUIApi](./ui-api.md) object which is used for ui reusable templates.
+
+```go
+ui := api.UI()
+fmt.Println(ui) // IUIApi
+```

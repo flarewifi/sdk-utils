@@ -44,6 +44,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, pmgr *PluginsMgr, trfkMg
 	NewInAppPurchaseApi(pluginApi)
 	NewUciApi(pluginApi)
 	NewLoggerApi(pluginApi)
+	NewUIApi(pluginApi)
 
 	log.Println("NewPluginApi: ", dir, " - ", info.Package, " - ", info.Name, " - ", info.Version, " - ", info.Description)
 
@@ -71,6 +72,7 @@ type PluginApi struct {
 	Utl              *PluginUtils
 	LoggerAPI        *LoggerApi
 	AssetsManifest   plugins.OutputManifest
+	UIApi            *UIApi
 }
 
 func (self *PluginApi) Initialize(coreApi *PluginApi) {
@@ -140,6 +142,10 @@ func (self *PluginApi) SessionsMgr() sdkapi.ISessionsMgrApi {
 
 func (self *PluginApi) Uci() sdkapi.IUciApi {
 	return self.UciAPI
+}
+
+func (self *PluginApi) UI() sdkapi.IUIApi {
+	return self.UIApi
 }
 
 func (self *PluginApi) Themes() sdkapi.IThemesApi {
