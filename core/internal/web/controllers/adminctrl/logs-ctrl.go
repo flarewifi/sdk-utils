@@ -4,7 +4,6 @@ import (
 	"core/db/models"
 	"core/internal/api"
 	logsview "core/resources/views/admin/logs"
-	"core/resources/views/bs5utils"
 	"net/http"
 	"net/url"
 	sdkapi "sdk/api"
@@ -42,7 +41,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 		if iPerPage == 0 {
-			iPerPage = 50
+			iPerPage = 10
 		}
 
 		opts := models.LogsPaginateOpts{
@@ -59,7 +58,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		pagination := bs5utils.Pagination(bs5utils.PaginationOpts{
+		pagination := g.CoreAPI.UI().Pagination(&sdkapi.UIPaginationOpts{
 			PageURL:     g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index"),
 			PerPage:     iPerPage,
 			CurrentPage: ipage,
@@ -70,7 +69,6 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 				"search_text": searchTxt,
 			},
 		})
-
 		searchFormTpl, err := g.CoreAPI.HttpAPI.Forms().GetFormTemplate("logs-form", r)
 		if err != nil {
 			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)

@@ -1,8 +1,8 @@
 ---
 site_name: Flare Hotspot Developers
 site_url: https://developer.flarehotspot.com
-site_description: 'Flare Hotspot platform for developers:
-  Build. Innovate. Get Paid.'
+site_description: "Flare Hotspot platform for developers:
+  Build. Innovate. Get Paid."
 
 theme:
   name: material
@@ -33,47 +33,49 @@ markdown_extensions:
 
 nav:
   - Guides:
-      - 'Getting Started': guides/getting-started.md
-      - 'Creating a plugin': guides/creating-a-plugin.md
-      - 'Routes and Navigation': guides/routes-and-navigation.md
-      - 'Rendering Views': guides/rendering-views.md
-      - 'Form Submission': guides/form-submission.md
-      - 'Saving Data': guides/saving-data.md
-      - 'Translations': guides/translations.md
-      - 'Database Migrations': guides/database-migrations.md
-      - 'Error Handling': guides/error-handling.md
-      - 'Debugging': guides/debugging.md
-      - 'FAQ': guides/faq.md
+      - "Getting Started": guides/getting-started.md
+      - "Creating a plugin": guides/creating-a-plugin.md
+      - "Routes and Navigation": guides/routes-and-navigation.md
+      - "Rendering Views": guides/rendering-views.md
+      - "Form Submission": guides/form-submission.md
+      - "Saving Data": guides/saving-data.md
+      - "Translations": guides/translations.md
+      - "Database Migrations": guides/database-migrations.md
+      - "Error Handling": guides/error-handling.md
+      - "Debugging": guides/debugging.md
+      - "FAQ": guides/faq.md
   - Tutorials:
-      - 'Manage Sessions': tutorials/manage-sessions.md
-      - 'Accept Payments': tutorials/accepting-payments.md
-      - 'Create Theme': tutorials/creating-a-theme
+      - "Manage Sessions": tutorials/manage-sessions.md
+      - "Accept Payments": tutorials/accepting-payments.md
+      - "Create Theme": tutorials/creating-a-theme
   - API Reference:
-      - 'IAccountsApi': api/accounts-api.md
-      - 'IAdsApi': api/ads-api.md
-      - 'IClientDevice': 'api/client-device.md'
-      - 'IClientSession': 'api/client-session.md'
-      - 'IConfigApi': api/config-api.md
-      - 'IHttpApi': api/http-api.md
-      - 'IHttpAuth': api/http-auth.md
-      - 'IHttpCookie': api/http-cookie.md
-      - 'IHttpFormsApi': api/http-forms-api.md
-      - 'IHttpHelpers': api/http-helpers.md
-      - 'IHttpNavsApi': api/http-navs-api.md
-      - 'IHttpResponse': api/http-response.md
-      - 'IHttpRouterApi': api/http-router-api.md
-      - 'ILoggerApi': api/logger-api.md
-      - 'IPaymentsApi': api/payments-api.md
-      - 'IPluginApi': api/plugin-api.md
-      - 'ISessionsMgrApi': api/sessions-mgr-api.md
-      - 'ISessionProvider': api/session-provider.md
-      - 'ISessionSource': api/session-source.md
-      - 'IThemesApi': api/themes-api.md
-      - 'Assets Manifest': api/assets-manifest.md
-      - 'window.$flare': api/flare-variable.md
-      - 'plugin.json': api/plugin.json.md
+      - "IAccountsApi": api/accounts-api.md
+      - "IAdsApi": api/ads-api.md
+      - "IClientDevice": "api/client-device.md"
+      - "IClientSession": "api/client-session.md"
+      - "IConfigApi": api/config-api.md
+      - "IHttpApi": api/http-api.md
+      - "IHttpAuth": api/http-auth.md
+      - "IHttpCookie": api/http-cookie.md
+      - "IHttpFormsApi": api/http-forms-api.md
+      - "IHttpHelpers": api/http-helpers.md
+      - "IHttpNavsApi": api/http-navs-api.md
+      - "IHttpResponse": api/http-response.md
+      - "IHttpRouterApi": api/http-router-api.md
+      - "ILoggerApi": api/logger-api.md
+      - "IPaymentsApi": api/payments-api.md
+      - "IPluginApi": api/plugin-api.md
+      - "ISessionsMgrApi": api/sessions-mgr-api.md
+      - "ISessionProvider": api/session-provider.md
+      - "ISessionSource": api/session-source.md
+      - "IThemesApi": api/themes-api.md
+      - "Assets Manifest": api/assets-manifest.md
+      - "window.$flare": api/flare-variable.md
+      - "plugin.json": api/plugin.json.md
+      - "IUIAPI": api/ui-api.md
+      - "Plugin Info": api/plugin-info.md
   - Free Plugins:
-      - 'Flare Hotspot Theme': 'plugins/com.flarego.default-theme.md'
+      - "Flare Hotspot Theme": "plugins/com.flarego.default-theme.md"
 
 copyright: |
   &copy; 2024 <a href="https://www.flarego.ph">Flarego Technologies Corp.</a>
