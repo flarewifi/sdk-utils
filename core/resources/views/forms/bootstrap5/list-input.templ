@@ -42,7 +42,7 @@ templ listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) {
 		<legend class={ legendClass }>{ lf.Label }</legend>
 
 		if optType == string(sdkapi.FormListOptionSelect) {
-			<div class="form-check">
+			<div>
 				<select
 					class="form-select"
 					multiple?={ lf.Multiple }
