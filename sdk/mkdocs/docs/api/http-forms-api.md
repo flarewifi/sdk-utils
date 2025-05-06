@@ -314,10 +314,11 @@ type FormListFieldOption struct {
 }
 
 type FormListField struct {
-	Name     string
-	Label    string
-	Type     string     // type of the list options
-	Multiple bool
+	Name     	string
+	Label    	string
+	Type     	string     // The type of the option value fields.
+	OptionType FormListOptionType // The type of the list options.
+	Multiple 	bool
 	Required  bool			// Application for single option; indicate whether a selection is required.
 	Minimum   int				// Applicable for multiple option; the minimum number of selections allowed.
 	Maximum   int				//  Applicable for multiple option; the maximum number of selections allowed.
@@ -326,6 +327,15 @@ type FormListField struct {
 }
 ```
 
+## Form List Option Types
+The available `FormListOptionType` options are:
+
+| Option Type | Description |
+| ---- | ----|
+| `sdkapi.FormListOptionSelect` | Optional for both multiple and non-multiple input values |
+| `sdkapi.FormListOptionRadio` | Default for non-multiple list field. Cannot be used for Multiple = true; default will apply. |
+| `sdkapi.FormListOptionCheckbox` | Default for multiple list field. Cannot be used for Multiple = false; default will apply. |
+
 #### Properties
 
 | Property | Description |
@@ -333,6 +343,7 @@ type FormListField struct {
 | `Name` | The unique name of the field within the section scope. |
 | `Label` | The label for the input. |
 | `Type` | The type of the input fields. See [Field Types](#field-types) for the available types. |
+| `OptionType` | The type of the list option. See [List Option Types](#list-option-types) for the available types. |
 | `Multiple` | Indicates whether the field allows multiple selections. |
 | `Required` | Application for single option; indicate whether a selection is required. |
 | `Minimum` | Applicable for multiple option; the minimum number of selections allowed. |
@@ -367,6 +378,7 @@ countryField := sdkapi.FormListField{
     Label:    "Select Country",
     Type:     "string",
     Multiple: false,
+    OptionType: sdkapi.FormListOptionSelect,
     Minimum: 1,
     Maximum: 2,
     Options: func() []sdkapi.FormListFieldOption {
@@ -445,6 +457,7 @@ sdkapi.FormMultiField{
                	Required: true
                 Minimum: 1,
                 Maximum: 10,
+                IsDisabled: true,
                 Type:  sdkapi.FormFieldTypeDecimal,
                 ValueFn: func() interface{} {
                     return float64(0.0) // Default value
@@ -624,6 +637,7 @@ type FormMultiFieldCol struct {
 	Required bool
 	Minimum  int
 	Maximum  int
+	IsDisabled bool
 	ValueFn func() interface{}
 }
 ```
@@ -639,6 +653,7 @@ type FormMultiFieldCol struct {
 | `Maximum` | Follows the validation requirement for maximum of corresponding column type. |
 | `Type` | The [data type](#field-types) of the column. |
 | `ValueFn` | Function that returns the default value for the column. |
+| `IsDisabled` | Indicates whether an input field is disabled. |
 
 ---
 

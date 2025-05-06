@@ -62,21 +62,44 @@ templ MultiInputField(cfg *multiFieldConfig) {
 		}
 
 		<hr/>
-		<button type="button" class="" x-on:click="newrows.push({ deleted: false })">Add Item</button>
+		{{
+			disableButton := true
+			for _, col := range mfld.Columns() {
+				// We'll disable Add Item button when all cols are disabled.
+				if !col.IsDisabled {
+					{{ disableButton = false }}
+				}
+			}
+		}}
+		<button type="button" class="" disabled?={ disableButton } x-on:click="newrows.push({ deleted: false })">Add Item</button>
 	</div>
 }
 
 templ multiFieldRow(cfg *multiFieldConfig, mfld sdkapi.FormMultiField, mfval sdkapi.IFormMultiField, row int) {
 	<template x-if="!row.deleted">
+		{{ disableButtons := true }}
 		<div class="row mb-2">
 			for _, col := range mfld.Columns() {
 				@multiFieldCol(cfg, mfld, mfval, row, col)
+
+				// We'll disable edit/delete buttons when all cols are disabled.
+				if !col.IsDisabled {
+					{{ disableButtons = false }}
+				}
 			}
 			<div class="col">
-				<button type="button" class="btn btn-secondary">Edit</button>
+				{{
+					editBtnClass := "btn btn-secondary"
+					deleteBtnClass := "btn btn-danger"
+					if disableButtons {
+						editBtnClass += " disabled"
+						deleteBtnClass += " disabled"
+					}
+				}}
+				<button type="button" class={ editBtnClass }>Edit</button>
 				<button
 					type="button"
-					class="btn btn-danger"
+					class={ deleteBtnClass }
 					x-on:click="row.deleted = true"
 				>
 					Delete
@@ -159,19 +182,19 @@ templ multiFieldColFromCookie(cfg *multiFieldConfig, fld sdkapi.FormMultiField, 
 
 		switch col.Type {
 			case sdkapi.FormFieldTypeString:
-				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				<input type="text" disabled?={ col.IsDisabled} class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
 				if errStr != "" {
 					<p class="text text-danger text-small">{ errStr }</p>
 				}
 
 			case sdkapi.FormFieldTypeInteger:
-				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				<input type="number" disabled?={ col.IsDisabled} class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
 				if errStr != "" {
 					<p class="text text-danger text-small">{ errStr }</p>
 				}
 
 			case sdkapi.FormFieldTypeDecimal:
-				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				<input type="number" disabled?={ col.IsDisabled} class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
 				if errStr != "" {
 					<p class="text text-danger text-small">{ errStr }</p>
 				}
@@ -215,7 +238,7 @@ templ multiFieldCol(cfg *multiFieldConfig, fld sdkapi.FormMultiField, mfval sdka
 					}
 				}}
 
-				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				<input type="text" disabled?={ col.IsDisabled } class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
 				if errStr != "" {
 					<p class="text text-danger text-small">{ errStr }</p>
 				}
@@ -239,7 +262,7 @@ templ multiFieldCol(cfg *multiFieldConfig, fld sdkapi.FormMultiField, mfval sdka
 						inputClass += " is-invalid"
 					}
 				}}
-				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				<input type="text" disabled?={ col.IsDisabled } class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
 				if errStr != "" {
 					<p class="text text-danger text-small">{ errStr }</p>
 				}
@@ -264,7 +287,7 @@ templ multiFieldCol(cfg *multiFieldConfig, fld sdkapi.FormMultiField, mfval sdka
 					}
 				}}
 
-				<input type="text" class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
+				<input type="text" disabled?={ col.IsDisabled } class={ inputClass } name={ colName } placeholder={ col.Label } aria-label={ col.Label } value={ val }/>
 				if errStr != "" {
 					<p class="text text-danger text-small">{ errStr }</p>
 				}
@@ -287,7 +310,7 @@ templ multiFieldCol(cfg *multiFieldConfig, fld sdkapi.FormMultiField, mfval sdka
 					}
 				}}
 
-				<select class={ inputClass } name={ colName }>
+				<select disabled?={ col.IsDisabled } class={ inputClass } name={ colName }>
 					<option value="true" selected?={ boolVal }>Yes</option>
 					<option value="false" selected?={ !boolVal }>No</option>
 				</select>
