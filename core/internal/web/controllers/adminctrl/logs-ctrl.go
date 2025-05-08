@@ -4,15 +4,7 @@ import (
 	"core/db/models"
 	"core/internal/api"
 	logsview "core/resources/views/admin/logs"
-<<<<<<< HEAD
 	"errors"
-=======
-<<<<<<< HEAD
-=======
-	"core/resources/views/bs5utils"
-	"errors"
->>>>>>> 88723041 (Appy translate API for texts visible on portal and admin page.)
->>>>>>> 89a11707 (Appy translate API for texts visible on portal and admin page.)
 	"net/http"
 	"net/url"
 	sdkapi "sdk/api"

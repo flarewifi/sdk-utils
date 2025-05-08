@@ -387,11 +387,11 @@ func (validtr *HTTPFormValidator) validateString(required bool, val, label strin
 	}
 
 	if len(valStr) < min {
-		errStr = validtr.api.Translate("error", "less_than_minimum_char_error", "label", label, "value", min)
+		errStr = validtr.api.Translate("error", "less_than_minimum_chars_error", "label", label, "value", min)
 	}
 
 	if max != 0 && len(valStr) > max {
-		errStr = validtr.api.Translate("error", "more_than_maximum_char_error", "label", label, "value", max)
+		errStr = validtr.api.Translate("error", "more_than_maximum_chars_error", "label", label, "value", max)
 	}
 
 	return errStr
