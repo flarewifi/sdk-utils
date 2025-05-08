@@ -16,7 +16,7 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 
 		return sdkapi.HttpForm{
 			CallbackRoute: "admin:logs:search",
-			SubmitLabel:   g.CoreAPI.Translate("label", "system_logs"),
+			SubmitLabel:   g.CoreAPI.Translate("label", "search_logs"),
 			Sections: []sdkapi.FormSection{
 				{
 					Name:  "search",

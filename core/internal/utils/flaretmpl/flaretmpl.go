@@ -2,7 +2,6 @@ package flaretmpl
 
 import (
 	htmltemplate "html/template"
-	"log"
 	"os"
 	"sync"
 	texttemplate "text/template"
@@ -28,13 +27,10 @@ func GetHtmlTemplate(path string) (*htmltemplate.Template, error) {
 
 	tmpl, err := htmltemplate.New(path).Delims("<%", "%>").Parse(string(tmplContent))
 	if err != nil {
-		log.Printf("Error parsing template %s: %v", path, err)
 		return nil, err
 	}
 
-	if useCache {
-		htmlTmplCache.Store(path, tmpl)
-	}
+	htmlTmplCache.Store(path, tmpl)
 
 	return tmpl, nil
 }
