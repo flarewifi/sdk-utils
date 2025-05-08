@@ -60,7 +60,7 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 				Layout: layout,
 			}
 
-			page := themes.AdminThemeLayout(data)
+			page := themes.AdminThemeLayout(self.api, data)
 			if err := page.Render(r.Context(), w); err != nil {
 				fmt.Fprintf(w, "<p>TemplateError: %s</p>", err.Error())
 			}
@@ -116,7 +116,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 				Layout:       layout,
 			}
 
-			page := themes.PortalThemeLayout(data)
+			page := themes.PortalThemeLayout(self.api, data)
 			if err := page.Render(r.Context(), w); err != nil {
 				fmt.Fprintf(w, "<p>TemplateError: %s</p>", err.Error())
 			}

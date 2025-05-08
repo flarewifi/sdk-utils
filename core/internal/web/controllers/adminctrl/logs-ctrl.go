@@ -82,7 +82,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		logsIndex := logsview.Index(result.Logs, searchFormTpl, pagination)
+		logsIndex := logsview.Index(g.CoreAPI, result.Logs, searchFormTpl, pagination)
 
 		g.CoreAPI.HttpAPI.Response().AdminView(w, r, sdkapi.ViewPage{
 			PageContent: logsIndex,

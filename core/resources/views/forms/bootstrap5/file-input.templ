@@ -60,7 +60,7 @@ templ FileInputField(cfg *fileFieldConfig) {
 		}
 
 		if len(attrs.Valid) > 0 {
-			Valid File(s)
+			{ cfg.pluginAPI.Translate("label", "valid_files") }
 			<ul>
 				for _, val := range attrs.Valid {
 					<li>
@@ -73,8 +73,6 @@ templ FileInputField(cfg *fileFieldConfig) {
 
 							deleteURL :=cfg.pluginAPI.Http().Helpers().UrlForRoute("forms.file.delete")
 							deleteURL += "?" + query.Encode()
-
-							fmt.Println("deleteURL: ",deleteURL)
 						}}
 
 						<span class="ms-2">
@@ -83,7 +81,7 @@ templ FileInputField(cfg *fileFieldConfig) {
 								hx-post={ deleteURL }
 								hx-on="htmx:afterRequest: window.location.reload()"
 							>
-								Remove
+								{ cfg.pluginAPI.Translate("label", "remove") }
 							</a>
 						</span>
 				 	</li>

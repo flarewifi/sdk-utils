@@ -23,7 +23,7 @@ type PortalLayoutData struct {
 	Layout templ.Component
 }
 
-templ PortalThemeLayout(data PortalLayoutData) {
+templ PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) {
 	<!DOCTYPE html>
 	<html lang="en" data-bs-theme="auto">
 		<head>
@@ -31,7 +31,7 @@ templ PortalThemeLayout(data PortalLayoutData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
             <!-- Prevent page from being cached -->
             <meta name="pageuuid" content={ data.PageUUID } />
-			<title>Flare Hotspot</title>
+			<title>{ api.Translate("label", "flare_hotspot") }</title>
 			<!-- Theme Stylesheets -->
 			if data.Assets.GlobalCssHref != "" {
 				<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>

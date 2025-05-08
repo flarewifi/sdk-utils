@@ -19,7 +19,7 @@ type UIApi struct {
 }
 
 func (self *UIApi) Pagination(opts *sdkapi.UIPaginationOpts) templ.Component {
-	paginationTemplate := bs5utils.Pagination(bs5utils.PaginationOpts{
+	paginationTemplate := bs5utils.Pagination(self.api, bs5utils.PaginationOpts{
 		PageURL:     opts.PageURL,
 		PerPage:     opts.PerPage,
 		CurrentPage: opts.CurrentPage,

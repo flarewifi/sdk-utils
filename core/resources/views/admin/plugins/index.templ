@@ -21,20 +21,20 @@ type IndexPageData struct {
 }
 
 templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
-	<h1>Plugins</h1>
+	<h1>{ api.Translate("label", "plugins") }</h1>
 	<hr/>
 	<div class="pb-3">
 		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.install")) }>
-			Install Plugin
+			{ api.Translate("label", "install_plugin") }
 		</a>
 	</div>
 	<table class="table table-bordered">
 		<thead>
 			<tr>
-				<th>Name</th>
-				<th>Status</th>
-				<th>More</th>
-				<th>Actions</th>
+				<th>{ api.Translate("label", "name") }</th>
+				<th>{ api.Translate("label", "status") }</th>
+				<th>{ api.Translate("label", "more") }</th>
+				<th>{ api.Translate("label", "actions") }</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -43,13 +43,13 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
 				<td>{ p.Info.Name }</td>
 				<td>
 					if p.ToBeRemoved {
-						<span style="color: red;">To Be Removed</span>
+						<span style="color: red;">{ api.Translate("label", "to_be_removed") }</span>
 					}
 					if p.HasPendingUpdate {
-						<span style="color: green;">To Be Updated</span>
+						<span style="color: green;">{ api.Translate("label", "to_be_updated") }</span>
 					}
 					if !p.ToBeRemoved && !p.HasPendingUpdate {
-						<span>Installed</span>
+						<span>{ api.Translate("label", "installed") }</span>
 					}
 				</td>
 				<td>
@@ -60,7 +60,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
 						<span hx-boost="true">
 							<a class="btn btn-sm btn-danger" hx-confirm="Are you sure you want to uninstall this plugin?" hx-post={
 							api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg" , p.Info.Package) }>
-							Uninstall
+								{ api.Translate("label", "uninstall") }
 							</a>
 						</span>
 					}
@@ -69,7 +69,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
 					<a class="btn btn-sm btn-primary" href={
 						templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.checkupdates", "pkg" ,
 						p.Info.Package)) }>
-						Check For Updates
+							{ api.Translate("label", "check_for_updates") }
 					</a>
 					}
 				</td>
@@ -78,9 +78,9 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
 		</tbody>
 	</table>
 	<div class="alert alert-info">
-		Plugins marked with "To Be Removed" will be removed on the next reboot.
+		{ api.Translate("label", "to_be_removed_alert") }
 	</div>
 	<div class="alert alert-info">
-		Plugins marked with "To Be Updated" will be updated on the next reboot.
+		{ api.Translate("label", "to_be_updated_alert") }
 	</div>
 }
