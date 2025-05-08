@@ -59,7 +59,7 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 							Name:       "level",
 							Label:      g.CoreAPI.Translate("label", "level"),
 							Type:       sdkapi.FormFieldTypeString,
-							OptionType: sdkapi.OptionTypeSelect,
+							OptionType: sdkapi.FormListOptionSelect,
 							Options: func() []sdkapi.FormListFieldOption {
 								return []sdkapi.FormListFieldOption{
 									{Label: g.CoreAPI.Translate("label", "logs_all"), Value: ""},
