@@ -1,6 +1,7 @@
 package adminctrl
 
 import (
+	"errors"
 	"net/http"
 	sdkapi "sdk/api"
 
@@ -27,21 +28,26 @@ func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
+		saveErrorMsg := errors.New(g.CoreAPI.Translate("error", "save_settings_error"))
+
 		httpForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm(coreforms.ThemesFormName, w, r)
 		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
+			res.Error(w, r, saveErrorMsg, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
 		portalTheme, err := httpForm.GetStringValue("themes", "portal_theme")
 		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
+			res.Error(w, r, saveErrorMsg, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
 		adminTheme, err := httpForm.GetStringValue("themes", "admin_theme")
 		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
+			res.Error(w, r, saveErrorMsg, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
@@ -50,11 +56,14 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 			PortalThemePkg: portalTheme,
 		})
 		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
+			res.Error(w, r, saveErrorMsg, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
-		api.NewGlobals().CoreAPI.HttpAPI.Response().FlashMsg(w, r, "Settings saved successfully", sdkapi.FlashMsgSuccess)
+		successfulSavedMsg := g.CoreAPI.Translate("info", "saved_settings_message")
+		api.NewGlobals().CoreAPI.HttpAPI.Response().FlashMsg(w, r, successfulSavedMsg, sdkapi.FlashMsgSuccess)
+
 		themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
 		http.Redirect(w, r, themesIndexUrl, http.StatusSeeOther)
 	}

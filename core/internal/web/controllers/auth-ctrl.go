@@ -3,6 +3,7 @@ package controllers
 import (
 	"core/internal/api"
 	webutil "core/internal/utils/web"
+	"errors"
 	"net/http"
 	sdkapi "sdk/api"
 )
@@ -17,7 +18,7 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 		res := g.CoreAPI.HttpAPI.Response()
 		_, t, err := g.PluginMgr.GetAdminTheme()
 		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
+			res.Error(w, r, errors.New(g.CoreAPI.Translate("error", "get_admin_theme_error")), http.StatusInternalServerError)
 			return
 		}
 

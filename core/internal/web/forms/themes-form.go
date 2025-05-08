@@ -31,7 +31,7 @@ func RegisterThemesForm(g *api.CoreGlobals) (err error) {
 
 	portalThemesField := sdkapi.FormListField{
 		Name:  "portal_theme",
-		Label: "Select Portal Theme",
+		Label: g.CoreAPI.Translate("label", "select_portal_theme"),
 		Type:  sdkapi.FormFieldTypeString,
 		ValueFn: func() interface{} {
 			cfg, err := config.ReadThemesConfig()
@@ -55,7 +55,7 @@ func RegisterThemesForm(g *api.CoreGlobals) (err error) {
 
 	adminThemesField := sdkapi.FormListField{
 		Name:  "admin_theme",
-		Label: "Select Admin Theme",
+		Label: g.CoreAPI.Translate("label", "select_admin_theme"),
 		Type:  sdkapi.FormFieldTypeString,
 		ValueFn: func() interface{} {
 			cfg, err := config.ReadThemesConfig()
@@ -79,7 +79,7 @@ func RegisterThemesForm(g *api.CoreGlobals) (err error) {
 
 	themesForm := sdkapi.HttpForm{
 		CallbackRoute: "admin:themes:save",
-		SubmitLabel:   "Save Settings",
+		SubmitLabel:   g.CoreAPI.Translate("label", "save_settings"),
 		Sections: []sdkapi.FormSection{
 			{
 				Name: "themes",
