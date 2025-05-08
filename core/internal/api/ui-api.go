@@ -2,7 +2,6 @@ package api
 
 import (
 	"core/resources/views/bs5utils"
-	"log"
 
 	sdkapi "sdk/api"
 
@@ -20,7 +19,6 @@ type UIApi struct {
 }
 
 func (self *UIApi) Pagination(opts *sdkapi.UIPaginationOpts) templ.Component {
-	log.Println("self.api: ", self)
 	paginationTemplate := bs5utils.Pagination(self.api, bs5utils.PaginationOpts{
 		PageURL:     opts.PageURL,
 		PerPage:     opts.PerPage,
