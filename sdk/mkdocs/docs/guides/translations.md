@@ -30,12 +30,12 @@ The translate method can also be called within views using the `{ api.Translate(
 Let's say you want to display an amount in a label. You can use the  [IPluginApi.Translate](../api/plugin-api.md#translate) method with variables to achieve this. For example, if you have the following translation text with a vairable `amount`:
 
 ``` title="resources/translations/en/label/paid_amount.txt"
-You paid <% .amount %>
+You paid <% .currency %> <% .amount %>
 ```
 
-Then you can substitue the variable `amount` with the actual value like this:
+Then you can substitue the variable `amount` with the actual value following like this:
 ```go
-txt := api.Translate("label", "paid_amount", "amount", 100)
+txt := api.Translate("label", "paid_amount", "currency", "PHP", "amount", 100)
 ```
 
 Likewise, you can use the [IPluginApi.Translate](../api/plugin-api.md#translate) method in views to achieve the same result:
