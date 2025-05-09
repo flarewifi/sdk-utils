@@ -29,6 +29,7 @@ func (ctrl *BootCtrl) IndexPage(w http.ResponseWriter, r *http.Request) {
 	cssSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingCssFile))
 
 	page := boot.BootPage(&boot.BootPageData{
+		API:    ctrl.api,
 		SseURL: urls.BOOT_STATUS_URL,
 		JsSrc:  jsSrc,
 		CssSrc: cssSrc,

@@ -53,6 +53,7 @@ func (self *PluginUtils) Translate(msgtype string, msgk string, pairs ...interfa
 	}
 
 	s := output.String()
+
 	return strings.TrimSpace(s)
 }
 

@@ -5,6 +5,8 @@ package bs5utils
 import (
 	"fmt"
 	"net/url"
+
+	sdkapi "sdk/api"
 )
 
 type PaginationOpts struct {
@@ -16,7 +18,7 @@ type PaginationOpts struct {
 	ExtraParams   map[string]string
 }
 
-templ Pagination(opts PaginationOpts) {
+templ Pagination(api sdkapi.IPluginApi, opts PaginationOpts) {
 	{{
 
 	if opts.MaxPagerCount == 0 {
@@ -50,11 +52,11 @@ templ Pagination(opts PaginationOpts) {
 	}}
 	<nav aria-label="Pagination">
 		<ul class="pagination">
-			@previousItem(opts)
+			@previousItem(api, opts)
 			for i := startPage; i <= endPage; i++ {
 				@pageItem(opts, i)
 			}
-			@nextItem(opts)
+			@nextItem(api, opts)
 		</ul>
 	</nav>
 }
@@ -72,7 +74,7 @@ templ pageItem(opts PaginationOpts, page int) {
 	<li class={ klass }><a class="page-link" href={ templ.SafeURL(href) }>{ fmt.Sprintf("%d", page) }</a></li>
 }
 
-templ previousItem(opts PaginationOpts) {
+templ previousItem(api sdkapi.IPluginApi, opts PaginationOpts) {
 	{{
 
 	klass := "page-item"
@@ -83,11 +85,11 @@ templ previousItem(opts PaginationOpts) {
 	href := pageHref(opts, opts.CurrentPage-1)
 	}}
 	<li class={ klass }>
-		<a class="page-link" href={ href }>Previous</a>
+		<a class="page-link" href={ href }>{ api.Translate("label", "previous") }</a>
 	</li>
 }
 
-templ nextItem(opts PaginationOpts) {
+templ nextItem(api sdkapi.IPluginApi, opts PaginationOpts) {
 	{{
 
 	var lastPage int64
@@ -108,7 +110,7 @@ templ nextItem(opts PaginationOpts) {
 	href := pageHref(opts, opts.CurrentPage+1)
 	}}
 	<li class={ klass }>
-		<a class="page-link" href={ href }>Next</a>
+		<a class="page-link" href={ href }>{ api.Translate("label", "next") }</a>
 	</li>
 }
 

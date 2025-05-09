@@ -16,18 +16,18 @@ type Release struct {
 }
 
 templ ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) {
-	<h1>Github Releases</h1>
+	<h1>{ api.Translate("label", "github_releases") }</h1>
 	if len(data) == 0 {
-		<h2>No available releases</h2>
+		<h2>{ api.Translate("label", "no_available_releases") }</h2>
 	}
 	<div>
 		<table class="table table-bordered">
 			<thead>
-				<td>Tag Name</td>
-				<td>Name</td>
-				<td>Description</td>
-				<td>Published Date</td>
-				<td>Download Link</td>
+				<td>{ api.Translate("label", "tag_name") }</td>
+				<td>{ api.Translate("label", "name") }</td>
+				<td>{ api.Translate("label", "description") }</td>
+				<td>{ api.Translate("label", "published_date") }</td>
+				<td>{ api.Translate("label", "download_link") }</td>
 			</thead>
 			<tbody>
 				for _, release := range data {

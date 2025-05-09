@@ -16,27 +16,28 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 
 		return sdkapi.HttpForm{
 			CallbackRoute: "admin:logs:search",
-			SubmitLabel:   "Search Logs",
+			SubmitLabel:   g.CoreAPI.Translate("label", "search_logs"),
 			Sections: []sdkapi.FormSection{
 				{
 					Name:  "search",
-					Label: "System Logs",
+					Label: g.CoreAPI.Translate("label", "system_logs"),
 					Fields: []sdkapi.IFormField{
 						sdkapi.FormStringField{
-							Name:  "search_text",
-							Label: "Search Logs",
+							Name:     "search_text",
+							Label:    g.CoreAPI.Translate("label", "search_logs"),
+							Required: true,
 							ValueFn: func() string {
 								return searchText
 							},
 						},
 						sdkapi.FormListField{
 							Name:       "package",
-							Label:      "Package",
+							Label:      g.CoreAPI.Translate("label", "package"),
 							Type:       sdkapi.FormFieldTypeString,
 							OptionType: sdkapi.FormListOptionSelect,
 							Options: func() []sdkapi.FormListFieldOption {
 								opts := []sdkapi.FormListFieldOption{
-									{Label: "All", Value: ""},
+									{Label: g.CoreAPI.Translate("label", "logs_all"), Value: ""},
 								}
 
 								pkgs := g.PluginMgr.All()
@@ -56,15 +57,15 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 						},
 						sdkapi.FormListField{
 							Name:       "level",
-							Label:      "Level",
+							Label:      g.CoreAPI.Translate("label", "level"),
 							Type:       sdkapi.FormFieldTypeString,
 							OptionType: sdkapi.FormListOptionSelect,
 							Options: func() []sdkapi.FormListFieldOption {
 								return []sdkapi.FormListFieldOption{
-									{Label: "All", Value: ""},
-									{Label: "Info", Value: api.LogLevelInfo},
-									{Label: "Debug", Value: api.LogLevelDebug},
-									{Label: "Error", Value: api.LogLevelError},
+									{Label: g.CoreAPI.Translate("label", "logs_all"), Value: ""},
+									{Label: g.CoreAPI.Translate("label", "logs_info"), Value: api.LogLevelInfo},
+									{Label: g.CoreAPI.Translate("label", "logs_debug"), Value: api.LogLevelDebug},
+									{Label: g.CoreAPI.Translate("label", "logs_error"), Value: api.LogLevelError},
 								}
 							},
 							ValueFn: func() interface{} {

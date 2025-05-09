@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 
 	"core/internal/api"
@@ -11,7 +12,10 @@ func AdminIndexPage(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, t, err := g.PluginMgr.GetAdminTheme()
 		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, err, 500)
+			errMsg := g.CoreAPI.Translate("error", "get_admin_theme_error")
+			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(errMsg), http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+
 			return
 		}
 		page := t.AdminTheme.IndexPageFactory(w, r)

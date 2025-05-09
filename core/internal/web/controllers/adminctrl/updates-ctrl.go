@@ -4,6 +4,7 @@ import (
 	"core/internal/api"
 	"core/internal/utils/updates"
 	updatesview "core/resources/views/admin/updates"
+	"errors"
 	"log"
 	"net/http"
 	sdkapi "sdk/api"
@@ -29,17 +30,19 @@ func CheckUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
 		coreInfo := api.Info()
+
+		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "check_updates_error"))
 		currentVersion, err := semver.NewVersion(coreInfo.Version)
 		if err != nil {
 			log.Println("Error:", err)
-			res.Error(w, r, err, http.StatusInternalServerError)
+			res.Error(w, r, checkUpdateErr, http.StatusInternalServerError)
 			return
 		}
 
 		result, err := updates.CheckCoreReleaseUpdate(currentVersion)
 		if err != nil {
 			log.Println("Error:", err)
-			res.Error(w, r, err, http.StatusInternalServerError)
+			res.Error(w, r, checkUpdateErr, http.StatusInternalServerError)
 			return
 		}
 

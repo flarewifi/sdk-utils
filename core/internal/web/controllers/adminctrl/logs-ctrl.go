@@ -4,6 +4,7 @@ import (
 	"core/db/models"
 	"core/internal/api"
 	logsview "core/resources/views/admin/logs"
+	"errors"
 	"net/http"
 	"net/url"
 	sdkapi "sdk/api"
@@ -22,10 +23,13 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 		var ipage, iPerPage int
 		var err error
 
+		searchLogsErr := errors.New(g.CoreAPI.Translate("error", "search_logs_error"))
+
 		if page != "" {
 			ipage, err = strconv.Atoi(page)
 			if err != nil {
-				g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
+				g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
+				g.CoreAPI.LoggerAPI.Error(err.Error())
 				return
 			}
 		}
@@ -36,7 +40,8 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 		if perPage != "" {
 			iPerPage, err = strconv.Atoi(perPage)
 			if err != nil {
-				g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
+				g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
+				g.CoreAPI.LoggerAPI.Error(err.Error())
 				return
 			}
 		}
@@ -54,7 +59,8 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 
 		result, err := g.Models.Log().Paginate(r.Context(), opts)
 		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
@@ -71,11 +77,12 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 		})
 		searchFormTpl, err := g.CoreAPI.HttpAPI.Forms().GetFormTemplate("logs-form", r)
 		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
-		logsIndex := logsview.Index(result.Logs, searchFormTpl, pagination)
+		logsIndex := logsview.Index(g.CoreAPI, result.Logs, searchFormTpl, pagination)
 
 		g.CoreAPI.HttpAPI.Response().AdminView(w, r, sdkapi.ViewPage{
 			PageContent: logsIndex,
@@ -91,9 +98,13 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		searchLogsErr := errors.New(g.CoreAPI.Translate("error", "search_logs_error"))
+
 		pkg, err := searchForm.GetStringValue("search", "package")
 		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+
 			return
 		}
 
@@ -107,7 +118,8 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 
 		level, err := searchForm.GetStringValue("search", "level")
 		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
@@ -117,7 +129,8 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 
 		searchTxt, err := searchForm.GetStringValue("search", "search_text")
 		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, err, http.StatusInternalServerError)
+			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 

@@ -55,7 +55,7 @@ func (validtr *HTTPFormValidator) ValidateFormField(
 	case sdkapi.FormListField:
 		singleRequired := !v.Multiple && v.IsRequired()
 		if val == nil && singleRequired {
-			errStr = fmt.Sprintf("Must choose one of the %vs.", v.GetLabel())
+			errStr = validtr.api.Translate("error", "list_option_required_error", "label", v.GetLabel())
 		}
 
 		if v.Multiple {
@@ -286,11 +286,11 @@ func (validtr *HTTPFormValidator) validateMultiFieldForm(
 
 	numRows := len(mfdata)
 	if numRows < mfld.Minimum {
-		parseErr = fmt.Sprintf("Must have at least %v rows.", mfld.Minimum)
+		parseErr = validtr.api.Translate("error", "less_than_minimum_rows_error", "value", mfld.Minimum)
 	}
 
 	if mfld.Maximum != 0 && numRows > mfld.Maximum {
-		parseErr = fmt.Sprintf("Must not exceed  %v rows.", mfld.Maximum)
+		parseErr = validtr.api.Translate("error", "more_than_maximum_rows_error", "value", mfld.Maximum)
 	}
 
 	// This is to delete previous error in the cookie.
@@ -354,11 +354,11 @@ func (validtr *HTTPFormValidator) validateInteger(val any, min, max int, label s
 	}
 
 	if valInt < min {
-		errStr = fmt.Sprintf("%v must be more than %v.", label, min-1)
+		errStr = validtr.api.Translate("error", "less_than_minimum_amount_error", "label", label, "value", min-1)
 	}
 
 	if max != 0 && valInt > max {
-		errStr = fmt.Sprintf("%v must be less than %v.", label, max)
+		errStr = validtr.api.Translate("error", "more_than_maximum_amount_error", "label", label, "value", max)
 	}
 
 	return errStr
@@ -367,11 +367,11 @@ func (validtr *HTTPFormValidator) validateInteger(val any, min, max int, label s
 func (validtr *HTTPFormValidator) validateDecimal(val any, min, max int, label string) (errStr string) {
 	fval := val.(float64)
 	if fval < float64(min) {
-		errStr = fmt.Sprintf("%v must be more than %v.", label, min-1)
+		errStr = validtr.api.Translate("error", "less_than_minimum_amount_error", "label", label, "value", min-1)
 	}
 
 	if float64(max) != 0 && fval > float64(max) {
-		errStr = fmt.Sprintf("%v must be less than %v.", label, max)
+		errStr = validtr.api.Translate("error", "more_than_maximum_amount_error", "label", label, "value", max)
 	}
 
 	return errStr
@@ -381,17 +381,17 @@ func (validtr *HTTPFormValidator) validateString(required bool, val, label strin
 	valStr := strings.TrimSpace(fmt.Sprint(val))
 
 	if required && valStr == "" {
-		errStr = fmt.Sprintf("%v must not be empty.", label)
+		errStr = validtr.api.Translate("error", "empty_string_field_error", "label", label)
 
 		return
 	}
 
 	if len(valStr) < min {
-		errStr = fmt.Sprintf("%v must have at least %v character(s).", label, min)
+		errStr = validtr.api.Translate("error", "less_than_minimum_chars_error", "label", label, "value", min)
 	}
 
 	if max != 0 && len(valStr) > max {
-		errStr = fmt.Sprintf("%v must not exceed %v character(s).", label, max)
+		errStr = validtr.api.Translate("error", "more_than_maximum_chars_error", "label", label, "value", max)
 	}
 
 	return errStr
@@ -404,11 +404,11 @@ func (validtr *HTTPFormValidator) validateMultipleList(val any, min, max int, la
 	if listVal.Kind() == reflect.Slice {
 		count := listVal.Len()
 		if count < min {
-			errStr = fmt.Sprintf("Must choose at least %v of the %vs.", min, label)
+			errStr = validtr.api.Translate("error", "less_than_minimum_selection_error", "value", min, "label", label)
 		}
 
 		if max != 0 && count > max {
-			errStr = fmt.Sprintf("Must choose at most %v of the %vs.", max, label)
+			errStr = validtr.api.Translate("error", "more_than_maximum_selection_error", "value", max, "label", label)
 		}
 
 		var sb strings.Builder
@@ -438,20 +438,20 @@ func (validtr *HTTPFormValidator) validateFile(
 
 	var errStr string
 	if fld.IsRequired() && val == nil {
-		errStr = "Must upload a file."
+		errStr = validtr.api.Translate("error", "file_required_error")
 	}
 
 	paths := val.([]string)
 	if fld.IsRequired() && len(paths) == 0 {
-		errStr = "Must upload a file."
+		errStr = validtr.api.Translate("error", "file_required_error")
 	}
 
 	if fld.MinFiles != 0 && len(paths) < fld.MinFiles {
-		errStr = fmt.Sprintf("Must upload atleast %v file(s).", fld.MinFiles)
+		errStr = validtr.api.Translate("error", "less_than_minimum_file_count_error", "value", fld.MinFiles)
 	}
 
 	if fld.MaxFiles != 0 && len(paths) > fld.MaxFiles {
-		errStr = fmt.Sprintf("Must upload at most %v file(s).", fld.MaxFiles)
+		errStr = validtr.api.Translate("error", "more_than_maximum_file_count_error", "value", fld.MaxFiles)
 	}
 
 	// Delete previous error with same cookie name.
@@ -492,13 +492,16 @@ func (validtr *HTTPFormValidator) validateFile(
 
 	if validCount == 0 && len(paths) > 0 {
 		var errMsg strings.Builder
-		errMsg.WriteString("No valid files found:\n")
+
+		errMsg.WriteString(fmt.Sprintf("%s\n", validtr.api.Translate("error", "no_file_found_error")))
 
 		if fld.MinSizeMb > 0 {
-			errMsg.WriteString(fmt.Sprintf("\t- Must be at least %d mb.\n", fld.MinSizeMb))
+			errStr := validtr.api.Translate("error", "less_than_minimum_file_size", "value", fld.MinSizeMb)
+			errMsg.WriteString(fmt.Sprintf("\t- %v\n", errStr))
 		}
 		if fld.MaxSizeMb > 0 {
-			errMsg.WriteString(fmt.Sprintf("\t- Must not exceed %d mb.", fld.MaxSizeMb))
+			errStr := validtr.api.Translate("error", "more_than_maximum_file_size", "value", fld.MaxSizeMb)
+			errMsg.WriteString(fmt.Sprintf("\t- %v", errStr))
 		}
 
 		errStr = base64.StdEncoding.EncodeToString([]byte(errMsg.String()))

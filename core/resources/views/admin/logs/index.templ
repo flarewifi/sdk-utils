@@ -1,9 +1,12 @@
 package logsview
 
-import "core/db/models"
+import (
+	"core/db/models"
+ 	sdkapi "sdk/api"
+)
 
-templ Index(logs []*models.Log, searchForm templ.Component, pagination templ.Component) {
-	<h1>System Logs</h1>
+templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchForm templ.Component, pagination templ.Component) {
+	<h1>{ api.Translate("label", "system_logs") }</h1>
 
 	<div class="mt-3">
 		<div class="card">
@@ -17,9 +20,9 @@ templ Index(logs []*models.Log, searchForm templ.Component, pagination templ.Com
 		<table class="table table-bordered table-striped">
 			<thead>
 				<tr>
-					<th>Package</th>
-					<th>Level</th>
-					<th>Message</th>
+					<th>{ api.Translate("label", "package") }</th>
+					<th>{ api.Translate("label", "level") }</th>
+					<th>{ api.Translate("label", "message") }</th>
 				</tr>
 			</thead>
 			<tbody>

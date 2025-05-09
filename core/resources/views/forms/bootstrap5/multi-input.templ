@@ -7,6 +7,7 @@ import (
 )
 
 type multiFieldConfig struct {
+	pluginAPI sdkapi.IPluginApi
 	form  sdkapi.IHttpForm
 	sec   sdkapi.IFormSection
 	fld   sdkapi.IFormField
@@ -40,7 +41,7 @@ templ MultiInputField(cfg *multiFieldConfig) {
 		for _, col := range mfld.Columns() {
 			<div class="col">{ col.Label }</div>
 		}
-		<div class="col">Options</div>
+		<div class="col">{ cfg.pluginAPI.Translate("label", "options") }</div>
 	</div>
 
 
@@ -71,7 +72,14 @@ templ MultiInputField(cfg *multiFieldConfig) {
 				}
 			}
 		}}
-		<button type="button" class="" disabled?={ disableButton } x-on:click="newrows.push({ deleted: false })">Add Item</button>
+		<button
+			type="button"
+			class=""
+			disabled?={ disableButton }
+			x-on:click="newrows.push({ deleted: false })"
+		>
+			{ cfg.pluginAPI.Translate("label", "add_item") }
+		</button>
 	</div>
 }
 
@@ -96,13 +104,13 @@ templ multiFieldRow(cfg *multiFieldConfig, mfld sdkapi.FormMultiField, mfval sdk
 						deleteBtnClass += " disabled"
 					}
 				}}
-				<button type="button" class={ editBtnClass }>Edit</button>
+				<button type="button" class={ editBtnClass }>{ cfg.pluginAPI.Translate("label", "edit") }</button>
 				<button
 					type="button"
 					class={ deleteBtnClass }
 					x-on:click="row.deleted = true"
 				>
-					Delete
+					{ cfg.pluginAPI.Translate("label", "delete") }
 				</button>
 			</div>
 		</div>
@@ -147,13 +155,13 @@ templ displayValuesFromCookies(cfg *multiFieldConfig, mfld sdkapi.FormMultiField
 
 					if shouldDisplayButtons {
 						<div class="col">
-							<button type="button" class="btn btn-secondary">Edit</button>
+							<button type="button" class="btn btn-secondary">{ cfg.pluginAPI.Translate("label", "edit") }</button>
 							<button
 								type="button"
 								class="btn btn-danger"
 								x-on:click="row.deleted = true"
 							>
-								Delete
+								{ cfg.pluginAPI.Translate("label", "delete") }
 							</button>
 						</div>
 					}

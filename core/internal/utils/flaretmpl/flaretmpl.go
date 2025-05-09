@@ -31,6 +31,7 @@ func GetHtmlTemplate(path string) (*htmltemplate.Template, error) {
 	}
 
 	htmlTmplCache.Store(path, tmpl)
+
 	return tmpl, nil
 }
 

@@ -11,7 +11,7 @@ templ ShowUpdates(api sdkapi.IPluginApi) {
 	<div id="page">
 		<button class="btn btn-primary" type="button" hx-target="#page" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } data-loading-disable>Check for updates</button>
 		<br/>
-		<div data-loading>Checking for updates...</div>
+		<div data-loading>{ api.Translate("label", "checking_for_updates") }... </div>
 	</div>
 }
 
@@ -21,14 +21,18 @@ templ CheckForUpdate(api sdkapi.IPluginApi, update *SoftwareUpdate, err error) {
 		{{ 	return }}
 	}
 	if update == nil {
-		<div class="alert alert-success">Software is up to date</div>
+		<div class="alert alert-success">{ api.Translate("label", "software_up_to_date") }</div>
 		{{ return }}
 	}
 	<div>
-		<div>New Version: { update.NewVersion }</div>
+		<div>{ api.Translate("label", "new_version") }: { update.NewVersion }</div>
 		<div>
-			<small>Current Version: { update.CurrentVersion }</small>
+			<small>{ api.Translate("label", "current_version") }: { update.CurrentVersion }</small>
 		</div>
-		<button type="button" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.download") } data-loading-disable>Download update</button>
+		<button
+			type="button"
+			hx-post={ api.Http().Helpers().UrlForRoute("system.updates.download") }
+			data-loading-disable>{ api.Translate("label", "download_update") }
+		</button>
 	</div>
 }

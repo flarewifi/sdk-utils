@@ -23,11 +23,11 @@ type AdminLayoutData struct {
 	Layout templ.Component
 }
 
-templ AdminThemeLayout(data AdminLayoutData) {
+templ AdminThemeLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 	<!DOCTYPE html>
 	<html lang="en" data-bs-theme="auto">
 		<head>
-			<title>Web Admin</title>
+			<title>{ api.Translate("label", "web_admin") }</title>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<!-- Theme Stylesheets -->
 			if data.Assets.GlobalCssHref != "" {

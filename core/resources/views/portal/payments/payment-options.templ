@@ -1,14 +1,16 @@
 package paymentsview
 
+import 	sdkapi "sdk/api"
+
 type PaymentOption struct {
 	Name string
 	URL  string
 }
 
-templ PaymentOptions(opts []PaymentOption) {
-	<h1>Pending Purchase</h1>
+templ PaymentOptions(api sdkapi.IPluginApi, opts []PaymentOption) {
+	<h1>{ api.Translate("label", "pending_purchase") }</h1>
     <hr>
-    <h3>Choose a payment option:</h3>
+    <h3>{ api.Translate("label", "choose_payment_option") }:</h3>
 	<hr/>
 	<ul>
 		for _, opt := range opts {

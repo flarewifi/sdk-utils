@@ -21,7 +21,7 @@ func PaymentOptionsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
-		paymentsPage := paymentsview.PaymentOptions(opts)
+		paymentsPage := paymentsview.PaymentOptions(g.CoreAPI, opts)
 		res.PortalView(w, r, sdkapi.ViewPage{
 			PageContent: paymentsPage,
 		})
