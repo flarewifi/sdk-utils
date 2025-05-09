@@ -69,6 +69,7 @@ templ HtmlForm(cfg *HtmlFormConfig) {
 						case sdkapi.FormFieldTypeMulti:
 							{{
 								multiFieldInput := &multiFieldConfig{
+									pluginAPI: cfg.PluginAPI,
 									form:  cfg.Form,
 									sec:   sec,
 									fld:   fld,
