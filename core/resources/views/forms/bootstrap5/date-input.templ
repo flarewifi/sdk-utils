@@ -1,0 +1,69 @@
+package bootstrap5
+
+import (
+	"fmt"
+	"errors"
+	"sdk/api"
+)
+
+type DateInputFieldAttrs struct {
+	Label      string
+	Name       string
+	MinDate 	string
+	MaxDate 	string
+	Value      string
+	Error      error
+}
+
+
+templ DateInputField(cfg *inputFieldConfig) {
+	<div class="pb-3">
+		{{
+			attrs := getDateInputFieldAttrs(cfg)
+
+			inputClass := "form-control"
+			labelClass := "form-label"
+			if attrs.Error != nil {
+				inputClass += " is-invalid"
+				labelClass += " text-danger"
+			}
+		}}
+
+		<label for={ attrs.Name } class={ labelClass }>{ attrs.Label }</label>
+		<input
+			class={ inputClass }
+			id={ attrs.Name }
+			name={ attrs.Name }
+			value={ attrs.Value }
+			type="date"
+			min={ attrs.MinDate }
+			max={ attrs.MaxDate }
+		/>
+
+		if attrs.Error != nil {
+			<div class="invalid-feedback">{ attrs.Error.Error() }</div>
+		}
+	</div>
+}
+
+func getDateInputFieldAttrs(cfg *inputFieldConfig) (attrs DateInputFieldAttrs) {
+	attrs.Name = fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName())
+	attrs.Label = cfg.fld.GetLabel()
+
+	dateFld := cfg.fld.(sdkapi.FormDateField)
+	attrs.MinDate = dateFld.Minimum
+	attrs.MaxDate = dateFld.Maximum
+
+	attrs.Value = cfg.value
+	if cfg.error != "" {
+		attrs.Error = errors.New(cfg.error)
+
+		return
+	}
+
+	if attrs.Value == "" {
+		attrs.Value, attrs.Error = cfg.form.GetDateValue(cfg.sec.GetName(), cfg.fld.GetName())
+	}
+
+	return
+}
