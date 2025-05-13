@@ -623,6 +623,50 @@ sdkapi.FormFileField{
 },
 ```
 
+### Date Field
+
+The `FormDateField` represents a date picker field in a form.
+
+#### Definition
+
+```go
+type FormDateField struct {
+	Name     string
+	Label    string
+	Required bool
+	Minimum  string
+	Maximum  string
+	ValueFn  func() string
+}
+```
+
+#### Properties
+
+| Field | Description |
+|--- | --- |
+| `Name`  | The name of the input field. |
+| `Label` | The label displayed for the input field. |
+| `Required` | Indicates if a file input is required. |
+| `ValueFn` | Function that returns the date value as a string. |
+| `Minimum` | Minimum date selectable. Should be in sdkapi.DateFormat (`YYYY-MM-DD`) |
+| `Maximum` | Maximum date selectable. Should be in sdkapi.DateFormat (`YYYY-MM-DD`) |
+
+
+#### Usage Example
+
+```go
+sdkapi.FormFileField{
+	Name:     "Date",
+	Label:    "Birthday",
+	Required: true,
+	Minimum:  "1989-01-01",
+	Maximum:  time.Now().Format(sdkapi.DateFormat),
+	ValueFn: func() string {
+		return time.Now().Format(sdkapi.DateFormat)
+	},
+},
+```
+
 ## FormMultiFieldCol {#multi-field-column}
 
 Represents a column in the [multi-field](#multi-field) form.
@@ -686,6 +730,9 @@ type IHttpForm interface {
 
 	GetFilePath(section string, name string) (string, error)
 	GetFilePaths(section string, name string) ([]string, error)
+
+	GetDateValue(section string, name string) (string, error)
+	GetDateValues(section string, name string) ([]string, error)
 }
 ```
 
@@ -807,7 +854,22 @@ Returns a slice of paths for multiple files.
 urls, err := form.GetFilePaths("file_section_name", "file_field_name")
 ```
 
----
+#### GetDateValue
+
+Returns the date value as a string
+
+```go
+url, err := form.GetDateValue("file_section_name", "file_field_name")
+```
+
+#### GetDateValues
+
+Returns a slice of date values as string.
+
+```go
+urls, err := form.GetDateValues("file_section_name", "file_field_name")
+```
+
 
 ## IFormSection
 

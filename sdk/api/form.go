@@ -17,6 +17,7 @@ const (
 	FormFieldTypeString  string = "string"
 	FormFieldTypeText    string = "text"
 	FormFieldTypeFile    string = "file"
+	FormFieldTypeDate    string = "date"
 )
 
 var ErrFormParse = errors.New("parsing error")
@@ -48,6 +49,9 @@ type IHttpForm interface {
 
 	GetFilePath(section string, name string) (string, error)
 	GetFilePaths(section string, name string) ([]string, error)
+
+	GetDateValue(section string, name string) (string, error)
+	GetDateValues(section string, name string) ([]string, error)
 }
 
 type HttpForm struct {

@@ -141,6 +141,17 @@ sections := []sdkapi.FormSection{
                       	return []string{}
                     },
                 },
+                // Date Field
+                sdkapi.FormFileField{
+										Name:     "Date",
+										Label:    "Birthday",
+										Required: true,
+										Minimum:  "1989-01-01",
+										Maximum:  time.Now().Format(sdkapi.DateFormat),
+										ValueFn: func() string {
+											return time.Now().Format(sdkapi.DateFormat)
+										},
+                },
             },
         },
     },

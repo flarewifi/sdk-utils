@@ -66,6 +66,8 @@ templ HtmlForm(cfg *HtmlFormConfig) {
 							@BooleanInputField(cfg.Form, sec, fld)
 						case sdkapi.FormFieldTypeList:
 							@ListInputField(inputField)
+						case sdkapi.FormFieldTypeDate:
+							@DateInputField(inputField)
 						case sdkapi.FormFieldTypeMulti:
 							{{
 								multiFieldInput := &multiFieldConfig{

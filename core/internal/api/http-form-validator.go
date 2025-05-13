@@ -44,6 +44,11 @@ func (validtr *HTTPFormValidator) ValidateFormField(
 		// No validation handling for boolean.
 		return nil
 
+	case sdkapi.FormDateField:
+		dateVal := strings.TrimSpace(fmt.Sprint(val))
+		if v.IsRequired() && dateVal == "" {
+			errStr = validtr.api.Translate("error", "date_required_error", "label", v.GetLabel())
+		}
 	case sdkapi.FormTextField:
 		errStr = validtr.validateString(v.IsRequired(), fmt.Sprint(val), fld.GetLabel(), v.Minimum, v.Maximum)
 	case sdkapi.FormStringField:

@@ -14,6 +14,7 @@ import (
 	sdkapi "sdk/api"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -95,7 +96,8 @@ func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) 
 				sdkapi.FormFieldTypeText,
 				sdkapi.FormFieldTypeInteger,
 				sdkapi.FormFieldTypeDecimal,
-				sdkapi.FormFieldTypeBoolean:
+				sdkapi.FormFieldTypeBoolean,
+				sdkapi.FormFieldTypeDate:
 				field.Value, err = ParseBasicValue(fld, valstr)
 				if err != nil {
 					field.Value = fld.GetValue()
@@ -338,6 +340,51 @@ func (self *HttpFormInstance) GetFilePaths(section string, field string) ([]stri
 	}
 
 	return filePaths, nil
+}
+
+func (self *HttpFormInstance) GetDateValue(section string, field string) (string, error) {
+	v, err := self.getFieldValue(section, field)
+	if err != nil {
+		return "", err
+	}
+
+	dateVal, ok := v.(string)
+	if !ok {
+		return "", errors.New(fmt.Sprintf("section %s field %s is not a string, instead %T", section, field, v))
+	}
+
+	if dateVal != "" {
+		// validate format
+		if _, err := time.Parse(sdkapi.DateFormat, dateVal); err != nil {
+			return "", errors.New(self.api.Translate("error", "invalid_date_format", "date", dateVal))
+		}
+	}
+
+	return dateVal, nil
+}
+
+func (self *HttpFormInstance) GetDateValues(section string, field string) ([]string, error) {
+	ivals, err := self.getFieldValues(section, field)
+	if err != nil {
+		return nil, err
+	}
+
+	vals, ok := ivals.([]string)
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("section %s, field %s is not a slice of strings", section, field))
+	}
+
+	for _, dateVal := range vals {
+		if dateVal == "" {
+			continue
+		}
+
+		if _, err := time.Parse(sdkapi.DateFormat, dateVal); err != nil {
+			return vals, errors.New(self.api.Translate("error", "invalid_date_format", "date", dateVal))
+		}
+	}
+
+	return vals, nil
 }
 
 func (self *HttpFormInstance) getSection(section string) (sec sdkapi.FormSection, ok bool) {

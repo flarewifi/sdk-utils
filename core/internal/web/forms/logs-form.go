@@ -76,6 +76,5 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 				},
 			},
 		}
-
 	})
 }

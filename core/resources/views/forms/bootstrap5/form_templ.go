@@ -156,6 +156,11 @@ func HtmlForm(cfg *HtmlFormConfig) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
+				case sdkapi.FormFieldTypeDate:
+					templ_7745c5c3_Err = DateInputField(inputField).Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
 				case sdkapi.FormFieldTypeMulti:
 					multiFieldInput := &multiFieldConfig{
 						pluginAPI: cfg.PluginAPI,
@@ -190,7 +195,7 @@ func HtmlForm(cfg *HtmlFormConfig) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("unsupported field type: %s", fld.GetType()))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 94, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 96, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -214,7 +219,7 @@ func HtmlForm(cfg *HtmlFormConfig) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.SubmitText)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 101, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/form.templ`, Line: 103, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
