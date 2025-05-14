@@ -483,7 +483,8 @@ func (self *HttpFormInstance) getFieldValues(section string, field string) (val 
 func ParseBasicValue(fld sdkapi.IFormField, valstr []string) (val interface{}, err error) {
 	switch fld.GetType() {
 	case sdkapi.FormFieldTypeString,
-		sdkapi.FormFieldTypeText:
+		sdkapi.FormFieldTypeText,
+		sdkapi.FormFieldTypeDate:
 
 		stringFld, ok := fld.(sdkapi.FormStringField)
 		if ok && stringFld.IsReadOnly {
