@@ -48,7 +48,7 @@ type ISessionsMgrApi interface {
 		downMbits int,
 		upMbits int,
 		useGlobal bool,
-	) error
+	) (pgtype.UUID, error)
 
 	// Get the current running session of a client device.
 	CurrSession(clnt IClientDevice) (cs IClientSession, ok bool)

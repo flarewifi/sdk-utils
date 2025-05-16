@@ -73,6 +73,7 @@ func (self *Purchase) State(tx pgx.Tx, ctx context.Context) (sdkapi.PurchaseStat
 	walletDebit := self.purchase.WalletDebit()
 	walletEndBal := wallet.Balance() - walletDebit
 
+	state.PurchaseID = self.purchase.Id()
 	state.TotalPayment = total
 	state.WalletDebit = walletDebit
 	state.WalletEndingBal = walletEndBal
