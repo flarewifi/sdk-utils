@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -67,4 +68,24 @@ func PgFloat64ToNumeric(value float64) pgtype.Numeric {
 	}
 	numeric.Valid = true
 	return numeric
+}
+
+func PgTimeToTimestamp(value time.Time) pgtype.Timestamp {
+	var timestamp pgtype.Timestamp
+
+	if err := timestamp.Scan(value); err != nil {
+		log.Println("Error converting time to pgtype.Timestamp:", err)
+		return timestamp
+	}
+
+	timestamp.Valid = true
+	return timestamp
+}
+
+func PgTimestampToTime(t pgtype.Timestamp) time.Time {
+	if t.Valid {
+		return t.Time
+	}
+
+	return time.Time{}
 }

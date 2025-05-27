@@ -11,13 +11,15 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PurchaseState struct {
-	TotalPayment    float64 `json:"total_payment"`
-	WalletDebit     float64 `json:"wallet_debit"`
-	WalletEndingBal float64 `json:"wallet_ending_bal"`
-	WalletRealBal   float64 `json:"wallet_real_bal"`
+	PurchaseID      pgtype.UUID `json:"purchase_id"`
+	TotalPayment    float64     `json:"total_payment"`
+	WalletDebit     float64     `json:"wallet_debit"`
+	WalletEndingBal float64     `json:"wallet_ending_bal"`
+	WalletRealBal   float64     `json:"wallet_real_bal"`
 }
 
 // PurchaseRequest represents a purchase to be made by the customer.

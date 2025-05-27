@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -174,7 +175,7 @@ func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
 		newBal := wallet.Balance() - dbt
 		err = wallet.Update(tx, ctx, newBal)
 		if err != nil {
-			return nil
+			return errors.New("unable to update balance: " + err.Error())
 		}
 
 		desc := "Partial payment for " + self.description

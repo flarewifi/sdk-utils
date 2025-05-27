@@ -6,7 +6,7 @@
 
 package sdkapi
 
-const DateFormat = "YYYY-MM-DD"
+const DateFormat = "2006-01-02"
 
 type FormDateField struct {
 	Name     string

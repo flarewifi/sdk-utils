@@ -339,9 +339,9 @@ func (self *SessionsMgr) CreateSession(
 	downMbits int,
 	upMbits int,
 	useGlobal bool,
-) error {
-	_, err := self.mdl.Session().Create(tx, ctx, devId, t, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
-	return err
+) (pgtype.UUID, error) {
+	session, err := self.mdl.Session().Create(tx, ctx, devId, t, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
+	return session.Id(), err
 }
 
 func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevice) (sdkapi.IClientSession, error) {
