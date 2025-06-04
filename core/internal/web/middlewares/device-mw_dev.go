@@ -1,4 +1,4 @@
-//go:build !dev
+//go:build dev
 
 package middlewares
 
@@ -23,16 +23,36 @@ func DeviceMiddleware(dtb *db.Database, clntMgr *connmgr.ClientRegister) func(ne
 				return
 			}
 
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
+			var ip, mac string
+
+			macval, _ := r.Cookie("mac")
+			ipval, _ := r.Cookie("ip")
+
+			if macval != nil && macval.Value != "" {
+				mac = macval.Value
+			}
+
+			if ipval != nil && ipval.Value != "" {
+				ip = ipval.Value
+			}
+
+			if ip == "" {
+				hostIP, _, err := net.SplitHostPort(r.RemoteAddr)
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				ip = hostIP
 			}
 
 			h, err := hostfinder.FindByIp(ip)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
+			}
+
+			if mac != "" {
+				h.MacAddr = mac
 			}
 
 			dbpool := dtb.SqlDB()
