@@ -36,7 +36,7 @@ func GetNetworkDevices() ([]*NetworkDevice, error) {
 
 func GetNetworkDevice(device string) (*NetworkDevice, error) {
 	var out bytes.Buffer
-	err := cmd.ExecOutput(fmt.Sprintf("ubus call network.device status {\"name\":\"%s\"}", device), &out)
+	err := cmd.ExecOutput(fmt.Sprintf(`ubus call network.device status '{"name":"%s"}'`, device), &out)
 	if err != nil {
 		return nil, err
 	}
