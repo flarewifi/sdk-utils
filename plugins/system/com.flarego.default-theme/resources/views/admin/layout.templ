@@ -19,9 +19,8 @@ templ AdminLayout(data AdminLayoutData) {
 }
 
 templ adminNavsTpl(navs []sdkapi.AdminNavList) {
-	<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+	<nav class="navbar navbar-dark fixed-top bg-dark">
 		<div class="container">
-			<a class="navbar-brand" href="/admin">Admin</a>
 			<button
 				class="navbar-toggler"
 				type="button"
@@ -33,6 +32,7 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 			>
 				<span class="navbar-toggler-icon"></span>
 			</button>
+			<a class="navbar-brand" href="/admin">Admin</a>
 			<div class="collapse navbar-collapse" id="navbarCollapse">
 				<ul class="navbar-nav me-auto mb-2 mb-md-0">
 					for _, nav := range navs {
