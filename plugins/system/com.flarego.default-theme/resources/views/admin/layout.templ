@@ -24,53 +24,58 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 			<button
 				class="navbar-toggler"
 				type="button"
-				data-bs-toggle="collapse"
-				data-bs-target="#navbarCollapse"
-				aria-controls="navbarCollapse"
-				aria-expanded="false"
+				data-bs-toggle="offcanvas"
+				data-bs-target="#offcanvasNav"
+				aria-controls="offcanvasNav"
 				aria-label="Toggle navigation"
 			>
 				<span class="navbar-toggler-icon"></span>
 			</button>
-			<a class="navbar-brand" href="/admin">Admin</a>
-			<div class="collapse navbar-collapse" id="navbarCollapse">
-				<ul class="navbar-nav me-auto mb-2 mb-md-0">
-					for _, nav := range navs {
-						<li class="nav-item dropdown">
-							<a
-								class="nav-link dropdown-toggle"
-								href="#"
-								role="button"
-								data-bs-toggle="dropdown"
-								aria-expanded="false"
-							>
-								{ nav.Category }
-							</a>
-							<ul class="dropdown-menu">
-								for _, subnav := range nav.Items {
-									<li>
-										<a class="dropdown-item" href={ templ.SafeURL(subnav.RouteUrl) }>
-											{ subnav.Label }
-										</a>
-									</li>
-								}
-								<!-- <li><a class="dropdown-item" href="#">Action</a></li> -->
-								<!-- <li><a class="dropdown-item" href="#">Another action</a></li> -->
-								<!-- <li> -->
-								<!-- 	<hr class="dropdown-divider"/> -->
-								<!-- </li> -->
-								<!-- <li><a class="dropdown-item" href="#">Something else here</a></li> -->
-							</ul>
-						</li>
-					}
-				</ul>
-				<form class="d-flex" role="search">
-					<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"/>
-					<button class="btn btn-outline-success" type="submit">Search</button>
-				</form>
-			</div>
+
+			<a class="navbar-brand ms-auto" href="/admin">Admin</a>
+
+			<form class="d-flex ms-auto" role="search">
+				<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" />
+				<button class="btn btn-outline-success" type="submit">Search</button>
+			</form>
 		</div>
 	</nav>
+
+	<!-- Offcanvas Sidebar -->
+	<div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="offcanvasNav" aria-labelledby="offcanvasNavLabel">
+		<div class="offcanvas-header">
+			<h5 class="offcanvas-title" id="offcanvasNavLabel">Admin Menu</h5>
+			<button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+		</div>
+
+		<div class="offcanvas-body">
+			<ul class="navbar-nav w-100">
+				for _, nav := range navs {
+					<li class="nav-item dropdown">
+						<a
+							class="nav-link dropdown-toggle text-white"
+							href="#"
+							role="button"
+							data-bs-toggle="dropdown"
+							aria-expanded="false"
+							id={"dropdown-" + nav.Category}
+						>
+							{ nav.Category }
+						</a>
+						<ul class="dropdown-menu dropdown-menu-dark" aria-labelledby={"dropdown-" + nav.Category}>
+							for _, subnav := range nav.Items {
+								<li>
+									<a class="dropdown-item" href={ templ.SafeURL(subnav.RouteUrl) }>
+										{ subnav.Label }
+									</a>
+								</li>
+							}
+						</ul>
+					</li>
+				}
+			</ul>
+		</div>
+	</div>
 }
 
 templ colorSchemeToggle() {
