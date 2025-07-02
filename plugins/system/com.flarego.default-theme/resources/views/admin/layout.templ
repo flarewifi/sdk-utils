@@ -79,42 +79,6 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 			</div>
 		</div>
 	</nav>
-
-	<!-- Offcanvas Sidebar -->
-	<div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="offcanvasNav" aria-labelledby="offcanvasNavLabel">
-		<div class="offcanvas-header">
-			<h5 class="offcanvas-title" id="offcanvasNavLabel">Admin Menu</h5>
-			<button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-		</div>
-
-		<div class="offcanvas-body">
-			<ul class="navbar-nav w-100">
-				for _, nav := range navs {
-					<li class="nav-item dropdown">
-						<a
-							class="nav-link dropdown-toggle text-white"
-							href="#"
-							role="button"
-							data-bs-toggle="dropdown"
-							aria-expanded="false"
-							id={"dropdown-" + nav.Category}
-						>
-							{ nav.Category }
-						</a>
-						<ul class="dropdown-menu dropdown-menu-dark" aria-labelledby={"dropdown-" + nav.Category}>
-							for _, subnav := range nav.Items {
-								<li>
-									<a class="dropdown-item" href={ templ.SafeURL(subnav.RouteUrl) }>
-										{ subnav.Label }
-									</a>
-								</li>
-							}
-						</ul>
-					</li>
-				}
-			</ul>
-		</div>
-	</div>
 }
 
 templ colorSchemeToggle() {
