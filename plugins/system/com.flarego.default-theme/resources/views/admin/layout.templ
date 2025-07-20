@@ -19,7 +19,7 @@ templ AdminLayout(data AdminLayoutData) {
 }
 
 templ adminNavsTpl(navs []sdkapi.AdminNavList) {
-	<nav class="navbar navbar-dark fixed-top bg-dark">
+	<nav class="navbar fixed-top">
 		<div class="container">
 			<button
 				class="navbar-toggler"
@@ -33,15 +33,15 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 				<span class="navbar-toggler-icon"></span>
 			</button>
 
-			<a class="navbar-brand" href="/admin">Admin</a>
+			<a class="navbar-brand order-md-last" href="/admin">Nexifi</a>
 
-            <form class="d-flex order-md-last" role="search"> <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"/>
+            <form class="d-flex" role="search"> <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"/>
                 <button class="btn btn-outline-success" type="submit">Search</button>
             </form>
 
 			<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
 				<div class="offcanvas-header">
-					<h5 class="offcanvas-title" id="offcanvasNavbarLabel">Admin Menu</h5>
+					<h5 class="offcanvas-title" id="offcanvasNavbarLabel">Dashboard</h5>
 					<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 				</div>
 				<div class="offcanvas-body">
@@ -53,11 +53,11 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 									href="#"
 									role="button"
 									data-bs-toggle="dropdown"
-									aria-expanded="false"
+									aria-expanded="false"n
 								>
 									{ nav.Category }
 								</a>
-								<ul class="dropdown-menu">
+								<ul class="dropdown-menu" style="border: none;">
 									for _, subnav := range nav.Items {
 										<li>
 											<a class="dropdown-item" href={ templ.SafeURL(subnav.RouteUrl) }>
@@ -65,12 +65,6 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 											</a>
 										</li>
 									}
-									<!-- <li><a class="dropdown-item" href="#">Action</a></li> -->
-									<!-- <li><a class="dropdown-item" href="#">Another action</a></li> -->
-									<!-- <li> -->
-									<!-- 	<hr class="dropdown-divider"/> -->
-									<!-- </li> -->
-									<!-- <li><a class="dropdown-item" href="#">Something else here</a></li> -->
 								</ul>
 							</li>
 						}

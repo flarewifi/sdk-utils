@@ -34,11 +34,14 @@ func (self *HttpNavsApi) PortalNavsFactory(fn func(r *http.Request) []sdkapi.Por
 
 func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 	categories := []sdkapi.INavCategory{
-		sdkapi.NavCategorySystem,
+		sdkapi.NavCategoryWifi,
 		sdkapi.NavCategoryPayments,
-		sdkapi.NavCategoryNetwork,
+		sdkapi.NavCategoryUsers,
+		sdkapi.NavCategorySales,
 		sdkapi.NavCategoryThemes,
-		sdkapi.NavCategoryTools,
+		sdkapi.NavCategoryPlugins,
+		sdkapi.NavCategoryNetwork,
+		sdkapi.NavCategorySystem,
 	}
 
 	navs := []sdkapi.AdminNavList{}
