@@ -174,6 +174,18 @@ func (self *HttpFormInstance) ParseForm(w http.ResponseWriter, r *http.Request) 
 	return validationError
 }
 
+func (self *HttpFormInstance) ParseFormWithValidator(w http.ResponseWriter, r *http.Request, form sdkapi.FormWithValidator) (err error) {
+	if err := r.ParseForm(); err != nil {
+		return err
+	}
+
+	if err := self.validator.ValidateForm(w, r, form); err != nil {
+		return err
+	}
+
+	return err
+}
+
 func (self *HttpFormInstance) GetStringValue(section string, field string) (val string, err error) {
 	v, err := self.getFieldValue(section, field)
 	if err != nil {
