@@ -5,12 +5,10 @@ package admin
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import (
-	"github.com/a-h/templ"
-	templruntime "github.com/a-h/templ/runtime"
+import "github.com/a-h/templ"
+import templruntime "github.com/a-h/templ/runtime"
 
-	sdkapi "sdk/api"
-)
+import sdkapi "sdk/api"
 
 func AdminHead() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -108,34 +106,34 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<nav class=\"navbar fixed-top\"><div class=\"container\"><button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"offcanvas\" data-bs-target=\"#offcanvasNavbar\" aria-controls=\"offcanvasNavbar\" aria-expanded=\"false\" aria-label=\"Toggle navigation\"><span class=\"navbar-toggler-icon\"></span></button> <a class=\"navbar-brand order-md-last\" href=\"/admin\">Nexifi</a><form class=\"d-flex\" role=\"search\"><input class=\"form-control me-2\" type=\"search\" placeholder=\"Search\" aria-label=\"Search\"> <button class=\"btn btn-outline-success\" type=\"submit\">Search</button></form><div class=\"offcanvas offcanvas-start\" tabindex=\"-1\" id=\"offcanvasNavbar\" aria-labelledby=\"offcanvasNavbarLabel\"><div class=\"offcanvas-header\"><h5 class=\"offcanvas-title\" id=\"offcanvasNavbarLabel\">Dashboard</h5><button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"offcanvas\" aria-label=\"Close\"></button></div><div class=\"offcanvas-body\"><ul class=\"navbar-nav justify-content-end flex-grow-1 pe-3\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<nav class=\"navbar fixed-top\"><div class=\"container\"><button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"offcanvas\" data-bs-target=\"#offcanvasNavbar\" aria-controls=\"offcanvasNavbar\" aria-expanded=\"false\" aria-label=\"Toggle navigation\"><span class=\"navbar-toggler-icon\"></span></button> <a class=\"navbar-brand order-md-last\" href=\"/admin\">Nexifi</a><form class=\"d-flex\" role=\"search\"><input class=\"form-control me-2\" type=\"search\" placeholder=\"Search\" aria-label=\"Search\"> <button class=\"btn btn-outline-success\" type=\"submit\">Search</button></form><div class=\"offcanvas offcanvas-start\" tabindex=\"-1\" id=\"offcanvasNavbar\" aria-labelledby=\"offcanvasNavbarLabel\"><div class=\"offcanvas-header\"><h5 class=\"offcanvas-title\" id=\"offcanvasNavbarLabel\">Dashboard</h5><button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"offcanvas\" aria-label=\"Close\"></button></div><div class=\"offcanvas-body\"><ul style=\"\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, nav := range navs {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<li class=\"nav-item dropdown\"><a class=\"nav-link dropdown-toggle\" href=\"#\" role=\"button\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\" n>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div x-data=\"{open: false}\"><li style=\"\"><div><a @click=\"open = !open\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(nav.Category)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 58, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 51, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</a><ul class=\"dropdown-menu\" style=\"border: none;\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</a><ul x-show=\"open\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, subnav := range nav.Items {
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<li><a class=\"dropdown-item\" href=\"")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<li><a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var5 templ.SafeURL = templ.SafeURL(subnav.RouteUrl)
+				var templ_7745c5c3_Var5 templ.SafeURL = templ.URL(subnav.RouteUrl)
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var5)))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -147,7 +145,7 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(subnav.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 64, Col: 26}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 55, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -158,12 +156,12 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul></li>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul></div></li></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul></div></div></div></nav>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul><!--\n\t\t\t\t\t<ul class=\"navbar-nav justify-content-end flex-grow-1 pe-3\">\n\t\t\t\t\t\tfor _, nav := range navs {\n\t\t\t\t\t\t\t<li class=\"nav-item dropdown\">\n\t\t\t\t\t\t\t\t<a\n\t\t\t\t\t\t\t\t\tclass=\"nav-link dropdown-toggle\"\n\t\t\t\t\t\t\t\t\thref=\"#\"\n\t\t\t\t\t\t\t\t\trole=\"button\"\n\t\t\t\t\t\t\t\t\tdata-bs-toggle=\"dropdown\"\n\t\t\t\t\t\t\t\t\taria-expanded=\"false\"n\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t{ nav.Category }\n\t\t\t\t\t\t\t\t</a>\n\t\t\t\t\t\t\t\t<ul class=\"dropdown-menu\" style=\"border: none;\">\n\t\t\t\t\t\t\t\t\tfor _, subnav := range nav.Items {\n\t\t\t\t\t\t\t\t\t\t<li>\n\t\t\t\t\t\t\t\t\t\t\t<a class=\"dropdown-item\" href={ templ.SafeURL(subnav.RouteUrl) }>\n\t\t\t\t\t\t\t\t\t\t\t\t{ subnav.Label }\n\t\t\t\t\t\t\t\t\t\t\t</a>\n\t\t\t\t\t\t\t\t\t\t</li>\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t</ul>\n\t\t\t\t\t\t\t</li>\n\t\t\t\t\t\t}\n\t\t\t\t\t</ul>\n                    --></div></div></div></nav>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
