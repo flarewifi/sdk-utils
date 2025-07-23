@@ -1,0 +1,58 @@
+/* Custom Styles for Alpine.js Navigation Menu */
+
+.nav-menu {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.nav-category {
+    margin-bottom: 0.25rem;
+}
+
+.nav-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-weight: 500;
+}
+
+.nav-link:hover {
+    background-color: #343a40;
+    color: #fff;
+}
+
+.nav-arrow {
+    font-size: 0.8rem;
+    transition: transform 0.3s ease-in-out;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
+}
+
+.sub-nav {
+    list-style: none;
+    padding-left: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.sub-nav-link {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: var(--bs-body-secondary-color);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sub-nav-link:hover {
+    color: var(--bs-body-color);
+    background-color: var(--bs-tertiary-bg);
+}

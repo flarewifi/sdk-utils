@@ -28,14 +28,11 @@ type INavCategory string
 
 // List of admin navigation menu categories.
 const (
-	NavCategoryWifi     INavCategory = "wifi"
 	NavCategorySystem   INavCategory = "system"
 	NavCategoryPayments INavCategory = "payments"
-	NavCategoryUsers    INavCategory = "users"
-	NavCategorySales    INavCategory = "sales"
 	NavCategoryThemes   INavCategory = "themes"
-	NavCategoryPlugins  INavCategory = "plugins"
 	NavCategoryNetwork  INavCategory = "network"
+	NavCategoryTools    INavCategory = "tools"
 )
 
 // AdminNavItemOpt represents an admin navigation menu item.
