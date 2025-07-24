@@ -1,5 +1,15 @@
 /* Custom Styles for Alpine.js Navigation Menu */
 
+.sidebar-brand-gradient {
+    font-size: 2rem;
+	font-weight: 900;
+	background: linear-gradient(90deg, #6C51FD, #9365FF);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	text-fill-color: transparent;
+}
+
 .nav-menu {
     list-style: none;
     padding-left: 0;
@@ -26,15 +36,6 @@
     color: #fff;
 }
 
-.nav-arrow {
-    font-size: 0.8rem;
-    transition: transform 0.3s ease-in-out;
-}
-
-.rotate-180 {
-    transform: rotate(180deg);
-}
-
 .sub-nav {
     list-style: none;
     padding-left: 1.5rem;
@@ -49,10 +50,32 @@
     color: var(--bs-body-secondary-color);
     text-decoration: none;
     border-radius: 6px;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease-out;
 }
 
 .sub-nav-link:hover {
     color: var(--bs-body-color);
     background-color: var(--bs-tertiary-bg);
+    transform: scale(1.05);
+}
+
+.sub-nav-link.active {
+    color: white !important;
+    background: linear-gradient(90deg, var(--active-gradient-start), var(--active-gradient-end));
+    box-shadow: 0 4px 10px -2px rgba(92, 118, 231, 0.5);
+}
+
+.sub-nav-link.active:hover {
+    transform: none; /* Dili na siya mudako kung active na siya */
+}
+
+.nav-link.active-category {
+    background: linear-gradient(90deg, #6C51FD, #9365FF);
+    /* background-color: #343a40;
+    color: #fff; */
+}
+
+.nav-link.active-category span,
+.nav-link.active-category .nav-arrow {
+    color: #fff;
 }

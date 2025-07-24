@@ -8,6 +8,7 @@ templ AdminHead() {
 type AdminLayoutData struct {
 	Navs        []sdkapi.AdminNavList
 	PageContent templ.Component
+	CurrentPath string
 }
 
 templ AdminLayout(data AdminLayoutData) {
@@ -39,22 +40,21 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 			</form>
 			<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
 				<div class="offcanvas-header">
-					<h5 class="offcanvas-title" id="offcanvasNavbarLabel">Dashboard</h5>
+					<h5 class="offcanvas-title sidebar-brand-gradient" id="offcanvasNavbarLabel">nexifi</h5>
 					<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 				</div>
 				<div class="offcanvas-body">
 					<ul class="nav-menu">
 						for _, nav := range navs {
 							<li class="nav-category" x-data="{ open: false }">
-								<a @click="open = !open" class="nav-link">
+								<a href="#" @click.prevent="open = !open" class="nav-link" :class="{'active-category': open}">
 									<span>{ nav.Category }</span>
-									<i class="bi bi-chevron-down nav-arrow" :class="open && 'rotate-180'"></i>
 								</a>
 								
 								<ul class="sub-nav" x-show="open" x-transition>
 									for _, subnav := range nav.Items {
 										<li class="sub-nav-item">
-											<a href="{ templ.URL(subnav.RouteUrl) }" class="sub-nav-link">
+											<a class="sub-nav-link" href={ templ.SafeURL(subnav.RouteUrl) }>
 												{ subnav.Label }
 											</a>
 										</li>
