@@ -8,6 +8,6 @@
     "./vendor/bootstrap-5.3.3/css/navbar-fixed.css",
     "./vendor/bootstrap-5.3.3/css/fixes.css",
     "./vendor/bootstrap-5.3.3/css/example.css",
-    "./vendor/navigation-menu/css/theme.css"
+    "./admin/navigation-menu/css/theme.css"
   ]
 }
