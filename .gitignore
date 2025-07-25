@@ -36,3 +36,4 @@ __debug_bin*
 main.exe
 *:Zone.Identifier
 /plugins/cache
+.vscode/

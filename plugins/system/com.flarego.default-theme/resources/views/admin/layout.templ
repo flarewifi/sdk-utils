@@ -8,6 +8,7 @@ templ AdminHead() {
 type AdminLayoutData struct {
 	Navs        []sdkapi.AdminNavList
 	PageContent templ.Component
+	CurrentPath string
 }
 
 templ AdminLayout(data AdminLayoutData) {
@@ -19,55 +20,66 @@ templ AdminLayout(data AdminLayoutData) {
 }
 
 templ adminNavsTpl(navs []sdkapi.AdminNavList) {
-	<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+	<nav class="navbar fixed-top">
 		<div class="container">
-			<a class="navbar-brand" href="/admin">Admin</a>
 			<button
 				class="navbar-toggler"
 				type="button"
-				data-bs-toggle="collapse"
-				data-bs-target="#navbarCollapse"
-				aria-controls="navbarCollapse"
+				data-bs-toggle="offcanvas"
+				data-bs-target="#offcanvasNavbar"
+				aria-controls="offcanvasNavbar"
 				aria-expanded="false"
 				aria-label="Toggle navigation"
 			>
 				<span class="navbar-toggler-icon"></span>
 			</button>
-			<div class="collapse navbar-collapse" id="navbarCollapse">
-				<ul class="navbar-nav me-auto mb-2 mb-md-0">
-					for _, nav := range navs {
-						<li class="nav-item dropdown">
-							<a
-								class="nav-link dropdown-toggle"
-								href="#"
-								role="button"
-								data-bs-toggle="dropdown"
-								aria-expanded="false"
-							>
-								{ nav.Category }
-							</a>
-							<ul class="dropdown-menu">
-								for _, subnav := range nav.Items {
-									<li>
-										<a class="dropdown-item" href={ templ.SafeURL(subnav.RouteUrl) }>
-											{ subnav.Label }
-										</a>
-									</li>
-								}
-								<!-- <li><a class="dropdown-item" href="#">Action</a></li> -->
-								<!-- <li><a class="dropdown-item" href="#">Another action</a></li> -->
-								<!-- <li> -->
-								<!-- 	<hr class="dropdown-divider"/> -->
-								<!-- </li> -->
-								<!-- <li><a class="dropdown-item" href="#">Something else here</a></li> -->
-							</ul>
-						</li>
-					}
-				</ul>
-				<form class="d-flex" role="search">
-					<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"/>
-					<button class="btn btn-outline-success" type="submit">Search</button>
-				</form>
+			<a class="navbar-brand order-md-last" href="/admin">Nexifi</a>
+			<form class="d-flex" role="search">
+				<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"/>
+				<button class="btn btn-outline-success" type="submit">Search</button>
+			</form>
+			<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+				<div class="offcanvas-header">
+					<h5 class="offcanvas-title sidebar-brand-gradient" id="offcanvasNavbarLabel">nexifi</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+				</div>
+				<div class="offcanvas-body">
+					<ul class="nav-menu">
+						for _, nav := range navs {
+							<li class="nav-category" x-data="{ open: false }">
+								<a href="#" @click.prevent="open = !open" class="nav-link" :class="{'active-category': open}">
+									<span>{ nav.Category }</span>
+								</a>
+								
+								<ul class="sub-nav" x-show="open" x-transition>
+									for _, subnav := range nav.Items {
+										<li class="sub-nav-item">
+											<a class="sub-nav-link" href={ templ.SafeURL(subnav.RouteUrl) }>
+												{ subnav.Label }
+											</a>
+										</li>
+									}
+								</ul>
+							</li>
+							<!--
+							<div x-data="{open: false}">
+								<li style="">
+									<div>
+										<a @click="open = !open">{ nav.Category }</a>
+										<ul x-show="open">
+											for _, subnav := range nav.Items {
+												<li>
+													<a href={ templ.URL(subnav.RouteUrl) }>{ subnav.Label }</a>
+												</li>
+											}
+										</ul>
+									</div>
+								</li>
+							</div>
+							-->
+						}
+					</ul>
+				</div>
 			</div>
 		</div>
 	</nav>
