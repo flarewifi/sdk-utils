@@ -38,6 +38,7 @@ nav:
       - "Routes and Navigation": guides/routes-and-navigation.md
       - "Rendering Views": guides/rendering-views.md
       - "Form Submission": guides/form-submission.md
+      - "Form Validator": guides/defining-form-validator.md
       - "Saving Data": guides/saving-data.md
       - "Translations": guides/translations.md
       - "Database Migrations": guides/database-migrations.md

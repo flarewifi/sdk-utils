@@ -14,6 +14,8 @@ type IHttpFormsApi interface {
 	RegisterForm(name string, factory func(r *http.Request) HttpForm) error
 	GetFormTemplate(name string, r *http.Request) (templ.Component, error)
 	ParseForm(name string, w http.ResponseWriter, r *http.Request) (IHttpForm, error)
+    ParseFormWithValidator(w http.ResponseWriter, r *http.Request, form FormWithValidator) error
+	Errors(w http.ResponseWriter, r *http.Request, formName string) map[string]string
 }
 ```
 
@@ -69,6 +71,58 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+#### ParseFormWithValidator
+
+It parses the input values from the HTTP request object and validates based on the provided rules in the [Form Validator](../guides/defining-form-validator.md#form-validator). <br />
+You can use this parser if you opt to create your own form
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    formsAPI := api.Http().Forms()
+    formValidator := sdkapi.FormWithValidator{
+        FormName: views.FormName,
+        FormValidators: []sdkapi.FormValidator{
+            {
+                FieldName:  views.FieldNameString,
+                FieldLabel: "String/Text",
+                FieldType:  sdkapi.FormFieldTypeText,
+                FieldRules: sdkapi.FormFieldRules{
+                    Required: true,
+                    Minimum:  4,
+                    Maximum:  10,
+                },
+            },
+        },
+    }
+        
+    err := formsAPI.ParseFormWithValidator(w, r, formValidator) error
+    if err != nil {
+        // handle error
+    }
+
+    // parse request
+}
+```
+
+#### Errors
+It retrieves the errors from the ParseFormWithValidator and returns them as map, with the field name as the keys.
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    formsAPI := api.Http().Forms()
+    
+    formName := "your-form-name"
+    errMap, err := formsAPI.Errors(w, r, formName)
+    if err != nil {
+        // handle error
+    }
+
+    // you may pass the error map to your custom views.
+}
+```
+	
 See [Saving Data](../guides/saving-data.md) to lean how to save data from the form.
 
 ---
