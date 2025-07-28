@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
+	"strings"
 	"sync"
 
 	"github.com/a-h/templ"
@@ -69,4 +70,34 @@ func (self *HttpFormApi) ParseForm(name string, w http.ResponseWriter, r *http.R
 	}
 
 	return httpForm, nil
+}
+
+func (self *HttpFormApi) ParseFormWithValidator(w http.ResponseWriter, r *http.Request, form sdkapi.FormWithValidator) error {
+	formDef := sdkapi.HttpForm{}
+	httpForm := NewHttpForm(self.api, formDef)
+	return httpForm.ParseFormWithValidator(w, r, form)
+}
+
+func (self *HttpFormApi) Errors(w http.ResponseWriter, r *http.Request, formName string) map[string]string {
+	cookieAPI := self.api.HttpAPI.Cookie()
+	errorMap := map[string]string{}
+
+	for _, cookie := range r.Cookies() {
+		if strings.HasPrefix(cookie.Name, formName) {
+			fieldName := getFieldName(cookie.Name, formName)
+			errorMap[fieldName] = cookie.Value
+
+			cookieAPI.DeleteCookie(w, cookie.Name)
+		}
+	}
+
+	return errorMap
+}
+
+func getFieldName(fullText, prefix string) string {
+	split := strings.SplitAfter(fullText, fmt.Sprintf("%v-", prefix))
+
+	fieldName := split[len(split)-1]
+
+	return fieldName
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	sdkapi "sdk/api"
+	"strconv"
 	"strings"
 )
 
@@ -520,4 +521,92 @@ func (validtr *HTTPFormValidator) validateFile(
 func bytesToMB(b int64) int {
 	bytesInMb := 1_048_576
 	return int(b) / bytesInMb
+}
+
+func (validtr *HTTPFormValidator) ValidateForm(w http.ResponseWriter, r *http.Request, form sdkapi.FormWithValidator) error {
+	var validateErr error
+	cookie := validtr.api.HttpAPI.Cookie()
+
+	for _, validator := range form.FormValidators {
+		var (
+			fieldName  = validator.FieldName
+			fieldLabel = validator.FieldLabel
+			fieldType  = validator.FieldType
+			rules      = validator.FieldRules
+
+			cookieName = fmt.Sprintf("%v-%v", form.FormName, fieldName)
+
+			val = r.FormValue(fieldName)
+		)
+
+		if !rules.Required {
+			continue
+		}
+
+		switch fieldType {
+		case sdkapi.FormFieldTypeString, sdkapi.FormFieldTypeText:
+			errStr := validtr.validateString(rules.Required, val, fieldLabel, rules.Minimum, rules.Maximum)
+			if errStr != "" {
+				cookie.SetCookie(w, cookieName, errStr)
+				validateErr = errors.New("field validation error")
+				continue
+			}
+		case sdkapi.FormFieldTypeInteger:
+			valInt, err := strconv.Atoi(val)
+			if err != nil {
+				valInt = 0
+			}
+
+			errStr := validtr.validateInteger(valInt, rules.Minimum, rules.Maximum, fieldLabel)
+			if errStr != "" {
+				cookie.SetCookie(w, cookieName, errStr)
+				validateErr = errors.New("field validation error")
+				continue
+			}
+
+		case sdkapi.FormFieldTypeDecimal:
+			valFloat, err := strconv.ParseFloat(val, 64)
+			if err != nil {
+				valFloat = 0.0
+			}
+
+			errStr := validtr.validateDecimal(valFloat, rules.Minimum, rules.Maximum, fieldLabel)
+			if errStr != "" {
+				cookie.SetCookie(w, cookieName, errStr)
+				validateErr = errors.New("field validation error")
+				continue
+			}
+
+		case sdkapi.FormFieldTypeList:
+			vals := r.Form[fieldName]
+			if val == "" || len(vals) == 0 || (len(vals) == 1 && strings.TrimSpace(vals[0]) == "") {
+				errStr := validtr.api.Translate("error", "list_option_required_error", "label", fieldLabel)
+				cookie.SetCookie(w, cookieName, errStr)
+				validateErr = errors.New("field validation error")
+				continue
+			}
+
+			if len(vals) < rules.Minimum {
+				errStr := validtr.api.Translate("error", "less_than_minimum_selection_error", "value", rules.Minimum, "label", fieldLabel)
+				cookie.SetCookie(w, cookieName, errStr)
+				validateErr = errors.New("field validation error")
+				continue
+			}
+
+			if rules.Maximum != 0 && len(vals) > rules.Maximum {
+				errStr := validtr.api.Translate("error", "more_than_maximum_selection_error", "value", rules.Maximum, "label", fieldLabel)
+				cookie.SetCookie(w, cookieName, errStr)
+				validateErr = errors.New("field validation error")
+				continue
+			}
+
+		default:
+			return errors.New("no validation checking set for this type")
+		}
+	}
+
+	if validateErr != nil {
+		return errors.New("parsing error")
+	}
+	return nil
 }
