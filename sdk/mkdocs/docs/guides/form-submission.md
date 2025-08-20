@@ -3,188 +3,105 @@
 Form submission is a way of sending data from the browser to the server using [HTML forms](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form).
 To build HTML forms, we can use basic HTML elements like `input`, `textarea`, `select`, and `button`.
 
-To have a consistent look and feel throughout the application, we must use the [IHttpFormApi](../api/http-forms-api.md) to build forms.
-This API provides a convenient way of building HTML forms with built-in input validation and error handling.
-
 ## Building a form {#build-form}
 
-To build a form, first we need to define the form's [sections and fields](../api/http-forms-api.md#httpform), then register the form using the [IHttpFormsApi.RegisterForms](../api/http-forms-api.md#registerforms) method:
+To build a form, first we need to define the form's section and fields using [HTML forms](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form).
 
-```go
-formsAPI := api.Http().Forms()
+```templ
 
-// Define the form sections
-sections := []sdkapi.FormSection{
-    {
-        {
-            Name: "general_configuration",
-            Label: "General Configuration",
-            Fields: []sdkapi.IFormField{
-                // Boolean Field
-                sdkapi.FormBooleanField{
-                    Name:  "accept_terms",
-                    Label: "Accept Terms and Conditions",
-                    ValueFn: func() bool {
-                        // your custom specific boolean logic
-                        return true
-                    },
-                },
-                // Decimal Field
-                priceField := FormDecimalField{
-                    Name:      "price",
-                    Label:     "Product Price",
-                    Step:      0.01,
-                    Precision: 2,
-                    Required: true,
-                    Minimum: 1,
-                    MaximumL 10,
-                    ValueFn: func() float64 {
-                        // your custom specific decimal form logic
-                        return 99.99
-                    },
-                }
-                // Integer Field,
-                ageField := sdkapi.FormIntegerField{
-                    Name:  "age",
-                    Label: "User Age",
-                    Required: true,
-                    Minimum: 18,
-                    MaximumL 100,
-                    ValueFn: func() int64 {
-                        // your custom integer specific logic
-                        return 25
-                    },
-                }
-                // List Field,
-                listField := sdkapi.FormListField{
-                    Name:  "experience_level",
-                    Label: "Select Experience Level",
-                    Required: true,
-                    Type:  "int", // Specifies that the values are integers
-                    OptionsFn: func() []sdkapi.FormListFieldOption {
-                        return []sdkapi.FormListFieldOption{
-                            {Label: "Beginner", Value: 1},
-                            {Label: "Intermediate", Value: 2},
-                            {Label: "Advanced", Value: 3},
-                        }
-                    },
-                    ValueFn: func() interface{} {
-                        // Your custom list specific logic
-                        return 2 // Default selected value (Intermediate)
-                    },
-                }
-                // Multi Field,
-                sdkapi.FormMultiField{
-                    Name:  "items",
-                    Label: "Order Items",
-                    Required: true,
-                    Minimum: 2,
-                    MaximumL 10,
-                    Columns: func() []sdkapi.FormMultiFieldCol {
-                        return []sdkapi.FormMultiFieldCol{
-                            {Name: "item_name", Label: "Item Name", Type: "string", Minimum: 5, Maximum: 15, 	IsDisabled: true},
-                            {Name: "quantity", Label: "Quantity", Type: "int", Minimum: 1},
-                            {Name: "price", Label: "Price", Type: "float", Minimum: 0},
-                        }
-                    },
-                    ValueFn: func() [][]sdkapi.FormFieldData {
-                        // Your custom multi field logic
-                        return [][]sdkapi.FormFieldData{
-                            {{"item_name", "Apple"}, {"quantity", 3}, {"price", 1.99}},
-                            {{"item_name", "Banana"}, {"quantity", 2}, {"price", 0.99}},
-                        }
-                    },
-                },
-                // Text Field
-                sdkapi.FormTextField{
-                    Name:  "banner_text",
-                    Label: "Banner Text",
-                    Requird: true,
-                    Minimum: 1,
-                    Maximum: 100,
-                    ValueFn: func() string {
-                        b, err := pluginConfigAPI.Read("banner_text")
-                        if err != nil {
-                            return "This is the default banner text!"
-                        }
-                        return string(b)
-                    },
-                },
-                // String Field
-                sdkapi.FormStringField{
-                    Name:  "Username",
-                    Label: "Username",
-                    IsReadOnly: true,
-                    IsPassword: false,
-                    Requird: true,
-                    Minimum: 5,
-                    Maximum: 20,
-                    ValueFn: func() string {
-                        username := ""
-                        // Your custom specific string logic
-                        return username
-                    },
-                },
-                // File Field
-                sdkapi.FormFileField{
-                		Name:      "upload_file",
-                  	Label:     "Upload File",
-                   	Required:  true,
-                    Multiple:  true,
-                    MinFiles:  1,
-                    MaxFiles:  3,
-                    MinSizeMb: 1, // 1mb
-                    MaxSizeMb: 10,
-                    Accept:    []string{"application/zip", "image/png", "image/jpeg"},
-                    ValueFn: func() []string {
-                    		// Your custom specific string logic
-                      	return []string{}
-                    },
-                },
-                // Date Field
-                sdkapi.FormFileField{
-										Name:     "Date",
-										Label:    "Birthday",
-										Required: true,
-										Minimum:  "1989-01-01",
-										Maximum:  time.Now().Format(sdkapi.DateFormat),
-										ValueFn: func() string {
-											return time.Now().Format(sdkapi.DateFormat)
-										},
-                },
-            },
-        },
-    },
+const (
+    SampleForm = "my-sample-form"
+    StringField = "my-string-field"
+    IntegerField = "my-integer-field"
+)
+
+templ SampleView(api sdkapi.IPluginApi, errMap map[string]string) {
+    <div class="container">
+        <div class="row mb-2">
+            <div class="col">
+                Sample Form
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-10">
+                <div class="row">
+                    <div class="col-7 border rounded ms-2 me-2 mb-4">
+                        <form id={ SampleForm } 
+                            method="POST" 
+                            action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.sample.save")) }
+                        >
+                            {{
+                                stringFldClass := "form-control"
+                                intFldClass := "form-control"
+
+                                strErr, ok := errMap[StringField]
+                                if ok && strErr != "" {
+                                    stringFldClass += " is-invalid"
+                                }
+
+                                 intErr, ok := errMap[IntegerField]
+                                if ok && intErr != "" {
+                                    intFldClass += " is-invalid"
+                                }
+                            }}
+
+                            <div class="pb-3">
+                                <label for={ StringField } class={ "form-label" }>Sample String Field:</label>
+                                <input 
+                                    type="text" 
+                                    class={ stringFldClass } 
+                                    id={ StringField } 
+                                    name={ StringField } 
+                                />
+                                if errStr, ok := errMap[StringField]; ok {
+                                    <div class="invalid-feedback">{ errStr }</div>
+                                }
+                            </div>
+
+                            <div class="pb-3">
+                                <label for={ IntegerField } class={ "form-label" }>Sample Integer Field:</label>
+                                <input 
+                                    type="number" 
+                                    class={ intFldClass } 
+                                    id={ IntegerField } 
+                                    name={ IntegerField } 
+                                />
+                                if errStr, ok := errMap[IntegerField]; ok {
+                                    <div class="invalid-feedback">{ errStr }</div>
+                                }
+                            </div>
+
+                            <div class="mb-3 align-items-center">
+                                <button class="btn btn-primary" type="submit">
+                                    { api.Translate("label", "save") }
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
-
-// Register the form
-if err := formsAPI.RegisterForm("my-form", func (r *http.Request) sdkapi.HttpForm {
-    // Define the form
-    return sdkapi.HttpForm{
-        CallbackRoute: "settings:save", // route to handle form submission
-        SubmitLabel: "Submit", // submit button text
-        Sections: sections, // add sections
-    }
-}); err != nil {
-    // handle error
-}
 ```
-
-See [IHttpFormsApi](../api/http-forms-api.md) documentation to know more.
 
 ## Rendering the form
 
-To render the form in our views, first we need to get the form's template using the [IHttpForm.GetTemplate](../api/http-forms-api.md#gettemplate) method then use one of the [IHttpResponse](../api/http-response.md) methods to render the form template:
+To render the form in our views, first we need to get the form's template from the HTML we created previously,
+and then render that to our view. To include form validation, we need to pass the result from form API's [Errors](../api/http-forms-api.md#errors) method to our template:
 
 ```go
 // handler
 func handler(w http.ResponseWriter, r *http.Request) {
-    // Get the form template
-    formTpl, err := api.Http().Forms().GetFormTemplate("my-form", r)
-    if err != nil {
-        // handle error
-    }
+   res := api.Http().Response()
+
+    // Error map from form's API to use for validation.
+    errMap := api.Http().Forms().Errors(w, r, views.SampleForm)
+
+    // Retrieve our custom form template.
+    sampleViewForm := views.SampleView(api, errMap)
+    res.AdminView(w, r, sdkapi.ViewPage{PageContent: sampleViewForm})
 
     // render form to the admin view
     api.Http().HttpResponse().AdminView(w, r, sdkapi.ViewPage{
@@ -192,55 +109,86 @@ func handler(w http.ResponseWriter, r *http.Request) {
     })
 }
 ```
+In the example above, the error map is used to handle form validations. It’s important that the form and field names match, so that each validation error is displayed with the correct input field.
 
-## The callback route
+## The form action route
 
-When we defined the [HTML form](#build-form) in our example above, we have set the [CallbackRoute](../api/http-forms-api.md#callbackroute) to `settings:save`.
-This means that when a user clicks the `Submit` button on the HTML form, it will submit the form data to the `settings:save` route using `POST` HTTP method. Thus, one must register the callback route to a [Router Instance](../api/http-router-api.md).
+When we defined the [HTML form](#build-form) in our example above, we have set the form action to `admin.sample.save`.
+This means that when a user clicks the `Submit` button on the HTML form, it will submit the form data to the `admin.sample.save` route using `POST` HTTP method. Thus, one must register the route to a [Router Instance](../api/http-router-api.md).
 
 ```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
+    pluginRouter := api.Http().HttpRouter().PluginRouter()
 
-pluginRouter.Post("/settings/save", func (w http.ResponseWriter, r *http.Request) {
+    pluginRouter.Post("/save", func (w http.ResponseWriter, r *http.Request) {
 
-    // Handle the form data...
+        // Handle the form data...
 
-}).Name("settings:save") // Set the route name to "settings:save"
+    }).Name("admin.sample.save") // Set the route name to "admin.sample.save"
 ```
 
 ## Handling the form data
 
-To get the form data, first we need to get the registered from using the [IHttpFormsApi.GetForm](../api/http-forms-api.md#getform) method.
-Then we can use the [IHttpForm](../api/http-forms-api.md#ihttpform) methods to retrieve the values from the form input fields.
-For example, if we want to retrieve the input value in the form section named `general_configuration`  and the input field named `banner_text`:
+To get the form data, first we need to parse our form with our custom-defined form validators using [ParseFormWithValidator](../api/http-forms-api.md#parseformwithvalidator) method.
+
+Then we can use the [request.FormValue](https://pkg.go.dev/net/http#Request.FormValue) methods to retrieve the values from the form input fields.
+
 
 ```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
-cfgAPI := api.Config().Plugin()
+    pluginRouter := api.Http().HttpRouter().PluginRouter()
+    cfgAPI := api.Config().Plugin()
 
-pluginRouter.Post("/settings/save", func (w http.ResponseWriter, r *http.Request) {
-    // Handle the form data...
+    pluginRouter.Post("/save", func (w http.ResponseWriter, r *http.Request) {
+        res := api.Http().Response()
 
-    // Parse and validate the form input values
-    form, ok := api.Http().Forms().ParseForm("my-form", w, r)
-    if !ok {
-        // handle error
-    }
+        // Define your custom form rules.
+        formRules := []sdkapi.FormValidator{
+            {
+                FieldName:  views.StringField, // Input field name. Important that it matches with the field name.
+                FieldLabel: "Sample String Field",
+                FieldType:  sdkapi.FormFieldTypeText, 
+                FieldRules: sdkapi.FormFieldRules{
+                    Required: true,
+                    Minimum:  5,  
+                    Maximum:  10, 
+                },
+            },
+            {
+                FieldName:  views.IntegerField,
+                FieldLabel: "Sample Integer Field",
+                FieldType:  sdkapi.FormFieldTypeInteger,
+                FieldRules: sdkapi.FormFieldRules{
+                    Required: true,
+                    Minimum:  5, 
+                    Maximum:  10, 
+                },
+            },
+        }
 
-    // If form is valid
-    // Get the "banner_text" input value
-    val, err := form.GetStringValue("general_configuration", "banner_text")
-    if err != nil {
-        // handle error
-    }
+        formValidator := sdkapi.FormWithValidator{
+            FormName:       views.SampleForm,
+            FormValidators: formRules,
+        }
 
-    // Save the data using the plugin config API
-    if err := cfgAPI.Write("banner_text", []byte(val)); err != nil {
-        // handle error
-    }
+        // Parse form with the custom form validator.
+        err := api.Http().Forms().ParseFormWithValidator(w, r, formValidator)
+        if err != nil {
+            res.FlashMsg(w, r, "parsing error", sdkapi.FlashMsgError)
 
-}).Name("settings:save") // Set the route name to "settings:save"
+            // Redirect back to your form view if there's parsing error.
+            res.Redirect(w, r, "admin.sample") 
+
+            return
+        }
+
+        // Read the form values.
+        stringValue := r.FormValue(views.StringField)
+        intValue := r.FormValue(views.IntegerField)
+
+        // Do something with the parsed values.
+
+    }).Name("admin.sample.save") // Set the route name to "admin.sample.save"
 ```
+For additional information about the form rules and validators, refer to [Form Validator](../guides/defining-form-validator.md#form-validator).
 
 !!!note
     Read the [Error Handling](./error-handling.md) and the [Saving Data](./saving-data.md) guides.
