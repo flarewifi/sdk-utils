@@ -32,16 +32,17 @@ CMD cp go.work.default go.work && \
     reflex \
         -r '\.(go|templ|sql|js|css|json)$' \
         -R '(plugin|package).json$' \
-        -R 'db\/queries\/.*' \
-        -R 'node_modules' \
         -R '_templ\.go$' \
         -R '\.tmp\/.*' \
         -R '^output\/.*' \
         -R '^bin\/.*' \
-        -R '^config\/.*' \
+        -R 'db\/queries\/.*' \
+        -R 'node_modules' \
+        -R 'shared/config\/.*' \
+        -R 'shared\/plugins\/installed\/.*' \
+        -R 'shared\/plugins\/cache\/.*' \
+        -R 'shared\/plugins\/updates\/.*' \
+        -R 'shared\/plugins\/backups\/.*' \
         -R 'resources\/assets\/dist' \
-        -R 'plugins\/installed\/.*' \
-        -R 'plugins\/cache\/.*' \
-        -R 'plugins\/update\/.*' \
-        -R 'plugins\/backup\/.*' \
+        -R 'storage\/.*' \
         -s -- sh -c './start-dev.sh' -v

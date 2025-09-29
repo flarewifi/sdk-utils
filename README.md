@@ -21,7 +21,8 @@ Unzip the `openwrt-files.zip` file.
 
 ```sh
 rm -rf ./openwrt-files
-unzip openwrt-files.zip -d openwrt-files
+mkdir shared
+unzip openwrt-files.zip -d shared/openwrt-files
 ```
 
 

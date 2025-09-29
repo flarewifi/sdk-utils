@@ -25,7 +25,7 @@ type ReplacedGoModule struct {
 	NewVersion string
 }
 
-func FixPluginDeps(pluginDir string) error {
+func PatchPluginDeps(pluginDir string) error {
 	log.Println("Tidying up go.mod file...")
 	cmd := exec.Command("go", "mod", "tidy", "-e")
 	cmd.Dir = pluginDir

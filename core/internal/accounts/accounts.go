@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	sdkapi "sdk/api"
+	"slices"
 	"sync"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -28,7 +29,7 @@ func init() {
 }
 
 func DefaultAdminAcct() Account {
-	f := filepath.Join(sdkutils.PathDefaultsDir, "admin.json")
+	f := filepath.Join(sdkutils.PathConfigDefaultsDir, "admin.json")
 
 	perms := []string{}
 	for _, p := range DefaultPerms {
@@ -250,10 +251,8 @@ func HasAllPerms(acct sdkapi.IAccount, perms ...string) bool {
 // Check if account has any of the permissions
 func HasAnyPerm(acct sdkapi.IAccount, perms ...string) bool {
 	for _, perm := range perms {
-		for _, acctPerm := range acct.Permissions() {
-			if perm == acctPerm {
-				return true
-			}
+		if slices.Contains(acct.Permissions(), perm) {
+			return true
 		}
 	}
 	return false

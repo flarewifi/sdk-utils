@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"slices"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
@@ -43,7 +45,7 @@ func AllPluginSrcDefs() []sdkutils.PluginSrcDef {
 
 func LocalPluginSrcDefs() []sdkutils.PluginSrcDef {
 	list := []sdkutils.PluginSrcDef{}
-	paths := SearchPluginDirs(filepath.Join("plugins", "local"))
+	paths := SearchPluginDirs(sdkutils.PathPluginLocalDir)
 	for _, p := range paths {
 		list = append(list, sdkutils.PluginSrcDef{
 			Src:       sdkutils.PluginSrcLocal,
@@ -56,7 +58,7 @@ func LocalPluginSrcDefs() []sdkutils.PluginSrcDef {
 
 func SystemPluginSrcDefs() []sdkutils.PluginSrcDef {
 	list := []sdkutils.PluginSrcDef{}
-	paths := SearchPluginDirs(filepath.Join("plugins", "system"))
+	paths := SearchPluginDirs(sdkutils.PathPluginSystemDir)
 	for _, pluginPath := range paths {
 		list = append(list, sdkutils.PluginSrcDef{
 			Src:       sdkutils.PluginSrcSystem,
@@ -107,17 +109,15 @@ func SearchPluginDirs(searchPath string) (pluginDirs []string) {
 
 // InstalledPluginDirs returns the list of installed plugins in the plugins directory. The path of each plugin is an absolute path.
 func InstalledPluginDirs() (pluginDirs []string) {
-	installedPluginsPath := filepath.Join(sdkutils.PathPluginsDir, "installed")
-
 	// check if plugins/installed directory exists before traversing
-	if !(sdkutils.FsExists(installedPluginsPath)) {
+	if !(sdkutils.FsExists(sdkutils.PathPluginInstallDir)) {
 		return
 	}
 
 	// this lists all directories inside paths.PluginsDir/installed
 	var list []string
-	if err := sdkutils.FsListDirs(installedPluginsPath, &list, false); err != nil {
-		fmt.Printf("Error listing directories in %s: %v\n", installedPluginsPath, err)
+	if err := sdkutils.FsListDirs(sdkutils.PathPluginInstallDir, &list, false); err != nil {
+		fmt.Printf("Error listing directories in %s: %v\n", sdkutils.PathPluginInstallDir, err)
 		return
 	}
 
@@ -183,7 +183,7 @@ func RemoveMetadata(pkg string) error {
 	// Remove metadata from the list of installed plugins
 	for i, m := range cfg.Metadata {
 		if m.Package == pkg {
-			cfg.Metadata = append(cfg.Metadata[:i], cfg.Metadata[i+1:]...)
+			cfg.Metadata = slices.Delete(cfg.Metadata, i, i+1)
 			break
 		}
 	}
@@ -239,13 +239,7 @@ func NeedsRecompile(def sdkutils.PluginSrcDef) bool {
 		return true
 	}
 
-	for _, pkg := range cfg.Recompile {
-		if info.Package == pkg {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(cfg.Recompile, info.Package)
 }
 
 func HasPendingUpdate(pkg string) bool {
@@ -353,13 +347,13 @@ func GetRepoFromGitUrl(def sdkutils.PluginSrcDef) string {
 }
 
 func GetInstallPath(pkg string) string {
-	return filepath.Join(sdkutils.PathPluginsDir, "installed", pkg)
+	return filepath.Join(sdkutils.PathPluginInstallDir, pkg)
 }
 
 func GetPendingUpdatePath(pkg string) string {
-	return filepath.Join(sdkutils.PathPluginsDir, "update", pkg)
+	return filepath.Join(sdkutils.PathPluginUpdatesDir, pkg)
 }
 
 func GetBackupPath(pkg string) string {
-	return filepath.Join(sdkutils.PathPluginsDir, "backup", pkg)
+	return filepath.Join(sdkutils.PathPluginBackupsDir, pkg)
 }

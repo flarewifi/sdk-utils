@@ -21,7 +21,6 @@ var (
 	devkitFiles      = []string{
 		".go-version",
 		"bin/flare",
-		"config/.defaults",
 		"core/go.mod",
 		"core/go.sum",
 		"core/plugin.so",
@@ -29,9 +28,10 @@ var (
 		"core/resources",
 		"go.work.default",
 		"main/go.mod",
-		"plugins/system",
 		"scripts",
 		"sdk",
+		"shared/config/.defaults",
+		"shared/plugins/system",
 	}
 )
 
@@ -81,7 +81,7 @@ func CreateDevkit() {
 	}
 
 	// Generate default application config
-	appConfigFile := filepath.Join(devkitReleaseDir, "config/application.json")
+	appConfigFile := filepath.Join(devkitReleaseDir, "shared/config/application.json")
 	appConfig := sdkapi.AppCfg{
 		Lang:     "en",
 		Currency: "php",

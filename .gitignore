@@ -1,12 +1,3 @@
-/config/accounts
-/config/plugins
-/config/*.json
-/config/*.zip
-/plugins/local/com.sample.plugin
-/plugins/installed
-/plugins/update
-/plugins/backup
-/plugins/local
 /output
 /public
 /local
@@ -17,7 +8,15 @@
 /vendor
 /node_modules
 /go
-/plugins/installed/*
+/shared/config/accounts
+/shared/config/plugins
+/shared/config/*.json
+/shared/config/*.zip
+/shared/plugins/local
+/plugins/installed
+/plugins/updates
+/plugins/backups
+/plugins/cache
 /bin
 /packages
 .null*
@@ -35,5 +34,5 @@ go.work.sum
 __debug_bin*
 main.exe
 *:Zone.Identifier
-/plugins/cache
+/storage
 .vscode/

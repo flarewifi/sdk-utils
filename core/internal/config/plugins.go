@@ -12,8 +12,8 @@ var (
 )
 
 type PluginsConfig struct {
-	Recompile []string                  `json:"recompile"`
-	Metadata  []sdkutils.PluginMetadata `json:"metadata"`
+	Recompile []string
+	Metadata  []sdkutils.PluginMetadata
 }
 
 func ReadPluginsConfig() (PluginsConfig, error) {

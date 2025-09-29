@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -30,12 +29,4 @@ func BuildTemplates(pluginDir string) (err error) {
 
 	fmt.Println("Templates built successfully")
 	return nil
-}
-
-func removeDanglingTemplFile(templgoFile string) (err error) {
-	templFile := strings.Replace(templgoFile, "_templ.go", ".templ", 1)
-	if !sdkutils.FsExists(templFile) {
-		err = os.Remove(templgoFile)
-	}
-	return
 }

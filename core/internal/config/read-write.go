@@ -13,7 +13,7 @@ func readConfigFile(f string, out interface{}) error {
 	bytes, err := os.ReadFile(location)
 	if err != nil {
 		// read from defaults
-		location = filepath.Join(sdkutils.PathConfigDir, ".defaults", f)
+		location = filepath.Join(sdkutils.PathConfigDefaultsDir, f)
 		bytes, err = os.ReadFile(location)
 		if err != nil {
 			return err

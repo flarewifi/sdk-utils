@@ -12,6 +12,7 @@ import (
 	tools "core/build/tools"
 	"core/env"
 	"core/internal/utils/plugins"
+	"core/internal/utils/updates"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -65,8 +66,8 @@ func main() {
 		tools.CreateGoWorkspace()
 		return
 
-	case "update":
-		Update()
+	case "upgrade":
+		updates.UpgradeCmd()
 		return
 
 	case "help":
@@ -211,10 +212,6 @@ func Server() {
 	initFn()
 }
 
-func Update() {
-	panic("Update() - not implemented yet.")
-}
-
 func GoEnvToString(e int8) string {
 	switch e {
 	case env.ENV_DEV:
@@ -250,6 +247,5 @@ list of commands:
 
     fix-workspace                       Re-generate the go.work file
 
-    update                              Updates the flare system
 `
 }

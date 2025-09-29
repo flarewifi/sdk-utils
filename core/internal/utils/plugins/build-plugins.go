@@ -18,7 +18,7 @@ func BuildLocalPlugins() error {
 		workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(pluginPath))
 		defer os.RemoveAll(workdir)
 
-		if err := FixPluginDeps(pluginPath); err != nil {
+		if err := PatchPluginDeps(pluginPath); err != nil {
 			return err
 		}
 
@@ -35,7 +35,7 @@ func BuildLocalPlugins() error {
 			return err
 		}
 
-		pluginInstallDir := filepath.Join(sdkutils.PathPluginsDir, "installed", info.Package)
+		pluginInstallDir := filepath.Join(sdkutils.PathPluginInstallDir, info.Package)
 
 		if err := os.RemoveAll(pluginInstallDir); err != nil {
 			return err

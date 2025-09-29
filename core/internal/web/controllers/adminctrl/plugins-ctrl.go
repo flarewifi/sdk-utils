@@ -98,7 +98,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		dst := filepath.Join(sdkutils.PathPluginsDir, "update", pluginPkg)
+		dst := filepath.Join(sdkutils.PathPluginUpdatesDir, pluginPkg)
 		if err := sdkutils.CopyPluginFiles(src, dst); err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.index")
@@ -231,7 +231,6 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Extract the zip file to the plugins/local directory
 		pluginTmpDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted", sdkutils.RandomStr(16))
 		if err = sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)

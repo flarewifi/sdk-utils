@@ -64,6 +64,6 @@ func WriteThemesConfig(cfg ThemesConfig) error {
 }
 
 func isThemeValid(themePkg string) bool {
-	themePath := filepath.Join(sdkutils.PathPluginsDir, themePkg)
+	themePath := filepath.Join(sdkutils.PathPluginInstallDir, themePkg)
 	return sdkutils.FsExists(themePath)
 }

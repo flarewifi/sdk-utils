@@ -10,9 +10,9 @@ func main() {
 			"core/go.mod",
 			"core/plugin.json",
 			"core/resources",
-			"plugins/system",
 			"sdk",
 			"go.work.default",
+			"shared/plugins/system",
 		},
 		CustomFiles: []tools.CustomFiles{
 			{

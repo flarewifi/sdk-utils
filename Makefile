@@ -14,7 +14,7 @@ openwrt:
 	./bin/flare server
 
 docs-build:
-	docker compose run --rm docs sh -c 'cd /docs && mkdocs build'
+	docker compose run --rm --build docs sh -c 'cd /docs && mkdocs build'
 
 docs-serve:
 	docker compose up docs
@@ -23,4 +23,4 @@ sync-version:
 	go run ./core/internal/cli/flare-internal.go sync-version
 
 devkit:
-	docker compose run -it --rm app sh -c 'go run --tags=dev ./core/cmd/create-devkit/main.go'
+	docker compose run -it --rm --build app sh -c 'go run --tags=dev ./core/cmd/create-devkit/main.go'

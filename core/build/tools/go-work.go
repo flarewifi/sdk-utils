@@ -19,19 +19,12 @@ use (
     ./sdk/api
     ./sdk/utils`, goVersion)
 
-	// Insert libs paths
-	//
-	// libs := []string{}
-	// if err := sdkutils.FsListDirs("sdk/libs", &libs, false); err != nil {
-	// 	log.Println(err)
-	// }
-
-	// for _, lib := range libs {
-	// 	goWork += "\n    ./" + lib
-	// }
-
 	// Insert plugin paths
-	pluginSearchPaths := []string{"plugins/system", "plugins/local"}
+	pluginSearchPaths := []string{
+		sdkutils.StripRootPath(sdkutils.PathPluginSystemDir),
+		sdkutils.StripRootPath(sdkutils.PathPluginLocalDir),
+	}
+
 	for _, searchPath := range pluginSearchPaths {
 		if sdkutils.FsExists(searchPath) {
 			var entries []string
