@@ -5,32 +5,13 @@ import (
 	"core/internal/utils/plugins"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type CompileResult struct {
 	Percent int
 	Error   error
-}
-
-func Preupgrade() error {
-	if err := sdkutils.FsCopy(sdkutils.PathConfigDir, filepath.Join(sdkutils.PathSystemUpdateDir, "config")); err != nil {
-		return err
-	}
-
-	cmd := exec.Command("bin/flare", "upgrade")
-	cmd.Dir = sdkutils.PathSystemUpdateDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func UpgradeCmd() error {

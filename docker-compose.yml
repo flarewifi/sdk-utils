@@ -2,11 +2,12 @@
 
 services:
   app:
+    platform: linux/amd64
     build:
       context: .
     volumes:
       - ./:/app
-      - './openwrt-files/etc/config:/etc/config'
+      - './shared/openwrt-files/etc/config:/etc/config'
       - './core/build/devkit/extras/shared/config/database.json:/app/shared/config/database.json'
     environment:
       - GOCACHE=/app/.tmp/go/cache

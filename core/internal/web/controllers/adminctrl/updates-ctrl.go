@@ -6,7 +6,6 @@ import (
 	"core/internal/utils/updates"
 	updatesview "core/resources/views/admin/updates"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	sdkapi "sdk/api"
@@ -137,10 +136,6 @@ func InstallUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 					if result.Error != nil {
 						return
 					}
-				}
-
-				if err := updates.Preupgrade(); err != nil {
-					fmt.Println("Error in preupgrade:", err)
 				}
 			}()
 		}
