@@ -13,12 +13,14 @@
 /shared/config/*.json
 /shared/config/*.zip
 /shared/plugins/local
+/shared/openwrt-files
 /plugins/installed
 /plugins/updates
 /plugins/backups
 /plugins/cache
 /bin
 /packages
+/runtime
 .null*
 
 .DS_Store

@@ -45,4 +45,5 @@ CMD cp go.work.default go.work && \
         -R 'shared\/plugins\/backups\/.*' \
         -R 'resources\/assets\/dist' \
         -R 'storage\/.*' \
+        -R 'runtime\/.*' \
         -s -- sh -c './start-dev.sh' -v

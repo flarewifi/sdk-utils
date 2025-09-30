@@ -16,4 +16,5 @@ cp go.work.default go.work && \
     sh -c "$FLARE_BIN fix-workspace" && \
     sh -c "$FLARE_BIN build-templates" && \
     go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN && \
-    sh -c "$FLARE_BIN server"
+    ./prep-runtime.sh && \
+    sh -c "cd ./runtime/current && $FLARE_BIN server"
