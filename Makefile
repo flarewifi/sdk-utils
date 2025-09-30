@@ -20,7 +20,7 @@ docs-serve:
 	docker compose up docs
 
 sync-version:
-	go run ./core/internal/cli/flare-internal.go sync-version
+	go run ./core/cmd/sync-versions/main.go
 
 devkit:
 	docker compose run -it --rm --build app sh -c 'go run --tags=dev ./core/cmd/create-devkit/main.go'
