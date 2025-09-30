@@ -5,32 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
 	GITHUB_TOKEN = os.Getenv("GITHUB_TOKEN")
 )
-
-func GitCheckoutMain() {
-	dirPaths := []string{"core"}
-
-	var pluginDirs []string
-	sdkutils.FsListDirs("plugins", &pluginDirs, false)
-	dirPaths = append(dirPaths, pluginDirs...)
-
-	for _, dirPath := range dirPaths {
-		fmt.Printf("Checking out main branch for %s...\n", dirPath)
-		cmd := exec.Command("git", "checkout", "main")
-		cmd.Dir = dirPath
-		cmd.Stdout = os.Stdout
-		err := cmd.Run()
-		if err != nil {
-			panic(err)
-		}
-	}
-}
 
 func GitCloneRepo(repo string, workDir string) {
 	var gitUrl string

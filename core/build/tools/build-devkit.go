@@ -30,8 +30,8 @@ var (
 		"main/go.mod",
 		"scripts",
 		"sdk",
+		"plugins/system",
 		"shared/config/.defaults",
-		"shared/plugins/system",
 	}
 )
 

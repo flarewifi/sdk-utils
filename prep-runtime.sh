@@ -1,7 +1,7 @@
 #!/bin/bash
 
 rm -rf ./runtime/current
-mkdir -p ./runtime/current
+mkdir -p ./runtime/current/plugins
 
 for f in \
     "bin" \
@@ -18,3 +18,4 @@ for f in \
     sh -c "cd ./runtime/current/ && ln -s ../../$f $f"
 done
 
+sh -c "cd ./runtime/current/plugins/ && ln -s ../../../plugins/system ./system"
