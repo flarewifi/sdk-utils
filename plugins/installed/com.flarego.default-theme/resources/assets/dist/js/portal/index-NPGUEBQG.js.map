@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../portal/portal-index.js", "index_index.js"],
-  "sourcesContent": ["(function($, $flare) {\n  'use strict';\n\n  $(document).ready(function() {\n\n    setInterval(function() {\n      var scriptEl = $('#portal-data');\n      var data = JSON.parse(scriptEl.text());\n      var running = data.session_running;\n      if (running) {\n        var timeEl = $('#session-time');\n        var secs = (timeEl.data('value') * 1) - 1;\n        timeEl.data(\"value\", secs.toString());\n        timeEl.text(secs.toString());\n      }\n    }, 1000);\n\n\n  });\n})(window.$, window.$flare);\n", "require('../../../portal/portal-index.js');\n"],
-  "mappings": ";;;;;;;;;AAAA;AAAA;AAAA,OAAC,SAAS,GAAG,QAAQ;AACnB;AAEA,UAAE,QAAQ,EAAE,MAAM,WAAW;AAE3B,sBAAY,WAAW;AACrB,gBAAI,WAAW,EAAE,cAAc;AAC/B,gBAAI,OAAO,KAAK,MAAM,SAAS,KAAK,CAAC;AACrC,gBAAI,UAAU,KAAK;AACnB,gBAAI,SAAS;AACX,kBAAI,SAAS,EAAE,eAAe;AAC9B,kBAAI,OAAQ,OAAO,KAAK,OAAO,IAAI,IAAK;AACxC,qBAAO,KAAK,SAAS,KAAK,SAAS,CAAC;AACpC,qBAAO,KAAK,KAAK,SAAS,CAAC;AAAA,YAC7B;AAAA,UACF,GAAG,GAAI;AAAA,QAGT,CAAC;AAAA,MACH,GAAG,OAAO,GAAG,OAAO,MAAM;AAAA;AAAA;;;ACnB1B;",
-  "names": []
-}
