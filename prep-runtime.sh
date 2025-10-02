@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Link the files into the runtime/current directory
+# so that it can be deleted on software update testing without losing the files.
+
 rm -rf ./runtime/current
 mkdir -p ./runtime/current/plugins
 
