@@ -8,12 +8,8 @@
 /vendor
 /node_modules
 /go
-/data/config/accounts
-/data/config/plugins
-/data/config/*.json
-/data/config/*.zip
-/data/plugins/local
-/data/openwrt-files
+/data
+!/data/.keep
 /plugins/installed
 /plugins/updates
 /plugins/backups

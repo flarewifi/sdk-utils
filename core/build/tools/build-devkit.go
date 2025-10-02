@@ -20,6 +20,7 @@ var (
 	devkitReleaseDir string
 	devkitFiles      = []string{
 		".go-version",
+		"defaults",
 		"bin/flare",
 		"core/go.mod",
 		"core/go.sum",
@@ -31,7 +32,6 @@ var (
 		"scripts",
 		"sdk",
 		"plugins/system",
-		"data/config/.defaults",
 	}
 )
 

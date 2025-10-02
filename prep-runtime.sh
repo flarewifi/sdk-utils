@@ -9,6 +9,7 @@ mkdir -p ./runtime/current/plugins
 for f in \
     "bin" \
     "core" \
+    "defaults" \
     "main" \
     "sdk" \
     "node_modules" \

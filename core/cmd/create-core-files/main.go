@@ -6,13 +6,13 @@ func main() {
 	build := &tools.BuildOutput{
 		OutputDirName: "core-files",
 		Files: []string{
+			"defaults",
 			"core/go.mod",
 			"core/plugin.json",
 			"core/resources",
 			"sdk",
 			"go.work.default",
 			"plugins/system",
-			"data/config/.defaults",
 		},
 		CustomFiles: []tools.CustomFiles{
 			{
