@@ -40,8 +40,10 @@ CMD cp go.work.default go.work && \
         -R 'node_modules' \
         -R 'data\/config\/.*' \
         -R 'data\/plugins\/installed\/.*' \
+        -R 'data\/plugins\/cache\/.*' \
         -R 'data\/plugins\/updates\/.*' \
         -R 'data\/plugins\/backups\/.*' \
         -R 'resources\/assets\/dist' \
         -R 'storage\/.*' \
+        -R 'runtime\/.*' \
         -s -- sh -c './start-devkit.sh' -v

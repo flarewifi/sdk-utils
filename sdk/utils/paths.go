@@ -25,8 +25,6 @@ var (
 	PathConfigDir         = filepath.Join(PathDataDir, "config")
 	PathLogsDir           = filepath.Join(PathAppDir, "logs")
 	PathSdkDir            = filepath.Join(PathAppDir, "sdk")
-	PathTmpDir            = filepath.Join(PathAppDir, ".tmp")
-	PathCacheDir          = filepath.Join(PathTmpDir, "cache")
 	PathStorageDir        = filepath.Join(PathAppDir, "storage")
 	PathSqlcBin           = filepath.Join(PathAppDir, "bin", "sqlc")
 	PathPluginSystemDir   = filepath.Join(PathAppDir, "plugins", "system")
@@ -36,6 +34,8 @@ var (
 	PathPluginLocalDir    = filepath.Join(PathDataDir, "plugins", "local")
 	PathSystemUpdateDir   = filepath.Join(PathStorageDir, "system", "update")
 	PathPublicDir         = filepath.Join(PathAppDir, "public")
+	PathTmpDir            = filepath.Join(PathAppDir, ".tmp")
+	PathCacheDir          = filepath.Join(PathTmpDir, "cache")
 )
 
 // StripRootPath removes the project root directory prefix from absolute paths
