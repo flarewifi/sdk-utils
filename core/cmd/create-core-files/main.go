@@ -12,7 +12,7 @@ func main() {
 			"sdk",
 			"go.work.default",
 			"plugins/system",
-			"shared/config/.defaults",
+			"data/config/.defaults",
 		},
 		CustomFiles: []tools.CustomFiles{
 			{

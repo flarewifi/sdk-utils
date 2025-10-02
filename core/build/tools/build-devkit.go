@@ -31,7 +31,7 @@ var (
 		"scripts",
 		"sdk",
 		"plugins/system",
-		"shared/config/.defaults",
+		"data/config/.defaults",
 	}
 )
 
@@ -81,7 +81,7 @@ func CreateDevkit() {
 	}
 
 	// Generate default application config
-	appConfigFile := filepath.Join(devkitReleaseDir, "shared/config/application.json")
+	appConfigFile := filepath.Join(devkitReleaseDir, "data/config/application.json")
 	appConfig := sdkapi.AppCfg{
 		Lang:     "en",
 		Currency: "php",

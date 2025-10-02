@@ -12,7 +12,7 @@ for f in \
     "go.work" \
     ".go-version" \
     "start-dev.sh" \
-    "shared" \
+    "data" \
     ; do
 
     sh -c "cd ./runtime/current/ && ln -s ../../$f $f"
