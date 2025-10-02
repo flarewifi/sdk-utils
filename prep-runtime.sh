@@ -9,6 +9,7 @@ mkdir -p ./runtime/current/plugins
 for f in \
     "bin" \
     "core" \
+    "data" \
     "defaults" \
     "main" \
     "sdk" \
@@ -16,7 +17,6 @@ for f in \
     "go.work" \
     ".go-version" \
     "start-dev.sh" \
-    "data" \
     ; do
 
     sh -c "cd ./runtime/current/ && ln -s ../../$f $f"

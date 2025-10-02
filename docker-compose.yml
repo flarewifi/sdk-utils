@@ -7,8 +7,8 @@ services:
       context: .
     volumes:
       - ./:/app
-      - './data/openwrt-files/etc/config:/etc/config'
-      - './core/build/devkit/extras/data/config/database.json:/app/data/config/database.json'
+      - ./data/openwrt-files/etc/config:/etc/config
+      - ./core/build/devkit/extras/data/config/database.json:/app/data/config/database.json
     environment:
       - GOCACHE=/app/.tmp/go/cache
       - GOMODCACHE=/app/.tmp/go/mod

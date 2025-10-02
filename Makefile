@@ -1,12 +1,11 @@
-default:
-	# create docker network if not exists
-	docker network inspect flare_network >/dev/null 2>&1 || \
-		docker network create --driver bridge flare_network
+default: create-network
 	# start docker services in docker-compose.yml
 	docker compose up --build --remove-orphans --force-recreate
 
-server-dev:
-	./run-dev.sh
+create-network:
+	# create docker network if not exists
+	docker network inspect flare_network >/dev/null 2>&1 || \
+		docker network create --driver bridge flare_network
 
 openwrt:
 	go run ./core/cmd/build-cli/main.go && \

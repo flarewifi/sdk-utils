@@ -128,12 +128,12 @@ func InstallFromGitSrc(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef)
 		return sdkutils.PluginInfo{}, err
 	}
 
-	cachePath := filepath.Join(sdkutils.PathAppDir, "plugins", "cache", info.Package)
+	cachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
 	if err := sdkutils.FsCopy(clonePath, cachePath); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 
-	if err := InstallPlugin(cachePath, db, InstallOpts{Def: def, RemoveSrc: false}); err != nil {
+	if err := InstallPlugin(sdkutils.StripRootPath(cachePath), db, InstallOpts{Def: def, RemoveSrc: false}); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 

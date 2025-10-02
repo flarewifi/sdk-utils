@@ -46,10 +46,10 @@ func AllPluginSrcDefs() []sdkutils.PluginSrcDef {
 func LocalPluginSrcDefs() []sdkutils.PluginSrcDef {
 	list := []sdkutils.PluginSrcDef{}
 	paths := SearchPluginDirs(sdkutils.PathPluginLocalDir)
-	for _, p := range paths {
+	for _, pluginPath := range paths {
 		list = append(list, sdkutils.PluginSrcDef{
 			Src:       sdkutils.PluginSrcLocal,
-			LocalPath: p,
+			LocalPath: sdkutils.StripRootPath(pluginPath),
 		})
 	}
 	log.Println("local plugins list: ", list)
@@ -62,7 +62,7 @@ func SystemPluginSrcDefs() []sdkutils.PluginSrcDef {
 	for _, pluginPath := range paths {
 		list = append(list, sdkutils.PluginSrcDef{
 			Src:       sdkutils.PluginSrcSystem,
-			LocalPath: pluginPath,
+			LocalPath: sdkutils.StripRootPath(pluginPath),
 		})
 	}
 	log.Println("system plugins list: ", list)

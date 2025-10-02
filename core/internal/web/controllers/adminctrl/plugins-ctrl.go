@@ -255,7 +255,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		pluginCachePath := filepath.Join(sdkutils.PathAppDir, "plugins", "cache", info.Package)
+		pluginCachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
 		if err = sdkutils.FsCopy(pluginSrc, pluginCachePath); err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
@@ -265,7 +265,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		def := sdkutils.PluginSrcDef{
 			Src:       sdkutils.PluginSrcLocal,
-			LocalPath: pluginCachePath,
+			LocalPath: sdkutils.StripRootPath(pluginCachePath),
 		}
 
 		if _, err := plugins.InstallFromLocalPath(os.Stdout, g.CoreAPI.SqlDb(), def); err != nil {

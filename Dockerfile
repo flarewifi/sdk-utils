@@ -38,12 +38,10 @@ CMD cp go.work.default go.work && \
         -R '^bin\/.*' \
         -R 'db\/queries\/.*' \
         -R 'node_modules' \
-        -R 'data\/config\/.*' \
-        -R 'data\/plugins\/installed\/.*' \
-        -R 'data\/plugins\/cache\/.*' \
-        -R 'data\/plugins\/updates\/.*' \
-        -R 'data\/plugins\/backups\/.*' \
+        -R 'data\/.*' \
         -R 'resources\/assets\/dist' \
         -R 'storage\/.*' \
-        -R 'runtime\/.*' \
+        -R 'plugins\/installed\/.*' \
+        -R 'plugins\/backups\/.*' \
+        -R 'plugins\/updates\/.*' \
         -s -- sh -c './start-dev.sh' -v
