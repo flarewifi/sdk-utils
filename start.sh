@@ -1,31 +1,32 @@
 #!/bin/sh
 
-export APPDIR="/etc/flarehotspot"
-export APPTMP="/var/tmp/flarehotspot"
-export DATA_DIR="/var/lib/flarehotspot"
-
+export FLARE_DIR="/opt/flarehotspot"
+export APP_DIR="$FLARE_DIR/app"
+export APP_TMP="$FLARE_DIR/tmp"
+export DATA_DIR="$FLARE_DIR/data"
 export STORAGE_DIR="$DATA_DIR/storage"
 export SOFTWARE_UPDATE_DIR="$STORAGE_DIR/system/update"
 export BACKUP_DIR="$STORAGE_DIR/system/backup"
+export PATH="$APP_DIR/bin:$PATH"
 
 apply_updates() {
     echo "\n\nFound software update, copying..." && \
         rm -rf $BACKUP_DIR && \
-        cp -r $APPDIR $BACKUP_DIR && \
-        rm -rf $APPDIR/* && \
-        cp -r $SOFTWARE_UPDATE_DIR/* $APPDIR && \
+        cp -r $APP_DIR $BACKUP_DIR && \
+        rm -rf $APP_DIR/* && \
+        cp -r $SOFTWARE_UPDATE_DIR/* $APP_DIR && \
         rm -rf $SOFTWARE_UPDATE_DIR && \
-        cd $APPDIR && \
+        cd $APP_DIR && \
         echo "Software updates copied successfully."
 }
 
 revert_updates() {
     if [ -e $BACKUP_DIR ]; then
         echo "\n\nOld version is available, reverting updates..." && \
-            rm -rf $APPDIR/* && \
-            cp -r $BACKUP_DIR/* $APPDIR && \
+            rm -rf $APP_DIR/* && \
+            cp -r $BACKUP_DIR/* $APP_DIR && \
             rm -rf $BACKUP_DIR && \
-            cd $APPDIR && \
+            cd $APP_DIR && \
             echo "Old version copied successfully."
     else
         echo "\n\nNo backup of old version is available" && exit 1
@@ -36,9 +37,9 @@ link_data() {
     # Link data directory
     if [ ! -e "./data" ]; then
         (\
-                echo "\n\nLinking data directory from $DATA_DIR to $APPDIR/data" && \
-                ln -s $DATA_DIR $APPDIR/data && \
-                echo "\n\nFiles in $APPDIR/data: $(ls -l $APPDIR/data/)"
+                echo "\n\nLinking data directory from $DATA_DIR to $APP_DIR/data" && \
+                ln -s $DATA_DIR $APP_DIR/data && \
+                echo "\n\nFiles in $APP_DIR/data: $(ls -l $APP_DIR/data/)"
             ) || ( \
                 echo "\n\nFailed to link data directory, exiting" && \
                 return 1
@@ -52,11 +53,11 @@ fi
 
 start() {
     (\
-            cd $APPDIR && \
-            echo "\n\nStarting Flare Hotspot from $APPDIR" && \
+            cd $APP_DIR && \
+            echo "\n\nStarting Flare Hotspot from $APP_DIR" && \
             link_data && \
-            mkdir -p $APPTMP && \
-            ./bin/flare server
+            mkdir -p $APP_TMP && \
+            flare server
         ) || (\
             echo "\n\nFailed to start application, reverting to old version if available..." && \
             revert_updates && start

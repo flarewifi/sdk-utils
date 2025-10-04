@@ -15,8 +15,8 @@ import (
 
 var (
 	PathAppDir           = getRootDir()
-	PathCoreDir          = filepath.Join(PathAppDir, "core")
 	PathDataDir          = filepath.Join(PathAppDir, "data")
+	PathCoreDir          = filepath.Join(PathAppDir, "core")
 	PathDefaultsDir      = filepath.Join(PathAppDir, "defaults")
 	PathConfigDir        = filepath.Join(PathDataDir, "config")
 	PathLogsDir          = filepath.Join(PathAppDir, "logs")
@@ -40,7 +40,7 @@ func StripRootPath(p string) string {
 }
 
 func getRootDir() string {
-	if dir := os.Getenv("APPDIR"); dir != "" {
+	if dir := os.Getenv("APP_DIR"); dir != "" {
 		return dir
 	}
 
@@ -49,7 +49,7 @@ func getRootDir() string {
 		return dir
 	}
 
-	return "/etc/flarehotspot"
+	return "."
 }
 
 func getTmpDir() string {

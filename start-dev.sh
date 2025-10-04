@@ -18,9 +18,10 @@ FLARE_BIN="./bin/flare"
         go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN
 ) || (echo "Build failed" && exit 1)
 
-RUNTIME_DIR="/etc/flarehotspot"
-DATA_DIR="/var/lib/flarehotspot"
-rm -rf $RUNTIME_DIR/*
+APP_DIR="/opt/flarehotspot/app"
+DATA_DIR="/opt/flarehotspot/data"
+rm -rf $APP_DIR/*
+mkdir -p $APP_DIR
 
 for f in \
     "bin" \
@@ -35,7 +36,7 @@ for f in \
     "start.sh" \
     ; do
 
-    ln -s $(pwd)/$f $RUNTIME_DIR/$f || (echo "Failed to link $f" && exit 1)
+    ln -s $(pwd)/$f $APP_DIR/$f || (echo "Failed to link $f" && exit 1)
 done
 
-sh -c "cd $RUNTIME_DIR && ./start.sh"
+sh -c "cd $APP_DIR && ./start.sh"
