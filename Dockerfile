@@ -16,6 +16,9 @@ RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architectur
         tar -C /usr/local -xzf golang.tar.gz && \
         rm -rf golang.tar.gz
 
+RUN mkdir -p /etc/flarehotspot && \
+    chown -R ubuntu:ubuntu /etc/flarehotspot
+
 USER ubuntu
 
 # Install core go modules
@@ -26,6 +29,7 @@ RUN cd core && go mod download
 # Install additional tools
 COPY ./scripts/install-tools.sh .
 RUN ./install-tools.sh
+
 
 # Watch and recompile server on file change
 CMD cp go.work.default go.work && \
