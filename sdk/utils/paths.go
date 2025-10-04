@@ -13,29 +13,25 @@ import (
 	"strings"
 )
 
-const (
-	rootDir = "flarehotspot"
-)
-
 var (
-	PathAppDir            = getRootDir()
-	PathCoreDir           = filepath.Join(PathAppDir, "core")
-	PathDataDir           = filepath.Join(PathAppDir, "data")
-	PathConfigDefaultsDir = filepath.Join(PathAppDir, "defaults")
-	PathConfigDir         = filepath.Join(PathDataDir, "config")
-	PathLogsDir           = filepath.Join(PathAppDir, "logs")
-	PathSdkDir            = filepath.Join(PathAppDir, "sdk")
-	PathStorageDir        = filepath.Join(PathDataDir, "storage")
-	PathPluginSystemDir   = filepath.Join(PathAppDir, "plugins", "system")
-	PathPluginInstallDir  = filepath.Join(PathAppDir, "plugins", "installed")
-	PathPluginBackupsDir  = filepath.Join(PathAppDir, "plugins", "backups")
-	PathPluginUpdatesDir  = filepath.Join(PathAppDir, "plugins", "updates")
-	PathPluginCacheDir    = filepath.Join(PathConfigDir, "cache", "plugins")
-	PathPluginLocalDir    = filepath.Join(PathDataDir, "plugins", "local")
-	PathSystemUpdateDir   = filepath.Join(PathStorageDir, "system", "update")
-	PathPublicDir         = filepath.Join(PathAppDir, "public")
-	PathTmpDir            = filepath.Join(PathAppDir, ".tmp")
-	PathCacheDir          = filepath.Join(PathTmpDir, "cache")
+	PathAppDir           = getRootDir()
+	PathCoreDir          = filepath.Join(PathAppDir, "core")
+	PathDataDir          = filepath.Join(PathAppDir, "data")
+	PathDefaultsDir      = filepath.Join(PathAppDir, "defaults")
+	PathConfigDir        = filepath.Join(PathDataDir, "config")
+	PathLogsDir          = filepath.Join(PathAppDir, "logs")
+	PathSdkDir           = filepath.Join(PathAppDir, "sdk")
+	PathStorageDir       = filepath.Join(PathDataDir, "storage")
+	PathPluginSystemDir  = filepath.Join(PathAppDir, "plugins", "system")
+	PathPluginInstallDir = filepath.Join(PathAppDir, "plugins", "installed")
+	PathPluginBackupsDir = filepath.Join(PathAppDir, "plugins", "backups")
+	PathPluginUpdatesDir = filepath.Join(PathAppDir, "plugins", "updates")
+	PathPluginLocalDir   = filepath.Join(PathDataDir, "plugins", "local")
+	PathPluginCacheDir   = filepath.Join(PathConfigDir, "cache", "plugins")
+	PathSystemUpdateDir  = filepath.Join(PathStorageDir, "system", "update")
+	PathPublicDir        = filepath.Join(PathAppDir, "public")
+	PathCacheDir         = filepath.Join(PathTmpDir, "cache")
+	PathTmpDir           = getTmpDir()
 )
 
 // StripRootPath removes the project root directory prefix from absolute paths
@@ -48,23 +44,18 @@ func getRootDir() string {
 		return dir
 	}
 
-	wd, _ := os.Getwd()
-	for !strings.HasSuffix(wd, rootDir) {
-		wd = filepath.Dir(wd)
-		if wd == "/" {
-			break
-		}
-	}
-
-	if wd != "/" {
-		return wd
-	}
-
 	dir, err := os.Getwd()
-	if err == nil {
+	if err == nil && dir != "" {
 		return dir
 	}
 
-	dir = "."
-	return dir
+	return "/etc/flarehotspot"
+}
+
+func getTmpDir() string {
+	tmp := os.Getenv("APPTMP")
+	if tmp == "" {
+		return filepath.Join(getRootDir(), ".tmp")
+	}
+	return tmp
 }

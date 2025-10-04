@@ -19,22 +19,23 @@ FLARE_BIN="./bin/flare"
 ) || (echo "Build failed" && exit 1)
 
 RUNTIME_DIR="/etc/flarehotspot"
+DATA_DIR="/var/lib/flarehotspot"
 rm -rf $RUNTIME_DIR/*
-mkdir -p $RUNTIME_DIR
 
 for f in \
     "bin" \
     "core" \
-    "data" \
     "defaults" \
     "main" \
+    "node_modules" \
     "plugins" \
     "sdk" \
     "go.work" \
+    "go.sum" \
     "start.sh" \
     ; do
 
-    ln -s $(pwd)/$f $RUNTIME_DIR/$f || echo "Failed to link $f"
+    ln -s $(pwd)/$f $RUNTIME_DIR/$f || (echo "Failed to link $f" && exit 1)
 done
 
 sh -c "cd $RUNTIME_DIR && ./start.sh"

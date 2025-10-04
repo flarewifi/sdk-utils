@@ -19,19 +19,21 @@ import (
 var (
 	devkitReleaseDir string
 	devkitFiles      = []string{
-		".go-version",
-		"defaults",
 		"bin/flare",
 		"core/go.mod",
 		"core/go.sum",
 		"core/plugin.so",
 		"core/plugin.json",
 		"core/resources",
-		"go.work.default",
+		"defaults",
+		"docker-compose.yml",
+		"Dockerfile",
 		"main/go.mod",
+		"plugins/system",
 		"scripts",
 		"sdk",
-		"plugins/system",
+		"go.work.default",
+		".go-version",
 	}
 )
 

@@ -19,6 +19,9 @@ RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architectur
 RUN mkdir -p /etc/flarehotspot && \
     chown -R ubuntu:ubuntu /etc/flarehotspot
 
+RUN mkdir -p /var/lib/flarehotspot && \
+    chown -R ubuntu:ubuntu /var/lib/flarehotspot
+
 USER ubuntu
 
 # Install core go modules
