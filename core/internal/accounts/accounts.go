@@ -29,7 +29,7 @@ func init() {
 }
 
 func DefaultAdminAcct() Account {
-	f := filepath.Join(sdkutils.PathConfigDefaultsDir, "admin.json")
+	f := filepath.Join(sdkutils.PathDefaultsDir, "admin.json")
 
 	perms := []string{}
 	for _, p := range DefaultPerms {
