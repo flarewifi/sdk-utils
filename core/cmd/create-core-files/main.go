@@ -13,6 +13,7 @@ func main() {
 			"sdk",
 			"go.work.default",
 			"plugins/system",
+			"start.sh",
 		},
 		CustomFiles: []tools.CustomFiles{
 			{
