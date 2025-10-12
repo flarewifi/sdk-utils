@@ -13,6 +13,9 @@ type IHttpMiddlewares interface {
 	// Returns the middleware for admin authentication.
 	AdminAuth() func(next http.Handler) http.Handler
 
+	// Returns the middleware for identifying the client device
+	Device() func(next http.Handler) http.Handler
+
 	// Returns the middleware for caching the response.
 	// It forces browsers to cache the response for n number of days.
 	CacheResponse(days int) func(next http.Handler) http.Handler

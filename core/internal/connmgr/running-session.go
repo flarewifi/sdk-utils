@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var sessionQ *jobque.JobQue = jobque.NewJobQue()
+var sessionQ sync.Mutex
 
 func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*RunningSession, error) {
 	lan, err := network.FindByIp(clnt.IpAddr())
@@ -85,7 +85,7 @@ func (self *RunningSession) Diff() (secs int, mb float64) {
 }
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
-	_, err := sessionQ.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&sessionQ, func() (interface{}, error) {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
@@ -122,7 +122,7 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 }
 
 func (self *RunningSession) Stop(ctx context.Context) error {
-	_, err := sessionQ.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&sessionQ, func() (interface{}, error) {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 

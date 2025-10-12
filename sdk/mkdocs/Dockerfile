@@ -1,10 +1,10 @@
-FROM python:3.11-alpine3.19 AS build
+FROM python:3.11-alpine3.19 AS base
 
 # Environment variables
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Set build directory
-WORKDIR /tmp
+# Set working directory
+WORKDIR /docs
 
 # Perform build and cleanup artifacts and caches
 RUN \
@@ -30,11 +30,8 @@ RUN \
 && \
   pip install --no-cache-dir mkdocs mkdocs-material
 
-# Set working directory
-WORKDIR /docs
-
 # Expose MkDocs development server port
 EXPOSE 8000
 
 # Start development server by default
-CMD ["mkdocs", "serve", "--dev-addr=0.0.0.0:8000"]
+CMD ["mkdocs", "serve", "--dev-addr=0.0.0.0:8000", "--watch-theme", "--livereload"]

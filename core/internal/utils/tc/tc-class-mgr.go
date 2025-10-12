@@ -1,12 +1,15 @@
 package tc
 
 import (
-	"errors"
 	"fmt"
+	"sync"
 
 	"core/internal/utils/cmd"
 	"core/internal/utils/ifbutil"
+	jobque "core/internal/utils/job-que"
 )
+
+var tcClassQue sync.Mutex
 
 type TcClassMgr struct {
 	dev       string
@@ -31,7 +34,7 @@ func (self *TcClassMgr) Bandwidth() (download Kbit, upload Kbit) {
 }
 
 func (self *TcClassMgr) Setup() error {
-	_, err := filterQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
 		dev := self.dev
 		ifb := ifbName(dev)
 		rootId := TcClassIdRoot.String()
@@ -88,7 +91,7 @@ func (self *TcClassMgr) Reset() (err error) {
 		return err
 	}
 
-	_, err = filterQue.Exec(func() (interface{}, error) {
+	_, err = jobque.Exec(&tcClassQue, func() (any, error) {
 		for _, c := range self.classList {
 			err = self.tcAddOrChange(tcActionAdd, TcClassIdUser, c)
 			if err != nil {
@@ -103,7 +106,7 @@ func (self *TcClassMgr) Reset() (err error) {
 }
 
 func (self *TcClassMgr) UpdateBandwidth(down Kbit, up Kbit) error {
-	_, err := filterQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
 		self.download = down
 		self.upload = up
 		err := self.tcAddOrChange(tcActionChange, TcClassIdRoot, self.DefaultTcClass())
@@ -122,7 +125,7 @@ func (self *TcClassMgr) UpdateBandwidth(down Kbit, up Kbit) error {
 }
 
 func (self *TcClassMgr) CreateClass(parent *TcClass, classid TcClassId, down Kbit, up Kbit, ceilDown Kbit, ceilUp Kbit) error {
-	_, err := filterQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
 		klass := NewTcClass(parent, classid, down, up, ceilDown, ceilUp)
 		klass.Sanitize()
 
@@ -140,7 +143,7 @@ func (self *TcClassMgr) CreateClass(parent *TcClass, classid TcClassId, down Kbi
 }
 
 func (self *TcClassMgr) ChangeClass(parent *TcClass, classid TcClassId, down Kbit, up Kbit, ceilDown Kbit, ceilUp Kbit) error {
-	_, err := filterQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
 		for _, klass := range self.classList {
 			if klass.ClassId == classid {
 				klass.MinDown = down
@@ -152,14 +155,14 @@ func (self *TcClassMgr) ChangeClass(parent *TcClass, classid TcClassId, down Kbi
 				return nil, self.tcAddOrChange(tcActionChange, parent.ClassId, klass)
 			}
 		}
-		return nil, errors.New(fmt.Sprintf("classid %d does not exist on interface %s", int(classid), self.dev))
+		return nil, fmt.Errorf("classid %d does not exist on interface %s", int(classid), self.dev)
 	})
 
 	return err
 }
 
 func (self *TcClassMgr) DeleteClass(classid TcClassId) error {
-	_, err := filterQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
 		for i, klass := range self.classList {
 			if klass.ClassId == classid {
 				err := self.tcDel(klass)
@@ -167,7 +170,7 @@ func (self *TcClassMgr) DeleteClass(classid TcClassId) error {
 				return nil, err
 			}
 		}
-		return nil, errors.New(fmt.Sprintf("classid %d does not exist on interface %s", int(classid), self.dev))
+		return nil, fmt.Errorf("classid %d does not exist on interface %s", int(classid), self.dev)
 	})
 
 	return err

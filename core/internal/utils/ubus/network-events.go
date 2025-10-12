@@ -2,6 +2,7 @@ package ubus
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/goccy/go-json"
 
@@ -9,7 +10,7 @@ import (
 	jobque "core/internal/utils/job-que"
 )
 
-var jobQue *jobque.JobQue = jobque.NewJobQue()
+var queID sync.Mutex
 var interfaceListeners map[string][]chan InterfaceEvent
 
 func init() {
@@ -22,7 +23,7 @@ type ifEvent map[string]struct {
 }
 
 func parseEvent(b []byte) {
-	jobQue.Exec(func() (interface{}, error) {
+	jobque.Exec(&queID, func() (any, error) {
 		eventStr := string(b)
 		if strings.HasPrefix(eventStr, `{ "network.interface":`) {
 			var evt ifEvent
@@ -60,7 +61,7 @@ func Listen() {
 
 func ListenInterface(name string) <-chan InterfaceEvent {
 	ch := make(chan InterfaceEvent)
-	jobQue.Exec(func() (interface{}, error) {
+	jobque.Exec(&queID, func() (any, error) {
 		_, ok := interfaceListeners[name]
 		if !ok {
 			interfaceListeners[name] = []chan InterfaceEvent{}

@@ -11,17 +11,17 @@ import (
 )
 
 const (
-	internetTable string = "internet"
-	forward       string = "FORWARD"
-	prerouting    string = "PREROUTING"
-	connMacMap    string = "connected_macs_map"
-	connIpMap     string = "connected_ips_map"
-	connMacSet    string = "connected_macs_set"
+	// internetTable string = "internet"
+	// forward       string = "FORWARD"
+	// prerouting    string = "PREROUTING"
+	connMacMap string = "connected_macs_map"
+	connIpMap  string = "connected_ips_map"
+	// connMacSet    string = "connected_macs_set"
 )
 
+var nftQueID sync.Mutex
 var nftMu sync.RWMutex
 var initCallbacks []func() error = []func() error{}
-var nftQue *jobque.JobQue = jobque.NewJobQue()
 var connTable map[string]bool
 
 func init() {
@@ -42,7 +42,7 @@ func isConnected(mac string) bool {
 	return ok
 }
 
-func doConnect(ip string, mac string) error {
+func doConnect(_ string, mac string) error {
 	connected := isConnected(mac)
 
 	if !connected {
@@ -53,7 +53,7 @@ func doConnect(ip string, mac string) error {
 	return nil
 }
 
-func doDisconnect(ip string, mac string) error {
+func doDisconnect(_ string, mac string) error {
 	connected := isConnected(mac)
 	if connected {
 		delete(connTable, mac)
@@ -82,7 +82,7 @@ func SetupCaptivePortal(dev string, routerIp string) (err error) {
 }
 
 func Connect(ip string, mac string) error {
-	_, err := nftQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&nftQueID, func() (any, error) {
 		nftMu.Lock()
 		defer nftMu.Unlock()
 		err := doConnect(ip, mac)
@@ -92,7 +92,7 @@ func Connect(ip string, mac string) error {
 }
 
 func Disconnect(ip string, mac string) error {
-	_, err := nftQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&nftQueID, func() (any, error) {
 		nftMu.Lock()
 		defer nftMu.Unlock()
 		err := doDisconnect(ip, mac)
@@ -102,12 +102,12 @@ func Disconnect(ip string, mac string) error {
 }
 
 func IsConnected(mac string) bool {
-	result, _ := nftQue.Exec(func() (interface{}, error) {
+	result, _ := jobque.Exec(&nftQueID, func() (bool, error) {
 		nftMu.RLock()
 		defer nftMu.RUnlock()
 		return isConnected(mac), nil
 	})
-	return result.(bool)
+	return result
 }
 
 func AddInitCallback(cb func() error) {

@@ -21,9 +21,11 @@ const (
 	connMacSet    string = "connected_macs_set"
 )
 
-var nftMu sync.RWMutex
-var initCallbacks []func() error = []func() error{}
-var nftQue *jobque.JobQue = jobque.NewJobQue()
+var (
+	nftMu         sync.RWMutex
+	initCallbacks []func() error = []func() error{}
+	nftQueID      sync.Mutex
+)
 
 func JumpChain(mac string) string {
 	return "counter_" + strings.ReplaceAll(mac, ":", "")
@@ -71,7 +73,7 @@ func Setup() (err error) {
 }
 
 func SetupCaptivePortal(dev string, routerIp string) (err error) {
-	_, err = nftQue.Exec(func() (interface{}, error) {
+	_, err = jobque.Exec(&nftQueID, func() (any, error) {
 		cmds := []string{
 			fmt.Sprintf("nft add rule ip %s %s ether saddr @%s counter accept", internetTable, prerouting, connMacSet),
 			fmt.Sprintf("nft add rule ip %s %s iif %s tcp dport '{ 80, 443 }' counter dnat to %s", internetTable, prerouting, dev, routerIp),
@@ -83,7 +85,7 @@ func SetupCaptivePortal(dev string, routerIp string) (err error) {
 }
 
 func Connect(ip string, mac string) error {
-	_, err := nftQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&nftQueID, func() (any, error) {
 		err := doConnect(ip, mac)
 		return nil, err
 	})
@@ -91,7 +93,7 @@ func Connect(ip string, mac string) error {
 }
 
 func Disconnect(ip string, mac string) error {
-	_, err := nftQue.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&nftQueID, func() (any, error) {
 		err := doDisconnect(ip, mac)
 		return nil, err
 	})
@@ -99,7 +101,7 @@ func Disconnect(ip string, mac string) error {
 }
 
 func IsConnected(mac string) bool {
-	result, _ := nftQue.Exec(func() (interface{}, error) {
+	result, _ := jobque.Exec(&nftQueID, func() (any, error) {
 		return isConnected(mac), nil
 	})
 	return result.(bool)

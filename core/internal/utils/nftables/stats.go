@@ -7,6 +7,7 @@ import (
 	"github.com/goccy/go-json"
 
 	"core/internal/utils/cmd"
+	jobque "core/internal/utils/job-que"
 )
 
 type NftListMapResult struct {
@@ -46,21 +47,21 @@ type StatResult struct {
 }
 
 func GetStats() (stat StatResult, err error) {
-	result, err := nftQue.Exec(func() (interface{}, error) {
+	result, err := jobque.Exec(&nftQueID, func() (result StatResult, err error) {
 		nftlistmac, err := nftListMap(connMacMap)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 
 		nftlistip, err := nftListMap(connIpMap)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 
 		macstat := resultMap(nftlistmac)
 		ipstat := resultMap(nftlistip)
 
-		result := StatResult{
+		result = StatResult{
 			MacStats: macstat,
 			IpStats:  ipstat,
 		}
@@ -72,7 +73,7 @@ func GetStats() (stat StatResult, err error) {
 		return StatResult{}, err
 	}
 
-	return result.(StatResult), nil
+	return result, nil
 }
 
 func nftListMap(mapname string) (*NftListMapResult, error) {

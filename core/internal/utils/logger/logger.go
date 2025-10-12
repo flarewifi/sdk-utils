@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -31,9 +32,9 @@ const (
 	lightBlue   = 94
 
 	logFilename = "app.log"
-	infoPrefix  = "[INFO] "
-	debugPrefix = "[DEBUG] "
-	errorPrefix = "[ERROR] "
+	// infoPrefix  = "[INFO] "
+	// debugPrefix = "[DEBUG] "
+	// errorPrefix = "[ERROR] "
 
 	flarelogBaseMetadataCount = 10
 )
@@ -58,9 +59,9 @@ type LogLine struct {
 }
 
 var (
+	queId       sync.Mutex
 	LineCount   atomic.Int64
 	logFilePath = filepath.Join(sdkutils.PathTmpDir, "logs", logFilename)
-	que         = jobque.NewJobQue()
 )
 
 func init() {
@@ -90,13 +91,13 @@ func GetCallerFileLine(calldepth int) (file string, line int) {
 
 // Returns the total number of lines of the current log file
 func GetLogLines(logFile string) int {
-	lines, err := que.Exec(func() (interface{}, error) {
+	line, err := jobque.Exec(&queId, func() (int, error) {
 		logFilePathToRead := filepath.Join(sdkutils.PathTmpDir, "logs", logFile)
 
 		file, err := os.Open(logFilePathToRead)
 		if err != nil {
 			log.Println(err)
-			return nil, err
+			return 0, err
 		}
 		defer file.Close()
 
@@ -104,7 +105,7 @@ func GetLogLines(logFile string) int {
 		logLines, err := lineCounter(file)
 		if err != nil {
 			log.Println(err)
-			return nil, err
+			return 0, err
 		}
 
 		return logLines, nil
@@ -114,14 +115,14 @@ func GetLogLines(logFile string) int {
 		return 0
 	}
 
-	return lines.(int)
+	return line
 }
 
 // Returns a map of string : any, formatted based on the log parser
 // and an error. Logs returned will be in the range of start to end,
 // inclusive. Starts at index 0.
 func ReadLogs(start int, end int) ([]*LogLine, error) {
-	ret, err := que.Exec(func() (interface{}, error) {
+	ret, err := jobque.Exec(&queId, func() ([]*LogLine, error) {
 		logs := []*LogLine{}
 
 		// open logs
@@ -183,11 +184,11 @@ func ReadLogs(start int, end int) ([]*LogLine, error) {
 		return nil, err
 	}
 
-	return ret.([]*LogLine), nil
+	return ret, nil
 }
 
 func ClearLogs() error {
-	_, err := que.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&queId, func() (any, error) {
 		err := os.WriteFile(logFilePath, []byte(""), sdkutils.PermFile)
 		return nil, err
 	})
@@ -341,7 +342,7 @@ func LogToConsole(file string, line int, level int, title string, body ...any) {
 
 // Logs the log info to the specified file path
 func LogToFile(file string, line int, level int, title string, body ...any) error {
-	_, err := que.Exec(func() (interface{}, error) {
+	_, err := jobque.Exec(&queId, func() (any, error) {
 		logFile, err := openLogFile()
 		if err != nil {
 			log.Println(err)
@@ -405,17 +406,17 @@ func LogToFile(file string, line int, level int, title string, body ...any) erro
 }
 
 // Returns a date string with format: YYYYMMdd
-func getLogDateAsStr(log map[string]any) string {
-	year := reflect.ValueOf(log["year"]).String()
-	month := reflect.ValueOf(log["month"]).String()
-	day := reflect.ValueOf(log["day"]).String()
-	hour := reflect.ValueOf(log["hour"]).String()
-	min := reflect.ValueOf(log["min"]).String()
-	sec := reflect.ValueOf(log["sec"]).String()
-	nano := reflect.ValueOf(log["nano"]).String()
+// func getLogDateAsStr(log map[string]any) string {
+// 	year := reflect.ValueOf(log["year"]).String()
+// 	month := reflect.ValueOf(log["month"]).String()
+// 	day := reflect.ValueOf(log["day"]).String()
+// 	hour := reflect.ValueOf(log["hour"]).String()
+// 	min := reflect.ValueOf(log["min"]).String()
+// 	sec := reflect.ValueOf(log["sec"]).String()
+// 	nano := reflect.ValueOf(log["nano"]).String()
 
-	return year + month + day + hour + min + sec + nano
-}
+// 	return year + month + day + hour + min + sec + nano
+// }
 
 // Helper function to cut an integer's digits to
 // desired length
