@@ -35,11 +35,15 @@ type CoreReleaseUpdate struct {
 func CheckCoreReleaseUpdate(currentVersion *semver.Version) (*CoreReleaseUpdate, error) {
 	srv, ctx := rpc.GetCoreTwirpServiceAndCtx()
 
-	result, err := srv.FetchLatestCoreRelease(ctx, &rpc.FetchLatestCoreReleaseRequest{
+	params := rpc.FetchLatestCoreReleaseRequest{
 		CurrentCoreVersion: currentVersion.String(),
 		GoVersion:          sdkutils.GO_VERSION,
 		GoArch:             sdkutils.GOARCH,
-	})
+	}
+
+	log.Printf("\nChecking software version: %+v\n", params)
+
+	result, err := srv.FetchLatestCoreRelease(ctx, &params)
 	if err != nil {
 		return nil, ErrCheckUpdate
 	}
