@@ -42,7 +42,7 @@ CMD cp go.work.default go.work && \
         -R '^bin\/.*' \
         -R 'db\/queries\/.*' \
         -R 'node_modules' \
-        -R 'data\/.*' \
+        -R 'data\/config\/.*' \
         -R 'resources\/assets\/dist' \
         -R 'storage\/.*' \
         -R 'plugins\/installed\/.*' \
