@@ -14,7 +14,6 @@ const (
 
 func SetupRoutes(api sdkapi.IPluginApi) {
 	pluginRouter := api.Http().Router().PluginRouter()
-	pluginRouter.Get("/sessions/summary", PortalSessionSyncHandler(api)).Name("sessions.summary")
 
 	pluginRouter.Group("/sessions", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/summary", PortalSessionSyncHandler(api)).Name("sessions.summary")

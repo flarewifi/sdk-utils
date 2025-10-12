@@ -31,6 +31,7 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegis
 }
 
 func (self *HttpRouterApi) Initialize() {
+	self.pluginRouter.Use(self.api.HttpAPI.middlewares.Device())
 	self.adminRouter.Use(self.api.HttpAPI.middlewares.AdminAuth())
 }
 
