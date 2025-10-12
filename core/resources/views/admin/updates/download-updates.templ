@@ -1,0 +1,21 @@
+package updatesview
+
+import (
+	"sdk/api"
+	"fmt"
+)
+
+templ DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, err error) {
+<div id="page" hx-post={ api.Http().Router().UrlForRoute("system.updates.install.status") } hx-trigger="every 3s" sse-swap={ evt }>
+		@DownloadStatusPartial(api, percent, err)
+	</div>
+}
+
+templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) {
+	if err != nil {
+		<p class="alert alert-danger">Error: { err.Error() }</p>
+		{{ return }}
+	}
+	<p>Downloading updates...</p>
+	<p>Download Percent: { fmt.Sprintf("%d", percent) }</p>
+}

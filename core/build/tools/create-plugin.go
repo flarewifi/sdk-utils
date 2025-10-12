@@ -21,7 +21,7 @@ func CreatePlugin(pack string, name string, desc string) {
 	}
 
 	goVersion := sdkutils.GO_SHORT_VERSION
-	pluginDir := filepath.Join("plugins/local", pack)
+	pluginDir := filepath.Join(sdkutils.PathPluginLocalDir, pack)
 	if sdkutils.FsExists(pluginDir) {
 		fmt.Printf("Plugin already exists at %s\n", pluginDir)
 		os.Exit(1)

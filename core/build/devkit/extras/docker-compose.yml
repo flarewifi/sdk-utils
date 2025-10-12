@@ -2,11 +2,13 @@
 
 services:
   app:
+    platform: linux/amd64
     build:
       context: .
     volumes:
       - ./:/app
-      - ./files/etc/config:/etc/config
+      - ./data:/var/lib/flarehotspot
+      - ./data/openwrt-files/etc/config:/etc/config
     environment:
       - GOCACHE=/app/.tmp/go/cache
       - GOMODCACHE=/app/.tmp/go/mod

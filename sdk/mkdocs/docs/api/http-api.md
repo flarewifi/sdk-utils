@@ -18,6 +18,8 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+The route must use the [Device built-in middleware](./http-router-api.md#device).
+
 ### Auth
 
 It returns an instance of the [IHttpAuth](./http-auth.md).

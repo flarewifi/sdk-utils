@@ -5,7 +5,6 @@ package middlewares
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 
 	"core/db"
@@ -17,6 +16,7 @@ import (
 func DeviceMiddleware(dtb *db.Database, clntMgr *connmgr.ClientRegister) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 			clntSym := r.Context().Value(sdkapi.ClientCtxKey)
 			if clntSym != nil {
 				next.ServeHTTP(w, r)
@@ -37,12 +37,7 @@ func DeviceMiddleware(dtb *db.Database, clntMgr *connmgr.ClientRegister) func(ne
 			}
 
 			if ip == "" {
-				hostIP, _, err := net.SplitHostPort(r.RemoteAddr)
-				if err != nil {
-					w.WriteHeader(http.StatusBadRequest)
-					return
-				}
-				ip = hostIP
+				ip = "10.0.0.2"
 			}
 
 			h, err := hostfinder.FindByIp(ip)
@@ -53,6 +48,10 @@ func DeviceMiddleware(dtb *db.Database, clntMgr *connmgr.ClientRegister) func(ne
 
 			if mac != "" {
 				h.MacAddr = mac
+			}
+
+			if ip != "" {
+				h.IpAddr = ip
 			}
 
 			dbpool := dtb.SqlDB()

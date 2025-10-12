@@ -68,7 +68,6 @@ func InitPlugins(g *api.CoreGlobals) {
 		}
 
 		// TODO: handle broken plugins
-
 		if installed && !recompile {
 			bp.AppendLog(fmt.Sprintf("Plugin %q is already installed, skipping.", info.Package))
 			continue
@@ -105,8 +104,6 @@ func InitPlugins(g *api.CoreGlobals) {
 				plugins.RemovePendingUpdate(info.Package)
 			}
 		}
-
-		// time.Sleep(1000 * 3 * time.Millisecond)
 	}
 
 	// Load plugins

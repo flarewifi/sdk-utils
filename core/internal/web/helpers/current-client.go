@@ -1,13 +1,10 @@
-//go:build !dev
-
 package helpers
 
 import (
-	"net"
+	"fmt"
 	"net/http"
 
 	"core/internal/connmgr"
-	"core/internal/utils/hostfinder"
 	sdkapi "sdk/api"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,20 +19,5 @@ func CurrentClient(clntMgr *connmgr.ClientRegister, dbpool *pgxpool.Pool, r *htt
 		}
 	}
 
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	h, err := hostfinder.FindByIp(ip)
-	if err != nil {
-		return nil, err
-	}
-
-	clnt, err := clntMgr.Register(dbpool, r, h.MacAddr, h.IpAddr, h.Hostname)
-	if err != nil {
-		return nil, err
-	}
-
-	return clnt, nil
+	return nil, fmt.Errorf("no client in context, make sure to use the device middleware")
 }

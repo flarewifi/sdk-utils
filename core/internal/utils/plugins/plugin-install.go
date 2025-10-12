@@ -20,14 +20,10 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
+var ()
+
 type PluginMetadata struct {
 	Def sdkutils.PluginSrcDef
-}
-
-type InstallOpts struct {
-	Def       sdkutils.PluginSrcDef
-	RemoveSrc bool
-	Encrypt   bool
 }
 
 func InstallSrcDef(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
@@ -60,44 +56,6 @@ func InstallFromLocalPath(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcD
 
 	return
 }
-
-// func InstallFromZipFile(w io.Writer, def config.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
-// 	w.Write([]byte("Installing zipped plugin from local path: " + def.LocalPath))
-
-// 	// prepare path
-// 	randomPath := RandomPluginPath()
-// 	workPath := filepath.Join(randomPath, "workpath")
-
-// 	// extract compressed plugin release
-// 	sdkextract.Extract(def.LocalZipFile, workPath)
-
-// 	if err = os.RemoveAll(filepath.Dir(def.LocalZipFile)); err != nil {
-// 		return
-// 	}
-
-// 	// gets the plugin release source path
-// 	newWorkPath, err := FindPluginSrc(workPath)
-// 	if err != nil {
-// 		err = errors.New("Unable to find plugin source in: " + workPath)
-// 		log.Println("Error: ", err)
-// 		return sdkutils.PluginInfo{}, err
-// 	}
-
-// 	// read the plugin.json
-// 	info, err = GetInfoFromPath(newWorkPath)
-// 	if err != nil {
-// 		log.Println("Error getting plugin info: ", err)
-// 		return
-// 	}
-
-// 	def.LocalPath = filepath.Join(GetInstallPath(info.Package))
-
-// 	if err := InstallPlugin(newWorkPath, InstallOpts{Def: def, RemoveSrc: false}); err != nil {
-// 		return sdkutils.PluginInfo{}, err
-// 	}
-
-// 	return info, nil
-// }
 
 func InstallFromPluginStore(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
 	w.Write([]byte("Installing plugin from store: " + def.StorePackage))
@@ -170,16 +128,22 @@ func InstallFromGitSrc(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef)
 		return sdkutils.PluginInfo{}, err
 	}
 
-	cachePath := filepath.Join(sdkutils.PathAppDir, "plugins", "cache", info.Package)
+	cachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
 	if err := sdkutils.FsCopy(clonePath, cachePath); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 
-	if err := InstallPlugin(cachePath, db, InstallOpts{Def: def, RemoveSrc: false}); err != nil {
+	if err := InstallPlugin(sdkutils.StripRootPath(cachePath), db, InstallOpts{Def: def, RemoveSrc: false}); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 
 	return info, nil
+}
+
+type InstallOpts struct {
+	Def       sdkutils.PluginSrcDef
+	RemoveSrc bool
+	Encrypt   bool
 }
 
 func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
@@ -209,7 +173,7 @@ func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
 		defer os.RemoveAll(parentpath)
 	}
 
-	if err := FixPluginDeps(pluginSrc); err != nil {
+	if err := PatchPluginDeps(pluginSrc); err != nil {
 		return err
 	}
 

@@ -188,6 +188,7 @@ pluginRouter := api.Http().HttpRouter().PluginRouter()
 authMw := httpMw.AdminAuth()
 handler := func(w http.ResponseWriter, r *http.Request) {
     // handle the http request...
+    // this is a progected page
 }
 pluginRouter.Get("/protected-page", handler, authMw)
 ```
@@ -201,8 +202,23 @@ pluginRouter := api.Http().HttpRouter().PluginRouter()
 cacheMw := api.Http().Middlewares().CacheResponse()
 handler := func(w http.ResponseWriter, r *http.Request) {
     // handle the http request...
+    // response will be cached while the app is running
 }
 pluginRouter.Get("/some-generated-image.png", handler, cacheMw)
+```
+
+#### Device {#device}
+
+It returns a middleware for identifying client devices. See [IClientDevice](./client-device.md).
+
+```go
+pluginRouter := api.Http().HttpRouter().PluginRouter()
+cacheMw := api.Http().Middlewares().Device()
+handler := func(w http.ResponseWriter, r *http.Request) {
+    // handle the http request...
+    clnt, err := api.Http().GetClientDevice(r)
+}
+pluginRouter.Get("/some/page", handler, cacheMw)
 ```
 
 #### PendingPurchase

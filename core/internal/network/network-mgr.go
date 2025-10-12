@@ -16,20 +16,20 @@ import (
 const defaultSpeed int = 100 //mbits download/upload per inteface
 
 var lanMap = sync.Map{}
-var netQue = jobque.NewJobQue()
+var netQue sync.Mutex
 
 func addLan(lan *NetworkLan) {
 	lanMap.Store(lan.Name(), lan)
 }
 
-func removeLan(ifname string) {
-	lanMap.Delete(ifname)
-}
+// func removeLan(ifname string) {
+// 	lanMap.Delete(ifname)
+// }
 
 func listenLanEvents(lan *NetworkLan) {
 	ch := ubus.ListenInterface(lan.Name())
 	for evt := range ch {
-		netQue.Exec(func() (interface{}, error) {
+		jobque.Exec(&netQue, func() (any, error) {
 			if evt.Event == ubus.IfEventDown && lan.Up() {
 				lan.SetStatus(false)
 			}
@@ -91,7 +91,8 @@ func SetupLanInterfaces() (err error) {
 func FindByIp(clientIp string) (*NetworkLan, error) {
 	var result *NetworkLan
 
-	lanMap.Range(func(key, value interface{}) bool {
+	log.Println("Finding lan for ip: ", clientIp)
+	lanMap.Range(func(key, value any) bool {
 		lan := value.(*NetworkLan)
 		// get lan subnet net.CIDR
 		lanIpV4, err := lan.GetInterface().IpV4Addr()
@@ -132,7 +133,7 @@ func FindByName(ifname string) (*NetworkLan, error) {
 // FindAll returns all lan instances from lanMap.
 func FindAll() []*NetworkLan {
 	lans := []*NetworkLan{}
-	lanMap.Range(func(key, value interface{}) bool {
+	lanMap.Range(func(key, value any) bool {
 		lan := value.(*NetworkLan)
 		lans = append(lans, lan)
 		return true

@@ -1,0 +1,11 @@
+{
+  "lans": {
+    "lan": {
+      "use_global": false,
+      "global_down_mbits": 100,
+      "global_up_mbits": 100,
+      "user_down_mbits": 2,
+      "user_up_mbits": 2
+    }
+  }
+}

@@ -16,6 +16,9 @@ RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architectur
         tar -C /usr/local -xzf golang.tar.gz && \
         rm -rf golang.tar.gz
 
+RUN mkdir -p /opt/flarehotspot && \
+    chown -R ubuntu:ubuntu /opt/flarehotspot
+
 USER ubuntu
 
 # Install core go modules
@@ -27,21 +30,22 @@ RUN cd core && go mod download
 COPY ./scripts/install-tools.sh .
 RUN ./install-tools.sh
 
+
 # Watch and recompile server on file change
 CMD cp go.work.default go.work && \
     reflex \
         -r '\.(go|templ|sql|js|css|json)$' \
         -R '(plugin|package).json$' \
-        -R 'db\/queries\/.*' \
-        -R 'node_modules' \
         -R '_templ\.go$' \
         -R '\.tmp\/.*' \
         -R '^output\/.*' \
         -R '^bin\/.*' \
-        -R '^config\/.*' \
+        -R 'db\/queries\/.*' \
+        -R 'node_modules' \
+        -R 'data\/.*' \
         -R 'resources\/assets\/dist' \
+        -R 'storage\/.*' \
         -R 'plugins\/installed\/.*' \
-        -R 'plugins\/cache\/.*' \
-        -R 'plugins\/update\/.*' \
-        -R 'plugins\/backup\/.*' \
+        -R 'plugins\/backups\/.*' \
+        -R 'plugins\/updates\/.*' \
         -s -- sh -c './start-dev.sh' -v

@@ -33,10 +33,10 @@ Please provide a concise description of your plugin. This should briefly explain
 
 ## Cloning an existing plugin {#cloning-plugin}
 
-If you need to develop an existing plugin, open a terminal and navigate to `plugins/local` folder inside the devkit directory. Then clone the plugin:
+If you need to develop an existing plugin, open a terminal and navigate to `data/plugins/local` folder inside the devkit directory. Then clone the plugin:
 
 ```sh title="Terminal"
-cd [devkit-root]/plugins/local
+cd [devkit-root]/data/plugins/local
 # Replace the URL with the URL of the plugin you want to clone
 git clone https://github.com/flarehotspot/com.flarego.sample
 ```
@@ -47,7 +47,7 @@ Now you can start developing your plugin.
 
 ## The main.go file
 
-After that, your plugin will be created inside the `plugins/local/[your-plugin-package]` directory (`plugins/local/com.mydomain.myplugin` in this example). Inside your plugin directory, you will find a `main.go` file.
+After that, your plugin will be created inside the `data/plugins/local/[your-plugin-package]` directory (`data/plugins/local/com.mydomain.myplugin` in this example). Inside your plugin directory, you will find a `main.go` file.
 
 ![main.go file](./img/main-go-location.png)
 

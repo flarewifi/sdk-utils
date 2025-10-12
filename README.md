@@ -20,8 +20,9 @@ cp go.work.default go.work
 Unzip the `openwrt-files.zip` file.
 
 ```sh
-rm -rf ./openwrt-files
-unzip openwrt-files.zip -d openwrt-files
+rm -rf ./data/openwrt-files
+mkdir data
+unzip openwrt-files.zip -d data/openwrt-files
 ```
 
 

@@ -8,8 +8,8 @@ const (
 )
 
 type PluginMetadata struct {
-	Package string
 	Def     PluginSrcDef
+	Package string
 }
 
 type PluginSrcDef struct {

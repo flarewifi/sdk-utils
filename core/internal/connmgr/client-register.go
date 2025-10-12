@@ -8,7 +8,7 @@ import (
 
 	"core/db"
 	"core/db/models"
-	jobque "core/internal/utils/job-que"
+
 	sdkapi "sdk/api"
 
 	"github.com/jackc/pgx/v5"
@@ -18,10 +18,6 @@ import (
 const (
 	EVENT_CLIENT_CREATED = "client:created"
 	EVENT_CLIENT_CHANGED = "client:changed"
-)
-
-var (
-	regQue *jobque.JobQue = jobque.NewJobQue()
 )
 
 func NewClientRegister(dtb *db.Database, mdls *models.Models) *ClientRegister {
