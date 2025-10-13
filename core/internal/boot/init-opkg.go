@@ -1,7 +1,6 @@
 package boot
 
 import (
-	"core/internal/api"
 	"core/internal/utils/cmd"
 	"log"
 	"os"
@@ -11,7 +10,7 @@ import (
 )
 
 // Install ipk files in ./packages directory
-func InitOpkg(bp *api.BootProgress) {
+func InitOpkg() {
 	var files []string
 
 	packagesDir := filepath.Join(sdkutils.PathAppDir, "packages")
@@ -22,8 +21,6 @@ func InitOpkg(bp *api.BootProgress) {
 
 	for _, f := range files {
 		if filepath.Ext(f) == ".ipk" {
-			bp.AppendLog("Installing ipk file: " + f)
-
 			if err := cmd.Exec("opkg install "+f, &cmd.ExecOpts{
 				Stdout: os.Stdout,
 				Stderr: os.Stderr,

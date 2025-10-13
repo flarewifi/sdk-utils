@@ -15,20 +15,8 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-type InstallStatus struct {
-	bp *api.BootProgress
-}
-
-func (is *InstallStatus) Write(p []byte) (n int, err error) {
-	status := string(p)
-	is.bp.AppendLog(status)
-	return len(p), nil
-}
-
 func InitPlugins(g *api.CoreGlobals) {
-	bp := g.BootProgress
 	db := g.CoreAPI.SqlDb()
-	inst := &InstallStatus{bp: bp}
 
 	for _, def := range plugins.AllPluginSrcDefs() {
 		var info sdkutils.PluginInfo
@@ -38,7 +26,7 @@ func InitPlugins(g *api.CoreGlobals) {
 		if installed {
 			pluginInfo, err := sdkutils.GetPluginInfoFromPath(installPath)
 			if err != nil {
-				bp.AppendLog(fmt.Sprintf("%s: Error getting plugin info: %s", def.String(), err.Error()))
+				log.Printf("Error getting plugin info from %q: %s", installPath, err.Error())
 				continue
 			}
 			info = pluginInfo
@@ -48,56 +36,64 @@ func InitPlugins(g *api.CoreGlobals) {
 		fmt.Printf("%s is to be removed? %t\n", info.Package, toBeRemoved)
 
 		if toBeRemoved {
-			bp.AppendLog(fmt.Sprintf("%s: Plugin is marked for removal, uninstalling...", info.Package))
+			log.Printf("Plugin %q is marked for removal, uninstalling...", info.Package)
+
 			if err := plugins.UninstallPlugin(info.Package, g.CoreAPI.SqlDb()); err != nil {
-				bp.AppendLog(fmt.Sprintf("Error removing %q plugin: %s", info.Package, err.Error()))
+				log.Printf("Error removing %q plugin: %s", info.Package, err.Error())
 			} else {
-				bp.AppendLog(fmt.Sprintf("Successfully removed %q plugin", info.Package))
+				log.Printf("Successfully removed %q plugin", info.Package)
 				continue
 			}
 		}
 
 		if plugins.HasPendingUpdate(info.Package) {
-			bp.AppendLog(fmt.Sprintf("Plugin %q has a pending update, installing...", info.Package))
+			log.Printf("Plugin %q has a pending update, installing...", info.Package)
 			err := plugins.MovePendingUpdate(info.Package)
 			if err != nil {
-				bp.AppendLog(fmt.Sprintf("Error installing pending update for %q: %s", info.Package, err.Error()))
+				log.Printf("Error installing pending update for %q: %s", info.Package, err.Error())
 			} else {
-				bp.AppendLog(fmt.Sprintf("Successfully installed update for %q", info.Package))
+				log.Printf("Successfully installed update for %q", info.Package)
 				continue
 			}
 		}
 
 		// TODO: handle broken plugins
 		if installed && !recompile {
-			bp.AppendLog(fmt.Sprintf("Plugin %q is already installed, skipping.", info.Package))
+			// bp.AppendLog(fmt.Sprintf("Plugin %q is already installed, skipping.", info.Package))
+			log.Printf("Plugin %q is already installed, skipping.", info.Package)
 			continue
 		}
 
 		// create backup, since we are going to reinstall or recompile the plugin
 		if installed {
 			if err := plugins.CreateBackup(info.Package); err != nil {
-				bp.AppendLog(fmt.Sprintf("Error creating backup for plugin %q: %s", info.Package, err.Error()))
+				// bp.AppendLog(fmt.Sprintf("Error creating backup for plugin %q: %s", info.Package, err.Error()))
+				log.Printf("Error creating backup for plugin %q: %s", info.Package, err.Error())
 				continue
 			}
 
 			if err := os.RemoveAll(installPath); err != nil {
-				bp.AppendLog(fmt.Sprintf("Error removing plugin %q: %s", info.Package, err.Error()))
+				// bp.AppendLog(fmt.Sprintf("Error removing plugin %q: %s", info.Package, err.Error()))
+				log.Printf("Error removing plugin %q: %s", info.Package, err.Error())
 				continue
 			}
 		}
 
-		info, err := plugins.InstallSrcDef(inst, db, def)
+		info, err := plugins.InstallSrcDef(db, def)
 		if err != nil {
-			bp.AppendLog(fmt.Sprintf("Error installing plugin %q: %s", def.String(), err.Error()))
+			// bp.AppendLog(fmt.Sprintf("Error installing plugin %q: %s", def.String(), err.Error()))
+			log.Printf("Error installing plugin %q: %s", def.String(), err.Error())
 			if plugins.HasBackup(info.Package) {
-				bp.AppendLog(fmt.Sprintf("Restoring backup for plugin %q", info.Package))
+				// bp.AppendLog(fmt.Sprintf("Restoring backup for plugin %q", info.Package))
+				log.Printf("Restoring backup for plugin %q", info.Package)
 				if err := plugins.RestoreBackup(info.Package); err != nil {
-					bp.AppendLog(fmt.Sprintf("Error restoring backup for plugin %q: %s", info.Package, err.Error()))
+					// bp.AppendLog(fmt.Sprintf("Error restoring backup for plugin %q: %s", info.Package, err.Error()))
+					log.Printf("Error restoring backup for plugin %q: %s", info.Package, err.Error())
 				}
 			}
 		} else {
-			bp.AppendLog(fmt.Sprintf("Successfully installed %q plugin", info.Package))
+			// bp.AppendLog(fmt.Sprintf("Successfully installed %q plugin", info.Package))
+			log.Printf("Successfully installed %q plugin", info.Package)
 			if plugins.HasBackup(info.Package) {
 				plugins.RemoveBackup(info.Package)
 			}

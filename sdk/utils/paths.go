@@ -31,6 +31,8 @@ var (
 	PathSystemUpdateDir  = filepath.Join(PathStorageDir, "system", "update")
 	PathPublicDir        = filepath.Join(PathAppDir, "public")
 	PathCacheDir         = filepath.Join(PathTmpDir, "cache")
+	PathIsUpdated        = filepath.Join(PathAppDir, ".updated")
+	PathIsReverted       = filepath.Join(PathAppDir, ".reverted")
 	PathTmpDir           = getTmpDir()
 )
 

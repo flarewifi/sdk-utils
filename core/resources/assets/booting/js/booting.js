@@ -12,9 +12,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 window.addEventListener('load', function () {
+  // Get the boot status url from body data attribute
+
   function checkStatus(callback) {
+    var statusUrl = document.body.getAttribute('data-status-url');
+    console.log('Checking status at:', statusUrl);
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', '/', true);
+    xhr.open('GET', statusUrl, true);
 
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
@@ -35,35 +39,5 @@ window.addEventListener('load', function () {
     });
   }
 
-  function callBackHook(data) {
-    var logsEl = '<ul>';
-    for (var i = 0; i < data.logs.length; i++) {
-      logsEl += '<li>' + data.logs[i] + '</li>';
-    }
-    logsEl += '</ul>';
-    document.getElementById('status-text').innerHTML = logsEl;
-    sessionStorage.setItem("savedLogs", logsEl);
-  }
-
-  var evt = new EventSource('/boot/status');
-  evt.addEventListener('boot:progress', function (res) {
-    var data = JSON.parse(res.data);
-    console.log(data);
-    callBackHook(data);
-    if (data.done) {
-      redirectHome();
-    }
-  });
-
-  evt.onerror = function (res) {
-    console.error(res);
-    setTimeout(redirectHome, 1000);
-  };
+  redirectHome();
 });
-
-window.onload = () => {
-  const savedLogs = sessionStorage.getItem("savedLogs");
-  if (savedLogs) {
-    document.getElementById('status-text').innerHTML = savedLogs;
-  }
-};

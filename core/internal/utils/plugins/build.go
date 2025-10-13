@@ -48,7 +48,7 @@ func BuildFromGit(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdk
 	w.Write([]byte("Cloning plugin from git: " + def.GitURL))
 	repo := sdkutils.GitRepoSource{URL: def.GitURL, Ref: def.GitRef}
 
-	if err := sdkutils.GitClone(w, repo, clonepath); err != nil {
+	if err := sdkutils.GitClone(repo, clonepath); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 
