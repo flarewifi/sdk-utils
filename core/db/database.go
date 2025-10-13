@@ -29,6 +29,7 @@ func NewDatabase() *Database {
 
 	var db Database
 
+	// Run in separate routine to show the booting page earlier.
 	go func(db *Database) {
 		db.mu.Lock()
 		defer db.mu.Unlock()
