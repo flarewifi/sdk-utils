@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"core/internal/api"
+	"core/internal/utils/migrate"
 	"core/internal/utils/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -132,6 +133,11 @@ func InitPlugins(g *api.CoreGlobals) {
 			}
 
 			fmt.Println(dir, " plugin not loaded: ", err)
+		}
+
+		migdir := filepath.Join(dir, "resources/migrations")
+		if err := migrate.MigrateUp(db, migdir); err != nil {
+			log.Printf("Error in running migration for plugin %s: %+v\n", migdir, err)
 		}
 	}
 }
