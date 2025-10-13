@@ -41,7 +41,7 @@ func CheckCoreReleaseUpdate(currentVersion *semver.Version) (*CoreReleaseUpdate,
 		GoArch:             sdkutils.GOARCH,
 	}
 
-	log.Printf("\nChecking software version: %+v\n", params)
+	log.Printf("\nChecking software version: %+v\n", &params)
 
 	result, err := srv.FetchLatestCoreRelease(ctx, &params)
 	if err != nil {
