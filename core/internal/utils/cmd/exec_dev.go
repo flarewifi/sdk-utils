@@ -18,6 +18,8 @@ var (
 		"ip",
 		"tc",
 		"opkg",
+		"shutdown",
+		"reboot",
 	}
 )
 

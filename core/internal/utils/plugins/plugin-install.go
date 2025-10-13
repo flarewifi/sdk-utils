@@ -8,7 +8,6 @@ import (
 	"core/internal/utils/migrate"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -26,14 +25,14 @@ type PluginMetadata struct {
 	Def sdkutils.PluginSrcDef
 }
 
-func InstallSrcDef(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
+func InstallSrcDef(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
 	switch def.Src {
 	case sdkutils.PluginSrcGit:
-		info, err = InstallFromGitSrc(w, db, def)
+		info, err = InstallFromGitSrc(db, def)
 	case sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem:
-		info, err = InstallFromLocalPath(w, db, def)
+		info, err = InstallFromLocalPath(db, def)
 	case sdkutils.PluginSrcStore:
-		info, err = InstallFromPluginStore(w, db, def)
+		info, err = InstallFromPluginStore(db, def)
 	default:
 		return sdkutils.PluginInfo{}, errors.New("Invalid plugin source: " + def.Src)
 	}
@@ -41,8 +40,8 @@ func InstallSrcDef(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (in
 	return info, err
 }
 
-func InstallFromLocalPath(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
-	w.Write([]byte("Installing plugin from local path: " + def.LocalPath))
+func InstallFromLocalPath(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
+	log.Println("Installing plugin from local path: " + def.LocalPath)
 
 	info, err = sdkutils.GetPluginInfoFromPath(def.LocalPath)
 	if err != nil {
@@ -57,8 +56,8 @@ func InstallFromLocalPath(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcD
 	return
 }
 
-func InstallFromPluginStore(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
-	w.Write([]byte("Installing plugin from store: " + def.StorePackage))
+func InstallFromPluginStore(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
+	log.Println("Installing plugin from store: " + def.String())
 
 	// prepare path
 	randomPath := RandomPluginPath()
@@ -109,14 +108,14 @@ func InstallFromPluginStore(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSr
 	return info, nil
 }
 
-func InstallFromGitSrc(w io.Writer, db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
+func InstallFromGitSrc(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
 	log.Println("Installing plugin from git source: " + def.String())
 	clonePath := filepath.Join(sdkutils.PathTmpDir, "plugins", "cloned", sdkutils.RandomStr(16))
 
 	repo := sdkutils.GitRepoSource{URL: def.GitURL, Ref: def.GitRef}
 
 	log.Println("Cloning plugin from git: " + def.GitURL)
-	if err := sdkutils.GitClone(w, repo, clonePath); err != nil {
+	if err := sdkutils.GitClone(repo, clonePath); err != nil {
 		log.Println("Error cloning: ", err)
 		return sdkutils.PluginInfo{}, err
 	}

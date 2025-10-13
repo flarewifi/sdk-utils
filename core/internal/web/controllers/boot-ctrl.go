@@ -1,38 +1,45 @@
 package controllers
 
 import (
-	"log"
 	"net/http"
 	"path"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
-	sse "core/internal/utils/sse"
 	"core/internal/web/helpers"
 	"core/internal/web/routes/urls"
 	"core/resources/views/boot"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewBootCtrl(g *api.CoreGlobals, pmgr *api.PluginsMgr, api *api.PluginApi) BootCtrl {
-	return BootCtrl{g.BootProgress, pmgr, api}
+	return BootCtrl{pmgr, api}
 }
 
 type BootCtrl struct {
-	bp   *api.BootProgress
 	pmgr *api.PluginsMgr
 	api  *api.PluginApi
 }
 
-func (ctrl *BootCtrl) IndexPage(w http.ResponseWriter, r *http.Request) {
+func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
 	globals := plugins.ReadGlobalAssetsManifest()
 	jsSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingJsFile))
 	cssSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingCssFile))
+	isUpdating := sdkutils.FsExists(sdkutils.PathIsUpdated) || sdkutils.FsExists(sdkutils.PathIsReverted)
+
+	var status string
+	if isUpdating {
+		status = "The software is updating... This will take a few minutes, please wait..."
+	} else {
+		status = "The software is booting, please wait..."
+	}
 
 	page := boot.BootPage(&boot.BootPageData{
 		API:    ctrl.api,
-		SseURL: urls.BOOT_STATUS_URL,
 		JsSrc:  jsSrc,
 		CssSrc: cssSrc,
+		Status: status,
 	})
 
 	if err := page.Render(r.Context(), w); err != nil {
@@ -40,32 +47,13 @@ func (ctrl *BootCtrl) IndexPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ctrl *BootCtrl) SseHandler(w http.ResponseWriter, r *http.Request) {
-	s, err := sse.NewSocket(w, r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	ctrl.bp.AddSocket(s)
-	s.Listen()
-}
-
 func (ctrl *BootCtrl) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		done := ctrl.bp.IsDone()
-
 		isAssetPath := helpers.IsAssetPath(r.URL.Path)
-		log.Printf("Is asset path: %s => %v", r.URL.Path, isAssetPath)
 
 		if r.Method == http.MethodGet && !isAssetPath {
-			if !done && r.URL.Path != urls.BOOT_URL && r.URL.Path != urls.BOOT_STATUS_URL {
+			if r.URL.Path != urls.BOOT_URL && r.URL.Path != urls.BOOT_STATUS_URL {
 				http.Redirect(w, r, urls.BOOT_URL, http.StatusSeeOther)
-				return
-			}
-
-			if done && r.URL.Path == urls.BOOT_URL {
-				http.Redirect(w, r, "/", http.StatusSeeOther)
 				return
 			}
 		}

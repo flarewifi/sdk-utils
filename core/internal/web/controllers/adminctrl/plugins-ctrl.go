@@ -268,7 +268,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			LocalPath: sdkutils.StripRootPath(pluginCachePath),
 		}
 
-		if _, err := plugins.InstallFromLocalPath(os.Stdout, g.CoreAPI.SqlDb(), def); err != nil {
+		if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def); err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -307,7 +307,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		repoURL := r.FormValue("github_repo_url")
 		gitRef := r.FormValue("github_ref")
 
-		info, err := plugins.InstallFromGitSrc(os.Stdout, g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
+		info, err := plugins.InstallFromGitSrc(g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
 			Src:    sdkutils.PluginSrcGit,
 			GitURL: repoURL,
 			GitRef: gitRef,

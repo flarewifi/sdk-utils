@@ -14,11 +14,14 @@ func BootRoutes(g *api.CoreGlobals) {
 
 	r := webutil.BootingRouter
 	r.Use(bootCtrl.Middleware)
-	r.HandleFunc(urls.BOOT_URL, bootCtrl.IndexPage).Methods("GET")
-	r.HandleFunc(urls.BOOT_STATUS_URL, bootCtrl.SseHandler).Methods("GET")
+	r.HandleFunc(urls.BOOT_URL, bootCtrl.BootPage).Methods(http.MethodGet)
+	r.HandleFunc(urls.BOOT_STATUS_URL, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusExpectationFailed)
+	}).Methods(http.MethodGet)
 
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Location not found: ", r.URL.Path)
+		log.Println("Redirecting to boot page: ", urls.BOOT_URL)
 		http.Redirect(w, r, urls.BOOT_URL, http.StatusFound)
 	})
 }

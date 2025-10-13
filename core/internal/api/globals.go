@@ -21,7 +21,6 @@ type CoreGlobals struct {
 	ClientRegister *connmgr.ClientRegister
 	ClientMgr      *connmgr.SessionsMgr
 	TrafficMgr     *network.TrafficMgr
-	BootProgress   *BootProgress
 	Models         *models.Models
 	PluginMgr      *PluginsMgr
 	PaymentsMgr    *PaymentsMgr
@@ -29,17 +28,13 @@ type CoreGlobals struct {
 
 func NewGlobals() *CoreGlobals {
 	state := &AppState{}
-	db, err := db.NewDatabase()
-	if err != nil {
-		panic(err)
-	}
 
 	info, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
 	if err != nil {
 		panic(err)
 	}
 
-	bp := NewBootProgress()
+	db := db.NewDatabase()
 	mdls := models.New(db)
 	clntReg := connmgr.NewClientRegister(db, mdls)
 	clntMgr := connmgr.NewSessionsMgr(db, mdls)
@@ -61,7 +56,6 @@ func NewGlobals() *CoreGlobals {
 		clntReg,
 		clntMgr,
 		trfcMgr,
-		bp,
 		mdls,
 		plgnMgr,
 		pmtMgr,

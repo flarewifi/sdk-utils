@@ -14,7 +14,7 @@ import (
 func SyncCoreVersion() {
 	version := plugins.GetCoreInfo().Version
 	packageJson := "package.json"
-	var pkg map[string]interface{}
+	var pkg map[string]any
 	err := sdkutils.JsonRead(packageJson, &pkg)
 	if err != nil {
 		panic(err)

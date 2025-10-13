@@ -17,6 +17,7 @@ apply_updates() {
         cp -r $SOFTWARE_UPDATE_DIR/* $APP_DIR && \
         rm -rf $SOFTWARE_UPDATE_DIR && \
         cd $APP_DIR && \
+        touch $APP_DIR/.updated && \
         echo "Software updates copied successfully."
 }
 
@@ -27,6 +28,7 @@ revert_updates() {
             cp -r $BACKUP_DIR/* $APP_DIR && \
             rm -rf $BACKUP_DIR && \
             cd $APP_DIR && \
+            touch $APP_DIR/.reverted && \
             echo "Old version copied successfully."
     else
         echo "\n\nNo backup of old version is available" && exit 1
@@ -35,7 +37,7 @@ revert_updates() {
 
 link_data() {
     # Link data directory
-    if [ ! -e "./data" ]; then
+    if [ ! -e "$APP_DIR/data" ]; then
         (\
                 echo "\n\nLinking data directory from $DATA_DIR to $APP_DIR/data" && \
                 ln -s $DATA_DIR $APP_DIR/data && \
@@ -47,10 +49,6 @@ link_data() {
     fi
 }
 
-if [ -e "$SOFTWARE_UPDATE_DIR" ]; then
-    apply_updates || (echo "\n\nFailed to apply updates!" && revert_updates)
-fi
-
 start() {
     (\
             cd $APP_DIR && \
@@ -60,8 +58,14 @@ start() {
             flare server
         ) || (\
             echo "\n\nFailed to start application, reverting to old version if available..." && \
-            revert_updates && start
+            revert_updates && $APP_DIR/start.sh
     )
 }
 
-start
+
+if [ -e "$SOFTWARE_UPDATE_DIR" ]; then
+    (apply_updates && $APP_DIR/start.sh) || (echo "\n\nFailed to apply updates!" && \
+        revert_updates && $APP_DIR/start.sh)
+else
+    start
+fi

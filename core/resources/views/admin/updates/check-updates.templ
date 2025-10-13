@@ -33,7 +33,7 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 		<div>
 			<small>{ api.Translate("label", "current_version") }: { update.CurrentVersion }</small>
 		</div>
-		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("system.updates.install")) }>
+		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("system.updates.download")) }>
             { api.Translate("label", "download_update")}
         </a>
 	</div>
