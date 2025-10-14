@@ -1,6 +1,7 @@
 package admin
 
 import sdkapi "sdk/api"
+import "fmt"
 
 templ AdminHead() {
 }
@@ -44,14 +45,28 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 					<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 				</div>
 				<div class="offcanvas-body">
-					<ul class="nav-menu">
-						for _, nav := range navs {
-							<li class="nav-category" x-data="{ open: false }">
-								<a href="#" @click.prevent="open = !open" class="nav-link" :class="{'active-category': open}">
+					// State is moved up to the parent `ul`
+					<ul class="nav-menu" x-data="{ openIndex: -1 }">
+						
+						for i, nav := range navs {
+							<li class="nav-category">
+								
+								// We use fmt.Sprintf to build the attribute strings,
+								// which makes the `templ` compiler recognize that `i` is being used.
+								<a 
+									href="#" 
+									class="nav-link"
+									@click.prevent={ fmt.Sprintf("openIndex = (openIndex === %d) ? -1 : %d", i, i) }
+									:class={ fmt.Sprintf("{'active-category': openIndex === %d}", i) }
+								>
 									<span>{ nav.Category }</span>
 								</a>
 								
-								<ul class="sub-nav" x-show="open" x-transition>
+								<ul 
+									class="sub-nav" 
+									x-show={ fmt.Sprintf("openIndex === %d", i) } 
+									x-transition
+								>
 									for _, subnav := range nav.Items {
 										<li class="sub-nav-item">
 											<a class="sub-nav-link" href={ templ.SafeURL(subnav.RouteUrl) }>
@@ -61,22 +76,6 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 									}
 								</ul>
 							</li>
-							<!--
-							<div x-data="{open: false}">
-								<li style="">
-									<div>
-										<a @click="open = !open">{ nav.Category }</a>
-										<ul x-show="open">
-											for _, subnav := range nav.Items {
-												<li>
-													<a href={ templ.URL(subnav.RouteUrl) }>{ subnav.Label }</a>
-												</li>
-											}
-										</ul>
-									</div>
-								</li>
-							</div>
-							-->
 						}
 					</ul>
 				</div>
