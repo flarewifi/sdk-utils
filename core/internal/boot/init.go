@@ -17,8 +17,8 @@ func Init(g *api.CoreGlobals) {
 	go func() {
 		log.Println("Initializing database...")
 		g.Db.WaitReady()
-		log.Println("Database is ready.")
 
+		log.Println("Database is ready.")
 		plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
 		InitOpkg()
 		RunCoreMigrations(g)

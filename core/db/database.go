@@ -67,7 +67,7 @@ func NewDatabase() *Database {
 				}
 			} else {
 				portCheckIndex++
-				time.Sleep(1 * time.Second)
+				time.Sleep(time.Duration(portCheckIndex) * time.Second)
 			}
 		}
 
@@ -126,8 +126,6 @@ func NewDatabase() *Database {
 			return
 		}
 
-		time.Sleep(100 * time.Second)
-
 		db.Queries = *queries.New(pgPool)
 		db.db = pgPool
 	}(&db)
@@ -152,6 +150,9 @@ func (d *Database) WaitReady() {
 }
 
 func (d *Database) SqlDB() (db *pgxpool.Pool) {
+	if d.ConnErr != nil {
+		log.Println("Unable to connect to database: ", d.ConnErr)
+	}
 	return d.db
 }
 
