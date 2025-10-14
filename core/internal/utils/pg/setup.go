@@ -66,7 +66,7 @@ func SetupServer(dbpass string, dbname string) error {
 	// don't forget to remove password file
 	defer os.Remove(pgPassFile)
 
-	initDbCmd := fmt.Sprintf("sudo -u postgres LC_COLLATE='C' initdb --pwfile=%s -D %s", pgPassFile, pgDataDir)
+	initDbCmd := fmt.Sprintf(`sudo -u postgres sh -c "LC_COLLATE='C' initdb --pwfile=%s -D %s"`, pgPassFile, pgDataDir)
 	if err := cmd.Exec(initDbCmd, &cmd.ExecOpts{
 		Stdout: os.Stdout,
 	}); err != nil {
