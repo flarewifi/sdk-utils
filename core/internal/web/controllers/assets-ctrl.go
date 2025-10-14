@@ -9,6 +9,7 @@ import (
 )
 
 func NewAssetsCtrl(g *api.CoreGlobals) *AssetsCtrl {
+	g.CoreAPI.HttpAPI.Navs()
 	return &AssetsCtrl{g}
 }
 
