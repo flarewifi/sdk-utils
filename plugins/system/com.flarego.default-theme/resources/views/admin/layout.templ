@@ -45,14 +45,10 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 					<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 				</div>
 				<div class="offcanvas-body">
-					// State is moved up to the parent `ul`
 					<ul class="nav-menu" x-data="{ openIndex: -1 }">
 						
 						for i, nav := range navs {
 							<li class="nav-category">
-								
-								// We use fmt.Sprintf to build the attribute strings,
-								// which makes the `templ` compiler recognize that `i` is being used.
 								<a 
 									href="#" 
 									class="nav-link"
