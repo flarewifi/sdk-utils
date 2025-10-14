@@ -28,7 +28,6 @@ templ AdminThemeLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 	<html lang="en" data-bs-theme="auto">
 		<head>
 			<title>{ api.Translate("label", "web_admin") }</title>
-			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<!-- Theme Stylesheets -->
 			if data.Assets.GlobalCssHref != "" {
 				<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>
