@@ -1,7 +1,7 @@
 package themes
 
 import (
-    "sdk/api"
+	"sdk/api"
 )
 
 type AdminAssets struct {
@@ -15,53 +15,35 @@ type AdminAssets struct {
 	PageJsSrc           string
 }
 
-type AdminLayoutData struct {
-	Assets AdminAssets
-	SseURL string
-    Flash *sdkapi.FlashMsg
-	Head   templ.Component
-	Layout templ.Component
+templ AdminHead(api sdkapi.IPluginApi,data AdminAssets) {
+	<title>{ api.Translate("label", "web_admin") }</title>
+	<!-- Theme Stylesheets -->
+	if data.GlobalCssHref != "" {
+		<link rel="stylesheet" href={ data.GlobalCssHref }/>
+	}
+	if data.ThemeCssHref != "" {
+		<link rel="stylesheet" href={ data.ThemeCssHref }/>
+	}
+	if data.PluginGlobalCssHref != "" {
+		<link rel="stylesheet" href={ data.PluginGlobalCssHref }/>
+	}
+	if data.PageCssHref != "" {
+		<link rel="stylesheet" href={ data.PageCssHref }/>
+	}
 }
 
-templ AdminThemeLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
-	<!DOCTYPE html>
-	<html lang="en" data-bs-theme="auto">
-		<head>
-			<title>{ api.Translate("label", "web_admin") }</title>
-			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<!-- Theme Stylesheets -->
-			if data.Assets.GlobalCssHref != "" {
-				<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>
-			}
-			if data.Assets.ThemeCssHref != "" {
-				<link rel="stylesheet" href={ data.Assets.ThemeCssHref }/>
-			}
-			if data.Assets.PluginGlobalCssHref != "" {
-				<link rel="stylesheet" href={ data.Assets.PluginGlobalCssHref }/>
-			}
-			if data.Assets.PageCssHref != "" {
-				<link rel="stylesheet" href={ data.Assets.PageCssHref }/>
-			}
-			<!-- Theme Head -->
-			@data.Head
-		</head>
-		<body hx-ext="sse,loading-states" sse-connect={ data.SseURL }>
-			<!-- Theme Layout -->
-			@data.Layout
-			<!-- Theme Scripts -->
-			if data.Assets.GlobalJsSrc != "" {
-				<script src={ data.Assets.GlobalJsSrc }></script>
-			}
-			if data.Assets.ThemeJsSrc != "" {
-				<script src={ data.Assets.ThemeJsSrc }></script>
-			}
-			if data.Assets.PageJsSrc != "" {
-				<script src={ data.Assets.PageJsSrc }></script>
-			}
-
-			if data.Flash != nil {
-				<script id="flash-message" data-flash-type={ data.Flash.Type } data-flash-message={ data.Flash.Message } type="text/template"></script>
-			}
-		</body>
-	</html>
+templ AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) {
+	<!-- Theme Scripts -->
+	if assets.GlobalJsSrc != "" {
+		<script src={ assets.GlobalJsSrc }></script>
+	}
+	if assets.ThemeJsSrc != "" {
+		<script src={ assets.ThemeJsSrc }></script>
+	}
+	if assets.PageJsSrc != "" {
+		<script src={ assets.PageJsSrc }></script>
+	}
+	if flash != nil {
+		<script id="flash-message" data-flash-type={ flash.Type } data-flash-message={ flash.Message } type="text/template"></script>
+	}
 }

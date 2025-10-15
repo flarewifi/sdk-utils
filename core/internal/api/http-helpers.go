@@ -24,7 +24,7 @@ func (self *HttpHelpers) CsrfHtmlTag(r *http.Request) string {
 	return string(tpl)
 }
 
-func (self *HttpHelpers) Translate(msgtype string, msgk string, pairs ...interface{}) string {
+func (self *HttpHelpers) Translate(msgtype string, msgk string, pairs ...any) string {
 	return self.api.Utl.Translate(msgtype, msgk, pairs...)
 }
 

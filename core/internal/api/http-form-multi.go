@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	sdkapi "sdk/api"
@@ -15,10 +14,10 @@ func (f FormMultiFieldData) NumRows() int {
 	return len(f.Fields)
 }
 
-func (f FormMultiFieldData) GetValue(row int, name string) (val interface{}, err error) {
+func (f FormMultiFieldData) GetValue(row int, name string) (val any, err error) {
 	r := f.Fields[row]
 	if r == nil {
-		return "", errors.New(fmt.Sprintf("row %d not found", row))
+		return "", fmt.Errorf("row %d not found", row)
 	}
 
 	for _, field := range r {
@@ -27,7 +26,7 @@ func (f FormMultiFieldData) GetValue(row int, name string) (val interface{}, err
 		}
 	}
 
-	return "", errors.New(fmt.Sprintf("field %s not found in multi-field", name))
+	return "", fmt.Errorf("field %s not found in multi-field", name)
 }
 
 func (f FormMultiFieldData) GetStringValue(row int, name string) (val string, err error) {
@@ -38,7 +37,7 @@ func (f FormMultiFieldData) GetStringValue(row int, name string) (val string, er
 
 	val, ok := v.(string)
 	if !ok {
-		return "", errors.New(fmt.Sprintf("field %s in row %d in multi-field is not a string, instead %T", name, row, v))
+		return "", fmt.Errorf("field %s in row %d in multi-field is not a string, instead %T", name, row, v)
 	}
 
 	return val, nil
@@ -86,7 +85,7 @@ func (f FormMultiFieldData) GetBoolValue(row int, name string) (val bool, err er
 
 	val, ok := v.(bool)
 	if !ok {
-		err = errors.New(fmt.Sprintf("field %s in row %d in multi-field is not a boolean", name, row))
+		err = fmt.Errorf("field %s in row %d in multi-field is not a boolean", name, row)
 		return
 	}
 

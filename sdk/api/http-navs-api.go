@@ -41,6 +41,7 @@ type AdminNavItemOpt struct {
 	Label       string
 	RouteName   string
 	RouteParams map[string]string
+	Keywords    []string // Used for admin nav search indexing
 }
 
 type PortalNavItemOpt struct {
@@ -48,7 +49,7 @@ type PortalNavItemOpt struct {
 	IconFile    string
 	RouteName   string
 	RouteParams map[string]string
-	Metadata    interface{}
+	Metadata    any
 }
 
 type AdminNavList struct {

@@ -5,7 +5,6 @@ import (
 
 	"core/internal/api"
 	webutils "core/internal/utils/web"
-	"core/internal/web/controllers"
 	"core/internal/web/middlewares"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -13,9 +12,6 @@ import (
 
 func AssetsRoutes(g *api.CoreGlobals) {
 	cacheMw := middlewares.CacheResponse(365)
-	assetsCtrl := controllers.NewAssetsCtrl(g)
-
-	webutils.RootRouter.Handle("/favicon.ico", cacheMw(http.HandlerFunc(assetsCtrl.GetFavicon)))
 
 	allPlugins := g.PluginMgr.All()
 	for _, p := range allPlugins {

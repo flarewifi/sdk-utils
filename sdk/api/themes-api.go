@@ -29,9 +29,12 @@ type FlashMsg struct {
 	Message string
 }
 
-type IViewBuilder interface {
-	Content() templ.Component
-	Render(head, layout templ.Component)
+type IThemeComponents interface {
+	HtmlAttrs() templ.Attributes
+	Head() templ.Component
+	BodyAttrs() templ.Attributes
+	PageContent() templ.Component
+	Scripts() templ.Component
 }
 
 type LoginPageData struct {
@@ -44,7 +47,7 @@ type AdminThemeOpts struct {
 	CssLib           CSSLib
 	JsFile           string
 	CssFile          string
-	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IViewBuilder)
+	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IThemeComponents)
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
 }
 
@@ -52,7 +55,7 @@ type PortalThemeOpts struct {
 	JsFile           string
 	CssFile          string
 	CssLib           CSSLib
-	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IViewBuilder)
+	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IThemeComponents)
 	LoginPageFactory func(w http.ResponseWriter, r *http.Request, data LoginPageData) ViewPage
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
 }

@@ -14,11 +14,11 @@
 window.addEventListener('load', function () {
   // Get the boot status url from body data attribute
 
+  var statusURL = document.body.getAttribute('data-status-url');
+
   function checkStatus(callback) {
-    var statusUrl = document.body.getAttribute('data-status-url');
-    console.log('Checking status at:', statusUrl);
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', statusUrl, true);
+    xhr.open('GET', statusURL, true);
 
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {

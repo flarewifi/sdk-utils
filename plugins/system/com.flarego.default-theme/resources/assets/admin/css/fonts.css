@@ -1,0 +1,21 @@
+@font-face {
+  font-family: 'Noto_Sans';
+  src: url('../../vendor/Noto_Sans/NotoSans-VariableFont_wdth,wght.ttf') format('truetype');
+  font-weight: 100 900; /* supports Thin to Black */
+  font-stretch: 75% 125%; /* handles wdth axis */
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto_Sans';
+  src: url('../../vendor/Noto_Sans/NotoSans-VariableFont_wdth\,wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-stretch: 75% 125%;
+  font-style: italic;
+  font-display: swap;
+}
+
+body {
+  font-family: 'Noto_Sans', sans-serif;
+}
