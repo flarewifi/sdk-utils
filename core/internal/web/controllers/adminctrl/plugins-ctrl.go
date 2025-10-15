@@ -186,14 +186,11 @@ func CheckPluginStatusCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		fmt.Println("check status called...")
 
 		api := g.CoreAPI
-		res := api.Http().Response()
 		installSource := r.URL.Query().Get("source")
 
 		w.Header().Set("Content-Type", "application/json")
 		plugin := GetPlugin(api, installSource)
 		if plugin == nil {
-			res.FlashMsg(w, r, "plugin not found", sdkapi.FlashMsgError)
-
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]any{
 				"status":  FailedStatus,
@@ -235,10 +232,23 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 		defer file.Close()
 
+		pluginName := getGithubPluginName(header.Filename)
+		if err := SaveInitialState(g.CoreAPI, pluginName); err != nil {
+			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+
+			return
+		}
+
 		// Specify the directory where the file will be saved
 		saveDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "uploads")
 		err = sdkutils.FsEnsureDir(saveDir) // Ensure the directory exists
 		if err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -251,6 +261,10 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Create a new file in the specified directory
 		dst, err := os.Create(filePath)
 		if err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -261,6 +275,10 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Copy the uploaded file data to the new file
 		_, err = io.Copy(dst, file)
 		if err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -269,6 +287,10 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		pluginTmpDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted", sdkutils.RandomStr(16))
 		if err = sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -277,6 +299,10 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		pluginSrc, err := sdkutils.FindPluginSrc(pluginTmpDir)
 		if err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -285,6 +311,10 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		info, err := sdkutils.GetPluginInfoFromPath(pluginSrc)
 		if err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -293,6 +323,10 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		pluginCachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
 		if err = sdkutils.FsCopy(pluginSrc, pluginCachePath); err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -305,6 +339,10 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def); err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -315,6 +353,10 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		installPath := plugins.GetInstallPath(info.Package)
 		p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 		g.PluginMgr.RegisterPlugin(p)
+
+		if err := UpdateStatus(g.CoreAPI, pluginName, SuccessStatus); err != nil {
+			g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+		}
 
 		// Redirect to the plugins index page
 		successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")

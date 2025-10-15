@@ -8,21 +8,19 @@ window.addEventListener('alpine:init', () => {
       const loadingState = localStorage.getItem('plugin_install_loading');
       if (loadingState) {
         const state = JSON.parse(loadingState);
-        console.log('[init] Found saved state:', state);
 
         if (state.isLoading) {
           this.github_repo_url = state.github_repo_url;
+          this.file_name = state.file_name;
           this.isLoading = true;
 
           // Check current status before resuming polling
-          const pluginName = this.github_repo_url.split('/').pop();
+          const pluginName = this.github_repo_url?.split('/').pop() || this.file_name || '';
           const url = `${this.check_install_status_url}?source=${encodeURIComponent(pluginName)}`;
 
           fetch(url)
             .then(res => res.json())
             .then(data => {
-              console.log('[init] Initial status check:', data.status);
-
               if (data.status === 'success' || data.status === 'failed') {
                 this.isLoading = false;
                 localStorage.removeItem('plugin_install_loading');
@@ -32,7 +30,6 @@ window.addEventListener('alpine:init', () => {
               }
             })
             .catch(err => {
-              console.error('[init] Error checking status:', err);
               this.isLoading = false;
               localStorage.removeItem('plugin_install_loading');
             });
@@ -57,6 +54,25 @@ window.addEventListener('alpine:init', () => {
 
         form.submit();
       } 
+
+      else if (this.action_url === this.plugin_install_zip_url) {
+        const file = formData.get('plugin_zip_file');
+        if (!file || !file.name) {
+          alert('Please select a ZIP file first.');
+          return;
+        }
+
+        this.isLoading = true;
+
+        localStorage.setItem('plugin_install_loading', JSON.stringify({
+          isLoading: true,
+          type: 'zip',
+          file_name: file.name,
+          timestamp: Date.now(),
+        }));
+
+        form.submit();
+      }
     },
 
     startPolling() {
@@ -64,7 +80,7 @@ window.addEventListener('alpine:init', () => {
 
       this.pollInterval = setInterval(async () => {
         try {
-          const pluginName = this.github_repo_url.split('/').pop();
+          const pluginName = this.github_repo_url?.split('/').pop() || this.file_name || '';
           const url = `${this.check_install_status_url}?source=${encodeURIComponent(pluginName)}`;
 
           const res = await fetch(url);
