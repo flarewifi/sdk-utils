@@ -8,8 +8,9 @@
 /vendor
 /node_modules
 /go
-/data
-!/data/.keep
+/data/config
+/data/plugins/local/*
+!/data/plugins/local/.keep
 /plugins/installed
 /plugins/updates
 /plugins/backups
