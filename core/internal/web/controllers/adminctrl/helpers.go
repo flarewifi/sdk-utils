@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"strings"
 )
 
 const (
@@ -98,4 +99,9 @@ func GetPlugin(api *api.PluginApi, installSource string) *PluginInstallation {
 	}
 
 	return nil
+}
+
+func getGithubPluginName(fullURL string) string {
+	parts := strings.Split(strings.TrimSuffix(fullURL, "/"), "/")
+	return parts[len(parts)-1]
 }

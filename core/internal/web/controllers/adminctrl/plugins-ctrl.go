@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -174,6 +173,9 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		})
 		view := sdkapi.ViewPage{
 			PageContent: page,
+			Assets: sdkapi.ViewAssets{
+				JsFile: "index.js",
+			},
 		}
 		res.AdminView(w, r, view)
 	}
@@ -181,23 +183,28 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 func CheckPluginStatusCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("check status called...")
+
 		api := g.CoreAPI
 		res := api.Http().Response()
-		vars := api.HttpAPI.MuxVars(r)
-		installSource := vars["source"]
+		installSource := r.URL.Query().Get("source")
 
+		w.Header().Set("Content-Type", "application/json")
 		plugin := GetPlugin(api, installSource)
 		if plugin == nil {
 			res.FlashMsg(w, r, "plugin not found", sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error("plugin not found")
+
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]any{
+				"status":  FailedStatus,
+				"message": "plugin not found",
+			})
+			return
 		}
 
-		resp := map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"status": plugin.Status,
-		}
-
-		json.NewEncoder(w).Encode(resp)
+		})
 	}
 }
 
@@ -336,7 +343,9 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		repoURL := r.FormValue("github_repo_url")
 		gitRef := r.FormValue("github_ref")
 
-		if err := SaveInitialState(g.CoreAPI, repoURL); err != nil {
+		pluginName := getGithubPluginName(repoURL)
+
+		if err := SaveInitialState(g.CoreAPI, pluginName); err != nil {
 			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -351,7 +360,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		})
 
 		if err != nil {
-			if err := UpdateStatus(g.CoreAPI, repoURL, FailedStatus); err != nil {
+			if err := UpdateStatus(g.CoreAPI, pluginName, FailedStatus); err != nil {
 				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
 			}
 
@@ -366,9 +375,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 		g.PluginMgr.RegisterPlugin(p)
 
-		time.Sleep(10 * time.Second)
-
-		if err := UpdateStatus(g.CoreAPI, repoURL, SuccessStatus); err != nil {
+		if err := UpdateStatus(g.CoreAPI, pluginName, SuccessStatus); err != nil {
 			g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
 		}
 
