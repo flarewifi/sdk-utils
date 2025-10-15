@@ -1,11 +1,13 @@
 package adminctrl
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -160,15 +162,42 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		pluginZipInsttallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.zip")
 		pluginGithubInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.github")
+		pluginIndexURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.index")
+		checkInstallStatusURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.status")
+
 		page := views.InstallPlugin(api, views.FormRoutes{
 			SelectedAction:         pluginGithubInstallURL,
 			PluginInstallGithubURL: pluginGithubInstallURL,
 			PluginInstallZipURL:    pluginZipInsttallURL,
+			PluginIndexURL:         pluginIndexURL,
+			CheckInstallStatusURL:  checkInstallStatusURL,
 		})
 		view := sdkapi.ViewPage{
 			PageContent: page,
 		}
 		res.AdminView(w, r, view)
+	}
+}
+
+func CheckPluginStatusCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.Http().Response()
+		vars := api.HttpAPI.MuxVars(r)
+		installSource := vars["source"]
+
+		plugin := GetPlugin(api, installSource)
+		if plugin == nil {
+			res.FlashMsg(w, r, "plugin not found", sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
+			g.CoreAPI.LoggerAPI.Error("plugin not found")
+		}
+
+		resp := map[string]interface{}{
+			"status": plugin.Status,
+		}
+
+		json.NewEncoder(w).Encode(resp)
 	}
 }
 
@@ -307,6 +336,14 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		repoURL := r.FormValue("github_repo_url")
 		gitRef := r.FormValue("github_ref")
 
+		if err := SaveInitialState(g.CoreAPI, repoURL); err != nil {
+			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+
+			return
+		}
+
 		info, err := plugins.InstallFromGitSrc(os.Stdout, g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
 			Src:    sdkutils.PluginSrcGit,
 			GitURL: repoURL,
@@ -314,6 +351,10 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		})
 
 		if err != nil {
+			if err := UpdateStatus(g.CoreAPI, repoURL, FailedStatus); err != nil {
+				g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+			}
+
 			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
@@ -324,6 +365,12 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		installPath := plugins.GetInstallPath(info.Package)
 		p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 		g.PluginMgr.RegisterPlugin(p)
+
+		time.Sleep(10 * time.Second)
+
+		if err := UpdateStatus(g.CoreAPI, repoURL, SuccessStatus); err != nil {
+			g.CoreAPI.LoggerAPI.Error("unable to update plugin status: " + err.Error())
+		}
 
 		successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
 		res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)

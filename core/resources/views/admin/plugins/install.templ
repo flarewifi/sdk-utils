@@ -3,20 +3,125 @@ package pluginsview
 import (
 	"fmt"
 	sdkapi "sdk/api"
+	"encoding/json"
+	"html/template"
 )
 
 type FormRoutes struct {
 	SelectedAction         string `json:"action_url"`
 	PluginInstallZipURL    string `json:"plugin_install_zip_url"`
 	PluginInstallGithubURL string `json:"plugin_install_github_url"`
+	PluginIndexURL         string `json:"plugin_index_url"`
+	CheckInstallStatusURL string `json:"check_install_status_url"`
 }
 
 templ InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) {
-	<h1>{ api.Translate("label", "install_plugin") }</h1>
+	<script>
+		document.addEventListener('alpine:init', () => {
+			Alpine.data('pluginInstaller', (routes) => ({
+				...routes,
+				isLoading: false,
+				pollInterval: null,
+				
+				init() {
+					// Check if there's a pending installation on page load
+					const loadingState = localStorage.getItem('plugin_install_loading');
+					if (loadingState) {
+						const state = JSON.parse(loadingState);
+						console.log('[v0] Found loading state:', state);
+						if (state.isLoading) {
+							console.log('[init] Resuming polling...');
+							this.isLoading = true;
+							this.startPolling();
+						}
+					}
+				},
+				
+				handleSubmit(event) {
+					const form = event.target;
+					const formData = new FormData(form);
 
+					const githubRepoUrl = formData.get('github_repo_url') || '';
+
+					// Only show loading for GitHub installations
+					if (this.action_url === this.plugin_install_github_url) {
+						console.log('[v1] GitHub installation detected, starting fetch...');
+						this.isLoading = true;
+
+						// Save state in localStorage so it persists if page reloads
+						localStorage.setItem('plugin_install_loading', JSON.stringify({
+							isLoading: true,
+							action: this.action_url,
+							github_repo_url: githubRepoUrl,
+							timestamp: Date.now()
+						}));
+
+						form.submit();
+					} 
+				},
+
+				startPolling(state) {
+					// avoid duplicate intervals
+					if (this.pollInterval) return;
+
+					console.log('[polling] Started');
+					this.pollInterval = setInterval(async () => {
+						try {
+							const res = await fetch(`${this.check_install_status_url}/${encodeURIComponent(this.github_repo_url)}`);
+							const data = await res.json();
+
+							console.log('[polling] Status:', data.status);
+
+							if (data.status === 'success') {
+								this.stopPolling();
+								this.isLoading = false;
+								localStorage.removeItem('plugin_install_loading');
+								location.href = this.plugin_index_url;
+							} else if (data.status === 'failed') {
+								this.stopPolling();
+								this.isLoading = false;
+								localStorage.removeItem('plugin_install_loading');
+								alert('Installation failed.');
+							}
+						} catch (err) {
+							console.error('[polling] Error:', err);
+						}
+					}, 3000); 
+				},
+
+				stopPolling() {
+					if (this.pollInterval) {
+						clearInterval(this.pollInterval);
+						this.pollInterval = null;
+						console.log('[polling] Stopped');
+					}
+				}
+			}));
+		});
+	</script>
+
+	{{
+		b, _ := json.Marshal(data)
+		jsonData := template.JS(b)
+	}}
+
+	<h1>{ api.Translate("label", "install_plugin") }</h1>
 	<hr/>
-	<div x-data={ templ.JSONString(data) }>
-		<form class="form" method="POST" enctype="multipart/form-data" x-bind:action="action_url">
+	<div x-data={ fmt.Sprintf("pluginInstaller(%s)", jsonData) }>
+		<!-- Overlay loading indicator -->
+		<template x-if="isLoading">
+			<div 
+				class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-opacity-0"
+				style="z-index: 10;"
+			>
+				<div class="text-center">
+					<div class="spinner-border text-primary" role="status"></div>
+					<p class="mt-2">{ api.Translate("label", "installing_plugin") }...</p>
+				</div>
+			</div>
+		</template>
+
+		<form class="form" method="POST" enctype="multipart/form-data" x-bind:action="action_url" @submit.prevent="handleSubmit($event)">
 			<div class="form-group mb-3">
 				<label>{ api.Translate("label", "source") }:</label>
 				<select name="src" class="form-control" x-model="action_url">
