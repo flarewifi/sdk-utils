@@ -128,10 +128,6 @@ use (
     ./sdk/utils
     `, sdkutils.GO_VERSION)
 
-	// for _, lib := range libs {
-	// 	goWork += fmt.Sprintf("./sdk/libs/%s\n", filepath.Base(lib))
-	// }
-
 	goWork += fmt.Sprintf("./plugins/%s\n)", info.Package)
 	goworkFile := filepath.Join(workdir, "go.work")
 	if err := os.WriteFile(goworkFile, []byte(goWork), sdkutils.PermFile); err != nil {

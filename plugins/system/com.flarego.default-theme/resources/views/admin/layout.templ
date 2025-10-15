@@ -4,100 +4,92 @@ import sdkapi "sdk/api"
 import "fmt"
 
 type AdminLayoutData struct {
-	Components  sdkapi.IThemeComponents
-	Navs        []sdkapi.AdminNavList
+	Components sdkapi.IThemeComponents
+	Navs       []sdkapi.AdminNavList
 }
 
-templ AdminLayout(data AdminLayoutData) {
+templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 	<!DOCTYPE html>
-    <html lang="en" data-bs-theme="auto" { data.Components.HtmlAttrs()... }>
+	<html lang="en" data-bs-theme="auto" { data.Components.HtmlAttrs()... }>
 		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			@data.Components.Head()
 		</head>
-        <body { data.Components.BodyAttrs()... }>
+		<body { data.Components.BodyAttrs()... }>
 			@colorSchemeToggle()
-			@adminNavsTpl(data.Navs)
-			<main class="container">
-				@data.Components.PageContent()
+			<!-- Top Navbar -->
+			@topNav()
+			<!-- Offcanvas Sidebar -->
+			@offcanvasSideMenu(api, data.Navs)
+			<!-- Main Content -->
+			<main class="content">
+				<div class="container">
+					@data.Components.PageContent()
+				</div>
 			</main>
-            @data.Components.Scripts()
+			@data.Components.Scripts()
 		</body>
 	</html>
 }
 
-templ adminNavsTpl(navs []sdkapi.AdminNavList) {
-	<nav class="navbar fixed-top">
+templ topNav() {
+	<nav class="navbar navbar-expand-lg shadow-sm fixed-top">
 		<div class="container">
-			<button
-				class="navbar-toggler"
-				type="button"
-				data-bs-toggle="offcanvas"
-				data-bs-target="#offcanvasNavbar"
-				aria-controls="offcanvasNavbar"
-				aria-expanded="false"
-				aria-label="Toggle navigation"
-			>
+			<!-- Sidebar toggle button -->
+			<button class="btn btn-outline-secondary me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#main-sidebar" aria-controls="main-sidebar">
 				<span class="navbar-toggler-icon"></span>
 			</button>
-			<div class="d-flex align-items-center">
-				<!-- Search form -->
-				<form class=" me-2" role="search">
-					<div class="input-group">
-						<span class="input-group-text" id="search-addon">
-							<i class="bi bi-search"></i>
-						</span>
-						<input type="text" class="form-control" placeholder="Search settings" aria-label="Search settings" aria-describedby="search-addon"/>
-					</div>
-				</form>
-				<!-- Dropdown menu to the right of search -->
-				<div class="dropdown">
-					<button
-						class="btn btn btn-outline-secondary dropdown-toggle"
-						type="button"
-						id="signoutMenuButton"
-						data-bs-toggle="dropdown"
-						aria-expanded="false"
-					>
-						Sign Out
-					</button>
-					<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="signoutMenuButton">
-						<li>
-							<a class="dropdown-item" href="/logout">
-								<i class="bi bi-box-arrow-in-right"></i>
-								Log Out
-							</a>
-						</li>
-						<li><hr class="dropdown-divider"/></li>
-						<li>
-							<a class="dropdown-item text-warning" href="/reboot">
-								<i class="bi bi-arrow-repeat"></i>
-								Reboot
-							</a>
-						</li>
-						<li>
-							<a class="dropdown-item text-danger" href="/shutdown">
-								<i class="bi bi-power"></i>
-								Shutdown
-							</a>
-						</li>
-					</ul>
+			<!-- Search form -->
+			<form class="d-flex flex-grow-1 me-auto">
+				<div class="input-group me-2">
+					<span class="input-group-text" id="search-addon">
+						<i class="bi bi-search"></i>
+					</span>
+					<input type="text" class="form-control" placeholder="Search settings" aria-label="Search settings" aria-describedby="search-addon"/>
 				</div>
+			</form>
+			<!-- Dropdown button -->
+			<div class="dropdown">
+				<button class="btn" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+					<i class="bi bi-three-dots-vertical"></i>
+				</button>
+				<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
+					<li>
+						<a class="dropdown-item" href="/logout">
+							<i class="bi bi-box-arrow-in-right"></i>
+							Log Out
+						</a>
+					</li>
+					<li><hr class="dropdown-divider"/></li>
+					<li>
+						<a class="dropdown-item text-warning" href="/reboot">
+							<i class="bi bi-arrow-repeat"></i>
+							Reboot
+						</a>
+					</li>
+					<li>
+						<a class="dropdown-item text-danger" href="/shutdown">
+							<i class="bi bi-power"></i>
+							Shutdown
+						</a>
+					</li>
+				</ul>
 			</div>
-			<!-- Sidebar / offcanvas nav -->
-			@offcanvasSideMenu(navs)
 		</div>
 	</nav>
 }
 
-templ offcanvasSideMenu(navs []sdkapi.AdminNavList) {
-	<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+templ offcanvasSideMenu(api sdkapi.IPluginApi, navs []sdkapi.AdminNavList) {
+	<div class="offcanvas offcanvas-start shadow-sm" data-bs-scroll="true" tabindex="-1" id="main-sidebar" aria-labelledby="sidebarLabel">
 		<div class="offcanvas-header">
-			<h5 class="offcanvas-title sidebar-brand-gradient" id="offcanvasNavbarLabel">
-				nexifi
-			</h5>
-			<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+			<!-- <h5 class="offcanvas-title d-none" id="sidebarLabel">Sidebar</h5> -->
+			<button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 		</div>
-		<div class="offcanvas-body">
+		<div class="sidebar-logo">
+			<img src={ api.Http().Helpers().ResourcePath("assets/images/nexifi_logo.png") } alt="Logo"/>
+		</div>
+		<div class="offcanvas-body pt-3">
 			<ul class="nav-menu" x-data="{ openIndex: -1 }">
 				for i, nav := range navs {
 					<li class="nav-category">

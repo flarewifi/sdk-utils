@@ -24,5 +24,7 @@ sync-version:
 		'go run ./core/cmd/sync-versions/main.go'
 
 devkit:
-	docker compose run -it --rm --build app sh -c \
+	docker compose -f ./docker-compose.yml \
+		-f ./core/build/devkit/extras/docker-compose.override.yml \
+		run -it --rm --build app sh -c \
 		'go run --tags=dev ./core/cmd/create-devkit/main.go'

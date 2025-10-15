@@ -21,7 +21,7 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 				Components: c,
 				Navs:       navs,
 			}
-			layout := admin.AdminLayout(data)
+			layout := admin.AdminLayout(api, data)
 			if err := layout.Render(r.Context(), w); err != nil {
 				fmt.Fprintf(w, "<p>Error rendering layout: %s</p>", err.Error())
 			}

@@ -9,7 +9,8 @@
     "./vendor/bootstrap-5.3.3/css/navbar-fixed.css",
     "./vendor/bootstrap-5.3.3/css/fixes.css",
     "./vendor/bootstrap-5.3.3/css/example.css",
-    "./theme/css/fonts.css",
-    "./theme/css/sidebar-menu.css"
+    "./admin/css/fonts.css",
+    "./admin/css/style.css",
+    "./admin/css/sidebar-menu.css"
   ]
 }
