@@ -1,53 +1,37 @@
 package boot
 
 import (
-	"time"
-
 	"core/internal/api"
 	"core/internal/utils/plugins"
+	"log"
+	"time"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func Init(g *api.CoreGlobals) {
-	bp := g.BootProgress
-	now := time.Now()
+	bootCh := make(chan struct{})
 
 	InitDirs()
 
 	go func() {
-		bp.AppendLog("Start booting processes...")
-		// time.Sleep(10 * time.Second)
+		log.Println("Initializing database...")
+		g.Db.WaitReady()
+		log.Println("Database is ready.")
 
-		bp.AppendLog("Linking node modules...")
 		plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
-		// time.Sleep(10 * time.Second)
-
-		bp.AppendLog("Installing internet packages...")
-		InitOpkg(bp)
-		// time.Sleep(10 * time.Second)
-
-		bp.AppendLog("Running core migrations...")
+		InitOpkg()
 		RunCoreMigrations(g)
-		// time.Sleep(10 * time.Second)
-
-		bp.AppendLog("Initializing plugins...")
 		InitPlugins(g)
-		// time.Sleep(10 * time.Second)
-
-		bp.AppendLog("Initializing admin accounts...")
 		InitAccounts()
-		// time.Sleep(10 * time.Second)
+		if err := InitNetwork(); err != nil {
+			log.Println("Error initializing network:", err)
+		}
 
-		bp.AppendLog("Setting up network interfaces...")
-		InitNetwork()
-		// time.Sleep(10 * time.Second)
+		time.Sleep(8 * time.Second) // Simulate some boot delay
 
-		doneMsg := constructDoneMsg(now)
-		bp.AppendLog(doneMsg)
-
-		bp.Done(nil)
+		bootCh <- struct{}{}
 	}()
 
-	InitHttpServer(g)
+	InitHttpServer(g, bootCh)
 }

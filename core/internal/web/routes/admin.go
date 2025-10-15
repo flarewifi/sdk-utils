@@ -28,8 +28,9 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Group("/updates", func(subrouter sdkapi.IHttpRouterInstance) {
 			subrouter.Get("/check", adminctrl.CheckUpdatesPageCtrl(g)).Name("system.updates.check")
 			subrouter.Post("/query", adminctrl.QuerySoftwareUpdatesCtrl(g)).Name("system.updates.query")
-			subrouter.Get("/install", adminctrl.InstallUpdatePageCtrl(g)).Name("system.updates.install")
-			subrouter.Post("/install/updates", adminctrl.InstallStatusCtrl(g)).Name("system.updates.install.status")
+			subrouter.Get("/download", adminctrl.DownloadUpdatePageCtrl(g)).Name("system.updates.download")
+			subrouter.Post("/download/status", adminctrl.DownloadStatusPartialCtrl(g)).Name("system.updates.download.status")
+			subrouter.Get("/download/done", adminctrl.DownloadDoneCtrl(g)).Name("system.updates.download.done")
 		})
 	})
 
@@ -52,5 +53,10 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Post("/uninstall/{pkg}", adminctrl.UninstallPluginCtrl(g)).Name("admin.plugins.uninstall")
 		subrouter.Get("/checkupdates/{pkg}", adminctrl.CheckPluginUpdatesCtrl(g)).Name("admin.plugins.checkupdates")
 		subrouter.Get("/getupdate/{pkg}/{tag}", adminctrl.DownloadPluginUpdatesCtrl(g)).Name("admin.plugins.getupdate")
+	})
+
+	adminR.Group("/power", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Post("/reboot", adminctrl.RebootCtrl(g)).Name("admin.power.reboot")
+		subrouter.Post("/shutdown", adminctrl.ShutdownCtrl(g)).Name("admin.power.shutdown")
 	})
 }

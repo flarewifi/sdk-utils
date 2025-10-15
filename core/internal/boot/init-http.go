@@ -3,23 +3,26 @@ package boot
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"core/internal/web"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func InitHttpServer(g *api.CoreGlobals) {
+func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	web.SetupBootRoutes(g)
 	server := web.StartServer(webutil.BootingRouter, false)
 
-	err := <-g.BootProgress.DONE_C
-	if err != nil {
-		log.Println("Error while booting:", err)
-		// TODO: Show recovery page
-		return
-	}
+	// Wait for boot process to complete
+	<-bootCh
+
+	// Remove software update indicator files
+	os.Remove(sdkutils.PathIsUpdated)
+	os.Remove(sdkutils.PathIsReverted)
 
 	log.Println("Boot progress done. Need to restart server...")
 
@@ -27,7 +30,7 @@ func InitHttpServer(g *api.CoreGlobals) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = server.Shutdown(ctx)
+	err := server.Shutdown(ctx)
 	if err != nil {
 		log.Printf("Server shutdown error: %v\n", err)
 	} else {
@@ -35,7 +38,7 @@ func InitHttpServer(g *api.CoreGlobals) {
 	}
 
 	// Restart the server with all routes
-	web.SetupAllRoutes(g)
+	web.SetupAppRoutes(g)
 	log.Println("Starting server...")
 	web.StartServer(webutil.RootRouter, true)
 }

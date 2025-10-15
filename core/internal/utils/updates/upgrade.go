@@ -4,7 +4,6 @@ import (
 	"core/internal/api"
 	"core/internal/utils/plugins"
 	"fmt"
-	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -37,7 +36,7 @@ func CompilePlugins(db *pgxpool.Pool) chan CompileResult {
 		total := len(defs)
 
 		for i, def := range defs {
-			_, err := plugins.InstallSrcDef(os.Stdout, db, def)
+			_, err := plugins.InstallSrcDef(db, def)
 			if err != nil {
 				result := CompileResult{Error: err}
 				ch <- result

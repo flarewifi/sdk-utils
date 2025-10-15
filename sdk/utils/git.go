@@ -44,7 +44,7 @@ func MakeGitCache(repo GitRepoSource, clonePath string) error {
 	return nil
 }
 
-func GitClone(w io.Writer, repo GitRepoSource, clonePath string) error {
+func GitClone(repo GitRepoSource, clonePath string) error {
 	// Ensure the parent directory of clonePath exists
 	parentDir := filepath.Dir(clonePath)
 	if err := FsEmptyDir(parentDir); err != nil {
@@ -72,8 +72,8 @@ func GitClone(w io.Writer, repo GitRepoSource, clonePath string) error {
 		if repo.Ref != "" {
 			// Prepare the checkout command
 			checkoutCmd := exec.Command("git", "checkout", repo.Ref)
-			checkoutCmd.Stdout = w
-			checkoutCmd.Stderr = w
+			checkoutCmd.Stdout = os.Stdout
+			checkoutCmd.Stderr = os.Stderr
 			checkoutCmd.Dir = clonePath // Set the working directory for the command
 			if err := checkoutCmd.Run(); err != nil {
 				return err

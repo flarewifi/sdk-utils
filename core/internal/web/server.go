@@ -17,7 +17,7 @@ func SetupBootRoutes(g *api.CoreGlobals) {
 	routes.BootRoutes(g)
 }
 
-func SetupAllRoutes(g *api.CoreGlobals) {
+func SetupAppRoutes(g *api.CoreGlobals) {
 	routes.AssetsRoutes(g)
 	routes.PortalRoutes(g)
 	routes.AdminRoutes(g)
