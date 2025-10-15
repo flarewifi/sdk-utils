@@ -1,11 +1,10 @@
 package boot
 
-import "core/internal/web/routes/urls"
-
 import sdkapi "sdk/api"
 
 type BootPageData struct {
 	API    sdkapi.IPluginApi
+    StatusURL string
 	JsSrc  string
 	CssSrc string
 	Status string
@@ -19,7 +18,7 @@ templ BootPage(data *BootPageData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<link rel="stylesheet" href={ data.CssSrc }/>
 		</head>
-		<body data-status-url={ urls.BOOT_STATUS_URL }>
+		<body data-status-url={ data.StatusURL }>
 			<script src={ data.JsSrc }></script>
 			<div><h2>{ data.API.Translate("label", "boot_progress_status") }: </h2> </div>
 			<br/>

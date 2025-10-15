@@ -25,59 +25,60 @@ templ AdminLayout(data AdminLayoutData) {
 templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 	<nav class="navbar fixed-top">
 		<div class="container">
-			<button
-				class="navbar-toggler"
-				type="button"
-				data-bs-toggle="offcanvas"
-				data-bs-target="#offcanvasNavbar"
-				aria-controls="offcanvasNavbar"
-				aria-expanded="false"
-				aria-label="Toggle navigation"
-			>
-				<span class="navbar-toggler-icon"></span>
-			</button>
-			<!-- Search form -->
-			<form class="d-flex" role="search">
-				<!-- <input class="form-control me-2" type="search" placeholder="Search settings" aria-label="Search settings"/> -->
-				<div class="input-group">
-					<span class="input-group-text" id="search-addon">
-						<i class="bi bi-search"></i>
-					</span>
-					<input type="text" class="form-control" placeholder="Search settings" aria-label="Search settings" aria-describedby="search-addon"/>
-				</div>
-			</form>
-			<!-- Dropdown menu to the right of search -->
-			<div class="dropdown">
+			<div class="d-flex">
 				<button
-					class="btn btn btn-outline-secondary dropdown-toggle"
+					class="navbar-toggler me-auto"
 					type="button"
-					id="signoutMenuButton"
-					data-bs-toggle="dropdown"
+					data-bs-toggle="offcanvas"
+					data-bs-target="#offcanvasNavbar"
+					aria-controls="offcanvasNavbar"
 					aria-expanded="false"
+					aria-label="Toggle navigation"
 				>
-					Sign Out
+					<span class="navbar-toggler-icon"></span>
 				</button>
-				<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="signoutMenuButton">
-					<li>
-						<a class="dropdown-item" href="/logout">
-							<i class="bi bi-box-arrow-in-right"></i>
-							Log Out
-						</a>
-					</li>
-					<li><hr class="dropdown-divider"/></li>
-					<li>
-						<a class="dropdown-item text-warning" href="/reboot">
-							<i class="bi bi-arrow-repeat"></i>
-							Reboot
-						</a>
-					</li>
-					<li>
-						<a class="dropdown-item text-danger" href="/shutdown">
-							<i class="bi bi-power"></i>
-							Shutdown
-						</a>
-					</li>
-				</ul>
+				<!-- Search form -->
+				<form class="" role="search">
+					<div class="input-group me-2">
+						<span class="input-group-text" id="search-addon">
+							<i class="bi bi-search"></i>
+						</span>
+						<input type="text" class="form-control" placeholder="Search settings" aria-label="Search settings" aria-describedby="search-addon"/>
+					</div>
+				</form>
+				<!-- Dropdown menu to the right of search -->
+				<div class="dropdown">
+					<button
+						class="btn btn btn-outline-secondary dropdown-toggle"
+						type="button"
+						id="signoutMenuButton"
+						data-bs-toggle="dropdown"
+						aria-expanded="false"
+					>
+						Sign Out
+					</button>
+					<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="signoutMenuButton">
+						<li>
+							<a class="dropdown-item" href="/logout">
+								<i class="bi bi-box-arrow-in-right"></i>
+								Log Out
+							</a>
+						</li>
+						<li><hr class="dropdown-divider"/></li>
+						<li>
+							<a class="dropdown-item text-warning" href="/reboot">
+								<i class="bi bi-arrow-repeat"></i>
+								Reboot
+							</a>
+						</li>
+						<li>
+							<a class="dropdown-item text-danger" href="/shutdown">
+								<i class="bi bi-power"></i>
+								Shutdown
+							</a>
+						</li>
+					</ul>
+				</div>
 			</div>
 			<!-- Sidebar / offcanvas nav -->
 			<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">

@@ -112,7 +112,7 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<nav class=\"navbar fixed-top\"><div class=\"container\"><button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"offcanvas\" data-bs-target=\"#offcanvasNavbar\" aria-controls=\"offcanvasNavbar\" aria-expanded=\"false\" aria-label=\"Toggle navigation\"><span class=\"navbar-toggler-icon\"></span></button><!-- Search form --><form class=\"d-flex\" role=\"search\"><!-- <input class=\"form-control me-2\" type=\"search\" placeholder=\"Search settings\" aria-label=\"Search settings\"/> --><div class=\"input-group\"><span class=\"input-group-text\" id=\"search-addon\"><i class=\"bi bi-search\"></i></span> <input type=\"text\" class=\"form-control\" placeholder=\"Search settings\" aria-label=\"Search settings\" aria-describedby=\"search-addon\"></div></form><!-- Dropdown menu to the right of search --><div class=\"dropdown\"><button class=\"btn btn btn-outline-secondary dropdown-toggle\" type=\"button\" id=\"signoutMenuButton\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\">Sign Out</button><ul class=\"dropdown-menu dropdown-menu-end\" aria-labelledby=\"signoutMenuButton\"><li><a class=\"dropdown-item\" href=\"/logout\"><i class=\"bi bi-box-arrow-in-right\"></i> Log Out</a></li><li><hr class=\"dropdown-divider\"></li><li><a class=\"dropdown-item text-warning\" href=\"/reboot\"><i class=\"bi bi-arrow-repeat\"></i> Reboot</a></li><li><a class=\"dropdown-item text-danger\" href=\"/shutdown\"><i class=\"bi bi-power\"></i> Shutdown</a></li></ul></div><!-- Sidebar / offcanvas nav --><div class=\"offcanvas offcanvas-start\" tabindex=\"-1\" id=\"offcanvasNavbar\" aria-labelledby=\"offcanvasNavbarLabel\"><div class=\"offcanvas-header\"><h5 class=\"offcanvas-title sidebar-brand-gradient\" id=\"offcanvasNavbarLabel\">nexifi</h5><button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"offcanvas\" aria-label=\"Close\"></button></div><div class=\"offcanvas-body\"><ul class=\"nav-menu\" x-data=\"{ openIndex: -1 }\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<nav class=\"navbar fixed-top\"><div class=\"container\"><div class=\"d-flex\"><button class=\"navbar-toggler me-auto\" type=\"button\" data-bs-toggle=\"offcanvas\" data-bs-target=\"#offcanvasNavbar\" aria-controls=\"offcanvasNavbar\" aria-expanded=\"false\" aria-label=\"Toggle navigation\"><span class=\"navbar-toggler-icon\"></span></button><!-- Search form --><form class=\"\" role=\"search\"><div class=\"input-group me-2\"><span class=\"input-group-text\" id=\"search-addon\"><i class=\"bi bi-search\"></i></span> <input type=\"text\" class=\"form-control\" placeholder=\"Search settings\" aria-label=\"Search settings\" aria-describedby=\"search-addon\"></div></form><!-- Dropdown menu to the right of search --><div class=\"dropdown\"><button class=\"btn btn btn-outline-secondary dropdown-toggle\" type=\"button\" id=\"signoutMenuButton\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\">Sign Out</button><ul class=\"dropdown-menu dropdown-menu-end\" aria-labelledby=\"signoutMenuButton\"><li><a class=\"dropdown-item\" href=\"/logout\"><i class=\"bi bi-box-arrow-in-right\"></i> Log Out</a></li><li><hr class=\"dropdown-divider\"></li><li><a class=\"dropdown-item text-warning\" href=\"/reboot\"><i class=\"bi bi-arrow-repeat\"></i> Reboot</a></li><li><a class=\"dropdown-item text-danger\" href=\"/shutdown\"><i class=\"bi bi-power\"></i> Shutdown</a></li></ul></div></div><!-- Sidebar / offcanvas nav --><div class=\"offcanvas offcanvas-start\" tabindex=\"-1\" id=\"offcanvasNavbar\" aria-labelledby=\"offcanvasNavbarLabel\"><div class=\"offcanvas-header\"><h5 class=\"offcanvas-title sidebar-brand-gradient\" id=\"offcanvasNavbarLabel\">nexifi</h5><button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"offcanvas\" aria-label=\"Close\"></button></div><div class=\"offcanvas-body\"><ul class=\"nav-menu\" x-data=\"{ openIndex: -1 }\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -124,7 +124,7 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("openIndex = (openIndex === %d) ? -1 : %d", i, i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 97, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 98, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -137,7 +137,7 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{'active-category': openIndex === %d}", i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 98, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 99, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -150,7 +150,7 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(nav.Category)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 100, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 101, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -163,7 +163,7 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("openIndex === %d", i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 104, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 105, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -190,7 +190,7 @@ func adminNavsTpl(navs []sdkapi.AdminNavList) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(subnav.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 110, Col: 26}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 111, Col: 26}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {

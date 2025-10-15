@@ -10,6 +10,6 @@
     "./vendor/bootstrap-5.3.3/css/fixes.css",
     "./vendor/bootstrap-5.3.3/css/example.css",
     "./theme/css/fonts.css",
-    "./theme/css/navmenu.css"
+    "./theme/css/sidebar-menu.css"
   ]
 }
