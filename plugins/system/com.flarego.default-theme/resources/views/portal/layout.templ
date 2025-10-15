@@ -1,14 +1,26 @@
 package portal
 
-templ PortalHead() {
-}
+import "sdk/api"
 
 type PortalLayoutData struct {
-	PageContent templ.Component
+	Components sdkapi.IThemeComponents
 }
 
 templ PortalLayout(data PortalLayoutData) {
-	<div style="padding: 10px; background: gray;">
-		@data.PageContent
-	</div>
+	<!DOCTYPE html>
+	<html lang="en" data-bs-theme="auto" { data.Components.HtmlAttrs()... }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<!-- Theme Head -->
+			@data.Components.Head()
+		</head>
+		<body { data.Components.BodyAttrs()... }>
+			<!-- Theme Layout -->
+			<div style="padding: 10px; background: gray;">
+				@data.Components.PageContent()
+			</div>
+			@data.Components.Scripts()
+		</body>
+	</html>
 }

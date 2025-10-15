@@ -3,43 +3,46 @@ package admin
 import sdkapi "sdk/api"
 import "fmt"
 
-templ AdminHead() {
-	<meta charset="utf-8"/>
-	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-}
-
 type AdminLayoutData struct {
+	Components  sdkapi.IThemeComponents
 	Navs        []sdkapi.AdminNavList
-	PageContent templ.Component
-	CurrentPath string
 }
 
 templ AdminLayout(data AdminLayoutData) {
-	@colorSchemeToggle()
-	@adminNavsTpl(data.Navs)
-	<main class="container">
-		@data.PageContent
-	</main>
+	<!DOCTYPE html>
+    <html lang="en" data-bs-theme="auto" { data.Components.HtmlAttrs()... }>
+		<head>
+			@data.Components.Head()
+		</head>
+        <body { data.Components.BodyAttrs()... }>
+			@colorSchemeToggle()
+			@adminNavsTpl(data.Navs)
+			<main class="container">
+				@data.Components.PageContent()
+			</main>
+            @data.Components.Scripts()
+		</body>
+	</html>
 }
 
 templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 	<nav class="navbar fixed-top">
 		<div class="container">
-			<div class="d-flex">
-				<button
-					class="navbar-toggler me-auto"
-					type="button"
-					data-bs-toggle="offcanvas"
-					data-bs-target="#offcanvasNavbar"
-					aria-controls="offcanvasNavbar"
-					aria-expanded="false"
-					aria-label="Toggle navigation"
-				>
-					<span class="navbar-toggler-icon"></span>
-				</button>
+			<button
+				class="navbar-toggler"
+				type="button"
+				data-bs-toggle="offcanvas"
+				data-bs-target="#offcanvasNavbar"
+				aria-controls="offcanvasNavbar"
+				aria-expanded="false"
+				aria-label="Toggle navigation"
+			>
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="d-flex align-items-center">
 				<!-- Search form -->
-				<form class="" role="search">
-					<div class="input-group me-2">
+				<form class=" me-2" role="search">
+					<div class="input-group">
 						<span class="input-group-text" id="search-addon">
 							<i class="bi bi-search"></i>
 						</span>
@@ -81,45 +84,49 @@ templ adminNavsTpl(navs []sdkapi.AdminNavList) {
 				</div>
 			</div>
 			<!-- Sidebar / offcanvas nav -->
-			<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
-				<div class="offcanvas-header">
-					<h5 class="offcanvas-title sidebar-brand-gradient" id="offcanvasNavbarLabel">
-						nexifi
-					</h5>
-					<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-				</div>
-				<div class="offcanvas-body">
-					<ul class="nav-menu" x-data="{ openIndex: -1 }">
-						for i, nav := range navs {
-							<li class="nav-category">
-								<a
-									href="#"
-									class="nav-link"
-									@click.prevent={ fmt.Sprintf("openIndex = (openIndex === %d) ? -1 : %d", i, i) }
-									:class={ fmt.Sprintf("{'active-category': openIndex === %d}", i) }
-								>
-									<span>{ nav.Category }</span>
-								</a>
-								<ul
-									class="sub-nav"
-									x-show={ fmt.Sprintf("openIndex === %d", i) }
-									x-transition
-								>
-									for _, subnav := range nav.Items {
-										<li class="sub-nav-item">
-											<a class="sub-nav-link" href={ templ.SafeURL(subnav.RouteUrl) }>
-												{ subnav.Label }
-											</a>
-										</li>
-									}
-								</ul>
-							</li>
-						}
-					</ul>
-				</div>
-			</div>
+			@offcanvasSideMenu(navs)
 		</div>
 	</nav>
+}
+
+templ offcanvasSideMenu(navs []sdkapi.AdminNavList) {
+	<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+		<div class="offcanvas-header">
+			<h5 class="offcanvas-title sidebar-brand-gradient" id="offcanvasNavbarLabel">
+				nexifi
+			</h5>
+			<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+		</div>
+		<div class="offcanvas-body">
+			<ul class="nav-menu" x-data="{ openIndex: -1 }">
+				for i, nav := range navs {
+					<li class="nav-category">
+						<a
+							href="#"
+							class="nav-link"
+							@click.prevent={ fmt.Sprintf("openIndex = (openIndex === %d) ? -1 : %d", i, i) }
+							:class={ fmt.Sprintf("{'active-category': openIndex === %d}", i) }
+						>
+							<span>{ nav.Category }</span>
+						</a>
+						<ul
+							class="sub-nav"
+							x-show={ fmt.Sprintf("openIndex === %d", i) }
+							x-transition
+						>
+							for _, subnav := range nav.Items {
+								<li class="sub-nav-item">
+									<a class="sub-nav-link" href={ templ.SafeURL(subnav.RouteUrl) }>
+										{ subnav.Label }
+									</a>
+								</li>
+							}
+						</ul>
+					</li>
+				}
+			</ul>
+		</div>
+	</div>
 }
 
 templ colorSchemeToggle() {

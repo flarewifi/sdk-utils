@@ -3,6 +3,7 @@ package themes
 import (
 	// "net/http"
 
+	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
 
@@ -14,14 +15,16 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
 		CssLib:  sdkapi.CssLibBootstrap5,
-		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, b sdkapi.IViewBuilder) {
-			head := admin.AdminHead()
+		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
 			navs := api.Http().Navs().GetAdminNavs(r)
-			layout := admin.AdminLayout(admin.AdminLayoutData{
-				Navs:        navs,
-				PageContent: b.Content(),
-			})
-			b.Render(head, layout)
+			data := admin.AdminLayoutData{
+				Components: c,
+				Navs:       navs,
+			}
+			layout := admin.AdminLayout(data)
+			if err := layout.Render(r.Context(), w); err != nil {
+				fmt.Fprintf(w, "<p>Error rendering layout: %s</p>", err.Error())
+			}
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
 			page := admin.AdminIndexPage()

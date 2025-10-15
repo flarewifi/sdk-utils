@@ -27,11 +27,9 @@ type PortalLayoutData struct {
 	SseURL       string
 	PolyfillsURL string
 	Flash        *sdkapi.FlashMsg
-	Head         templ.Component
-	Layout       templ.Component
 }
 
-func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Component {
+func PortalHead(api sdkapi.IPluginApi, data PortalLayoutData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -52,33 +50,33 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"en\" data-bs-theme=\"auto\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><!-- Prevent page from being cached --><meta name=\"pageuuid\" content=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(data.PageUUID)
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "flare_hotspot"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 33, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 25, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><title>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</title><meta name=\"pageuuid\" content=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "flare_hotspot"))
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.PageUUID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 34, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 26, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</title><!-- Theme Stylesheets -->")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -90,7 +88,7 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.Assets.GlobalCssHref)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 37, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 29, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -109,7 +107,7 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.Assets.ThemeCssHref)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 40, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 32, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -128,7 +126,7 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.Assets.PluginGlobalCssHref)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 43, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 35, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -147,7 +145,7 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.Assets.PageCssHref)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 46, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 38, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -165,54 +163,54 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.PolyfillsURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 48, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 40, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></script><!-- Theme Head -->")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = data.Head.Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		return templ_7745c5c3_Err
+	})
+}
+
+func PortalScripts(data PortalAssets, flash *sdkapi.FlashMsg) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</head><body hx-ext=\"sse\" sse-connect=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
 		}
-		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(data.SseURL)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 53, Col: 46}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><!-- Theme Layout -->")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = data.Layout.Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
+		ctx = templ.ClearChildren(ctx)
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!-- Theme Scripts -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if data.Assets.GlobalJsSrc != "" {
+		if data.GlobalJsSrc != "" {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.Assets.GlobalJsSrc)
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.GlobalJsSrc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 58, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 46, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -223,15 +221,15 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 				return templ_7745c5c3_Err
 			}
 		}
-		if data.Assets.ThemeJsSrc != "" {
+		if data.ThemeJsSrc != "" {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.Assets.ThemeJsSrc)
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.ThemeJsSrc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 61, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 49, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -242,15 +240,15 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 				return templ_7745c5c3_Err
 			}
 		}
-		if data.Assets.PluginGlobalJsSrc != "" {
+		if data.PluginGlobalJsSrc != "" {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(data.Assets.PluginGlobalJsSrc)
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(data.PluginGlobalJsSrc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 64, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 52, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -261,15 +259,15 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 				return templ_7745c5c3_Err
 			}
 		}
-		if data.Assets.PageJsSrc != "" {
+		if data.PageJsSrc != "" {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(data.Assets.PageJsSrc)
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(data.PageJsSrc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 67, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 55, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -280,15 +278,15 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 				return templ_7745c5c3_Err
 			}
 		}
-		if data.Flash != nil {
+		if flash != nil {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script id=\"flash-message\" data-flash-type=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(data.Flash.Type)
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Type)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 70, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 58, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -299,9 +297,9 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(data.Flash.Message)
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 70, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 58, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -312,12 +310,43 @@ func PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) templ.Compo
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</body></html>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
 		return templ_7745c5c3_Err
 	})
 }
 
+//	templ PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) {
+//		<!DOCTYPE html>
+//		<html lang="en" data-bs-theme="auto">
+//			<head>
+//				<meta charset="utf-8"/>
+//				<meta name="viewport" content="width=device-width, initial-scale=1"/>
+//				<!-- Prevent page from being cached -->
+//				<meta name="pageuuid" content={ data.PageUUID }/>
+//				<title>{ api.Translate("label", "flare_hotspot") }</title>
+//				<!-- Theme Stylesheets -->
+//				<!-- Theme Head -->
+//				@data.Head
+//			</head>
+//			<body hx-ext="sse" sse-connect={ data.SseURL }>
+//				<!-- Theme Layout -->
+//				@data.Layout
+//				<!-- Theme Scripts -->
+//				if data.Assets.GlobalJsSrc != "" {
+//					<script src={ data.Assets.GlobalJsSrc }></script>
+//				}
+//				if data.Assets.ThemeJsSrc != "" {
+//					<script src={ data.Assets.ThemeJsSrc }></script>
+//				}
+//				if data.Assets.PluginGlobalJsSrc != "" {
+//					<script src={ data.Assets.PluginGlobalJsSrc }></script>
+//				}
+//				if data.Assets.PageJsSrc != "" {
+//					<script src={ data.Assets.PageJsSrc }></script>
+//				}
+//				if data.Flash != nil {
+//					<script id="flash-message" data-flash-type={ data.Flash.Type } data-flash-message={ data.Flash.Message } type="text/template"></script>
+//				}
+//			</body>
+//		</html>
+//	}
 var _ = templruntime.GeneratedTemplate

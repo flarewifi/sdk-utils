@@ -18,6 +18,11 @@ FLARE_BIN="./bin/flare"
         go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN
 ) || (echo "Build failed" && exit 1)
 
+if [ $? != 0 ]; then
+  echo "Failed to build core system!"
+  exit 1
+fi
+
 APP_DIR="/opt/flarehotspot/app"
 DATA_DIR="/opt/flarehotspot/data"
 rm -rf $APP_DIR/*
@@ -36,6 +41,7 @@ for f in \
     "start.sh" \
     ; do
 
+    rm -rf $APP_DIR/$f && \
     ln -s $(pwd)/$f $APP_DIR/$f || (echo "Failed to link $f" && exit 1)
 done
 

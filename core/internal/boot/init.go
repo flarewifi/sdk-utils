@@ -4,7 +4,6 @@ import (
 	"core/internal/api"
 	"core/internal/utils/plugins"
 	"log"
-	"time"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -27,8 +26,6 @@ func Init(g *api.CoreGlobals) {
 		if err := InitNetwork(); err != nil {
 			log.Println("Error initializing network:", err)
 		}
-
-		time.Sleep(12 * time.Second)
 
 		bootCh <- struct{}{}
 	}()
