@@ -1,21 +1,141 @@
+/* Helvetica Neue Thin */
 @font-face {
-  font-family: 'Noto_Sans';
-  src: url('../../vendor/Noto_Sans/NotoSans-VariableFont_wdth,wght.ttf') format('truetype');
-  font-weight: 100 900; /* supports Thin to Black */
-  font-stretch: 75% 125%; /* handles wdth axis */
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueThin.otf') format('opentype');
+  font-weight: 100;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Noto_Sans';
-  src: url('../../vendor/Noto_Sans/NotoSans-VariableFont_wdth\,wght.ttf') format('truetype');
-  font-weight: 100 900;
-  font-stretch: 75% 125%;
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueThinItalic.otf') format('opentype');
+  font-weight: 100;
   font-style: italic;
   font-display: swap;
 }
 
+/* Helvetica Neue UltraLight */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueUltraLight.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueUltraLightItalic.otf') format('opentype');
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Helvetica Neue Light */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueLight.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueLightItalic.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Helvetica Neue Regular (Roman) */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueRoman.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Helvetica Neue Italic */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueItalic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Helvetica Neue Medium */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueMedium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueMediumItalic.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Helvetica Neue Bold */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueBold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueBoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Helvetica Neue Heavy */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueHeavy.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueHeavyItalic.otf') format('opentype');
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Helvetica Neue Black */
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueBlack.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../../vendor/helvetica-neue-5/HelveticaNeueBlackItalic.otf') format('opentype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Apply the font globally */
 body {
-  font-family: 'Noto_Sans', sans-serif;
+  font-family: 'Helvetica Neue', sans-serif;
 }

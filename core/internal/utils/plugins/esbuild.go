@@ -34,6 +34,7 @@ func EsbuildCss(indexfile string, outfile string) (result api.BuildResult) {
 			".css":   api.LoaderCSS,
 			".eot":   api.LoaderFile,
 			".ttf":   api.LoaderFile,
+			".otf":   api.LoaderFile,
 			".woff":  api.LoaderFile,
 			".woff2": api.LoaderFile,
 			".svg":   api.LoaderFile,
