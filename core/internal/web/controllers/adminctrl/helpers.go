@@ -1,107 +1,88 @@
 package adminctrl
 
 import (
-	"core/internal/api"
-	"encoding/json"
-	"errors"
-	"log"
 	"strings"
+	"sync"
 )
+
+type InstallStatus string
 
 const (
-	PendingStatus = "pending"
-	SuccessStatus = "success"
-	FailedStatus  = "failed"
-
-	PluginInstallStatusFile = "plugins_install_status"
+	PendingStatus    InstallStatus = "pending"
+	InProgressStatus InstallStatus = "in-progress"
+	SuccessStatus    InstallStatus = "success"
+	FailedStatus     InstallStatus = "failed"
 )
 
-type PluginInstallation struct {
-	Source string `json:"source"`
-	Status string `json:"status"`
+type PluginProgress struct {
+	Name      string        `json:"name"`
+	Status    InstallStatus `json:"status"`
+	Progress  int           `json:"progress"`
+	Message   string        `json:"message"`
+	IsRunning bool          `json:"is_running"`
 }
 
-func SaveInitialState(api *api.PluginApi, installSource string) error {
-	allPlugins := GetAllPlugins(api)
-
-	var found bool
-	for i, plugin := range allPlugins {
-		if plugin.Source == installSource {
-			found = true
-			allPlugins[i].Source = installSource
-			allPlugins[i].Status = PendingStatus
-		}
-	}
-
-	if !found {
-		p := PluginInstallation{
-			Source: installSource,
-			Status: PendingStatus,
-		}
-
-		allPlugins = append(allPlugins, p)
-	}
-
-	b, err := json.Marshal(allPlugins)
-	if err != nil {
-		return err
-	}
-
-	return api.CoreAPI.Config().Plugin().Write(PluginInstallStatusFile, b)
+type StatusManager struct {
+	mu     sync.RWMutex
+	status map[string]*PluginProgress
 }
 
-func UpdateStatus(api *api.PluginApi, installSource, status string) error {
-	allPlugins := GetAllPlugins(api)
-
-	var found bool
-	for i, plugin := range allPlugins {
-		if plugin.Source == installSource {
-			found = true
-			allPlugins[i].Status = status
-		}
-	}
-
-	if !found {
-		return errors.New("plugin not found")
-	}
-
-	b, err := json.Marshal(allPlugins)
-	if err != nil {
-		return err
-	}
-
-	return api.CoreAPI.Config().Plugin().Write(PluginInstallStatusFile, b)
+var manager = &StatusManager{
+	status: make(map[string]*PluginProgress),
 }
 
-func GetAllPlugins(api *api.PluginApi) []PluginInstallation {
-	var plugins []PluginInstallation
-
-	b, err := api.CoreAPI.Config().Plugin().Read(PluginInstallStatusFile)
-	if err != nil {
-		log.Println("unable to read file: ", err)
-		return nil
+// SaveInitialState initializes plugin status
+func SaveInitialState(name string) {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+	manager.status[name] = &PluginProgress{
+		Name:      name,
+		Status:    PendingStatus,
+		Progress:  25,
+		IsRunning: true,
 	}
-
-	if err := json.Unmarshal(b, &plugins); err != nil {
-		log.Println("unable to decode: ", err)
-		return nil
-	}
-
-	return plugins
 }
 
-func GetPlugin(api *api.PluginApi, installSource string) *PluginInstallation {
-	plugins := GetAllPlugins(api)
-	for _, plugin := range plugins {
-		if plugin.Source == installSource {
-			return &plugin
+// UpdateStatus updates plugin installation state
+func UpdateStatus(name string, status InstallStatus, msg string, progress int) {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	if s, ok := manager.status[name]; ok {
+		s.Status = status
+		s.Progress = progress
+		s.Message = msg
+
+		if status == FailedStatus || status == SuccessStatus {
+			s.IsRunning = false
 		}
 	}
+}
 
+// GetStatus returns current plugin status
+func GetStatus(name string) *PluginProgress {
+	manager.mu.RLock()
+	defer manager.mu.RUnlock()
+	if s, ok := manager.status[name]; ok {
+		cp := *s
+		return &cp
+	}
 	return nil
 }
 
 func getGithubPluginName(fullURL string) string {
 	parts := strings.Split(strings.TrimSuffix(fullURL, "/"), "/")
 	return parts[len(parts)-1]
+}
+
+func HasRunningInstall() bool {
+	manager.mu.RLock()
+	defer manager.mu.RUnlock()
+
+	for _, s := range manager.status {
+		if s.IsRunning {
+			return true
+		}
+	}
+	return false
 }

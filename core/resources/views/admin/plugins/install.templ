@@ -24,15 +24,18 @@ templ InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) {
 	<h1>{ api.Translate("label", "install_plugin") }</h1>
 	<hr/>
 	<div x-data={ fmt.Sprintf("pluginInstaller(%s)", jsonData) }>
-		<!-- Overlay loading indicator -->
 		<template x-if="isLoading">
-			<div 
-				class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-opacity-0"
-				style="z-index: 10;"
-			>
-				<div class="text-center">
-					<div class="spinner-border text-primary" role="status"></div>
-					<p class="mt-2">{ api.Translate("label", "installing_plugin") }...</p>
+			<div class="progress" style="height: 15px;">
+				<div
+					id="progressBar"
+					class="progress-bar progress-bar-striped progress-bar-animated"
+					role="progressbar"
+					:style="`width: ${progress}%;`"
+					:aria-valuenow="progress"
+					aria-valuemin="0"
+					aria-valuemax="100"
+					x-text="message || `Installing... (${progress}%)`"
+				>
 				</div>
 			</div>
 		</template>
