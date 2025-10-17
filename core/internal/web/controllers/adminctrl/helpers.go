@@ -74,15 +74,3 @@ func getGithubPluginName(fullURL string) string {
 	parts := strings.Split(strings.TrimSuffix(fullURL, "/"), "/")
 	return parts[len(parts)-1]
 }
-
-func HasRunningInstall() bool {
-	manager.mu.RLock()
-	defer manager.mu.RUnlock()
-
-	for _, s := range manager.status {
-		if s.IsRunning {
-			return true
-		}
-	}
-	return false
-}

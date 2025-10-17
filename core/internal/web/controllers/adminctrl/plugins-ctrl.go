@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -198,9 +197,6 @@ func CheckPluginStatusCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		fmt.Println("check status called...")
-		fmt.Println("progress: ", progress)
-
 		json.NewEncoder(w).Encode(progress)
 	}
 }
@@ -354,7 +350,6 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				GitRef: gitRef,
 			})
 			if err != nil {
-				log.Println("error from plugin: ", err)
 				UpdateStatus(pluginName, FailedStatus, githubErrMsg, 0)
 
 				g.CoreAPI.LoggerAPI.Error(err.Error())
