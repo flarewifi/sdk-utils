@@ -2,6 +2,7 @@ package themes
 
 import (
 	"sdk/api"
+	"core/resources/views/livereload"
 )
 
 type AdminAssets struct {
@@ -46,4 +47,6 @@ templ AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) {
 	if flash != nil {
 		<script id="flash-message" data-flash-type={ flash.Type } data-flash-message={ flash.Message } type="text/template"></script>
 	}
+
+    @livereload.LiveReloadScript()
 }

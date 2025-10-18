@@ -39,6 +39,15 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 
 	// Restart the server with all routes
 	web.SetupAppRoutes(g)
+
+	// Notify that the server is starting
+	startedAt := time.Now().Format(time.RFC3339)
+	if err := os.WriteFile(sdkutils.PathServerUp, []byte(startedAt), sdkutils.PermFile); err != nil {
+		log.Printf("Error writing server up file: %v\n", err)
+	} else {
+		log.Printf("Server up file written at %s\n", sdkutils.PathServerUp)
+	}
+
 	log.Println("Starting server...")
 	web.StartServer(webutil.RootRouter, true)
 }

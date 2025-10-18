@@ -8,19 +8,21 @@ LINK_NODE_MODULES="./core/cmd/link-node-modules"
 FLARE_BIN="./bin/flare"
 
 (cp go.work.default go.work && \
+        echo "Cleaning templ output files..." && \
         rm -rf **/*_templ.go && \
         rm -rf core/internal/db/sqlc && \
+        sh -c "cd core/resources/views && templ generate" && \
         go run -tags="${BUILD_TAGS}" $LINK_NODE_MODULES && \
-        go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN && \
         go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
         sh -c "$FLARE_BIN fix-workspace" && \
         sh -c "$FLARE_BIN build-templates" && \
-        go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN
+        go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN && \
+        go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN
 ) || (echo "Build failed" && exit 1)
 
 if [ $? != 0 ]; then
-  echo "Failed to build core system!"
-  exit 1
+    echo "Failed to build core system!"
+    exit 1
 fi
 
 APP_DIR="/opt/flarehotspot/app"
@@ -42,7 +44,9 @@ for f in \
     ; do
 
     rm -rf $APP_DIR/$f && \
-    ln -s $(pwd)/$f $APP_DIR/$f || (echo "Failed to link $f" && exit 1)
+        ln -s $(pwd)/$f $APP_DIR/$f || (echo "Failed to link $f" && exit 1)
 done
 
+mkdir -p $APP_DIR/.tmp
+touch $APP_DIR/.tmp/.server-up
 sh -c "cd $APP_DIR && ./start.sh"
