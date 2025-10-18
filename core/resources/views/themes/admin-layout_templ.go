@@ -9,6 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"core/resources/views/livereload"
 	"sdk/api"
 )
 
@@ -51,7 +52,7 @@ func AdminHead(api sdkapi.IPluginApi, data AdminAssets) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "web_admin"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 19, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 20, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -69,7 +70,7 @@ func AdminHead(api sdkapi.IPluginApi, data AdminAssets) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.GlobalCssHref)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 22, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 23, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -88,7 +89,7 @@ func AdminHead(api sdkapi.IPluginApi, data AdminAssets) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.ThemeCssHref)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 25, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 26, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -107,7 +108,7 @@ func AdminHead(api sdkapi.IPluginApi, data AdminAssets) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.PluginGlobalCssHref)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 28, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 29, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -126,7 +127,7 @@ func AdminHead(api sdkapi.IPluginApi, data AdminAssets) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.PageCssHref)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 31, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 32, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -174,7 +175,7 @@ func AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(assets.GlobalJsSrc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 38, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 39, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -193,7 +194,7 @@ func AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(assets.ThemeJsSrc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 41, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 42, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -212,7 +213,7 @@ func AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(assets.PageJsSrc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 44, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 45, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -231,7 +232,7 @@ func AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Type)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 47, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 48, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -244,7 +245,7 @@ func AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 47, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/admin-layout.templ`, Line: 48, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -254,6 +255,10 @@ func AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+		}
+		templ_7745c5c3_Err = livereload.LiveReloadScript().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
 		return templ_7745c5c3_Err
 	})
