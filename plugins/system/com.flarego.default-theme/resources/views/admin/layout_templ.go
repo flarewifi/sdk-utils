@@ -39,7 +39,15 @@ func AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"en\" data-bs-theme=\"auto\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"en\" data-bs-theme=\"auto\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, data.Components.HtmlAttrs())
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -47,7 +55,15 @@ func AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</head><body>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</head><body")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, data.Components.BodyAttrs())
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -162,7 +178,7 @@ func AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul><hr><ul class=\"nav flex-column\"><li class=\"nav-item\"><a class=\"nav-link\" href=\"#\"><i class=\"bi bi-box-arrow-left me-2\"></i> Logout</a></li></ul></div></div></div></div><main class=\"col-md-9 ms-sm-auto col-lg-10 px-md-4\"><div class=\"container-fluid pt-3\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul><hr><ul class=\"nav flex-column\"><li class=\"nav-item\"><a class=\"nav-link\" href=\"#\"><i class=\"bi bi-box-arrow-left me-2\"></i> Logout</a></li></ul></div></div></div></div><main class=\"col-md-9 ms-sm-auto col-lg-10 px-md-4\"><div class=\"container pt-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
