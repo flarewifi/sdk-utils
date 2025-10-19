@@ -1,22 +1,18 @@
-.sidebar-brand-gradient {
-  font-size: 2rem;
-  font-weight: 900;
-  background: linear-gradient(90deg, #6c51fd, #9365ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text; /* text-fill-color: transparent; */
-}
-.nav-menu {
+
+#sidemenu .nav-menu {
   list-style: none;
   padding-left: 0;
   margin: 0;
 }
-.nav-category {
+
+
+#sidemenu .nav-category {
   margin-bottom: 0.25rem;
 }
-.nav-link {
+
+#sidemenu .nav-link {
   display: flex;
-  justify-content: space-between;
+  /* justify-content: space-between; */
   align-items: center;
   padding: 0.75rem 1rem;
   cursor: pointer;
@@ -26,18 +22,21 @@
     color 0.2s ease;
   font-weight: 500;
 }
-.nav-link:hover {
+
+#sidemenu .nav-link:hover {
   background-color: #343a40;
   color: #fff;
 }
-.sub-nav {
+
+#sidemenu .sub-nav {
   list-style: none;
   padding-left: 1.5rem;
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
   overflow: hidden;
 }
-.sub-nav-link {
+
+#sidemenu .sub-nav-link {
   display: block;
   padding: 0.5rem 1rem;
   color: var(--bs-body-secondary-color);
@@ -46,14 +45,19 @@
   transition:
     background-color 0.2s ease,
     color 0.2s ease,
-    transform 0.2s ease-out;
+    font-size 0.2s ease;
 }
-.sub-nav-link:hover {
+
+#sidemenu .sub-nav-item {
+  border-radius: 6px;
+}
+
+#sidemenu .sub-nav-link:hover {
   color: var(--bs-body-color);
-  background-color: var(--bs-tertiary-bg);
-  transform: scale(1.05);
+  background-color: #343a40;
 }
-.sub-nav-link.active {
+
+#sidemenu .sub-nav-link.active {
   color: white !important;
   background: linear-gradient(
     90deg,
@@ -62,17 +66,20 @@
   );
   box-shadow: 0 4px 10px -2px rgba(92, 118, 231, 0.5);
 }
-.sub-nav-link.active:hover {
+
+#sidemenu .sub-nav-link.active:hover {
   transform: none; /* Dili na siya mudako kung active na siya */
 }
-.nav-link.active-category {
+
+#sidemenu .nav-link.active-category {
   background: linear-gradient(
     90deg,
     #6c51fd,
     #9365ff
   ); /* background-color: #343a40; color: #fff; */
 }
-.nav-link.active-category span,
-.nav-link.active-category .nav-arrow {
+
+#sidemenu .nav-link.active-category span,
+#sidemenu .nav-link.active-category .nav-arrow {
   color: #fff;
 }

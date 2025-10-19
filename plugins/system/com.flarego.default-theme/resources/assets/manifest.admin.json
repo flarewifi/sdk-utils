@@ -1,16 +1,14 @@
 {
   "theme.js": [
     "./vendor/bootstrap-5.3.3/js/bootstrap.bundle.js",
-    "./vendor/bootstrap-5.3.3/js/color-modes.js"
+    "./admin/js/layout.js",
+    "./admin/js/color-modes.js"
   ],
   "theme.css": [
     "./vendor/bootstrap-icons-1.13.1/bootstrap-icons.min.css",
     "./vendor/bootstrap-5.3.3/css/bootstrap.css",
-    "./vendor/bootstrap-5.3.3/css/navbar-fixed.css",
-    "./vendor/bootstrap-5.3.3/css/fixes.css",
-    "./vendor/bootstrap-5.3.3/css/example.css",
     "./admin/css/fonts.css",
-    "./admin/css/style.css",
+    "./admin/css/layout.css",
     "./admin/css/sidebar-menu.css"
   ]
 }

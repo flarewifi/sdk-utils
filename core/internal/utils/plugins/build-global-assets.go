@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"core/internal/utils/cmd"
 	"fmt"
 	"os"
 	"path"
@@ -39,6 +40,10 @@ func ReadGlobalAssetsManifest() (g GlobalBundleManifest) {
 }
 
 func BuildGlobalAssets() (err error) {
+	if err = cmd.Exec("npm install", &cmd.ExecOpts{Dir: sdkutils.PathCoreDir}); err != nil {
+		return err
+	}
+
 	if sdkutils.FsExists(CoreGlobalsDist) {
 		if err = os.RemoveAll(CoreGlobalsDist); err != nil {
 			return

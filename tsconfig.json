@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@flarehotspot/lib/*": [
+        "core/resources/assets/lib/*"
+      ]
+    }
+  },
+  "include": [
+    "core/resources/assets/**/*"
+  ]
+}

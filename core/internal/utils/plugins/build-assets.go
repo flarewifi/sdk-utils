@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"core/internal/utils/cmd"
 	"errors"
 	"fmt"
 	"os"
@@ -57,10 +58,15 @@ func BuildAssets(pluginDir string) (err error) {
 		return
 	}
 
-	if err = LinkNodeModulesLib(pluginDir); err != nil {
-		return
+	if sdkutils.FsExists(filepath.Join(pluginDir, "package.json")) {
+		if err = cmd.Exec("npm install", &cmd.ExecOpts{
+			Dir:    pluginDir,
+			Stdout: os.Stdout,
+		}); err != nil {
+			return
+		}
+		defer cmd.Exec("npm cache clean --force", &cmd.ExecOpts{})
 	}
-
 	defer os.RemoveAll(filepath.Join(pluginDir, "node_modules"))
 
 	outManifest := OutputManifest{}
