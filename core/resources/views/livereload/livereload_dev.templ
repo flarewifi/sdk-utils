@@ -5,7 +5,7 @@ package livereload
 templ LiveReloadScript() {
 	<script>
 (function connect() {
-  const ws = new WebSocket("ws://localhost:8080/livereload");
+  const ws = new WebSocket("ws://localhost:8000/livereload");
     ws.onconnect = () => {
         console.log("✅ LiveReload connected");
     }

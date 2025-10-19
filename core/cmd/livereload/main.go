@@ -21,6 +21,6 @@ func main() {
 	// Start watching files (async)
 	go reloader.WatchPaths([]string{sdkutils.PathServerUp})
 
-	log.Println("🚀 Live Reload started at http://0.0.0.0:8080")
-	http.ListenAndServe(":8080", r)
+	log.Println("🚀 Live Reload started at http://0.0.0.0:8000")
+	http.ListenAndServe(":8000", r)
 }

@@ -39,7 +39,7 @@ RUN cd core && go mod download
 COPY ./scripts/install-tools.sh .
 RUN ./install-tools.sh
 
-EXPOSE 3000 8080
+EXPOSE 3000 8000
 
 # Watch and recompile server on file change
 CMD [ "./docker-cmd.sh" ]
