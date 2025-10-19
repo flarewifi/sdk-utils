@@ -1,3 +1,7 @@
+.navbar {
+  text-align: center;
+}
+
 .navbar .logo-img {
   display: inline;
   max-height: 30px;
