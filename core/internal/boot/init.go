@@ -2,10 +2,7 @@ package boot
 
 import (
 	"core/internal/api"
-	"core/internal/utils/plugins"
 	"log"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func Init(g *api.CoreGlobals) {
@@ -18,7 +15,6 @@ func Init(g *api.CoreGlobals) {
 		g.Db.WaitReady()
 
 		log.Println("Database is ready.")
-		plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
 		InitOpkg()
 		RunCoreMigrations(g)
 		InitPlugins(g)

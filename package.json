@@ -2,8 +2,7 @@
   "author": "Flarego Technologies Corporation",
   "dependencies": {
     "@octokit/core": "^5.1.0",
-    "fs-extra": "^11.2.0",
-    "jquery": "1"
+    "fs-extra": "^11.2.0"
   },
   "description": "flarehotspot sdk",
   "devDependencies": {
@@ -12,6 +11,6 @@
   },
   "license": "ISC",
   "main": "index.js",
-  "name": "@flarehotspot/devkit",
+  "name": "@flarehotspot/core",
   "version": "0.1.2"
 }

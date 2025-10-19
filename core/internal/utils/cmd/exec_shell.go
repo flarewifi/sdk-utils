@@ -55,6 +55,9 @@ func execShell(command string, opts *ExecOpts) (err error) {
 	}
 
 	log.Printf("Executing '%s': %s\n", shell, command)
+	if opts != nil && opts.Dir != "" {
+		log.Printf("Executing in: %s\n", opts.Dir)
+	}
 
 	if err = cmd.Run(); err != nil {
 		if !hasStderr && stderr.String() != "" {

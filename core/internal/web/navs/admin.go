@@ -35,6 +35,18 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				RouteName: "system.updates.check",
 				Keywords:  []string{"update", "updates", "upgrade", "upgrades", "software"},
 			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "reboot"),
+				RouteName: "system.updates.check",
+				Keywords:  []string{"power", "reboot", "restart"},
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "shutdown"),
+				RouteName: "system.updates.check",
+				Keywords:  []string{"power", "shutdown", "off"},
+			},
 		}
 	})
 }

@@ -1,0 +1,33 @@
+var $ = require("jquery");
+var $window = $(window);
+var navSearch = $("#navbarSearch");
+var mdClasses = "md-classes d-flex align-items-center ms-auto d-none d-md-flex";
+var smClasses = "sm-classes w-100 collapse d-md-none";
+var currentClasses = "";
+
+function responsive() {
+  if ($window.width() > 768) {
+    if (currentClasses !== mdClasses) {
+      navSearch.removeClass(smClasses);
+      navSearch.addClass(mdClasses);
+      currentClasses = mdClasses;
+    }
+  } else {
+    if (currentClasses !== smClasses) {
+      navSearch.removeClass(mdClasses);
+      navSearch.addClass(smClasses);
+      currentClasses = smClasses;
+    }
+  }
+}
+
+$window.ready(function () {
+  $window.on("resize", responsive);
+  responsive();
+
+  $("[data-bs-target='#navbarSearch']").on("click", function () {
+    if ($window.width() <= 768) {
+      $("#navbarSearch input").focus();
+    }
+  });
+});

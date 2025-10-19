@@ -2,15 +2,20 @@ package plugins
 
 import (
 	"core/env"
+	"path/filepath"
 
 	"github.com/evanw/esbuild/pkg/api"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api.BuildResult) {
 	minify := env.GO_ENV == env.ENV_PRODUCTION
 	result := api.Build(api.BuildOptions{
-		EntryPoints:       []string{indexfile},
-		Outfile:           outfile,
+		EntryPoints: []string{indexfile},
+		Outfile:     outfile,
+		Alias: map[string]string{
+			"@flarehotspot/lib": filepath.Join(sdkutils.PathAppDir, "core/resources/assets/lib"),
+		},
 		Platform:          api.PlatformBrowser,
 		Target:            target,
 		EntryNames:        "[name]-[hash]",

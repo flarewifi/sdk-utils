@@ -3,6 +3,7 @@
     "-tags=dev"
   ],
   "directoryFilters": [
+    "-data/config",
     "-.git",
     "-.github",
     "-bin",
