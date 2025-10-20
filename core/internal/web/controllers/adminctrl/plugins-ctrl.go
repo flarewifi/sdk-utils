@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -303,8 +302,6 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
 
-			time.Sleep(30 * time.Second)
-
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 		}(fileBytes, header.Filename, pluginName)
@@ -342,6 +339,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		SaveInitialState(pluginName)
 
 		go func() {
+			fmt.Println("initialized install...")
 			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
 
 			info, err := plugins.InstallFromGitSrc(g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
@@ -356,6 +354,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 				return
 			}
+			fmt.Println("InstallFromGitSrc install...")
 
 			UpdateStatus(pluginName, InProgressStatus, "Registering plugin...", 75)
 
@@ -363,7 +362,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
 
-			time.Sleep(30 * time.Second)
+			fmt.Println("GetInstallPath install...")
 
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
