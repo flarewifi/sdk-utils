@@ -2,18 +2,19 @@
 
 services:
   app:
-    platform: linux/amd64
     build:
       context: .
     volumes:
       - ./:/app
       - ./data:/opt/flarehotspot/data
       - ./openwrt-files/etc/config:/etc/config
+      - gocache:/var/go/cache
     environment:
-      - GOCACHE=/app/.tmp/go/cache
-      - GOMODCACHE=/app/.tmp/go/mod
+      - GOCACHE=/var/cache/go/cache
+      - GOMODCACHE=/var/cache/go/mod
     ports:
       - 3000:3000
+      - 8000:8000
     networks:
       flare_network:
 
@@ -56,6 +57,7 @@ services:
 
 volumes:
   pgdata:
+  gocache:
 
 networks:
   flare_network:

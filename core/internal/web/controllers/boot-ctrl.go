@@ -7,10 +7,14 @@ import (
 	"core/internal/api"
 	"core/internal/utils/plugins"
 	"core/internal/web/helpers"
-	"core/internal/web/routes/urls"
 	"core/resources/views/boot"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+)
+
+const (
+	BootURL       = "/boot"
+	BootStatusURL = "/boot/status"
 )
 
 func NewBootCtrl(g *api.CoreGlobals, pmgr *api.PluginsMgr, api *api.PluginApi) BootCtrl {
@@ -36,10 +40,11 @@ func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := boot.BootPage(&boot.BootPageData{
-		API:    ctrl.api,
-		JsSrc:  jsSrc,
-		CssSrc: cssSrc,
-		Status: status,
+		StatusURL: BootStatusURL,
+		API:       ctrl.api,
+		JsSrc:     jsSrc,
+		CssSrc:    cssSrc,
+		Status:    status,
 	})
 
 	if err := page.Render(r.Context(), w); err != nil {
@@ -52,8 +57,8 @@ func (ctrl *BootCtrl) Middleware(next http.Handler) http.Handler {
 		isAssetPath := helpers.IsAssetPath(r.URL.Path)
 
 		if r.Method == http.MethodGet && !isAssetPath {
-			if r.URL.Path != urls.BOOT_URL && r.URL.Path != urls.BOOT_STATUS_URL {
-				http.Redirect(w, r, urls.BOOT_URL, http.StatusSeeOther)
+			if r.URL.Path != BootURL && r.URL.Path != BootStatusURL {
+				http.Redirect(w, r, BootURL, http.StatusSeeOther)
 				return
 			}
 		}

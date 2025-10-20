@@ -198,6 +198,16 @@ sql:
 		panic(err)
 	}
 
+	// Create default images directory
+	imagesKeepFIle := filepath.Join(pluginDir, "resources/assets/images/.keep")
+	if err := os.MkdirAll(filepath.Dir(imagesKeepFIle), sdkutils.PermDir); err != nil {
+		panic(err)
+	}
+
+	if _, err := os.Create(imagesKeepFIle); err != nil {
+		panic(err)
+	}
+
 	CreateGoWorkspace()
 
 	if err := plugins.ValidateSrcPath(pluginDir); err != nil {

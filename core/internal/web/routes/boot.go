@@ -4,7 +4,6 @@ import (
 	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
-	"core/internal/web/routes/urls"
 	"log"
 	"net/http"
 )
@@ -14,14 +13,16 @@ func BootRoutes(g *api.CoreGlobals) {
 
 	r := webutil.BootingRouter
 	r.Use(bootCtrl.Middleware)
-	r.HandleFunc(urls.BOOT_URL, bootCtrl.BootPage).Methods(http.MethodGet)
-	r.HandleFunc(urls.BOOT_STATUS_URL, func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc(controllers.BootURL, bootCtrl.BootPage).Methods(http.MethodGet)
+
+	// GET "/boot/status" NOT OK
+	r.HandleFunc(controllers.BootStatusURL, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusExpectationFailed)
 	}).Methods(http.MethodGet)
 
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Location not found: ", r.URL.Path)
-		log.Println("Redirecting to boot page: ", urls.BOOT_URL)
-		http.Redirect(w, r, urls.BOOT_URL, http.StatusFound)
+		log.Println("Redirecting to boot page: ", controllers.BootURL)
+		http.Redirect(w, r, controllers.BootURL, http.StatusFound)
 	})
 }

@@ -1,6 +1,7 @@
 package themes
 
 import (
+	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
 
@@ -13,12 +14,12 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
-		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, b sdkapi.IViewBuilder) {
-			head := portal.PortalHead()
-			layout := portal.PortalLayout(portal.PortalLayoutData{
-				PageContent: b.Content(),
-			})
-			b.Render(head, layout)
+		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
+			data := portal.PortalLayoutData{Components: c}
+			layout := portal.PortalLayout(data)
+			if err := layout.Render(r.Context(), w); err != nil {
+				fmt.Fprintf(w, "<p>Error rendering layout: %s</p>", err.Error())
+			}
 		},
 		LoginPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.LoginPageData) sdkapi.ViewPage {
 			csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)

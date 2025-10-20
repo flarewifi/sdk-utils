@@ -193,7 +193,7 @@ func (self *HttpFormInstance) GetStringValue(section string, field string) (val 
 	}
 	str, ok := v.(string)
 	if !ok {
-		return val, errors.New(fmt.Sprintf("section %s field %s is not a string, instead %T", section, field, v))
+		return val, fmt.Errorf("section %s field %s is not a string, instead %T", section, field, v)
 	}
 	return str, nil
 }
@@ -206,7 +206,7 @@ func (self *HttpFormInstance) GetStringValues(section string, field string) (val
 
 	val, ok := ivals.([]string)
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("section %s, field %s is not a slice of strings", section, field))
+		return nil, fmt.Errorf("section %s, field %s is not a slice of strings", section, field)
 	}
 
 	return val, nil
@@ -232,7 +232,7 @@ func (self *HttpFormInstance) GetIntValue(section string, field string) (val int
 
 		return v.(int64), nil
 	}
-	return val, errors.New(fmt.Sprintf("section %s, field %s is not an int", section, field))
+	return val, fmt.Errorf("section %s, field %s is not an int", section, field)
 }
 
 func (self *HttpFormInstance) GetIntValues(section string, field string) (val []int64, err error) {
@@ -249,7 +249,7 @@ func (self *HttpFormInstance) GetIntValues(section string, field string) (val []
 		vals := ivals.([]int64)
 		return vals, nil
 	default:
-		return nil, errors.New(fmt.Sprintf("section %s, field %s is not a slice of int64", section, field))
+		return nil, fmt.Errorf("section %s, field %s is not a slice of int64", section, field)
 	}
 }
 
@@ -261,7 +261,7 @@ func (self *HttpFormInstance) GetFloatValue(section string, field string) (val f
 	if val, ok := v.(float64); ok {
 		return val, nil
 	}
-	return val, errors.New(fmt.Sprintf("section %s, field %s is not a float64", section, field))
+	return val, fmt.Errorf("section %s, field %s is not a float64", section, field)
 }
 
 func (self *HttpFormInstance) GetFloatValues(section string, field string) (val []float64, err error) {
@@ -276,7 +276,7 @@ func (self *HttpFormInstance) GetFloatValues(section string, field string) (val 
 		vals := ivals.([]float64)
 		return vals, nil
 	default:
-		return nil, errors.New(fmt.Sprintf("section %s, field %s is not a slice of float64", section, field))
+		return nil, fmt.Errorf("section %s, field %s is not a slice of float64", section, field)
 	}
 }
 
@@ -288,7 +288,7 @@ func (self *HttpFormInstance) GetBoolValue(section string, field string) (val bo
 	if val, ok := v.(bool); ok {
 		return val, nil
 	}
-	return false, errors.New(fmt.Sprintf("section %s, field %s is not a boolean", section, field))
+	return false, fmt.Errorf("section %s, field %s is not a boolean", section, field)
 }
 
 func (self *HttpFormInstance) GetBoolValues(section string, field string) (val []bool, err error) {
@@ -303,7 +303,7 @@ func (self *HttpFormInstance) GetBoolValues(section string, field string) (val [
 		vals := ivals.([]bool)
 		return vals, nil
 	default:
-		return nil, errors.New(fmt.Sprintf("section %s, field %s is not a slice of boolean", section, field))
+		return nil, fmt.Errorf("section %s, field %s is not a slice of boolean", section, field)
 	}
 }
 
@@ -315,7 +315,7 @@ func (self *HttpFormInstance) GetMultiField(section string, field string) (val s
 
 	data, ok := v.([][]sdkapi.FormFieldData)
 	if !ok {
-		return val, errors.New(fmt.Sprintf("section %s, field %s value is not [][]sdkapi.FormFieldData, instead %T", section, field, v))
+		return val, fmt.Errorf("section %s, field %s value is not [][]sdkapi.FormFieldData, instead %T", section, field, v)
 	}
 
 	return FormMultiFieldData{
@@ -362,7 +362,7 @@ func (self *HttpFormInstance) GetDateValue(section string, field string) (string
 
 	dateVal, ok := v.(string)
 	if !ok {
-		return "", errors.New(fmt.Sprintf("section %s field %s is not a string, instead %T", section, field, v))
+		return "", fmt.Errorf("section %s field %s is not a string, instead %T", section, field, v)
 	}
 
 	if dateVal != "" {
@@ -383,7 +383,7 @@ func (self *HttpFormInstance) GetDateValues(section string, field string) ([]str
 
 	vals, ok := ivals.([]string)
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("section %s, field %s is not a slice of strings", section, field))
+		return nil, fmt.Errorf("section %s, field %s is not a slice of strings", section, field)
 	}
 
 	for _, dateVal := range vals {
@@ -399,14 +399,14 @@ func (self *HttpFormInstance) GetDateValues(section string, field string) ([]str
 	return vals, nil
 }
 
-func (self *HttpFormInstance) getSection(section string) (sec sdkapi.FormSection, ok bool) {
-	for _, s := range self.form.Sections {
-		if s.Name == section {
-			return s, true
-		}
-	}
-	return
-}
+// func (self *HttpFormInstance) getSection(section string) (sec sdkapi.FormSection, ok bool) {
+// 	for _, s := range self.form.Sections {
+// 		if s.Name == section {
+// 			return s, true
+// 		}
+// 	}
+// 	return
+// }
 
 func (self *HttpFormInstance) getField(section string, field string) (f sdkapi.IFormField, ok bool) {
 	for _, s := range self.form.Sections {
@@ -446,18 +446,18 @@ func (self *HttpFormInstance) getParsedField(section string, field string) (fld 
 	return
 }
 
-func (self *HttpFormInstance) getParsedFieldValue(section string, field string) (val interface{}, ok bool) {
+func (self *HttpFormInstance) getParsedFieldValue(section string, field string) (val any, ok bool) {
 	if f, ok := self.getParsedField(section, field); ok {
 		return f.Value, true
 	}
 	return
 }
 
-func (self *HttpFormInstance) getFieldValue(section string, field string) (val interface{}, err error) {
+func (self *HttpFormInstance) getFieldValue(section string, field string) (val any, err error) {
 	if self.data == nil {
 		fld, ok := self.getField(section, field)
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("section %s, field %s value not found", section, field))
+			return nil, fmt.Errorf("section %s, field %s value not found", section, field)
 		}
 		return fld.GetValue(), nil
 	}
@@ -466,33 +466,33 @@ func (self *HttpFormInstance) getFieldValue(section string, field string) (val i
 		return v, nil
 	}
 
-	return nil, errors.New(fmt.Sprintf("section %s, field %s value not found", section, field))
+	return nil, fmt.Errorf("section %s, field %s value not found", section, field)
 }
 
-func (self *HttpFormInstance) getFieldValues(section string, field string) (val interface{}, err error) {
+func (self *HttpFormInstance) getFieldValues(section string, field string) (val any, err error) {
 	var ok bool
 	if self.data == nil {
 		fld, ok := self.getField(section, field)
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("section %s, field %s value not found", section, field))
+			return nil, fmt.Errorf("section %s, field %s value not found", section, field)
 		}
 		val = fld.GetValue()
 	} else {
 		val, ok = self.getParsedFieldValue(section, field)
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("section %s, field %s values not found", section, field))
+			return nil, fmt.Errorf("section %s, field %s values not found", section, field)
 		}
 	}
 
 	if reflect.TypeOf(val).Kind() != reflect.Slice {
-		return nil, errors.New(fmt.Sprintf("section %s, field %s values is not a slice", section, field))
+		return nil, fmt.Errorf("section %s, field %s values is not a slice", section, field)
 	}
 
 	return val, nil
 }
 
 // ----- Parser functions ----
-func ParseBasicValue(fld sdkapi.IFormField, valstr []string) (val interface{}, err error) {
+func ParseBasicValue(fld sdkapi.IFormField, valstr []string) (val any, err error) {
 	switch fld.GetType() {
 	case sdkapi.FormFieldTypeString,
 		sdkapi.FormFieldTypeText,
@@ -537,7 +537,7 @@ func ParseBasicValue(fld sdkapi.IFormField, valstr []string) (val interface{}, e
 	return
 }
 
-func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{}, err error) {
+func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val any, err error) {
 	listField, ok := fld.(sdkapi.FormListField)
 	if !ok {
 		err = fmt.Errorf("field %s is not a list field", fld.GetName())
@@ -620,7 +620,7 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 		return
 
 	default:
-		err = errors.New(fmt.Sprintf("%s default value %s is not supported list field", fld.GetName(), listField.Type))
+		err = fmt.Errorf("%s default value %s is not supported list field", fld.GetName(), listField.Type)
 	}
 
 	return
@@ -629,13 +629,13 @@ func ParseListFieldValue(fld sdkapi.IFormField, valstr []string) (val interface{
 func ParseMultiFieldValue(sec sdkapi.FormSection, f sdkapi.IFormField, form url.Values) (val [][]sdkapi.FormFieldData, err error) {
 	fld, ok := f.(sdkapi.FormMultiField)
 	if !ok {
-		err = errors.New(fmt.Sprintf("field %s in section %s is not a multi-field", f.GetName(), sec.Name))
+		err = fmt.Errorf("field %s in section %s is not a multi-field", f.GetName(), sec.Name)
 		return
 	}
 
 	columns := fld.Columns()
 	if len(columns) < 1 {
-		err = errors.New(fmt.Sprintf("multi-field %s in section %s has no columns", fld.Name, sec.Name))
+		err = fmt.Errorf("multi-field %s in section %s has no columns", fld.Name, sec.Name)
 		return
 	}
 
@@ -647,7 +647,7 @@ func ParseMultiFieldValue(sec sdkapi.FormSection, f sdkapi.IFormField, form url.
 	for ridx := 0; ridx < numRows; ridx++ {
 		row := make([]sdkapi.FormFieldData, len(columns))
 		for cidx, colfld := range columns {
-			var value interface{}
+			var value any
 
 			inputName := sec.Name + ":" + fld.Name + ":" + colfld.Name
 			colarr := form[inputName]
@@ -672,7 +672,7 @@ func ParseMultiFieldValue(sec sdkapi.FormSection, f sdkapi.IFormField, form url.
 				}
 
 			default:
-				err = errors.New(fmt.Sprintf("unsupported list field type %s", colfld.GetType()))
+				err = fmt.Errorf("unsupported list field type %s", colfld.GetType())
 				return
 			}
 
@@ -745,7 +745,7 @@ func getPreviouslyUploadedFiles(
 	return urls, nil
 }
 
-func GetTypeDefault(fld sdkapi.IFormField) interface{} {
+func GetTypeDefault(fld sdkapi.IFormField) any {
 	switch fld.GetType() {
 
 	case sdkapi.FormFieldTypeString,
@@ -758,13 +758,13 @@ func GetTypeDefault(fld sdkapi.IFormField) interface{} {
 	case sdkapi.FormFieldTypeList:
 		lsfld := fld.(sdkapi.FormListField)
 		if lsfld.Multiple {
-			return []interface{}{}
+			return []any{}
 		} else {
 			return GetBasicTypeDefault(fld.GetType())
 		}
 
 	case sdkapi.FormFieldTypeMulti:
-		return map[string]interface{}{}
+		return map[string]any{}
 
 	case sdkapi.FormFieldTypeFile:
 		return []string{}
@@ -774,7 +774,7 @@ func GetTypeDefault(fld sdkapi.IFormField) interface{} {
 	}
 }
 
-func GetBasicTypeDefault(t string) interface{} {
+func GetBasicTypeDefault(t string) any {
 	switch t {
 	case sdkapi.FormFieldTypeString,
 		sdkapi.FormFieldTypeText:

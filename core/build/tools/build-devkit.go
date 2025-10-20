@@ -95,6 +95,9 @@ func CreateDevkit() {
 		panic(err)
 	}
 
+	if err := os.MkdirAll(filepath.Dir(appConfigFile), 0755); err != nil {
+		panic(err)
+	}
 	if err := os.WriteFile(appConfigFile, b, 0644); err != nil {
 		panic(err)
 	}

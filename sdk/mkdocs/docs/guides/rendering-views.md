@@ -108,3 +108,23 @@ To add a global assets that is available to all the views in your plugin, you ca
 In this example, the `global.js` and `global.css` assets will be available to all the portal views in the plugin.
 
 To add global assets to the admin web interface, you should add the assets to the `global.js` and `global.css` keys in the [admin manifest](../api/assets-manifest.md#admin-manifest) file.
+
+## Using fonts
+
+Fonts are automatically bundled with your CSS and JS files using the ES Build tool. Just use it as you would in a normal web application. For example, if you have a font file located at `resources/assets/fonts/myfont.woff2` and your css is located in `resources/assets/css/style.css`, you can reference it in your CSS like this:
+
+```css
+@font-face {
+    font-family: 'MyFont';
+    src: url('../fonts/myfont.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+```
+
+## Using images
+
+Files in the `resources/assets/images` directory can be referenced using the [IHttpHelpers.ResourcePath](./http-helpers.md#resourcepath) method. For example, if you have an image file located at `resources/assets/images/logo.png`, you can reference it in your views like this:
+```templ
+<img src={  api.Http().Helpers().ResourcePath("assets/images/logo.png") } alt="Logo">
+```

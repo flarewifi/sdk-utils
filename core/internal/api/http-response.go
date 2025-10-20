@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
 
@@ -49,22 +48,21 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
 	}
 
-	layoutBuilder := &ThemesLayoutBuilder{
-		PageContent: v.PageContent,
-		ContentWrapper: func(head, layout templ.Component) {
-			data := themes.AdminLayoutData{
-				Assets: assets,
-				SseURL: sseURL,
-				Flash:  flash,
-				Head:   head,
-				Layout: layout,
-			}
+	htmlAttrs := templ.Attributes{}
+	bodyAttrs := templ.Attributes{
+		"hx-ext":      "sse,loading-states",
+		"sse-connect": templ.SafeURL(sseURL),
+	}
 
-			page := themes.AdminThemeLayout(self.api, data)
-			if err := page.Render(r.Context(), w); err != nil {
-				fmt.Fprintf(w, "<p>TemplateError: %s</p>", err.Error())
-			}
-		},
+	head := themes.AdminHead(self.api, assets)
+	scripts := themes.AdminScripts(assets, flash)
+
+	layoutBuilder := &ThemesLayoutBuilder{
+		htmlAttrs:      htmlAttrs,
+		headContent:    head,
+		bodyAttrs:      bodyAttrs,
+		pageContent:    v.PageContent,
+		scriptsContent: scripts,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -100,27 +98,28 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
 	}
 
+	sseURL := api.HttpAPI.Helpers().UrlForRoute("portal.sse")
+	polyfillsURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
+	data := themes.PortalLayoutData{
+		PageUUID:     pageUUID,
+		Assets:       assets,
+		SseURL:       sseURL,
+		PolyfillsURL: polyfillsURL,
+		Flash:        flash,
+	}
+	head := themes.PortalHead(self.api, data)
+	scripts := themes.PortalScripts(data.Assets, flash)
+	htmlAttrs := templ.Attributes{}
+	bodyAttrs := templ.Attributes{
+		"sse-connect": templ.SafeURL(sseURL),
+	}
+
 	layoutBuilder := &ThemesLayoutBuilder{
-		PageContent: v.PageContent,
-		ContentWrapper: func(head, layout templ.Component) {
-			sseURL := api.HttpAPI.Helpers().UrlForRoute("portal.sse")
-			polyfillsURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
-
-			data := themes.PortalLayoutData{
-				PageUUID:     pageUUID,
-				Assets:       assets,
-				SseURL:       sseURL,
-				PolyfillsURL: polyfillsURL,
-				Flash:        flash,
-				Head:         head,
-				Layout:       layout,
-			}
-
-			page := themes.PortalThemeLayout(self.api, data)
-			if err := page.Render(r.Context(), w); err != nil {
-				fmt.Fprintf(w, "<p>TemplateError: %s</p>", err.Error())
-			}
-		},
+		htmlAttrs:      htmlAttrs,
+		headContent:    head,
+		bodyAttrs:      bodyAttrs,
+		pageContent:    v.PageContent,
+		scriptsContent: scripts,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -134,7 +133,7 @@ func (self *HttpResponse) View(w http.ResponseWriter, r *http.Request, v sdkapi.
 	}
 }
 
-func (self *HttpResponse) Json(w http.ResponseWriter, r *http.Request, data interface{}, status int) {
+func (self *HttpResponse) Json(w http.ResponseWriter, r *http.Request, data any, status int) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

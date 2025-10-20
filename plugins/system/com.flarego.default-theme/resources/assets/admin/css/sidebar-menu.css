@@ -1,0 +1,85 @@
+
+#sidemenu .nav-menu {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+
+#sidemenu .nav-category {
+  margin-bottom: 0.25rem;
+}
+
+#sidemenu .nav-link {
+  display: flex;
+  /* justify-content: space-between; */
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  font-weight: 500;
+}
+
+#sidemenu .nav-link:hover {
+  background-color: #343a40;
+  color: #fff;
+}
+
+#sidemenu .sub-nav {
+  list-style: none;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+#sidemenu .sub-nav-link {
+  display: block;
+  padding: 0.5rem 1rem;
+  color: var(--bs-body-secondary-color);
+  text-decoration: none;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    font-size 0.2s ease;
+}
+
+#sidemenu .sub-nav-item {
+  border-radius: 6px;
+}
+
+#sidemenu .sub-nav-link:hover {
+  color: var(--bs-body-color);
+  background-color: #343a40;
+}
+
+#sidemenu .sub-nav-link.active {
+  color: white !important;
+  background: linear-gradient(
+    90deg,
+    var(--active-gradient-start),
+    var(--active-gradient-end)
+  );
+  box-shadow: 0 4px 10px -2px rgba(92, 118, 231, 0.5);
+}
+
+#sidemenu .sub-nav-link.active:hover {
+  transform: none; /* Dili na siya mudako kung active na siya */
+}
+
+#sidemenu .nav-link.active-category {
+  background: linear-gradient(
+    90deg,
+    #6c51fd,
+    #9365ff
+  ); /* background-color: #343a40; color: #fff; */
+}
+
+#sidemenu .nav-link.active-category span,
+#sidemenu .nav-link.active-category .nav-arrow {
+  color: #fff;
+}

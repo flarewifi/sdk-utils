@@ -2,11 +2,7 @@ package boot
 
 import (
 	"core/internal/api"
-	"core/internal/utils/plugins"
 	"log"
-	"time"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func Init(g *api.CoreGlobals) {
@@ -17,9 +13,8 @@ func Init(g *api.CoreGlobals) {
 	go func() {
 		log.Println("Initializing database...")
 		g.Db.WaitReady()
-		log.Println("Database is ready.")
 
-		plugins.LinkNodeModulesLib(sdkutils.PathAppDir)
+		log.Println("Database is ready.")
 		InitOpkg()
 		RunCoreMigrations(g)
 		InitPlugins(g)
@@ -27,8 +22,6 @@ func Init(g *api.CoreGlobals) {
 		if err := InitNetwork(); err != nil {
 			log.Println("Error initializing network:", err)
 		}
-
-		time.Sleep(8 * time.Second) // Simulate some boot delay
 
 		bootCh <- struct{}{}
 	}()

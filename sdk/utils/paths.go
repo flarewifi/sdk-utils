@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	PathTmpDir           = getTmpDir()
 	PathAppDir           = getRootDir()
 	PathDataDir          = filepath.Join(PathAppDir, "data")
 	PathCoreDir          = filepath.Join(PathAppDir, "core")
@@ -33,7 +34,7 @@ var (
 	PathCacheDir         = filepath.Join(PathTmpDir, "cache")
 	PathIsUpdated        = filepath.Join(PathAppDir, ".updated")
 	PathIsReverted       = filepath.Join(PathAppDir, ".reverted")
-	PathTmpDir           = getTmpDir()
+	PathServerUp         = "/tmp/.flare-up"
 )
 
 // StripRootPath removes the project root directory prefix from absolute paths

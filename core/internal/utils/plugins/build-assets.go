@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"core/internal/utils/cmd"
 	"errors"
 	"fmt"
 	"os"
@@ -57,10 +58,15 @@ func BuildAssets(pluginDir string) (err error) {
 		return
 	}
 
-	if err = LinkNodeModulesLib(pluginDir); err != nil {
-		return
+	if sdkutils.FsExists(filepath.Join(pluginDir, "package.json")) {
+		if err = cmd.Exec("npm install", &cmd.ExecOpts{
+			Dir:    pluginDir,
+			Stdout: os.Stdout,
+		}); err != nil {
+			return
+		}
+		defer cmd.Exec("npm cache clean --force", &cmd.ExecOpts{})
 	}
-
 	defer os.RemoveAll(filepath.Join(pluginDir, "node_modules"))
 
 	outManifest := OutputManifest{}
@@ -121,9 +127,10 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 	// Gather global files
 	var globalScrips, globalStyles []string
 	for k, files := range manifest {
-		if k == "globals.js" {
+		switch k {
+		case "globals.js":
 			globalScrips = append(globalScrips, files...)
-		} else if k == "globals.css" {
+		case "globals.css":
 			globalStyles = append(globalStyles, files...)
 		}
 	}
@@ -165,9 +172,10 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 				return results, err
 			}
 
-			if ext == ".js" {
+			switch ext {
+			case ".js":
 				indexContent += fmt.Sprintf("require('%s');\n", rel)
-			} else if ext == ".css" {
+			case ".css":
 				indexContent += fmt.Sprintf("@import '%s';\n", rel)
 			}
 		}
@@ -185,9 +193,10 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		outfile := filepath.Join(distPath, outname+ext)
 
 		var result api.BuildResult
-		if ext == ".js" {
+		switch ext {
+		case ".js":
 			result = EsbuildJs(indexFile, outfile, target)
-		} else if ext == ".css" {
+		case ".css":
 			result = EsbuildCss(indexFile, outfile)
 		}
 

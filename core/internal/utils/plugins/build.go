@@ -87,7 +87,7 @@ func BuildPluginSo(pluginSrcDir string, workdir string) error {
 		return err
 	}
 
-	buildpath := filepath.Join(workdir, "plugins", info.Package)
+	goBuildPath := filepath.Join(workdir, "plugins", info.Package)
 
 	pluginSoPath := filepath.Join(pluginSrcDir, "plugin.so")
 	os.Remove(pluginSoPath)
@@ -106,19 +106,13 @@ func BuildPluginSo(pluginSrcDir string, workdir string) error {
 		return err
 	}
 
-	if err := sdkutils.FsCopyDir(pluginSrcDir, buildpath, nil); err != nil {
+	if err := sdkutils.FsCopyDir(pluginSrcDir, goBuildPath, nil); err != nil {
 		return err
 	}
 
 	if err := sdkutils.FsCopyDir(filepath.Join(sdkutils.PathAppDir, "sdk"), filepath.Join(workdir, "sdk"), nil); err != nil {
 		return err
 	}
-
-	// libs := []string{}
-	// err := sdkutils.FsListDirs("sdk/libs", &libs, false)
-	// if err != nil {
-	// 	return err
-	// }
 
 	goWork := fmt.Sprintf(`
 go %s
@@ -128,34 +122,26 @@ use (
     ./sdk/utils
     `, sdkutils.GO_VERSION)
 
-	// for _, lib := range libs {
-	// 	goWork += fmt.Sprintf("./sdk/libs/%s\n", filepath.Base(lib))
-	// }
-
 	goWork += fmt.Sprintf("./plugins/%s\n)", info.Package)
 	goworkFile := filepath.Join(workdir, "go.work")
 	if err := os.WriteFile(goworkFile, []byte(goWork), sdkutils.PermFile); err != nil {
 		return err
 	}
 
-	if err := BuildAssets(pluginSrcDir); err != nil {
-		return err
-	}
-
 	// Don't build templates in development since it is already watched and built by another script.
 	if env.GO_ENV != env.ENV_DEV {
-		if err := BuildTemplates(buildpath); err != nil {
+		if err := BuildTemplates(goBuildPath); err != nil {
 			return err
 		}
 	}
 
 	gofile := "main.go"
 	outfile := "plugin.so"
-	if err := BuildGoPlugin(gofile, outfile, buildpath, nil); err != nil {
+	if err := BuildGoPlugin(gofile, outfile, goBuildPath, nil); err != nil {
 		return err
 	}
 
-	pluginSoOut := filepath.Join(buildpath, "plugin.so")
+	pluginSoOut := filepath.Join(goBuildPath, "plugin.so")
 	fmt.Printf("Copying '%s' to '%s'\n", sdkutils.StripRootPath(pluginSoOut), sdkutils.StripRootPath(pluginSoPath))
 	if err := sdkutils.FsCopyFile(pluginSoOut, pluginSoPath); err != nil {
 		log.Printf("Error copying '%s' to '%s': %+v\n", pluginSoOut, pluginSoPath, err)

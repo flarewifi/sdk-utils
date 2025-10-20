@@ -191,6 +191,10 @@ func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
 		return err
 	}
 
+	if err := BuildAssets(pluginSrc); err != nil {
+		return err
+	}
+
 	if err := BuildPluginSo(pluginSrc, buildpath); err != nil {
 		log.Println("Error building plugin: ", err)
 		return err

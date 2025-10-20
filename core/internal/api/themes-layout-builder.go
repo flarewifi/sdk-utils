@@ -5,16 +5,30 @@ import (
 )
 
 type ThemesLayoutBuilder struct {
-	PageContent    templ.Component
-	ContentWrapper func(head, layout templ.Component)
+	headContent    templ.Component
+	pageContent    templ.Component
+	scriptsContent templ.Component
+	htmlAttrs      templ.Attributes
+	bodyAttrs      templ.Attributes
+}
+
+func (self *ThemesLayoutBuilder) HtmlAttrs() templ.Attributes {
+	return self.htmlAttrs
 }
 
 // Returns the page content
-func (self *ThemesLayoutBuilder) Content() templ.Component {
-	return self.PageContent
+func (self *ThemesLayoutBuilder) Head() templ.Component {
+	return self.headContent
 }
 
-// Render the view
-func (self *ThemesLayoutBuilder) Render(head templ.Component, layout templ.Component) {
-	self.ContentWrapper(head, layout)
+func (self *ThemesLayoutBuilder) BodyAttrs() templ.Attributes {
+	return self.bodyAttrs
+}
+
+func (self *ThemesLayoutBuilder) PageContent() templ.Component {
+	return self.pageContent
+}
+
+func (self *ThemesLayoutBuilder) Scripts() templ.Component {
+	return self.scriptsContent
 }

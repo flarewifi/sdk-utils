@@ -1,7 +1,16 @@
 FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y \
-    wget tar gzip make gcc git sudo zip
+    wget \
+    tar \
+    gzip \
+    make \
+    gcc \
+    git \
+    sudo \
+    zip \
+    nodejs \
+    npm
 
 WORKDIR /app
 
@@ -16,8 +25,10 @@ RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architectur
         tar -C /usr/local -xzf golang.tar.gz && \
         rm -rf golang.tar.gz
 
-RUN mkdir -p /opt/flarehotspot && \
-    chown -R ubuntu:ubuntu /opt/flarehotspot
+RUN mkdir -p /opt/flarehotspot /var/cache/go && \
+    chown -R ubuntu:ubuntu \
+    /opt/flarehotspot \
+    /var/cache/go
 
 USER ubuntu
 
@@ -30,22 +41,7 @@ RUN cd core && go mod download
 COPY ./scripts/install-tools.sh .
 RUN ./install-tools.sh
 
+EXPOSE 3000 8000
 
 # Watch and recompile server on file change
-CMD cp go.work.default go.work && \
-    reflex \
-        -r '\.(go|templ|sql|js|css|json)$' \
-        -R '(plugin|package).json$' \
-        -R '_templ\.go$' \
-        -R '\.tmp\/.*' \
-        -R '^output\/.*' \
-        -R '^bin\/.*' \
-        -R 'db\/queries\/.*' \
-        -R 'node_modules' \
-        -R 'data\/config\/.*' \
-        -R 'resources\/assets\/dist' \
-        -R 'storage\/.*' \
-        -R 'plugins\/installed\/.*' \
-        -R 'plugins\/backups\/.*' \
-        -R 'plugins\/updates\/.*' \
-        -s -- sh -c './start-dev.sh' -v
+CMD [ "./docker-cmd.sh" ]

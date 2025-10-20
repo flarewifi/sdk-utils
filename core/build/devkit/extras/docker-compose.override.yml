@@ -1,0 +1,25 @@
+---
+
+services:
+  app:
+    platform: linux/amd64
+    networks:
+      devkit:
+
+  pg:
+    networks:
+      devkit:
+
+  pgadmin:
+    networks:
+      devkit:
+
+  docs:
+    networks:
+      devkit:
+
+volumes:
+  pgdata:
+
+networks:
+  devkit:

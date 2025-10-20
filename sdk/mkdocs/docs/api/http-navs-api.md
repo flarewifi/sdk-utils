@@ -31,6 +31,7 @@ navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
             Category:  sdkapi.NavCategorySystem,    // Category of the menu item
             Label:     "Welcome",                   // Menu display text
             RouteName: "admin:welcome",             // Link to the route
+            Keywords: []string{"home", "welcome"},  // Used for searching menu items
         },
     }
 })
