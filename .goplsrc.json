@@ -4,6 +4,7 @@
   ],
   "directoryFilters": [
     "-data/config",
+    "-data/storage",
     "-.git",
     "-.github",
     "-bin",

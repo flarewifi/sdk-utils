@@ -126,7 +126,7 @@ func compileGlobalJsAssets(jsfiles []string, target api.Target) (resultFile stri
 	for _, js := range jsfiles {
 		var relPath string
 		jsPath := filepath.Join(CoreAssetsDir, js)
-		relPath, err = sdkutils.FsRelativeFromTo(indexFile, jsPath)
+		relPath, err = filepath.Rel(filepath.Dir(indexFile), jsPath)
 		if err != nil {
 			return
 		}
@@ -181,7 +181,7 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 	for _, css := range cssFiles {
 		var relPath string
 		cssPath := filepath.Join(CoreAssetsDir, css)
-		relPath, err = sdkutils.FsRelativeFromTo(indexFile, cssPath)
+		relPath, err = filepath.Rel(filepath.Dir(indexFile), cssPath)
 		if err != nil {
 			return
 		}

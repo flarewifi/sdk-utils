@@ -13,10 +13,6 @@ import (
 	"strings"
 )
 
-var (
-	gitCacheDir = filepath.Join(PathTmpDir, "git-cache")
-)
-
 type GitRepoSource struct {
 	URL string
 	Ref string // Can be branch, tag, commit, or empty

@@ -9,3 +9,4 @@ CREATE TABLE IF NOT EXISTS logs (
 );
 
 CREATE INDEX IF NOT EXISTS index_package ON logs(package);
+CREATE INDEX IF NOT EXISTS index_level ON logs(level);

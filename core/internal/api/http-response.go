@@ -51,7 +51,7 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 	htmlAttrs := templ.Attributes{}
 	bodyAttrs := templ.Attributes{
 		"hx-ext":      "sse,loading-states",
-		"sse-connect": templ.SafeURL(sseURL),
+		"sse-connect": sseURL,
 	}
 
 	head := themes.AdminHead(self.api, assets)
@@ -111,7 +111,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	scripts := themes.PortalScripts(data.Assets, flash)
 	htmlAttrs := templ.Attributes{}
 	bodyAttrs := templ.Attributes{
-		"sse-connect": templ.SafeURL(sseURL),
+		"hx-sse": "connect:" + sseURL,
 	}
 
 	layoutBuilder := &ThemesLayoutBuilder{
