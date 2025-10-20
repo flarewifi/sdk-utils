@@ -11,7 +11,7 @@ FLARE_BIN="./bin/flare"
         echo "Cleaning templ output files..." && \
         rm -rf **/*_templ.go && \
         rm -rf core/internal/db/sqlc && \
-        sh -c "cd core/resources/views && templ generate" && \
+        sh -c "cd core && templ generate" && \
         go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
         go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
         go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN build-templates && \

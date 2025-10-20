@@ -40,7 +40,10 @@ func ReadGlobalAssetsManifest() (g GlobalBundleManifest) {
 }
 
 func BuildGlobalAssets() (err error) {
-	if err = cmd.Exec("npm install", &cmd.ExecOpts{Dir: sdkutils.PathCoreDir}); err != nil {
+	if _, err := sdkutils.Retry(func() (any, error) {
+		err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: sdkutils.PathCoreDir})
+		return nil, err
+	}, 3); err != nil {
 		return err
 	}
 
