@@ -38,13 +38,13 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "reboot"),
-				RouteName: "system.updates.check",
+				RouteName: "system.power.reboot",
 				Keywords:  []string{"power", "reboot", "restart"},
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "shutdown"),
-				RouteName: "system.updates.check",
+				RouteName: "system.power.shutdown",
 				Keywords:  []string{"power", "shutdown", "off"},
 			},
 		}

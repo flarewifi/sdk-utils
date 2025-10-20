@@ -37,9 +37,8 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		page := updatesview.SoftwareUpdatesPage(api)
 		newUpdate.Store(&updates.CoreReleaseUpdate{HasUpdate: false})
-
+		page := updatesview.SoftwareUpdatesPage(api, nil)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
@@ -49,23 +48,25 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
-		res := api.HttpAPI.Response()
 		coreInfo := api.Info()
 
 		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "check_updates_error"))
 		currentVersion, err := semver.NewVersion(coreInfo.Version)
 		if err != nil {
 			log.Println("Error:", err)
-			res.Error(w, r, checkUpdateErr, http.StatusInternalServerError)
+			page := updatesview.SoftwareUpdatesPage(api, checkUpdateErr)
+			page.Render(r.Context(), w)
 			return
 		}
 
 		result, err := updates.CheckCoreReleaseUpdate(currentVersion)
 		if err != nil {
 			log.Println("Error:", err)
-			res.Error(w, r, checkUpdateErr, http.StatusInternalServerError)
+			page := updatesview.SoftwareUpdatesPage(api, checkUpdateErr)
+			page.Render(r.Context(), w)
 			return
 		}
+
 		newUpdate.Store(result)
 
 		var update updatesview.SoftwareUpdate

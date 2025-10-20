@@ -3,7 +3,7 @@ package updatesview
 import "sdk/api"
 
 type SoftwareUpdate struct {
-EventProgress string
+	EventProgress  string
 	HasUpdate      bool
 	CurrentVersion string
 	NewVersion     string
@@ -11,10 +11,17 @@ EventProgress string
 	IsDownloaded   bool
 }
 
-templ SoftwareUpdatesPage(api sdkapi.IPluginApi) {
+templ SoftwareUpdatesPage(api sdkapi.IPluginApi, err error) {
 	<div id="page">
-		<button class="btn btn-primary" type="button" hx-target="#page" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } data-loading-disable>Check for updates</button>
-		<br/>
+		<div>
+			<h3 class="mb-3">Software Updates</h3>
+			<button class="btn btn-primary mb-3" type="button" hx-target="#page" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } data-loading-disable>
+				Check for updates
+			</button>
+		</div>
+		if err != nil {
+			<div class="text-danger" data-loading-class="d-none">{ err.Error() }</div>
+		}
 		<div data-loading>{ api.Translate("label", "checking_for_updates") }... </div>
 	</div>
 }
@@ -34,7 +41,7 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 			<small>{ api.Translate("label", "current_version") }: { update.CurrentVersion }</small>
 		</div>
 		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("system.updates.download")) }>
-            { api.Translate("label", "download_update")}
-        </a>
+			{ api.Translate("label", "download_update") }
+		</a>
 	</div>
 }
