@@ -1,8 +1,6 @@
 package themes
 
 import (
-	// "net/http"
-
 	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
@@ -30,16 +28,5 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 			page := admin.AdminIndexPage()
 			return sdkapi.ViewPage{PageContent: page}
 		},
-	})
-
-	api.Http().Navs().AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
-		return []sdkapi.AdminNavItemOpt{
-			// {
-			// 	Label:       "Test",
-			// 	Category:    sdkapi.NavCategorySystem,
-			// 	RouteName:   "test",
-			// 	RouteParams: map[string]string{"name": "test"},
-			// },
-		}
 	})
 }

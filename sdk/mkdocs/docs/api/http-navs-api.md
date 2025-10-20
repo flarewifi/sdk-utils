@@ -133,14 +133,15 @@ type AdminNavList struct {
 }
 
 type AdminNavItem struct {
-	Label    string
-	RouteUrl string
+    Label    string
+    RouteUrl string
+    IsCurrent bool // true if active route
 }
 ```
 
 ## PortalNavItem {#portal-nav-item}
 
-The `PortalNavItem` is a Go struct that represents an invidual portal menu item.
+The `PortalNavItem` is a Go struct that represents an individual portal menu item.
 
 ```go
 type PortalNavItem struct {

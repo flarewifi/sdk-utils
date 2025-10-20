@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"net/url"
 	sdkapi "sdk/api"
 )
 
@@ -53,9 +54,19 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 					for k, v := range nav.RouteParams {
 						routePairs = append(routePairs, k, v)
 					}
+
+					// Check if current url
+					var isCurrent bool
+					navRoute := p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...)
+					parsed, err := url.Parse(navRoute)
+					if parsed != nil && err == nil {
+						isCurrent = parsed.Path == r.URL.Path
+					}
+
 					navItems = append(navItems, sdkapi.AdminNavItem{
-						Label:    nav.Label,
-						RouteUrl: p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...),
+						Label:     nav.Label,
+						RouteUrl:  navRoute,
+						IsCurrent: isCurrent,
 					})
 				}
 			}
