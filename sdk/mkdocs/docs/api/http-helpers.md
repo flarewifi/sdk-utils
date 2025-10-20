@@ -28,7 +28,7 @@ url := api.Http().Helpers().AdminAssetPath("css/style.css")
 
 ### PublicPath
 
-Returns the URI path of a static file in `resources/assets/public` directory from your plugin.
+Returns the URI path of a static file in `resources/assets/public` directory from your plugin which can be used to link your assets into your views.
 For example to get the uri path of the file in `resources/assets/public/images/logo.png`, you can use the following code:
 
 ```go
