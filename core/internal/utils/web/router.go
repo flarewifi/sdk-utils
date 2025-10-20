@@ -1,7 +1,6 @@
 package webutil
 
 import (
-	"errors"
 	"fmt"
 
 	sdkapi "sdk/api"
@@ -34,7 +33,7 @@ func UrlForRoute(muxname sdkapi.MuxRouteName, pairs ...string) (string, error) {
 			return url.EscapedPath(), nil
 		}
 	}
-	return "", errors.New(fmt.Sprintf("Route name not found: \"%s\"", muxname))
+	return "", fmt.Errorf("Route name not found: \"%s\"", muxname)
 }
 
 func FindRoute(muxname sdkapi.MuxRouteName) *mux.Route {

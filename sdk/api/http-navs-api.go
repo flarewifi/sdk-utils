@@ -58,8 +58,9 @@ type AdminNavList struct {
 }
 
 type AdminNavItem struct {
-	Label    string
-	RouteUrl string
+	Label     string
+	RouteUrl  string
+	IsCurrent bool // true if current active route
 }
 
 type PortalNavItem struct {
