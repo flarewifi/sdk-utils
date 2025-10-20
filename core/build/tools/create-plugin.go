@@ -199,12 +199,12 @@ sql:
 	}
 
 	// Create default images directory
-	imagesKeepFIle := filepath.Join(pluginDir, "resources/assets/images/.keep")
-	if err := os.MkdirAll(filepath.Dir(imagesKeepFIle), sdkutils.PermDir); err != nil {
+	pubkeep := filepath.Join(pluginDir, "resources/assets/plublic/.keep")
+	if err := os.MkdirAll(filepath.Dir(pubkeep), sdkutils.PermDir); err != nil {
 		panic(err)
 	}
 
-	if _, err := os.Create(imagesKeepFIle); err != nil {
+	if _, err := os.Create(pubkeep); err != nil {
 		panic(err)
 	}
 
