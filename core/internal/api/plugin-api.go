@@ -88,7 +88,7 @@ func (self *PluginApi) Dir() string {
 	return self.dir
 }
 
-func (self *PluginApi) Translate(t string, msgk string, pairs ...interface{}) string {
+func (self *PluginApi) Translate(t string, msgk string, pairs ...any) string {
 	return self.Utl.Translate(t, msgk, pairs...)
 }
 

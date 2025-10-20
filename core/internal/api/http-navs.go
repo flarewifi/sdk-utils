@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"path"
 	sdkapi "sdk/api"
 )
 
@@ -84,7 +83,7 @@ func (self *HttpNavsApi) GetPortalItems(r *http.Request) []sdkapi.PortalNavItem 
 
 			iconURL := ""
 			if item.IconFile != "" {
-				iconURL = p.Http().Helpers().ResourcePath(path.Join("assets", "images", item.IconFile))
+				iconURL = p.Http().Helpers().PublicPath(item.IconFile)
 			}
 
 			items = append(items, sdkapi.PortalNavItem{

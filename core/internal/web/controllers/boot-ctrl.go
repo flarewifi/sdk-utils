@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"path"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -17,19 +16,19 @@ const (
 	BootStatusURL = "/boot/status"
 )
 
-func NewBootCtrl(g *api.CoreGlobals, pmgr *api.PluginsMgr, api *api.PluginApi) BootCtrl {
-	return BootCtrl{pmgr, api}
+func NewBootCtrl(g *api.CoreGlobals) BootCtrl {
+	return BootCtrl{g}
 }
 
 type BootCtrl struct {
-	pmgr *api.PluginsMgr
-	api  *api.PluginApi
+	g *api.CoreGlobals
 }
 
 func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
 	globals := plugins.ReadGlobalAssetsManifest()
-	jsSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingJsFile))
-	cssSrc := ctrl.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.BootingCssFile))
+	h := ctrl.g.CoreAPI.HttpAPI.Helpers().(*api.HttpHelpers)
+	jsSrc := h.DistPath(globals.BootingJsFile)
+	cssSrc := h.DistPath(globals.BootingCssFile)
 	isUpdating := sdkutils.FsExists(sdkutils.PathIsUpdated) || sdkutils.FsExists(sdkutils.PathIsReverted)
 
 	var status string
@@ -41,7 +40,7 @@ func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
 
 	page := boot.BootPage(&boot.BootPageData{
 		StatusURL: BootStatusURL,
-		API:       ctrl.api,
+		API:       ctrl.g.CoreAPI,
 		JsSrc:     jsSrc,
 		CssSrc:    cssSrc,
 		Status:    status,

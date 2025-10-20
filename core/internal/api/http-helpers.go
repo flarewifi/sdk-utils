@@ -31,11 +31,11 @@ func (self *HttpHelpers) Translate(msgtype string, msgk string, pairs ...any) st
 func (self *HttpHelpers) AdminAssetPath(p string) string {
 	assets := self.api.AssetsManifest.AdminAssets
 	if f, ok := assets.Scripts[p]; ok {
-		return self.ResourcePath(path.Join("assets", "dist", f))
+		return self.DistPath(f)
 	}
 
 	if f, ok := assets.Styles[p]; ok {
-		return self.ResourcePath(path.Join("assets", "dist", f))
+		return self.DistPath(f)
 	}
 
 	return ""
@@ -44,18 +44,22 @@ func (self *HttpHelpers) AdminAssetPath(p string) string {
 func (self *HttpHelpers) PortalAssetPath(p string) string {
 	assets := self.api.AssetsManifest.PortalAssets
 	if f, ok := assets.Scripts[p]; ok {
-		return self.ResourcePath(path.Join("assets", "dist", f))
+		return self.DistPath(f)
 	}
 
 	if f, ok := assets.Styles[p]; ok {
-		return self.ResourcePath(path.Join("assets", "dist", f))
+		return self.DistPath(f)
 	}
 
 	return ""
 }
 
-func (self *HttpHelpers) ResourcePath(p string) string {
-	return path.Join("/plugin", self.api.info.Package, self.api.info.Version, "resources", p)
+func (self *HttpHelpers) DistPath(p string) string {
+	return path.Join("/plugin", self.api.info.Package, self.api.info.Version, "resources/assets/dist", p)
+}
+
+func (self *HttpHelpers) PublicPath(p string) string {
+	return path.Join("/plugin", self.api.info.Package, self.api.info.Version, "resources/assets/public", p)
 }
 
 func (self *HttpHelpers) PluginMgr() sdkapi.IPluginsMgrApi {

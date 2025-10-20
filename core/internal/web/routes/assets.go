@@ -15,11 +15,18 @@ func AssetsRoutes(g *api.CoreGlobals) {
 
 	allPlugins := g.PluginMgr.All()
 	for _, p := range allPlugins {
-		resourcesDir := p.Resource("")
-		fs := http.FileServer(http.Dir(resourcesDir))
-		prefix := p.Http().Helpers().ResourcePath("")
-		fileserver := cacheMw(http.StripPrefix(prefix, fs))
-		webutils.RootRouter.PathPrefix(prefix).Handler(fileserver)
+		h := p.Http().Helpers().(*api.HttpHelpers)
+		distDir := p.Resource("assets/dist")
+		distFs := http.FileServer(http.Dir(distDir))
+		distPrefix := h.DistPath("")
+		distServer := cacheMw(http.StripPrefix(distPrefix, distFs))
+		webutils.RootRouter.PathPrefix(distPrefix).Handler(distServer)
+
+		pubDir := p.Resource("assets/public")
+		pubFs := http.FileServer(http.Dir(pubDir))
+		pubPrefix := h.PublicPath("")
+		pubServer := cacheMw(http.StripPrefix(pubPrefix, pubFs))
+		webutils.RootRouter.PathPrefix(pubPrefix).Handler(pubServer)
 	}
 
 	// set public static files
@@ -31,10 +38,17 @@ func AssetsRoutes(g *api.CoreGlobals) {
 }
 
 func CoreAssets(g *api.CoreGlobals) {
+	h := g.CoreAPI.Http().Helpers().(*api.HttpHelpers)
 	cacheMw := middlewares.CacheResponse(365)
-	resourcesDir := g.CoreAPI.Resource("")
-	fs := http.FileServer(http.Dir(resourcesDir))
-	prefix := g.CoreAPI.Http().Helpers().ResourcePath("")
-	fileserver := cacheMw(http.StripPrefix(prefix, fs))
-	webutils.BootingRouter.PathPrefix(prefix).Handler(fileserver)
+	distDir := g.CoreAPI.Resource("assets/dist")
+	distFs := http.FileServer(http.Dir(distDir))
+	distPrefix := h.DistPath("")
+	distServer := cacheMw(http.StripPrefix(distPrefix, distFs))
+	webutils.BootingRouter.PathPrefix(distPrefix).Handler(distServer)
+
+	pubDir := g.CoreAPI.Resource("assets/public")
+	pubFs := http.FileServer(http.Dir(pubDir))
+	pubPrefix := h.PublicPath("")
+	pubServer := cacheMw(http.StripPrefix(pubPrefix, pubFs))
+	webutils.BootingRouter.PathPrefix(distPrefix).Handler(pubServer)
 }

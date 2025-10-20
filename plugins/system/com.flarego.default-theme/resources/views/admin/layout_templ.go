@@ -76,9 +76,9 @@ func AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().ResourcePath("assets/images/nexifi_logo.png"))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().PublicPath("images/nexifi_logo.png"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 25, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/layout.templ`, Line: 25, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
