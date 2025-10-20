@@ -68,8 +68,6 @@ func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets themes
 
 	globals := plugins.ReadGlobalAssetsManifest()
 	h := self.api.CoreAPI.HttpAPI.Helpers().(*HttpHelpers)
-	// globalJsSrc := self.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.AdminJsFile))
-	// globalCssHref := self.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.AdminCssFile))
 	globalJsSrc := h.DistPath(globals.AdminJsFile)
 	globalCssHref := h.DistPath(globals.AdminCssFile)
 
@@ -104,8 +102,6 @@ func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets theme
 
 	globals := plugins.ReadGlobalAssetsManifest()
 	h := self.api.CoreAPI.HttpAPI.Helpers().(*HttpHelpers)
-	// globalJsSrc := self.api.CoreAPI.Http().Helpers().ResourcePath(filepath.Join("assets", "dist", globals.PortalJsFile))
-	// globalCssHref := self.api.CoreAPI.Http().Helpers().ResourcePath(filepath.Join("assets", "dist", globals.PortalCssFile))
 	globalJsSrc := h.DistPath(globals.PortalJsFile)
 	globalCssHref := h.DistPath(globals.PortalCssFile)
 
