@@ -3,6 +3,7 @@
 BUILD_TAGS="dev"
 BUILD_CORE_MAIN="./core/cmd/build-core"
 BUILD_CLI_MAIN="./core/cmd/build-cli"
+FLARE_CLI_MAIN="./core/internal/cli"
 SYNC_VERSION="./core/cmd/sync-versions/main.go"
 FLARE_BIN="./bin/flare"
 
@@ -12,8 +13,8 @@ FLARE_BIN="./bin/flare"
         rm -rf core/internal/db/sqlc && \
         sh -c "cd core/resources/views && templ generate" && \
         go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
-        sh -c "$FLARE_BIN fix-workspace" && \
-        sh -c "$FLARE_BIN build-templates" && \
+        go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
+        go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN build-templates && \
         go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN && \
         go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN
 ) || (echo "Build failed" && exit 1)
