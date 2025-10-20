@@ -71,7 +71,7 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 													@click.prevent={ fmt.Sprintf("openIndex = (openIndex === %d) ? -1 : %d", i, i) }
 												>
 													<span>{ nav.Category }</span>
-                                                    <i class="bi bi-chevron-right"></i>
+													<i class="bi bi-chevron-right"></i>
 												</button>
 												<ul
 													class="sub-nav"
@@ -91,8 +91,12 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 									</ul>
 									<hr/>
 									<ul class="nav flex-column">
-										<li class="nav-item">
-											<a class="nav-link" href="#">
+										<li class="nav-category">
+											<a
+												href="#"
+												type="button"
+												class="nav-link w-100"
+											>
 												<i class="bi bi-box-arrow-left me-2"></i>
 												Logout
 											</a>
@@ -140,7 +144,7 @@ func menuData(navs []sdkapi.AdminNavList) string {
 		for _, sub := range nav.Items {
 			if sub.IsCurrent {
 				openIndex = i
-                break
+				break
 			}
 		}
 	}

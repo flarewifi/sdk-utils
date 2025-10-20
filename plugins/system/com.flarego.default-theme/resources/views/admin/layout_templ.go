@@ -219,7 +219,7 @@ func AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul><hr><ul class=\"nav flex-column\"><li class=\"nav-item\"><a class=\"nav-link\" href=\"#\"><i class=\"bi bi-box-arrow-left me-2\"></i> Logout</a></li></ul></div></div></div></div><main class=\"col-md-9 ms-sm-auto col-lg-10 px-md-4\"><div class=\"container pt-3\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</ul><hr><ul class=\"nav flex-column\"><li class=\"nav-category\"><a href=\"#\" type=\"button\" class=\"nav-link w-100\"><i class=\"bi bi-box-arrow-left me-2\"></i> Logout</a></li></ul></div></div></div></div><main class=\"col-md-9 ms-sm-auto col-lg-10 px-md-4\"><div class=\"container pt-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
