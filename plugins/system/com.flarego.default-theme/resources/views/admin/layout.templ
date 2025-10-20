@@ -19,7 +19,6 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 			@data.Components.Head()
 		</head>
 		<body { data.Components.BodyAttrs()... }>
-			@colorModes()
 			<header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
 				<a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="/admin">
 					<img class="logo-img" src={ api.Http().Helpers().PublicPath("images/nexifi_logo.png") } alt="Nexifi Logo"/>
@@ -110,6 +109,7 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 					</main>
 				</div>
 			</div>
+			@colorModes()
 			@data.Components.Scripts()
 		</body>
 	</html>
@@ -140,6 +140,7 @@ func menuData(navs []sdkapi.AdminNavList) string {
 		for _, sub := range nav.Items {
 			if sub.IsCurrent {
 				openIndex = i
+                break
 			}
 		}
 	}
