@@ -168,7 +168,7 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		indexContent := ""
 		for _, f := range files {
 			f = filepath.Join(pluginDir, AssetsDir, f)
-			rel, err := sdkutils.FsRelativeFromTo(indexFile, f)
+			rel, err := filepath.Rel(filepath.Dir(indexFile), f)
 			if err != nil {
 				return results, err
 			}

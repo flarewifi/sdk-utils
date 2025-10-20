@@ -8,7 +8,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/goccy/go-json"
 )
@@ -614,50 +613,4 @@ func FsExtract(file string, dest string) error {
 	}
 
 	return ErrUnknownCompressionFormat
-}
-
-// Returns the relative path from file "from" to file "to".
-//
-//		Example:
-//
-//		from := "/path/to/dir1/file1.jpg"
-//		to   := "/path/to/dir2/file2.jpg"
-//
-//	  result := path.RelativeFromTo(from, to)
-//	  log.Println(result)
-//
-//	  -> "../dir2/file2.jpg"
-func FsRelativeFromTo(from_file, to_file string) (string, error) {
-	// Clean and normalize the paths
-	absFrom := filepath.Clean(from_file)
-	absTo := filepath.Clean(to_file)
-
-	// Split the paths into slices
-	fromParts := strings.Split(filepath.ToSlash(absFrom), "/")
-	toParts := strings.Split(filepath.ToSlash(absTo), "/")
-
-	// Find the common prefix
-	i := 0
-	for i < len(fromParts) && i < len(toParts) && fromParts[i] == toParts[i] {
-		i++
-	}
-
-	// If both paths are the same (files are in the same directory)
-	if i == len(fromParts)-1 && i == len(toParts)-1 {
-		return "./" + toParts[len(toParts)-1], nil
-	}
-
-	// Calculate the number of "../" needed to go from "from" to the common ancestor
-	relativeParts := make([]string, len(fromParts)-(i+1))
-	for j := 0; j < len(relativeParts); j++ {
-		relativeParts[j] = ".."
-	}
-
-	// Append the remaining parts of the "to" path
-	relativeParts = append(relativeParts, toParts[i:]...)
-
-	// Join the parts to form the relative path
-	relativePath := strings.Join(relativeParts, "/")
-
-	return relativePath, nil
 }
