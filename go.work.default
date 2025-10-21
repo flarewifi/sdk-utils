@@ -1,7 +1,6 @@
 go 1.21
 
 use (
-    ./main
     ./core
     ./sdk/api
     ./sdk/utils

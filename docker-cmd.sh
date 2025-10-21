@@ -1,5 +1,7 @@
 #!/bin/sh
 
+START_SH=$1
+
 cp go.work.default go.work && \
     reflex \
     -r '\.(go|templ|sql|js|css|json)$' \
@@ -16,7 +18,8 @@ cp go.work.default go.work && \
     -R 'plugins\/installed\/.*' \
     -R 'plugins\/backups\/.*' \
     -R 'plugins\/updates\/.*' \
-    -s -- sh -c './start-dev.sh' -v &
+    -R 'plugin\-init_mono\.(go|default)$' \
+    -s -- sh -c "$START_SH" -v &
 
 touch "/tmp/.flare-up" && \
     go run -tags="dev" ./core/cmd/livereload/main.go &

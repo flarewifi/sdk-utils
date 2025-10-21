@@ -34,7 +34,6 @@ for f in \
     "core" \
     "defaults" \
     "main" \
-    "node_modules" \
     "plugins" \
     "sdk" \
     "go.work" \
