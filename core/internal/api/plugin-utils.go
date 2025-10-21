@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"log"
 	"path"
 	"path/filepath"
@@ -82,8 +81,6 @@ func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets themes
 	pluginGlobalCssHref := self.api.HttpAPI.Helpers().AdminAssetPath("global.css")
 	pageJsSrc := self.api.HttpAPI.Helpers().AdminAssetPath(v.Assets.JsFile)
 	pageCssHref := self.api.HttpAPI.Helpers().AdminAssetPath(v.Assets.CssFile)
-
-	fmt.Println("pageJsSrc: ", pageJsSrc)
 
 	return themes.AdminAssets{
 		GlobalCssHref:       globalCssHref,
