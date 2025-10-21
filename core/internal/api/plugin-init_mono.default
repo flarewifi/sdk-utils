@@ -1,0 +1,11 @@
+//go:build mono
+
+/**
+WARNING: This file system-generated, do not edit nor commit into your repo.
+*/
+
+package api
+
+func (p *PluginApi) Init() error {
+    return nil
+}

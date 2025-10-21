@@ -2,13 +2,49 @@
 
 BUILD_TAGS="dev mono"
 CREATE_MONO="./core/cmd/make-mono/main.go"
-MONO_SERVER="./core/cmd/mono-server/main.go"
-CLI_MAIN="./core/internal/cli/main.go"
+BUILD_CLI_MAIN="./core/cmd/build-cli"
+FLARE_CLI_MAIN="./core/internal/cli/main.go"
+SYNC_VERSION="./core/cmd/sync-versions/main.go"
 
 cp go.work.default go.work && \
+    echo "Cleaning templ output files..." && \
     rm -rf **/*_templ.go && \
     rm -rf core/internal/db/sqlc && \
-    go run -tags="${BUILD_TAGS}" $CLI_MAIN fix-workspace && \
-    go run -tags="${BUILD_TAGS}" $CLI_MAIN build-templates && \
+    sh -c "cd core && templ generate" && \
+    cp ./core/internal/api/plugin-init_mono.default \
+    ./core/internal/api/plugin-init_mono.go && \
+    go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
+    go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
+    go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN build-templates && \
     go run -tags="${BUILD_TAGS}" $CREATE_MONO && \
-    go run -tags="${BUILD_TAGS}" $MONO_SERVER
+    go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN
+
+if [ $? != 0 ]; then
+    echo "Failed to build core system!"
+    exit 1
+fi
+
+APP_DIR="/opt/flarehotspot/app"
+DATA_DIR="/opt/flarehotspot/data"
+rm -rf $APP_DIR/*
+mkdir -p $APP_DIR
+
+for f in \
+    "bin" \
+    "core" \
+    "defaults" \
+    "main" \
+    "plugins" \
+    "sdk" \
+    "go.work" \
+    "go.sum" \
+    "start.sh" \
+    ; do
+
+    rm -rf $APP_DIR/$f && \
+        ln -s $(pwd)/$f $APP_DIR/$f || (echo "Failed to link $f" && exit 1)
+done
+
+mkdir -p $APP_DIR/.tmp
+touch $APP_DIR/.tmp/.server-up
+sh -c "cd $APP_DIR && ./start.sh"

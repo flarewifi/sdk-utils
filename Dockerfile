@@ -44,4 +44,4 @@ RUN ./install-tools.sh
 EXPOSE 3000 8000
 
 # Watch and recompile server on file change
-CMD [ "./docker-cmd.sh" ]
+CMD [ "./docker-cmd.sh", "./start-dev.sh" ]

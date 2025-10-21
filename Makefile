@@ -2,6 +2,10 @@ default: create-network
 	# start docker services in docker-compose.yml
 	docker compose up --build --remove-orphans --force-recreate
 
+mono: create-network
+	docker compose -f docker-compose.yml -f docker-compose.mono.yml up \
+		--build --remove-orphans --force-recreate
+
 create-network:
 	# create docker network if not exists
 	docker network inspect flare_network >/dev/null 2>&1 || \

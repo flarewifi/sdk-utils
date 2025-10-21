@@ -1,0 +1,5 @@
+# no overrides
+---
+services:
+  app:
+    command: ./docker-cmd.sh ./start-mono-dev.sh

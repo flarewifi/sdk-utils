@@ -5,20 +5,16 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"plugin"
 	"strconv"
 	"strings"
 
 	tools "core/build/tools"
 	"core/env"
+	"core/internal/cli/server"
 	"core/internal/utils/plugins"
 	"core/internal/utils/updates"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-)
-
-var (
-	gowork bool
 )
 
 func main() {
@@ -35,7 +31,7 @@ func main() {
 		return
 
 	case "server":
-		Server()
+		server.Server()
 		return
 
 	case "create-plugin":
@@ -198,18 +194,6 @@ func BuildPlugin() {
 		fmt.Println("Error building plugin: " + err.Error())
 		os.Exit(1)
 	}
-}
-
-func Server() {
-	corePath := filepath.Join(sdkutils.PathAppDir, "core/plugin.so")
-	p, err := plugin.Open(corePath)
-	if err != nil {
-		log.Println("Error loading core plugin:", err)
-		panic(err)
-	}
-	symInit, _ := p.Lookup("Init")
-	initFn := symInit.(func())
-	initFn()
 }
 
 func GoEnvToString(e int8) string {
