@@ -65,7 +65,10 @@ func BuildAssets(pluginDir string) (err error) {
 	defer os.RemoveAll(filepath.Join(pluginDir, "node_modules"))
 
 	// Clean up dist folder
-	distPath := filepath.Join(pluginDir, "resources/assets/dist")
+	distPath, err := getDistPath(pluginDir)
+	if err != nil {
+		return err
+	}
 	if err = os.RemoveAll(distPath); err != nil {
 		return
 	}
@@ -160,7 +163,11 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		// Bundle global files with files
 		files = append(globalFiles, files...)
 
-		distPath := filepath.Join(pluginDir, AssetsDir, "dist", strings.TrimPrefix(ext, "."))
+		var distPath string
+		distPath, err = getDistPath(pluginDir)
+		if err != nil {
+			return
+		}
 		outname := strings.TrimSuffix(filename, ext)
 		indexFile := filepath.Join(distPath, outname+"_index"+ext)
 
@@ -191,6 +198,10 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 
 		fmt.Printf("Compiling index file: %s: %s\n", indexFile, indexContent)
 
+		distPath, err = getDistPath(pluginDir)
+		if err != nil {
+			return
+		}
 		outfile := filepath.Join(distPath, outname+ext)
 
 		var result api.BuildResult
@@ -234,4 +245,12 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 	}
 
 	return
+}
+
+func getDistPath(pluginDir string) (string, error) {
+	info, err := sdkutils.GetPluginInfoFromPath(pluginDir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(pluginDir, DistDir, info.Package), nil
 }
