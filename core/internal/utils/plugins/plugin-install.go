@@ -19,8 +19,6 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-var ()
-
 type PluginMetadata struct {
 	Def sdkutils.PluginSrcDef
 }
@@ -236,6 +234,8 @@ func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
 		log.Println("Error building plugin: ", err)
 		return err
 	}
+
+	// TODO: Re-build global assets
 
 	log.Println("Copying plugin files to: ", installPath)
 	if err := sdkutils.CopyPluginFiles(pluginSrc, installPath); err != nil {

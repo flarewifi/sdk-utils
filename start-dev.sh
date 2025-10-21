@@ -3,21 +3,22 @@
 BUILD_TAGS="dev"
 BUILD_CORE_MAIN="./core/cmd/build-core"
 BUILD_CLI_MAIN="./core/cmd/build-cli"
+BUILD_ASSETS_MAIN="./core/cmd/build-assets"
 FLARE_CLI_MAIN="./core/internal/cli"
 SYNC_VERSION="./core/cmd/sync-versions/main.go"
 FLARE_BIN="./bin/flare"
 
-(cp go.work.default go.work && \
-        echo "Cleaning templ output files..." && \
-        rm -rf **/*_templ.go && \
-        rm -rf core/internal/db/sqlc && \
-        sh -c "cd core && templ generate" && \
-        go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
-        go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
-        go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN build-templates && \
-        go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN && \
-        go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN
-) || (echo "Build failed" && exit 1)
+cp go.work.default go.work && \
+    echo "Cleaning templ output files..." && \
+    rm -rf **/*_templ.go && \
+    rm -rf core/internal/db/sqlc && \
+    sh -c "cd core && templ generate" && \
+    go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
+    go run -tags="${BUILD_TAGS}" $BUILD_ASSETS_MAIN && \
+    go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
+    go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN build-templates && \
+    go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN && \
+    go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN
 
 if [ $? != 0 ]; then
     echo "Failed to build core system!"

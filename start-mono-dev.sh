@@ -14,6 +14,7 @@ cp go.work.default go.work && \
     cp ./core/internal/api/plugin-init_mono.default \
     ./core/internal/api/plugin-init_mono.go && \
     go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
+    go run -tags="${BUILD_TAGS}" $BUILD_ASSETS_MAIN && \
     go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
     go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN build-templates && \
     go run -tags="${BUILD_TAGS}" $CREATE_MONO && \

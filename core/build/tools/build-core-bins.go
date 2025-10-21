@@ -46,8 +46,4 @@ func BuildCore() {
 	if err := plugins.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {
 		panic(err)
 	}
-
-	if err := plugins.BuildGlobalAssets(); err != nil {
-		panic(err)
-	}
 }

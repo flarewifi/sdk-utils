@@ -140,7 +140,7 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 	}
 
 	for filename, files := range manifest {
-		// Don't output global scripts and styles, they are already bundled in non-global files
+		// Don't output global scripts and styles, they are already bundled in core globals
 		if filename == "globals.js" || filename == "globals.css" {
 			continue
 		}

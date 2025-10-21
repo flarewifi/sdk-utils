@@ -14,10 +14,10 @@ import (
 var (
 	CoreAssetsDir             = filepath.Join(sdkutils.PathCoreDir, "resources/assets")
 	CoreGlobalsDist           = filepath.Join(CoreAssetsDir, "dist/globals")
-	CoreAdminGlobalsManifest  = filepath.Join(sdkutils.PathCoreDir, "resources/assets/globals.admin.json")
-	CorePortalGlobalsManifest = filepath.Join(sdkutils.PathCoreDir, "resources/assets/globals.portal.json")
-	CoreBootGlobalsManifest   = filepath.Join(sdkutils.PathCoreDir, "resources/assets/globals.boot.json")
+	CoreBootGlobalsManifest   = filepath.Join(sdkutils.PathCoreDir, "resources/assets/manifest.boot.json")
 	CoreGlobalsBundleManifest = filepath.Join(CoreGlobalsDist, "globals.manifest.json")
+	GlobalJsIndex             = "global.js"
+	GlobalCssIndex            = "global.css"
 )
 
 type GlobalAssetsManifest struct {
@@ -34,12 +34,70 @@ type GlobalBundleManifest struct {
 	BootingCssFile string `json:"booting_css"`
 }
 
+type PluginGlobalAssets struct {
+	AdminJsFiles   []string
+	AdminCssFiles  []string
+	PortalJsFiles  []string
+	PortalCssFiles []string
+}
+
+type PluginManifest struct {
+	GlobalJs  []string `json:"global.js"`
+	GlobalCss []string `json:"global.css"`
+}
+
+func GetGlobalAssets(pluginDirs []string) (globalAssets PluginGlobalAssets, err error) {
+	for _, pluginDir := range pluginDirs {
+		adminManifestFile := filepath.Join(pluginDir, "resources/assets/manifest.admin.json")
+		portalManifestFile := filepath.Join(pluginDir, "resources/assets/manifest.portal.json")
+
+		var adminManifest, portalManifest PluginManifest
+
+		if sdkutils.FsExists(adminManifestFile) {
+			if err = sdkutils.JsonRead(adminManifestFile, &adminManifest); err != nil {
+				return
+			}
+			for _, f := range adminManifest.GlobalJs {
+				file := filepath.Join(pluginDir, "resources/assets", f)
+				globalAssets.AdminJsFiles = append(globalAssets.AdminJsFiles, file)
+			}
+			for _, f := range adminManifest.GlobalCss {
+				file := filepath.Join(pluginDir, "resources/assets", f)
+				globalAssets.AdminCssFiles = append(globalAssets.AdminCssFiles, file)
+			}
+		} else {
+			fmt.Printf("Admin manifest file not found: %s\n", adminManifestFile)
+		}
+
+		if sdkutils.FsExists(portalManifestFile) {
+			if err = sdkutils.JsonRead(portalManifestFile, &portalManifest); err != nil {
+				return
+			}
+			fmt.Println("Portal manifest:", portalManifest)
+			for _, f := range portalManifest.GlobalJs {
+				file := filepath.Join(pluginDir, "resources/assets", f)
+				globalAssets.PortalJsFiles = append(globalAssets.PortalJsFiles, file)
+			}
+			for _, f := range portalManifest.GlobalCss {
+				file := filepath.Join(pluginDir, "resources/assets", f)
+				globalAssets.PortalCssFiles = append(globalAssets.PortalCssFiles, file)
+			}
+		} else {
+			fmt.Printf("Portal manifest file not found: %s\n", portalManifestFile)
+		}
+	}
+
+	fmt.Printf("Total plugin admin js files: %v\n", globalAssets.AdminJsFiles)
+	fmt.Printf("Total plugin admin css files: %v\n", globalAssets.AdminCssFiles)
+	return
+}
+
 func ReadGlobalAssetsManifest() (g GlobalBundleManifest) {
 	sdkutils.JsonRead(CoreGlobalsBundleManifest, &g)
 	return
 }
 
-func BuildGlobalAssets() (err error) {
+func BuildGlobalAssets(pluginDirs []string) (err error) {
 	if _, err := sdkutils.Retry(func() (any, error) {
 		err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: sdkutils.PathCoreDir})
 		return nil, err
@@ -49,46 +107,41 @@ func BuildGlobalAssets() (err error) {
 
 	if sdkutils.FsExists(CoreGlobalsDist) {
 		if err = os.RemoveAll(CoreGlobalsDist); err != nil {
-			return
+			return err
 		}
+	}
+
+	globalAssets, err := GetGlobalAssets(pluginDirs)
+	if err != nil {
+		return err
 	}
 
 	bundleFile := GlobalBundleManifest{}
-	if sdkutils.FsExists(CoreAdminGlobalsManifest) {
-		var manifest GlobalAssetsManifest
-		var resultFile string
-		if err = sdkutils.JsonRead(CoreAdminGlobalsManifest, &manifest); err != nil {
-			return
-		}
 
-		if resultFile, err = compileGlobalJsAssets(manifest.Js, api.ES2017); err != nil {
-			return
-		}
-		bundleFile.AdminJsFile = resultFile
-
-		if resultFile, err = compileGlobalCssAssets(manifest.Css); err != nil {
-			return
-		}
-		bundleFile.AdminCssFile = resultFile
+	adminJsResultFile, err := compileGlobalJsAssets(globalAssets.AdminJsFiles, api.ES2017)
+	if err != nil {
+		return err
 	}
 
-	if sdkutils.FsExists(CorePortalGlobalsManifest) {
-		var manifest GlobalAssetsManifest
-		var resultFile string
-		if err = sdkutils.JsonRead(CorePortalGlobalsManifest, &manifest); err != nil {
-			return
-		}
-
-		if resultFile, err = compileGlobalJsAssets(manifest.Js, api.ES5); err != nil {
-			return
-		}
-		bundleFile.PortalJsFile = resultFile
-
-		if resultFile, err = compileGlobalCssAssets(manifest.Css); err != nil {
-			return
-		}
-		bundleFile.PortalCssFile = resultFile
+	adminCssResultFile, err := compileGlobalCssAssets(globalAssets.AdminCssFiles)
+	if err != nil {
+		return err
 	}
+
+	bundleFile.AdminJsFile = adminJsResultFile
+	bundleFile.AdminCssFile = adminCssResultFile
+
+	portalJsResultFile, err := compileGlobalJsAssets(globalAssets.PortalJsFiles, api.ES5)
+	if err != nil {
+		return err
+	}
+
+	portalCssResultFile, err := compileGlobalCssAssets(globalAssets.PortalCssFiles)
+	if err != nil {
+		return err
+	}
+	bundleFile.PortalJsFile = portalJsResultFile
+	bundleFile.PortalCssFile = portalCssResultFile
 
 	if sdkutils.FsExists(CoreBootGlobalsManifest) {
 		var manifest GlobalAssetsManifest
@@ -97,12 +150,22 @@ func BuildGlobalAssets() (err error) {
 			return
 		}
 
-		if resultFile, err = compileGlobalJsAssets(manifest.Js, api.ES2017); err != nil {
+		var bootJsFiles, bootCssFiles []string
+
+		for _, js := range manifest.Js {
+			bootJsFiles = append(bootJsFiles, filepath.Join(CoreAssetsDir, js))
+		}
+
+		for _, css := range manifest.Css {
+			bootCssFiles = append(bootCssFiles, filepath.Join(CoreAssetsDir, css))
+		}
+
+		if resultFile, err = compileGlobalJsAssets(bootJsFiles, api.ES2017); err != nil {
 			return
 		}
 		bundleFile.BootingJsFile = resultFile
 
-		if resultFile, err = compileGlobalCssAssets(manifest.Css); err != nil {
+		if resultFile, err = compileGlobalCssAssets(bootCssFiles); err != nil {
 			return
 		}
 		bundleFile.BootingCssFile = resultFile
@@ -121,11 +184,10 @@ func compileGlobalJsAssets(jsfiles []string, target api.Target) (resultFile stri
 		return
 	}
 
-	indexFile := filepath.Join(distPath, "globals.index.js")
+	indexFile := filepath.Join(distPath, "globals-index.js")
 	indexjs := ""
-	for _, js := range jsfiles {
+	for _, jsPath := range jsfiles {
 		var relPath string
-		jsPath := filepath.Join(CoreAssetsDir, js)
 		relPath, err = filepath.Rel(filepath.Dir(indexFile), jsPath)
 		if err != nil {
 			return
@@ -138,7 +200,7 @@ func compileGlobalJsAssets(jsfiles []string, target api.Target) (resultFile stri
 	}
 	defer os.Remove(indexFile)
 
-	outfile := filepath.Join(distPath, "core-globals.js")
+	outfile := filepath.Join(distPath, "globals-compiled.js")
 	result := EsbuildJs(indexFile, outfile, target)
 
 	if len(result.Errors) > 0 {
@@ -178,9 +240,8 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 
 	indexFile := filepath.Join(distPath, "globals-index.css")
 	indexCss := ""
-	for _, css := range cssFiles {
+	for _, cssPath := range cssFiles {
 		var relPath string
-		cssPath := filepath.Join(CoreAssetsDir, css)
 		relPath, err = filepath.Rel(filepath.Dir(indexFile), cssPath)
 		if err != nil {
 			return
@@ -193,7 +254,7 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 	}
 	defer os.Remove(indexFile)
 
-	outfile := filepath.Join(distPath, "core-globals.css")
+	outfile := filepath.Join(distPath, "globals-compiled.css")
 	result := EsbuildCss(indexFile, outfile)
 
 	if len(result.Errors) > 0 {

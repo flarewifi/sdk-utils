@@ -1,4 +1,5 @@
 {
+  "global.js": [],
   "theme.js": [
     "./vendor/bootstrap-5.3.3/js/bootstrap.bundle.js",
     "./admin/js/layout.js",

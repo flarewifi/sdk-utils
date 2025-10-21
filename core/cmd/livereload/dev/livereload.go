@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"sync"
-	"time"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/fsnotify/fsnotify"
@@ -43,10 +42,6 @@ func (lr *LiveReloader) HandleWS(w http.ResponseWriter, r *http.Request) {
 	lr.mu.Unlock()
 
 	log.Println("🔌 Browser connected for live reload")
-	go func() {
-		time.Sleep(500 * time.Millisecond) // slight delay to ensure connection is ready
-		lr.BroadcastReload()
-	}()
 
 	// Keep connection alive until closed
 	for {
