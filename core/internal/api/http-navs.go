@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 	sdkapi "sdk/api"
@@ -62,7 +61,6 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 					routeURL := p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...)
 					parsed, err := url.Parse(routeURL)
 					if parsed != nil && err == nil {
-						log.Println("Parsed Path:", parsed.Path, "Request Path:", r.URL.Path)
 						isCurrent = strings.HasPrefix(r.URL.Path, parsed.Path) && !strings.Contains(routeURL, "not found")
 					}
 
