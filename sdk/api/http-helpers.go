@@ -21,8 +21,8 @@ type IHttpHelpers interface {
 	// Returns the URI path of a file defined in portal assets manifest
 	PortalAssetPath(path string) (uri string)
 
-	// Returns the URI path of a resource file
-	ResourcePath(path string) (uri string)
+	// Returns the URI path of a file under "resources/assets/public"
+	PublicPath(path string) (uri string)
 
 	// Returns the html for the ads view.
 	AdsView() (html template.HTML)
@@ -36,7 +36,7 @@ type IHttpHelpers interface {
 	//  <% .Helpers.Translate "error" "some-key" %>
 	// will look for the file "/resources/translations/en/error/some-key.txt" under the plugin root directory
 	// and displays the text inside that file.
-	Translate(msgtype string, msgk string, pairs ...interface{}) string
+	Translate(msgtype string, msgk string, pairs ...any) string
 
 	// Returns the url for the route.
 	UrlForRoute(name string, pairs ...string) (uri string)

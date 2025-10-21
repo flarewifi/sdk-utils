@@ -52,22 +52,23 @@ func GetAssetManifest(pluginDir string) OutputManifest {
 }
 
 func BuildAssets(pluginDir string) (err error) {
+
+	if sdkutils.FsExists(filepath.Join(pluginDir, "package.json")) {
+		if _, err := sdkutils.Retry(func() (any, error) {
+			err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: pluginDir, Stdout: os.Stdout})
+			return nil, err
+		}, 3); err != nil {
+			return err
+		}
+		defer cmd.Exec("npm cache clean --force", &cmd.ExecOpts{})
+	}
+	defer os.RemoveAll(filepath.Join(pluginDir, "node_modules"))
+
 	// Clean up dist folder
 	distPath := filepath.Join(pluginDir, "resources/assets/dist")
 	if err = os.RemoveAll(distPath); err != nil {
 		return
 	}
-
-	if sdkutils.FsExists(filepath.Join(pluginDir, "package.json")) {
-		if err = cmd.Exec("npm install", &cmd.ExecOpts{
-			Dir:    pluginDir,
-			Stdout: os.Stdout,
-		}); err != nil {
-			return
-		}
-		defer cmd.Exec("npm cache clean --force", &cmd.ExecOpts{})
-	}
-	defer os.RemoveAll(filepath.Join(pluginDir, "node_modules"))
 
 	outManifest := OutputManifest{}
 
@@ -167,7 +168,7 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		indexContent := ""
 		for _, f := range files {
 			f = filepath.Join(pluginDir, AssetsDir, f)
-			rel, err := sdkutils.FsRelativeFromTo(indexFile, f)
+			rel, err := filepath.Rel(filepath.Dir(indexFile), f)
 			if err != nil {
 				return results, err
 			}

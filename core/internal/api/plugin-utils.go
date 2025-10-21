@@ -2,7 +2,6 @@ package api
 
 import (
 	"log"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -22,7 +21,7 @@ type PluginUtils struct {
 	api *PluginApi
 }
 
-func (self *PluginUtils) Translate(msgtype string, msgk string, pairs ...interface{}) string {
+func (self *PluginUtils) Translate(msgtype string, msgk string, pairs ...any) string {
 	if len(pairs)%2 != 0 {
 		log.Printf("Translate pairs: %+v", pairs)
 		return "Invalid number of translation params."
@@ -68,8 +67,9 @@ func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage) (assets themes
 	}
 
 	globals := plugins.ReadGlobalAssetsManifest()
-	globalJsSrc := self.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.AdminJsFile))
-	globalCssHref := self.api.CoreAPI.Http().Helpers().ResourcePath(path.Join("assets", "dist", globals.AdminCssFile))
+	h := self.api.CoreAPI.HttpAPI.Helpers().(*HttpHelpers)
+	globalJsSrc := h.DistPath(globals.AdminJsFile)
+	globalCssHref := h.DistPath(globals.AdminCssFile)
 
 	var themeJsSrc, themeCssHref string
 	if themesApi.AdminTheme != nil {
@@ -101,8 +101,9 @@ func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage) (assets theme
 	}
 
 	globals := plugins.ReadGlobalAssetsManifest()
-	globalJsSrc := self.api.CoreAPI.Http().Helpers().ResourcePath(filepath.Join("assets", "dist", globals.PortalJsFile))
-	globalCssHref := self.api.CoreAPI.Http().Helpers().ResourcePath(filepath.Join("assets", "dist", globals.PortalCssFile))
+	h := self.api.CoreAPI.HttpAPI.Helpers().(*HttpHelpers)
+	globalJsSrc := h.DistPath(globals.PortalJsFile)
+	globalCssHref := h.DistPath(globals.PortalCssFile)
 
 	var themeJsSrc, themeCssHref string
 	if themesApi.PortalTheme != nil {

@@ -12,17 +12,16 @@ type AdminLayoutData struct {
 
 templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 	<!DOCTYPE html>
-    <html lang="en" data-bs-theme="auto" { data.Components.HtmlAttrs()... }>
+	<html lang="en" data-bs-theme="auto" { data.Components.HtmlAttrs()... }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			@data.Components.Head()
 		</head>
-        <body { data.Components.BodyAttrs()... }>
-			@colorModes()
+		<body { data.Components.BodyAttrs()... }>
 			<header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
-				<a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="#">
-					<img class="logo-img" src={ api.Http().Helpers().ResourcePath("assets/images/nexifi_logo.png") } alt="Nexifi Logo"/>
+				<a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="/admin">
+					<img class="logo-img" src={ api.Http().Helpers().PublicPath("images/nexifi_logo.png") } alt="Nexifi Logo"/>
 				</a>
 				<ul class="navbar-nav flex-row">
 					<li class="nav-item text-nowrap d-md-none">
@@ -60,24 +59,27 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 							</div>
 							<div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 overflow-y-auto">
 								<div id="sidemenu" class="p-3">
-									<ul class="nav-menu" x-data="{ openIndex: -1 }">
+									<ul class="nav-menu" x-data={ menuData(data.Navs) }>
 										for i, nav := range data.Navs {
-											<li class="nav-category">
-												<a
-													href="#"
-													class="nav-link"
+											<li
+												class={ navCategoryClass(nav) }
+												:class={ fmt.Sprintf("{'active': openIndex === %d}", i) }
+											>
+												<button
+													type="button"
+													class="nav-link w-100"
 													@click.prevent={ fmt.Sprintf("openIndex = (openIndex === %d) ? -1 : %d", i, i) }
-													:class={ fmt.Sprintf("{'active-category': openIndex === %d}", i) }
 												>
 													<span>{ nav.Category }</span>
-												</a>
+													<i class="bi bi-chevron-right"></i>
+												</button>
 												<ul
 													class="sub-nav"
 													x-show={ fmt.Sprintf("openIndex === %d", i) }
 													x-transition
 												>
 													for _, subnav := range nav.Items {
-														<li class="sub-nav-item">
+														<li class={ subnavItemClass(subnav) }>
 															<a class="sub-nav-link" href={ templ.SafeURL(subnav.RouteUrl) }>
 																{ subnav.Label }
 															</a>
@@ -89,9 +91,13 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 									</ul>
 									<hr/>
 									<ul class="nav flex-column">
-										<li class="nav-item">
-											<a class="nav-link" href="#">
-                                                <i class="bi bi-box-arrow-left me-2"></i>
+										<li class="nav-category">
+											<a
+												href="#"
+												type="button"
+												class="nav-link w-100"
+											>
+												<i class="bi bi-box-arrow-left me-2"></i>
 												Logout
 											</a>
 										</li>
@@ -107,8 +113,41 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 					</main>
 				</div>
 			</div>
-			<!-- <script src="dashboard.js" class="astro-vvvwv3sm"></script> -->
+			@colorModes()
 			@data.Components.Scripts()
 		</body>
 	</html>
+}
+
+func subnavItemClass(subnav sdkapi.AdminNavItem) string {
+	klass := "sub-nav-item"
+	if subnav.IsCurrent {
+		klass += " active"
+	}
+	return klass
+}
+
+func navCategoryClass(navs sdkapi.AdminNavList) string {
+	klass := "nav-category"
+	for _, sub := range navs.Items {
+		if sub.IsCurrent {
+			klass += " active"
+			return klass
+		}
+	}
+	return klass
+}
+
+func menuData(navs []sdkapi.AdminNavList) string {
+	openIndex := -1
+	for i, nav := range navs {
+		for _, sub := range nav.Items {
+			if sub.IsCurrent {
+				openIndex = i
+				break
+			}
+		}
+	}
+
+	return fmt.Sprintf("{ openIndex: %d }", openIndex)
 }

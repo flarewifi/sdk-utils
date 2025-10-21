@@ -1,9 +1,11 @@
 package api
 
 import (
+	"log"
 	"net/http"
-	"path"
+	"net/url"
 	sdkapi "sdk/api"
+	"strings"
 )
 
 func NewNavsApi(api *PluginApi) *HttpNavsApi {
@@ -35,9 +37,9 @@ func (self *HttpNavsApi) PortalNavsFactory(fn func(r *http.Request) []sdkapi.Por
 func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 	categories := []sdkapi.INavCategory{
 		sdkapi.NavCategorySystem,
+		sdkapi.NavCategoryThemes,
 		sdkapi.NavCategoryPayments,
 		sdkapi.NavCategoryNetwork,
-		sdkapi.NavCategoryThemes,
 		sdkapi.NavCategoryTools,
 	}
 
@@ -54,9 +56,20 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 					for k, v := range nav.RouteParams {
 						routePairs = append(routePairs, k, v)
 					}
+
+					// Check if current url
+					var isCurrent bool
+					routeURL := p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...)
+					parsed, err := url.Parse(routeURL)
+					if parsed != nil && err == nil {
+						log.Println("Parsed Path:", parsed.Path, "Request Path:", r.URL.Path)
+						isCurrent = strings.HasPrefix(r.URL.Path, parsed.Path) && !strings.Contains(routeURL, "not found")
+					}
+
 					navItems = append(navItems, sdkapi.AdminNavItem{
-						Label:    nav.Label,
-						RouteUrl: p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...),
+						Label:     nav.Label,
+						RouteUrl:  routeURL,
+						IsCurrent: isCurrent,
 					})
 				}
 			}
@@ -84,7 +97,7 @@ func (self *HttpNavsApi) GetPortalItems(r *http.Request) []sdkapi.PortalNavItem 
 
 			iconURL := ""
 			if item.IconFile != "" {
-				iconURL = p.Http().Helpers().ResourcePath(path.Join("assets", "images", item.IconFile))
+				iconURL = p.Http().Helpers().PublicPath(item.IconFile)
 			}
 
 			items = append(items, sdkapi.PortalNavItem{

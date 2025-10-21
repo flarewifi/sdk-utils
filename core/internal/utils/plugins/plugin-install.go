@@ -194,6 +194,7 @@ func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
 	if err := BuildAssets(pluginSrc); err != nil {
 		return err
 	}
+	defer os.RemoveAll(filepath.Join(pluginSrc, "resources/assets/dist")) // Clean up dist folder
 
 	if err := BuildPluginSo(pluginSrc, buildpath); err != nil {
 		log.Println("Error building plugin: ", err)
@@ -205,6 +206,17 @@ func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
 		log.Println("Error building plugin: ", err)
 		return err
 	}
+
+	// Remove plugin.so if not core system to save space
+	defer func() {
+		coreInfo, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
+		if err != nil {
+			return
+		}
+		if info.Package != coreInfo.Package {
+			os.RemoveAll(filepath.Join(pluginSrc, "plugin.so"))
+		}
+	}()
 
 	installPath := GetInstallPath(info.Package)
 	if err := ValidateInstallPath(installPath); err == nil {

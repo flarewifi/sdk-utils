@@ -3,4 +3,3 @@
 /resources/assets/dist
 plugin-init_mono.go
 *.so
-main_mono.go

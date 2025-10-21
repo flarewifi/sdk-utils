@@ -8,7 +8,7 @@ services:
       - ./:/app
       - ./data:/opt/flarehotspot/data
       - ./openwrt-files/etc/config:/etc/config
-      - gocache:/var/go/cache
+      - gocache:/var/cache/go
     environment:
       - GOCACHE=/var/cache/go/cache
       - GOMODCACHE=/var/cache/go/mod

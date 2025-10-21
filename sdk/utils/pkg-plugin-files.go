@@ -15,7 +15,7 @@ var PLuginFiles = []PluginFile{
 	{File: "plugin.json", Optional: false},
 	{File: "plugin.so", Optional: false},
 	{File: "resources/assets/dist", Optional: true},
-	{File: "resources/assets/images", Optional: true},
+	{File: "resources/assets/public", Optional: true},
 	{File: "resources/migrations", Optional: true},
 	{File: "resources/translations", Optional: true},
 }

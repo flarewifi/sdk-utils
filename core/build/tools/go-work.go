@@ -14,7 +14,6 @@ func CreateGoWorkspace() {
 	goWork := fmt.Sprintf(`go %s
 
 use (
-    ./main
     ./core
     ./sdk/api
     ./sdk/utils`, goVersion)
@@ -52,8 +51,7 @@ use (
 		panic(err)
 	}
 
-	// fmt.Printf("go.work file created: \n%s\n", goWork)
-	fmt.Println("go.work file created.")
+	fmt.Printf("go.work file created:\n%s\n", goWork)
 
 	coreMods, err := plugins.GetRequiredGoModules(filepath.Join(sdkutils.PathAppDir, "core", "go.mod"))
 	if err != nil {

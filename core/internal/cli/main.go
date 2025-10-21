@@ -5,20 +5,16 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"plugin"
 	"strconv"
 	"strings"
 
 	tools "core/build/tools"
 	"core/env"
+	"core/internal/cli/server"
 	"core/internal/utils/plugins"
 	"core/internal/utils/updates"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-)
-
-var (
-	gowork bool
 )
 
 func main() {
@@ -35,7 +31,7 @@ func main() {
 		return
 
 	case "server":
-		Server()
+		server.Server()
 		return
 
 	case "create-plugin":
@@ -100,21 +96,21 @@ func CreatePlugin() {
 	)
 
 	for len(strings.Split(pluginPkg, ".")) < 3 {
-		pluginPkg, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin package name, for example \"%s\"", domainSample))
+		pluginPkg, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin package name, for example \"%s\" (without qoutes): ", domainSample))
 		if err != nil {
 			panic(err)
 		}
 		if len(strings.Split(pluginPkg, ".")) < 3 {
-			fmt.Printf("\nError: Package name must be at least 3 segments, for example \"%s\".\n", domainSample)
+			fmt.Printf("\nError: Package name must be at least 3 segments, for example \"%s\" (without qoutes): ", domainSample)
 		}
 	}
 
-	pluginName, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin name, for example: \"%s\"", pluginNameSample))
+	pluginName, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin name, for example \"%s\" (without qoutes): ", pluginNameSample))
 	if err != nil {
 		panic(err)
 	}
 
-	pluginDesc, err = tools.AskCmdInput("Enter the plugin description")
+	pluginDesc, err = tools.AskCmdInput("Enter the plugin description: ")
 	if err != nil {
 		panic(err)
 	}
@@ -198,18 +194,6 @@ func BuildPlugin() {
 		fmt.Println("Error building plugin: " + err.Error())
 		os.Exit(1)
 	}
-}
-
-func Server() {
-	corePath := filepath.Join(sdkutils.PathAppDir, "core/plugin.so")
-	p, err := plugin.Open(corePath)
-	if err != nil {
-		log.Println("Error loading core plugin:", err)
-		panic(err)
-	}
-	symInit, _ := p.Lookup("Init")
-	initFn := symInit.(func())
-	initFn()
 }
 
 func GoEnvToString(e int8) string {

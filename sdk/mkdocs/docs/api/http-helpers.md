@@ -26,14 +26,14 @@ Returns the URI path of a manifest index filename in [portal manifest](./assets-
 url := api.Http().Helpers().AdminAssetPath("css/style.css")
 ```
 
-### ResourcePath
+### PublicPath
 
-Returns the URI path of a static file in `resources/assets` directory from your plugin.
-For example to get the uri path of the file in `resources/assets/css/style.css`:
+Returns the URI path of a static file in `resources/assets/public` directory from your plugin which can be used to link your assets into your views.
+For example to get the uri path of the file in `resources/assets/public/images/logo.png`, you can use the following code:
 
 ```go
-uri := api.Http().Helpers().AssetPath("css/style.css")
-fmt.Println(uri) // /plugins/your-plugin-id/0.0.1/assets/css/style.css
+uri := api.Http().Helpers().PublicPath("images/logo.png")
+fmt.Println(uri) // Returns "/plugins/your-plugin-id/0.0.1/assets/public/images/logo.png"
 ```
 
 ### AdsView

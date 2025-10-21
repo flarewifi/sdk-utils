@@ -1,9 +1,9 @@
 //go:build mono
 
-package main
+package server
 
 import "core"
 
-func main() {
+func Server() {
 	core.Init()
 }

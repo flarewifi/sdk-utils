@@ -49,13 +49,13 @@ require (
 
 	mainPath := filepath.Join(pluginDir, "main.go")
 
-	goMain := `
+	goMain := fmt.Sprintf(`
 package main
 
 import (
-	"fmt"
 	"net/http"
 
+	views "%s/resources/views"
 	sdkapi "sdk/api"
 )
 
@@ -63,93 +63,47 @@ func main() {}
 
 func Init(api sdkapi.IPluginApi) {
 	// Your plugin code here
-	httpAPI := api.Http()
-	pluginConfigAPI := api.Config().Plugin()
-	adminRouter := httpAPI.HttpRouter().AdminRouter()
+	adminRouter := api.Http().Router().AdminRouter()
 
-	// register the settings form
-	if err := httpAPI.Forms().RegisterForm("settings", func(r *http.Request) sdkapi.HttpForm {
+	adminRouter.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		homePage := views.Home()
+		api.Http().Response().AdminView(w, r, sdkapi.ViewPage{
+			PageContent: homePage,
+		})
+	}).Name("home.index")
 
-		// Return the form definition
-		return sdkapi.HttpForm{
-			CallbackRoute: "settings:save",
-			SubmitLabel:   "Submit",
-			Sections: []sdkapi.FormSection{
-				{
-					Name:  "general_configuration",
-					Label: "General Configuration",
-					Fields: []sdkapi.IFormField{
-						sdkapi.FormTextField{
-							Name:  "banner_text",
-							Label: "Banner Text",
-							ValueFn: func() string {
-								b, err := pluginConfigAPI.Read("banner_text")
-								if err != nil {
-									return "This is the default banner text!"
-								}
-								return string(b)
-							},
-						},
-					},
-				},
-			},
-		}
-
-	}); err != nil {
-		api.Logger().Error(fmt.Sprintf("Failed to register settings form: %s", err))
-		return
-	}
-
-	// Add a new route group to the admin router
-	adminRouter.Group("/settings", func(subrouter sdkapi.IHttpRouterInstance) {
-
-		subrouter.Get("/form", func(w http.ResponseWriter, r *http.Request) {
-			// Get the form template
-			formTemplate, err := httpAPI.Forms().GetFormTemplate("settings", r)
-			if err != nil {
-				httpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
-				return
-			}
-
-			httpAPI.HttpResponse().AdminView(w, r, sdkapi.ViewPage{PageContent: formTemplate})
-
-		}).Name("settings:form")
-
-		subrouter.Post("/save", func(w http.ResponseWriter, r *http.Request) {
-			// Parse and validate the form input values
-			form, err := httpAPI.Forms().ParseForm("settings", r)
-			if err != nil {
-				httpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
-				return
-			}
-
-			bannerText, err := form.GetStringValue("general_configuration", "banner_text")
-			if err != nil {
-				httpAPI.HttpResponse().Error(w, r, err, http.StatusInternalServerError)
-				return
-			}
-
-			// Write the new value to the plugin configuration and send a success message
-			pluginConfigAPI.Write("banner_text", []byte(bannerText))
-			httpAPI.HttpResponse().FlashMsg(w, r, "Settings saved successfully", sdkapi.FlashMsgSuccess)
-			httpAPI.HttpResponse().Redirect(w, r, "settings:form")
-
-		}).Name("settings:save")
-	})
-
-	// Register navigation menu items
-	httpAPI.Navs().AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
+	api.Http().Navs().AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
 		return []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     "My Plugin",
-				RouteName: "settings:form",
+				RouteName: "home.index",
+				Keywords:  []string{"sample", "home"},
 			},
 		}
 	})
-}`
+}
+`, modUri)
 
 	if err := os.WriteFile(mainPath, []byte(goMain), 0644); err != nil {
+		panic(err)
+	}
+
+	MakePluginMainMono(pluginDir)
+
+	home := `
+package views
+
+templ Home() {
+	<h1>Welcome to your new plugin!</h1>
+}
+	`
+
+	homeTempl := filepath.Join(pluginDir, "resources/views/home.templ")
+	if err := os.MkdirAll(filepath.Dir(homeTempl), sdkutils.PermDir); err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile(homeTempl, []byte(home), sdkutils.PermFile); err != nil {
 		panic(err)
 	}
 
@@ -159,7 +113,6 @@ func Init(api sdkapi.IPluginApi) {
 /node_modules
 /resources/assets/dist
 *.so
-main_mono.go
 `
 	if err := os.WriteFile(gitIgnorePath, []byte(gitIgnore), 0644); err != nil {
 		panic(err)
@@ -199,12 +152,12 @@ sql:
 	}
 
 	// Create default images directory
-	imagesKeepFIle := filepath.Join(pluginDir, "resources/assets/images/.keep")
-	if err := os.MkdirAll(filepath.Dir(imagesKeepFIle), sdkutils.PermDir); err != nil {
+	pubkeep := filepath.Join(pluginDir, "resources/assets/plublic/.keep")
+	if err := os.MkdirAll(filepath.Dir(pubkeep), sdkutils.PermDir); err != nil {
 		panic(err)
 	}
 
-	if _, err := os.Create(imagesKeepFIle); err != nil {
+	if _, err := os.Create(pubkeep); err != nil {
 		panic(err)
 	}
 

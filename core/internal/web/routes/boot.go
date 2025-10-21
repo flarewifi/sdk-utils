@@ -9,7 +9,7 @@ import (
 )
 
 func BootRoutes(g *api.CoreGlobals) {
-	bootCtrl := controllers.NewBootCtrl(g, g.PluginMgr, g.CoreAPI)
+	bootCtrl := controllers.NewBootCtrl(g)
 
 	r := webutil.BootingRouter
 	r.Use(bootCtrl.Middleware)

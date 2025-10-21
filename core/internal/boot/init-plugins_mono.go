@@ -21,6 +21,11 @@ func InitPlugins(g *api.CoreGlobals) {
 		}
 		dir := def.LocalPath
 
+		if err := plugins.BuildAssets(dir); err != nil {
+			fmt.Printf("Error building assets for plugin %s: %s\n", info.Name, err)
+			continue
+		}
+
 		p := api.NewPluginApi(dir, info, g.PluginMgr, g.TrafficMgr)
 		g.PluginMgr.RegisterPlugin(p)
 	}
