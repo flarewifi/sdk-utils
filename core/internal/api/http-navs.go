@@ -1,9 +1,11 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"net/url"
 	sdkapi "sdk/api"
+	"strings"
 )
 
 func NewNavsApi(api *PluginApi) *HttpNavsApi {
@@ -57,15 +59,16 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 
 					// Check if current url
 					var isCurrent bool
-					navRoute := p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...)
-					parsed, err := url.Parse(navRoute)
+					routeURL := p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...)
+					parsed, err := url.Parse(routeURL)
 					if parsed != nil && err == nil {
-						isCurrent = parsed.Path == r.URL.Path
+						log.Println("Parsed Path:", parsed.Path, "Request Path:", r.URL.Path)
+						isCurrent = strings.HasPrefix(r.URL.Path, parsed.Path) && !strings.Contains(routeURL, "not found")
 					}
 
 					navItems = append(navItems, sdkapi.AdminNavItem{
 						Label:     nav.Label,
-						RouteUrl:  navRoute,
+						RouteUrl:  routeURL,
 						IsCurrent: isCurrent,
 					})
 				}
