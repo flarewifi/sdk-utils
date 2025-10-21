@@ -285,5 +285,7 @@ func compileGlobalCssAssets(cssFiles []string) (resultFile string, err error) {
 		}
 	}
 
+	fmt.Println("Compiled global assets successfully.\n\n")
+
 	return
 }

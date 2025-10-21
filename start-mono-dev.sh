@@ -2,9 +2,10 @@
 
 BUILD_TAGS="dev mono"
 CREATE_MONO="./core/cmd/make-mono/main.go"
-BUILD_CLI_MAIN="./core/cmd/build-cli"
+BUILD_CLI_MAIN="./core/cmd/build-cli/main.go"
 FLARE_CLI_MAIN="./core/internal/cli/main.go"
 SYNC_VERSION="./core/cmd/sync-versions/main.go"
+BUILD_ASSETS_MAIN="./core/cmd/build-assets/main.go"
 
 cp go.work.default go.work && \
     echo "Cleaning templ output files..." && \
