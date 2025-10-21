@@ -3,7 +3,6 @@
 window.$flare = window.$flare || {};
 
 import Alpine from 'alpinejs'
-Alpine.start()
 window.Alpine = Alpine
 
 var htmx = require('htmx.org');

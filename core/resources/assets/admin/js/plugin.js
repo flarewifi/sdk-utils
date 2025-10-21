@@ -1,4 +1,6 @@
-window.addEventListener('alpine:init', () => {
+console.log("plugin.js....")
+document.addEventListener('alpine:init', () => {
+  console.log("window.Alpine", window.Alpine);
   Alpine.data('pluginInstaller', (routes) => ({
     ...routes,
     isLoading: false,

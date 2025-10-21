@@ -1,7 +1,6 @@
 package adminctrl
 
 import (
-	"strings"
 	"sync"
 )
 
@@ -68,9 +67,4 @@ func GetStatus(name string) *PluginProgress {
 		return &cp
 	}
 	return nil
-}
-
-func getGithubPluginName(fullURL string) string {
-	parts := strings.Split(strings.TrimSuffix(fullURL, "/"), "/")
-	return parts[len(parts)-1]
 }

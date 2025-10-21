@@ -1,7 +1,6 @@
 {
   "js": [
-    "./admin/js/globals.js",
-    "./admin/js/plugin.js"
+    "./admin/js/globals.js"
   ],
   "css": [
     "./admin/css/global.css"

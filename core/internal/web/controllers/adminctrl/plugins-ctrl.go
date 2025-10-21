@@ -171,12 +171,14 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			PluginIndexURL:         pluginIndexURL,
 			CheckInstallStatusURL:  checkInstallStatusURL,
 		})
+
 		view := sdkapi.ViewPage{
 			PageContent: page,
 			Assets: sdkapi.ViewAssets{
-				JsFile: "index.js",
+				JsFile: "plugin.js",
 			},
 		}
+
 		res.AdminView(w, r, view)
 	}
 }
@@ -202,8 +204,8 @@ func CheckPluginStatusCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		coreApi := g.CoreAPI
-		res := coreApi.HttpAPI.Response()
+		coreAPI := g.CoreAPI
+		res := coreAPI.HttpAPI.Response()
 
 		zipErrorMsg := g.CoreAPI.Translate("error", "zip_install_error")
 
@@ -225,37 +227,39 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 		defer file.Close()
 
-		// Read file bytes immediately
-		fileBytes, err := io.ReadAll(file)
+		pluginName := header.Filename
+
+		// Save file to uploads directory
+		saveDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "uploads")
+		if err := sdkutils.FsEnsureDir(saveDir); err != nil {
+			UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+			g.CoreAPI.LoggerAPI.Error("zip install error: saving to uploads error: " + err.Error())
+
+			return
+		}
+
+		filePath := filepath.Join(saveDir, pluginName)
+		out, err := os.Create(filePath)
 		if err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
+		defer out.Close()
 
-		pluginName := getGithubPluginName(header.Filename)
+		if _, err := io.Copy(out, file); err != nil {
+			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			return
+		}
+
 		SaveInitialState(pluginName)
 
 		// Launch background installation
-		go func(fileData []byte, filename, pluginName string) {
+		go func(filePath string, filename, pluginName string) {
 			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
-
-			// Save file to uploads directory
-			saveDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "uploads")
-			if err := sdkutils.FsEnsureDir(saveDir); err != nil {
-				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
-				g.CoreAPI.LoggerAPI.Error("zip install error: saving to uploads error: " + err.Error())
-
-				return
-			}
-
-			filePath := filepath.Join(saveDir, filename)
-			if err := os.WriteFile(filePath, fileData, 0644); err != nil {
-				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
-				g.CoreAPI.LoggerAPI.Error("zip install error: write file error: " + err.Error())
-				return
-			}
 
 			pluginTmpDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted", sdkutils.RandomStr(16))
 			if err := sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
@@ -304,7 +308,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
-		}(fileBytes, header.Filename, pluginName)
+		}(filePath, header.Filename, pluginName)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
@@ -334,12 +338,19 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		repoURL := r.FormValue("github_repo_url")
 		gitRef := r.FormValue("github_ref")
 
-		pluginName := getGithubPluginName(repoURL)
+		src, err := sdkutils.ParseGitSource(repoURL)
+		if err != nil {
+			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
 
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			return
+		}
+
+		pluginName := src.Repo
 		SaveInitialState(pluginName)
 
 		go func() {
-			fmt.Println("initialized install...")
 			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
 
 			info, err := plugins.InstallFromGitSrc(g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
@@ -349,20 +360,16 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			})
 			if err != nil {
 				UpdateStatus(pluginName, FailedStatus, githubErrMsg, 0)
-
-				g.CoreAPI.LoggerAPI.Error(err.Error())
+				g.CoreAPI.LoggerAPI.Error("InstallFromGitSrc: " + err.Error())
 
 				return
 			}
-			fmt.Println("InstallFromGitSrc install...")
 
 			UpdateStatus(pluginName, InProgressStatus, "Registering plugin...", 75)
 
 			installPath := plugins.GetInstallPath(info.Package)
 			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
-
-			fmt.Println("GetInstallPath install...")
 
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)

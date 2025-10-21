@@ -1,4 +1,4 @@
 {
-  "globals.js": [
-  ]
+  "globals.js": [],
+  "plugin.js": ["./admin/js/plugin.js"]
 }
