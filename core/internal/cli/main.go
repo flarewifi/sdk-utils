@@ -96,21 +96,21 @@ func CreatePlugin() {
 	)
 
 	for len(strings.Split(pluginPkg, ".")) < 3 {
-		pluginPkg, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin package name, for example \"%s\"", domainSample))
+		pluginPkg, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin package name, for example \"%s\" (without qoutes): ", domainSample))
 		if err != nil {
 			panic(err)
 		}
 		if len(strings.Split(pluginPkg, ".")) < 3 {
-			fmt.Printf("\nError: Package name must be at least 3 segments, for example \"%s\".\n", domainSample)
+			fmt.Printf("\nError: Package name must be at least 3 segments, for example \"%s\" (without qoutes): ", domainSample)
 		}
 	}
 
-	pluginName, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin name, for example: \"%s\"", pluginNameSample))
+	pluginName, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin name, for example \"%s\" (without qoutes): ", pluginNameSample))
 	if err != nil {
 		panic(err)
 	}
 
-	pluginDesc, err = tools.AskCmdInput("Enter the plugin description")
+	pluginDesc, err = tools.AskCmdInput("Enter the plugin description: ")
 	if err != nil {
 		panic(err)
 	}

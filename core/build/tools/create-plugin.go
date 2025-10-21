@@ -49,12 +49,13 @@ require (
 
 	mainPath := filepath.Join(pluginDir, "main.go")
 
-	goMain := `
+	goMain := fmt.Sprintf(`
 package main
 
 import (
-	"fmt"
+	"net/http"
 
+	views "%s/resources/views"
 	sdkapi "sdk/api"
 )
 
@@ -62,14 +63,49 @@ func main() {}
 
 func Init(api sdkapi.IPluginApi) {
 	// Your plugin code here
-	fmt.Println("Hello from plugin!")
-}`
+	adminRouter := api.Http().Router().AdminRouter()
+
+	adminRouter.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		homePage := views.Home()
+		api.Http().Response().AdminView(w, r, sdkapi.ViewPage{
+			PageContent: homePage,
+		})
+	}).Name("home.index")
+
+	api.Http().Navs().AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
+		return []sdkapi.AdminNavItemOpt{
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     "My Plugin",
+				RouteName: "home.index",
+				Keywords:  []string{"sample", "home"},
+			},
+		}
+	})
+}
+`, modUri)
 
 	if err := os.WriteFile(mainPath, []byte(goMain), 0644); err != nil {
 		panic(err)
 	}
 
 	MakePluginMainMono(pluginDir)
+
+	home := `
+package views
+
+templ Home() {
+	<h1>Welcome to your new plugin!</h1>
+}
+	`
+
+	homeTempl := filepath.Join(pluginDir, "resources/views/home.templ")
+	if err := os.MkdirAll(filepath.Dir(homeTempl), sdkutils.PermDir); err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile(homeTempl, []byte(home), sdkutils.PermFile); err != nil {
+		panic(err)
+	}
 
 	gitIgnorePath := filepath.Join(pluginDir, ".gitignore")
 	gitIgnore := `
