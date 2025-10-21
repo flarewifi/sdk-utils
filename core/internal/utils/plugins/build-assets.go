@@ -163,7 +163,6 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		// Bundle global files with files
 		files = append(globalFiles, files...)
 
-		// distPath :=
 		var distPath string
 		distPath, err = getDistPath(pluginDir)
 		if err != nil {
