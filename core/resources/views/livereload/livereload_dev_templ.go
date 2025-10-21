@@ -31,7 +31,7 @@ func LiveReloadScript() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script>\n(function connect() {\n  const ws = new WebSocket(\"ws://localhost:8000/livereload\");\n    ws.onconnect = () => {\n        console.log(\"✅ LiveReload connected\");\n    }\n  ws.onmessage = (event) => {\n    if (event.data === \"reload\") {\n      console.log(\"🔁 Reload triggered\");\n      location.reload();\n    }\n  };\n  ws.onclose = () => {\n    console.log(\"⚠️ LiveReload disconnected. Reconnecting...\");\n    setTimeout(connect, 1000);\n  };\n})();\n</script>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script type=\"script/javascript\">\n(function connect() {\n  const ws = new WebSocket(\"ws://localhost:8000/livereload\");\n    ws.onconnect = () => {\n        console.log(\"✅ LiveReload connected\");\n    }\n  ws.onmessage = (event) => {\n    if (event.data === \"reload\") {\n      console.log(\"🔁 Reload triggered\");\n      location.reload();\n    }\n  };\n  ws.onclose = () => {\n    console.log(\"⚠️ LiveReload disconnected. Reconnecting...\");\n    setTimeout(connect, 1000);\n  };\n})();\n</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

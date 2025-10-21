@@ -3,7 +3,7 @@
 package livereload
 
 templ LiveReloadScript() {
-	<script>
+<script type="script/javascript">
 (function connect() {
   const ws = new WebSocket("ws://localhost:8000/livereload");
     ws.onconnect = () => {
