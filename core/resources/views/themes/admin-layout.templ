@@ -35,6 +35,7 @@ templ AdminHead(api sdkapi.IPluginApi, data AdminAssets) {
 
 templ AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) {
 	<!-- Theme Scripts -->
+
 	if assets.GlobalJsSrc != "" {
 		<script defer src={ assets.GlobalJsSrc } type="text/javascript"></script>
 	}
