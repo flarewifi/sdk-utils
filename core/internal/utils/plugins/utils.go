@@ -381,11 +381,5 @@ func GetBackupPath(pkg string) string {
 
 func HasCache(cachePath string) bool {
 	err := ValidateInstallPath(cachePath)
-	log.Println("HasCache cachePath: ", cachePath)
-	log.Println("HasCache error: ", err)
 	return err == nil
-}
-
-func GetCachedPath(pkg string) string {
-	return filepath.Join(sdkutils.PathPluginCacheDir, pkg)
 }
