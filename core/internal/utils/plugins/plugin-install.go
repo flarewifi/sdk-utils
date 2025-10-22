@@ -27,9 +27,18 @@ type PluginMetadata struct {
 
 func InstallSrcDef(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
 	switch def.Src {
+	case sdkutils.PluginSrcZip:
+		if HasCache(def.LocalPath) {
+			return InstallFromLocalPath(db, def)
+		}
 	case sdkutils.PluginSrcGit:
+		if HasCache(def.LocalPath) {
+			return InstallFromLocalPath(db, def)
+		}
+
 		info, err = InstallFromGitSrc(db, def)
 	case sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem:
+
 		info, err = InstallFromLocalPath(db, def)
 	case sdkutils.PluginSrcStore:
 		info, err = InstallFromPluginStore(db, def)
@@ -76,8 +85,8 @@ func InstallFromPluginStore(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkuti
 	defer mnt.Unmount()
 
 	// download plugin release zip file
-	log.Println("downloading plugin release: ", def.StoreZipUrl)
-	downloader := download.NewDownloader(def.StoreZipUrl, clonePath)
+	log.Println("downloading plugin release: ", def.StoreZipURL)
+	downloader := download.NewDownloader(def.StoreZipURL, clonePath)
 	if err := downloader.Download(); err != nil {
 		log.Println("Error: ", err)
 		return sdkutils.PluginInfo{}, err
@@ -86,8 +95,8 @@ func InstallFromPluginStore(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkuti
 	// extract compressed plugin release
 	sdkutils.FsExtract(clonePath, workPath)
 
-	// clear StoreZipUrl def
-	def.StoreZipUrl = ""
+	// clear StoreZipURL def
+	def.StoreZipURL = ""
 
 	newWorkPath, err := sdkutils.FindPluginSrc(workPath)
 	if err != nil {
