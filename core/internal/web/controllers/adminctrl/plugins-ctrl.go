@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -300,6 +301,9 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				return
 			}
 
+			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 60)
+			time.Sleep(10 * time.Second)
+
 			UpdateStatus(pluginName, InProgressStatus, "Registering plugin...", 75)
 
 			installPath := plugins.GetInstallPath(info.Package)
@@ -370,6 +374,9 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			installPath := plugins.GetInstallPath(info.Package)
 			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
+
+			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 60)
+			time.Sleep(10 * time.Second)
 
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
