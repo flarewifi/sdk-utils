@@ -36,7 +36,7 @@ func CompilePlugins(db *pgxpool.Pool) chan CompileResult {
 		total := len(defs)
 
 		for i, def := range defs {
-			_, err := plugins.InstallSrcDef(db, def)
+			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true})
 			if err != nil {
 				result := CompileResult{Error: err}
 				ch <- result

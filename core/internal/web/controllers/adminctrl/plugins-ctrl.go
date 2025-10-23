@@ -294,7 +294,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				LocalPath: sdkutils.StripRootPath(pluginCachePath),
 			}
 
-			if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def); err != nil {
+			if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def, plugins.InstallOpts{ForceInstall: false}); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: install from local path error: " + err.Error())
 				return
@@ -357,7 +357,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				Src:    sdkutils.PluginSrcGit,
 				GitURL: repoURL,
 				GitRef: gitRef,
-			})
+			}, plugins.InstallOpts{ForceInstall: false})
 			if err != nil {
 				UpdateStatus(pluginName, FailedStatus, githubErrMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("InstallFromGitSrc: " + err.Error())
