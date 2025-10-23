@@ -128,20 +128,9 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		return
 	}
 
-	// Gather global files
-	var globalScrips, globalStyles []string
-	for k, files := range manifest {
-		switch k {
-		case "globals.js":
-			globalScrips = append(globalScrips, files...)
-		case "globals.css":
-			globalStyles = append(globalStyles, files...)
-		}
-	}
-
 	for filename, files := range manifest {
 		// Don't output global scripts and styles, they are already bundled in core globals
-		if filename == "globals.js" || filename == "globals.css" {
+		if filename == "global.js" || filename == "global.css" {
 			continue
 		}
 
@@ -152,16 +141,6 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 			err = errors.New("Unsupported asset format: " + ext)
 			return
 		}
-
-		var globalFiles []string
-		if ext == ".js" {
-			globalFiles = globalScrips
-		} else {
-			globalFiles = globalStyles
-		}
-
-		// Bundle global files with files
-		files = append(globalFiles, files...)
 
 		var distPath string
 		distPath, err = getDistPath(pluginDir)
