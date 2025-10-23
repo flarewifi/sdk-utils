@@ -380,6 +380,22 @@ func GetBackupPath(pkg string) string {
 }
 
 func HasCache(cachePath string) bool {
-	err := ValidateInstallPath(cachePath)
+	info, err := sdkutils.GetPluginInfoFromPath(cachePath)
+	if err != nil {
+		log.Println("no info found")
+		return false
+	}
+
+	actualCachePath := GetCachePath(info.Package)
+	strippedRootPath := sdkutils.StripRootPath(actualCachePath)
+	if strippedRootPath != cachePath {
+		return false
+	}
+
+	err = sdkutils.ValidatePluginSrc(cachePath)
 	return err == nil
+}
+
+func GetCachePath(pkg string) string {
+	return filepath.Join(sdkutils.PathPluginCacheDir, pkg)
 }
