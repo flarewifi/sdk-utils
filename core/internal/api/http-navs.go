@@ -68,6 +68,7 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 						Label:     nav.Label,
 						RouteUrl:  routeURL,
 						IsCurrent: isCurrent,
+						Keywords:  nav.Keywords,
 					})
 				}
 			}

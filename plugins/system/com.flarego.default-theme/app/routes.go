@@ -20,4 +20,8 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 		subrouter.Get("/navs", PortalNavItemsHandler(api)).Name("portal.navs")
 	})
 
+	pluginRouter.Group("/search", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/", SearchCtrl(api)).Name("admin.search")
+	})
+
 }

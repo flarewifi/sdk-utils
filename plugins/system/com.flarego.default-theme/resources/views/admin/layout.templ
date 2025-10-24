@@ -36,17 +36,24 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 					</li>
 				</ul>
 				<!-- Navbar Search -->
-				<form id="navbarSearch" class="navbar-search w-100 collapse d-md-none">
-					<div class="input-group">
-						<span class="input-group-text bg-transparent border-0 p-0 ps-2 d-none d-md-flex">
-							<i class="bi bi-search"></i>
-						</span>
-						<input
-							class="form-control border-0 shadow-none bg-transparent"
-							type="search"
-							placeholder="Search settings..."
-							aria-label="Search settings"
-						/>
+				<form id="navbarSearch" class="navbar-search w-100 collapse d-md-none" autocomplete="off">
+					<div class="dropdown w-100 position-relative">
+						<div class="input-group">
+							<span class="input-group-text bg-transparent border-0 p-0 ps-2 d-none d-md-flex">
+								<i class="bi bi-search"></i>
+							</span>
+							<input
+								id="searchInput"
+								type="search"
+								class="form-control border-0 shadow-none bg-transparent"
+								placeholder="Search settings..."
+								aria-label="Search settings"
+								data-bs-toggle="dropdown"
+								data-url={ api.Http().Helpers().UrlForRoute("admin.search") }
+							/>
+						</div>
+
+						<ul id="searchResults" class="dropdown-menu w-100"></ul>
 					</div>
 				</form>
 			</header>
@@ -114,6 +121,70 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 				</div>
 			</div>
 			@colorModes()
+
+			<script>
+				document.addEventListener('DOMContentLoaded', function () {
+					var searchInput = document.getElementById('searchInput');
+					var resultsDropdown = document.getElementById('searchResults');
+					var apiUrl = searchInput.getAttribute('data-url');
+					var debounceTimeout = null;
+
+					searchInput.addEventListener('input', function () {
+						var query = this.value.replace(/^\s+|\s+$/g, '');
+						clearTimeout(debounceTimeout);
+
+						if (!query) {
+							resultsDropdown.classList.remove('show');
+							resultsDropdown.innerHTML = '';
+							return;
+						}
+
+						debounceTimeout = setTimeout(function () {
+							var xhr = new XMLHttpRequest();
+							xhr.open('GET', apiUrl + '?q=' + encodeURIComponent(query), true);
+							xhr.withCredentials = true;
+							xhr.onreadystatechange = function () {
+								if (xhr.readyState === 4) {
+								if (xhr.status === 200) {
+									try {
+									var data = JSON.parse(xhr.responseText);
+									var results = data.result || [];
+									var html = '';
+
+									if (results.length === 0) {
+										html = '<span class="dropdown-item text-muted">No results found</span>';
+									} else {
+										for (var i = 0; i < results.length; i++) {
+										var item = results[i];
+										html += '<a href="' + item.RouteUrl + '" class="dropdown-item' +
+											(item.IsCurrent ? ' active' : '') + '">' +
+											item.Label + '</a>';
+										}
+									}
+
+									resultsDropdown.innerHTML = html;
+									resultsDropdown.classList.add('show');
+									} catch (e) {
+										console.error('Invalid JSON response:', xhr.responseText);
+									}
+								} else {
+									console.error('Search request failed:', xhr.status);
+								}
+								}
+							};
+							xhr.send();
+							}, 300);
+						});
+
+						// Hide dropdown when clicking outside
+						document.addEventListener('click', function (e) {
+							if (!resultsDropdown.contains(e.target) && e.target !== searchInput) {
+								resultsDropdown.classList.remove('show');
+							}
+						});
+					});
+			</script>
+
 			@data.Components.Scripts()
 		</body>
 	</html>
