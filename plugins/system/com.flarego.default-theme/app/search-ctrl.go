@@ -37,6 +37,5 @@ func SearchCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]any{
 			"result": searchResult,
 		})
-		// TODO: UI for search result
 	}
 }

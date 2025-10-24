@@ -10,5 +10,6 @@
     "./admin/css/fonts.css",
     "./admin/css/layout.css",
     "./admin/css/sidebar-menu.css"
-  ]
+  ],
+  "globals.js": ["./admin/js/nav-search.js"]
 }
