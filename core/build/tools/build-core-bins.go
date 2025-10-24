@@ -24,6 +24,7 @@ func BuildCoreBins() {
 			"bin/flare",
 			"core/plugin.so",
 			"core/resources/assets/dist",
+			"core/resources/assets/public",
 		},
 	}
 
@@ -41,13 +42,13 @@ func BuildCore() {
 		panic(err)
 	}
 
-	workdir := filepath.Join(sdkutils.PathTmpDir, "b/core", sdkutils.RandomStr(16))
-	defer os.RemoveAll(workdir)
-	if err := plugins.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {
+	if err := plugins.BuildAssets(sdkutils.PathCoreDir); err != nil {
 		panic(err)
 	}
 
-	if err := plugins.BuildGlobalAssets(); err != nil {
+	workdir := filepath.Join(sdkutils.PathTmpDir, "b/core", sdkutils.RandomStr(16))
+	defer os.RemoveAll(workdir)
+	if err := plugins.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {
 		panic(err)
 	}
 }

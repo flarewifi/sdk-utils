@@ -16,7 +16,7 @@ type AdminAssets struct {
 	PageJsSrc           string
 }
 
-templ AdminHead(api sdkapi.IPluginApi,data AdminAssets) {
+templ AdminHead(api sdkapi.IPluginApi, data AdminAssets) {
 	<title>{ api.Translate("label", "web_admin") }</title>
 	<!-- Theme Stylesheets -->
 	if data.GlobalCssHref != "" {
@@ -35,22 +35,18 @@ templ AdminHead(api sdkapi.IPluginApi,data AdminAssets) {
 
 templ AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) {
 	<!-- Theme Scripts -->
-	
+
 	if assets.GlobalJsSrc != "" {
-		<script src={ assets.GlobalJsSrc }></script>
+		<script defer src={ assets.GlobalJsSrc } type="text/javascript"></script>
 	}
 	if assets.ThemeJsSrc != "" {
-		<script src={ assets.ThemeJsSrc }></script>
+		<script defer src={ assets.ThemeJsSrc } type="text/javascript"></script>
 	}
 	if assets.PageJsSrc != "" {
-		<script src={ assets.PageJsSrc }></script>
+		<script defer src={ assets.PageJsSrc } type="text/javascript"></script>
 	}
 	if flash != nil {
 		<script id="flash-message" data-flash-type={ flash.Type } data-flash-message={ flash.Message } type="text/template"></script>
 	}
-
-	<script>
-		window.Alpine.start();
-	</script>
-    @livereload.LiveReloadScript()
+	@livereload.LiveReloadScript()
 }

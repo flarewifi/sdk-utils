@@ -12,6 +12,7 @@ create-network:
 		docker network create --driver bridge flare_network
 
 openwrt:
+	go run ./core/cmd/build-assets/main.go && \
 	go run ./core/cmd/build-cli/main.go && \
 	go run ./core/cmd/build-core/main.go && \
 	./bin/flare server

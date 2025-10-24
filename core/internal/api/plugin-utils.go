@@ -37,7 +37,7 @@ func (self *PluginUtils) Translate(msgtype string, msgk string, pairs ...any) st
 		return msgk
 	}
 
-	vdata := map[interface{}]interface{}{}
+	vdata := map[any]any{}
 	for i := 0; i < len(pairs); i += 2 {
 		key := pairs[i]
 		value := pairs[i+1]

@@ -45,16 +45,16 @@ templ PortalHead(api sdkapi.IPluginApi, data PortalLayoutData) {
 templ PortalScripts(data PortalAssets, flash *sdkapi.FlashMsg) {
 	<!-- Theme Scripts -->
 	if data.GlobalJsSrc != "" {
-		<script src={ data.GlobalJsSrc }></script>
+		<script defer type="text/javascript" src={ data.GlobalJsSrc }></script>
 	}
 	if data.ThemeJsSrc != "" {
-		<script src={ data.ThemeJsSrc }></script>
+		<script defer type="text/javascript" src={ data.ThemeJsSrc }></script>
 	}
 	if data.PluginGlobalJsSrc != "" {
-		<script src={ data.PluginGlobalJsSrc }></script>
+		<script defer type="text/javascript" src={ data.PluginGlobalJsSrc }></script>
 	}
 	if data.PageJsSrc != "" {
-		<script src={ data.PageJsSrc }></script>
+		<script defer type="text/javascript" src={ data.PageJsSrc }></script>
 	}
 	if flash != nil {
 		<script id="flash-message" data-flash-type={ flash.Type } data-flash-message={ flash.Message } type="text/template"></script>

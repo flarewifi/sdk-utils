@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -294,11 +295,14 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				LocalPath: sdkutils.StripRootPath(pluginCachePath),
 			}
 
-			if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def); err != nil {
+			if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def, plugins.InstallOpts{ForceInstall: false}); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: install from local path error: " + err.Error())
 				return
 			}
+
+			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 60)
+			time.Sleep(10 * time.Second)
 
 			UpdateStatus(pluginName, InProgressStatus, "Registering plugin...", 75)
 
@@ -357,7 +361,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				Src:    sdkutils.PluginSrcGit,
 				GitURL: repoURL,
 				GitRef: gitRef,
-			})
+			}, plugins.InstallOpts{ForceInstall: false})
 			if err != nil {
 				UpdateStatus(pluginName, FailedStatus, githubErrMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("InstallFromGitSrc: " + err.Error())
@@ -370,6 +374,9 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			installPath := plugins.GetInstallPath(info.Package)
 			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
+
+			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 60)
+			time.Sleep(10 * time.Second)
 
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
