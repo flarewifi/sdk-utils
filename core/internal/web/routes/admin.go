@@ -52,6 +52,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Post("/uninstall/{pkg}", adminctrl.UninstallPluginCtrl(g)).Name("admin.plugins.uninstall")
 		subrouter.Get("/checkupdates/{pkg}", adminctrl.CheckPluginUpdatesCtrl(g)).Name("admin.plugins.checkupdates")
 		subrouter.Get("/getupdate/{pkg}/{tag}", adminctrl.DownloadPluginUpdatesCtrl(g)).Name("admin.plugins.getupdate")
+		subrouter.Get("/status", adminctrl.CheckPluginStatusCtrl(g)).Name("admin.plugins.status")
 	})
 
 	adminR.Group("/power", func(subrouter sdkapi.IHttpRouterInstance) {

@@ -35,6 +35,7 @@ templ AdminHead(api sdkapi.IPluginApi,data AdminAssets) {
 
 templ AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) {
 	<!-- Theme Scripts -->
+	
 	if assets.GlobalJsSrc != "" {
 		<script src={ assets.GlobalJsSrc }></script>
 	}
@@ -48,5 +49,8 @@ templ AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) {
 		<script id="flash-message" data-flash-type={ flash.Type } data-flash-message={ flash.Message } type="text/template"></script>
 	}
 
+	<script>
+		window.Alpine.start();
+	</script>
     @livereload.LiveReloadScript()
 }
