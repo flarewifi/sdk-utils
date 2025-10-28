@@ -1,66 +1,45 @@
-console.log("nav search");
-window.addEventListener("DOMContentLoaded", function () {
-  var searchInput = document.getElementById("searchInput");
-  var resultsDropdown = document.getElementById("searchResults");
-  var apiUrl = searchInput.getAttribute("data-url");
-  var debounceTimeout = null;
+$(document).ready(function () {
+    const $form = $("#navbarSearch");
+    const $searchInput = $("#searchInput");
+    const $resultsDropdown = $("#searchResults");
 
-  searchInput.addEventListener("input", function () {
-    var query = this.value.replace(/^\s+|\s+$/g, "");
-    clearTimeout(debounceTimeout);
+    const allResults = JSON.parse($form.attr("data-results") || "[]");
+    console.log('allResults: ', allResults)
 
-    if (!query) {
-      resultsDropdown.classList.remove("show");
-      resultsDropdown.innerHTML = "";
-      return;
-    }
+    $searchInput.on("input", function () {
+        const query = $(this).val().trim().toLowerCase();
+        $resultsDropdown.empty();
 
-    debounceTimeout = setTimeout(function () {
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", apiUrl + "?q=" + encodeURIComponent(query), true);
-      xhr.withCredentials = true;
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              var results = data.result || [];
-              var html = "";
-
-              if (results.length === 0) {
-                html =
-                  '<span class="dropdown-item text-muted">No results found</span>';
-              } else {
-                for (var i = 0; i < results.length; i++) {
-                  var item = results[i];
-                  html +=
-                    '<a href="' +
-                    item.RouteUrl +
-                    '" class="dropdown-item' +
-                    (item.IsCurrent ? " active" : "") +
-                    '">' +
-                    item.Label +
-                    "</a>";
-                }
-              }
-
-              resultsDropdown.innerHTML = html;
-              resultsDropdown.classList.add("show");
-            } catch (e) {
-              console.error("Invalid JSON response:", xhr.responseText);
-            }
-          } else {
-            console.error("Search request failed:", xhr.status);
-          }
+        if (!query) {
+            $resultsDropdown.removeClass("show");
+            return;
         }
-      };
-      xhr.send();
-    }, 300);
-  });
 
-  document.addEventListener("click", function (e) {
-    if (!resultsDropdown.contains(e.target) && e.target !== searchInput) {
-      resultsDropdown.classList.remove("show");
-    }
-  });
+        const matches = allResults.filter(item => {
+        if (!Array.isArray(item.Keywords)) return false;
+            return item.Keywords.some(k => k.toLowerCase().includes(query));
+        });
+
+        if (matches.length === 0) {
+            $resultsDropdown.html(
+            '<span class="dropdown-item text-muted">No results found</span>'
+            );
+        } else {
+            matches.forEach(item => {
+            $resultsDropdown.append(`
+                <a href="${item.RouteUrl}" class="dropdown-item">
+                ${item.Label}
+                </a>
+            `);
+            });
+        }
+
+        $resultsDropdown.addClass("show");
+    });
+
+    $(document).on("click", function (e) {
+        if (!$resultsDropdown.is(e.target) && !$searchInput.is(e.target)) {
+            $resultsDropdown.removeClass("show");
+        }
+    });
 });
