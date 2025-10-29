@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 
 func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
 		res := g.CoreAPI.HttpAPI.Response()
 		allPlugins := g.PluginMgr.All()
 		pluginData := []views.PluginData{}
@@ -44,9 +46,25 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		data := views.IndexPageData{
 			Plugins: pluginData,
 		}
-		page := views.IndexPage(g.CoreAPI, data)
+
+		pluginZipInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.zip")
+		pluginGithubInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.github")
+		pluginIndexURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.index")
+		checkInstallStatusURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.status")
+
+		formRoutes := views.FormRoutes{
+			SelectedAction:         pluginGithubInstallURL,
+			PluginInstallGithubURL: pluginGithubInstallURL,
+			PluginInstallZipURL:    pluginZipInstallURL,
+			PluginIndexURL:         pluginIndexURL,
+			CheckInstallStatusURL:  checkInstallStatusURL,
+		}
+		page := views.IndexPage(g.CoreAPI, data, formRoutes)
 		view := sdkapi.ViewPage{
 			PageContent: page,
+			Assets: sdkapi.ViewAssets{
+				JsFile: "plugin.js",
+			},
 		}
 		res.AdminView(w, r, view)
 	}
@@ -160,7 +178,7 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
 
-		pluginZipInsttallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.zip")
+		pluginZipInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.zip")
 		pluginGithubInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.github")
 		pluginIndexURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.index")
 		checkInstallStatusURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.status")
@@ -168,7 +186,7 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		page := views.InstallPlugin(api, views.FormRoutes{
 			SelectedAction:         pluginGithubInstallURL,
 			PluginInstallGithubURL: pluginGithubInstallURL,
-			PluginInstallZipURL:    pluginZipInsttallURL,
+			PluginInstallZipURL:    pluginZipInstallURL,
 			PluginIndexURL:         pluginIndexURL,
 			CheckInstallStatusURL:  checkInstallStatusURL,
 		})
@@ -207,8 +225,15 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		coreAPI := g.CoreAPI
 		res := coreAPI.HttpAPI.Response()
-
 		zipErrorMsg := g.CoreAPI.Translate("error", "zip_install_error")
+
+		admin, err := coreAPI.AcctAPI.Find("admin")
+		if err != nil {
+			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			return
+		}
 
 		// Parse form (max 10 MB)
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
@@ -301,16 +326,25 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				return
 			}
 
-			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 60)
-			time.Sleep(10 * time.Second)
-
 			UpdateStatus(pluginName, InProgressStatus, "Registering plugin...", 75)
+			time.Sleep(5 * time.Second)
+			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 90)
+			time.Sleep(10 * time.Second)
 
 			installPath := plugins.GetInstallPath(info.Package)
 			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
 
-			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
+			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", pluginName)
+
+			data, err := json.Marshal(map[string]string{
+				"success": successMsg,
+			})
+			if err != nil {
+				log.Println("Install Progress json error:", err)
+			}
+
+			admin.Emit("install:progress", data)
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 		}(filePath, header.Filename, pluginName)
 
@@ -328,9 +362,17 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		githubErrMsg := g.CoreAPI.Translate("error", "github_install_error")
 
+		admin, err := g.CoreAPI.AcctAPI.Find("admin")
+		if err != nil {
+			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin.plugins.install")
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			return
+		}
+
 		// Parse our multipart form, 10 << 20 specifies a maximum
 		// upload of 10 MB files.
-		err := r.ParseMultipartForm(10 << 20)
+		err = r.ParseMultipartForm(10 << 20)
 		if err != nil {
 			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
@@ -375,11 +417,21 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
 
-			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 60)
+			time.Sleep(5 * time.Second)
+			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 90)
 			time.Sleep(10 * time.Second)
 
-			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
+			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", pluginName)
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
+
+			data, err := json.Marshal(map[string]string{
+				"success": successMsg,
+			})
+			if err != nil {
+				log.Println("Install Progress JSON error:", err)
+			}
+
+			admin.Emit("install:progress", data)
 		}()
 
 		w.Header().Set("Content-Type", "application/json")
