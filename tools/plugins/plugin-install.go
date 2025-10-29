@@ -28,6 +28,7 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 		if HasCache(def.LocalPath) {
 			return InstallFromLocalPath(db, def, opts)
 		}
+		info, err = InstallFromLocalPath(db, def, opts)
 
 	case sdkutils.PluginSrcGit:
 		if HasCache(def.LocalPath) {
@@ -41,7 +42,6 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 		}
 		info, err = InstallFromLocalPath(db, def, opts)
 
-		info, err = InstallFromLocalPath(db, def, opts)
 	case sdkutils.PluginSrcStore:
 		opts.RemoveSrc = true
 		info, err = InstallFromPluginStore(db, def, opts)

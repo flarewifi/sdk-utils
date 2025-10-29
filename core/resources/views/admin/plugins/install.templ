@@ -24,22 +24,7 @@ templ InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) {
 	<h1>{ api.Translate("label", "install_plugin") }</h1>
 	<hr/>
 	<div x-data={ fmt.Sprintf("pluginInstaller(%s)", jsonData) }>
-		<template x-if="isLoading">
-			<div class="progress" style="height: 15px;">
-				<div
-					id="progressBar"
-					class="progress-bar progress-bar-striped progress-bar-animated"
-					role="progressbar"
-					:style="`width: ${progress}%;`"
-					:aria-valuenow="progress"
-					aria-valuemin="0"
-					aria-valuemax="100"
-					x-text="message || `Installing... (${progress}%)`"
-				>
-				</div>
-			</div>
-		</template>
-
+		@ProgressBar()
 		<form class="form" method="POST" enctype="multipart/form-data" x-bind:action="action_url" @submit.prevent="handleSubmit($event)">
 			<div class="form-group mb-3">
 				<label>{ api.Translate("label", "source") }:</label>
@@ -71,4 +56,22 @@ templ InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) {
 			</div>
 		</form>
 	</div>
+}
+
+templ ProgressBar(){
+	<template x-if="isLoading">
+		<div class="progress" style="height: 15px;">
+			<div
+				id="progressBar"
+				class="progress-bar progress-bar-striped progress-bar-animated"
+				role="progressbar"
+				:style="`width: ${progress}%;`"
+				:aria-valuenow="progress"
+				aria-valuemin="0"
+				aria-valuemax="100"
+				x-text="message || `Installing... (${progress}%)`"
+			>
+			</div>
+		</div>
+	</template>
 }
