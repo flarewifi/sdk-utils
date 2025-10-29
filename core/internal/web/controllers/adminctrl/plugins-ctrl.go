@@ -1,11 +1,13 @@
 package adminctrl
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"core/internal/api"
 	"core/internal/utils/plugins"
@@ -160,36 +162,63 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		pluginZipInsttallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.zip")
 		pluginGithubInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.github")
+		pluginIndexURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.index")
+		checkInstallStatusURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.status")
+
 		page := views.InstallPlugin(api, views.FormRoutes{
 			SelectedAction:         pluginGithubInstallURL,
 			PluginInstallGithubURL: pluginGithubInstallURL,
 			PluginInstallZipURL:    pluginZipInsttallURL,
+			PluginIndexURL:         pluginIndexURL,
+			CheckInstallStatusURL:  checkInstallStatusURL,
 		})
+
 		view := sdkapi.ViewPage{
 			PageContent: page,
+			Assets: sdkapi.ViewAssets{
+				JsFile: "plugin.js",
+			},
 		}
+
 		res.AdminView(w, r, view)
+	}
+}
+
+func CheckPluginStatusCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		installSource := r.URL.Query().Get("source")
+
+		w.Header().Set("Content-Type", "application/json")
+		progress := GetStatus(installSource)
+		if progress == nil {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]any{
+				"status":  FailedStatus,
+				"message": "plugin not found",
+			})
+			return
+		}
+
+		json.NewEncoder(w).Encode(progress)
 	}
 }
 
 func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		coreApi := g.CoreAPI
-		res := coreApi.HttpAPI.Response()
+		coreAPI := g.CoreAPI
+		res := coreAPI.HttpAPI.Response()
 
 		zipErrorMsg := g.CoreAPI.Translate("error", "zip_install_error")
 
-		// Parse our multipart form, 10 << 20 specifies a maximum
-		// upload of 10 MB files.
-		err := r.ParseMultipartForm(10 << 20)
-		if err != nil {
+		// Parse form (max 10 MB)
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
-		// Retrieve the file from the form field "file"
+		// Get uploaded file
 		file, header, err := r.FormFile("plugin_zip_file")
 		if err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
@@ -199,91 +228,97 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 		defer file.Close()
 
-		// Specify the directory where the file will be saved
+		pluginName := header.Filename
+
+		// Save file to uploads directory
 		saveDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "uploads")
-		err = sdkutils.FsEnsureDir(saveDir) // Ensure the directory exists
+		if err := sdkutils.FsEnsureDir(saveDir); err != nil {
+			UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+			g.CoreAPI.LoggerAPI.Error("zip install error: saving to uploads error: " + err.Error())
+
+			return
+		}
+
+		filePath := filepath.Join(saveDir, pluginName)
+		out, err := os.Create(filePath)
 		if err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
+		defer out.Close()
 
-		// Create the full path for the file
-		filePath := filepath.Join(saveDir, header.Filename)
-
-		// Create a new file in the specified directory
-		dst, err := os.Create(filePath)
-		if err != nil {
-			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
-		defer dst.Close()
-
-		// Copy the uploaded file data to the new file
-		_, err = io.Copy(dst, file)
-		if err != nil {
+		if _, err := io.Copy(out, file); err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
-		pluginTmpDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted", sdkutils.RandomStr(16))
-		if err = sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
-			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
+		SaveInitialState(pluginName)
 
-		pluginSrc, err := sdkutils.FindPluginSrc(pluginTmpDir)
-		if err != nil {
-			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
+		// Launch background installation
+		go func(filePath string, filename, pluginName string) {
+			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
 
-		info, err := sdkutils.GetPluginInfoFromPath(pluginSrc)
-		if err != nil {
-			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
+			pluginTmpDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted", sdkutils.RandomStr(16))
+			if err := sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
+				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+				g.CoreAPI.LoggerAPI.Error("zip install error: extract error: " + err.Error())
+				return
+			}
 
-		pluginCachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
-		if err = sdkutils.FsCopy(pluginSrc, pluginCachePath); err != nil {
-			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
+			pluginSrc, err := sdkutils.FindPluginSrc(pluginTmpDir)
+			if err != nil {
+				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+				g.CoreAPI.LoggerAPI.Error("zip install error: find plugin src error: " + err.Error())
+				return
+			}
 
-		def := sdkutils.PluginSrcDef{
-			Src:       sdkutils.PluginSrcZip,
-			LocalPath: sdkutils.StripRootPath(pluginCachePath),
-		}
+			info, err := sdkutils.GetPluginInfoFromPath(pluginSrc)
+			if err != nil {
+				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+				g.CoreAPI.LoggerAPI.Error("zip install error: get plugins info error: " + err.Error())
+				return
+			}
 
-		if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def); err != nil {
-			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
+			pluginCachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
+			if err := sdkutils.FsCopy(pluginSrc, pluginCachePath); err != nil {
+				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+				g.CoreAPI.LoggerAPI.Error("zip install error: file copy error: " + err.Error())
+				return
+			}
 
-			return
-		}
+			def := sdkutils.PluginSrcDef{
+				Src:       sdkutils.PluginSrcZip,
+				LocalPath: sdkutils.StripRootPath(pluginCachePath),
+			}
 
-		installPath := plugins.GetInstallPath(info.Package)
-		p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
-		g.PluginMgr.RegisterPlugin(p)
+			if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def, plugins.InstallOpts{ForceInstall: false}); err != nil {
+				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+				g.CoreAPI.LoggerAPI.Error("zip install error: install from local path error: " + err.Error())
+				return
+			}
 
-		// Redirect to the plugins index page
-		successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
-		coreApi.HttpAPI.Response().FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
-		res.Redirect(w, r, "admin.plugins.index")
+			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 60)
+			time.Sleep(10 * time.Second)
+
+			UpdateStatus(pluginName, InProgressStatus, "Registering plugin...", 75)
+
+			installPath := plugins.GetInstallPath(info.Package)
+			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
+			g.PluginMgr.RegisterPlugin(p)
+
+			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
+			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
+		}(filePath, header.Filename, pluginName)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]any{
+			"status": InProgressStatus,
+		})
 	}
 }
 
@@ -307,27 +342,51 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		repoURL := r.FormValue("github_repo_url")
 		gitRef := r.FormValue("github_ref")
 
-		info, err := plugins.InstallFromGitSrc(g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
-			Src:    sdkutils.PluginSrcGit,
-			GitURL: repoURL,
-			GitRef: gitRef,
-		})
-
+		src, err := sdkutils.ParseGitSource(repoURL)
 		if err != nil {
 			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
 
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
-		installPath := plugins.GetInstallPath(info.Package)
-		p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
-		g.PluginMgr.RegisterPlugin(p)
+		pluginName := src.Repo
+		SaveInitialState(pluginName)
 
-		successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
-		res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
-		res.Redirect(w, r, "admin.plugins.index")
+		go func() {
+			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
+
+			info, err := plugins.InstallFromGitSrc(g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
+				Src:    sdkutils.PluginSrcGit,
+				GitURL: repoURL,
+				GitRef: gitRef,
+			}, plugins.InstallOpts{ForceInstall: false})
+			if err != nil {
+				UpdateStatus(pluginName, FailedStatus, githubErrMsg, 0)
+				g.CoreAPI.LoggerAPI.Error("InstallFromGitSrc: " + err.Error())
+
+				return
+			}
+
+			UpdateStatus(pluginName, InProgressStatus, "Registering plugin...", 75)
+
+			installPath := plugins.GetInstallPath(info.Package)
+			p := api.NewPluginApi(installPath, info, g.PluginMgr, g.TrafficMgr)
+			g.PluginMgr.RegisterPlugin(p)
+
+			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 60)
+			time.Sleep(10 * time.Second)
+
+			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message")
+			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
+		}()
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]any{
+			"status": InProgressStatus,
+		})
 	}
 }
 

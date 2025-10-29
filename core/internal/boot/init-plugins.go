@@ -80,7 +80,7 @@ func InitPlugins(g *api.CoreGlobals) {
 			}
 		}
 
-		info, err := plugins.InstallSrcDef(db, def)
+		info, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true})
 		if err != nil {
 			// bp.AppendLog(fmt.Sprintf("Error installing plugin %q: %s", def.String(), err.Error()))
 			log.Printf("Error installing plugin %q: %s", def.String(), err.Error())

@@ -19,29 +19,28 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-var ()
-
 type PluginMetadata struct {
 	Def sdkutils.PluginSrcDef
 }
 
-func InstallSrcDef(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
+func InstallSrcDef(db *pgxpool.Pool, def sdkutils.PluginSrcDef, opts InstallOpts) (info sdkutils.PluginInfo, err error) {
 	switch def.Src {
 	case sdkutils.PluginSrcZip:
 		if HasCache(def.LocalPath) {
-			return InstallFromLocalPath(db, def)
+			return InstallFromLocalPath(db, def, opts)
 		}
 	case sdkutils.PluginSrcGit:
 		if HasCache(def.LocalPath) {
-			return InstallFromLocalPath(db, def)
+			return InstallFromLocalPath(db, def, opts)
 		}
 
-		info, err = InstallFromGitSrc(db, def)
+		info, err = InstallFromGitSrc(db, def, opts)
 	case sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem:
 
-		info, err = InstallFromLocalPath(db, def)
+		info, err = InstallFromLocalPath(db, def, opts)
 	case sdkutils.PluginSrcStore:
-		info, err = InstallFromPluginStore(db, def)
+		opts.RemoveSrc = true
+		info, err = InstallFromPluginStore(db, def, opts)
 	default:
 		return sdkutils.PluginInfo{}, errors.New("Invalid plugin source: " + def.Src)
 	}
@@ -49,7 +48,7 @@ func InstallSrcDef(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.P
 	return info, err
 }
 
-func InstallFromLocalPath(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {
+func InstallFromLocalPath(db *pgxpool.Pool, def sdkutils.PluginSrcDef, opts InstallOpts) (info sdkutils.PluginInfo, err error) {
 	log.Println("Installing plugin from local path: " + def.LocalPath)
 
 	info, err = sdkutils.GetPluginInfoFromPath(def.LocalPath)
@@ -65,7 +64,7 @@ func InstallFromLocalPath(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (info sdk
 	return
 }
 
-func InstallFromPluginStore(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
+func InstallFromPluginStore(db *pgxpool.Pool, def sdkutils.PluginSrcDef, opts InstallOpts) (sdkutils.PluginInfo, error) {
 	log.Println("Installing plugin from store: " + def.String())
 
 	// prepare path
@@ -110,14 +109,15 @@ func InstallFromPluginStore(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkuti
 		return sdkutils.PluginInfo{}, err
 	}
 
-	if err := InstallPlugin(newWorkPath, db, InstallOpts{Def: def, RemoveSrc: false}); err != nil {
+	opts.RemoveSrc = true
+	if err := InstallPlugin(newWorkPath, db, opts); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 
 	return info, nil
 }
 
-func InstallFromGitSrc(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
+func InstallFromGitSrc(db *pgxpool.Pool, def sdkutils.PluginSrcDef, opts InstallOpts) (sdkutils.PluginInfo, error) {
 	log.Println("Installing plugin from git source: " + def.String())
 	clonePath := filepath.Join(sdkutils.PathTmpDir, "plugins", "cloned", sdkutils.RandomStr(16))
 
@@ -141,7 +141,7 @@ func InstallFromGitSrc(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.Pl
 		return sdkutils.PluginInfo{}, err
 	}
 
-	if err := InstallPlugin(sdkutils.StripRootPath(cachePath), db, InstallOpts{Def: def, RemoveSrc: false}); err != nil {
+	if err := InstallPlugin(sdkutils.StripRootPath(cachePath), db, opts); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 
@@ -149,9 +149,10 @@ func InstallFromGitSrc(db *pgxpool.Pool, def sdkutils.PluginSrcDef) (sdkutils.Pl
 }
 
 type InstallOpts struct {
-	Def       sdkutils.PluginSrcDef
-	RemoveSrc bool
-	Encrypt   bool
+	Def          sdkutils.PluginSrcDef
+	RemoveSrc    bool
+	Encrypt      bool
+	ForceInstall bool
 }
 
 func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
@@ -246,10 +247,18 @@ func InstallPlugin(pluginSrc string, db *pgxpool.Pool, opts InstallOpts) error {
 		return err
 	}
 
+	if opts.ForceInstall {
+		if err := os.RemoveAll(installPath); err != nil {
+			return err
+		}
+	}
+
 	log.Println("Copying plugin files to: ", installPath)
 	if err := sdkutils.CopyPluginFiles(pluginSrc, installPath); err != nil {
 		return err
 	}
+
+	//TODO: Rebuild global assets
 
 	if opts.RemoveSrc {
 		if err := os.RemoveAll(pluginSrc); err != nil {

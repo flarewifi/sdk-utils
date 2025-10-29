@@ -20,10 +20,6 @@ type PluginModule struct {
 func CreateMonoFiles() {
 	CreateGoWorkspace()
 
-	if err := plugins.BuildGlobalAssets(); err != nil {
-		panic(err)
-	}
-
 	localDefs := plugins.LocalPluginSrcDefs()
 	systemDefs := plugins.SystemPluginSrcDefs()
 

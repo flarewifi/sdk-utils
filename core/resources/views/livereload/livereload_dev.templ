@@ -3,22 +3,26 @@
 package livereload
 
 templ LiveReloadScript() {
-	<script>
+<!-- LiveReload script for development environment -->
+<script type="text/javascript">
 (function connect() {
   const ws = new WebSocket("ws://localhost:8000/livereload");
     ws.onconnect = () => {
         console.log("✅ LiveReload connected");
-    }
+    };
+
   ws.onmessage = (event) => {
     if (event.data === "reload") {
       console.log("🔁 Reload triggered");
       location.reload();
     }
   };
+
   ws.onclose = () => {
     console.log("⚠️ LiveReload disconnected. Reconnecting...");
     setTimeout(connect, 1000);
   };
+
 })();
 </script>
 }

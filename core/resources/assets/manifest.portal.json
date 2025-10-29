@@ -1,8 +1,12 @@
 {
-  "globals.js": [],
+  "global.js": [
+    "./portal/js/globals.js",
+    "./portal/js/polyfills.js"
+  ],
+  "global.css": [
+    "./portal/css/globals.css"
+  ],
   "app.js": [],
   "app.css": [],
-  "polyfills.js": [
-    "./portal/js/polyfills.js"
-  ]
+  "polyfills.js": []
 }
