@@ -20,3 +20,15 @@ func FindPluginSrc(dir string) (string, error) {
 
 	return "", errors.New("Can't find plugin.json in " + StripRootPath(dir))
 }
+
+func ValidatePluginSrc(src string) error {
+	requiredFiles := []string{"plugin.json", "go.mod", "main.go"}
+
+	for _, f := range requiredFiles {
+		if !FsExists(filepath.Join(src, f)) {
+			return errors.New(f + " not found in source path")
+		}
+	}
+
+	return nil
+}

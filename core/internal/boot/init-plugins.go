@@ -20,6 +20,7 @@ func InitPlugins(g *api.CoreGlobals) {
 
 	for _, def := range plugins.AllPluginSrcDefs() {
 		var info sdkutils.PluginInfo
+
 		installPath, installed := plugins.FindDefInstallPath(def)
 		recompile := plugins.NeedsRecompile(def)
 		installed = installed && (plugins.ValidateInstallPath(installPath) == nil)

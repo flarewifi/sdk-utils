@@ -13,14 +13,14 @@ import (
 
 func SyncCoreVersion() {
 	version := plugins.GetCoreInfo().Version
-	packageJson := "package.json"
+	packageJSON := "package.json"
 	var pkg map[string]any
-	err := sdkutils.JsonRead(packageJson, &pkg)
+	err := sdkutils.JsonRead(packageJSON, &pkg)
 	if err != nil {
 		panic(err)
 	}
 	pkg["version"] = version
-	err = sdkutils.JsonWrite(packageJson, pkg)
+	err = sdkutils.JsonWrite(packageJSON, pkg)
 	if err != nil {
 		panic(err)
 	}
