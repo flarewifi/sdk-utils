@@ -2,15 +2,12 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	sdkapi "sdk/api"
 
 	"core/db"
 	"core/db/queries"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type DeviceModel struct {
@@ -22,7 +19,7 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 	return &DeviceModel{database, mdls}
 }
 
-func (self *DeviceModel) Create(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
+func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	dId, err := qtx.CreateDevice(ctx, queries.CreateDeviceParams{
 		MacAddress: mac,
@@ -53,13 +50,13 @@ func (self *DeviceModel) Create(tx pgx.Tx, ctx context.Context, mac string, ip s
 
 	_, err = qtx.CreateWallet(ctx, queries.CreateWalletParams{
 		DeviceID: dId,
-		Balance:  sdkutils.PgFloat64ToNumeric(0),
+		Balance:  "0.0",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	err = tx.Commit(ctx)
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +64,7 @@ func (self *DeviceModel) Create(tx pgx.Tx, ctx context.Context, mac string, ip s
 	return dev, nil
 }
 
-func (self *DeviceModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*Device, error) {
+func (self *DeviceModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*Device, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	d, err := qtx.FindDevice(ctx, id)
 	if err != nil {
@@ -87,7 +84,7 @@ func (self *DeviceModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*
 	return device, nil
 }
 
-func (self *DeviceModel) FindByMac(tx pgx.Tx, ctx context.Context, mac string) (*Device, error) {
+func (self *DeviceModel) FindByMac(tx *sql.Tx, ctx context.Context, mac string) (*Device, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	device := NewDevice(self.db, self.models)
 	d, err := qtx.FindDeviceByMac(ctx, mac)
@@ -106,7 +103,7 @@ func (self *DeviceModel) FindByMac(tx pgx.Tx, ctx context.Context, mac string) (
 	return device, nil
 }
 
-func (self *DeviceModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, mac string, ip string, hostname string, status int) error {
+func (self *DeviceModel) Update(tx *sql.Tx, ctx context.Context, id int32, mac string, ip string, hostname string, status int) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		ID:         id,

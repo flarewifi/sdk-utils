@@ -9,7 +9,7 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"core/internal/utils/cmd"
+	cmd "tools/shell"
 )
 
 func GetNetworkDevices() ([]*NetworkDevice, error) {

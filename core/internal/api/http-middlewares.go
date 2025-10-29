@@ -57,14 +57,14 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 			ctx := r.Context()
 			errCode := http.StatusInternalServerError
 
-			tx, err := self.api.SqlDb().Begin(ctx)
+			tx, err := self.api.db.BeginTx(ctx, nil)
 			if err != nil {
 				self.ErrorPage(w, err, errCode)
 				return
 			}
-			defer tx.Rollback(ctx)
+			defer tx.Rollback()
 
-			client, err := helpers.CurrentClient(self.api.ClntReg, self.api.SqlDb(), r)
+			client, err := helpers.CurrentClient(r)
 			if err != nil {
 				self.ErrorPage(w, err, errCode)
 				return
@@ -88,7 +88,7 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 				return
 			}
 
-			if err := tx.Commit(ctx); err != nil {
+			if err := tx.Commit(); err != nil {
 				self.ErrorPage(w, err, errCode)
 				return
 			}

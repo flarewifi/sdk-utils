@@ -8,11 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	tools "core/build/tools"
-	"core/env"
 	"core/internal/cli/server"
-	"core/internal/utils/plugins"
-	"core/internal/utils/updates"
+	tools "tools"
+	"tools/env"
+	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -62,9 +61,9 @@ func main() {
 		tools.CreateGoWorkspace()
 		return
 
-	case "upgrade":
-		updates.UpgradeCmd()
-		return
+	// case "upgrade":
+	// 	updates.UpgradeCmd()
+	// 	return
 
 	case "help":
 		fmt.Println(Usage())

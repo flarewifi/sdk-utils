@@ -1,10 +1,11 @@
 CREATE TABLE IF NOT EXISTS devices (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id INTEGER PRIMARY KEY,
     ip_address VARCHAR(15) NOT NULL DEFAULT '',
     mac_address CHAR(17) NOT NULL DEFAULT '',
     hostname VARCHAR(64) NOT NULL DEFAULT '',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    status INTEGER NOT NULL DEFAULT 2,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS index_mac_address ON devices(mac_address);
-CREATE INDEX IF NOT EXISTS index_ip_address ON devices(ip_address);

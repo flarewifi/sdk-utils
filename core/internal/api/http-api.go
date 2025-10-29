@@ -49,7 +49,7 @@ func (self *HttpApi) Initialize() {
 }
 
 func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, error) {
-	return helpers.CurrentClient(self.api.ClntReg, self.api.SqlDb(), r)
+	return helpers.CurrentClient(r)
 }
 
 func (self *HttpApi) Cookie() sdkapi.IHttpCookie {

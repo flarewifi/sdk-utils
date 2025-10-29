@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"core/internal/utils/cmd"
 	"core/internal/utils/ifbutil"
-	jobque "core/internal/utils/job-que"
+	jobque "tools/job-que"
+	cmd "tools/shell"
 )
 
 var tcClassQue sync.Mutex

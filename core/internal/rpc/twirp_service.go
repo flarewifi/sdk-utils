@@ -2,9 +2,9 @@ package rpc_flarehotspot_v1
 
 import (
 	"context"
-	"core/env"
 	"log"
 	"net/http"
+	"tools/env"
 
 	"github.com/twitchtv/twirp"
 )

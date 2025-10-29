@@ -203,14 +203,14 @@ func skipWhitespace(iterator *basicWsvCharIterator) {
 	}
 }
 
-func needsDoubleQuotes(value string) bool {
-	if len(value) == 0 || value == "-" {
-		return true
-	}
+// func needsDoubleQuotes(value string) bool {
+// 	if len(value) == 0 || value == "-" {
+// 		return true
+// 	}
 
-	chars := getCodePoints(value)
-	return containsSpecialChar(chars)
-}
+// 	chars := getCodePoints(value)
+// 	return containsSpecialChar(chars)
+// }
 
 func containsSpecialChar(chars []rune) bool {
 	for _, c := range chars {
@@ -231,11 +231,12 @@ func serializeValue(value string) string {
 		if containsSpecialChar(chars) {
 			var result = "\""
 			for _, c := range chars {
-				if c == codepoint_LINEFEED {
+				switch c {
+				case codepoint_LINEFEED:
 					result += "\"/\""
-				} else if c == codepoint_DOUBLEQUOTE {
+				case codepoint_DOUBLEQUOTE:
 					result += "\"\""
-				} else {
+				default:
 					result += string(c)
 				}
 			}

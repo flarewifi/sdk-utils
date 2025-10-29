@@ -2,22 +2,21 @@ package models
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"core/db"
 	"core/db/queries"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Session struct {
 	db          *db.Database
 	models      *Models
-	id          pgtype.UUID
-	deviceId    pgtype.UUID
+	id          int32
+	deviceId    int32
 	sessionType string
 	timeSecs    int
 	dataMb      float64
@@ -50,13 +49,23 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 			startedAt = &s.StartedAt.Time
 		}
 
+		mb, err := strconv.ParseFloat(s.DataMbytes, 64)
+		if err != nil {
+			mb = 0
+		}
+
+		cmb, err := strconv.ParseFloat(s.ConsumptionMb, 64)
+		if err != nil {
+			cmb = 0
+		}
+
 		session.id = s.ID
 		session.deviceId = s.DeviceID
 		session.sessionType = s.SessionType
 		session.timeSecs = int(s.TimeSecs)
-		session.dataMb = sdkutils.PgNumericToFloat64(s.DataMbytes)
+		session.dataMb = mb
 		session.timeCons = int(s.ConsumptionSecs)
-		session.dataCons = sdkutils.PgNumericToFloat64(s.ConsumptionMb)
+		session.dataCons = cmb
 		session.expDays = expDays
 		session.startedAt = startedAt
 
@@ -66,16 +75,13 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 		session.downMbits = int(s.DownMbits)
 		session.upMbits = int(s.UpMbits)
 		session.useGlobal = s.UseGlobal
-
-		if s.CreatedAt.Valid {
-			session.createdAt = s.CreatedAt.Time
-		}
+		session.createdAt = s.CreatedAt
 	}
 
 	return session
 }
 
-func BuildSession(id pgtype.UUID, devId pgtype.UUID, t string, timeSecs int, dataMb float64, timeCons int, dataCons float64, startedAt *time.Time, expDays *int, expiresAt *time.Time, dmbits int, umbits int, g bool) *Session {
+func BuildSession(id int32, devId int32, t string, timeSecs int, dataMb float64, timeCons int, dataCons float64, startedAt *time.Time, expDays *int, expiresAt *time.Time, dmbits int, umbits int, g bool) *Session {
 	return &Session{
 		id:          id,
 		deviceId:    devId,
@@ -93,11 +99,11 @@ func BuildSession(id pgtype.UUID, devId pgtype.UUID, t string, timeSecs int, dat
 	}
 }
 
-func (self *Session) Id() pgtype.UUID {
+func (self *Session) Id() int32 {
 	return self.id
 }
 
-func (self *Session) DeviceId() pgtype.UUID {
+func (self *Session) DeviceId() int32 {
 	return self.deviceId
 }
 
@@ -157,15 +163,15 @@ func (self *Session) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Session) Update(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
-	var startedTime pgtype.Timestamp
+func (self *Session) Update(tx *sql.Tx, ctx context.Context, devId int32, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+	var startedTime sql.NullTime
 	if started != nil {
-		startedTime = pgtype.Timestamp{Time: *started, Valid: true}
+		startedTime = sql.NullTime{Time: *started, Valid: true}
 	}
 
-	var expDays pgtype.Int4
+	var expDays sql.NullInt32
 	if exp != nil {
-		expDays = pgtype.Int4{Int32: int32(*exp), Valid: true}
+		expDays = sql.NullInt32{Int32: int32(*exp), Valid: true}
 	}
 
 	qtx := self.db.Queries.WithTx(tx)
@@ -173,9 +179,9 @@ func (self *Session) Update(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, t
 		DeviceID:        devId,
 		SessionType:     t,
 		TimeSecs:        int32(secs),
-		DataMbytes:      sdkutils.PgFloat64ToNumeric(mb),
+		DataMbytes:      fmt.Sprintf("%.6f", mb),
 		ConsumptionSecs: int32(timecon),
-		ConsumptionMb:   sdkutils.PgFloat64ToNumeric(datacon),
+		ConsumptionMb:   fmt.Sprintf("%.6f", datacon),
 		StartedAt:       startedTime,
 		ExpDays:         expDays,
 		DownMbits:       int32(downMbit),
@@ -201,6 +207,6 @@ func (self *Session) Update(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, t
 	return nil
 }
 
-func (self *Session) Save(tx pgx.Tx, ctx context.Context) error {
+func (self *Session) Save(tx *sql.Tx, ctx context.Context) error {
 	return self.Update(tx, ctx, self.deviceId, self.sessionType, self.timeSecs, self.dataMb, self.timeCons, self.dataCons, self.startedAt, self.expDays, self.downMbits, self.upMbits, self.useGlobal)
 }

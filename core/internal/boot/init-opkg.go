@@ -1,16 +1,19 @@
 package boot
 
 import (
-	"core/internal/utils/cmd"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	cmd "tools/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 // Install ipk files in ./packages directory
 func InitOpkg() {
+	fmt.Println("Installing ipk packages...")
+
 	var files []string
 
 	packagesDir := filepath.Join(sdkutils.PathAppDir, "packages")

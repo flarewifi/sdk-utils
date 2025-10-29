@@ -1,6 +1,7 @@
 package connmgr
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -11,8 +12,7 @@ import (
 
 	sdkapi "sdk/api"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
@@ -45,92 +45,89 @@ func (reg *ClientRegister) ClientChangedHook(fn ...sdkapi.ClientChangedHookFn) {
 	reg.changedHooks = append(reg.changedHooks, fn...)
 }
 
-func (reg *ClientRegister) Register(dbpool *pgxpool.Pool, r *http.Request, mac string, ip string, hostname string) (sdkapi.IClientDevice, error) {
+func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac string, ip string, hostname string) (sdkapi.IClientDevice, error) {
 	ctx := r.Context()
-	tx, err := dbpool.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
 
-	dev, err := reg.mdls.Device().FindByMac(tx, ctx, mac)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) && dev == nil {
-			log.Println("no device found by mac, creating new device...")
-			// create new device record
-			dev, err = reg.mdls.Device().Create(tx, ctx, mac, ip, hostname)
-			if err != nil {
-				return nil, err
+	var clnt sdkapi.IClientDevice
+
+	err := sdkutils.RunInTx(dtb.DB, ctx, func(tx *sql.Tx) error {
+		dev, err := reg.mdls.Device().FindByMac(tx, ctx, mac)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) && dev == nil {
+				log.Println("no device found by mac, creating new device...")
+				// create new device record
+				dev, err = reg.mdls.Device().Create(tx, ctx, mac, ip, hostname)
+				if err != nil {
+					return err
+				}
+
+				clnt = NewClientDevice(reg.db, reg.mdls, dev)
+
+				// call createdHooks functions
+				if len(reg.createdHooks) > 0 {
+					for _, hookFn := range reg.createdHooks {
+						if err := hookFn(ctx, clnt); err != nil {
+							return err
+						}
+					}
+				}
+
+				return nil
 			}
 
-			clnt := NewClientDevice(reg.db, reg.mdls, dev)
+			log.Println("error finding device by mac:", err)
+			return err
+		}
 
-			// call createdHooks functions
-			if len(reg.createdHooks) > 0 {
-				for _, hookFn := range reg.createdHooks {
-					if err := hookFn(ctx, clnt); err != nil {
-						return nil, err
+		clnt = NewClientDevice(reg.db, reg.mdls, dev)
+		changed := ip != dev.IpAddr() || hostname != dev.Hostname()
+
+		// Update device details if need be
+		if changed {
+			connected := reg.mgr.IsConnected(clnt)
+			if connected {
+				// disconnect temporarily
+				err = reg.mgr.Disconnect(ctx, clnt, "Device details changed, reconnecting...")
+				if err != nil {
+					return err
+				}
+			}
+
+			old := NewClientDevice(reg.db, reg.mdls, dev.Clone())
+			// Devices are have disconnected status by default.
+			err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Disconnected))
+			if err != nil {
+				fmt.Println("error updating dev: ", err)
+				return fmt.Errorf("could not update dev: %w", err)
+			}
+
+			// call changedHooks functions
+			if len(reg.changedHooks) > 0 {
+				for _, hookFn := range reg.changedHooks {
+					if err := hookFn(ctx, clnt, old); err != nil {
+						return err
 					}
 				}
 			}
 
-			if err := tx.Commit(ctx); err != nil {
-				return nil, err
-			}
+			// reconnect client device
+			if connected {
+				err := reg.mgr.Connect(ctx, clnt, "Device details changed, reconnected successfully!")
+				if err != nil {
+					return err
+				}
 
-			return clnt, nil
-		}
-
-		log.Println("error finding device by mac:", err)
-		return nil, err
-	}
-
-	clnt := NewClientDevice(reg.db, reg.mdls, dev)
-	changed := ip != dev.IpAddr() || hostname != dev.Hostname()
-
-	// Update device details if need be
-	if changed {
-		connected := reg.mgr.IsConnected(clnt)
-		if connected {
-			// disconnect temporarily
-			err = reg.mgr.Disconnect(ctx, clnt, "Device details changed, reconnecting...")
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		old := NewClientDevice(reg.db, reg.mdls, dev.Clone())
-		// Devices are have disconnected status by default.
-		err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Disconnected))
-		if err != nil {
-			fmt.Println("error updating dev: ", err)
-			return nil, fmt.Errorf("could not update dev: %w", err)
-		}
-
-		// call changedHooks functions
-		if len(reg.changedHooks) > 0 {
-			for _, hookFn := range reg.changedHooks {
-				if err := hookFn(ctx, clnt, old); err != nil {
-					return nil, err
+				if err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Connected)); err != nil {
+					fmt.Println("error updating dev to connected: ", err)
+					return fmt.Errorf("could not update dev to connected: %w", err)
 				}
 			}
 		}
 
-		// reconnect client device
-		if connected {
-			err := reg.mgr.Connect(ctx, clnt, "Device details changed, reconnected successfully!")
-			if err != nil {
-				return nil, err
-			}
+		return nil
+	})
 
-			if err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Connected)); err != nil {
-				fmt.Println("error updating dev to connected: ", err)
-				return nil, fmt.Errorf("could not update dev to connected: %w", err)
-			}
-		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
+	if err != nil {
 		return nil, err
 	}
 

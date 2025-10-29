@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS wallets (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    device_id UUID NOT NULL,
+    id INTEGER PRIMARY KEY,
+    device_id INTEGER NOT NULL,
     balance DECIMAL(8, 2) NOT NULL DEFAULT 0.00,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

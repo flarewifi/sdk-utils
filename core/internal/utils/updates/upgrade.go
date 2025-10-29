@@ -1,53 +1,53 @@
 package updates
 
-import (
-	"core/internal/api"
-	"core/internal/utils/plugins"
-	"fmt"
+// import (
+// 	"core/internal/api"
+// 	"core/internal/utils/plugins"
+// 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-)
+// 	"github.com/jackc/pgx/v5/pgxpool"
+// )
 
-type CompileResult struct {
-	Percent int
-	Error   error
-}
+// type CompileResult struct {
+// 	Percent int
+// 	Error   error
+// }
 
-func UpgradeCmd() error {
-	fmt.Println("Running upgrade command (in new version)...")
-	g := api.NewGlobals()
-	defer g.Db.SqlDB().Close()
+// func UpgradeCmd() error {
+// 	fmt.Println("Running upgrade command (in new version)...")
+// 	g := api.NewGlobals()
+// 	defer g.Database.SqlDB().Close()
 
-	ch := CompilePlugins(g.CoreAPI.SqlDb())
+// 	ch := CompilePlugins(g.CoreAPI.SqlDb())
 
-	for result := range ch {
-		fmt.Println(result)
-	}
+// 	for result := range ch {
+// 		fmt.Println(result)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func CompilePlugins(db *pgxpool.Pool) chan CompileResult {
-	ch := make(chan CompileResult)
+// func CompilePlugins(db *pgxpool.Pool) chan CompileResult {
+// 	ch := make(chan CompileResult)
 
-	go func() {
-		defer close(ch)
-		defs := plugins.AllPluginSrcDefs()
-		total := len(defs)
+// 	go func() {
+// 		defer close(ch)
+// 		defs := plugins.AllPluginSrcDefs()
+// 		total := len(defs)
 
-		for i, def := range defs {
-			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true})
-			if err != nil {
-				result := CompileResult{Error: err}
-				ch <- result
-				return
-			}
+// 		for i, def := range defs {
+// 			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true})
+// 			if err != nil {
+// 				result := CompileResult{Error: err}
+// 				ch <- result
+// 				return
+// 			}
 
-			percent := (i + 1) * 100 / total
-			result := CompileResult{Percent: percent}
-			ch <- result
-		}
-	}()
+// 			percent := (i + 1) * 100 / total
+// 			result := CompileResult{Percent: percent}
+// 			ch <- result
+// 		}
+// 	}()
 
-	return ch
-}
+// 	return ch
+// }

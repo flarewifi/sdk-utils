@@ -9,14 +9,12 @@ package sdkapi
 import (
 	"context"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // IClientSession represents a client's internet connection session.
 type IClientSession interface {
 	// Returns the session's ID.
-	Id() pgtype.UUID
+	Id() int32
 
 	// REturns the provider of the session record.
 	Provider() string

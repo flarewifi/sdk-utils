@@ -6,9 +6,9 @@ import (
 	sdkapi "sdk/api"
 
 	"core/internal/api"
-	"core/internal/config"
 	coreforms "core/internal/web/forms"
 	"core/resources/views/admin/themes"
+	"tools/config"
 )
 
 func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {

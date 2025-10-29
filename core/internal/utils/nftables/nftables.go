@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"core/internal/utils/cmd"
-	jobque "core/internal/utils/job-que"
+	jobque "tools/job-que"
+	cmd "tools/shell"
 )
 
 const (

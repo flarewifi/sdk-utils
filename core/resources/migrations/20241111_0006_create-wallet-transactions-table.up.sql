@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS wallet_transactions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    wallet_id UUID NOT NULL,
+    id INTEGER PRIMARY KEY,
+    wallet_id INTEGER NOT NULL,
     amount DECIMAL(8, 2) NOT NULL,
     new_balance DECIMAL(8, 2) NOT NULL,
     description VARCHAR(255) NOT NULL DEFAULT '',

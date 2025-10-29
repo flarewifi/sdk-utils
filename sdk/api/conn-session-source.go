@@ -10,8 +10,6 @@ import (
 	"context"
 	"errors"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const (
@@ -25,7 +23,7 @@ var (
 )
 
 type SessionData struct {
-	Id             pgtype.UUID
+	Id             int32
 	Provider       string
 	SessionType    string
 	TimeSecs       int

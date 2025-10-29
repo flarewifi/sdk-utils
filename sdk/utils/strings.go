@@ -62,3 +62,19 @@ func TrimChars(str string, chars ...string) string {
 	}
 	return str
 }
+
+// RemoveRedundant removes duplicate words from a string while preserving order.
+func RmRedundantWords(input string) string {
+	words := strings.Fields(input) // Split string by whitespace
+	seen := make(map[string]bool)
+	var result []string
+
+	for _, word := range words {
+		if !seen[word] {
+			seen[word] = true
+			result = append(result, word)
+		}
+	}
+
+	return strings.Join(result, " ")
+}

@@ -9,16 +9,18 @@ import (
 	"path/filepath"
 
 	"core/internal/api"
-	"core/internal/utils/migrate"
-	"core/internal/utils/plugins"
+	"tools/migrate"
+	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func InitPlugins(g *api.CoreGlobals) {
-	db := g.CoreAPI.SqlDb()
+	db := g.CoreAPI.SqlDB()
+	localPlugins := plugins.LocalPluginSrcDefs()
+	systemPlugins := plugins.SystemPluginSrcDefs()
 
-	for _, def := range plugins.AllPluginSrcDefs() {
+	for _, def := range append(systemPlugins, localPlugins...) {
 		var info sdkutils.PluginInfo
 
 		installPath, installed := plugins.FindDefInstallPath(def)
@@ -39,7 +41,7 @@ func InitPlugins(g *api.CoreGlobals) {
 		if toBeRemoved {
 			log.Printf("Plugin %q is marked for removal, uninstalling...", info.Package)
 
-			if err := plugins.UninstallPlugin(info.Package, g.CoreAPI.SqlDb()); err != nil {
+			if err := plugins.UninstallPlugin(info.Package, g.CoreAPI.SqlDB()); err != nil {
 				log.Printf("Error removing %q plugin: %s", info.Package, err.Error())
 			} else {
 				log.Printf("Successfully removed %q plugin", info.Package)

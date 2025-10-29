@@ -1,24 +1,26 @@
 #!/usr/bin/env sh
 
-BUILD_TAGS="dev"
-BUILD_CORE_MAIN="./core/cmd/build-core"
-BUILD_CLI_MAIN="./core/cmd/build-cli"
-BUILD_ASSETS_MAIN="./core/cmd/build-assets"
+DB_DRIVER="sqlite"
+GO_TAGS="dev $DB_DRIVER"
+BUILD_CORE_MAIN="./tools/cmd/build-core"
+BUILD_CLI_MAIN="./tools/cmd/build-cli"
+BUILD_ASSETS_MAIN="./tools/cmd/build-assets"
+SYNC_VERSION="./tools/cmd/sync-versions/main.go"
 FLARE_CLI_MAIN="./core/internal/cli"
-SYNC_VERSION="./core/cmd/sync-versions/main.go"
 FLARE_BIN="./bin/flare"
 
 cp go.work.default go.work && \
-    echo "Cleaning templ output files..." && \
+    echo "Generating templ files..." && \
     rm -rf **/*_templ.go && \
-    rm -rf core/internal/db/sqlc && \
     sh -c "cd core && templ generate" && \
-    go run -tags="${BUILD_TAGS}" $SYNC_VERSION && \
-    go run -tags="${BUILD_TAGS}" $BUILD_ASSETS_MAIN && \
-    go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
-    go run -tags="${BUILD_TAGS}" $FLARE_CLI_MAIN build-templates && \
-    go run -tags="${BUILD_TAGS}" $BUILD_CORE_MAIN && \
-    go run -tags="${BUILD_TAGS}" $BUILD_CLI_MAIN
+    echo "Generating sqlc queires..." && \
+    sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
+    go run -tags="${GO_TAGS}" $SYNC_VERSION && \
+    go run -tags="${GO_TAGS}" $BUILD_ASSETS_MAIN && \
+    go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
+    go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN build-templates && \
+    go run -tags="${GO_TAGS}" $BUILD_CORE_MAIN && \
+    go run -tags="${GO_TAGS}" $BUILD_CLI_MAIN
 
 if [ $? != 0 ]; then
     echo "Failed to build core system!"
@@ -34,9 +36,10 @@ for f in \
     "bin" \
     "core" \
     "defaults" \
-    "main" \
     "plugins" \
     "sdk" \
+    "scripts" \
+    "tools" \
     "go.work" \
     "go.sum" \
     "start.sh" \

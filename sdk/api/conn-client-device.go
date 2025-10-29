@@ -8,9 +8,7 @@ package sdkapi
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
+	"database/sql"
 )
 
 type DeviceStatus int
@@ -26,7 +24,7 @@ const (
 type IClientDevice interface {
 
 	// Returns the database id of the client device ID.
-	Id() pgtype.UUID
+	Id() int32
 
 	// Returns the hostname of the device.
 	Hostname() string
@@ -41,7 +39,7 @@ type IClientDevice interface {
 	Status() DeviceStatus
 
 	// Updates the client device.
-	Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error
+	Update(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error
 
 	// Emits a socket event to a client device.
 	// The event will be propagated to the client's browser via server-sent events.

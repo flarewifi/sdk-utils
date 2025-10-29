@@ -11,7 +11,7 @@ func main() {}
 
 func Init() {
 	g := api.NewGlobals()
-	defer g.Db.SqlDB().Close()
+	defer g.Database.Close()
 
 	boot.Init(g)
 }

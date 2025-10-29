@@ -2,6 +2,7 @@ package connmgr
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -13,9 +14,6 @@ import (
 	"core/internal/network"
 	"core/internal/utils/nftables"
 	sdkapi "sdk/api"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
@@ -150,11 +148,11 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 
 	err := <-errReturnCh
 	if err == nil {
-		tx, err := self.db.SqlDB().Begin(ctx)
+		tx, err := self.db.BeginTx(ctx, nil)
 		if err != nil {
 			return fmt.Errorf("unble to create db pool: %w", err)
 		}
-		defer tx.Rollback(ctx)
+		defer tx.Rollback()
 
 		if err := clnt.Update(
 			tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Connected),
@@ -162,7 +160,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 			return fmt.Errorf("unable to update device status to connected: %w", err)
 		}
 
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			return fmt.Errorf("unable to commit db transaction: %w", err)
 		}
 	}
@@ -178,18 +176,18 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 
 	clnt.Emit(sdkapi.EventSessionDisconnected, []byte(notify))
 
-	tx, err := self.db.SqlDB().Begin(ctx)
+	tx, err := self.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("unble to create db pool: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback()
 
 	err = clnt.Update(tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Disconnected))
 	if err != nil {
 		return fmt.Errorf("unable to update device status to disconnected: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("unable to commit db transaction: %w", err)
 	}
 
@@ -329,9 +327,9 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 }
 
 func (self *SessionsMgr) CreateSession(
-	tx pgx.Tx,
+	tx *sql.Tx,
 	ctx context.Context,
-	devId pgtype.UUID,
+	devId int32,
 	t string,
 	timeSecs int,
 	dataMbytes float64,
@@ -339,7 +337,7 @@ func (self *SessionsMgr) CreateSession(
 	downMbits int,
 	upMbits int,
 	useGlobal bool,
-) (pgtype.UUID, error) {
+) (int32, error) {
 	session, err := self.mdl.Session().Create(tx, ctx, devId, t, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
 	return session.Id(), err
 }
@@ -353,22 +351,22 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 		}
 	}
 
-	tx, err := self.db.SqlDB().Begin(ctx)
+	tx, err := self.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback()
 
 	localClient := clnt.(*ClientDevice)
 	s, err := self.mdl.Session().AvailableForDevice(tx, ctx, localClient.id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("No more available sessions")
 		}
 		return nil, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -377,7 +375,7 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 }
 
 // SessionSummary
-func (self *SessionsMgr) SessionSummary(tx pgx.Tx, ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
+func (self *SessionsMgr) SessionSummary(tx *sql.Tx, ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
 	summary, err := self.mdl.Session().Summary(tx, ctx, clnt.Id())
 	if err != nil {
 		return nil, err

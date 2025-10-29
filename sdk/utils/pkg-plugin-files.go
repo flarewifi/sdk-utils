@@ -2,6 +2,7 @@ package sdkutils
 
 import (
 	"path/filepath"
+	"slices"
 )
 
 type PluginFile struct {
@@ -26,6 +27,29 @@ func CopyPluginFiles(pluginSrc string, dest string) (err error) {
 	}
 
 	for _, f := range PLuginFiles {
+		err := FsCopy(filepath.Join(pluginSrc, f.File), filepath.Join(dest, f.File))
+		if err != nil && !f.Optional {
+			return err
+		}
+	}
+	return nil
+}
+
+func CopyPluginFilesMono(pluginSrc string, dest string) (err error) {
+	dontCopyFiles := []string{
+		"plugin.so",
+		"resources/migrations",
+	}
+
+	if err := FsEnsureDir(dest); err != nil {
+		return err
+	}
+
+	for _, f := range PLuginFiles {
+		if slices.Contains(dontCopyFiles, f.File) {
+			continue
+		}
+
 		err := FsCopy(filepath.Join(pluginSrc, f.File), filepath.Join(dest, f.File))
 		if err != nil && !f.Optional {
 			return err

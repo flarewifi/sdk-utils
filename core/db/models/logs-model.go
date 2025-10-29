@@ -6,7 +6,7 @@ import (
 	"core/db/queries"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type LogModel struct {
@@ -36,7 +36,7 @@ func NewLogModel(database *db.Database, mdls *Models) *LogModel {
 
 func (self *LogModel) Create(ctx context.Context, pkg string, level string, message string, filepath string, line int) error {
 	_, err := self.db.Queries.CreateLog(ctx, queries.CreateLogParams{
-		Package:    pgtype.Text{String: pkg, Valid: pkg != ""},
+		Package:    sdkutils.StrToNullString(pkg),
 		Level:      level,
 		Message:    message,
 		Filepath:   filepath,
@@ -58,7 +58,7 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 		SearchText: opts.SearchText,
 	}
 
-	tx, err := self.db.SqlDB().Begin(ctx)
+	tx, err := self.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,12 +89,12 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 			Message:   row.Message,
 			Filepath:  row.Filepath,
 			Line:      int(row.LineNumber),
-			CreatedAt: row.CreatedAt.Time,
+			CreatedAt: row.CreatedAt,
 		}
 		logs[i] = &log
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 

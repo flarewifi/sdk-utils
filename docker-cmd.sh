@@ -4,7 +4,7 @@ START_SH=$1
 
 cp go.work.default go.work && \
     reflex \
-    -r '\.(go|templ|sql|js|css|json)$' \
+    -r '\.(go|templ|sql|js|css|json|sh)$' \
     -R '(plugin|package|package\-lock).json$' \
     -R '_templ\.go$' \
     -R '\.tmp\/.*' \
@@ -22,6 +22,6 @@ cp go.work.default go.work && \
     -s -- sh -c "$START_SH" -v &
 
 touch "/tmp/.flare-up" && \
-    go run -tags="dev" ./core/cmd/livereload/main.go &
+    go run -tags="dev" ./tools/cmd/livereload/main.go &
 
 wait

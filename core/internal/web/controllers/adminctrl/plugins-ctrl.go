@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"core/internal/api"
-	"core/internal/utils/plugins"
+	"tools/plugins"
 
 	views "core/resources/views/admin/plugins"
 	sdkapi "sdk/api"
@@ -295,7 +295,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				LocalPath: sdkutils.StripRootPath(pluginCachePath),
 			}
 
-			if _, err := plugins.InstallFromLocalPath(g.CoreAPI.SqlDb(), def, plugins.InstallOpts{ForceInstall: false}); err != nil {
+			if _, err := plugins.InstallFromLocalPath(g.Database.DB, def, plugins.InstallOpts{ForceInstall: false}); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: install from local path error: " + err.Error())
 				return
@@ -357,7 +357,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		go func() {
 			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
 
-			info, err := plugins.InstallFromGitSrc(g.CoreAPI.SqlDb(), sdkutils.PluginSrcDef{
+			info, err := plugins.InstallFromGitSrc(g.Database.DB, sdkutils.PluginSrcDef{
 				Src:    sdkutils.PluginSrcGit,
 				GitURL: repoURL,
 				GitRef: gitRef,

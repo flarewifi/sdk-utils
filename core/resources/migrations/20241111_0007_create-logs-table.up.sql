@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id INTEGER PRIMARY KEY,
     package VARCHAR(255),
     level VARCHAR(50) NOT NULL,
     message TEXT NOT NULL DEFAULT '',
