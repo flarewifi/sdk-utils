@@ -130,7 +130,6 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 
 	for filename, files := range manifest {
 		// Don't output global scripts and styles, they are already bundled in core globals
-
 		re := regexp.MustCompile(`^globals?\.js$|^globals?\.css$`)
 		if re.MatchString(filename) {
 			continue

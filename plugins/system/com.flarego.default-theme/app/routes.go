@@ -19,5 +19,4 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 		subrouter.Get("/summary", PortalSessionSyncHandler(api)).Name("sessions.summary")
 		subrouter.Get("/navs", PortalNavItemsHandler(api)).Name("portal.navs")
 	})
-
 }

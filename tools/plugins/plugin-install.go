@@ -26,25 +26,25 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 	switch def.Src {
 	case sdkutils.PluginSrcZip:
 		if HasCache(def.LocalPath) {
-			return InstallFromLocalPath(db, def, InstallOpts{})
+			return InstallFromLocalPath(db, def, opts)
 		}
 
 	case sdkutils.PluginSrcGit:
 		if HasCache(def.LocalPath) {
-			return InstallFromLocalPath(db, def, InstallOpts{})
+			return InstallFromLocalPath(db, def, opts)
 		}
 		info, err = InstallFromGitSrc(db, def, opts)
 
 	case sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem:
 		if HasCache(def.LocalPath) {
-			return InstallFromLocalPath(db, def, InstallOpts{})
+			return InstallFromLocalPath(db, def, opts)
 		}
 		info, err = InstallFromLocalPath(db, def, opts)
 
+		info, err = InstallFromLocalPath(db, def, opts)
 	case sdkutils.PluginSrcStore:
 		opts.RemoveSrc = true
 		info, err = InstallFromPluginStore(db, def, opts)
-
 	default:
 		return sdkutils.PluginInfo{}, errors.New("Invalid plugin source: " + def.Src)
 	}
@@ -113,7 +113,6 @@ func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, opts Insta
 		return sdkutils.PluginInfo{}, err
 	}
 
-	opts.RemoveSrc = true
 	if err := InstallPlugin(newWorkPath, sqldb, opts); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
