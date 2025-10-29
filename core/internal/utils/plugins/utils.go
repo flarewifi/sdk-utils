@@ -32,7 +32,9 @@ func AllPluginSrcDefs() []sdkutils.PluginSrcDef {
 	list := InstalledPluginsDef()
 	localPlugins := LocalPluginSrcDefs()
 	systemPlugins := SystemPluginSrcDefs()
+	configPlugins := ConfigPluginSrcDefs()
 	alldefs := append(systemPlugins, localPlugins...)
+	alldefs = append(alldefs, configPlugins...)
 
 	for _, loc := range alldefs {
 		if !IsDefInList(list, loc) {
@@ -41,6 +43,25 @@ func AllPluginSrcDefs() []sdkutils.PluginSrcDef {
 	}
 
 	return list
+}
+
+func ConfigPluginSrcDefs() []sdkutils.PluginSrcDef {
+	cfg, err := config.ReadPluginsConfig()
+	if err != nil {
+		return nil
+	}
+
+	excluded := []string{sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem}
+	var defs []sdkutils.PluginSrcDef
+	for _, m := range cfg.Metadata {
+		if slices.Contains(excluded, m.Def.Src) {
+			continue
+		}
+
+		defs = append(defs, m.Def)
+	}
+
+	return defs
 }
 
 func LocalPluginSrcDefs() []sdkutils.PluginSrcDef {
@@ -356,4 +377,25 @@ func GetPendingUpdatePath(pkg string) string {
 
 func GetBackupPath(pkg string) string {
 	return filepath.Join(sdkutils.PathPluginBackupsDir, pkg)
+}
+
+func HasCache(cachePath string) bool {
+	info, err := sdkutils.GetPluginInfoFromPath(cachePath)
+	if err != nil {
+		log.Println("no info found")
+		return false
+	}
+
+	actualCachePath := GetCachePath(info.Package)
+	strippedRootPath := sdkutils.StripRootPath(actualCachePath)
+	if strippedRootPath != cachePath {
+		return false
+	}
+
+	err = sdkutils.ValidatePluginSrc(cachePath)
+	return err == nil
+}
+
+func GetCachePath(pkg string) string {
+	return filepath.Join(sdkutils.PathPluginCacheDir, pkg)
 }
