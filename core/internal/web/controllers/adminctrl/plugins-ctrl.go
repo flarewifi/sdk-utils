@@ -291,7 +291,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 
 			def := sdkutils.PluginSrcDef{
-				Src:       sdkutils.PluginSrcLocal,
+				Src:       sdkutils.PluginSrcZip,
 				LocalPath: sdkutils.StripRootPath(pluginCachePath),
 			}
 
