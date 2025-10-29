@@ -1,9 +1,9 @@
 package api
 
 import (
-	"core/internal/config"
-	cfgapi "core/internal/config/api"
 	sdkapi "sdk/api"
+	"tools/config"
+	cfgapi "tools/config/api"
 )
 
 func NewConfigApi(api *PluginApi) {

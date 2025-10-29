@@ -1,17 +1,17 @@
 package api
 
 import (
+	"database/sql"
 	"log"
 
 	"core/db"
 	"core/db/models"
 	"core/internal/connmgr"
 	"core/internal/network"
-	"core/internal/utils/plugins"
 	sdkapi "sdk/api"
+	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func NewPluginApi(dir string, info sdkutils.PluginInfo, pmgr *PluginsMgr, trfkMgr *network.TrafficMgr) *PluginApi {
@@ -21,12 +21,6 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, pmgr *PluginsMgr, trfkMg
 		PluginsMgrApi: pmgr,
 		ClntReg:       pmgr.clntReg,
 		ClntMgr:       pmgr.clntMgr,
-	}
-
-	info, err := sdkutils.GetPluginInfoFromPath(dir)
-	if err != nil {
-		log.Println("Error getting plugin info: ", err.Error())
-		return nil
 	}
 
 	pluginApi.info = info
@@ -96,8 +90,8 @@ func (self *PluginApi) Resource(f string) (path string) {
 	return self.Utl.Resource(f)
 }
 
-func (self *PluginApi) SqlDb() *pgxpool.Pool {
-	return self.db.SqlDB()
+func (self *PluginApi) SqlDB() *sql.DB {
+	return self.db.DB
 }
 
 func (self *PluginApi) Acct() sdkapi.IAccountsApi {

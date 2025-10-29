@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+GO_TAGS="dev sqlite"
+
 (cp go.work.default go.work && \
         rm -rf **/*_templ.go && \
         ./bin/flare fix-workspace && \
@@ -15,10 +17,10 @@ for f in \
     "bin" \
     "core" \
     "defaults" \
-    "main" \
-    "node_modules" \
     "plugins" \
     "sdk" \
+    "scripts" \
+    "tools" \
     "go.work" \
     "go.sum" \
     "start.sh" \
@@ -28,4 +30,6 @@ for f in \
     ln -s $(pwd)/$f $APP_DIR/$f || (echo "Failed to link $f" && exit 1)
 done
 
+mkdir -p $APP_DIR/.tmp
+touch $APP_DIR/.tmp/.server-up
 sh -c "cd $APP_DIR && ./bin/flare server"

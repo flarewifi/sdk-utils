@@ -5,8 +5,5 @@
   ],
   "global.css": [
     "./portal/css/globals.css"
-  ],
-  "app.js": [],
-  "app.css": [],
-  "polyfills.js": []
+  ]
 }

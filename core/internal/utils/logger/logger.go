@@ -18,7 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	jobque "core/internal/utils/job-que"
+	jobque "tools/job-que"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

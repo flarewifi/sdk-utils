@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"time"
 
@@ -11,14 +12,12 @@ import (
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Device struct {
 	db        *db.Database
 	models    *Models
-	id        pgtype.UUID
+	id        int32
 	ipaddr    string
 	macaddr   string
 	hostname  string
@@ -30,7 +29,7 @@ func NewDevice(d *db.Database, m *Models) *Device {
 	return &Device{db: d, models: m}
 }
 
-func BuildDevice(id pgtype.UUID, mac string, ip string, hostname string, status int32) *Device {
+func BuildDevice(id int32, mac string, ip string, hostname string, status int32) *Device {
 	return &Device{
 		id:       id,
 		ipaddr:   ip,
@@ -40,7 +39,7 @@ func BuildDevice(id pgtype.UUID, mac string, ip string, hostname string, status 
 	}
 }
 
-func (self *Device) Id() pgtype.UUID {
+func (self *Device) Id() int32 {
 	return self.id
 }
 
@@ -60,7 +59,7 @@ func (self *Device) Status() sdkapi.DeviceStatus {
 	return self.status
 }
 
-func (self *Device) Reload(tx pgx.Tx, ctx context.Context) error {
+func (self *Device) Reload(tx *sql.Tx, ctx context.Context) error {
 	qtx := self.db.Queries.WithTx(tx)
 	dRow, err := qtx.FindDevice(ctx, self.id)
 	if err != nil {
@@ -74,7 +73,7 @@ func (self *Device) Reload(tx pgx.Tx, ctx context.Context) error {
 	return nil
 }
 
-func (self *Device) Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error {
+func (self *Device) Update(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		Hostname:   hostname,
@@ -96,7 +95,7 @@ func (self *Device) Update(tx pgx.Tx, ctx context.Context, mac string, ip string
 	return nil
 }
 
-func (self *Device) Wallet(tx pgx.Tx, ctx context.Context) (*Wallet, error) {
+func (self *Device) Wallet(tx *sql.Tx, ctx context.Context) (*Wallet, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	w, err := qtx.FindWalletByDeviceId(ctx, self.id)
 	if err != nil {
@@ -107,13 +106,13 @@ func (self *Device) Wallet(tx pgx.Tx, ctx context.Context) (*Wallet, error) {
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = sdkutils.PgNumericToFloat64(w.Balance)
-	wallet.createdAt = w.CreatedAt.Time
+	wallet.balance = sdkutils.StrToFloat64(w.Balance)
+	wallet.createdAt = w.CreatedAt
 
 	return wallet, nil
 }
 
-func (self *Device) NextSession(tx pgx.Tx, ctx context.Context) (*Session, error) {
+func (self *Device) NextSession(tx *sql.Tx, ctx context.Context) (*Session, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	sRow, err := qtx.FindAvailableSessionForDevice(ctx, self.id)
 	if err != nil {
@@ -125,7 +124,7 @@ func (self *Device) NextSession(tx pgx.Tx, ctx context.Context) (*Session, error
 	return session, nil
 }
 
-func (self *Device) Sessions(tx pgx.Tx, ctx context.Context) ([]*Session, error) {
+func (self *Device) Sessions(tx *sql.Tx, ctx context.Context) ([]*Session, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	sessionsRow, err := qtx.FindSessionsForDev(ctx, self.id)
 	if err != nil {

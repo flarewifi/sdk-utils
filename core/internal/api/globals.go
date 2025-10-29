@@ -15,7 +15,7 @@ type AppState struct {
 }
 
 type CoreGlobals struct {
-	Db             *db.Database
+	Database       *db.Database
 	State          *AppState
 	CoreAPI        *PluginApi
 	ClientRegister *connmgr.ClientRegister

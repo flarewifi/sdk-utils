@@ -43,7 +43,7 @@ services:
       - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
       - PGPASS_FILE=/pgpass
     volumes:
-      - ./core/build/devkit/extras/pgadmin4/servers.json:/pgadmin4/servers.json
+      - ./pgadmin4/servers.json:/pgadmin4/servers.json
     networks:
       flare_network:
 

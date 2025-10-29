@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"core/internal/api"
-	"core/internal/utils/plugins"
 	"core/internal/web/helpers"
 	"core/resources/views/boot"
+	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

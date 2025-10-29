@@ -9,8 +9,6 @@ import (
 
 	"core/db"
 	"core/db/models"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func NewLocalSession(dtb *db.Database, mdls *models.Models, s *models.Session) sdkapi.ISessionSource {
@@ -23,8 +21,8 @@ type LocalSession struct {
 	mu          sync.RWMutex
 	db          *db.Database
 	mdls        *models.Models
-	id          pgtype.UUID
-	devId       pgtype.UUID
+	id          int32
+	devId       int32
 	sessionType string
 	timeSecs    int
 	dataMb      float64
@@ -76,7 +74,7 @@ func (self *LocalSession) Save(ctx context.Context, data sdkapi.SessionData) err
 	u := data.UpMbits
 	g := data.UseGlobalSpeed
 
-	tx, err := self.db.SqlDB().Begin(ctx)
+	tx, err := self.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -87,7 +85,7 @@ func (self *LocalSession) Save(ctx context.Context, data sdkapi.SessionData) err
 		return err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 
@@ -98,7 +96,7 @@ func (self *LocalSession) Reload(ctx context.Context) (data sdkapi.SessionData, 
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	tx, err := self.db.SqlDB().Begin(ctx)
+	tx, err := self.db.BeginTx(ctx, nil)
 	if err != nil {
 		return
 	}
@@ -108,7 +106,7 @@ func (self *LocalSession) Reload(ctx context.Context) (data sdkapi.SessionData, 
 		return self.data(), err
 	}
 
-	if err = tx.Commit(ctx); err != nil {
+	if err = tx.Commit(); err != nil {
 		return
 	}
 

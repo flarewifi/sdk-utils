@@ -1,4 +1,4 @@
-//go:build !dev
+//go:build !dev && !sqlite
 
 package pg
 
@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"core/internal/config"
-	"core/internal/utils/cmd"
+	"tools/config"
+	cmd "tools/shell"
 
 	gouci "github.com/digineo/go-uci"
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -66,8 +66,11 @@ func SetupServer(dbpass string, dbname string) error {
 	// don't forget to remove password file
 	defer os.Remove(pgPassFile)
 
-	initDbCmd := fmt.Sprintf(`sudo -u postgres sh -c "LC_COLLATE='C' initdb --pwfile=%s -D %s"`, pgPassFile, pgDataDir)
+	postgresUser := "postgres"
+
+	initDbCmd := fmt.Sprintf(`sh -c "LC_COLLATE='C' initdb --pwfile=%s -D %s"`, pgPassFile, pgDataDir)
 	if err := cmd.Exec(initDbCmd, &cmd.ExecOpts{
+		User:   &postgresUser,
 		Stdout: os.Stdout,
 	}); err != nil {
 		return err
@@ -75,8 +78,8 @@ func SetupServer(dbpass string, dbname string) error {
 
 	// Write config file
 	if err := config.WriteDatabaseConfig(config.DbConfig{
-		Host:     "localhost",
-		Username: "postgres",
+		Host:     "127.0.0.1",
+		Username: postgresUser,
 		Password: dbpass,
 		Database: dbname,
 	}); err != nil {

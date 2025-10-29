@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	jobque "core/internal/utils/job-que"
+	jobque "tools/job-que"
 )
 
 const (

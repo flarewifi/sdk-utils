@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     git \
     sudo \
     zip \
+    rsync \
     nodejs \
     npm
 

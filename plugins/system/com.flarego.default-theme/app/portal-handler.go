@@ -18,12 +18,12 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 		}
 
 		ctx := r.Context()
-		tx, err := api.SqlDb().Begin(ctx)
+		tx, err := api.SqlDB().BeginTx(r.Context(), nil)
 		if err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
-		defer tx.Rollback(ctx)
+		defer tx.Rollback()
 
 		summary, err := api.SessionsMgr().SessionSummary(tx, ctx, clnt)
 		if err != nil {
@@ -31,7 +31,7 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 			return
 		}
 
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}

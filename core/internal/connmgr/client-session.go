@@ -6,8 +6,6 @@ import (
 	"time"
 
 	sdkapi "sdk/api"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func NewClientSession(src sdkapi.ISessionSource) *ClientSession {
@@ -33,7 +31,7 @@ func NewClientSession(src sdkapi.ISessionSource) *ClientSession {
 
 type ClientSession struct {
 	mu          sync.RWMutex
-	id          pgtype.UUID
+	id          int32
 	provider    string
 	sessionType string
 	timeSecs    int
@@ -50,7 +48,7 @@ type ClientSession struct {
 	reload      func(context.Context) (sdkapi.SessionData, error)
 }
 
-func (self *ClientSession) Id() pgtype.UUID {
+func (self *ClientSession) Id() int32 {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.id

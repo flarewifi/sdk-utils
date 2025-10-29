@@ -8,18 +8,16 @@ package sdkapi
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PurchaseState struct {
-	PurchaseID      pgtype.UUID `json:"purchase_id"`
-	TotalPayment    float64     `json:"total_payment"`
-	WalletDebit     float64     `json:"wallet_debit"`
-	WalletEndingBal float64     `json:"wallet_ending_bal"`
-	WalletRealBal   float64     `json:"wallet_real_bal"`
+	PurchaseID      int32   `json:"purchase_id"`
+	TotalPayment    float64 `json:"total_payment"`
+	WalletDebit     float64 `json:"wallet_debit"`
+	WalletEndingBal float64 `json:"wallet_ending_bal"`
+	WalletRealBal   float64 `json:"wallet_real_bal"`
 }
 
 // PurchaseRequest represents a purchase to be made by the customer.
@@ -46,15 +44,15 @@ type IPurchaseRequest interface {
 	IsFixedPrice() bool
 
 	// Create a payment for the purchase.
-	CreatePayment(tx pgx.Tx, ctx context.Context, amount float64, optname string) error
+	CreatePayment(tx *sql.Tx, ctx context.Context, amount float64, optname string) error
 
 	// Pay using the customers wallet.
 	// The amount will be debitted from the wallet once the purchase request has been confirmed.
-	PayWithWallet(tx pgx.Tx, ctx context.Context, amount float64) error
+	PayWithWallet(tx *sql.Tx, ctx context.Context, amount float64) error
 
 	// Returns the state of the purchase.
 	// The state includes the total accumulated payment for the purchase and other important details.
-	State(tx pgx.Tx, ctx context.Context) (PurchaseState, error)
+	State(tx *sql.Tx, ctx context.Context) (PurchaseState, error)
 
 	// Executes the payment for the purchase.
 	// This will redirect the user to the callback URL of purchase request.
@@ -62,9 +60,9 @@ type IPurchaseRequest interface {
 
 	// Confirm the purchase.
 	// This must be executed in the purchase callback handler.
-	Confirm(tx pgx.Tx, ctx context.Context) error
+	Confirm(tx *sql.Tx, ctx context.Context) error
 
 	// Cancel the purchase.
 	// This must be executed in the purchase callback handler.
-	Cancel(tx pgx.Tx, ctx context.Context) error
+	Cancel(tx *sql.Tx, ctx context.Context) error
 }

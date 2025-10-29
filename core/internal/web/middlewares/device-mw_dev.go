@@ -54,8 +54,7 @@ func DeviceMiddleware(dtb *db.Database, clntMgr *connmgr.ClientRegister) func(ne
 				h.IpAddr = ip
 			}
 
-			dbpool := dtb.SqlDB()
-			clnt, err := clntMgr.Register(dbpool, r, h.MacAddr, h.IpAddr, h.Hostname)
+			clnt, err := clntMgr.Register(dtb, r, h.MacAddr, h.IpAddr, h.Hostname)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return

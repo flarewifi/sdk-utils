@@ -9,7 +9,7 @@ import (
 
 func PortalRoutes(g *api.CoreGlobals) {
 	noCacheMw := middlewares.NoCache()
-	deviceMw := middlewares.DeviceMiddleware(g.Db, g.ClientRegister)
+	deviceMw := middlewares.DeviceMiddleware(g.Database, g.ClientRegister)
 	rootR := webutil.RootRouter
 	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
 	pendingPurchaseMw := g.CoreAPI.HttpAPI.Middlewares().PendingPurchase()

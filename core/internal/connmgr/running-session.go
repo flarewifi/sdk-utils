@@ -8,11 +8,9 @@ import (
 	"time"
 
 	"core/internal/network"
-	jobque "core/internal/utils/job-que"
 	"core/internal/utils/tc"
 	sdkapi "sdk/api"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	jobque "tools/job-que"
 )
 
 var sessionQ sync.Mutex
@@ -37,7 +35,7 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*Run
 
 type RunningSession struct {
 	mu         sync.RWMutex
-	clntId     pgtype.UUID
+	clntId     int32
 	ip         string
 	mac        string
 	lan        *network.NetworkLan
@@ -51,7 +49,7 @@ type RunningSession struct {
 	callbacks  []chan error
 }
 
-func (self *RunningSession) ClientId() pgtype.UUID {
+func (self *RunningSession) ClientId() int32 {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.clntId

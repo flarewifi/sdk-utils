@@ -258,7 +258,7 @@ func JsonRead(f string, v any) error {
 	return json.Unmarshal(b, v)
 }
 
-// FsListDirs returns directories inside dir. Directory paths are prepended with parent directory path.
+// FsListDirs returns directories inside dir. Returned directory paths are prepended with parent directory path.
 func FsListDirs(path string, directories *[]string, recursive bool) error {
 	stat, err := os.Stat(path)
 	if err != nil {

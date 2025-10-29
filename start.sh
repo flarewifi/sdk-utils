@@ -37,6 +37,12 @@ revert_updates() {
 
 link_data() {
     # Link data directory
+    if [ ! -e "$DATA_DIR" ]; then
+      echo "\n\nData directory $DATA_DIR does not exist, creating..." && \
+      mkdir -p $DATA_DIR && \
+      echo "\n\nData directory created at $DATA_DIR"
+    fi
+
     if [ ! -e "$APP_DIR/data" ]; then
         (\
                 echo "\n\nLinking data directory from $DATA_DIR to $APP_DIR/data" && \

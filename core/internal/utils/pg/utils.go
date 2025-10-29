@@ -1,13 +1,16 @@
+//go:build !sqlite
+
 package pg
 
 import (
 	"context"
-	"core/internal/config"
+	"database/sql"
 	"fmt"
 	"log"
 	"net"
 	"strings"
 	"time"
+	"tools/config"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -43,14 +46,14 @@ func CheckDBReady(ctx context.Context, connString string) (bool, error) {
 	return true, nil
 }
 
-func CreateDb(ctx context.Context, conn *pgx.Conn) (err error) {
+func CreateDb(ctx context.Context, conn *sql.DB) (err error) {
 	cfg, err := config.ReadDatabaseConfig()
 	if err != nil {
 		return
 	}
 
 	log.Println("Creating database " + cfg.Database + "...")
-	_, err = conn.Exec(ctx, "CREATE DATABASE "+cfg.Database)
+	_, err = conn.Exec("CREATE DATABASE " + cfg.Database)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			log.Println("Database already exists, skipping creation.")

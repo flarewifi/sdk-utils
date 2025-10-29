@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS payments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    purchase_id UUID NOT NULL,
-    amount DECIMAL(8, 2) DEFAULT 0.0,
+    id INTEGER PRIMARY KEY,
+    purchase_id INTEGER NOT NULL,
+    amount DECIMAL(8, 2) NOT NULL DEFAULT 0.0,
     payment_method VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

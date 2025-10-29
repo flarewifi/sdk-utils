@@ -12,9 +12,7 @@ create-network:
 		docker network create --driver bridge flare_network
 
 openwrt:
-	go run ./core/cmd/build-cli/main.go && \
-	go run ./core/cmd/build-core/main.go && \
-	./bin/flare server
+	./start-openwrt-dev.sh
 
 docs-build:
 	docker compose run --rm --build docs sh -c \
@@ -30,5 +28,4 @@ sync-version:
 devkit:
 	docker compose -f ./docker-compose.yml \
 		-f ./core/build/devkit/extras/docker-compose.override.yml \
-		run -it --rm --build app sh -c \
-		'go run --tags=dev ./core/cmd/create-devkit/main.go'
+		run -it --rm --build app sh -c ./make-devkit.sh

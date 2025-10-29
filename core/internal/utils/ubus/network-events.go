@@ -6,8 +6,8 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"core/internal/utils/cmd"
-	jobque "core/internal/utils/job-que"
+	jobque "tools/job-que"
+	cmd "tools/shell"
 )
 
 var queID sync.Mutex

@@ -2,16 +2,16 @@ package models
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"core/db"
 	"core/db/queries"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type WalletModel struct {
@@ -32,10 +32,10 @@ func NewWalletModel(dtb *db.Database, mdls *Models) *WalletModel {
 	}
 }
 
-func (self *WalletModel) CreateTx(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, bal float64) (*Wallet, error) {
+func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, devId int32, bal float64) (*Wallet, error) {
 	wId, err := self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
 		DeviceID: devId,
-		Balance:  sdkutils.PgFloat64ToNumeric(bal),
+		Balance:  fmt.Sprintf("%.6f", bal),
 	})
 	if err != nil {
 		log.Println("error creating wallet:", err)
@@ -45,7 +45,7 @@ func (self *WalletModel) CreateTx(tx pgx.Tx, ctx context.Context, devId pgtype.U
 	return self.Find(tx, ctx, wId)
 }
 
-func (self *WalletModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*Wallet, error) {
+func (self *WalletModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*Wallet, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	w, err := qtx.FindWallet(ctx, id)
 	if err != nil {
@@ -53,19 +53,24 @@ func (self *WalletModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*
 		return nil, err
 	}
 
+	bal, err := strconv.ParseFloat(w.Balance, 64)
+	if err != nil {
+		return nil, err
+	}
+
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = sdkutils.PgNumericToFloat64(w.Balance)
-	wallet.createdAt = w.CreatedAt.Time
+	wallet.balance = bal
+	wallet.createdAt = w.CreatedAt
 
 	return wallet, nil
 }
 
-func (self *WalletModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, bal float64) error {
+func (self *WalletModel) Update(tx *sql.Tx, ctx context.Context, id int32, bal float64) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateWallet(ctx, queries.UpdateWalletParams{
-		Balance: sdkutils.PgFloat64ToNumeric(bal),
+		Balance: fmt.Sprintf("%.6f", bal),
 		ID:      id,
 	})
 	if err != nil {
@@ -78,7 +83,7 @@ func (self *WalletModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, 
 	return nil
 }
 
-func (self *WalletModel) findByDevice(tx pgx.Tx, ctx context.Context, devId pgtype.UUID) (*Wallet, error) {
+func (self *WalletModel) findByDevice(tx *sql.Tx, ctx context.Context, devId int32) (*Wallet, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	w, err := qtx.FindWalletByDeviceId(ctx, devId)
 	if err != nil {
@@ -86,11 +91,16 @@ func (self *WalletModel) findByDevice(tx pgx.Tx, ctx context.Context, devId pgty
 		return nil, err
 	}
 
+	bal, err := strconv.ParseFloat(w.Balance, 64)
+	if err != nil {
+		return nil, err
+	}
+
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = sdkutils.PgNumericToFloat64(w.Balance)
-	wallet.createdAt = w.CreatedAt.Time
+	wallet.balance = bal
+	wallet.createdAt = w.CreatedAt
 
 	return wallet, nil
 }

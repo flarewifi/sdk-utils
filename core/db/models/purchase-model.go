@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,8 +12,6 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PurchaseModel struct {
@@ -24,7 +23,7 @@ func NewPurchaseModel(dtb *db.Database, mdls *Models) *PurchaseModel {
 	return &PurchaseModel{dtb, mdls}
 }
 
-func (self *PurchaseModel) Create(tx pgx.Tx, ctx context.Context, deviceId pgtype.UUID, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string, metadata map[string]string) (*Purchase, error) {
+func (self *PurchaseModel) Create(tx *sql.Tx, ctx context.Context, deviceId int32, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string, metadata map[string]string) (*Purchase, error) {
 	b, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, err
@@ -35,7 +34,7 @@ func (self *PurchaseModel) Create(tx pgx.Tx, ctx context.Context, deviceId pgtyp
 		Sku:            sku,
 		Name:           name,
 		Description:    desc,
-		Price:          sdkutils.PgFloat64ToNumeric(price),
+		Price:          fmt.Sprintf("%.2f", price),
 		AnyPrice:       vprice,
 		CallbackPlugin: pkg,
 		CallbackRoute:  routename,
@@ -54,7 +53,7 @@ func (self *PurchaseModel) Create(tx pgx.Tx, ctx context.Context, deviceId pgtyp
 	return self.Find(tx, ctx, pId)
 }
 
-func (self *PurchaseModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*Purchase, error) {
+func (self *PurchaseModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*Purchase, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	p, err := qtx.FindPurchase(ctx, id)
 	if err != nil {
@@ -64,7 +63,7 @@ func (self *PurchaseModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) 
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) PendingPurchase(tx pgx.Tx, ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
+func (self *PurchaseModel) PendingPurchase(tx *sql.Tx, ctx context.Context, deviceId int32) (*Purchase, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	p, err := qtx.FindPendingPurchase(ctx, deviceId)
 	if err != nil {
@@ -75,7 +74,7 @@ func (self *PurchaseModel) PendingPurchase(tx pgx.Tx, ctx context.Context, devic
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) FindByDeviceId(tx pgx.Tx, ctx context.Context, deviceId pgtype.UUID) (*Purchase, error) {
+func (self *PurchaseModel) FindByDeviceId(tx *sql.Tx, ctx context.Context, deviceId int32) (*Purchase, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	p, err := qtx.FindPurchaseByDeviceId(ctx, deviceId)
 	if err != nil {
@@ -86,31 +85,18 @@ func (self *PurchaseModel) FindByDeviceId(tx pgx.Tx, ctx context.Context, device
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, dbt float64, txid *pgtype.UUID, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
+func (self *PurchaseModel) Update(tx *sql.Tx, ctx context.Context, id int32, dbt float64, txid *int32, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
 	var cancellReason string
 	if reason != nil {
 		cancellReason = *reason
 	}
 
-	var wtxid pgtype.UUID
-	if txid != nil {
-		wtxid = *txid
-	}
-
-	var cancelledAtTime, confirmedAtTime pgtype.Timestamp
-	if cancelledAt != nil {
-		cancelledAtTime = pgtype.Timestamp{Time: *cancelledAt, Valid: true}
-	}
-	if confirmedAt != nil {
-		confirmedAtTime = pgtype.Timestamp{Time: *confirmedAt, Valid: true}
-	}
-
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
-		WalletDebit:     sdkutils.PgFloat64ToNumeric(dbt),
-		WalletTxID:      wtxid,
-		CancelledAt:     cancelledAtTime,
-		ConfirmedAt:     confirmedAtTime,
+		WalletDebit:     sdkutils.Float64ToStr(dbt),
+		WalletTxID:      sdkutils.Int32ToNullInt32(txid),
+		CancelledAt:     sdkutils.TimeToNullTime(cancelledAt),
+		ConfirmedAt:     sdkutils.TimeToNullTime(confirmedAt),
 		CancelledReason: cancellReason,
 		ID:              id,
 	})

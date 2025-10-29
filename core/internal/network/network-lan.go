@@ -5,11 +5,11 @@ import (
 	"log"
 	"sync"
 
-	"core/internal/config"
-	jobque "core/internal/utils/job-que"
 	"core/internal/utils/nftables"
 	"core/internal/utils/tc"
 	"core/internal/utils/ubus"
+	"tools/config"
+	jobque "tools/job-que"
 )
 
 type NetworkLan struct {
