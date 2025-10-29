@@ -5,6 +5,7 @@ const (
 	PluginSrcStore  string = "store"
 	PluginSrcSystem string = "system"
 	PluginSrcLocal  string = "local"
+	PluginSrcZip    string = "zip"
 )
 
 type PluginMetadata struct {
@@ -16,7 +17,7 @@ type PluginSrcDef struct {
 	Src                string // git | store | system | local
 	StorePackage       string // if src is "store"
 	StorePluginVersion string // if src is "store"
-	StoreZipUrl        string // if src is "store"
+	StoreZipURL        string // if src is "store"
 	GitURL             string // if src is "git"
 	GitRef             string // can be a branch, tag or commit hash
 	LocalPath          string // if src is "local or system"
@@ -28,7 +29,7 @@ func (def PluginSrcDef) String() string {
 		return def.GitURL
 	case PluginSrcStore:
 		return def.StorePackage + "@" + def.StorePluginVersion
-	case PluginSrcSystem, PluginSrcLocal:
+	case PluginSrcSystem, PluginSrcLocal, PluginSrcZip:
 		return def.LocalPath
 	default:
 		return "unknown plugin source: " + def.Src
@@ -36,7 +37,7 @@ func (def PluginSrcDef) String() string {
 }
 
 func (def PluginSrcDef) Equal(compare PluginSrcDef) bool {
-	if (def.Src == PluginSrcLocal || def.Src == PluginSrcSystem) &&
+	if (def.Src == PluginSrcLocal || def.Src == PluginSrcSystem || def.Src == PluginSrcZip) &&
 		compare.Src == def.Src &&
 		StripRootPath(def.LocalPath) == StripRootPath(compare.LocalPath) {
 		return true
