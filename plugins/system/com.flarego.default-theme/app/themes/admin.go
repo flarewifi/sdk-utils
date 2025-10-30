@@ -15,9 +15,16 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 		CssLib:  sdkapi.CssLibBootstrap5,
 		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
 			navs := api.Http().Navs().GetAdminNavs(r)
+
+			var navItems []sdkapi.AdminNavItem
+			for _, nav := range navs {
+				navItems = append(navItems, nav.Items...)
+			}
+
 			data := admin.AdminLayoutData{
 				Components: c,
 				Navs:       navs,
+				NavItems:   navItems,
 			}
 			layout := admin.AdminLayout(api, data)
 			if err := layout.Render(r.Context(), w); err != nil {

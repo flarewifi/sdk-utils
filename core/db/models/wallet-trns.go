@@ -2,22 +2,20 @@ package models
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"log"
 	"time"
 
 	"core/db"
 	"core/db/queries"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type WalletTrns struct {
 	db          *db.Database
 	models      *Models
-	id          pgtype.UUID
-	walletId    pgtype.UUID
+	id          int32
+	walletId    int32
 	amount      float64
 	newBalance  float64
 	description string
@@ -31,11 +29,11 @@ func NewWalletTrns(dtb *db.Database, mdls *Models) *WalletTrns {
 	}
 }
 
-func (self *WalletTrns) Id() pgtype.UUID {
+func (self *WalletTrns) Id() int32 {
 	return self.id
 }
 
-func (self *WalletTrns) WalletId() pgtype.UUID {
+func (self *WalletTrns) WalletId() int32 {
 	return self.walletId
 }
 
@@ -55,12 +53,12 @@ func (self *WalletTrns) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *WalletTrns) UpdateTx(tx pgx.Tx, ctx context.Context, walletId pgtype.UUID, amount float64, newbal float64, desc string) error {
+func (self *WalletTrns) UpdateTx(tx *sql.Tx, ctx context.Context, walletId int32, amount float64, newbal float64, desc string) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateWalletTrns(ctx, queries.UpdateWalletTrnsParams{
 		WalletID:    walletId,
-		Amount:      sdkutils.PgFloat64ToNumeric(amount),
-		NewBalance:  sdkutils.PgFloat64ToNumeric(newbal),
+		Amount:      fmt.Sprintf("%.6f", amount),
+		NewBalance:  fmt.Sprintf("%.6f", newbal),
 		Description: desc,
 		ID:          self.id,
 	})

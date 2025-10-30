@@ -2,6 +2,8 @@
 
 package web
 
-import "github.com/gorilla/mux"
+import (
+	"github.com/gorilla/mux"
+)
 
 func printRoutes(router *mux.Router) {}

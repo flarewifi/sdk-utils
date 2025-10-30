@@ -2,17 +2,16 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
+	"strconv"
 	"time"
 
 	"core/db"
 	"core/db/queries"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/goccy/go-json"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase, error) {
@@ -21,13 +20,18 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 		models: mdls,
 	}
 
+	price, err := strconv.ParseFloat(p.Price, 64)
+	if err != nil {
+		return nil, err
+	}
+
 	if p != nil {
 		purchase.id = p.ID
 		purchase.deviceId = p.DeviceID
 		purchase.sku = p.Sku
 		purchase.name = p.Name
 		purchase.description = p.Description
-		purchase.price = sdkutils.PgNumericToFloat64(p.Price)
+		purchase.price = price
 		purchase.anyPrice = p.AnyPrice
 		purchase.callbackPluginPkg = p.CallbackPlugin
 		purchase.callbackRoute = p.CallbackRoute
@@ -37,12 +41,17 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 			return nil, err
 		}
 
+		dbt, err := strconv.ParseFloat(p.WalletDebit, 64)
+		if err != nil {
+			return nil, err
+		}
+
 		purchase.metadata = metadata
-		purchase.walletDebit = sdkutils.PgNumericToFloat64(p.WalletDebit)
+		purchase.walletDebit = dbt
 		purchase.cancelledReason = &p.CancelledReason
 
 		if p.WalletTxID.Valid {
-			purchase.walletTxId = &p.WalletTxID
+			purchase.walletTxId = &p.WalletTxID.Int32
 		}
 
 		if p.ConfirmedAt.Valid {
@@ -51,9 +60,8 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 		if p.CancelledAt.Valid {
 			purchase.cancelledAt = &p.CancelledAt.Time
 		}
-		if p.CreatedAt.Valid {
-			purchase.createdAt = p.CreatedAt.Time
-		}
+
+		purchase.createdAt = p.CreatedAt
 	}
 
 	return purchase, nil
@@ -62,8 +70,8 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 type Purchase struct {
 	db                *db.Database
 	models            *Models
-	id                pgtype.UUID
-	deviceId          pgtype.UUID
+	id                int32
+	deviceId          int32
 	sku               string
 	name              string
 	description       string
@@ -73,18 +81,18 @@ type Purchase struct {
 	callbackRoute     string
 	metadata          map[string]string
 	walletDebit       float64
-	walletTxId        *pgtype.UUID
+	walletTxId        *int32
 	confirmedAt       *time.Time
 	cancelledAt       *time.Time
 	cancelledReason   *string
 	createdAt         time.Time
 }
 
-func (self *Purchase) Id() pgtype.UUID {
+func (self *Purchase) Id() int32 {
 	return self.id
 }
 
-func (self *Purchase) DeviceId() pgtype.UUID {
+func (self *Purchase) DeviceId() int32 {
 	return self.deviceId
 }
 
@@ -112,7 +120,7 @@ func (self *Purchase) WalletDebit() float64 {
 	return self.walletDebit
 }
 
-func (self *Purchase) WalletTxId() *pgtype.UUID {
+func (self *Purchase) WalletTxId() *int32 {
 	return self.walletTxId
 }
 
@@ -152,11 +160,11 @@ func (self *Purchase) FixedPrice() (float64, bool) {
 	return self.price, !self.anyPrice
 }
 
-func (self *Purchase) Device(tx pgx.Tx, ctx context.Context) (*Device, error) {
+func (self *Purchase) Device(tx *sql.Tx, ctx context.Context) (*Device, error) {
 	return self.models.deviceModel.Find(tx, ctx, self.deviceId)
 }
 
-func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
+func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
 	dev, err := self.Device(tx, ctx)
 	if err != nil {
 		log.Println(err)
@@ -169,7 +177,7 @@ func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
 		return err
 	}
 
-	var txid *pgtype.UUID
+	var txid *int32
 	dbt := self.walletDebit
 	if dbt > 0 {
 		newBal := wallet.Balance() - dbt
@@ -192,7 +200,7 @@ func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
 	return self.Update(tx, ctx, dbt, txid, nil, &now, nil)
 }
 
-func (self *Purchase) Cancel(tx pgx.Tx, ctx context.Context) error {
+func (self *Purchase) Cancel(tx *sql.Tx, ctx context.Context) error {
 	dev, err := self.Device(tx, ctx)
 	if err != nil {
 		log.Println(err)
@@ -234,11 +242,11 @@ func (self *Purchase) Cancel(tx pgx.Tx, ctx context.Context) error {
 	return self.Update(tx, ctx, dbt, nil, &cancelledAt, nil, &reason)
 }
 
-func (self *Purchase) Payments(tx pgx.Tx, ctx context.Context) ([]*Payment, error) {
+func (self *Purchase) Payments(tx *sql.Tx, ctx context.Context) ([]*Payment, error) {
 	return self.models.paymentModel.FindAllByPurchase(tx, ctx, self.id)
 }
 
-func (self *Purchase) TotalPayment(tx pgx.Tx, ctx context.Context) (float64, error) {
+func (self *Purchase) TotalPayment(tx *sql.Tx, ctx context.Context) (float64, error) {
 	pmts, err := self.Payments(tx, ctx)
 	if err != nil {
 		return 0, err
@@ -255,7 +263,7 @@ func (self *Purchase) TotalPayment(tx pgx.Tx, ctx context.Context) (float64, err
 	return total, nil
 }
 
-func (self *Purchase) Update(tx pgx.Tx, ctx context.Context, dbt float64, wtxID *pgtype.UUID, cancelledAt, confirmedAt *time.Time, reason *string) error {
+func (self *Purchase) Update(tx *sql.Tx, ctx context.Context, dbt float64, wtxID *int32, cancelledAt, confirmedAt *time.Time, reason *string) error {
 	err := self.models.purchaseModel.Update(tx, ctx, self.id, dbt, wtxID, cancelledAt, confirmedAt, reason)
 	if err != nil {
 		return err

@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"fmt"
 	sdkapi "sdk/api"
 )
@@ -8,6 +9,7 @@ import (
 type AdminLayoutData struct {
 	Components sdkapi.IThemeComponents
 	Navs       []sdkapi.AdminNavList
+	NavItems   []sdkapi.AdminNavItem
 }
 
 templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
@@ -37,17 +39,28 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 				</ul>
 				<div class="d-flex align-items-center justify-content-start gap-2 px-2">
 				<!-- Navbar Search -->
-				<form id="navbarSearch" class="navbar-search collapse d-md-none">
-					<div class="input-group">
-						<span class="input-group-text bg-transparent border-0 p-0 ps-2 d-none d-md-flex">
-							<i class="bi bi-search"></i>
-						</span>
-						<input
-							class="form-control border-0 shadow-none bg-transparent"
-							type="search"
-							placeholder="Search settings..."
-							aria-label="Search settings"
-						/>
+				<form 
+					id="navbarSearch" 
+					class="navbar-search w-100 collapse d-md-none" 
+					autocomplete="off"
+					data-results={ navItemsAsJSON(data.NavItems) }
+				>
+					<div class="dropdown w-100 position-relative">
+						<div class="input-group">
+							<span class="input-group-text bg-transparent border-0 p-0 ps-2 d-none d-md-flex">
+								<i class="bi bi-search"></i>
+							</span>
+							<input
+								id="searchInput"
+								type="search"
+								class="form-control border-0 shadow-none bg-transparent"
+								placeholder="Search settings..."
+								aria-label="Search settings"
+								data-url={ api.Http().Helpers().UrlForRoute("admin.search") }
+							/>
+						</div>
+
+						<ul id="searchResults" class="dropdown-menu w-100"></ul>
 					</div>
 				</form>
 				<!-- Notifications -->
@@ -180,4 +193,9 @@ func menuData(navs []sdkapi.AdminNavList) string {
 	}
 
 	return fmt.Sprintf("{ openIndex: %d }", openIndex)
+}
+
+func navItemsAsJSON(items []sdkapi.AdminNavItem) string {
+	bytes, _ := json.Marshal(items)
+	return string(bytes)
 }

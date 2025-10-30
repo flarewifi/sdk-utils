@@ -7,12 +7,15 @@
 package sdkapi
 
 import (
+	"database/sql"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // IPluginApi is the root of all plugin APIs.
 type IPluginApi interface {
+	// Retusns an instance of database/sql package from go standard library.
+	SqlDB() *sql.DB
 
 	// Returns an instance of accounts API.
 	Acct() IAccountsApi
@@ -63,7 +66,7 @@ type IPluginApi interface {
 	SessionsMgr() ISessionsMgrApi
 
 	// Returns an instance of database/sql package from go standard library.
-	SqlDb() *pgxpool.Pool
+	// SqlDb() *pgxpool.Pool
 
 	// Returns an instance of the themes API.
 	Themes() IThemesApi

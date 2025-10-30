@@ -2,7 +2,9 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	sdkapi "sdk/api"
 	"time"
@@ -11,8 +13,6 @@ import (
 	"core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type SessionModel struct {
@@ -24,10 +24,10 @@ func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 	return &SessionModel{dtb, mdls}
 }
 
-func (self *SessionModel) Create(tx pgx.Tx, ctx context.Context, devId pgtype.UUID, t string, timeSecs int, dataMbytes float64, exp *int, downMbit int, upMbit int, g bool) (*Session, error) {
-	var expDays pgtype.Int4
+func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, devId int32, t string, timeSecs int, dataMbytes float64, exp *int, downMbit int, upMbit int, g bool) (*Session, error) {
+	var expDays sql.NullInt32
 	if exp != nil {
-		expDays = pgtype.Int4{Int32: int32(*exp), Valid: true}
+		expDays = sql.NullInt32{Int32: int32(*exp), Valid: true}
 	}
 
 	qtx := self.db.Queries.WithTx(tx)
@@ -35,7 +35,7 @@ func (self *SessionModel) Create(tx pgx.Tx, ctx context.Context, devId pgtype.UU
 		DeviceID:    devId,
 		SessionType: t,
 		TimeSecs:    int32(timeSecs),
-		DataMbytes:  sdkutils.PgFloat64ToNumeric(dataMbytes),
+		DataMbytes:  fmt.Sprintf("%.6f", dataMbytes),
 		ExpDays:     expDays,
 		DownMbits:   int32(downMbit),
 		UpMbits:     int32(upMbit),
@@ -49,7 +49,7 @@ func (self *SessionModel) Create(tx pgx.Tx, ctx context.Context, devId pgtype.UU
 	return self.Find(tx, ctx, sId)
 }
 
-func (self *SessionModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (*Session, error) {
+func (self *SessionModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*Session, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	sRow, err := qtx.FindSession(ctx, id)
 	if err != nil {
@@ -60,15 +60,15 @@ func (self *SessionModel) Find(tx pgx.Tx, ctx context.Context, id pgtype.UUID) (
 	return session, nil
 }
 
-func (self *SessionModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID, devId pgtype.UUID, t string, timeSecs int, dataMbytes float64, timeCons int, dataCons float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
-	var expDays pgtype.Int4
+func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, id int32, devId int32, t string, timeSecs int, dataMbytes float64, timeCons int, dataCons float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+	var expDays sql.NullInt32
 	if exp != nil {
-		expDays = pgtype.Int4{Int32: int32(*exp), Valid: true}
+		expDays = sql.NullInt32{Int32: int32(*exp), Valid: true}
 	}
 
-	var startedAtTime pgtype.Timestamp
+	var startedAtTime sql.NullTime
 	if started != nil {
-		startedAtTime = pgtype.Timestamp{Time: *started, Valid: true}
+		startedAtTime = sql.NullTime{Time: *started, Valid: true}
 	}
 
 	types := []string{
@@ -86,9 +86,9 @@ func (self *SessionModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID,
 		DeviceID:        devId,
 		SessionType:     t,
 		TimeSecs:        int32(timeSecs),
-		DataMbytes:      sdkutils.PgFloat64ToNumeric(dataMbytes),
+		DataMbytes:      fmt.Sprintf("%.6f", dataMbytes),
 		ConsumptionSecs: int32(timeCons),
-		ConsumptionMb:   sdkutils.PgFloat64ToNumeric(dataCons),
+		ConsumptionMb:   fmt.Sprintf("%.6f", dataCons),
 		StartedAt:       startedAtTime,
 		ExpDays:         expDays,
 		DownMbits:       int32(downMbit),
@@ -105,7 +105,7 @@ func (self *SessionModel) Update(tx pgx.Tx, ctx context.Context, id pgtype.UUID,
 	return nil
 }
 
-func (self *SessionModel) AvailableForDevice(tx pgx.Tx, ctx context.Context, devId pgtype.UUID) (*Session, error) {
+func (self *SessionModel) AvailableForDevice(tx *sql.Tx, ctx context.Context, devId int32) (*Session, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	sRow, err := qtx.FindAvailableSessionForDevice(ctx, devId)
 	if err != nil {
@@ -117,7 +117,7 @@ func (self *SessionModel) AvailableForDevice(tx pgx.Tx, ctx context.Context, dev
 	return session, nil
 }
 
-func (self *SessionModel) SessionsForDev(tx pgx.Tx, ctx context.Context, devId pgtype.UUID) ([]*Session, error) {
+func (self *SessionModel) SessionsForDev(tx *sql.Tx, ctx context.Context, devId int32) ([]*Session, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	sRows, err := qtx.FindSessionsForDev(ctx, devId)
 	if err != nil {
@@ -133,7 +133,7 @@ func (self *SessionModel) SessionsForDev(tx pgx.Tx, ctx context.Context, devId p
 	return sessions, nil
 }
 
-func (self *SessionModel) UpdateAllBandwidth(tx pgx.Tx, ctx context.Context, downMbit int, upMbit int, g bool) error {
+func (self *SessionModel) UpdateAllBandwidth(tx *sql.Tx, ctx context.Context, downMbit int, upMbit int, g bool) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateAllBandwidth(ctx, queries.UpdateAllBandwidthParams{
 		DownMbits: int32(downMbit),
@@ -149,10 +149,14 @@ func (self *SessionModel) UpdateAllBandwidth(tx pgx.Tx, ctx context.Context, dow
 	return nil
 }
 
-func (self *SessionModel) Summary(tx pgx.Tx, ctx context.Context, deviceID pgtype.UUID) (*sdkapi.ClientSessionSummary, error) {
+func (self *SessionModel) Summary(tx *sql.Tx, ctx context.Context, deviceID int32) (*sdkapi.ClientSessionSummary, error) {
 	qtx := self.db.Queries.WithTx(tx)
+
+	var remainingSecs int
+	var remainingDataMb float64
+
 	summary, err := qtx.SessionSummary(ctx, deviceID)
-	if err != nil && errors.Is(pgx.ErrNoRows, err) {
+	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		return &sdkapi.ClientSessionSummary{}, nil
 	}
 
@@ -160,8 +164,11 @@ func (self *SessionModel) Summary(tx pgx.Tx, ctx context.Context, deviceID pgtyp
 		return nil, err
 	}
 
+	remainingSecs = int(summary.RemainingTimeSecs)
+	remainingDataMb = float64(summary.RemainingDataMb)
+
 	return &sdkapi.ClientSessionSummary{
-		RemainingTimeSecs:   int(summary.RemainingTimeSecs),
-		RemainingDataMbytes: summary.RemainingDataMb,
+		RemainingTimeSecs:   remainingSecs,
+		RemainingDataMbytes: remainingDataMb,
 	}, nil
 }

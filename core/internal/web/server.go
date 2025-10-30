@@ -33,6 +33,17 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 	navs.SetAdminNavs(g)
 	forms.RegisterForms(g)
 
+	webutil.RootRouter.PathPrefix("/plugins").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte("<ul>"))
+		for _, p := range g.PluginMgr.Plugins() {
+			w.Write([]byte("<li>"))
+			w.Write([]byte(p.Dir()))
+			w.Write([]byte("</li>"))
+		}
+		w.Write([]byte("</ul>"))
+	})
+
 	webutil.RootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Warning: unknown route requested: ", r.URL.Path)
 		http.Redirect(w, r, "/", http.StatusFound)

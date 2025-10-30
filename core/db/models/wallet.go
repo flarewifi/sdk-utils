@@ -2,19 +2,17 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"core/db"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Wallet struct {
 	db        *db.Database
 	models    *Models
-	id        pgtype.UUID
-	deviceId  pgtype.UUID
+	id        int32
+	deviceId  int32
 	balance   float64
 	createdAt time.Time
 }
@@ -26,11 +24,11 @@ func NewWallet(dtb *db.Database, m *Models) *Wallet {
 	}
 }
 
-func (self *Wallet) Id() pgtype.UUID {
+func (self *Wallet) Id() int32 {
 	return self.id
 }
 
-func (self *Wallet) DeviceId() pgtype.UUID {
+func (self *Wallet) DeviceId() int32 {
 	return self.deviceId
 }
 
@@ -42,7 +40,7 @@ func (self *Wallet) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Wallet) IncBalance(tx pgx.Tx, ctx context.Context, bal float64) error {
+func (self *Wallet) IncBalance(tx *sql.Tx, ctx context.Context, bal float64) error {
 	newbal := self.balance + bal
 	err := self.Update(tx, ctx, newbal)
 	if err != nil {
@@ -53,7 +51,7 @@ func (self *Wallet) IncBalance(tx pgx.Tx, ctx context.Context, bal float64) erro
 	return nil
 }
 
-func (self *Wallet) Update(tx pgx.Tx, ctx context.Context, bal float64) error {
+func (self *Wallet) Update(tx *sql.Tx, ctx context.Context, bal float64) error {
 	err := self.models.walletModel.Update(tx, ctx, self.id, bal)
 	if err != nil {
 		return err
@@ -62,7 +60,7 @@ func (self *Wallet) Update(tx pgx.Tx, ctx context.Context, bal float64) error {
 	return nil
 }
 
-func (self *Wallet) AvailableBal(tx pgx.Tx, ctx context.Context) (float64, error) {
+func (self *Wallet) AvailableBal(tx *sql.Tx, ctx context.Context) (float64, error) {
 	pending, err := self.models.purchaseModel.PendingPurchase(tx, ctx, self.deviceId)
 	if err != nil {
 		return 0, nil

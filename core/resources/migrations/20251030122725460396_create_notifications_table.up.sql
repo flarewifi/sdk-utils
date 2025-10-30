@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY,
+    subject VARCHAR(255) NOT NULL DEFAULT '',
+    content VARCHAR(255) NOT NULL DEFAULT '',
+    status VARCHAR(255)  NOT NULL DEFAULT ''
+);

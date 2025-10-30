@@ -8,7 +8,7 @@ const (
 )
 
 type Notification struct {
-	ID      string             `json:"id"`
+	ID      int64              `json:"id"`
 	Subject string             `json:"subject"`
 	Content string             `json:"content"`
 	Status  NotificationStatus `json:"status"`

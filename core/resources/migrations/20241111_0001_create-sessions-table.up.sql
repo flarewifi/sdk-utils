@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    device_id UUID NOT NULL,
+    id INTEGER PRIMARY KEY,
+    device_id INTEGER NOT NULL,
     session_type VARCHAR(20) NOT NULL,
     time_secs INT DEFAULT 0 NOT NULL,
     data_mbytes DECIMAL(18, 9) NOT NULL DEFAULT 0.0,

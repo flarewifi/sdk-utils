@@ -2,9 +2,9 @@ package adminctrl
 
 import (
 	"core/internal/api"
-	"core/internal/utils/cmd"
 	"net/http"
 	"time"
+	cmd "tools/shell"
 )
 
 func RebootCtrl(g *api.CoreGlobals) http.HandlerFunc {

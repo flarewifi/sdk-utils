@@ -11,10 +11,9 @@ func Init(g *api.CoreGlobals) {
 	InitDirs()
 
 	go func() {
-		log.Println("Initializing database...")
-		g.Db.WaitReady()
-
+		g.Database.WaitReady()
 		log.Println("Database is ready.")
+
 		InitOpkg()
 		RunCoreMigrations(g)
 		InitPlugins(g)

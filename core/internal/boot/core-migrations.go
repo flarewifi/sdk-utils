@@ -1,25 +1,25 @@
 package boot
 
 import (
+	"fmt"
 	"log"
-	"path/filepath"
 
 	"core/internal/api"
-	"core/internal/utils/migrate"
+	"tools/migrate"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func RunCoreMigrations(g *api.CoreGlobals) {
-	db := g.Db.SqlDB()
+	fmt.Println("Running core migrations...")
 
-	err := migrate.Init(db)
+	err := migrate.Init(g.Database.DB)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = migrate.MigrateUp(db, filepath.Join(sdkutils.PathCoreDir, "resources/migrations"))
+	err = migrate.MigrateUp(g.Database.DB, sdkutils.PathCoreDir)
 	if err != nil {
 		log.Printf("Core migrations error: %s", err.Error())
 	} else {

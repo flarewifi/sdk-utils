@@ -12,6 +12,7 @@ type GoBuildOpts struct {
 	GoBinPath string
 	WorkDir   string
 	Env       []string
+	GoArch    string
 	BuildTags string
 	ExtraArgs []string
 }
@@ -40,6 +41,10 @@ func BuildGoModule(gofile string, outfile string, opts GoBuildOpts) error {
 		cmdstr += " " + arg
 	}
 
+	if opts.GoArch != "" {
+		cmdstr = fmt.Sprintf("GOARCH=%s %s", opts.GoArch, cmdstr)
+	}
+
 	fmt.Printf(`Build working directory: %s`+"\n", StripRootPath(opts.WorkDir))
 	fmt.Printf("Executing: %s\n", cmdstr)
 
@@ -64,7 +69,7 @@ func DefaultGoBuildArgs(tags string) []string {
 	args := []string{}
 	args = append(args, "-ldflags='-s -w'", "-trimpath", "-buildvcs=false")
 	if tags != "" {
-		args = append(args, fmt.Sprintf("-tags='%s'", tags))
+		args = append(args, fmt.Sprintf("-tags='%s'", RmRedundantWords(tags)))
 	}
 
 	return args

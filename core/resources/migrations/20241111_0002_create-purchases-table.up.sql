@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS purchases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    device_id UUID NOT NULL,
+    id INTEGER PRIMARY KEY,
+    device_id INTEGER NOT NULL,
     sku VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS purchases (
     metadata JSONB NOT NULL DEFAULT '{}',
 
     wallet_debit DECIMAL(8, 2) NOT NULL DEFAULT 0.0,
-    wallet_tx_id UUID DEFAULT NULL,
+    wallet_tx_id INTEGER DEFAULT NULL,
 
     confirmed_at TIMESTAMP NULL,
     cancelled_at TIMESTAMP NULL,

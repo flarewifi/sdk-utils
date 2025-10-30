@@ -2,18 +2,16 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"core/db/models"
 	sdkapi "sdk/api"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func NewPurchase(api *PluginApi, ctx context.Context, deviceId pgtype.UUID, p *models.Purchase) *Purchase {
+func NewPurchase(api *PluginApi, ctx context.Context, deviceId int32, p *models.Purchase) *Purchase {
 	return &Purchase{
 		api:      api,
 		deviceId: deviceId,
@@ -23,7 +21,7 @@ func NewPurchase(api *PluginApi, ctx context.Context, deviceId pgtype.UUID, p *m
 
 type Purchase struct {
 	api      *PluginApi
-	deviceId pgtype.UUID
+	deviceId int32
 	purchase *models.Purchase
 }
 
@@ -41,18 +39,18 @@ func (self *Purchase) Price() float64 {
 	return price
 }
 
-func (self *Purchase) CreatePayment(tx pgx.Tx, ctx context.Context, amount float64, optname string) error {
+func (self *Purchase) CreatePayment(tx *sql.Tx, ctx context.Context, amount float64, optname string) error {
 	mdls := self.api.models
 	_, err := mdls.Payment().Create(tx, ctx, self.purchase.Id(), amount, optname)
 	return err
 }
 
-func (self *Purchase) PayWithWallet(tx pgx.Tx, ctx context.Context, dbt float64) error {
+func (self *Purchase) PayWithWallet(tx *sql.Tx, ctx context.Context, dbt float64) error {
 	err := self.purchase.Update(tx, ctx, dbt, nil, self.purchase.CancelledAt(), self.purchase.ConfirmedAt(), nil)
 	return err
 }
 
-func (self *Purchase) State(tx pgx.Tx, ctx context.Context) (sdkapi.PurchaseState, error) {
+func (self *Purchase) State(tx *sql.Tx, ctx context.Context) (sdkapi.PurchaseState, error) {
 	state := sdkapi.PurchaseState{}
 
 	device, err := self.api.models.Device().Find(tx, ctx, self.deviceId)
@@ -94,11 +92,11 @@ func (self *Purchase) Execute(w http.ResponseWriter, r *http.Request) {
 	callbackPkg.Http().Response().Redirect(w, r, self.purchase.CallbackRoute())
 }
 
-func (self *Purchase) Confirm(tx pgx.Tx, ctx context.Context) error {
+func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
 	return self.purchase.Confirm(tx, ctx)
 }
 
-func (self *Purchase) Cancel(tx pgx.Tx, ctx context.Context) error {
+func (self *Purchase) Cancel(tx *sql.Tx, ctx context.Context) error {
 	return self.purchase.Cancel(tx, ctx)
 }
 

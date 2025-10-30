@@ -7,10 +7,10 @@ import (
 
 	sdkapi "sdk/api"
 
-	"core/internal/config"
 	"core/internal/utils/flaretmpl"
-	"core/internal/utils/plugins"
 	"core/resources/views/themes"
+	"tools/config"
+	"tools/plugins"
 )
 
 func NewPluginUtils(api *PluginApi) *PluginUtils {

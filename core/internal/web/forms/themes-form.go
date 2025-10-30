@@ -2,9 +2,9 @@ package coreforms
 
 import (
 	"core/internal/api"
-	"core/internal/config"
 	"net/http"
 	sdkapi "sdk/api"
+	"tools/config"
 )
 
 const (

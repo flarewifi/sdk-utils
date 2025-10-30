@@ -2,6 +2,7 @@ package connmgr
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
 
@@ -10,9 +11,6 @@ import (
 	"core/internal/utils/events"
 	"core/internal/utils/sse"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
 	sdkapi "sdk/api"
 )
 
@@ -20,7 +18,7 @@ type ClientDevice struct {
 	mu       sync.RWMutex
 	db       *db.Database
 	mdls     *models.Models
-	id       pgtype.UUID
+	id       int32
 	mac      string
 	ip       string
 	hostname string
@@ -39,7 +37,7 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 	}
 }
 
-func (self *ClientDevice) Id() pgtype.UUID {
+func (self *ClientDevice) Id() int32 {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.id
@@ -69,7 +67,7 @@ func (self *ClientDevice) Status() sdkapi.DeviceStatus {
 	return self.status
 }
 
-func (self *ClientDevice) Update(tx pgx.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error {
+func (self *ClientDevice) Update(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 

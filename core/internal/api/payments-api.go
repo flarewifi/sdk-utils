@@ -30,19 +30,19 @@ func (self *PaymentsApi) NewPaymentProvider(provider sdkapi.IPaymentProvider) {
 func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdkapi.PurchaseRequest) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		clnt, err := helpers.CurrentClient(self.api.ClntReg, self.api.SqlDb(), r)
+		clnt, err := helpers.CurrentClient(r)
 		if err != nil {
 			log.Println("helpers.CurrentClient error:", err)
 			self.ErrorPage(w, err)
 			return
 		}
 
-		tx, err := self.api.SqlDb().Begin(ctx)
+		tx, err := self.api.db.BeginTx(ctx, nil)
 		if err != nil {
 			self.ErrorPage(w, err)
 			return
 		}
-		defer tx.Rollback(ctx)
+		defer tx.Rollback()
 
 		_, err = self.api.models.Purchase().Create(
 			tx,
@@ -63,7 +63,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 			return
 		}
 
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			self.ErrorPage(w, err)
 			return
 		}
@@ -79,17 +79,17 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRequest, error) {
 	ctx := r.Context()
 	mdls := self.api.models
-	clnt, err := helpers.CurrentClient(self.api.ClntReg, self.api.SqlDb(), r)
+	clnt, err := helpers.CurrentClient(r)
 	if err != nil {
 		log.Println("helpers.CurrentClient error:", err)
 		return nil, err
 	}
 
-	tx, err := self.api.SqlDb().Begin(ctx)
+	tx, err := self.api.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback()
 
 	p, err := mdls.Purchase().PendingPurchase(tx, r.Context(), clnt.Id())
 	if err != nil {
@@ -102,7 +102,7 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 		return nil, errors.New("Purchase is already processed")
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
