@@ -2,9 +2,9 @@ package plugins
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -18,13 +18,18 @@ func BuildTemplates(pluginDir string) (err error) {
 		return nil
 	}
 
+	var errout strings.Builder
+
 	fmt.Println("Building templates in ", pluginDir)
 	cmd := exec.Command("templ", "generate")
 	cmd.Dir = pluginDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = &errout
 	if err = cmd.Run(); err != nil {
-		return err
+		errmsg := errout.String()
+		if errmsg != "" {
+			return err
+		}
+		return fmt.Errorf("failed to build templates: %v", err)
 	}
 
 	fmt.Println("Templates built successfully")

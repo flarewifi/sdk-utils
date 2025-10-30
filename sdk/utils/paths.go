@@ -30,8 +30,7 @@ var (
 	PathPluginLocalDir   = filepath.Join(PathDataDir, "plugins", "local")
 	PathPluginCacheDir   = filepath.Join(PathConfigDir, "cache", "plugins")
 	PathSystemUpdateDir  = filepath.Join(PathStorageDir, "system", "update")
-	PathPublicDir        = filepath.Join(PathAppDir, "public")
-	PathCacheDir         = filepath.Join(PathTmpDir, "cache")
+	PathCacheDir         = filepath.Join(PathTmpDir, ".cache")
 	PathIsUpdated        = filepath.Join(PathAppDir, ".updated")
 	PathIsReverted       = filepath.Join(PathAppDir, ".reverted")
 	PathServerUp         = "/tmp/.flare-up"

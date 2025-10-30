@@ -36,6 +36,9 @@ type PluginsMgr struct {
 
 func (self *PluginsMgr) InitCoreApi(coreApi *PluginApi) {
 	self.CoreAPI = coreApi
+	coreApi.Initialize(coreApi)
+	coreApi.LoadAssetsManifest()
+	self.plugins = append(self.plugins, coreApi)
 }
 
 func (self *PluginsMgr) Plugins() []*PluginApi {

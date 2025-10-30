@@ -17,6 +17,7 @@ func Init(g *api.CoreGlobals) {
 		InitOpkg()
 		RunCoreMigrations(g)
 		InitPlugins(g)
+		InitAssets(g)
 		InitAccounts()
 		if err := InitNetwork(); err != nil {
 			log.Println("Error initializing network:", err)

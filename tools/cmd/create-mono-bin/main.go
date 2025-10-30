@@ -66,10 +66,6 @@ func main() {
 		pluginDirs = append(pluginDirs, pluginDir)
 	}
 
-	if err := plugins.BuildGlobalAssets(pluginDirs); err != nil {
-		panic(err)
-	}
-
 	if err := plugins.BuildAssets(sdkutils.PathCoreDir); err != nil {
 		panic(err)
 	}

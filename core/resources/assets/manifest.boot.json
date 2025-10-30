@@ -1,8 +1,8 @@
 {
-  "js": [
+  "boot.js": [
     "./booting/js/globals.js"
   ],
-  "css": [
+  "boot.css": [
     "./booting/css/style.css"
   ]
 }

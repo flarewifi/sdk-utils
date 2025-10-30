@@ -23,8 +23,6 @@ func BuildCoreBins() {
 		Files: []string{
 			"bin/flare",
 			"core/plugin.so",
-			"core/resources/assets/dist",
-			"core/resources/assets/public",
 		},
 	}
 
@@ -39,10 +37,6 @@ func BuildCore() {
 	}
 
 	if err := plugins.BuildQueries(sdkutils.PathCoreDir); err != nil {
-		panic(err)
-	}
-
-	if err := plugins.BuildAssets(sdkutils.PathCoreDir); err != nil {
 		panic(err)
 	}
 
