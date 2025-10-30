@@ -30,7 +30,7 @@ document.addEventListener('alpine:init', () => {
       this.file_name = state.file_name || '';
       this.action_url = state.action || this.plugin_install_github_url;
       this.progress = state.progress || 15;
-      this.message = state.message || 'Resuming...';
+      this.message = state.message || 'Installing...';
       this.isLoading = true;
 
       const pluginName = this.github_repo_url?.split('/').pop() || this.file_name || '';
@@ -58,6 +58,7 @@ document.addEventListener('alpine:init', () => {
             if (data.status === 'failed') alert('Installation failed.');
           } else {
             this.startPolling();
+            this.initFlareEvents();
           }
         })
         .catch((err) => {
@@ -80,6 +81,7 @@ document.addEventListener('alpine:init', () => {
             this.progress = state.progress || 15;
             this.message = state.message || 'Resuming...';
             this.startPolling();
+            this.initFlareEvents();
             return;
           }
         } catch {
@@ -150,6 +152,7 @@ document.addEventListener('alpine:init', () => {
 
         if (data.status === 'in-progress') {
           this.startPolling();
+          this.initFlareEvents();
         } else {
           alert('Unexpected response from server.');
           this.isLoading = false;
@@ -192,11 +195,9 @@ document.addEventListener('alpine:init', () => {
 
           if (data.status === 'success') {
             this.progress = 100;
-            this.message = 'Installation complete!';
             this.stopPolling();
             this.isLoading = false;
             localStorage.removeItem('plugin_install_loading');
-            setTimeout(() => (location.href = this.plugin_index_url), 1000);
           } else if (data.status === 'failed') {
             this.stopPolling();
             this.isLoading = false;
@@ -214,6 +215,34 @@ document.addEventListener('alpine:init', () => {
         clearInterval(this.pollInterval);
         this.pollInterval = null;
       }
+    },
+
+    initFlareEvents() {
+      if (typeof $flare === "undefined" || !$flare.events) {
+        console.warn("[pluginInstaller] $flare.events not available.");
+        return;
+      }
+
+      console.log("[pluginInstaller] Listening for install:progress...");
+
+      $flare.events.on("install:progress", (res) => {
+        console.log("[Flare Event] install:progress:", res);
+
+          try {
+            const payload = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+
+            if (payload.success) {
+              this.message = payload.success;
+              this.progress = 100;
+              this.isLoading = false;
+              localStorage.removeItem("plugin_install_loading");
+              alert(payload.success);
+              setTimeout(() => (location.href = this.plugin_index_url), 1000);
+            }
+          } catch (err) {
+            console.error("[pluginInstaller] Failed to process event:", err);
+          }
+      });
     },
   }));
 });

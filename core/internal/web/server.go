@@ -13,8 +13,8 @@ import (
 )
 
 func SetupBootRoutes(g *api.CoreGlobals) {
-	routes.AssetsRoutes(g)
-	routes.CoreAssets(g)
+	routes.PluginAssets(g)
+	routes.BootingAssets(g)
 	routes.BootRoutes(g)
 }
 
@@ -24,7 +24,8 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	routes.AssetsRoutes(g)
+	routes.PluginAssets(g)
+	routes.GlobalAssets(g)
 	routes.PortalRoutes(g)
 	routes.AdminRoutes(g)
 	routes.PaymentRoutes(g)

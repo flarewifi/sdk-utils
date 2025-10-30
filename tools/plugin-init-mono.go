@@ -97,7 +97,7 @@ func MakePluginInitMono() {
 			fmt.Println("Warning: failed to apply migrations for plugin :", pkg)
 		}
 		// Load plugin
-		api = NewPluginApi(pluginDir, info, self, self.trfkMgr)
+		api = NewPluginApi(pluginDir, info, g.GlobalAssets, self, self.trfkMgr)
 		%s.Init(api)
 		api.Initialize(coreAPI)
 		api.LoadAssetsManifest()

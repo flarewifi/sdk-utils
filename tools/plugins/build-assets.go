@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	cmd "tools/shell"
 
@@ -18,6 +17,7 @@ const (
 	DistDir            = "resources/assets/dist"
 	AdminManifestJson  = "resources/assets/manifest.admin.json"
 	PortalManifestJson = "resources/assets/manifest.portal.json"
+	BootManifestJson   = "resources/assets/manifest.boot.json"
 	OutManifestJson    = "resources/assets/dist/manifest.json"
 )
 
@@ -31,6 +31,7 @@ type CompileResults struct {
 type OutputManifest struct {
 	AdminAssets  CompileResults `json:"admin"`
 	PortalAssets CompileResults `json:"portal"`
+	BootAssets   CompileResults `json:"boot"`
 }
 
 func GetAssetManifest(pluginDir string) OutputManifest {
@@ -42,6 +43,7 @@ func GetAssetManifest(pluginDir string) OutputManifest {
 	emptyManifest := OutputManifest{
 		AdminAssets:  emptyRes,
 		PortalAssets: emptyRes,
+		BootAssets:   emptyRes,
 	}
 
 	var manifest OutputManifest
@@ -55,6 +57,15 @@ func GetAssetManifest(pluginDir string) OutputManifest {
 func BuildAssets(pluginDir string) (err error) {
 	fmt.Printf("Building plugin assets in: %s\n", pluginDir)
 
+	if !sdkutils.FsExists(filepath.Join(sdkutils.PathCoreDir, "node_modules")) {
+		if _, err := sdkutils.Retry(func() (any, error) {
+			err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: sdkutils.PathCoreDir, Stdout: os.Stdout})
+			return nil, err
+		}, 3); err != nil {
+			return err
+		}
+	}
+
 	if sdkutils.FsExists(filepath.Join(pluginDir, "package.json")) {
 		if _, err := sdkutils.Retry(func() (any, error) {
 			err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: pluginDir, Stdout: os.Stdout})
@@ -65,11 +76,7 @@ func BuildAssets(pluginDir string) (err error) {
 	}
 
 	// Clean up dist folder
-	distPath, err := getDistPath(pluginDir)
-	if err != nil {
-		return err
-	}
-	if err = os.RemoveAll(distPath); err != nil {
+	if err = os.RemoveAll(filepath.Join(pluginDir, DistDir)); err != nil {
 		return
 	}
 
@@ -105,6 +112,21 @@ func BuildAssets(pluginDir string) (err error) {
 		}
 	}
 
+	bootManifestPath := filepath.Join(pluginDir, BootManifestJson)
+	if sdkutils.FsExists(bootManifestPath) {
+		var manifest Manifest
+		if err = sdkutils.JsonRead(bootManifestPath, &manifest); err != nil {
+			return err
+		}
+		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
+
+		if results, err := compileManifest(pluginDir, manifest, api.ES2017); err != nil {
+			return err
+		} else {
+			outManifest.BootAssets = results
+		}
+	}
+
 	outManifestFile := filepath.Join(pluginDir, OutManifestJson)
 	if err = sdkutils.FsEnsureDir(filepath.Dir(outManifestFile)); err != nil {
 		return err
@@ -130,10 +152,10 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 
 	for filename, files := range manifest {
 		// Don't output global scripts and styles, they are already bundled in core globals
-		re := regexp.MustCompile(`^globals?\.js$|^globals?\.css$`)
-		if re.MatchString(filename) {
-			continue
-		}
+		// re := regexp.MustCompile(`^globals?\.js$|^globals?\.css$`)
+		// if re.MatchString(filename) {
+		// 	continue
+		// }
 
 		// TODO: check if scripts is directory and loadd all files inside it
 		ext := filepath.Ext(filename)
@@ -144,10 +166,7 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		}
 
 		var distPath string
-		distPath, err = getDistPath(pluginDir)
-		if err != nil {
-			return
-		}
+		distPath = filepath.Join(pluginDir, DistDir)
 		outname := strings.TrimSuffix(filename, ext)
 		indexFile := filepath.Join(distPath, outname+"_index"+ext)
 
@@ -178,10 +197,7 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 
 		fmt.Printf("Compiling index file: %s: %s\n", indexFile, indexContent)
 
-		distPath, err = getDistPath(pluginDir)
-		if err != nil {
-			return
-		}
+		distPath = filepath.Join(pluginDir, DistDir)
 		outfile := filepath.Join(distPath, outname+ext)
 
 		var result api.BuildResult
@@ -225,12 +241,4 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 	}
 
 	return
-}
-
-func getDistPath(pluginDir string) (string, error) {
-	info, err := sdkutils.GetPluginInfoFromPath(pluginDir)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(pluginDir, DistDir, info.Package), nil
 }

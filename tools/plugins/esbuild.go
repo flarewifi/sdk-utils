@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"path/filepath"
+	"strings"
 	"tools/env"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -9,7 +10,14 @@ import (
 )
 
 func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api.BuildResult) {
+	var sourcemap api.SourceMap
+	sourcemap = api.SourceMapLinked
+	if strings.Contains(outfile, "global") || env.HasGoTag("mono") && env.GO_ENV == env.ENV_PRODUCTION {
+		sourcemap = api.SourceMapNone
+	}
+
 	minify := env.GO_ENV == env.ENV_PRODUCTION
+
 	result := api.Build(api.BuildOptions{
 		EntryPoints: []string{indexfile},
 		Outfile:     outfile,
@@ -19,7 +27,7 @@ func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api
 		Platform:          api.PlatformBrowser,
 		Target:            target,
 		EntryNames:        "[name]-[hash]",
-		Sourcemap:         api.SourceMapLinked,
+		Sourcemap:         sourcemap,
 		Bundle:            true,
 		AllowOverwrite:    true,
 		MinifyWhitespace:  minify,
@@ -31,7 +39,14 @@ func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api
 }
 
 func EsbuildCss(indexfile string, outfile string) (result api.BuildResult) {
+	var sourcemap api.SourceMap
+	sourcemap = api.SourceMapLinked
+	if strings.Contains(outfile, "global") || env.HasGoTag("mono") && env.GO_ENV == env.ENV_PRODUCTION {
+		sourcemap = api.SourceMapNone
+	}
+
 	minify := env.GO_ENV == env.ENV_PRODUCTION
+
 	result = api.Build(api.BuildOptions{
 		EntryPoints: []string{indexfile},
 		Outfile:     outfile,
@@ -49,7 +64,7 @@ func EsbuildCss(indexfile string, outfile string) (result api.BuildResult) {
 			".gif":   api.LoaderFile,
 		},
 		EntryNames:        "[name]-[hash]",
-		Sourcemap:         api.SourceMapLinked,
+		Sourcemap:         sourcemap,
 		Bundle:            true,
 		AllowOverwrite:    true,
 		MinifyWhitespace:  minify,

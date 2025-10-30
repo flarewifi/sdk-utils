@@ -15,18 +15,7 @@ func BuildLocalPlugins() error {
 			return err
 		}
 
-		workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(pluginPath))
-		defer os.RemoveAll(workdir)
-
-		if err := PatchPluginDeps(pluginPath); err != nil {
-			return err
-		}
-
-		if err := BuildTemplates(pluginPath); err != nil {
-			return err
-		}
-
-		if err := BuildPluginSo(pluginPath, workdir); err != nil {
+		if err := BuildPlugin(pluginPath); err != nil {
 			return err
 		}
 
@@ -46,5 +35,32 @@ func BuildLocalPlugins() error {
 		}
 
 	}
+	return nil
+}
+
+func BuildPlugin(pluginPath string) error {
+	workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(pluginPath))
+	defer os.RemoveAll(workdir)
+
+	if err := PatchPluginDeps(pluginPath); err != nil {
+		return err
+	}
+
+	if err := BuildTemplates(pluginPath); err != nil {
+		return err
+	}
+
+	if err := BuildQueries(pluginPath); err != nil {
+		return err
+	}
+
+	if err := BuildPluginSo(pluginPath, workdir); err != nil {
+		return err
+	}
+
+	if err := BuildAssets(pluginPath); err != nil {
+		return err
+	}
+
 	return nil
 }

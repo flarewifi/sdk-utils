@@ -124,7 +124,7 @@ func InitPlugins(g *api.CoreGlobals) {
 			continue
 		}
 
-		p := api.NewPluginApi(dir, info, g.PluginMgr, g.TrafficMgr)
+		p := api.NewPluginApi(dir, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr)
 		err = g.PluginMgr.RegisterPlugin(p)
 		if err != nil {
 			if err := LoadFromBackup(g, info.Package); err != nil {
@@ -152,7 +152,7 @@ func LoadFromBackup(g *api.CoreGlobals, pkg string) error {
 		return fmt.Errorf("error getting plugin info: %w", err)
 	}
 
-	p := api.NewPluginApi(pkgInstallDir, info, g.PluginMgr, g.TrafficMgr)
+	p := api.NewPluginApi(pkgInstallDir, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr)
 	if err := g.PluginMgr.RegisterPlugin(p); err != nil {
 		return err
 	}

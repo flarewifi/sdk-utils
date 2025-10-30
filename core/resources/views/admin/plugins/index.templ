@@ -2,6 +2,8 @@ package pluginsview
 
 import (
 	"fmt"
+	"encoding/json"
+	"html/template"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	sdkapi "sdk/api"
@@ -20,13 +22,21 @@ type IndexPageData struct {
 	Plugins []PluginData
 }
 
-templ IndexPage(api sdkapi.IPluginApi, data IndexPageData) {
+templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes) {
+	{{
+		b, _ := json.Marshal(formRoutes)
+		jsonData := template.JS(b)
+	}}
+
 	<h1>{ api.Translate("label", "plugins") }</h1>
 	<hr/>
-	<div class="pb-3">
+	<div class="pb-3" x-data={ fmt.Sprintf("pluginInstaller(%s)", jsonData) }>
 		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.install")) }>
 			{ api.Translate("label", "install_plugin") }
 		</a>
+		<div class="pt-3">
+			@ProgressBar()
+		</div>
 	</div>
 	<table class="table table-bordered">
 		<thead>
