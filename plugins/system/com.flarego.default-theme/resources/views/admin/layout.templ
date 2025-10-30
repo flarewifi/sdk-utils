@@ -35,8 +35,9 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 						</button>
 					</li>
 				</ul>
+				<div class="d-flex align-items-center justify-content-start gap-2 px-2">
 				<!-- Navbar Search -->
-				<form id="navbarSearch" class="navbar-search w-100 collapse d-md-none">
+				<form id="navbarSearch" class="navbar-search collapse d-md-none">
 					<div class="input-group">
 						<span class="input-group-text bg-transparent border-0 p-0 ps-2 d-none d-md-flex">
 							<i class="bi bi-search"></i>
@@ -49,6 +50,35 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 						/>
 					</div>
 				</form>
+				<!-- Notifications -->
+				<form id="notification">
+						<!-- Notification Dropdown -->
+						<div class="dropdown">
+							<button 
+								class="btn position-relative p-0 border-0 bg-transparent" 
+								id="notifDropdown" 
+								data-bs-toggle="dropdown" 
+								aria-expanded="false"
+							>
+								<i class="bi bi-bell fs-4 text-light"></i>
+								<span 
+									class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+									style="font-size: 0.65rem; transform: translate(-35%, -35%);"
+								>
+									4
+								</span>
+							</button>
+
+							<ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="notifDropdown">
+								<li class="dropdown-header">Notifications</li>
+								<li><hr class="dropdown-divider"></li>
+								<li><a class="dropdown-item" href="#">🔔 New plugin installed</a></li>
+								<li><a class="dropdown-item" href="#">⚙️ Settings updated</a></li>
+								<li><a class="dropdown-item" href="#">📦 Backup completed</a></li>
+							</ul>
+							</div>
+				</form>
+					</div>
 			</header>
 			<div class="container-fluid">
 				<div class="row">
