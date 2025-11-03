@@ -16,14 +16,12 @@ var (
 	RootRouter    *mux.Router
 	BootingRouter *mux.Router
 	PluginRouter  *mux.Router
-	AssetsRouter  *mux.Router
 )
 
 func init() {
 	RootRouter = mux.NewRouter().StrictSlash(true)
 	BootingRouter = mux.NewRouter().StrictSlash(true)
 	PluginRouter = RootRouter.PathPrefix("/p").Subrouter()
-	AssetsRouter = RootRouter.PathPrefix("/assets").Subrouter()
 }
 
 func UrlForRoute(muxname sdkapi.MuxRouteName, pairs ...string) (string, error) {

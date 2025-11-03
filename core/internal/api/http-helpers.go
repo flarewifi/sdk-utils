@@ -55,11 +55,11 @@ func (self *HttpHelpers) PortalAssetPath(p string) string {
 }
 
 func (self *HttpHelpers) DistPath(p string) string {
-	return path.Join("/plugin", self.api.info.Package, self.api.info.Version, "resources/assets/dist", p)
+	return path.Join("/assets/plugin", self.api.info.Package, self.api.info.Version, "resources/assets/dist", p)
 }
 
 func (self *HttpHelpers) PublicPath(p string) string {
-	return path.Join("/plugin", self.api.info.Package, self.api.info.Version, "resources/assets/public", p)
+	return path.Join("/assets/plugin", self.api.info.Package, self.api.info.Version, "resources/assets/public", p)
 }
 
 func (self *HttpHelpers) PluginMgr() sdkapi.IPluginsMgrApi {

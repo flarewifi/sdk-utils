@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"tools/config"
 	cmd "tools/shell"
@@ -92,8 +93,9 @@ func SetupServer(dbpass string, dbname string) error {
 		return err
 	}
 
-	if err := cmd.Exec("service postgresql start", nil); err != nil {
-		fmt.Println("unable to start postgresql service")
+	time.Sleep(1 * time.Second)
+	if err := cmd.Exec("reboot", nil); err != nil {
+		fmt.Println("unable to reboot after postgresql setup")
 		return err
 	}
 

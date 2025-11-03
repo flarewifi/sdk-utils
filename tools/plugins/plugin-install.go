@@ -28,6 +28,7 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 		if HasCache(def.LocalPath) {
 			return InstallFromLocalPath(db, def, opts)
 		}
+		info, err = InstallFromLocalPath(db, def, opts)
 
 	case sdkutils.PluginSrcGit:
 		if HasCache(def.LocalPath) {
@@ -35,8 +36,10 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 		}
 
 		info, err = InstallFromGitSrc(db, def, opts)
+
 	case sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem:
 		info, err = InstallFromLocalPath(db, def, opts)
+
 	case sdkutils.PluginSrcStore:
 		opts.RemoveSrc = true
 		info, err = InstallFromPluginStore(db, def, opts)
@@ -202,7 +205,6 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	if err := BuildAssets(pluginSrc); err != nil {
 		return err
 	}
-	defer os.RemoveAll(filepath.Join(pluginSrc, "resources/assets/dist")) // Clean up dist folder
 
 	if err := BuildPluginSo(pluginSrc, buildpath); err != nil {
 		log.Println("Error building plugin: ", err)
@@ -255,8 +257,7 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	if err := sdkutils.CopyPluginFiles(pluginSrc, installPath); err != nil {
 		return err
 	}
-
-	//TODO: Rebuild global assets
+	defer os.RemoveAll(filepath.Join(pluginSrc, "resources/assets/dist")) // Clean up dist folder
 
 	if opts.RemoveSrc {
 		if err := os.RemoveAll(pluginSrc); err != nil {

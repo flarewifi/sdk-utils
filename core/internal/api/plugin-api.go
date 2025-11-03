@@ -14,7 +14,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func NewPluginApi(dir string, info sdkutils.PluginInfo, pmgr *PluginsMgr, trfkMgr *network.TrafficMgr) *PluginApi {
+func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pmgr *PluginsMgr, trfkMgr *network.TrafficMgr) *PluginApi {
 	pluginApi := &PluginApi{
 		dir:           dir,
 		db:            pmgr.db,
@@ -29,7 +29,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, pmgr *PluginsMgr, trfkMg
 	pluginApi.models = pmgr.models
 
 	NewAcctApi(pluginApi)
-	NewHttpApi(pluginApi, pmgr.db, pmgr.clntReg, pmgr.models, pmgr.clntReg, pmgr.paymgr)
+	NewHttpApi(pluginApi, pmgr.db, assets, pmgr.clntReg, pmgr.models, pmgr.clntReg, pmgr.paymgr)
 	NewConfigApi(pluginApi)
 	NewPaymentsApi(pluginApi, pmgr.paymgr)
 	NewThemesApi(pluginApi)

@@ -179,16 +179,13 @@ func BuildPlugin() {
 		pluginPath, err := sdkutils.FindPluginSrc(searchPath)
 		if err != nil {
 			log.Fatalf("Error finding plugin source in %s: %s\n", searchPath, err.Error())
-			return
 		}
 
-		workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(pluginPath))
-		err = plugins.BuildPluginSo(pluginPath, workdir)
-		if err != nil {
-			log.Fatalf("Error building plugin: %s\n", err.Error())
-			return
+		if err := plugins.BuildPlugin(pluginPath); err != nil {
+			log.Fatalf("Error building plugin in %s: %s\n", pluginPath, err.Error())
 		}
 	}
+
 	if err != nil {
 		fmt.Println("Error building plugin: " + err.Error())
 		os.Exit(1)

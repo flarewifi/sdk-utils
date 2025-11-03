@@ -29,20 +29,12 @@ func IsDefInList(defs []sdkutils.PluginSrcDef, def sdkutils.PluginSrcDef) bool {
 }
 
 func AllPluginSrcDefs() []sdkutils.PluginSrcDef {
-	list := InstalledPluginsDef()
 	localPlugins := LocalPluginSrcDefs()
 	systemPlugins := SystemPluginSrcDefs()
 	configPlugins := ConfigPluginSrcDefs()
 	alldefs := append(systemPlugins, localPlugins...)
 	alldefs = append(alldefs, configPlugins...)
-
-	for _, loc := range alldefs {
-		if !IsDefInList(list, loc) {
-			list = append(list, loc)
-		}
-	}
-
-	return list
+	return alldefs
 }
 
 func ConfigPluginSrcDefs() []sdkutils.PluginSrcDef {

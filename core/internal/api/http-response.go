@@ -14,12 +14,13 @@ import (
 
 type HttpResponse struct {
 	api      *PluginApi
+	assets   *GlobalAssets
 	viewroot string
 }
 
-func NewHttpResponse(api *PluginApi) *HttpResponse {
+func NewHttpResponse(api *PluginApi, assets *GlobalAssets) *HttpResponse {
 	viewroot := sdkutils.StripRootPath(api.Utl.Resource("views"))
-	return &HttpResponse{api, viewroot}
+	return &HttpResponse{api, assets, viewroot}
 }
 
 func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
@@ -30,7 +31,7 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 	}
 
 	sseURL := self.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:sse")
-	assets, err := self.api.Utl.GetAdminAssetsForPage(v)
+	assets, err := self.api.Utl.GetAdminAssetsForPage(v, self.assets)
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
@@ -80,7 +81,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		return
 	}
 
-	assets, err := pluginApi.Utl.GetPortalAssetsForPage(v)
+	assets, err := pluginApi.Utl.GetPortalAssetsForPage(v, self.assets)
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return

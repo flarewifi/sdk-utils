@@ -6,7 +6,6 @@ import (
 	"core/internal/api"
 	"core/internal/web/helpers"
 	"core/resources/views/boot"
-	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -25,10 +24,15 @@ type BootCtrl struct {
 }
 
 func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
-	globals := plugins.ReadGlobalAssetsManifest()
 	h := ctrl.g.CoreAPI.HttpAPI.Helpers().(*api.HttpHelpers)
-	jsSrc := h.DistPath(globals.BootingJsFile)
-	cssSrc := h.DistPath(globals.BootingCssFile)
+
+	manifest := ctrl.g.CoreAPI.AssetsManifest
+	jsSrcFile, _ := manifest.BootAssets.Scripts["boot.js"]
+	cssSrcFile, _ := manifest.BootAssets.Styles["boot.css"]
+
+	jsSrc := h.DistPath(jsSrcFile)
+	cssSrc := h.DistPath(cssSrcFile)
+
 	isUpdating := sdkutils.FsExists(sdkutils.PathIsUpdated) || sdkutils.FsExists(sdkutils.PathIsReverted)
 
 	var status string

@@ -22,7 +22,9 @@ func main() {
 		pluginDirs = append(pluginDirs, pluginDir)
 	}
 
-	if err := plugins.BuildGlobalAssets(pluginDirs); err != nil {
-		panic(err)
+	for _, pluginDir := range pluginDirs {
+		if err := plugins.BuildAssets(pluginDir); err != nil {
+			panic(err)
+		}
 	}
 }

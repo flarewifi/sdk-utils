@@ -15,6 +15,7 @@ type AppState struct {
 }
 
 type CoreGlobals struct {
+	GlobalAssets   *GlobalAssets
 	Database       *db.Database
 	State          *AppState
 	CoreAPI        *PluginApi
@@ -34,6 +35,7 @@ func NewGlobals() *CoreGlobals {
 		panic(err)
 	}
 
+	assets := &GlobalAssets{}
 	db := db.NewDatabase()
 	mdls := models.New(db)
 	clntReg := connmgr.NewClientRegister(db, mdls)
@@ -45,11 +47,12 @@ func NewGlobals() *CoreGlobals {
 	clntMgr.ListenTraffic(trfcMgr)
 
 	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, clntMgr, trfcMgr)
-	coreApi := NewPluginApi(sdkutils.PathCoreDir, info, plgnMgr, trfcMgr)
+	coreApi := NewPluginApi(sdkutils.PathCoreDir, info, assets, plgnMgr, trfcMgr)
 	plgnMgr.InitCoreApi(coreApi)
-	plgnMgr.RegisterPlugin(coreApi)
+	// plgnMgr.RegisterPlugin(coreApi)
 
 	return &CoreGlobals{
+		assets,
 		db,
 		state,
 		coreApi,
