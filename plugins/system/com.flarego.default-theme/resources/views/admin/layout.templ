@@ -7,9 +7,10 @@ import (
 )
 
 type AdminLayoutData struct {
-	Components sdkapi.IThemeComponents
-	Navs       []sdkapi.AdminNavList
-	NavItems   []sdkapi.AdminNavItem
+	Components         sdkapi.IThemeComponents
+	Navs               []sdkapi.AdminNavList
+	NavItems           []sdkapi.AdminNavItem
+	NotificationRoutes sdkapi.NotificationRoutes
 }
 
 templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
@@ -38,60 +39,48 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 					</li>
 				</ul>
 				<div class="d-flex align-items-center justify-content-start gap-2 px-2">
-				<!-- Navbar Search -->
-				<form 
-					id="navbarSearch" 
-					class="navbar-search w-100 collapse d-md-none" 
-					autocomplete="off"
-					data-results={ navItemsAsJSON(data.NavItems) }
-				>
-					<div class="dropdown w-100 position-relative">
-						<div class="input-group">
-							<span class="input-group-text bg-transparent border-0 p-0 ps-2 d-none d-md-flex">
-								<i class="bi bi-search"></i>
-							</span>
-							<input
-								id="searchInput"
-								type="search"
-								class="form-control border-0 shadow-none bg-transparent"
-								placeholder="Search settings..."
-								aria-label="Search settings"
-								data-url={ api.Http().Helpers().UrlForRoute("admin.search") }
-							/>
-						</div>
-
-						<ul id="searchResults" class="dropdown-menu w-100"></ul>
-					</div>
-				</form>
-				<!-- Notifications -->
-				<form id="notification">
-						<!-- Notification Dropdown -->
-						<div class="dropdown">
-							<button 
-								class="btn position-relative p-0 border-0 bg-transparent" 
-								id="notifDropdown" 
-								data-bs-toggle="dropdown" 
-								aria-expanded="false"
-							>
-								<i class="bi bi-bell fs-4 text-light"></i>
-								<span 
-									class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-									style="font-size: 0.65rem; transform: translate(-35%, -35%);"
-								>
-									4
+					<!-- Navbar Search -->
+					<form 
+						id="navbarSearch" 
+						class="navbar-search w-100 collapse d-md-none" 
+						autocomplete="off"
+						data-results={ navItemsAsJSON(data.NavItems) }
+					>
+						<div class="dropdown w-100 position-relative">
+							<div class="input-group">
+								<span class="input-group-text bg-transparent border-0 p-0 ps-2 d-none d-md-flex">
+									<i class="bi bi-search"></i>
 								</span>
-							</button>
-
-							<ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="notifDropdown">
-								<li class="dropdown-header">Notifications</li>
-								<li><hr class="dropdown-divider"></li>
-								<li><a class="dropdown-item" href="#">🔔 New plugin installed</a></li>
-								<li><a class="dropdown-item" href="#">⚙️ Settings updated</a></li>
-								<li><a class="dropdown-item" href="#">📦 Backup completed</a></li>
-							</ul>
+								<input
+									id="searchInput"
+									type="search"
+									class="form-control border-0 shadow-none bg-transparent"
+									placeholder="Search settings..."
+									aria-label="Search settings"
+									data-url={ api.Http().Helpers().UrlForRoute("admin.search") }
+								/>
 							</div>
-				</form>
-					</div>
+
+							<ul id="searchResults" class="dropdown-menu w-100"></ul>
+						</div>
+					</form>
+					<!-- Notifications -->
+					<form id="notification">
+						<button 
+							class="btn position-relative p-0 border-0 bg-transparent"
+							id="notifDropdown"
+							data-bs-toggle="dropdown"
+							data-notif-url={ data.NotificationRoutes.GetUnreadRoute }
+						>
+							<i class="bi bi-bell fs-4 text-light"></i>
+							<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+								id="notifBellCount"
+								style="font-size: 0.65rem; transform: translate(-35%, -35%);">
+								0
+							</span>
+						</button>
+					</form>
+				</div>
 			</header>
 			<div class="container-fluid">
 				<div class="row">

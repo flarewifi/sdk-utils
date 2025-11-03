@@ -39,7 +39,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, pmgr *PluginsMgr, trfkMg
 	NewUciApi(pluginApi)
 	NewLoggerApi(pluginApi)
 	pluginApi.UIApi = NewUIApi(pluginApi)
-	pluginApi.NotificationAPI = NewNotificationAPI(pluginApi)
+	pluginApi.NotificationAPI = NewNotificationAPI(pluginApi, pmgr.models)
 
 	log.Println("NewPluginApi: ", dir, " - ", info.Package, " - ", info.Name, " - ", info.Version, " - ", info.Description)
 

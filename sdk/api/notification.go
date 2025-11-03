@@ -1,5 +1,10 @@
 package sdkapi
 
+import (
+	"context"
+	"time"
+)
+
 type NotificationStatus int
 
 const (
@@ -8,16 +13,25 @@ const (
 )
 
 type Notification struct {
-	ID      int64              `json:"id"`
-	Subject string             `json:"subject"`
-	Content string             `json:"content"`
-	Status  NotificationStatus `json:"status"`
+	ID        int64              `json:"id"`
+	Subject   string             `json:"subject"`
+	Content   string             `json:"content"`
+	Status    NotificationStatus `json:"status"`
+	CreatedAt time.Time          `json:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at"`
+	EventName string
+}
+
+type NotificationRoutes struct {
+	GetUnreadRoute string
+	UpdateRoute    string
 }
 
 type Notifications []Notification
 
 type INotificationAPI interface {
-	AddNotification(notif *Notification) error
-	GetUnreadNotifications() (Notifications, error)
-	UpdateNotificationStatus(id string, status NotificationStatus) error
+	AddNotification(ctx context.Context, notif *Notification) error
+	GetUnreadNotifications(ctx context.Context) (Notifications, error)
+	UpdateNotificationStatus(ctx context.Context, id int64, status NotificationStatus) error
+	GetUnreadNotificationsRoute() NotificationRoutes
 }

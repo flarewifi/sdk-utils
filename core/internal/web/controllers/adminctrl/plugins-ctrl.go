@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -225,15 +224,8 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		coreAPI := g.CoreAPI
 		res := coreAPI.HttpAPI.Response()
+		notifAPI := coreAPI.NotificationAPI
 		zipErrorMsg := g.CoreAPI.Translate("error", "zip_install_error")
-
-		admin, err := coreAPI.AcctAPI.Find("admin")
-		if err != nil {
-			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
 
 		// Parse form (max 10 MB)
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
@@ -337,15 +329,17 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", pluginName)
 
-			data, err := json.Marshal(map[string]string{
-				"success": successMsg,
-			})
-			if err != nil {
-				log.Println("Install Progress json error:", err)
-			}
-
-			admin.Emit("install:progress", data)
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
+
+			if err := notifAPI.AddNotification(r.Context(), &sdkapi.Notification{
+				Subject:   successMsg,
+				Content:   fmt.Sprintf("Plugin %v has been successfully installed.", info.Package),
+				Status:    sdkapi.NotificationStatusUnread,
+				EventName: "install:progress",
+			}); err != nil {
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", info.Package, err.Error()))
+				return
+			}
 		}(filePath, header.Filename, pluginName)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -359,20 +353,12 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
-
+		notifAPI := g.CoreAPI.NotificationAPI
 		githubErrMsg := g.CoreAPI.Translate("error", "github_install_error")
-
-		admin, err := g.CoreAPI.AcctAPI.Find("admin")
-		if err != nil {
-			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
 
 		// Parse our multipart form, 10 << 20 specifies a maximum
 		// upload of 10 MB files.
-		err = r.ParseMultipartForm(10 << 20)
+		err := r.ParseMultipartForm(10 << 20)
 		if err != nil {
 			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin.plugins.install")
@@ -424,14 +410,15 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", pluginName)
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 
-			data, err := json.Marshal(map[string]string{
-				"success": successMsg,
-			})
-			if err != nil {
-				log.Println("Install Progress JSON error:", err)
+			if err := notifAPI.AddNotification(r.Context(), &sdkapi.Notification{
+				Subject:   successMsg,
+				Content:   fmt.Sprintf("Plugin %v has been successfully installed.", info.Package),
+				Status:    sdkapi.NotificationStatusUnread,
+				EventName: "install:progress",
+			}); err != nil {
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via github: %v ", info.Package, err.Error()))
+				return
 			}
-
-			admin.Emit("install:progress", data)
 		}()
 
 		w.Header().Set("Content-Type", "application/json")

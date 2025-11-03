@@ -156,7 +156,7 @@ func (self *SessionModel) Summary(tx *sql.Tx, ctx context.Context, deviceID int3
 	var remainingDataMb float64
 
 	summary, err := qtx.SessionSummary(ctx, deviceID)
-	if err != nil && errors.Is(sql.ErrNoRows, err) {
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return &sdkapi.ClientSessionSummary{}, nil
 	}
 
