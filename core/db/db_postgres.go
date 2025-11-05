@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,10 +29,40 @@ func NewDatabase() *Database {
 	cfg, err := config.ReadDatabaseConfig()
 	if err != nil {
 		log.Println("Error reading DB config:", err)
-		return &Database{ConnErr: err}
+
+		cfg, err = generateDbConfig()
+		if err != nil {
+			log.Println("Error generating DB config:", err)
+			return &Database{ConnErr: err}
+		}
 	}
 
 	return newPostgresDatabase(cfg)
+}
+
+func generateDbConfig() (*config.DbConfig, error) {
+	fmt.Println("Generating new Postgres database configuration...")
+	cfg := &config.DbConfig{
+		Host:     "localhost",
+		Port:     5432,
+		Database: strings.ToLower(fmt.Sprintf("flarewifi_%s", sdkutils.RandomStr(8))),
+		Username: "postgres",
+		Password: sdkutils.RandomStr(12),
+		SslMode:  "disable",
+	}
+
+	defaultFile := filepath.Join(sdkutils.PathDefaultsDir, "database.json")
+	userFile := filepath.Join(sdkutils.PathConfigDir, "database.json")
+
+	if err := sdkutils.JsonWrite(defaultFile, &cfg); err != nil {
+		return nil, err
+	}
+
+	if err := sdkutils.JsonWrite(userFile, &cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
 func newPostgresDatabase(cfg *config.DbConfig) *Database {
@@ -43,8 +74,8 @@ func newPostgresDatabase(cfg *config.DbConfig) *Database {
 		db.mu.Lock()
 		defer db.mu.Unlock()
 
-		dbpass := sdkutils.RandomStr(8)
-		dbname := strings.ToLower(fmt.Sprintf("flarehotspot_%s", sdkutils.RandomStr(8)))
+		dbpass := cfg.Password
+		dbname := cfg.Database
 
 		// Setup PostgreSQL server
 		if err := pg.SetupServer(dbpass, dbname); err != nil {

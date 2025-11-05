@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"path/filepath"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -21,7 +23,10 @@ func ReadApplicationConfig() (sdkapi.AppConfig, error) {
 	err := readConfigFile(applicationJsonFile, &cfg)
 	if err != nil {
 		// generate defaults if not exists
-		writeConfigFile(applicationJsonFile, defaultAppCfg)
+		fmt.Println(err)
+		fmt.Println("Generating default application configuration...")
+		defaultFile := filepath.Join(sdkutils.PathDefaultsDir, applicationJsonFile)
+		writeConfigFile(defaultFile, defaultAppCfg)
 		return defaultAppCfg, err
 	}
 

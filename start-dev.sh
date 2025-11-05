@@ -43,7 +43,6 @@ for f in \
     "tools" \
     "go.work" \
     "go.sum" \
-    "os_release.json" \
     "start.sh" \
     ; do
 
