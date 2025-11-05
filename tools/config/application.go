@@ -1,25 +1,20 @@
 package config
 
 import (
+	sdkapi "sdk/api"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const applicationJsonFile = "application.json"
 
-type AppConfig struct {
-	Lang     string `json:"lang"`
-	Currency string `json:"currency"`
-	Secret   string `json:"secret"`
-	Channel  string `json:"channel"`
-}
-
-func ReadApplicationConfig() (AppConfig, error) {
-	var cfg AppConfig
+func ReadApplicationConfig() (sdkapi.AppConfig, error) {
+	var cfg sdkapi.AppConfig
 
 	err := readConfigFile(applicationJsonFile, &cfg)
 	if err != nil {
 		// generate defaults if not exists
-		cfg := AppConfig{
+		cfg := sdkapi.AppConfig{
 			Lang:     "en",
 			Currency: "USD",
 			Secret:   sdkutils.RandomStr(16),
@@ -37,6 +32,6 @@ func ReadApplicationConfig() (AppConfig, error) {
 	return cfg, nil
 }
 
-func WriteApplicationConfig(cfg AppConfig) error {
+func WriteApplicationConfig(cfg sdkapi.AppConfig) error {
 	return writeConfigFile(applicationJsonFile, cfg)
 }

@@ -6,8 +6,8 @@
 
 package sdkapi
 
-// AppCfg is the application configuration.
-type AppCfg struct {
+// AppConfig is the application configuration.
+type AppConfig struct {
 	// Examples: en, zh
 	Lang string `json:"lang"`
 
@@ -23,6 +23,6 @@ type AppCfg struct {
 
 // IAppCfgApi is used to read and write application configuration.
 type IAppCfgApi interface {
-	Get() (AppCfg, error)
-	Save(AppCfg) error
+	Get() (AppConfig, error)
+	Save(AppConfig) error
 }

@@ -79,7 +79,7 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		// Save the application config
-		err = config.WriteApplicationConfig(config.AppConfig{
+		err = config.WriteApplicationConfig(sdkapi.AppConfig{
 			Lang:     language,
 			Currency: currency,
 			Channel:  currentCfg.Channel,
