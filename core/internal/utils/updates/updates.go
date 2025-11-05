@@ -146,10 +146,10 @@ func downloadSystemFile(fileURL string, expectedChecksum string) (resultCh chan 
 	downloadFilePath := filepath.Join(sdkutils.PathTmpDir, "system", "update", filepath.Base(fileURL))
 
 	// Create download options with checksum verification
-	opts := &sdkutils.DownloadOptions{
+	opts := &sdkutils.DownloadWithProgressOpts{
 		Md5Checksum: expectedChecksum,
 	}
-	percentCh, errCh := sdkutils.DownloadCh(fileURL, downloadFilePath, opts)
+	percentCh, errCh := sdkutils.DownloadWithProgress(fileURL, downloadFilePath, opts)
 
 	go func() {
 		defer close(resultCh)

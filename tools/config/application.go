@@ -1,42 +1,49 @@
 package config
 
 import (
+	sdkapi "sdk/api"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const applicationJsonFile = "application.json"
 
-type AppConfig struct {
-	Lang     string `json:"lang"`
-	Currency string `json:"currency"`
-	Secret   string `json:"secret"`
-	Channel  string `json:"channel"`
+var defaultAppCfg = sdkapi.AppConfig{
+	Lang:     "en",
+	Currency: "USD",
+	Secret:   sdkutils.RandomStr(16),
+	Channel:  "stable",
 }
 
-func ReadApplicationConfig() (AppConfig, error) {
-	var cfg AppConfig
+func ReadApplicationConfig() (sdkapi.AppConfig, error) {
+	var cfg sdkapi.AppConfig
 
 	err := readConfigFile(applicationJsonFile, &cfg)
 	if err != nil {
 		// generate defaults if not exists
-		cfg := AppConfig{
-			Lang:     "en",
-			Currency: "USD",
-			Secret:   sdkutils.RandomStr(16),
-			Channel:  "stable",
-		}
+		writeConfigFile(applicationJsonFile, defaultAppCfg)
+		return defaultAppCfg, err
+	}
 
-		err = writeConfigFile(applicationJsonFile, cfg)
-		if err != nil {
-			return cfg, err
-		}
+	if cfg.Lang == "" {
+		cfg.Lang = defaultAppCfg.Lang
+	}
 
-		return cfg, nil
+	if cfg.Currency == "" {
+		cfg.Currency = defaultAppCfg.Currency
+	}
+
+	if cfg.Secret == "" {
+		cfg.Secret = defaultAppCfg.Secret
+	}
+
+	if cfg.Channel == "" {
+		cfg.Channel = defaultAppCfg.Channel
 	}
 
 	return cfg, nil
 }
 
-func WriteApplicationConfig(cfg AppConfig) error {
+func WriteApplicationConfig(cfg sdkapi.AppConfig) error {
 	return writeConfigFile(applicationJsonFile, cfg)
 }

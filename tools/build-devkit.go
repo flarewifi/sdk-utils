@@ -77,7 +77,7 @@ func CreateDevkit() {
 
 	// Generate default application config
 	appConfigFile := filepath.Join(devkitReleaseDir, "data/config/application.json")
-	appConfig := sdkapi.AppCfg{
+	appConfig := sdkapi.AppConfig{
 		Lang:     "en",
 		Currency: "php",
 		Secret:   sdkutils.RandomStr(16),

@@ -1,5 +1,30 @@
 package sdkutils
 
+// AppConfig is the application configuration.
+type AppConfig struct {
+	// Examples: en, zh
+	Lang string `json:"lang"`
+
+	// Examples: USD, PH, CNY
+	Currency string `json:"currency"`
+
+	// Application secret key
+	Secret string `json:"secret"`
+
+	// Application channel: development, beta, stable
+	Channel string `json:"channel"`
+}
+
+type DbConfig struct {
+	Host       string `json:"host"`
+	Port       int    `json:"port"`
+	Database   string `json:"database"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	SslMode    string `json:"sslmode"`
+	SqlitePath string `json:"sqlite_path"`
+}
+
 const (
 	PluginSrcGit    string = "git"
 	PluginSrcStore  string = "store"
@@ -7,6 +32,11 @@ const (
 	PluginSrcLocal  string = "local"
 	PluginSrcZip    string = "zip"
 )
+
+type PluginsConfig struct {
+	Recompile []string
+	Metadata  []PluginMetadata
+}
 
 type PluginMetadata struct {
 	Def     PluginSrcDef

@@ -103,45 +103,18 @@ func main() {
 		"core/resources/migrations",
 		"core/resources/translations",
 		"defaults",
+		"data/config",
 		"plugins/installed",
 		"scripts",
 		"start.sh",
 	}
 
+	outputDir := filepath.Join(sdkutils.PathAppDir, "output/mono-bin-files")
 	for _, f := range files {
 		// Copy app files to tmp output directory
-		if err := sdkutils.FsCopy(filepath.Join(sdkutils.PathAppDir, f), filepath.Join(tmpOutputDir, f)); err != nil {
+		if err := sdkutils.FsCopy(filepath.Join(sdkutils.PathAppDir, f), filepath.Join(outputDir, f)); err != nil {
 			panic(fmt.Errorf("failed to copy %s to tmp output directory: %w", f, err))
 		}
-	}
-
-	// Copy data/config to ./defaults
-	if err := sdkutils.FsCopy(filepath.Join(sdkutils.PathAppDir, "data/config"), filepath.Join(tmpOutputDir, "defaults")); err != nil {
-		panic(fmt.Errorf("failed to copy config to defaults: %w", err))
-	}
-
-	// Create database config
-	dbcfg := `{"sqlite_path": "data/db/database.sqlite"}`
-	if err := sdkutils.FsWriteFile(filepath.Join(tmpOutputDir, "defaults/database.json"), []byte(dbcfg)); err != nil {
-		panic(fmt.Errorf("failed to write database config: %w", err))
-	}
-
-	// Remove ./data directory
-	if err := os.RemoveAll(filepath.Join(tmpOutputDir, "data")); err != nil {
-		panic(fmt.Errorf("failed to remove data directory: %w", err))
-	}
-
-	outputDir := filepath.Join(sdkutils.PathAppDir, "output/mono-bin-files")
-	fmt.Println("Moving mono binary files to output directory: " + outputDir)
-
-	output := &sdkutils.BuildOutput{
-		SourceDir: tmpOutputDir,
-		OutputDir: outputDir,
-		Files:     files,
-	}
-
-	if err := output.Run(); err != nil {
-		panic(fmt.Errorf("failed to copy mono binary files to output directory: %w", err))
 	}
 
 	fmt.Println("Mono files creation completed successfully.")

@@ -1,9 +1,8 @@
 package general
 
 import "sdk/api"
-import "tools/config"
 
-templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg config.AppConfig, errors map[string]string) {
+templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, errors map[string]string) {
 	<div id="application-settings-page">
 		<h3 class="mb-4">{ api.Translate("label", "general_settings") }</h3>
 		<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:general:save")) }>
