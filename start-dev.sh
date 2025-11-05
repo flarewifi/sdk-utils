@@ -2,6 +2,7 @@
 
 DB_DRIVER="sqlite"
 GO_TAGS="dev $DB_DRIVER"
+OS_CONFIG="wan-lan"
 BUILD_CORE_MAIN="./tools/cmd/build-core"
 BUILD_CLI_MAIN="./tools/cmd/build-cli"
 BUILD_ASSETS_MAIN="./tools/cmd/build-assets"
@@ -42,6 +43,7 @@ for f in \
     "tools" \
     "go.work" \
     "go.sum" \
+    "os_release.json" \
     "start.sh" \
     ; do
 

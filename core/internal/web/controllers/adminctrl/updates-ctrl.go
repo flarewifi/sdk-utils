@@ -37,7 +37,7 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		newUpdate.Store(&updates.CoreReleaseUpdate{HasUpdate: false})
+		newUpdate.Store(&updates.SoftwareReleaseUpdate{HasUpdate: false})
 		page := updatesview.SoftwareUpdatesPage(api, nil)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
@@ -59,7 +59,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		result, err := updates.CheckCoreReleaseUpdate(currentVersion)
+		result, err := updates.CheckSoftwareReleaseUpdate(currentVersion)
 		if err != nil {
 			log.Println("Error:", err)
 			page := updatesview.SoftwareUpdatesPage(api, checkUpdateErr)
@@ -89,7 +89,7 @@ func DownloadUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		res := api.HttpAPI.Response()
 
 		v := newUpdate.Load()
-		update, ok := v.(*updates.CoreReleaseUpdate)
+		update, ok := v.(*updates.SoftwareReleaseUpdate)
 		if !ok {
 			res.Redirect(w, r, "system.updates.check")
 			return
@@ -117,7 +117,7 @@ func DownloadUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		if !isDownloaded && !isDownloading {
 			// Initiate the process of downloading and installing of software updates
-			go updates.DownloadFiles(update.CoreZipFileUrl, update.ArchBinFileUrl)
+			go updates.DownloadSoftwareRelease(update.ReleseFileURL, update.ReleaseFileChecksum)
 		}
 	}
 }

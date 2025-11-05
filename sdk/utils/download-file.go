@@ -1,7 +1,10 @@
 package sdkutils
 
 import (
+	"crypto/md5"
+	"encoding/base64"
 	"errors"
+	"hash"
 	"io"
 	"log"
 	"net/http"
@@ -10,7 +13,14 @@ import (
 	"strconv"
 )
 
-func DownloadFile(url, dest string) (<-chan int, <-chan error) {
+var ErrChecksumVerificationFailed = errors.New("checksum verification failed")
+
+// DownloadOptions contains optional parameters for downloading files
+type DownloadOptions struct {
+	Md5Checksum string
+}
+
+func DownloadCh(url, dest string, opts ...*DownloadOptions) (<-chan int, <-chan error) {
 	progress := make(chan int)
 	errChan := make(chan error, 1)
 
@@ -19,6 +29,12 @@ func DownloadFile(url, dest string) (<-chan int, <-chan error) {
 	go func() {
 		defer close(progress)
 		defer close(errChan)
+
+		// Extract options if provided
+		var expectedChecksum string
+		if len(opts) > 0 && opts[0] != nil {
+			expectedChecksum = opts[0].Md5Checksum
+		}
 
 		resp, err := http.Get(url)
 		if err != nil {
@@ -50,23 +66,47 @@ func DownloadFile(url, dest string) (<-chan int, <-chan error) {
 			return
 		}
 
+		// Create hash writer if checksum verification is needed
+		var hasher hash.Hash
+		var writer io.Writer = file
+		if expectedChecksum != "" {
+			hasher = md5.New()
+			writer = io.MultiWriter(file, hasher)
+		}
+
 		written := int64(0)
+		lastPercent := -1
 		buf := make([]byte, 1024*8)
 		for {
 			n, err := resp.Body.Read(buf)
 			if n > 0 {
-				_, writeErr := file.Write(buf[:n])
+				_, writeErr := writer.Write(buf[:n])
 				if writeErr != nil {
 					errChan <- writeErr
 					return
 				}
 				written += int64(n)
-				progress <- int((written * 100) / totalSize)
+				currentPercent := int((written * 100) / totalSize)
+				if currentPercent != lastPercent {
+					progress <- currentPercent
+					lastPercent = currentPercent
+				}
 			}
 			if err == io.EOF {
 				if written != totalSize {
 					errChan <- errors.New("short read")
 					return
+				}
+
+				// Verify checksum if provided
+				if expectedChecksum != "" {
+					actualChecksum := base64.StdEncoding.EncodeToString(hasher.Sum(nil))
+					if actualChecksum != expectedChecksum {
+						log.Printf("Checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum)
+						errChan <- ErrChecksumVerificationFailed
+						return
+					}
+					log.Println("Checksum verified successfully")
 				}
 
 				errChan <- nil

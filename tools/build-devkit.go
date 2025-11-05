@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	sdkapi "sdk/api"
-	"tools/env"
 	"tools/plugins"
+	"tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 
@@ -40,13 +40,11 @@ var (
 	}
 )
 
-func init() {
-	goversion := sdkutils.GO_VERSION
-	tags := sdkutils.Slugify(env.BuildTags, "-")
-	devkitReleaseDir = filepath.Join(sdkutils.PathAppDir, "output/devkit", fmt.Sprintf("devkit-%s-%s-go%s-%s", plugins.GetCoreInfo().Version, runtime.GOARCH, goversion, tags))
-}
-
 func CreateDevkit() {
+	goversion := sdkutils.GO_VERSION
+	tags := sdkutils.Slugify(tags.GetBuildTags(), "-")
+	devkitReleaseDir = filepath.Join(sdkutils.PathAppDir, "output/devkit", fmt.Sprintf("devkit-%s-%s-go%s-%s", plugins.GetCoreInfo().Version, runtime.GOARCH, goversion, tags))
+
 	// Clean up output path
 	if err := sdkutils.FsEmptyDir(filepath.Dir(devkitReleaseDir)); err != nil {
 		panic(err)

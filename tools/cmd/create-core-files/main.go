@@ -1,7 +1,6 @@
 package main
 
 import (
-	"tools"
 	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -12,8 +11,8 @@ func main() {
 		panic(err)
 	}
 
-	build := &tools.BuildOutput{
-		OutputDirName: "core-files",
+	build := &sdkutils.BuildOutput{
+		OutputDir: "output/core-files",
 		Files: []string{
 			"defaults",
 			"core/go.mod",
@@ -31,7 +30,7 @@ func main() {
 			"go.work.default",
 			"start.sh",
 		},
-		CustomFiles: []tools.CustomFiles{
+		Custom: []sdkutils.BuildOutputCustomEntry{
 			{
 				Src:  "go.work.default",
 				Dest: "go.work",

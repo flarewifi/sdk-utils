@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"tools/encdisk"
 	"tools/env"
+	"tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -168,7 +169,7 @@ func BuildGoPlugin(gofile string, outfile string, workdir string, envs []string)
 		GoBinPath: goBin,
 		WorkDir:   workdir,
 		Env:       envs,
-		BuildTags: env.BuildTags,
+		BuildTags: tags.GetBuildTags(),
 		ExtraArgs: extraArgs,
 	}
 

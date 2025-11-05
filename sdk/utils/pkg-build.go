@@ -23,7 +23,7 @@ func BuildGoModule(gofile string, outfile string, opts GoBuildOpts) error {
 	}
 
 	if opts.Env == nil {
-		opts.Env = []string{}
+		opts.Env = os.Environ()
 	}
 
 	fmt.Println("Building go module: " + StripRootPath(filepath.Join(opts.WorkDir, gofile)))

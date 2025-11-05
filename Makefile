@@ -29,3 +29,6 @@ devkit:
 	docker compose -f ./docker-compose.yml \
 		-f ./core/build/devkit/extras/docker-compose.override.yml \
 		run -it --rm --build app sh -c ./make-devkit.sh
+
+down:
+	docker compose down

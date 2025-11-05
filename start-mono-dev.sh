@@ -2,7 +2,9 @@
 
 ROOT_DIR="$(pwd)"
 DB_DRIVER="sqlite"
+OS_CONFIG="wan-lan-mono"
 GO_TAGS="dev mono $DB_DRIVER"
+MONO_BUILD_DIR="/tmp/.mono-bin-build"
 CREATE_PUGINS_INIT="./tools/cmd/make-mono/main.go"
 SYNC_VERSION="./tools/cmd/sync-versions/main.go"
 BUILD_ASSETS_MAIN="./tools/cmd/build-assets/main.go"
@@ -22,14 +24,20 @@ cp go.work.default go.work && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN build-templates && \
     go run -tags="${GO_TAGS}" $CREATE_PUGINS_INIT && \
-    GO_TAGS="${GO_TAGS}" go run -tags="${GO_TAGS}" $BUILD_MONO_BIN
+    ( \
+        echo "Building mono binary..." && \
+        rm -rf $MONO_BUILD_DIR && \
+        cp -r . $MONO_BUILD_DIR && \
+        cd $MONO_BUILD_DIR && \
+        GO_TAGS="${GO_TAGS}" go run -tags="${GO_TAGS}" $BUILD_MONO_BIN
+)
 
 if [ $? != 0 ]; then
     echo "Failed to build core system!"
     exit 1
 fi
 
-MONO_BIN_OUT="./output/mono-bin-files"
+MONO_BIN_OUT="$MONO_BUILD_DIR/output/mono-bin-files"
 APP_DIR="/opt/flarehotspot/app"
 DATA_DIR="/opt/flarehotspot/data"
 
@@ -47,6 +55,7 @@ for f in \
     "go.work" \
     "go.sum" \
     "start.sh" \
+    "os_release.json" \
     ; do
 
     rm -rf $APP_DIR/$f && \

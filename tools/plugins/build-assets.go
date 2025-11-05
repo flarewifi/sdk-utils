@@ -59,8 +59,10 @@ func BuildAssets(pluginDir string) (err error) {
 
 	if !sdkutils.FsExists(filepath.Join(sdkutils.PathCoreDir, "node_modules")) {
 		if _, err := sdkutils.Retry(func() (any, error) {
-			err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: sdkutils.PathCoreDir, Stdout: os.Stdout})
-			return nil, err
+			if err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: sdkutils.PathCoreDir, Stdout: os.Stdout}); err != nil {
+				return nil, fmt.Errorf("failed to install core node modules: %w", err)
+			}
+			return nil, nil
 		}, 3); err != nil {
 			return err
 		}
@@ -71,7 +73,7 @@ func BuildAssets(pluginDir string) (err error) {
 			err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: pluginDir, Stdout: os.Stdout})
 			return nil, err
 		}, 3); err != nil {
-			return err
+			return fmt.Errorf("failed to install plugin node modules: %w", err)
 		}
 	}
 
@@ -86,12 +88,12 @@ func BuildAssets(pluginDir string) (err error) {
 	if sdkutils.FsExists(adminManifestPath) {
 		var manifest Manifest
 		if err = sdkutils.JsonRead(adminManifestPath, &manifest); err != nil {
-			return err
+			return fmt.Errorf("failed to read admin manifest: %w", err)
 		}
 		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
 
 		if results, err := compileManifest(pluginDir, manifest, api.ES2017); err != nil {
-			return err
+			return fmt.Errorf("failed to compile admin manifest: %w", err)
 		} else {
 			outManifest.AdminAssets = results
 		}
@@ -101,12 +103,12 @@ func BuildAssets(pluginDir string) (err error) {
 	if sdkutils.FsExists(portalManifestPath) {
 		var manifest Manifest
 		if err = sdkutils.JsonRead(portalManifestPath, &manifest); err != nil {
-			return err
+			return fmt.Errorf("failed to read portal manifest: %w", err)
 		}
 		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
 
 		if results, err := compileManifest(pluginDir, manifest, api.ES5); err != nil {
-			return err
+			return fmt.Errorf("failed to compile portal manifest: %w", err)
 		} else {
 			outManifest.PortalAssets = results
 		}
@@ -116,12 +118,12 @@ func BuildAssets(pluginDir string) (err error) {
 	if sdkutils.FsExists(bootManifestPath) {
 		var manifest Manifest
 		if err = sdkutils.JsonRead(bootManifestPath, &manifest); err != nil {
-			return err
+			return fmt.Errorf("failed to read boot manifest: %w", err)
 		}
 		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
 
 		if results, err := compileManifest(pluginDir, manifest, api.ES2017); err != nil {
-			return err
+			return fmt.Errorf("failed to compile boot manifest: %w", err)
 		} else {
 			outManifest.BootAssets = results
 		}
@@ -129,11 +131,11 @@ func BuildAssets(pluginDir string) (err error) {
 
 	outManifestFile := filepath.Join(pluginDir, OutManifestJson)
 	if err = sdkutils.FsEnsureDir(filepath.Dir(outManifestFile)); err != nil {
-		return err
+		return fmt.Errorf("failed to ensure dist directory: %w", err)
 	}
 
 	if err = sdkutils.JsonWrite(outManifestFile, outManifest); err != nil {
-		return err
+		return fmt.Errorf("failed to write output manifest: %w", err)
 	}
 
 	return nil

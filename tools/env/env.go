@@ -9,7 +9,3 @@ const (
 	RPC_API_VERSION string = "v1"
 	RPC_BASE_URL    string = "https://rpc-core.nqsyt.cfd"
 )
-
-func init() {
-	BuildTags = BuildTags + " prod"
-}
