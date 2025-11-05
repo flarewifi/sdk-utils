@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const applicationJsonFile = "application.json"
@@ -10,6 +10,7 @@ type AppConfig struct {
 	Lang     string `json:"lang"`
 	Currency string `json:"currency"`
 	Secret   string `json:"secret"`
+	Channel  string `json:"channel"`
 }
 
 func ReadApplicationConfig() (AppConfig, error) {

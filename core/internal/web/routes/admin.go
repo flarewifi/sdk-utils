@@ -25,6 +25,10 @@ func AdminRoutes(g *api.CoreGlobals) {
 	adminR.Get("/events", adminSseCtrl).Name("admin:sse")
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Group("/general", func(subrouter sdkapi.IHttpRouterInstance) {
+			subrouter.Get("/index", adminctrl.GeneralSettingsIndexCtrl(g)).Name("admin:general:index")
+			subrouter.Post("/save", adminctrl.GeneralSettingsSaveCtrl(g)).Name("admin:general:save")
+		})
 		subrouter.Group("/updates", func(subrouter sdkapi.IHttpRouterInstance) {
 			subrouter.Get("/check", adminctrl.CheckUpdatesPageCtrl(g)).Name("system.updates.check")
 			subrouter.Post("/query", adminctrl.QuerySoftwareUpdatesCtrl(g)).Name("system.updates.query")
