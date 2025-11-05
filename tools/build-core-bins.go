@@ -49,6 +49,10 @@ func BuildCore() {
 		panic(err)
 	}
 
+	if err := plugins.BuildAssets(sdkutils.PathCoreDir); err != nil {
+		panic(err)
+	}
+
 	workdir := filepath.Join(sdkutils.PathTmpDir, "b/core", sdkutils.RandomStr(16))
 	defer os.RemoveAll(workdir)
 	if err := plugins.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {

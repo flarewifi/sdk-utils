@@ -77,16 +77,6 @@ func SetupServer(dbpass string, dbname string) error {
 		return err
 	}
 
-	// Write config file
-	if err := config.WriteDatabaseConfig(config.DbConfig{
-		Host:     "127.0.0.1",
-		Username: postgresUser,
-		Password: dbpass,
-		Database: dbname,
-	}); err != nil {
-		return err
-	}
-
 	// Enable postgresql service
 	if err := cmd.Exec("service postgresql enable", nil); err != nil {
 		fmt.Println("unable to enable postgresql service")
