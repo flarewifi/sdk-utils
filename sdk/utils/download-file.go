@@ -15,12 +15,12 @@ import (
 
 var ErrChecksumVerificationFailed = errors.New("checksum verification failed")
 
-// DownloadOptions contains optional parameters for downloading files
-type DownloadOptions struct {
+// DownloadChOpts contains optional parameters for downloading files
+type DownloadChOpts struct {
 	Md5Checksum string
 }
 
-func DownloadCh(url, dest string, opts ...*DownloadOptions) (<-chan int, <-chan error) {
+func DownloadCh(url, dest string, opts ...*DownloadChOpts) (<-chan int, <-chan error) {
 	progress := make(chan int)
 	errChan := make(chan error, 1)
 
