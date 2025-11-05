@@ -1,0 +1,7 @@
+package views
+
+import ()
+
+templ ErrorPage(err error) {
+	<p style="color: red;">{ err.Error() }</p>
+}

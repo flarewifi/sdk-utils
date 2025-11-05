@@ -1,0 +1,11 @@
+{
+  "global.js": [
+    "./admin/js/globals.js"
+  ],
+  "global.css": [
+    "./admin/css/global.css"
+  ],
+  "plugin.js": [
+    "./admin/js/plugin.js"
+  ]
+}

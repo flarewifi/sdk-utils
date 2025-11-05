@@ -1,0 +1,14 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "Localhost",
+            "Group": "Servers",
+            "Host": "pg",
+            "Port": 5432,
+            "Username": "postgres",
+            "SSLMode": "prefer",
+            "PasswordExecCommand": "echo -n 'postgres'",
+            "MaintenanceDB": "postgres"
+        }
+    }
+}

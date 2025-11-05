@@ -1,0 +1,16 @@
+{
+  "buildFlags": [
+    "-tags=dev"
+  ],
+  "directoryFilters": [
+    "-data/config",
+    "-data/storage",
+    "-.git",
+    "-.github",
+    "-bin",
+    "-node_modules",
+    "-sdk/libs",
+    "-.tmp",
+    "+plugins/local"
+  ]
+}

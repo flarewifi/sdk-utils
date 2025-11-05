@@ -1,0 +1,77 @@
+package pluginsview
+
+import (
+	"fmt"
+	sdkapi "sdk/api"
+	"encoding/json"
+	"html/template"
+)
+
+type FormRoutes struct {
+	SelectedAction         string `json:"action_url"`
+	PluginInstallZipURL    string `json:"plugin_install_zip_url"`
+	PluginInstallGithubURL string `json:"plugin_install_github_url"`
+	PluginIndexURL         string `json:"plugin_index_url"`
+	CheckInstallStatusURL  string `json:"check_install_status_url"`
+}
+
+templ InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) {
+	{{
+		b, _ := json.Marshal(data)
+		jsonData := template.JS(b)
+	}}
+
+	<h1>{ api.Translate("label", "install_plugin") }</h1>
+	<hr/>
+	<div x-data={ fmt.Sprintf("pluginInstaller(%s)", jsonData) }>
+		@ProgressBar()
+		<form class="form" method="POST" enctype="multipart/form-data" x-bind:action="action_url" @submit.prevent="handleSubmit($event)">
+			<div class="form-group mb-3">
+				<label>{ api.Translate("label", "source") }:</label>
+				<select name="src" class="form-control" x-model="action_url">
+					<option value={ data.PluginInstallGithubURL }>{ api.Translate("label", "github") }</option>
+					<option value={ data.PluginInstallZipURL }>{ api.Translate("label", "zip_file") }</option>
+				</select>
+			</div>
+			<template x-if={ fmt.Sprintf("action_url=='%s'", data.PluginInstallGithubURL) }>
+				<div>
+					<div class=" form-group mb-3">
+						<label>{ api.Translate("label", "github_url") }:</label>
+						<input type="text" name="github_repo_url" class="form-control"/>
+					</div>
+					<div class="form-group mb-3">
+						<label>{ api.Translate("label", "branch_commit_hash") }:</label>
+						<input type="text" name="github_ref" class="form-control"/>
+					</div>
+				</div>
+			</template>
+			<template x-if={ fmt.Sprintf("action_url=='%s'", data.PluginInstallZipURL) }>
+				<div class=" form-group mb-3">
+					<label>{ api.Translate("label", "plugin_zip_file") }:</label>
+					<input type="file" name="plugin_zip_file" class="form-control"/>
+				</div>
+			</template>
+			<div class="form-group">
+				<button type="submit" class="btn btn-primary">{ api.Translate("label", "install") }</button>
+			</div>
+		</form>
+	</div>
+}
+
+templ ProgressBar(){
+	<template x-if="isLoading">
+		<div class="progress" style="height: 15px;">
+			<div
+				id="progressBar"
+				class="progress-bar progress-bar-striped progress-bar-animated"
+				role="progressbar"
+				:style="`width: ${progress}%;`"
+				:aria-valuenow="progress"
+				aria-valuemin="0"
+				aria-valuemax="100"
+				x-text="message || `Installing... (${progress}%)`"
+			>
+			</div>
+		</div>
+	</template>
+}

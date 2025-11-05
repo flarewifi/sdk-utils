@@ -1,0 +1,9 @@
+//go:build !dev
+
+package livereload
+
+templ LiveReloadScript() {
+<script>
+    console.log("ℹ️ LiveReload is disabled in production mode.");
+</script>
+}

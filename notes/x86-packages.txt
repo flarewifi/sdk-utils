@@ -1,0 +1,53 @@
+# application requirements
+  golang
+  sudo
+  usbutils
+  ntpd
+  tc
+  nftables
+  kmod-ifb
+  kmod-crypto-ecb
+  kmod-crypto-xts
+  kmod-crypto-seqiv
+  kmod-crypto-misc
+  kmod-crypto-user
+  cryptsetup
+  kmod-fs-ext4
+  e2fsprogs
+  losetup
+  pgsql-server
+  gcc
+  tar
+  ar
+  git-http
+  ca-bundle
+
+
+  # usb ethernet drivers
+  kmod-usb-core
+  kmod-usb2
+  kmod-usb3
+  kmod-usb-net-asix
+  kmod-usb-net-asix-ax88179
+  kmod-usb-net-rtl8152
+  kmod-usb-net-smsc95xx
+  kmod-usb-net-cdc-ether
+  kmod-usb-net-dm9601-ether
+  kmod-usb-net-kaweth
+  kmod-usb-net-pegasus
+  kmod-usb-net
+  kmod-usb-net-rndis
+
+  # need for auto expand root fs
+  parted
+  losetup
+  resize2fs
+
+  # need for swap
+  block-mount
+  zram-swap
+
+  # dont need
+  -luci-base
+  -luci-mod-admin-full
+  -lighttpd

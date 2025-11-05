@@ -1,0 +1,11 @@
+{
+  "theme.css": [
+    "./portal/portal.css"
+  ],
+  "theme.js": [
+    "./portal/portal.js"
+  ],
+  "portal/index.js": [
+    "./portal/portal-index.js"
+  ]
+}

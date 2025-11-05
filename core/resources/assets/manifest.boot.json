@@ -1,0 +1,8 @@
+{
+  "boot.js": [
+    "./booting/js/globals.js"
+  ],
+  "boot.css": [
+    "./booting/css/style.css"
+  ]
+}

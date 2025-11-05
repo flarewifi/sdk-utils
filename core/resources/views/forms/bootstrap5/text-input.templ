@@ -1,0 +1,56 @@
+package bootstrap5
+
+import (
+	"fmt"
+	"errors"
+
+	"github.com/flarehotspot/sdk-utils"
+)
+
+type TextInputFieldAttrs struct {
+	Label string
+	Name  string
+	Value string
+	Error error
+}
+
+templ TextInputField(cfg *inputFieldConfig) {
+	<div class="pb-3">
+		{{
+			attrs := getTextInputFieldAttrs(cfg)
+
+			textAreaClass := "form-control"
+			labelClass := "form-label"
+			if attrs.Error != nil {
+				textAreaClass += " is-invalid"
+				labelClass += " text-danger"
+			}
+		}}
+
+		<label for={ attrs.Name } class={ labelClass }>{ attrs.Label }</label>
+	    <textarea class={ textAreaClass } rows="3" id={ sdkutils.Slugify(attrs.Name, "_") } name={ attrs.Name }>{ attrs.Value }</textarea>
+		if attrs.Error != nil {
+			<div class="invalid-feedback">{ attrs.Error.Error() }</div>
+		}
+	</div>
+}
+
+func getTextInputFieldAttrs(cfg *inputFieldConfig) (attrs TextInputFieldAttrs) {
+	attrs.Name = fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName())
+	attrs.Label = cfg.fld.GetLabel()
+
+	attrs.Value = cfg.value
+	if cfg.error != "" {
+		attrs.Error = errors.New(cfg.error)
+	}
+
+	if attrs.Error != nil {
+		return
+	}
+
+	if attrs.Value == "" {
+		attrs.Value, attrs.Error = cfg.form.GetStringValue(cfg.sec.GetName(), cfg.fld.GetName())
+	}
+
+	return
+}

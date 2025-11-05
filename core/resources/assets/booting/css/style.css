@@ -1,0 +1,61 @@
+/**
+ * Copyright 2021-2022 Flarego Technologies Corp. <business@flarego.ph>
+ * File              : style.css
+ * Author            : Adones Pitogo <pitogo.adones@gmail.com>
+ * Date              : Nov 29, 2022
+ * Last Modified Date: Feb 27, 2024
+ */
+
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+html,
+body {
+    background-color: #000;
+    color: #FFF;
+}
+
+.center {
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    /* left: 50%; */
+    /* -ms-transform: translate(-50%, -50%); */
+    /* transform: translate(-50%, -50%); */
+}
+
+#progressbar {
+    height: 26px;
+    width: 300px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 2px;
+}
+
+#percent {
+    transition: all 500ms ease;
+    height: 20px;
+    width: calc(0% - 10px);
+    border-radius: 8px;
+    background: #80005e;
+    position: absolute;
+    margin: 3px;
+    display: inline-block;
+    animation: load 15s ease infinite;
+}
+
+#status-text {
+    color: #fff;
+    font-family: Arial;
+    font-weight: bold;
+    text-align: left;
+    margin-top: -30px;
+}
+
+hr {
+    clear: both;
+    visibility: hidden;
+}

@@ -1,0 +1,52 @@
+package themes
+
+import (
+	"sdk/api"
+	"core/resources/views/livereload"
+)
+
+type AdminAssets struct {
+	GlobalCssHref       string
+	GlobalJsSrc         string
+	ThemeCssHref        string
+	ThemeJsSrc          string
+	PluginGlobalCssHref string
+	PluginGlobalJsSrc   string
+	PageCssHref         string
+	PageJsSrc           string
+}
+
+templ AdminHead(api sdkapi.IPluginApi, data AdminAssets) {
+	<title>{ api.Translate("label", "web_admin") }</title>
+	<!-- Theme Stylesheets -->
+	if data.GlobalCssHref != "" {
+		<link rel="stylesheet" href={ data.GlobalCssHref }/>
+	}
+	if data.ThemeCssHref != "" {
+		<link rel="stylesheet" href={ data.ThemeCssHref }/>
+	}
+	if data.PluginGlobalCssHref != "" {
+		<link rel="stylesheet" href={ data.PluginGlobalCssHref }/>
+	}
+	if data.PageCssHref != "" {
+		<link rel="stylesheet" href={ data.PageCssHref }/>
+	}
+}
+
+templ AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) {
+	<!-- Theme Scripts -->
+
+	if assets.GlobalJsSrc != "" {
+		<script defer src={ assets.GlobalJsSrc } type="text/javascript"></script>
+	}
+	if assets.ThemeJsSrc != "" {
+		<script defer src={ assets.ThemeJsSrc } type="text/javascript"></script>
+	}
+	if assets.PageJsSrc != "" {
+		<script defer src={ assets.PageJsSrc } type="text/javascript"></script>
+	}
+	if flash != nil {
+		<script id="flash-message" data-flash-type={ flash.Type } data-flash-message={ flash.Message } type="text/template"></script>
+	}
+	@livereload.LiveReloadScript()
+}

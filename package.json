@@ -1,0 +1,16 @@
+{
+  "author": "Flarego Technologies Corporation",
+  "dependencies": {
+    "@octokit/core": "^5.1.0",
+    "fs-extra": "^11.2.0"
+  },
+  "description": "flarehotspot sdk",
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "typescript": "^5.5.4"
+  },
+  "license": "ISC",
+  "main": "index.js",
+  "name": "@flarehotspot/core",
+  "version": "0.1.2"
+}

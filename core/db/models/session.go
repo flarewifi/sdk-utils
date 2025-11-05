@@ -1,0 +1,212 @@
+package models
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log"
+	"strconv"
+	"time"
+
+	"core/db"
+	"core/db/queries"
+)
+
+type Session struct {
+	db          *db.Database
+	models      *Models
+	id          int32
+	deviceId    int32
+	sessionType string
+	timeSecs    int
+	dataMb      float64
+	timeCons    int
+	dataCons    float64
+	startedAt   *time.Time
+	expDays     *int
+	expiresAt   *time.Time
+	downMbits   int
+	upMbits     int
+	useGlobal   bool
+	createdAt   time.Time
+}
+
+func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
+	session := &Session{
+		db:     dtb,
+		models: mdls,
+	}
+
+	if s != nil {
+		var expDays *int
+		if s.ExpDays.Valid {
+			val := int(s.ExpDays.Int32)
+			expDays = &val
+		}
+
+		var startedAt *time.Time
+		if s.StartedAt.Valid {
+			startedAt = &s.StartedAt.Time
+		}
+
+		mb, err := strconv.ParseFloat(s.DataMbytes, 64)
+		if err != nil {
+			mb = 0
+		}
+
+		cmb, err := strconv.ParseFloat(s.ConsumptionMb, 64)
+		if err != nil {
+			cmb = 0
+		}
+
+		session.id = s.ID
+		session.deviceId = s.DeviceID
+		session.sessionType = s.SessionType
+		session.timeSecs = int(s.TimeSecs)
+		session.dataMb = mb
+		session.timeCons = int(s.ConsumptionSecs)
+		session.dataCons = cmb
+		session.expDays = expDays
+		session.startedAt = startedAt
+
+		// TODO: fix proper expiry calculation
+		// session.expiresAt = sRow.ExpiresAt
+
+		session.downMbits = int(s.DownMbits)
+		session.upMbits = int(s.UpMbits)
+		session.useGlobal = s.UseGlobal
+		session.createdAt = s.CreatedAt
+	}
+
+	return session
+}
+
+func BuildSession(id int32, devId int32, t string, timeSecs int, dataMb float64, timeCons int, dataCons float64, startedAt *time.Time, expDays *int, expiresAt *time.Time, dmbits int, umbits int, g bool) *Session {
+	return &Session{
+		id:          id,
+		deviceId:    devId,
+		sessionType: t,
+		timeSecs:    timeSecs,
+		dataMb:      dataMb,
+		timeCons:    timeCons,
+		dataCons:    dataCons,
+		startedAt:   startedAt,
+		expDays:     expDays,
+		expiresAt:   expiresAt,
+		downMbits:   dmbits,
+		upMbits:     umbits,
+		useGlobal:   g,
+	}
+}
+
+func (self *Session) Id() int32 {
+	return self.id
+}
+
+func (self *Session) DeviceId() int32 {
+	return self.deviceId
+}
+
+func (self *Session) SessionType() string {
+	return self.sessionType
+}
+
+func (self *Session) TimeSecs() int {
+	return self.timeSecs
+}
+
+func (self *Session) DataMbyte() float64 {
+	return self.dataMb
+}
+
+func (self *Session) TimeConsumed() int {
+	return self.timeCons
+}
+
+func (self *Session) DataConsumed() float64 {
+	return self.dataCons
+}
+
+func (self *Session) StartedAt() *time.Time {
+	return self.startedAt
+}
+
+func (self *Session) ExpDays() *int {
+	return self.expDays
+}
+
+func (self *Session) CretedAt() time.Time {
+	return self.createdAt
+}
+
+func (self *Session) ExpiresAt() *time.Time {
+	if self.startedAt != nil && self.expDays != nil {
+		exp := self.startedAt.Add(time.Hour * 24 * time.Duration(*self.expDays))
+		return &exp
+	}
+	return nil
+}
+
+func (self *Session) DownMbits() int {
+	return self.downMbits
+}
+
+func (self *Session) UpMbits() int {
+	return self.upMbits
+}
+
+func (self *Session) UseGlobal() bool {
+	return self.useGlobal
+}
+
+func (self *Session) CreatedAt() time.Time {
+	return self.createdAt
+}
+
+func (self *Session) Update(tx *sql.Tx, ctx context.Context, devId int32, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+	var startedTime sql.NullTime
+	if started != nil {
+		startedTime = sql.NullTime{Time: *started, Valid: true}
+	}
+
+	var expDays sql.NullInt32
+	if exp != nil {
+		expDays = sql.NullInt32{Int32: int32(*exp), Valid: true}
+	}
+
+	qtx := self.db.Queries.WithTx(tx)
+	err := qtx.UpdateSession(ctx, queries.UpdateSessionParams{
+		DeviceID:        devId,
+		SessionType:     t,
+		TimeSecs:        int32(secs),
+		DataMbytes:      fmt.Sprintf("%.6f", mb),
+		ConsumptionSecs: int32(timecon),
+		ConsumptionMb:   fmt.Sprintf("%.6f", datacon),
+		StartedAt:       startedTime,
+		ExpDays:         expDays,
+		DownMbits:       int32(downMbit),
+		UpMbits:         int32(upMbit),
+		UseGlobal:       g,
+		ID:              self.id,
+	})
+	if err != nil {
+		log.Printf("error updating session %v: %v", self.id, err)
+		return err
+	}
+
+	self.deviceId = devId
+	self.sessionType = t
+	self.timeSecs = secs
+	self.dataMb = mb
+	self.timeCons = timecon
+	self.dataCons = datacon
+	self.startedAt = started
+	self.downMbits = downMbit
+	self.upMbits = upMbit
+
+	return nil
+}
+
+func (self *Session) Save(tx *sql.Tx, ctx context.Context) error {
+	return self.Update(tx, ctx, self.deviceId, self.sessionType, self.timeSecs, self.dataMb, self.timeCons, self.dataCons, self.startedAt, self.expDays, self.downMbits, self.upMbits, self.useGlobal)
+}

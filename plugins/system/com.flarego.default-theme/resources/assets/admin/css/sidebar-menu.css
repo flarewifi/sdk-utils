@@ -1,0 +1,87 @@
+#sidemenu .nav-menu {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+#sidemenu .nav-category {
+  margin-bottom: 0.25rem;
+}
+
+/* make the icon rotatable and animate smoothly */
+#sidemenu .nav-category .bi {
+  display: inline-block; /* needed so transform affects the icon */
+  transform: rotate(0deg); /* initial state */
+  transform-origin: center; /* rotate around center */
+  transition: transform 200ms ease; /* smooth animation */
+}
+
+/* when parent has .active, rotate 90deg clockwise */
+#sidemenu .nav-category.active .bi.bi-chevron-right {
+  transform: rotate(90deg);
+}
+
+#sidemenu .nav-category > .nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+  font-weight: 500;
+}
+
+#sidemenu .nav-menu .nav-category > .nav-link {
+  justify-content: space-between;
+}
+
+#sidemenu .nav-category > .nav-link:hover,
+#sidemenu .nav-category.active > .nav-link:hover {
+  background: linear-gradient(90deg, #9c9c9c, #cfcfcf);
+  color: var(--bs-black);
+}
+
+#sidemenu .nav-category.active > .nav-link {
+  background: linear-gradient(90deg, #6c51fd, #9365ff);
+  color: var(--bs-white);
+}
+
+#sidemenu ul.sub-nav {
+  list-style: none;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+#sidemenu .sub-nav-item {
+  padding-top: 0.5rem;
+  border-radius: 6px;
+}
+
+#sidemenu .sub-nav-link {
+  display: block;
+  padding: 0.5rem 1rem;
+  color: var(--bs-body-secondary-color);
+  text-decoration: none;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    font-size 0.2s ease;
+}
+
+#sidemenu .sub-nav-link:hover,
+#sidemenu .sub-nav-item.active > a.sub-nav-link:hover {
+  background: linear-gradient(90deg, #9c9c9c, #cfcfcf);
+  color: var(--bs-black);
+}
+
+#sidemenu .sub-nav-item.active > a.sub-nav-link {
+  background: linear-gradient(90deg, #6c51fd, #9365ff);
+  color: var(--bs-white);
+  /* box-shadow: 0 4px 10px -2px rgba(92, 118, 231, 0.5); */
+}

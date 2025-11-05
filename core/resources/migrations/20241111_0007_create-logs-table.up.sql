@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS logs (
+    id INTEGER PRIMARY KEY,
+    package VARCHAR(255),
+    level VARCHAR(50) NOT NULL,
+    message TEXT NOT NULL DEFAULT '',
+    filepath VARCHAR(512) NOT NULL DEFAULT '',
+    line_number INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS index_package ON logs(package);
+CREATE INDEX IF NOT EXISTS index_level ON logs(level);

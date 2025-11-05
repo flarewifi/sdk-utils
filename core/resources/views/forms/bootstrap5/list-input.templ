@@ -1,0 +1,199 @@
+package bootstrap5
+
+import (
+	"fmt"
+	"strings"
+	"reflect"
+
+	sdkapi "sdk/api"
+
+	"github.com/flarehotspot/sdk-utils"
+)
+
+templ ListInputField(cfg *inputFieldConfig) {
+	{{ lf, ok := cfg.fld.(sdkapi.FormListField) }}
+	if ok {
+		@listOptionFields(cfg, lf)
+	} else {
+		<span>{ fmt.Sprintf("list field %s in section %s is not a list field", cfg.fld.GetName(), cfg.sec.GetName()) }</span>
+	}
+}
+
+templ listOptionFields(cfg *inputFieldConfig, lf sdkapi.FormListField) {
+	<div class="pb-3">
+		{{
+			legendClass := "fs-6 fw-normal"
+			inputClass := "form-check-input"
+			if cfg.error != ""{
+				inputClass += " is-invalid"
+				legendClass += " text-danger"
+			}
+
+			optType := "radio" // default option type
+			if lf.Multiple {
+				optType = "checkbox" // default type for multiple
+			}
+
+			if lf.OptionType == sdkapi.FormListOptionSelect {
+				optType = string(sdkapi.FormListOptionSelect)
+			}
+		}}
+
+		<legend class={ legendClass }>{ lf.Label }</legend>
+
+		if optType == string(sdkapi.FormListOptionSelect) {
+			<div>
+				<select
+					class="form-select"
+					multiple?={ lf.Multiple }
+					name={ fmt.Sprintf("%s:%s", cfg.sec.GetName(), cfg.fld.GetName()) }
+				>
+					for i, opt := range lf.Options() {
+						<option
+							value={ parseListOptValue(lf, i, opt) }
+							selected?={ isListOptSelected(cfg, lf, opt) }
+						>{ opt.Label }</option>
+					}
+				</select>
+			</div>
+		} else {
+			for i, opt := range lf.Options() {
+				<div class="form-check">
+					<input
+						class={ inputClass }
+						type={ optType }
+						name={ fmt.Sprintf("%s:%s", cfg.sec.GetName(), lf.Name) }
+						value={ parseListOptValue(lf, i, opt) }
+						checked?={ isListOptSelected(cfg, lf, opt) }
+						multiple?={ lf.Multiple }
+					/>
+					<label class="form-check-label">
+						{ opt.Label }
+					</label>
+				</div>
+			}
+		}
+
+		if cfg.error != "" {
+			<p class="invalid-feedback d-block fs-6">{ cfg.error }</p>
+		}
+	</div>
+}
+
+func isListOptSelected(cfg *inputFieldConfig, lf sdkapi.FormListField, opt sdkapi.FormListFieldOption) bool {
+	v := fmt.Sprint(opt.Value)
+
+	if cfg.value != "" {
+		if lf.Multiple {
+			vals := strings.Split(cfg.value, ",")
+			return sdkutils.SliceContains(vals, v)
+		}
+
+		return v == cfg.value
+	}
+
+	switch lf.Type {
+		case sdkapi.FormFieldTypeString:
+			v, ok := opt.Value.(string)
+			if !ok {
+				return false
+			}
+
+			if lf.Multiple {
+				vals, err := cfg.form.GetStringValues(cfg.sec.GetName(), lf.Name)
+				if err != nil {
+					return false
+				}
+				return sdkutils.SliceContains(vals, v)
+			} else {
+				val, err := cfg.form.GetStringValue(cfg.sec.GetName(), lf.Name)
+				if err != nil {
+					return false
+				}
+				return val == v
+			}
+		case sdkapi.FormFieldTypeDecimal:
+			var v float64
+			k := reflect.TypeOf(opt.Value).Kind()
+
+			switch k {
+			case reflect.Int:
+				v = float64(opt.Value.(int))
+			case reflect.Int32:
+				v = float64(opt.Value.(int32))
+			case reflect.Int64:
+				v = float64(opt.Value.(int64))
+			case reflect.Float32:
+				v = float64(opt.Value.(float32))
+			case reflect.Float64:
+				v = opt.Value.(float64)
+			}
+
+			if lf.Multiple {
+				vals, err := cfg.form.GetFloatValues(cfg.sec.GetName(), lf.Name)
+				if err != nil {
+					return false
+				}
+				return sdkutils.SliceContains(vals, v)
+			} else {
+				val, err := cfg.form.GetFloatValue(cfg.sec.GetName(), lf.Name)
+				if err != nil {
+					return false
+				}
+				return val == v
+			}
+		case sdkapi.FormFieldTypeInteger:
+			var v int64
+			k := reflect.TypeOf(opt.Value).Kind()
+
+			switch k {
+			case reflect.Int:
+				v = int64(opt.Value.(int))
+			case reflect.Int32:
+				v = int64(opt.Value.(int32))
+			case reflect.Int64:
+				v = int64(opt.Value.(int64))
+			}
+
+			if lf.Multiple {
+				vals, err := cfg.form.GetIntValues(cfg.sec.GetName(), lf.Name)
+				if err != nil {
+					return false
+				}
+				return sdkutils.SliceContains(vals, v)
+			} else {
+				val, err := cfg.form.GetIntValue(cfg.sec.GetName(), lf.Name)
+				if err != nil {
+					return false
+				}
+				return val == v
+			}
+		}
+
+	return false
+}
+
+func parseListOptValue(lf sdkapi.FormListField, idx int,  opt sdkapi.FormListFieldOption) (val string) {
+	switch lf.Type {
+		case sdkapi.FormFieldTypeString:
+			v, ok := opt.Value.(string)
+			if !ok {
+				return ""
+			}
+			return v
+		case sdkapi.FormFieldTypeDecimal:
+			t := reflect.TypeOf(opt.Value)
+			switch t.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
+				return fmt.Sprintf("%.2f", float64(opt.Value.(int)))
+			case reflect.Float32, reflect.Float64:
+				return fmt.Sprintf("%.2f", opt.Value)
+			}
+
+			return "0"
+		case sdkapi.FormFieldTypeInteger:
+			return fmt.Sprint(opt.Value)
+		}
+
+		return
+}

@@ -1,0 +1,66 @@
+---
+
+services:
+  app:
+    build:
+      context: .
+    volumes:
+      - ./:/app
+      - ./data:/opt/flarehotspot/data
+      - ./openwrt-files/etc/config:/etc/config
+      - ./openwrt-files/etc/openwrt_release:/etc/openwrt_release
+      - ./openwrt-files/etc/os_release.json:/etc/os_release.json
+      - gocache:/var/cache/go
+    environment:
+      - GOCACHE=/var/cache/go/cache
+      - GOMODCACHE=/var/cache/go/mod
+    ports:
+      - 3000:3000
+      - 8000:8000
+    networks:
+      flare_network:
+
+  pg:
+    image: postgres:17
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=flarehotspot_dev
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    networks:
+      flare_network:
+
+  pgadmin:
+    image: dpage/pgadmin4:9
+    ports:
+      - 3001:80
+    depends_on:
+      - pg
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=pgadmin4@pgadmin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+      - PGPASS_FILE=/pgpass
+    volumes:
+      - ./pgadmin4/servers.json:/pgadmin4/servers.json
+    networks:
+      flare_network:
+
+  docs:
+    build:
+      context: ./sdk/mkdocs
+    volumes:
+      - ./sdk/mkdocs:/docs
+    ports:
+      - 3002:8000
+
+volumes:
+  pgdata:
+  gocache:
+
+networks:
+  flare_network:
+    external: true

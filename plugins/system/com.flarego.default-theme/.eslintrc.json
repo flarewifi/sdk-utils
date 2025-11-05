@@ -1,0 +1,13 @@
+{
+  "extends": "es3",
+  "globals": {
+    "$": true,
+    "jQuery": true
+  },
+  "rules": {
+    "comma-dangle": [
+      "error",
+      "never"
+    ]
+  }
+}

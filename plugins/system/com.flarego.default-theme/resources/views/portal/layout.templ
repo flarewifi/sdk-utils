@@ -1,0 +1,26 @@
+package portal
+
+import "sdk/api"
+
+type PortalLayoutData struct {
+	Components sdkapi.IThemeComponents
+}
+
+templ PortalLayout(data PortalLayoutData) {
+	<!DOCTYPE html>
+	<html lang="en" data-bs-theme="auto" { data.Components.HtmlAttrs()... }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<!-- Theme Head -->
+			@data.Components.Head()
+		</head>
+		<body { data.Components.BodyAttrs()... }>
+			<!-- Theme Layout -->
+			<div style="padding: 10px; background: gray;">
+				@data.Components.PageContent()
+			</div>
+			@data.Components.Scripts()
+		</body>
+	</html>
+}
