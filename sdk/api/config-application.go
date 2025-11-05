@@ -16,6 +16,9 @@ type AppCfg struct {
 
 	// Application secret key
 	Secret string `json:"secret"`
+
+	// Application channel: development, beta, stable
+	Channel string `json:"channel"`
 }
 
 // IAppCfgApi is used to read and write application configuration.
