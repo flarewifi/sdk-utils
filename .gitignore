@@ -10,6 +10,7 @@
 /go
 /data/config
 /data/plugins/local/*
+/data/storage
 !/data/plugins/local/.keep
 /plugins/installed
 /plugins/updates
