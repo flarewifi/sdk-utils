@@ -103,6 +103,7 @@ func main() {
 		"core/resources/migrations",
 		"core/resources/translations",
 		"defaults",
+		"data/config",
 		"plugins/installed",
 		"scripts",
 		"start.sh",
@@ -116,20 +117,20 @@ func main() {
 	}
 
 	// Copy data/config to ./defaults
-	if err := sdkutils.FsCopy(filepath.Join(sdkutils.PathAppDir, "data/config"), filepath.Join(tmpOutputDir, "defaults")); err != nil {
-		panic(fmt.Errorf("failed to copy config to defaults: %w", err))
-	}
+	// if err := sdkutils.FsCopy(filepath.Join(sdkutils.PathAppDir, "data/config"), filepath.Join(tmpOutputDir, "defaults")); err != nil {
+	// 	panic(fmt.Errorf("failed to copy config to defaults: %w", err))
+	// }
 
 	// Create database config
-	dbcfg := `{"sqlite_path": "data/db/database.sqlite"}`
-	if err := sdkutils.FsWriteFile(filepath.Join(tmpOutputDir, "defaults/database.json"), []byte(dbcfg)); err != nil {
-		panic(fmt.Errorf("failed to write database config: %w", err))
-	}
+	// dbcfg := `{"sqlite_path": "data/db/database.sqlite"}`
+	// if err := sdkutils.FsWriteFile(filepath.Join(tmpOutputDir, "defaults/database.json"), []byte(dbcfg)); err != nil {
+	// 	panic(fmt.Errorf("failed to write database config: %w", err))
+	// }
 
 	// Remove ./data directory
-	if err := os.RemoveAll(filepath.Join(tmpOutputDir, "data")); err != nil {
-		panic(fmt.Errorf("failed to remove data directory: %w", err))
-	}
+	// if err := os.RemoveAll(filepath.Join(tmpOutputDir, "data")); err != nil {
+	// 	panic(fmt.Errorf("failed to remove data directory: %w", err))
+	// }
 
 	outputDir := filepath.Join(sdkutils.PathAppDir, "output/mono-bin-files")
 	fmt.Println("Moving mono binary files to output directory: " + outputDir)
