@@ -7,7 +7,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
+	"tools/config"
 	"tools/tags"
 
 	"github.com/Masterminds/semver/v3"
@@ -42,11 +44,16 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 		return nil, err
 	}
 
+	cfg, err := config.ReadApplicationConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
 	params := rpc.FetchLatestSoftwareReleaseRequest{
 		CurrentVersion: currentVersion.String(),
 		BrandId:        release.BrandId,
-		Os:             release.Os,
+		Os:             strings.ToLower(release.Os),
 		OsVersion:      release.OsVersion,
 		OsTarget:       release.OsTarget,
 		OsArch:         release.OsArch,
@@ -55,9 +62,9 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 		GoVersion:      sdkutils.GO_VERSION,
 		GoArch:         sdkutils.GOARCH,
 		IsMono:         tags.HasGoTag("mono"),
+		Channel:        strings.ToLower(cfg.Channel),
 	}
 
-	fmt.Println("Build Tags:", tags.GetBuildTags())
 	log.Println("\nChecking software version:")
 	sdkutils.PrettyPrint(&params)
 
