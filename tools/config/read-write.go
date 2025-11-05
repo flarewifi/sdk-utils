@@ -30,5 +30,5 @@ func writeConfigFile(f string, config any) error {
 	}
 
 	location := filepath.Join(sdkutils.PathConfigDir, f)
-	return os.WriteFile(location, bytes, 0644)
+	return sdkutils.FsWriteFile(location, bytes)
 }

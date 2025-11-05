@@ -7,9 +7,9 @@ import (
 
 var (
 	GOOS             string
-	GO_VERSION       string
-	GO_LONG_VERSION  string
-	GO_SHORT_VERSION string
+	GO_SHORT_VERSION string // e.g. "1.20"
+	GO_VERSION       string // e.g. "1.20.5"
+	GO_LONG_VERSION  string // e.g. "go1.20.5"
 	GOARCH           string
 )
 

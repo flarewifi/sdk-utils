@@ -7,9 +7,5 @@ const (
 	HTTP_PORT       int    = 3000
 	RPC_TOKEN       string = "xxxxxxxxxx"
 	RPC_API_VERSION string = "v1"
-	RPC_BASE_URL    string = "http://flarehotspot.rpc-dev.com"
+	RPC_BASE_URL    string = "http://flarehotspot.rpc-dev.com/flarewifi"
 )
-
-func init() {
-	BuildTags = BuildTags + " dev"
-}

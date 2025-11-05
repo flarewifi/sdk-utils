@@ -247,7 +247,7 @@ func JsonWrite(f string, v any) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(f, b, PermFile)
+	return FsWriteFile(f, b)
 }
 
 func JsonRead(f string, v any) error {

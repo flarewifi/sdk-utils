@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 	"tools/env"
+	"tools/tags"
 
 	"github.com/evanw/esbuild/pkg/api"
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -12,7 +13,7 @@ import (
 func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api.BuildResult) {
 	var sourcemap api.SourceMap
 	sourcemap = api.SourceMapLinked
-	if strings.Contains(outfile, "global") || env.HasGoTag("mono") && env.GO_ENV == env.ENV_PRODUCTION {
+	if strings.Contains(outfile, "global") || tags.HasGoTag("mono") && env.GO_ENV == env.ENV_PRODUCTION {
 		sourcemap = api.SourceMapNone
 	}
 
@@ -41,7 +42,7 @@ func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api
 func EsbuildCss(indexfile string, outfile string) (result api.BuildResult) {
 	var sourcemap api.SourceMap
 	sourcemap = api.SourceMapLinked
-	if strings.Contains(outfile, "global") || env.HasGoTag("mono") && env.GO_ENV == env.ENV_PRODUCTION {
+	if strings.Contains(outfile, "global") || tags.HasGoTag("mono") && env.GO_ENV == env.ENV_PRODUCTION {
 		sourcemap = api.SourceMapNone
 	}
 

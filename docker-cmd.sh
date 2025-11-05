@@ -10,6 +10,7 @@ cp go.work.default go.work && \
     -R '\.tmp\/.*' \
     -R '^output\/.*' \
     -R '^bin\/.*' \
+    -R 'os_release\.json$' \
     -R 'db\/queries\/.*' \
     -R 'node_modules\/.*' \
     -R 'data\/config\/.*' \

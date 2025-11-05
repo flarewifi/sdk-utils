@@ -1,10 +1,8 @@
 package tools
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"tools/env"
 	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -14,15 +12,26 @@ func BuildCoreBins() {
 	BuildFlareCLI()
 	BuildCore()
 
-	goversion := sdkutils.GO_VERSION
-	tags := sdkutils.Slugify(env.BuildTags, "-")
-	info := plugins.GetCoreInfo()
-
-	build := &BuildOutput{
-		OutputDirName: filepath.Join("core-binaries", fmt.Sprintf("core_arch_bin-%s-%s-go%s-%s", info.Version, sdkutils.GOARCH, goversion, tags)),
+	build := &sdkutils.BuildOutput{
+		OutputDir: filepath.Join(sdkutils.PathAppDir, "output/core-binaries"),
 		Files: []string{
 			"bin/flare",
 			"core/plugin.so",
+			"core/go.mod",
+			"core/go.sum",
+			"core/sqlc.yml",
+			"core/package.json",
+			"core/package-lock.json",
+			"core/plugin.json",
+			"core/resources",
+			"defaults",
+			"sdk",
+			"scripts",
+			"tools/go.mod",
+			"tools/go.sum",
+			"plugins/system",
+			"go.work.default",
+			"start.sh",
 		},
 	}
 
