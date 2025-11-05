@@ -81,6 +81,7 @@ func CreateDevkit() {
 		Lang:     "en",
 		Currency: "php",
 		Secret:   sdkutils.RandomStr(16),
+		Channel:  "development",
 	}
 
 	b, err := json.MarshalIndent(appConfig, "", "  ")
