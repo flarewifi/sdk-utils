@@ -30,7 +30,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 			subrouter.Post("/save", adminctrl.GeneralSettingsSaveCtrl(g)).Name("admin:general:save")
 		})
 		subrouter.Group("/updates", func(subrouter sdkapi.IHttpRouterInstance) {
-			subrouter.Get("/check", adminctrl.CheckUpdatesPageCtrl(g)).Name("system.updates.check")
+			subrouter.Get("/", adminctrl.CheckUpdatesPageCtrl(g)).Name("system.updates.check")
 			subrouter.Post("/query", adminctrl.QuerySoftwareUpdatesCtrl(g)).Name("system.updates.query")
 			subrouter.Get("/download", adminctrl.DownloadUpdatePageCtrl(g)).Name("system.updates.download")
 			subrouter.Post("/download/status", adminctrl.DownloadStatusPartialCtrl(g)).Name("system.updates.download.status")

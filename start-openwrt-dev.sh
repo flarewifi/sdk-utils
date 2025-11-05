@@ -27,13 +27,7 @@ PATH="$PATH:$HOME/go/bin"
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN build-templates && \
     go run -tags="${GO_TAGS}" $CREATE_PUGINS_INIT && \
-    ( \
-        echo "Building mono binary..." && \
-        rm -rf $MONO_BUILD_DIR && \
-        cp -r . $MONO_BUILD_DIR && \
-        cd $MONO_BUILD_DIR && \
-        GO_TAGS="${GO_TAGS}" go run -tags="${GO_TAGS}" $BUILD_MONO_BIN
-)
+    GO_TAGS="${GO_TAGS}" go run -tags="${GO_TAGS}" $BUILD_MONO_BIN
 
 if [ $? != 0 ]; then
     echo "Failed to build core system!"
@@ -58,7 +52,6 @@ for f in \
     "go.work" \
     "go.sum" \
     "start.sh" \
-    "os_release.json" \
     ; do
 
     rm -rf $APP_DIR/$f && \

@@ -41,17 +41,6 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg config.AppConfig, err
 					<div class="text-danger mt-1">{ errors["currency"] }</div>
 				}
 			</div>
-			<div class="mb-3">
-				<label for="channel" class="form-label">{ api.Translate("label", "channel") }</label>
-				<select class="form-select" id="channel" name="channel" required>
-					<option value="stable" if cfg.Channel == "stable" || cfg.Channel == "" { selected }>Stable</option>
-					<option value="beta" if cfg.Channel == "beta" { selected }>Beta</option>
-					<option value="dev" if cfg.Channel == "dev" { selected }>Development</option>
-				</select>
-				if errors["channel"] != "" {
-					<div class="text-danger mt-1">{ errors["channel"] }</div>
-				}
-			</div>
 			<button type="submit" class="btn btn-primary">{ api.Translate("label", "save_settings") }</button>
 		</form>
 	</div>

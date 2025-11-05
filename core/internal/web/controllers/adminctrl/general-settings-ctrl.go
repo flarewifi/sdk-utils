@@ -51,14 +51,6 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 						Required: true,
 					},
 				},
-				{
-					FieldName:  "channel",
-					FieldLabel: g.CoreAPI.Translate("label", "channel"),
-					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: sdkapi.FormFieldRules{
-						Required: true,
-					},
-				},
 			},
 		}
 
@@ -74,7 +66,6 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get form values
 		language := r.FormValue("language")
 		currency := r.FormValue("currency")
-		channel := r.FormValue("channel")
 
 		// Read current config to preserve the Secret field
 		currentCfg, err := config.ReadApplicationConfig()
@@ -91,7 +82,7 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		err = config.WriteApplicationConfig(config.AppConfig{
 			Lang:     language,
 			Currency: currency,
-			Channel:  channel,
+			Channel:  currentCfg.Channel,
 			Secret:   currentCfg.Secret, // Preserve existing secret
 		})
 		if err != nil {
