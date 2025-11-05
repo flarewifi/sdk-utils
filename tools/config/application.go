@@ -23,6 +23,7 @@ func ReadApplicationConfig() (AppConfig, error) {
 			Lang:     "en",
 			Currency: "USD",
 			Secret:   sdkutils.RandomStr(16),
+			Channel:  "stable",
 		}
 
 		err = writeConfigFile(applicationJsonFile, cfg)
