@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strings"
 	"time"
 
 	queries "core/db/queries"
@@ -44,7 +45,7 @@ func generateDbConfig() (*config.DbConfig, error) {
 	cfg := &config.DbConfig{
 		Host:     "localhost",
 		Port:     5432,
-		Database: fmt.Sprintf("flarewifi_%s", sdkutils.RandomStr(8)),
+		Database: strings.ToLower(fmt.Sprintf("flarewifi_%s", sdkutils.RandomStr(8))),
 		Username: "postgres",
 		Password: sdkutils.RandomStr(12),
 		SslMode:  "disable",
