@@ -6,20 +6,10 @@
 
 package sdkapi
 
+import sdkutils "github.com/flarehotspot/sdk-utils"
+
 // AppConfig is the application configuration.
-type AppConfig struct {
-	// Examples: en, zh
-	Lang string `json:"lang"`
-
-	// Examples: USD, PH, CNY
-	Currency string `json:"currency"`
-
-	// Application secret key
-	Secret string `json:"secret"`
-
-	// Application channel: development, beta, stable
-	Channel string `json:"channel"`
-}
+type AppConfig sdkutils.AppConfig
 
 // IAppCfgApi is used to read and write application configuration.
 type IAppCfgApi interface {
