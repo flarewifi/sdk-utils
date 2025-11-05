@@ -1,0 +1,103 @@
+package adminctrl
+
+import (
+	"net/http"
+	sdkapi "sdk/api"
+
+	"core/internal/api"
+	generalview "core/resources/views/admin/general"
+	"tools/config"
+)
+
+func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res := g.CoreAPI.HttpAPI.Response()
+
+		cfg, err := config.ReadApplicationConfig()
+		if err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		// Get form errors if any
+		errors := g.CoreAPI.HttpAPI.Forms().Errors(w, r, "general_settings")
+
+		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, cfg, errors)
+		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
+	}
+}
+
+func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res := g.CoreAPI.HttpAPI.Response()
+
+		// Define the form validator
+		formValidator := sdkapi.FormWithValidator{
+			FormName: "application_settings",
+			FormValidators: []sdkapi.FormValidator{
+				{
+					FieldName:  "language",
+					FieldLabel: g.CoreAPI.Translate("label", "language"),
+					FieldType:  sdkapi.FormFieldTypeString,
+					FieldRules: sdkapi.FormFieldRules{
+						Required: true,
+					},
+				},
+				{
+					FieldName:  "currency",
+					FieldLabel: g.CoreAPI.Translate("label", "currency"),
+					FieldType:  sdkapi.FormFieldTypeString,
+					FieldRules: sdkapi.FormFieldRules{
+						Required: true,
+					},
+				},
+			},
+		}
+
+		// Parse and validate the form
+		err := g.CoreAPI.HttpAPI.Forms().ParseFormWithValidator(w, r, formValidator)
+		if err != nil {
+			// Validation failed, redirect back to the form
+			applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
+			http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)
+			return
+		}
+
+		// Get form values
+		language := r.FormValue("language")
+		currency := r.FormValue("currency")
+
+		// Read current config to preserve the Secret field
+		currentCfg, err := config.ReadApplicationConfig()
+		if err != nil {
+			saveErrorMsg := g.CoreAPI.Translate("error", "save_settings_error")
+			res.FlashMsg(w, r, saveErrorMsg, sdkapi.FlashMsgError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
+			http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)
+			return
+		}
+
+		// Save the application config
+		err = config.WriteApplicationConfig(config.AppConfig{
+			Lang:     language,
+			Currency: currency,
+			Channel:  currentCfg.Channel,
+			Secret:   currentCfg.Secret, // Preserve existing secret
+		})
+		if err != nil {
+			saveErrorMsg := g.CoreAPI.Translate("error", "save_settings_error")
+			res.FlashMsg(w, r, saveErrorMsg, sdkapi.FlashMsgError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
+			http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)
+			return
+		}
+
+		successfulSavedMsg := g.CoreAPI.Translate("info", "saved_settings_message")
+		res.FlashMsg(w, r, successfulSavedMsg, sdkapi.FlashMsgSuccess)
+
+		applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
+		http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)
+	}
+}

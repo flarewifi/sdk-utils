@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+// NOTICE: This api is being depcrecated. Please create a manual html form instead and validate the input using the form validation API.
+
 package sdkapi
 
 import "errors"

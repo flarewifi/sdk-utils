@@ -11,13 +11,27 @@ type SoftwareUpdate struct {
 	IsDownloaded   bool
 }
 
-templ SoftwareUpdatesPage(api sdkapi.IPluginApi, err error) {
+templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) {
 	<div id="page">
 		<div>
 			<h3 class="mb-3">Software Updates</h3>
-			<button class="btn btn-primary mb-3" type="button" hx-target="#page" hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } data-loading-disable>
-				Check for updates
-			</button>
+			<form>
+				<div class="mb-3">
+					<label for="channel" class="form-label">Update Channel</label>
+					<select class="form-select" id="channel" name="channel">
+						<option value="stable" if channel == "stable" { selected }>Stable</option>
+						<option value="beta" if channel == "beta" { selected }>Beta</option>
+						<option value="development" if channel == "development" { selected }>Development</option>
+					</select>
+				</div>
+				<button class="btn btn-primary mb-3" type="submit" 
+					hx-target="#page" 
+					hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } 
+					hx-include="[name='channel']"
+					data-loading-disable>
+					Check for updates
+				</button>
+			</form>
 		</div>
 		if err != nil {
 			<div class="text-danger" data-loading-class="d-none">{ err.Error() }</div>
