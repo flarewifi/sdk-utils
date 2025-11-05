@@ -34,7 +34,7 @@ func ReadApplicationConfig() (sdkapi.AppConfig, error) {
 	}
 
 	if cfg.Secret == "" {
-		cfg.Secret = sdkutils.RandomStr(16)
+		cfg.Secret = defaultAppCfg.Secret
 	}
 
 	if cfg.Channel == "" {
