@@ -1,5 +1,37 @@
 package admin
 
-templ AdminIndexPage() {
+import (
+	"fmt"
+	"com.flarego.default-theme/app/sysinfo"
+	"sdk/api"
+)
+
+
+templ AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
 	<h1>Admin Dashboard</h1>
+	@ResourceInfo(api, info)
+}
+
+templ progressBar(percent float64) {
+	<div class="progress" style="height: 20px;">
+		<div
+			class={ fmt.Sprintf("progress-bar %s", getProgressBarColor(percent)) }
+			role="progressbar"
+			aria-valuenow={ fmt.Sprintf("%.0f", percent) }
+			aria-valuemin="0"
+			aria-valuemax="100"
+		>
+			@templ.Raw(fmt.Sprintf(`<style>.progress-bar[aria-valuenow="%.0f"] { width: %.1f%% }</style>`, percent, percent))
+			{ fmt.Sprintf("%.1f%%", percent) }
+		</div>
+	</div>
+}
+
+func getProgressBarColor(percent float64) string {
+	if percent >= 90 {
+		return "bg-danger"
+	} else if percent >= 75 {
+		return "bg-warning"
+	}
+	return "bg-success"
 }

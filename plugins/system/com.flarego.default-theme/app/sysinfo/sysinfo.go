@@ -1,11 +1,12 @@
 package sysinfo
 
 import (
+	"runtime"
+
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
-	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/mem"
-	"runtime"
+	"github.com/shirou/gopsutil/v4/sensors"
 )
 
 // SystemInfo holds basic system metrics.
@@ -30,14 +31,12 @@ func GetSystemInfo() (*SystemInfo, error) {
 	}
 
 	// CPU usage per core
-	cpuPercents, err := cpu.Percent(0, true)
-	if err == nil {
-		info.CPUPercent = cpuPercents
-	}
+	cpuPercents, _ := cpu.Percent(0, true)
+	info.CPUPercent = cpuPercents
 
 	// CPU temperature (optional)
-	temps, err := host.SensorsTemperatures()
-	if err == nil && len(temps) > 0 {
+	temps, _ := sensors.SensorsTemperatures()
+	if len(temps) > 0 {
 		tempVals := make([]float64, 0, len(temps))
 		for _, t := range temps {
 			tempVals = append(tempVals, t.Temperature)
@@ -46,16 +45,16 @@ func GetSystemInfo() (*SystemInfo, error) {
 	}
 
 	// Memory stats
-	vmem, err := mem.VirtualMemory()
-	if err == nil {
+	vmem, _ := mem.VirtualMemory()
+	if vmem != nil {
 		info.MemTotal = vmem.Total
 		info.MemUsed = vmem.Used
 		info.MemUsedPercent = vmem.UsedPercent
 	}
 
 	// Disk stats (root)
-	diskUsage, err := disk.Usage("/")
-	if err == nil {
+	diskUsage, _ := disk.Usage("/")
+	if diskUsage != nil {
 		info.DiskTotal = diskUsage.Total
 		info.DiskUsed = diskUsage.Used
 		info.DiskUsedPercent = diskUsage.UsedPercent
