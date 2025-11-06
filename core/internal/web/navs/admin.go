@@ -13,6 +13,12 @@ func SetAdminNavs(g *api.CoreGlobals) {
 		return []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "dashboard"),
+				RouteName: "admin:dashboard",
+				Keywords:  []string{"dashboard"},
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "general"),
 				RouteName: "admin:general:index",
 				Keywords:  []string{"settings", "general", "language", "currency", "version", "machine", "id"},

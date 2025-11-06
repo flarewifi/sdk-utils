@@ -5,6 +5,7 @@ import (
 	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/controllers/adminctrl"
+	"net/http"
 	sdkapi "sdk/api"
 )
 
@@ -13,12 +14,16 @@ func AdminRoutes(g *api.CoreGlobals) {
 	rootR := webutil.RootRouter
 	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
 
-	adminIndexCtrl := controllers.AdminIndexPage(g)
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
 	adminAuthCtrl := controllers.AdminAuthenticateCtrl(g)
-	adminSseCtrl := controllers.AdminSseHandler(g)
+	adminSseCtrl := adminctrl.AdminSseHandler(g)
 
-	rootR.Handle("/admin", authMw(adminIndexCtrl)).Methods("GET").Name("admin:index")
+	rootR.Handle("/admin", authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:dashboard")
+	}))).Methods("GET")
+
+	adminR.Get("/dashboard", adminctrl.AdminDashboardCtrl(g)).Name("admin:dashboard")
+
 	// TODO: enable csrf protection
 	rootR.Handle("/login", adminLoginCtrl).Methods("GET").Name("admin:login")
 	rootR.Handle("/login", adminAuthCtrl).Methods("POST").Name("admin:authenticate")
