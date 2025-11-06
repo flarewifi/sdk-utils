@@ -5,8 +5,11 @@ import (
 	sdkapi "sdk/api"
 
 	"core/internal/api"
+	machineuid "core/internal/utils/machine-uid"
 	generalview "core/resources/views/admin/general"
 	"tools/config"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
@@ -19,10 +22,20 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		// Get machine ID
+		machineID := machineuid.GetMachineUID()
+
+		// Get software version
+		pluginInfo, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
+		softwareVersion := "unknown"
+		if err == nil {
+			softwareVersion = pluginInfo.Version
+		}
+
 		// Get form errors if any
 		errors := g.CoreAPI.HttpAPI.Forms().Errors(w, r, "general_settings")
 
-		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, cfg, errors)
+		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, cfg, machineID, softwareVersion, errors)
 		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
 	}
 }

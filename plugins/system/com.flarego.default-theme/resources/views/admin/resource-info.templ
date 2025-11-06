@@ -1,0 +1,74 @@
+package admin
+
+import "sdk/api"
+import "com.flarego.default-theme/app/sysinfo"
+import "fmt"
+
+templ ResourceInfo(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
+	<div
+		class="row mt-4"
+		hx-get={ api.Http().Helpers().UrlForRoute("admin.system.resource") }
+		hx-trigger="load delay:1s"
+		hx-swap="outerHTML"
+	>
+		<!-- CPU Card -->
+		<div class="col-md-4 mb-3">
+			<div class="card h-100">
+				<div class="card-header">
+					<h5 class="card-title mb-0">CPU</h5>
+				</div>
+				<div class="card-body">
+					<p class="mb-2">
+						<strong>Architecture:</strong>
+						<span>{ info.Arch }</span>
+					</p>
+					<p class="mb-2"><strong>Cores:</strong> { fmt.Sprintf("%d", info.NumCPU) }</p>
+					if len(info.CPUPercent) > 0 {
+						<p class="mb-1"><strong>Usage per Core:</strong></p>
+						<ul class="list-unstyled ms-3 mb-2">
+							for i, percent := range info.CPUPercent {
+								<li>Core { fmt.Sprintf("%d", i+1) }: { fmt.Sprintf("%.1f%%", percent) }</li>
+							}
+						</ul>
+					}
+					if len(info.CPUTemperature) > 0 {
+						<p class="mb-1"><strong>Temperature:</strong></p>
+						<ul class="list-unstyled ms-3">
+							for i, temp := range info.CPUTemperature {
+								<li>Sensor { fmt.Sprintf("%d", i) }: { fmt.Sprintf("%.1f°C", temp) }</li>
+							}
+						</ul>
+					}
+				</div>
+			</div>
+		</div>
+		<!-- Memory Card -->
+		<div class="col-md-4 mb-3">
+			<div class="card h-100">
+				<div class="card-header">
+					<h5 class="card-title mb-0">Memory</h5>
+				</div>
+				<div class="card-body">
+					<p class="mb-2"><strong>Total:</strong> { fmt.Sprintf("%.2f GB", float64(info.MemTotal)/1024/1024/1024) }</p>
+					<p class="mb-2"><strong>Used:</strong> { fmt.Sprintf("%.2f GB", float64(info.MemUsed)/1024/1024/1024) }</p>
+					<p class="mb-2"><strong>Usage:</strong> { fmt.Sprintf("%.1f%%", info.MemUsedPercent) }</p>
+					@progressBar(info.MemUsedPercent)
+				</div>
+			</div>
+		</div>
+		<!-- Disk Card -->
+		<div class="col-md-4 mb-3">
+			<div class="card h-100">
+				<div class="card-header">
+					<h5 class="card-title mb-0">Disk</h5>
+				</div>
+				<div class="card-body">
+					<p class="mb-2"><strong>Total:</strong> { fmt.Sprintf("%.2f GB", float64(info.DiskTotal)/1024/1024/1024) }</p>
+					<p class="mb-2"><strong>Used:</strong> { fmt.Sprintf("%.2f GB", float64(info.DiskUsed)/1024/1024/1024) }</p>
+					<p class="mb-2"><strong>Usage:</strong> { fmt.Sprintf("%.1f%%", info.DiskUsedPercent) }</p>
+					@progressBar(info.DiskUsedPercent)
+				</div>
+			</div>
+		</div>
+	</div>
+}

@@ -2,6 +2,8 @@ package app
 
 import (
 	sdkapi "sdk/api"
+
+	"com.flarego.default-theme/app/handlers"
 )
 
 const (
@@ -13,10 +15,18 @@ const (
 )
 
 func SetupRoutes(api sdkapi.IPluginApi) {
-	pluginRouter := api.Http().Router().PluginRouter()
+	adminR := api.Http().Router().AdminRouter()
+	pluginR := api.Http().Router().PluginRouter()
 
-	pluginRouter.Group("/sessions", func(subrouter sdkapi.IHttpRouterInstance) {
+	pluginR.Group("/sessions", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/summary", PortalSessionSyncHandler(api)).Name("sessions.summary")
 		subrouter.Get("/navs", PortalNavItemsHandler(api)).Name("portal.navs")
 	})
+
+	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Group("/resource", func(subrouter sdkapi.IHttpRouterInstance) {
+			subrouter.Get("/", handlers.SystemResourceCtrl(api)).Name("admin.system.resource")
+		})
+	})
+
 }
