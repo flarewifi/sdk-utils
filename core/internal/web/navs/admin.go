@@ -12,16 +12,16 @@ func SetAdminNavs(g *api.CoreGlobals) {
 	coreNavs.AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
 		return []sdkapi.AdminNavItemOpt{
 			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "general"),
+				RouteName: "admin:general:index",
+				Keywords:  []string{"settings", "general", "language", "currency", "version", "machine", "id"},
+			},
+			{
 				Category:  sdkapi.NavCategoryThemes,
 				Label:     g.CoreAPI.Translate("label", "select_theme"),
 				RouteName: "admin:themes:index",
 				Keywords:  []string{"theme", "themes", "style", "portal", "admin"},
-			},
-			{
-				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "general"),
-				RouteName: "admin:general:index",
-				Keywords:  []string{"settings", "general", "language", "currency", "channel"},
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,

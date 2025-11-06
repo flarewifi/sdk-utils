@@ -17,8 +17,8 @@ AND (@search_text = ''
     OR LOWER(message)
     LIKE '%' || LOWER(@search_text) || '%')
 ORDER BY
-    created_at DESC OFFSET $1
-LIMIT $2;
+    created_at DESC
+LIMIT $2 OFFSET $1;
 
 -- name: SearchCount :one
 SELECT
