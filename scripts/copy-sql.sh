@@ -8,6 +8,11 @@ PLUGIN_DIR="${1:-}"
 TMP_DIR="${2:-}"
 DRIVER="${3:-}"
 
+if [ ! -d "$PLUGIN_DIR" ]; then
+    echo "Usage: $0 <plugin_directory> <temporary_directory> [driver]"
+    exit 1
+fi
+
 # Ensure TMP_DIR exists
 if [ ! -d "$TMP_DIR" ]; then
     echo "Creating temporary directory at: $TMP_DIR"

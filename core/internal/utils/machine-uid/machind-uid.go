@@ -1,3 +1,5 @@
+//go:build !dev
+
 package machineuid
 
 import (
