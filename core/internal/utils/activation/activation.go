@@ -28,7 +28,7 @@ var (
 	ActivationError atomic.Value
 )
 
-func ValidateActivation() {
+func Validate() {
 	IsValidating.Store(true)
 	defer IsValidating.Store(false)
 

@@ -25,7 +25,7 @@ func Init(g *api.CoreGlobals) {
 		}
 
 		// Initialize activation after everything else is ready
-		activation.ValidateActivation()
+		go activation.Validate()
 
 		bootCh <- struct{}{}
 	}()
