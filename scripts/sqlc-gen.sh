@@ -52,6 +52,7 @@ echo "sqlc generate completed successfully."
 
 # Copy generated output back
 if [ -d "$TMP_DIR/db/queries" ]; then
+    rm -rf "$PLUGIN_DIR/db/queries"
     mkdir -p "$PLUGIN_DIR/db/queries"
     cp -r "$TMP_DIR/db/queries/." "$PLUGIN_DIR/db/queries/"
     echo "Copied generated queries to $PLUGIN_DIR/db/queries/"
