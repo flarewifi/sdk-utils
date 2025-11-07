@@ -54,8 +54,6 @@ document.addEventListener('alpine:init', () => {
                 ? 'Installation failed.'
                 : 'Installation completed!';
             localStorage.removeItem('plugin_install_loading');
-
-            if (data.status === 'failed') alert('Installation failed.');
           } else {
             this.startPolling();
             this.initFlareEvents();
@@ -202,7 +200,6 @@ document.addEventListener('alpine:init', () => {
             this.stopPolling();
             this.isLoading = false;
             localStorage.removeItem('plugin_install_loading');
-            alert('Installation failed.');
           }
         } catch (err) {
           console.error('[polling] Error:', err);

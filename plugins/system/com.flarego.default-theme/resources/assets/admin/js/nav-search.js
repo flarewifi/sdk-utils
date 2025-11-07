@@ -4,7 +4,6 @@ $(document).ready(function () {
     const $resultsDropdown = $("#searchResults");
 
     const allResults = JSON.parse($form.attr("data-results") || "[]");
-    console.log('allResults: ', allResults)
 
     $searchInput.on("input", function () {
         const query = $(this).val().trim().toLowerCase();

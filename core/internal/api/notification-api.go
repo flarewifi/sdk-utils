@@ -23,7 +23,7 @@ type NotificationAPI struct {
 }
 
 func (n *NotificationAPI) AddNotification(ctx context.Context, notif *sdkapi.Notification) error {
-	tx, err := n.api.SqlDB().Begin()
+	tx, err := n.api.SqlDB().BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("unable to begin transaction: %w", err)
 	}
@@ -53,7 +53,7 @@ func (n *NotificationAPI) AddNotification(ctx context.Context, notif *sdkapi.Not
 }
 
 func (n *NotificationAPI) GetUnreadNotifications(ctx context.Context) (sdkapi.Notifications, error) {
-	tx, err := n.api.SqlDB().Begin()
+	tx, err := n.api.SqlDB().BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

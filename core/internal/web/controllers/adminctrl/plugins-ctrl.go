@@ -1,6 +1,7 @@
 package adminctrl
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -277,12 +278,24 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Launch background installation
 		go func(filePath string, filename, pluginName string) {
+			ctx := context.Background()
+
 			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
 
 			pluginTmpDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted", sdkutils.RandomStr(16))
 			if err := sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: extract error: " + err.Error())
+				if err := notifAPI.AddNotification(ctx, &sdkapi.Notification{
+					Subject:   "Plugin Installation Failed",
+					Content:   zipErrorMsg,
+					Status:    sdkapi.NotificationStatusUnread,
+					EventName: "install:progress",
+				}); err != nil {
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
+					return
+				}
+
 				return
 			}
 
@@ -290,6 +303,17 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			if err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: find plugin src error: " + err.Error())
+
+				if err := notifAPI.AddNotification(ctx, &sdkapi.Notification{
+					Subject:   "Plugin Installation Failed",
+					Content:   zipErrorMsg,
+					Status:    sdkapi.NotificationStatusUnread,
+					EventName: "install:progress",
+				}); err != nil {
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
+					return
+				}
+
 				return
 			}
 
@@ -297,12 +321,32 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			if err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: get plugins info error: " + err.Error())
+				if err := notifAPI.AddNotification(ctx, &sdkapi.Notification{
+					Subject:   "Plugin Installation Failed",
+					Content:   zipErrorMsg,
+					Status:    sdkapi.NotificationStatusUnread,
+					EventName: "install:progress",
+				}); err != nil {
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
+					return
+				}
+
 				return
 			}
 
 			pluginCachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
 			if err := sdkutils.FsCopy(pluginSrc, pluginCachePath); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+				if err := notifAPI.AddNotification(ctx, &sdkapi.Notification{
+					Subject:   "Plugin Installation Failed",
+					Content:   zipErrorMsg,
+					Status:    sdkapi.NotificationStatusUnread,
+					EventName: "install:progress",
+				}); err != nil {
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
+					return
+				}
+
 				g.CoreAPI.LoggerAPI.Error("zip install error: file copy error: " + err.Error())
 				return
 			}
@@ -314,6 +358,16 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 			if _, err := plugins.InstallFromLocalPath(g.Database.DB, def, plugins.InstallOpts{ForceInstall: false}); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
+				if err := notifAPI.AddNotification(ctx, &sdkapi.Notification{
+					Subject:   "Plugin Installation Failed",
+					Content:   zipErrorMsg,
+					Status:    sdkapi.NotificationStatusUnread,
+					EventName: "install:progress",
+				}); err != nil {
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
+					return
+				}
+
 				g.CoreAPI.LoggerAPI.Error("zip install error: install from local path error: " + err.Error())
 				return
 			}
@@ -327,13 +381,13 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			p := api.NewPluginApi(installPath, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
 
-			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", pluginName)
+			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", info.Package)
 
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 
-			if err := notifAPI.AddNotification(r.Context(), &sdkapi.Notification{
-				Subject:   successMsg,
-				Content:   fmt.Sprintf("Plugin %v has been successfully installed.", info.Package),
+			if err := notifAPI.AddNotification(ctx, &sdkapi.Notification{
+				Subject:   "Plugin Installation Successful",
+				Content:   successMsg,
 				Status:    sdkapi.NotificationStatusUnread,
 				EventName: "install:progress",
 			}); err != nil {
@@ -381,6 +435,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		pluginName := src.Repo
 		SaveInitialState(pluginName)
+		ctx := context.Background()
 
 		go func() {
 			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
@@ -393,6 +448,16 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			if err != nil {
 				UpdateStatus(pluginName, FailedStatus, githubErrMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("InstallFromGitSrc: " + err.Error())
+
+				if err := notifAPI.AddNotification(ctx, &sdkapi.Notification{
+					Subject:   "Plugin Installation Failed",
+					Content:   githubErrMsg,
+					Status:    sdkapi.NotificationStatusUnread,
+					EventName: "install:progress",
+				}); err != nil {
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via github: %v ", pluginName, err.Error()))
+					return
+				}
 
 				return
 			}
@@ -407,12 +472,12 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 90)
 			time.Sleep(10 * time.Second)
 
-			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", pluginName)
+			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", info.Package)
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 
-			if err := notifAPI.AddNotification(r.Context(), &sdkapi.Notification{
-				Subject:   successMsg,
-				Content:   fmt.Sprintf("Plugin %v has been successfully installed.", info.Package),
+			if err := notifAPI.AddNotification(ctx, &sdkapi.Notification{
+				Subject:   "Plugin Installation Successful",
+				Content:   successMsg,
 				Status:    sdkapi.NotificationStatusUnread,
 				EventName: "install:progress",
 			}); err != nil {

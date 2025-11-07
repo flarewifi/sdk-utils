@@ -1,21 +1,20 @@
 package adminctrl
 
 import (
+	"context"
 	"core/internal/api"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
-	"github.com/gorilla/mux"
 )
 
 func GetUnreadNotificationsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		notifsAPI := g.CoreAPI.NotificationAPI
 
-		notifications, err := notifsAPI.GetUnreadNotifications(r.Context())
+		ctx := context.Background()
+		notifications, err := notifsAPI.GetUnreadNotifications(ctx)
 		if err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("get notifications error: %v", err))
 		}
@@ -33,22 +32,18 @@ func UpdateNotificationCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		res := api.Http().Response()
 		notifsAPI := api.NotificationAPI
 
-		vars := mux.Vars(r)
-		idStr := vars["id"]
-		if idStr == "" {
-			res.FlashMsg(w, r, "Unable to update notification", sdkapi.FlashMsgError)
+		var input struct {
+			ID     int64 `json:"id"`
+			Status int64 `json:"status"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			res.FlashMsg(w, r, "Invalid request body", sdkapi.FlashMsgError)
 			return
 		}
 
-		params := r.URL.Query()
-		vals, ok := params["status"]
-		if !ok || len(vals) == 0 {
-			res.FlashMsg(w, r, "Status not found", sdkapi.FlashMsgError)
-			return
-		}
-
-		id := int64(sdkutils.AtoiOrDefault(idStr, 0))
-		status := sdkapi.NotificationStatus(sdkutils.AtoiOrDefault(vals[0], 0))
+		id := int64(input.ID)
+		status := sdkapi.NotificationStatus(input.Status)
 
 		err := notifsAPI.UpdateNotificationStatus(r.Context(), id, status)
 		if err != nil {
@@ -56,6 +51,6 @@ func UpdateNotificationCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		res.FlashMsg(w, r, "Notification has been updated.", sdkapi.FlashMsgSuccess)
+		w.WriteHeader(http.StatusOK)
 	}
 }
