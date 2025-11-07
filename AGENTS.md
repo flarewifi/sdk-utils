@@ -12,8 +12,8 @@
 - `make` Runs the app with plugin install/uninstall capabilities, uses Go build tags "dev postgres"
 - `make mono` Runs the monolithic app with Go build tags "dev mono sqlite"
 - In production, we replace "dev" with "prod" Go build tag
-- We don't implement automated tests - no unit test files
 - We only use `ES5` syntax in our javascript assets for maximum browser compatibility
+- We don't implement or create test files and unit tests
 
 ## Project Structure
 
