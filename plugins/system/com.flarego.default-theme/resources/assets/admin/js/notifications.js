@@ -1,11 +1,11 @@
-window.loadNotifications = function()  {
-    const $dropdown = $("#notifDropdown");
-    const getNotifsUrl = $dropdown.data("notif-url");
+window.loadNotifications = function() {
+    var $dropdown = $("#notifDropdown");
+    var getNotifsUrl = $dropdown.data("notif-url");
 
     $.getJSON(getNotifsUrl, function(data) {
-        const notifications = data.notifications || [];
-        const $list = $("#notifDropdownMenu");
-        const count = notifications.length;
+        var notifications = data.notifications || [];
+        var $list = $("#notifDropdownMenu");
+        var count = notifications.length;
 
         $("#notifBellCount").text(count).toggle(count > 0);
         $("#notifCountBadge").text(count);
@@ -13,41 +13,38 @@ window.loadNotifications = function()  {
         $list.empty();
 
         if (count === 0) {
-            $list.append(`<p class="dropdown-item text-muted">No new notifications</p>`);
+            $list.append('<p class="dropdown-item text-muted">No new notifications</p>');
             return;
         }
 
-        notifications.forEach(n => {
-            $list.append(`
-                <li class="d-flex flex-column p-2 border-bottom">
-                    <a
-                        class="dropdown-item text-wrap notif-item text-center"
-                        href="#"
-                        data-id="${n.id}"
-                        data-subject="${n.subject}"
-                        data-content="${n.content}"
-                        data-date="${n.created_at}"
-                        data-bs-toggle="modal"
-                        data-bs-target="#notifModal"
-                    >
-                        🔔 ${n.subject}<br>
-                        <small class="text-muted text-end mb-2">${new Date(n.created_at).toLocaleString()}</small>
-                    </a>
+        notifications.forEach(function(n) {
+            var notifHTML = [
+                '<li class="d-flex flex-column p-2 border-bottom">',
+                    '<a class="dropdown-item text-wrap notif-item text-center" href="#" ',
+                        'data-id="' + n.id + '" ',
+                        'data-subject="' + n.subject + '" ',
+                        'data-content="' + n.content + '" ',
+                        'data-date="' + n.created_at + '" ',
+                        'data-bs-toggle="modal" data-bs-target="#notifModal">',
+                        '🔔 ' + n.subject + '<br>',
+                        '<small class="text-muted text-end mb-2">' + new Date(n.created_at).toLocaleString() + '</small>',
+                    '</a>',
+                    '<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end" ',
+                        'data-id="' + n.id + '">',
+                        'Mark Read',
+                    '</button>',
+                '</li>'
+            ].join('');
 
-                    <button 
-                        class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
-                        data-id="${n.id}"
-                    >
-                        Mark Read
-                    </button>
-                </li>
-            `);
+            $list.append(notifHTML);
         });
-    }).fail(() => console.error("Failed to load notifications"));
-}
+    }).fail(function() { 
+        console.error("Failed to load notifications"); 
+    });
+};
 
 $(document).ready(function () {
-    const $dropdown = $("#notifDropdown");
+    var $dropdown = $("#notifDropdown");
 
     loadNotifications();
     $dropdown.on("click", function () {
@@ -58,9 +55,9 @@ $(document).ready(function () {
 $(document).on("click", ".mark-read-btn", function (e) {
     e.preventDefault();
 
-    const id = $(this).data("id");
-    const $dropdown = $("#notifDropdown");
-    const updateNotifURL = $dropdown.data("notif-update-url"); 
+    var id = $(this).data("id");
+    var $dropdown = $("#notifDropdown");
+    var updateNotifURL = $dropdown.data("notif-update-url"); 
     console.log("marking as read...")
 
     $.ajax({
@@ -79,13 +76,13 @@ $(document).on("click", ".mark-read-btn", function (e) {
 
 
 $(document).on("click", ".notif-item", function (e) {
-    const subject = $(this).data("subject");
-    const content = $(this).data("content");
-    const date = new Date($(this).data("date")).toLocaleString();
+    var subject = $(this).data("subject");
+    var content = $(this).data("content");
+    var date = new Date($(this).data("date")).toLocaleString();
 
-    const id = $(this).data("id");
-    const $dropdown = $("#notifDropdown");
-    const updateNotifURL = $dropdown.data("notif-update-url"); 
+    var id = $(this).data("id");
+    var $dropdown = $("#notifDropdown");
+    var updateNotifURL = $dropdown.data("notif-update-url"); 
 
     // Mark as read
     $.ajax({
