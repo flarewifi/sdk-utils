@@ -21,6 +21,7 @@ var (
 
 	osReleaseFile  = "/etc/os_release.json"
 	activationFile = "/etc/.tkn"
+	randSeed       = "9562641867"
 
 	IsValidating    atomic.Bool
 	IsActivated     atomic.Bool
@@ -45,7 +46,6 @@ func ValidateActivation() {
 	}
 
 	IsActivated.Store(true)
-	ActivationError.Store(nil)
 }
 
 func offlineActivation() (ok bool, err error) {
@@ -61,7 +61,7 @@ func offlineActivation() (ok bool, err error) {
 	if err != nil {
 		return false, fmt.Errorf("Activation error: failed to read config: %w", err)
 	}
-	secret := cfg.Secret
+	secret := cfg.Secret + randSeed
 
 	// Decrypt the token
 	decryptedToken, err := crypt.DecryptToken(encToken, secret)
@@ -161,7 +161,7 @@ func checkActivationOnline() (ok bool, err error) {
 
 	if act.Activated {
 		token := act.Token
-		secret := cfg.Secret
+		secret := cfg.Secret + randSeed
 		encrypted, err := crypt.EncryptToken(token, secret)
 		if err != nil {
 			return false, ErrNotActivated
