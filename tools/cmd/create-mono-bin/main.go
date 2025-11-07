@@ -13,6 +13,8 @@ import (
 )
 
 func main() {
+	fmt.Println("Building the monolithic binary...")
+
 	tools.CreateGoWorkspace()
 	tools.CreateMonoPluginInit()
 
@@ -37,7 +39,7 @@ func main() {
 
 		info, err := sdkutils.GetPluginInfoFromPath(pluginDir)
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("failed to get plugin info from %s: %w", pluginDir, err))
 		}
 
 		if err := plugins.BuildQueries(pluginDir); err != nil {
@@ -53,7 +55,7 @@ func main() {
 		}
 
 		if err := plugins.WriteMetadata(p, info.Package); err != nil {
-			panic(fmt.Errorf("failed to write plugin metadata for %s: %w", info.Name, err))
+			panic(err)
 		}
 
 		installPath := filepath.Join(sdkutils.PathPluginInstallDir, info.Package)
@@ -81,12 +83,15 @@ func main() {
 		GoArch:    goArch,
 	}
 
+	fmt.Println("Building flare CLI for mono with:")
+	sdkutils.PrettyPrint(opts)
+
 	if err := sdkutils.BuildGoModule(flareCliMain, "bin/flare", opts); err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to build flare CLI: %w", err))
 	}
 
-	outputDir := filepath.Join(sdkutils.PathAppDir, "output/mono-bin-files")
-	fmt.Println("Moving mono binary files to output directory: " + outputDir)
+	tmpOutputDir := filepath.Join(sdkutils.PathTmpDir, ".tmp-mono-output")
+	defer os.RemoveAll(tmpOutputDir)
 
 	files := []string{
 		"bin/flare",
@@ -97,24 +102,19 @@ func main() {
 		"core/resources/assets/public",
 		"core/resources/migrations",
 		"core/resources/translations",
-		"data/config/plugins.json",
 		"defaults",
+		"data/config",
 		"plugins/installed",
 		"scripts",
 		"start.sh",
 	}
 
+	outputDir := filepath.Join(sdkutils.PathAppDir, "output/mono-bin-files")
 	for _, f := range files {
-		fmt.Printf("Copying '%s' to '%s'\n", f, sdkutils.StripRootPath(outputDir))
+		// Copy app files to tmp output directory
 		if err := sdkutils.FsCopy(filepath.Join(sdkutils.PathAppDir, f), filepath.Join(outputDir, f)); err != nil {
-			panic(err)
+			panic(fmt.Errorf("failed to copy %s to tmp output directory: %w", f, err))
 		}
-	}
-
-	// Create database config
-	dbcfg := `{"sqlite_path": "data/db/database.sqlite"}`
-	if err := os.WriteFile(filepath.Join(outputDir, "data/config/database.json"), []byte(dbcfg), 0644); err != nil {
-		panic(err)
 	}
 
 	fmt.Println("Mono files creation completed successfully.")

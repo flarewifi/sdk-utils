@@ -23,9 +23,12 @@ docs-serve:
 
 sync-version:
 	docker compose run --rm --build app sh -c \
-		'go run ./core/cmd/sync-versions/main.go'
+		'go run -tags="prod mono sqlite" ./tools/cmd/sync-versions/main.go'
 
 devkit:
 	docker compose -f ./docker-compose.yml \
 		-f ./core/build/devkit/extras/docker-compose.override.yml \
 		run -it --rm --build app sh -c ./make-devkit.sh
+
+down:
+	docker compose down

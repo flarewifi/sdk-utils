@@ -10,15 +10,7 @@ import (
 
 const databaseJsonFile = "database.json"
 
-type DbConfig struct {
-	Host       string `json:"host"`
-	Port       int    `json:"port"`
-	Database   string `json:"database"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	SslMode    string `json:"sslmode"`
-	SqlitePath string `json:"sqlite_path"`
-}
+type DbConfig sdkutils.DbConfig
 
 func (cfg *DbConfig) DbUrlString() string {
 	return fmt.Sprintf("%s database=%s", cfg.BaseConnStr(), cfg.Database)

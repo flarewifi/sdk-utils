@@ -25,7 +25,7 @@ func RegisterLogsForm(g *api.CoreGlobals) error {
 						sdkapi.FormStringField{
 							Name:     "search_text",
 							Label:    g.CoreAPI.Translate("label", "search_logs"),
-							Required: true,
+							Required: false,
 							ValueFn: func() string {
 								return searchText
 							},

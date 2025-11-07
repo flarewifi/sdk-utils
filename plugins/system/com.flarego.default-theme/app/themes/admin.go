@@ -6,6 +6,7 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 
+	"com.flarego.default-theme/app/sysinfo"
 	"com.flarego.default-theme/resources/views/admin"
 )
 
@@ -36,7 +37,14 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 			}
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
-			page := admin.AdminIndexPage()
+			// Get system information
+			info, err := sysinfo.GetSystemInfo()
+			if err != nil {
+				// If there's an error, provide empty/default system info
+				info = &sysinfo.SystemInfo{}
+			}
+
+			page := admin.AdminIndexPage(api, info)
 			return sdkapi.ViewPage{PageContent: page}
 		},
 	})

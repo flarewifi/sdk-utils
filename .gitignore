@@ -10,6 +10,7 @@
 /go
 /data/config
 /data/plugins/local/*
+/data/storage
 !/data/plugins/local/.keep
 /plugins/installed
 /plugins/updates
@@ -29,6 +30,7 @@
 .env
 plugin-init_mono.go
 go.work.sum
+os_release.json
 
 __debug_bin*
 main.exe

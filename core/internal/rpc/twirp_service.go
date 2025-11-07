@@ -1,4 +1,4 @@
-package rpc_flarehotspot_v1
+package rpc_flarewifi_v1
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/twitchtv/twirp"
 )
 
-func GetCoreTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
+func GetTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
 	url := env.RPC_BASE_URL + "/" + env.RPC_API_VERSION
 
 	srv := NewFlarehotspotServiceProtobufClient(url, &http.Client{})

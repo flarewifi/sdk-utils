@@ -27,9 +27,9 @@ func BuildTemplates(pluginDir string) (err error) {
 	if err = cmd.Run(); err != nil {
 		errmsg := errout.String()
 		if errmsg != "" {
-			return err
+			return fmt.Errorf("failed to build templates: %s", errmsg)
 		}
-		return fmt.Errorf("failed to build templates: %v", err)
+		return fmt.Errorf("failed to build templates: %w", err)
 	}
 
 	fmt.Println("Templates built successfully")

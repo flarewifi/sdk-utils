@@ -7,7 +7,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
+	"tools/config"
+	"tools/tags"
 
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -15,54 +18,78 @@ import (
 
 var (
 	// Errors
-	ErrCheckUpdate = errors.New("System update error: check update failed")
-	ErrDownload    = errors.New("System update error: download failed")
-	ErrExtract     = errors.New("System update error: extract failed")
+	ErrCheckUpdate      = errors.New("System update error: check update failed")
+	ErrDownload         = errors.New("System update error: download failed")
+	ErrExtract          = errors.New("System update error: extract failed")
+	ErrChecksumMismatch = errors.New("System update error: checksum verification failed")
 
+	osReleaseFile   = "/etc/os_release.json"
 	downloading     atomic.Bool
-	downloadCh      atomic.Value
 	downloadPercent atomic.Int32
 	prevPercent     atomic.Int32
 	downloadError   atomic.Pointer[error]
 )
 
-type CoreReleaseUpdate struct {
-	Version        *semver.Version
-	CoreZipFileUrl string
-	ArchBinFileUrl string
-	HasUpdate      bool
+type SoftwareReleaseUpdate struct {
+	Version             *semver.Version
+	ReleseFileURL       string
+	ReleaseFileChecksum string
+	ReleaseNotes        string
+	HasUpdate           bool
 }
 
-func CheckCoreReleaseUpdate(currentVersion *semver.Version) (*CoreReleaseUpdate, error) {
-	srv, ctx := rpc.GetCoreTwirpServiceAndCtx()
-
-	params := rpc.FetchLatestCoreReleaseRequest{
-		CurrentCoreVersion: currentVersion.String(),
-		GoVersion:          sdkutils.GO_VERSION,
-		GoArch:             sdkutils.GOARCH,
-	}
-
-	log.Printf("\nChecking software version: %+v\n", &params)
-
-	result, err := srv.FetchLatestCoreRelease(ctx, &params)
-	if err != nil {
-		return nil, ErrCheckUpdate
-	}
-
-	if !result.HasNewUpdate {
-		return &CoreReleaseUpdate{HasUpdate: false}, nil
-	}
-
-	latestVersion, err := semver.NewVersion(fmt.Sprintf("%d.%d.%d", result.GetMajor(), result.GetMinor(), result.GetPatch()))
+func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleaseUpdate, error) {
+	release, err := sdkutils.ReadOsRelease(osReleaseFile)
 	if err != nil {
 		return nil, err
 	}
 
-	update := &CoreReleaseUpdate{
-		HasUpdate:      true,
-		Version:        latestVersion,
-		CoreZipFileUrl: result.CoreZipFileUrl,
-		ArchBinFileUrl: result.ArchBinFileUrl,
+	cfg, err := config.ReadApplicationConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	srv, ctx := rpc.GetTwirpServiceAndCtx()
+	params := rpc.FetchLatestSoftwareReleaseRequest{
+		CurrentVersion: currentVersion.String(),
+		BrandId:        release.BrandId,
+		Os:             strings.ToLower(release.Os),
+		OsVersion:      release.OsVersion,
+		OsTarget:       release.OsTarget,
+		OsArch:         release.OsArch,
+		OsProfile:      release.OsProfile,
+		OsConfig:       release.OsConfig,
+		GoVersion:      sdkutils.GO_VERSION,
+		GoArch:         sdkutils.GOARCH,
+		IsMono:         tags.HasGoTag("mono"),
+		Channel:        strings.ToLower(cfg.Channel),
+	}
+
+	log.Println("\nChecking software version:")
+	sdkutils.PrettyPrint(&params)
+
+	result, err := srv.FetchLatestSoftwareRelease(ctx, &params)
+	if err != nil {
+		return nil, ErrCheckUpdate
+	}
+
+	fmt.Printf("Software update check result: %+v\n", result)
+
+	if !result.HasUpdate {
+		return &SoftwareReleaseUpdate{HasUpdate: false}, nil
+	}
+
+	latestVersion, err := semver.NewVersion(result.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	update := &SoftwareReleaseUpdate{
+		HasUpdate:           result.HasUpdate,
+		Version:             latestVersion,
+		ReleseFileURL:       result.FileUrl,
+		ReleaseFileChecksum: result.FileChecksum,
+		ReleaseNotes:        result.ReleaseNotes,
 	}
 
 	return update, nil
@@ -73,66 +100,56 @@ type DownloadResult struct {
 	Error   error
 }
 
-func DownloadFiles(coreFilesURL string, archBinURL string) {
+func DownloadSoftwareRelease(releaseFileUrl string, md5sum string) {
 	isDownloading := downloading.Load()
 
 	if isDownloading {
 		return
 	}
 
-	resultCh := make(chan DownloadResult)
-	downloadCh.Store(resultCh)
 	downloading.Store(true)
 	downloadPercent.Store(0)
 	prevPercent.Store(0)
-
-	fileURLs := []string{coreFilesURL, archBinURL}
-	totalPercent := len(fileURLs) * 100
 
 	go func() {
 		defer downloading.Store(false)
 		defer downloadPercent.Store(0)
 		defer prevPercent.Store(0)
-		defer close(resultCh)
 
 		if err := sdkutils.FsEmptyDir(sdkutils.PathPluginUpdatesDir); err != nil {
 			downloadError.Store(&err)
-			resultCh <- DownloadResult{Error: err}
 			return
 		}
 
-		for i, fileURL := range fileURLs {
-			ch := downloadSystemFile(fileURL)
+		ch := downloadSystemFile(releaseFileUrl, md5sum)
 
-			for result := range ch {
-				if result.Error != nil {
-					log.Println("Error downloading system files:", result.Error)
-					downloadError.Store(&result.Error)
-					resultCh <- result
-					return
-				} else {
-					progressPercent := result.Percent + (i * 100)
-					percentVal := (float32(progressPercent) / float32(totalPercent)) * 100
-					downloadPercent.Store(int32(percentVal))
-					prevPercent.Store(int32(percentVal))
-					prev := prevPercent.Load()
-
-					if prev < int32(percentVal) {
-						log.Println("Download percent:", percentVal)
-						result.Percent = int(percentVal)
-						resultCh <- result
-					}
-					prevPercent.Store(int32(percentVal))
-				}
+		for result := range ch {
+			if result.Error != nil {
+				log.Println("Error downloading system files:", result.Error)
+				downloadError.Store(&result.Error)
+				return
 			}
+
+			downloadPercent.Store(int32(result.Percent))
+			prev := prevPercent.Load()
+
+			if prev < int32(result.Percent) {
+				log.Println("Download percent:", result.Percent)
+			}
+			prevPercent.Store(int32(result.Percent))
 		}
 	}()
 }
 
-func downloadSystemFile(fileURL string) (resultCh chan DownloadResult) {
+func downloadSystemFile(fileURL string, expectedChecksum string) (resultCh chan DownloadResult) {
 	resultCh = make(chan DownloadResult)
 	downloadFilePath := filepath.Join(sdkutils.PathTmpDir, "system", "update", filepath.Base(fileURL))
-	percentCh, errCh := sdkutils.DownloadFile(fileURL, downloadFilePath)
+
+	// Create download options with checksum verification
+	opts := &sdkutils.DownloadWithProgressOpts{
+		Md5Checksum: expectedChecksum,
+	}
+	percentCh, errCh := sdkutils.DownloadWithProgress(fileURL, downloadFilePath, opts)
 
 	go func() {
 		defer close(resultCh)
@@ -153,7 +170,12 @@ func downloadSystemFile(fileURL string) (resultCh chan DownloadResult) {
 
 				if err != nil {
 					fmt.Println("Error downloading software update", err)
-					result.Error = ErrDownload
+					// Check if it's a checksum error
+					if errors.Is(err, sdkutils.ErrChecksumVerificationFailed) {
+						result.Error = ErrChecksumMismatch
+					} else {
+						result.Error = ErrDownload
+					}
 					resultCh <- result
 					return
 				}

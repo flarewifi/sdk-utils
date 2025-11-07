@@ -3,8 +3,8 @@ package tools
 import (
 	"fmt"
 	"os"
-	"tools/env"
 	"tools/plugins"
+	"tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -24,7 +24,7 @@ func BuildFlareCLI() {
 	opts := sdkutils.GoBuildOpts{
 		GoBinPath: plugins.GoBin(),
 		WorkDir:   workdir,
-		BuildTags: env.BuildTags,
+		BuildTags: tags.GetBuildTags(),
 	}
 
 	if err := sdkutils.BuildGoModule(cliFile, cliPath, opts); err != nil {

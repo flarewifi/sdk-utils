@@ -1,0 +1,72 @@
+package general
+
+import "sdk/api"
+
+templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, machineID string, softwareVersion string, errors map[string]string) {
+	<div id="application-settings-page">
+		<h3 class="mb-4">{ api.Translate("label", "general_settings") }</h3>
+		<!-- System Information Card -->
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">System Information</h5>
+			</div>
+			<div class="card-body">
+				<div class="row">
+					<div class="col-md-6 mb-3 mb-md-0">
+						<label class="form-label fw-bold">Machine ID</label>
+						<div class="form-control-plaintext">{ machineID }</div>
+					</div>
+					<div class="col-md-6">
+						<label class="form-label fw-bold">Software Version</label>
+						<div class="form-control-plaintext">{ softwareVersion }</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- Application Settings Card -->
+		<div class="card">
+			<div class="card-header">
+				<h5 class="mb-0">Application Settings</h5>
+			</div>
+			<div class="card-body">
+				<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:general:save")) }>
+					<div class="mb-3">
+						<label for="language" class="form-label">{ api.Translate("label", "language") }</label>
+						<select class="form-select" id="language" name="language" required>
+							<option value="en" if cfg.Lang == "en" { selected }>English</option>
+							<option value="es" if cfg.Lang == "es" { selected }>Español</option>
+							<option value="fr" if cfg.Lang == "fr" { selected }>Français</option>
+							<option value="de" if cfg.Lang == "de" { selected }>Deutsch</option>
+							<option value="it" if cfg.Lang == "it" { selected }>Italiano</option>
+							<option value="pt" if cfg.Lang == "pt" { selected }>Português</option>
+							<option value="zh" if cfg.Lang == "zh" { selected }>中文</option>
+							<option value="ja" if cfg.Lang == "ja" { selected }>日本語</option>
+						</select>
+						if errors["language"] != "" {
+							<div class="text-danger mt-1">{ errors["language"] }</div>
+						}
+					</div>
+					<div class="mb-3">
+						<label for="currency" class="form-label">{ api.Translate("label", "currency") }</label>
+						<select class="form-select" id="currency" name="currency" required>
+							<option value="USD" if cfg.Currency == "USD" { selected }>USD - US Dollar</option>
+							<option value="EUR" if cfg.Currency == "EUR" { selected }>EUR - Euro</option>
+							<option value="GBP" if cfg.Currency == "GBP" { selected }>GBP - British Pound</option>
+							<option value="JPY" if cfg.Currency == "JPY" { selected }>JPY - Japanese Yen</option>
+							<option value="CNY" if cfg.Currency == "CNY" { selected }>CNY - Chinese Yuan</option>
+							<option value="CAD" if cfg.Currency == "CAD" { selected }>CAD - Canadian Dollar</option>
+							<option value="AUD" if cfg.Currency == "AUD" { selected }>AUD - Australian Dollar</option>
+							<option value="CHF" if cfg.Currency == "CHF" { selected }>CHF - Swiss Franc</option>
+							<option value="INR" if cfg.Currency == "INR" { selected }>INR - Indian Rupee</option>
+							<option value="MXN" if cfg.Currency == "MXN" { selected }>MXN - Mexican Peso</option>
+						</select>
+						if errors["currency"] != "" {
+							<div class="text-danger mt-1">{ errors["currency"] }</div>
+						}
+					</div>
+					<button type="submit" class="btn btn-primary">{ api.Translate("label", "save_settings") }</button>
+				</form>
+			</div>
+		</div>
+	</div>
+}

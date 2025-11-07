@@ -1,30 +1,23 @@
 package adminctrl
 
-// import (
-// 	"net/http"
+import (
+	"errors"
+	"net/http"
 
-// 	"core/internal/globals"
-// 	"core/internal/web/router"
-// 	"core/internal/web/routes/names"
-// )
+	"core/internal/api"
+)
 
-// type DashboardCtrl struct {
-// 	g *globals.CoreGlobals
-// }
+func AdminDashboardCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, t, err := g.PluginMgr.GetAdminTheme()
+		if err != nil {
+			errMsg := g.CoreAPI.Translate("error", "get_admin_theme_error")
+			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(errMsg), http.StatusInternalServerError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
 
-// func (self *DashboardCtrl) Index(w http.ResponseWriter, r *http.Request) {
-// 	api := self.g.CoreApi
-// 	data := map[string]any{
-// 		"html": "<h3 style='color: red;'>Sample HTML</h3>",
-// 	}
-// 	api.HttpApi().Respond().AdminView(w, r, "dashboard.html", data)
-// }
-
-// func (self *DashboardCtrl) RedirectToDash(w http.ResponseWriter, r *http.Request) {
-// 	adminURL, _ := router.UrlForRoute(routenames.RouteAdminDashboardIndex)
-// 	http.Redirect(w, r, adminURL, http.StatusSeeOther)
-// }
-
-// func NewDashboardCtrl(g *globals.CoreGlobals) *DashboardCtrl {
-// 	return &DashboardCtrl{g}
-// }
+			return
+		}
+		page := t.AdminTheme.IndexPageFactory(w, r)
+		g.CoreAPI.HttpAPI.Response().AdminView(w, r, page)
+	}
+}

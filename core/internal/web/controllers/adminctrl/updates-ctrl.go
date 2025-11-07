@@ -9,6 +9,7 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 	"sync/atomic"
+	"tools/config"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -37,8 +38,14 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		newUpdate.Store(&updates.CoreReleaseUpdate{HasUpdate: false})
-		page := updatesview.SoftwareUpdatesPage(api, nil)
+		cfg, err := config.ReadApplicationConfig()
+		channel := "stable"
+		if err == nil && cfg.Channel != "" {
+			channel = cfg.Channel
+		}
+
+		newUpdate.Store(&updates.SoftwareReleaseUpdate{HasUpdate: false})
+		page := updatesview.SoftwareUpdatesPage(api, channel, nil)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
@@ -47,6 +54,16 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		channel := r.FormValue("channel")
+		if channel == "" {
+			channel = "stable"
+		}
+		cfg2, err2 := config.ReadApplicationConfig()
+		if err2 == nil {
+			cfg2.Channel = channel
+			_ = config.WriteApplicationConfig(cfg2)
+		}
+
 		api := g.CoreAPI
 		coreInfo := api.Info()
 
@@ -54,15 +71,25 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		currentVersion, err := semver.NewVersion(coreInfo.Version)
 		if err != nil {
 			log.Println("Error:", err)
-			page := updatesview.SoftwareUpdatesPage(api, checkUpdateErr)
+			cfgFallback, _ := config.ReadApplicationConfig()
+			channelFallback2 := "stable"
+			if cfgFallback.Channel != "" {
+				channelFallback2 = cfgFallback.Channel
+			}
+			page := updatesview.SoftwareUpdatesPage(api, channelFallback2, checkUpdateErr)
 			page.Render(r.Context(), w)
 			return
 		}
 
-		result, err := updates.CheckCoreReleaseUpdate(currentVersion)
+		result, err := updates.CheckSoftwareReleaseUpdate(currentVersion)
 		if err != nil {
 			log.Println("Error:", err)
-			page := updatesview.SoftwareUpdatesPage(api, checkUpdateErr)
+			cfg3, _ := config.ReadApplicationConfig()
+			channelFallback := "stable"
+			if cfg3.Channel != "" {
+				channelFallback = cfg3.Channel
+			}
+			page := updatesview.SoftwareUpdatesPage(api, channelFallback, checkUpdateErr)
 			page.Render(r.Context(), w)
 			return
 		}
@@ -89,7 +116,7 @@ func DownloadUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		res := api.HttpAPI.Response()
 
 		v := newUpdate.Load()
-		update, ok := v.(*updates.CoreReleaseUpdate)
+		update, ok := v.(*updates.SoftwareReleaseUpdate)
 		if !ok {
 			res.Redirect(w, r, "system.updates.check")
 			return
@@ -117,7 +144,7 @@ func DownloadUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		if !isDownloaded && !isDownloading {
 			// Initiate the process of downloading and installing of software updates
-			go updates.DownloadFiles(update.CoreZipFileUrl, update.ArchBinFileUrl)
+			go updates.DownloadSoftwareRelease(update.ReleseFileURL, update.ReleaseFileChecksum)
 		}
 	}
 }
