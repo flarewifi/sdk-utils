@@ -1,4 +1,4 @@
-function loadNotifications() {
+window.loadNotifications = function()  {
     const $dropdown = $("#notifDropdown");
     const getNotifsUrl = $dropdown.data("notif-url");
 
@@ -19,9 +19,9 @@ function loadNotifications() {
 
         notifications.forEach(n => {
             $list.append(`
-                <li class="d-flex flex-column">
+                <li class="d-flex flex-column p-2 border-bottom">
                     <a
-                        class="dropdown-item text-wrap p-2 notif-item"
+                        class="dropdown-item text-wrap notif-item text-center"
                         href="#"
                         data-id="${n.id}"
                         data-subject="${n.subject}"
@@ -31,14 +31,14 @@ function loadNotifications() {
                         data-bs-target="#notifModal"
                     >
                         🔔 ${n.subject}<br>
-                        <small class="text-muted">${new Date(n.created_at).toLocaleString()}</small>
+                        <small class="text-muted text-end mb-2">${new Date(n.created_at).toLocaleString()}</small>
                     </a>
 
                     <button 
-                        class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn"
+                        class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
                         data-id="${n.id}"
                     >
-                        Mark as read
+                        Mark Read
                     </button>
                 </li>
             `);

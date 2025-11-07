@@ -6,12 +6,10 @@ VALUES
   ($1, $2, $3) RETURNING id;
 
 -- name: GetUnreadNotifications :many
-SELECT
-    *
-FROM
-  notifications
-WHERE
-  status = $1;
+SELECT *
+FROM notifications
+WHERE status = $1
+ORDER BY created_at DESC;
 
 -- name: UpdateNotificationStatus :exec
 UPDATE
