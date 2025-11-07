@@ -37,8 +37,13 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		errors := g.CoreAPI.HttpAPI.Forms().Errors(w, r, "general_settings")
 
 		// Get activation status
-		isActivated := activation.IsActivated.Load()
-		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, cfg, machineID, softwareVersion, isActivated, errors)
+		activationStatus := "not_activated"
+		if activation.IsValidating.Load() {
+			activationStatus = "validating"
+		} else if activation.IsActivated.Load() {
+			activationStatus = "activated"
+		}
+		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, cfg, machineID, softwareVersion, activationStatus, errors)
 		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
 	}
 }

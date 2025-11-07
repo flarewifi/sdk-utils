@@ -2,7 +2,7 @@ package general
 
 import "sdk/api"
 
-templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, machineID string, softwareVersion string, isActivated bool, errors map[string]string) {
+templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, machineID string, softwareVersion string, activationStatus string, errors map[string]string) {
 	<div id="application-settings-page">
 		<h3 class="mb-4">{ api.Translate("label", "general_settings") }</h3>
 		<!-- System Information Card -->
@@ -32,13 +32,15 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, mac
 						<label class="form-label fw-bold">{ api.Translate("label", "activation_status") }</label>
 					</div>
 					<div class="col-md-8">
-						<div class="form-control-plaintext">
-							if isActivated {
-								{ api.Translate("label", "activated") }
-							} else {
-								{ api.Translate("label", "not_activated") }
-							}
-						</div>
+					<div class="form-control-plaintext">
+						if activationStatus == "validating" {
+							<span>{ api.Translate("label", "validating") }</span>
+						} else if activationStatus == "activated" {
+							<span class="text-success">{ api.Translate("label", "activated") }</span>
+						} else {
+							<span class="text-danger">{ api.Translate("label", "not_activated") }</span>
+						}
+					</div>
 					</div>
 				</div>
 			</div>
