@@ -2,7 +2,7 @@ package general
 
 import "sdk/api"
 
-templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, machineID string, softwareVersion string, errors map[string]string) {
+templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, machineID string, softwareVersion string, isActivated bool, errors map[string]string) {
 	<div id="application-settings-page">
 		<h3 class="mb-4">{ api.Translate("label", "general_settings") }</h3>
 		<!-- System Information Card -->
@@ -11,14 +11,34 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, mac
 				<h5 class="mb-0">System Information</h5>
 			</div>
 			<div class="card-body">
-				<div class="row">
-					<div class="col-md-6 mb-3 mb-md-0">
+				<div class="row align-items-center mb-2">
+					<div class="col-md-4">
 						<label class="form-label fw-bold">Machine ID</label>
+					</div>
+					<div class="col-md-8">
 						<div class="form-control-plaintext">{ machineID }</div>
 					</div>
-					<div class="col-md-6">
+				</div>
+				<div class="row align-items-center mb-2">
+					<div class="col-md-4">
 						<label class="form-label fw-bold">Software Version</label>
+					</div>
+					<div class="col-md-8">
 						<div class="form-control-plaintext">{ softwareVersion }</div>
+					</div>
+				</div>
+				<div class="row align-items-center mb-2">
+					<div class="col-md-4">
+						<label class="form-label fw-bold">{ api.Translate("label", "activation_status") }</label>
+					</div>
+					<div class="col-md-8">
+						<div class="form-control-plaintext">
+							if isActivated {
+								{ api.Translate("label", "activated") }
+							} else {
+								{ api.Translate("label", "not_activated") }
+							}
+						</div>
 					</div>
 				</div>
 			</div>
