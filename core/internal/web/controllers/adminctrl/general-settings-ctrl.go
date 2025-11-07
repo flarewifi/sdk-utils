@@ -5,6 +5,7 @@ import (
 	sdkapi "sdk/api"
 
 	"core/internal/api"
+	"core/internal/utils/activation"
 	machineuid "core/internal/utils/machine-uid"
 	generalview "core/resources/views/admin/general"
 	"tools/config"
@@ -35,7 +36,14 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get form errors if any
 		errors := g.CoreAPI.HttpAPI.Forms().Errors(w, r, "general_settings")
 
-		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, cfg, machineID, softwareVersion, errors)
+		// Get activation status
+		activationStatus := "not_activated"
+		if activation.IsValidating.Load() {
+			activationStatus = "validating"
+		} else if activation.IsActivated.Load() {
+			activationStatus = "activated"
+		}
+		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, cfg, machineID, softwareVersion, activationStatus, errors)
 		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
 	}
 }
