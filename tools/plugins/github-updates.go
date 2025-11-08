@@ -1,3 +1,5 @@
+//go:build !mono
+
 package plugins
 
 import (
