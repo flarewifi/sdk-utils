@@ -53,16 +53,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Post("/search", adminctrl.LogsPostSearch(g)).Name("admin:logs:search")
 	})
 
-	adminR.Group("/plugins", func(subrouter sdkapi.IHttpRouterInstance) {
-		subrouter.Get("/", adminctrl.PluginsIndexCtrl(g)).Name("admin.plugins.index")
-		subrouter.Get("/install", adminctrl.PluginInstallIndexCtrl(g)).Name("admin.plugins.install")
-		subrouter.Post("/install/zip", adminctrl.PluginInstallFromZipCtrl(g)).Name("admin.plugins.install.zip")
-		subrouter.Post("/install/github", adminctrl.PluginsInstallFromGitCtrl(g)).Name("admin.plugins.install.github")
-		subrouter.Post("/uninstall/{pkg}", adminctrl.UninstallPluginCtrl(g)).Name("admin.plugins.uninstall")
-		subrouter.Get("/checkupdates/{pkg}", adminctrl.CheckPluginUpdatesCtrl(g)).Name("admin.plugins.checkupdates")
-		subrouter.Get("/getupdate/{pkg}/{tag}", adminctrl.DownloadPluginUpdatesCtrl(g)).Name("admin.plugins.getupdate")
-		subrouter.Get("/status", adminctrl.CheckPluginStatusCtrl(g)).Name("admin.plugins.status")
-	})
+	AdminPluginRoutes(g)
 
 	adminR.Group("/power", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Post("/reboot", adminctrl.RebootCtrl(g)).Name("admin.power.reboot")

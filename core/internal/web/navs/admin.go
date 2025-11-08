@@ -10,7 +10,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 	coreNavs := g.CoreAPI.HttpAPI.Navs()
 
 	coreNavs.AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
-		return []sdkapi.AdminNavItemOpt{
+		systemNavs := []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "dashboard"),
@@ -24,23 +24,17 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Keywords:  []string{"settings", "general", "language", "currency", "version", "machine", "id"},
 			},
 			{
-				Category:  sdkapi.NavCategoryThemes,
-				Label:     g.CoreAPI.Translate("label", "select_theme"),
-				RouteName: "admin:themes:index",
-				Keywords:  []string{"theme", "themes", "style", "portal", "admin"},
-			},
-			{
-				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "plugins"),
-				RouteName: "admin.plugins.index",
-				Keywords:  []string{"plugin", "plugins", "extension", "extensions"},
-			},
-			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "updates"),
 				RouteName: "system.updates.check",
 				Keywords:  []string{"update", "updates", "upgrade", "upgrades", "software"},
 			},
+		}
+
+		// Append plugin navs
+		systemNavs = append(systemNavs, GetAdminPluginNavs(g)...)
+
+		powerNavs := []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "logs"),
@@ -60,5 +54,21 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Keywords:  []string{"power", "shutdown", "off"},
 			},
 		}
+
+		systemNavs = append(systemNavs, powerNavs...)
+
+		themesNavs := []sdkapi.AdminNavItemOpt{
+			{
+				Category:  sdkapi.NavCategoryThemes,
+				Label:     g.CoreAPI.Translate("label", "select_theme"),
+				RouteName: "admin:themes:index",
+				Keywords:  []string{"theme", "themes", "style", "portal", "admin"},
+			},
+		}
+
+		adminNavs := append(systemNavs, themesNavs...)
+		return adminNavs
 	})
+
+	GetAdminPluginNavs(g)
 }

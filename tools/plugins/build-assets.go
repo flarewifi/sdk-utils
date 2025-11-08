@@ -18,41 +18,9 @@ const (
 	AdminManifestJson  = "resources/assets/manifest.admin.json"
 	PortalManifestJson = "resources/assets/manifest.portal.json"
 	BootManifestJson   = "resources/assets/manifest.boot.json"
-	OutManifestJson    = "resources/assets/dist/manifest.json"
 )
 
 type Manifest map[string][]string
-
-type CompileResults struct {
-	Scripts map[string]string
-	Styles  map[string]string
-}
-
-type OutputManifest struct {
-	AdminAssets  CompileResults `json:"admin"`
-	PortalAssets CompileResults `json:"portal"`
-	BootAssets   CompileResults `json:"boot"`
-}
-
-func GetAssetManifest(pluginDir string) OutputManifest {
-	manifestFile := filepath.Join(pluginDir, OutManifestJson)
-	emptyRes := CompileResults{
-		Scripts: make(map[string]string),
-		Styles:  make(map[string]string),
-	}
-	emptyManifest := OutputManifest{
-		AdminAssets:  emptyRes,
-		PortalAssets: emptyRes,
-		BootAssets:   emptyRes,
-	}
-
-	var manifest OutputManifest
-	if err := sdkutils.JsonRead(manifestFile, &manifest); err != nil {
-		return emptyManifest
-	}
-
-	return manifest
-}
 
 func BuildAssets(pluginDir string) (err error) {
 	fmt.Printf("Building plugin assets in: %s\n", pluginDir)
@@ -153,13 +121,6 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 	}
 
 	for filename, files := range manifest {
-		// Don't output global scripts and styles, they are already bundled in core globals
-		// re := regexp.MustCompile(`^globals?\.js$|^globals?\.css$`)
-		// if re.MatchString(filename) {
-		// 	continue
-		// }
-
-		// TODO: check if scripts is directory and loadd all files inside it
 		ext := filepath.Ext(filename)
 		supportedExts := []string{".js", ".css"}
 		if !sdkutils.SliceContains(supportedExts, ext) {
@@ -189,10 +150,7 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 			}
 		}
 
-		if err = sdkutils.FsEnsureDir(filepath.Dir(indexFile)); err != nil {
-			return
-		}
-		if err = os.WriteFile(indexFile, []byte(indexContent), sdkutils.PermFile); err != nil {
+		if err = sdkutils.FsWriteFile(indexFile, []byte(indexContent)); err != nil {
 			return
 		}
 		defer os.Remove(indexFile)
