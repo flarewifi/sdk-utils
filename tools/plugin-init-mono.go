@@ -61,23 +61,7 @@ func MakePluginInitMono() {
 		importModules += fmt.Sprintf("\n\t"+`%s "%s"`, mod.PluginImportVar, mod.PluginModuleUri)
 	}
 
-	pluginInitCodes := `
-	// Load core plugin
-	info, err = sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
-	if err != nil {
-		fmt.Println("Error loading core plugin: " + err.Error())
-	} else {
-		// Load plugin
-		if err := migrate.MigrateUp(self.db.DB, sdkutils.PathCoreDir); err != nil {
-			fmt.Println("failed to run migrations for core plugin:" + err.Error())
-		}
-		api = coreAPI
-		api.Initialize(coreAPI)
-		api.LoadAssetsManifest()
-		self.plugins = append(self.plugins, api)
-		fmt.Println("Loaded core plugin.")
-	}
-`
+	pluginInitCodes := ""
 	for _, mod := range pluginMods {
 		pkg := mod.PluginPackageName
 		importVar := mod.PluginImportVar

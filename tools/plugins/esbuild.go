@@ -23,7 +23,7 @@ func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api
 		EntryPoints: []string{indexfile},
 		Outfile:     outfile,
 		Alias: map[string]string{
-			"@flarehotspot/lib": filepath.Join(sdkutils.PathAppDir, "core/resources/assets/lib"),
+			"@flare/lib": filepath.Join(sdkutils.PathAppDir, "core/resources/assets/lib"),
 		},
 		Platform:          api.PlatformBrowser,
 		Target:            target,
