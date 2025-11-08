@@ -1,13 +1,11 @@
 {
-  "name": "System Core",
+  "name": "flare",
   "version": "0.1.2-pre",
   "description": "System Core",
   "license": "ISC",
   "main": "index.js",
   "author": "Flarego Technologies Corporation",
   "dependencies": {
-    "alpinejs": "^3.15.0",
-    "htmx.org": "^1.9.12",
-    "jquery": "^3.7.1"
+    "alpinejs": "^3.15.1"
   }
 }

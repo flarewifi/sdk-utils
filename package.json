@@ -11,6 +11,6 @@
   },
   "license": "ISC",
   "main": "index.js",
-  "name": "@flarehotspot/core",
+  "name": "@flare/core",
   "version": "0.1.3"
 }

@@ -80,7 +80,8 @@ func main() {
 	flareCliMain := filepath.Join(sdkutils.PathCoreDir, "internal/cli/main.go")
 	opts := sdkutils.GoBuildOpts{
 		BuildTags: os.Getenv("GO_TAGS") + " mono sqlite",
-		GoArch:    goArch,
+		Env:       []string{"CGO_ENABLED=0", "GOARCH=" + goArch},
+		// GoArch:    goArch,
 	}
 
 	fmt.Println("Building flare CLI for mono with:")

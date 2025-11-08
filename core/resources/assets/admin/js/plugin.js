@@ -33,7 +33,8 @@ document.addEventListener('alpine:init', () => {
       this.message = state.message || 'Installing...';
       this.isLoading = true;
 
-      const pluginName = this.github_repo_url?.split('/').pop() || this.file_name || '';
+      const pluginName =
+        this.github_repo_url?.split('/').pop() || this.file_name || '';
 
       if (!pluginName) {
         this.isLoading = false;
@@ -97,7 +98,9 @@ document.addEventListener('alpine:init', () => {
         const githubRef = formData.get('github_ref') || '';
 
         if (!githubRepoUrl || !githubRef) {
-          alert('Please enter both a GitHub repository URL and a branch/commit hash.');
+          alert(
+            'Please enter both a GitHub repository URL and a branch/commit hash.'
+          );
           return;
         }
 
@@ -108,12 +111,10 @@ document.addEventListener('alpine:init', () => {
             isLoading: true,
             action: this.action_url,
             github_repo_url: githubRepoUrl,
-            timestamp: Date.now(),
+            timestamp: Date.now()
           })
         );
-      } 
-      
-      else if (this.action_url === this.plugin_install_zip_url) {
+      } else if (this.action_url === this.plugin_install_zip_url) {
         const file = formData.get('plugin_zip_file');
         if (!file || !file.name) {
           alert('Please select a ZIP file first.');
@@ -128,7 +129,7 @@ document.addEventListener('alpine:init', () => {
             isLoading: true,
             action: this.action_url,
             file_name: file.name,
-            timestamp: Date.now(),
+            timestamp: Date.now()
           })
         );
       }
@@ -136,7 +137,7 @@ document.addEventListener('alpine:init', () => {
       try {
         const res = await fetch(this.action_url, {
           method: 'POST',
-          body: formData,
+          body: formData
         });
 
         const data = await res.json();
@@ -175,7 +176,7 @@ document.addEventListener('alpine:init', () => {
           const res = await fetch(url);
           const data = await res.json();
 
-          console.log("data: ", data)
+          console.log('data: ', data);
 
           this.progress = data.progress || 15;
           this.message = data.message || 'Installing...';
@@ -189,7 +190,7 @@ document.addEventListener('alpine:init', () => {
             JSON.stringify({
               ...state,
               progress: this.progress,
-              message: this.message,
+              message: this.message
             })
           );
 
@@ -218,31 +219,32 @@ document.addEventListener('alpine:init', () => {
     },
 
     initFlareEvents() {
-      if (typeof $flare === "undefined" || !$flare.events) {
-        console.warn("[pluginInstaller] $flare.events not available.");
+      if (typeof $flare === 'undefined' || !$flare.events) {
+        console.warn('[pluginInstaller] $flare.events not available.');
         return;
       }
 
-      console.log("[pluginInstaller] Listening for install:progress...");
+      console.log('[pluginInstaller] Listening for install:progress...');
 
-      $flare.events.on("install:progress", (res) => {
-        console.log("[Flare Event] install:progress:", res);
+      $flare.events.on('install:progress', (res) => {
+        console.log('[Flare Event] install:progress:', res);
 
-          try {
-            const payload = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+        try {
+          const payload =
+            typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
 
-            if (payload.success) {
-              this.message = payload.success;
-              this.progress = 100;
-              this.isLoading = false;
-              localStorage.removeItem("plugin_install_loading");
-              alert(payload.success);
-              setTimeout(() => (location.href = this.plugin_index_url), 1000);
-            }
-          } catch (err) {
-            console.error("[pluginInstaller] Failed to process event:", err);
+          if (payload.success) {
+            this.message = payload.success;
+            this.progress = 100;
+            this.isLoading = false;
+            localStorage.removeItem('plugin_install_loading');
+            alert(payload.success);
+            setTimeout(() => (location.href = this.plugin_index_url), 1000);
           }
+        } catch (err) {
+          console.error('[pluginInstaller] Failed to process event:', err);
+        }
       });
-    },
+    }
   }));
 });
