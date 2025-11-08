@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrNetworkIssue = errors.New("Activation error: network issue")
+	ErrProcessFail  = errors.New("Activation error: process failure")
 	ErrNotActivated = errors.New("Activation error: not activated")
 
 	osReleaseFile  = "/etc/os_release.json"
@@ -53,13 +54,13 @@ func offlineActivation() (ok bool, err error) {
 	encToken, err := sdkutils.FsReadFile(activationFile)
 	if err != nil {
 
-		return false, fmt.Errorf("Activation error: failed to read activation file: %w", err)
+		return false, err
 	}
 
 	// Read the application config to get the secret
 	cfg, err := config.ReadApplicationConfig()
 	if err != nil {
-		return false, fmt.Errorf("Activation error: failed to read config: %w", err)
+		return false, err
 	}
 	secret := cfg.Secret + randSeed
 
@@ -67,11 +68,11 @@ func offlineActivation() (ok bool, err error) {
 	decryptedToken, err := crypt.DecryptToken(encToken, secret)
 	if err != nil {
 
-		return false, fmt.Errorf("Activation error: failed to decrypt token: %w", err)
+		return false, err
 	}
 
 	if decryptedToken == "" {
-		return false, ErrNotActivated
+		return false, err
 	}
 
 	// The token is a jwt token, we can do basic validation
@@ -88,22 +89,19 @@ func offlineActivation() (ok bool, err error) {
 	token, err := jwt.Parse(decryptedToken, func(token *jwt.Token) (any, error) {
 		// Only allow HS256
 		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, ErrProcessFail
 		}
 		return []byte(machineID), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			return false, ErrNotActivated
-		}
-		return false, errors.New("Activation error: invalid token")
+		return false, err
 	}
 	if !token.Valid {
-		return false, ErrNotActivated
+		return false, errors.New("Activation error: invalid token")
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return false, fmt.Errorf("Activation error: invalid claims type")
+		return false, errors.New("Activation error: failed claim")
 	}
 	// Check machine_id claim exists and matches
 	claimID, ok := claims["machine_id"]
@@ -122,19 +120,18 @@ func checkActivationOnline() (ok bool, err error) {
 
 	release, err := sdkutils.ReadOsRelease(osReleaseFile)
 	if err != nil {
-
-		return false, err
+		return false, ErrProcessFail
 	}
 
 	info, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
 	if err != nil {
 
-		return false, fmt.Errorf("Activation error: failed to determine core info")
+		return false, ErrProcessFail
 	}
 
 	cfg, err := config.ReadApplicationConfig()
 	if err != nil {
-		return false, err
+		return false, ErrProcessFail
 	}
 
 	params := rpc_flarewifi_v1.MachineActivationRequest{
@@ -155,7 +152,6 @@ func checkActivationOnline() (ok bool, err error) {
 
 	act, err := srv.MachineActivation(ctx, &params)
 	if err != nil {
-
 		return false, ErrNetworkIssue
 	}
 
@@ -164,10 +160,10 @@ func checkActivationOnline() (ok bool, err error) {
 		secret := cfg.Secret + randSeed
 		encrypted, err := crypt.EncryptToken(token, secret)
 		if err != nil {
-			return false, ErrNotActivated
+			return false, ErrProcessFail
 		}
 		if err := sdkutils.FsWriteFile(activationFile, []byte(encrypted)); err != nil {
-			return false, ErrNotActivated
+			return false, ErrProcessFail
 		}
 		return true, nil
 	}
