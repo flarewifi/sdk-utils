@@ -18,7 +18,6 @@ type AdminAssets struct {
 
 templ AdminHead(api sdkapi.IPluginApi, data AdminAssets) {
 	<title>{ api.Translate("label", "web_admin") }</title>
-	<!-- Theme Stylesheets -->
 	if data.GlobalCssHref != "" {
 		<link rel="stylesheet" href={ data.GlobalCssHref }/>
 	}
@@ -34,16 +33,14 @@ templ AdminHead(api sdkapi.IPluginApi, data AdminAssets) {
 }
 
 templ AdminScripts(assets AdminAssets, flash *sdkapi.FlashMsg) {
-	<!-- Theme Scripts -->
-
 	if assets.GlobalJsSrc != "" {
-		<script defer src={ assets.GlobalJsSrc } type="text/javascript"></script>
+		<script src={ assets.GlobalJsSrc } type="text/javascript"></script>
 	}
 	if assets.ThemeJsSrc != "" {
-		<script defer src={ assets.ThemeJsSrc } type="text/javascript"></script>
+		<script src={ assets.ThemeJsSrc } type="text/javascript"></script>
 	}
 	if assets.PageJsSrc != "" {
-		<script defer src={ assets.PageJsSrc } type="text/javascript"></script>
+		<script src={ assets.PageJsSrc } type="text/javascript"></script>
 	}
 	if flash != nil {
 		<script id="flash-message" data-flash-type={ flash.Type } data-flash-message={ flash.Message } type="text/template"></script>

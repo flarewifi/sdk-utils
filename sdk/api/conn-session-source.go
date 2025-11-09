@@ -23,7 +23,7 @@ var (
 )
 
 type SessionData struct {
-	Id             int32
+	Id             int64
 	Provider       string
 	SessionType    string
 	TimeSecs       int

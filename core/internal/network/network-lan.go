@@ -12,6 +12,10 @@ import (
 	jobque "tools/job-que"
 )
 
+var (
+	networkQue = jobque.NewJobQue[any]()
+)
+
 type NetworkLan struct {
 	mu          sync.RWMutex
 	queID       sync.Mutex
@@ -43,7 +47,7 @@ func (self *NetworkLan) Bandwidth() (download tc.Mbit, upload tc.Mbit) {
 }
 
 func (self *NetworkLan) ResetTc() (err error) {
-	_, err = jobque.Exec(&self.queID, func() (interface{}, error) {
+	_, err = networkQue.Exec(func() (any, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 
@@ -64,7 +68,7 @@ func (self *NetworkLan) ResetTc() (err error) {
 }
 
 func (self *NetworkLan) SetupCaptivePortal() (err error) {
-	_, err = jobque.Exec(&self.queID, func() (interface{}, error) {
+	_, err = networkQue.Exec(func() (interface{}, error) {
 		iface := self.GetInterface()
 		info, err := iface.getInfo()
 		if err != nil {
@@ -82,7 +86,7 @@ func (self *NetworkLan) SetupCaptivePortal() (err error) {
 }
 
 func (self *NetworkLan) SetupHFSC() (err error) {
-	_, err = jobque.Exec(&self.queID, func() (interface{}, error) {
+	_, err = networkQue.Exec(func() (interface{}, error) {
 		cfg, err := config.ReadBandwidthConfig()
 		if err != nil {
 			return nil, err
@@ -163,7 +167,7 @@ func (self *NetworkLan) GetInterface() *NetworkInterface {
 }
 
 func (self *NetworkLan) CreateClass(classid uint, downMbit int, upMbit int) error {
-	_, err := jobque.Exec(&self.queID, func() (interface{}, error) {
+	_, err := networkQue.Exec(func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 
@@ -176,7 +180,7 @@ func (self *NetworkLan) CreateClass(classid uint, downMbit int, upMbit int) erro
 }
 
 func (self *NetworkLan) ChangeClass(classid uint, downMbit int, upMbit int) error {
-	_, err := jobque.Exec(&self.queID, func() (interface{}, error) {
+	_, err := networkQue.Exec(func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 
@@ -189,7 +193,7 @@ func (self *NetworkLan) ChangeClass(classid uint, downMbit int, upMbit int) erro
 }
 
 func (self *NetworkLan) DelClass(classid uint) error {
-	_, err := jobque.Exec(&self.queID, func() (interface{}, error) {
+	_, err := networkQue.Exec(func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 		return nil, self.tcClassMgr.DeleteClass(tc.TcClassId(classid))
@@ -198,7 +202,7 @@ func (self *NetworkLan) DelClass(classid uint) error {
 }
 
 func (self *NetworkLan) CreateFilter(ip string, classid uint) error {
-	_, err := jobque.Exec(&self.queID, func() (interface{}, error) {
+	_, err := networkQue.Exec(func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 		return nil, self.tcFilterMgr.CreateFilter(ip, tc.TcClassId(classid))
@@ -207,7 +211,7 @@ func (self *NetworkLan) CreateFilter(ip string, classid uint) error {
 }
 
 func (self *NetworkLan) DelFilter(ip string, classid uint) error {
-	_, err := jobque.Exec(&self.queID, func() (interface{}, error) {
+	_, err := networkQue.Exec(func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 		return nil, self.tcFilterMgr.DeleteFilter(ip)

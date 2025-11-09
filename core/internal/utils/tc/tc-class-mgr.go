@@ -2,14 +2,13 @@ package tc
 
 import (
 	"fmt"
-	"sync"
 
 	"core/internal/utils/ifbutil"
 	jobque "tools/job-que"
 	cmd "tools/shell"
 )
 
-var tcClassQue sync.Mutex
+var tcClassQue = jobque.NewJobQue[any]()
 
 type TcClassMgr struct {
 	dev       string
@@ -34,7 +33,7 @@ func (self *TcClassMgr) Bandwidth() (download Kbit, upload Kbit) {
 }
 
 func (self *TcClassMgr) Setup() error {
-	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
+	_, err := tcClassQue.Exec(func() (any, error) {
 		dev := self.dev
 		ifb := ifbName(dev)
 		rootId := TcClassIdRoot.String()
@@ -91,7 +90,7 @@ func (self *TcClassMgr) Reset() (err error) {
 		return err
 	}
 
-	_, err = jobque.Exec(&tcClassQue, func() (any, error) {
+	_, err = tcClassQue.Exec(func() (any, error) {
 		for _, c := range self.classList {
 			err = self.tcAddOrChange(tcActionAdd, TcClassIdUser, c)
 			if err != nil {
@@ -106,7 +105,7 @@ func (self *TcClassMgr) Reset() (err error) {
 }
 
 func (self *TcClassMgr) UpdateBandwidth(down Kbit, up Kbit) error {
-	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
+	_, err := tcClassQue.Exec(func() (any, error) {
 		self.download = down
 		self.upload = up
 		err := self.tcAddOrChange(tcActionChange, TcClassIdRoot, self.DefaultTcClass())
@@ -125,7 +124,7 @@ func (self *TcClassMgr) UpdateBandwidth(down Kbit, up Kbit) error {
 }
 
 func (self *TcClassMgr) CreateClass(parent *TcClass, classid TcClassId, down Kbit, up Kbit, ceilDown Kbit, ceilUp Kbit) error {
-	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
+	_, err := tcClassQue.Exec(func() (any, error) {
 		klass := NewTcClass(parent, classid, down, up, ceilDown, ceilUp)
 		klass.Sanitize()
 
@@ -143,7 +142,7 @@ func (self *TcClassMgr) CreateClass(parent *TcClass, classid TcClassId, down Kbi
 }
 
 func (self *TcClassMgr) ChangeClass(parent *TcClass, classid TcClassId, down Kbit, up Kbit, ceilDown Kbit, ceilUp Kbit) error {
-	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
+	_, err := tcClassQue.Exec(func() (any, error) {
 		for _, klass := range self.classList {
 			if klass.ClassId == classid {
 				klass.MinDown = down
@@ -162,7 +161,7 @@ func (self *TcClassMgr) ChangeClass(parent *TcClass, classid TcClassId, down Kbi
 }
 
 func (self *TcClassMgr) DeleteClass(classid TcClassId) error {
-	_, err := jobque.Exec(&tcClassQue, func() (any, error) {
+	_, err := tcClassQue.Exec(func() (any, error) {
 		for i, klass := range self.classList {
 			if klass.ClassId == classid {
 				err := self.tcDel(klass)

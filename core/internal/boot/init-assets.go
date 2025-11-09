@@ -3,6 +3,7 @@ package boot
 import (
 	"core/internal/api"
 	"path/filepath"
+	"slices"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -11,6 +12,7 @@ func InitAssets(g *api.CoreGlobals) {
 	// Compute all the global assets hash
 	var globalAdminJs, globalAdminCss []string
 	var globalPortalJs, globalPortalcss []string
+	processedFiles := []string{}
 
 	for _, p := range g.PluginMgr.All() {
 		api := p.(*api.PluginApi)
@@ -21,28 +23,32 @@ func InitAssets(g *api.CoreGlobals) {
 		for _, jsfname := range globalJsFiles {
 			globalJs, ok := manifest.AdminAssets.Scripts[jsfname]
 			file := filepath.Join(p.Resource("assets/dist/" + globalJs))
-			if ok && sdkutils.FsExists(file) {
+			if ok && sdkutils.FsExists(file) && !slices.Contains(processedFiles, file) {
 				globalAdminJs = append(globalAdminJs, file)
+				processedFiles = append(processedFiles, file)
 			}
 
 			globalJs, ok = manifest.PortalAssets.Scripts[jsfname]
 			file = filepath.Join(p.Resource("assets/dist/" + globalJs))
-			if ok && sdkutils.FsExists(file) {
+			if ok && sdkutils.FsExists(file) && !slices.Contains(processedFiles, file) {
 				globalPortalJs = append(globalPortalJs, file)
+				processedFiles = append(processedFiles, file)
 			}
 		}
 
 		for _, cssfname := range globalCssFiles {
 			globalCss, ok := manifest.AdminAssets.Styles[cssfname]
 			file := filepath.Join(p.Resource("assets/dist/" + globalCss))
-			if ok && sdkutils.FsExists(file) {
+			if ok && sdkutils.FsExists(file) && !slices.Contains(processedFiles, file) {
 				globalAdminCss = append(globalAdminCss, file)
+				processedFiles = append(processedFiles, file)
 			}
 
 			globalCss, ok = manifest.PortalAssets.Styles[cssfname]
 			file = filepath.Join(p.Resource("assets/dist/" + globalCss))
-			if ok && sdkutils.FsExists(file) {
+			if ok && sdkutils.FsExists(file) && !slices.Contains(processedFiles, file) {
 				globalPortalcss = append(globalPortalcss, filepath.Join(p.Resource("assets/dist/"+globalCss)))
+				processedFiles = append(processedFiles, file)
 			}
 		}
 	}

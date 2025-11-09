@@ -10,7 +10,7 @@ import (
 )
 
 func GetTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
-	url := env.RPC_BASE_URL + "/" + env.RPC_API_VERSION
+	url := env.RPC_BASE_URL + "/flarewifi/" + env.RPC_API_VERSION
 
 	srv := NewFlarehotspotServiceProtobufClient(url, &http.Client{})
 	header := make(http.Header)

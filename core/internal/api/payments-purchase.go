@@ -11,7 +11,7 @@ import (
 	sdkapi "sdk/api"
 )
 
-func NewPurchase(api *PluginApi, ctx context.Context, deviceId int32, p *models.Purchase) *Purchase {
+func NewPurchase(api *PluginApi, ctx context.Context, deviceId int64, p *models.Purchase) *Purchase {
 	return &Purchase{
 		api:      api,
 		deviceId: deviceId,
@@ -21,7 +21,7 @@ func NewPurchase(api *PluginApi, ctx context.Context, deviceId int32, p *models.
 
 type Purchase struct {
 	api      *PluginApi
-	deviceId int32
+	deviceId int64
 	purchase *models.Purchase
 }
 

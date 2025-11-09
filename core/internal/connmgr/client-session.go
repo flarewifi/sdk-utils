@@ -31,7 +31,7 @@ func NewClientSession(src sdkapi.ISessionSource) *ClientSession {
 
 type ClientSession struct {
 	mu          sync.RWMutex
-	id          int32
+	id          int64
 	provider    string
 	sessionType string
 	timeSecs    int
@@ -48,7 +48,7 @@ type ClientSession struct {
 	reload      func(context.Context) (sdkapi.SessionData, error)
 }
 
-func (self *ClientSession) Id() int32 {
+func (self *ClientSession) Id() int64 {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.id

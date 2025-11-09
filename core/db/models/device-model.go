@@ -16,7 +16,7 @@ type DeviceModel struct {
 }
 
 func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
-	return &DeviceModel{database, mdls}
+	return &DeviceModel{db: database, models: mdls}
 }
 
 func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
@@ -50,13 +50,8 @@ func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, mac string, ip 
 
 	_, err = qtx.CreateWallet(ctx, queries.CreateWalletParams{
 		DeviceID: dId,
-		Balance:  "0.0",
+		Balance:  0.0,
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +59,7 @@ func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, mac string, ip 
 	return dev, nil
 }
 
-func (self *DeviceModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*Device, error) {
+func (self *DeviceModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Device, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	d, err := qtx.FindDevice(ctx, id)
 	if err != nil {
@@ -103,14 +98,14 @@ func (self *DeviceModel) FindByMac(tx *sql.Tx, ctx context.Context, mac string) 
 	return device, nil
 }
 
-func (self *DeviceModel) Update(tx *sql.Tx, ctx context.Context, id int32, mac string, ip string, hostname string, status int) error {
+func (self *DeviceModel) Update(tx *sql.Tx, ctx context.Context, id int64, mac string, ip string, hostname string, status int) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		ID:         id,
 		MacAddress: mac,
 		IpAddress:  ip,
 		Hostname:   hostname,
-		Status:     int32(status),
+		Status:     int64(status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", id, err)

@@ -1,12 +1,17 @@
 #!/bin/sh
 set -eu
 
-# Usage: ./generate-sqlc.sh <plugin_directory> [driver]
-# Example: ./generate-sqlc.sh /home/user/myplugin postgres
+# Usage: ./generate-sqlc.sh <plugin_directory> <tmp_dir> [driver]
+# Example: ./generate-sqlc.sh /home/user/myplugin /tmp/sqlc-build postgres
 
 PLUGIN_DIR="${1:-}"
 TMP_DIR="${2:-}"
 DRIVER="${3:-}"
+
+if [ ! -d "$PLUGIN_DIR" ]; then
+    echo "Usage: $0 <plugin_directory> <temporary_directory> [driver]"
+    exit 1
+fi
 
 # Ensure TMP_DIR exists
 if [ ! -d "$TMP_DIR" ]; then
@@ -28,6 +33,12 @@ fi
 if [ -f "$CORE_DIR/sqlc.yml" ]; then
     cp "$CORE_DIR/sqlc.yml" "$TMP_DIR/"
     echo "Copied $CORE_DIR/sqlc.yml"
+
+    if [ -n "$DRIVER" ]; then
+        sed -i.bak "s/engine: .*/engine: $DRIVER/" "$TMP_DIR/sqlc.yml"
+        echo "Set sqlc.yml engine to: $DRIVER"
+        rm -f "$TMP_DIR/sqlc.yml.bak"
+    fi
 else
     echo "Error: $CORE_DIR/sqlc.yml not"
     rm -rf "$TMP_DIR"
@@ -69,9 +80,16 @@ if [ -n "$DRIVER" ]; then
 
     if [ -d "$PLUGIN_DIR/resources/queries/$DRIVER" ]; then
         mkdir -p "$TMP_DIR/resources/queries"
+        # Copy database-specific queries (will overwrite base files with same name)
         cp -r "$PLUGIN_DIR/resources/queries/$DRIVER/." "$TMP_DIR/resources/queries/"
         echo "Copied queries/$DRIVER/"
     fi
+
+    # Remove database-specific subdirectories to prevent sqlc from processing them
+    rm -rf "$TMP_DIR/resources/queries/postgres" 2>/dev/null || true
+    rm -rf "$TMP_DIR/resources/queries/sqlite" 2>/dev/null || true
+    rm -rf "$TMP_DIR/resources/migrations/postgres" 2>/dev/null || true
+    rm -rf "$TMP_DIR/resources/migrations/sqlite" 2>/dev/null || true
 fi
 
 echo "All relevant SQL resources have been copied to: $TMP_DIR"

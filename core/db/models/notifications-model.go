@@ -19,12 +19,12 @@ func NewNotificationModel(dtb *db.Database, mdls *Models) *NotificationModel {
 	return &NotificationModel{dtb, mdls}
 }
 
-func (nm *NotificationModel) Create(tx *sql.Tx, ctx context.Context, notif *sdkapi.Notification) (int32, error) {
+func (nm *NotificationModel) Create(tx *sql.Tx, ctx context.Context, notif *sdkapi.Notification) (int64, error) {
 	qtx := nm.db.Queries.WithTx(tx)
 	id, err := qtx.CreateNotification(ctx, queries.CreateNotificationParams{
 		Subject: notif.Subject,
 		Content: notif.Content,
-		Status:  int32(notif.Status),
+		Status:  int64(notif.Status),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("create notification error: %w", err)
@@ -36,7 +36,7 @@ func (nm *NotificationModel) Create(tx *sql.Tx, ctx context.Context, notif *sdka
 func (nm *NotificationModel) GetUnreadNotifications(tx *sql.Tx, ctx context.Context) (sdkapi.Notifications, error) {
 	qtx := nm.db.Queries.WithTx(tx)
 
-	dbNotifs, err := qtx.GetUnreadNotifications(ctx, int32(sdkapi.NotificationStatusUnread))
+	dbNotifs, err := qtx.GetUnreadNotifications(ctx, int64(sdkapi.NotificationStatusUnread))
 	if err != nil {
 		return nil, fmt.Errorf("get unread notifications error: %w", err)
 	}
@@ -44,7 +44,7 @@ func (nm *NotificationModel) GetUnreadNotifications(tx *sql.Tx, ctx context.Cont
 	notifications := make(sdkapi.Notifications, len(dbNotifs))
 	for i, n := range dbNotifs {
 		notifications[i] = sdkapi.Notification{
-			ID:        int64(n.ID),
+			ID:        n.ID,
 			Subject:   n.Subject,
 			Content:   n.Content,
 			Status:    sdkapi.NotificationStatus(n.Status),
@@ -60,7 +60,7 @@ func (nm *NotificationModel) UpdateNotificationStatus(tx *sql.Tx, ctx context.Co
 	qtx := nm.db.Queries.WithTx(tx)
 
 	return qtx.UpdateNotificationStatus(ctx, queries.UpdateNotificationStatusParams{
-		Status: int32(status),
-		ID:     int32(id),
+		Status: int64(status),
+		ID:     id,
 	})
 }

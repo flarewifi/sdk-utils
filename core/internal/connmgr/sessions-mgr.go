@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"sync/atomic"
 
@@ -14,6 +13,8 @@ import (
 	"core/internal/network"
 	"core/internal/utils/nftables"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
@@ -89,12 +90,10 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 		rs := value.(*RunningSession)
 		err := nftables.Disconnect(rs.mac, reason)
 		if err != nil {
-			log.Println(err)
 		}
 
 		lan, err := network.FindByIp(rs.ip)
 		if err != nil {
-			log.Println(err)
 		}
 
 		if lan.Name() == iface {
@@ -129,6 +128,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 				errReturnCh <- err
 				return
 			}
+		} else {
 		}
 
 		startCh := make(chan error)
@@ -146,25 +146,18 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 		errReturnCh <- nil
 	}()
 
+	// Handle error from goroutine
 	err := <-errReturnCh
 	if err == nil {
-		tx, err := self.db.BeginTx(ctx, nil)
-		if err != nil {
-			return fmt.Errorf("unble to create db pool: %w", err)
-		}
-		defer tx.Rollback()
-
-		if err := clnt.Update(
-			tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Connected),
-		); err != nil {
-			return fmt.Errorf("unable to update device status to connected: %w", err)
-		}
-
-		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("unable to commit db transaction: %w", err)
-		}
+		err = sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
+			if err := clnt.Update(
+				tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Connected),
+			); err != nil {
+				return fmt.Errorf("unable to update device status to connected: %w", err)
+			}
+			return nil
+		})
 	}
-
 	return err
 }
 
@@ -176,22 +169,9 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 
 	clnt.Emit(sdkapi.EventSessionDisconnected, []byte(notify))
 
-	tx, err := self.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("unble to create db pool: %w", err)
-	}
-	defer tx.Rollback()
-
-	err = clnt.Update(tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Disconnected))
-	if err != nil {
-		return fmt.Errorf("unable to update device status to disconnected: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("unable to commit db transaction: %w", err)
-	}
-
-	return nil
+	return sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
+		return clnt.Update(tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Disconnected))
+	})
 }
 
 func (self *SessionsMgr) IsConnected(clnt sdkapi.IClientDevice) (connected bool) {
@@ -235,7 +215,6 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 				}
 
 				err = rs.Start(ctx, cs)
-				log.Println("Start session error: ", err)
 				if err != nil {
 					errCh <- err
 					return
@@ -244,7 +223,6 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 				self.sessions.Store(clnt.Id(), rs)
 			} else {
 				err = rs.Start(ctx, cs)
-				log.Println("Start session error: ", err)
 				if err != nil {
 					errCh <- err
 					return
@@ -269,7 +247,6 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 		}
 
 		if err != nil {
-			log.Println("Error in session loop: ", err)
 			self.Disconnect(ctx, clnt, err.Error())
 			return
 		}
@@ -329,7 +306,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 func (self *SessionsMgr) CreateSession(
 	tx *sql.Tx,
 	ctx context.Context,
-	devId int32,
+	devId int64,
 	t string,
 	timeSecs int,
 	dataMbytes float64,
@@ -337,7 +314,7 @@ func (self *SessionsMgr) CreateSession(
 	downMbits int,
 	upMbits int,
 	useGlobal bool,
-) (int32, error) {
+) (int64, error) {
 	session, err := self.mdl.Session().Create(tx, ctx, devId, t, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
 	return session.Id(), err
 }
@@ -351,22 +328,12 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 		}
 	}
 
-	tx, err := self.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	localClient := clnt.(*ClientDevice)
-	s, err := self.mdl.Session().AvailableForDevice(tx, ctx, localClient.id)
+	s, err := self.mdl.Session().AvailableForDevice(ctx, localClient.id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("No more available sessions")
 		}
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -375,8 +342,8 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 }
 
 // SessionSummary
-func (self *SessionsMgr) SessionSummary(tx *sql.Tx, ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
-	summary, err := self.mdl.Session().Summary(tx, ctx, clnt.Id())
+func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
+	summary, err := self.mdl.Session().Summary(ctx, clnt.Id())
 	if err != nil {
 		return nil, err
 	}

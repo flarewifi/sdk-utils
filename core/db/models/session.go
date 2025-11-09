@@ -3,9 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"core/db"
@@ -15,8 +13,8 @@ import (
 type Session struct {
 	db          *db.Database
 	models      *Models
-	id          int32
-	deviceId    int32
+	id          int64
+	deviceId    int64
 	sessionType string
 	timeSecs    int
 	dataMb      float64
@@ -40,7 +38,7 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 	if s != nil {
 		var expDays *int
 		if s.ExpDays.Valid {
-			val := int(s.ExpDays.Int32)
+			val := int(s.ExpDays.Int64)
 			expDays = &val
 		}
 
@@ -49,23 +47,13 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 			startedAt = &s.StartedAt.Time
 		}
 
-		mb, err := strconv.ParseFloat(s.DataMbytes, 64)
-		if err != nil {
-			mb = 0
-		}
-
-		cmb, err := strconv.ParseFloat(s.ConsumptionMb, 64)
-		if err != nil {
-			cmb = 0
-		}
-
 		session.id = s.ID
 		session.deviceId = s.DeviceID
 		session.sessionType = s.SessionType
 		session.timeSecs = int(s.TimeSecs)
-		session.dataMb = mb
+		session.dataMb = s.DataMbytes
 		session.timeCons = int(s.ConsumptionSecs)
-		session.dataCons = cmb
+		session.dataCons = s.ConsumptionMb
 		session.expDays = expDays
 		session.startedAt = startedAt
 
@@ -81,7 +69,7 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 	return session
 }
 
-func BuildSession(id int32, devId int32, t string, timeSecs int, dataMb float64, timeCons int, dataCons float64, startedAt *time.Time, expDays *int, expiresAt *time.Time, dmbits int, umbits int, g bool) *Session {
+func BuildSession(id int64, devId int64, t string, timeSecs int, dataMb float64, timeCons int, dataCons float64, startedAt *time.Time, expDays *int, expiresAt *time.Time, dmbits int, umbits int, g bool) *Session {
 	return &Session{
 		id:          id,
 		deviceId:    devId,
@@ -99,11 +87,11 @@ func BuildSession(id int32, devId int32, t string, timeSecs int, dataMb float64,
 	}
 }
 
-func (self *Session) Id() int32 {
+func (self *Session) Id() int64 {
 	return self.id
 }
 
-func (self *Session) DeviceId() int32 {
+func (self *Session) DeviceId() int64 {
 	return self.deviceId
 }
 
@@ -163,29 +151,29 @@ func (self *Session) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Session) Update(tx *sql.Tx, ctx context.Context, devId int32, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+func (self *Session) Update(tx *sql.Tx, ctx context.Context, devId int64, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
 	var startedTime sql.NullTime
 	if started != nil {
 		startedTime = sql.NullTime{Time: *started, Valid: true}
 	}
 
-	var expDays sql.NullInt32
+	var expDays sql.NullInt64
 	if exp != nil {
-		expDays = sql.NullInt32{Int32: int32(*exp), Valid: true}
+		expDays = sql.NullInt64{Int64: int64(*exp), Valid: true}
 	}
 
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateSession(ctx, queries.UpdateSessionParams{
 		DeviceID:        devId,
 		SessionType:     t,
-		TimeSecs:        int32(secs),
-		DataMbytes:      fmt.Sprintf("%.6f", mb),
-		ConsumptionSecs: int32(timecon),
-		ConsumptionMb:   fmt.Sprintf("%.6f", datacon),
+		TimeSecs:        int64(secs),
+		DataMbytes:      mb,
+		ConsumptionSecs: int64(timecon),
+		ConsumptionMb:   datacon,
 		StartedAt:       startedTime,
 		ExpDays:         expDays,
-		DownMbits:       int32(downMbit),
-		UpMbits:         int32(upMbit),
+		DownMbits:       int64(downMbit),
+		UpMbits:         int64(upMbit),
 		UseGlobal:       g,
 		ID:              self.id,
 	})

@@ -2,6 +2,7 @@ package boot
 
 import (
 	"core/internal/api"
+	"core/internal/utils/activation"
 	"log"
 )
 
@@ -22,6 +23,9 @@ func Init(g *api.CoreGlobals) {
 		if err := InitNetwork(); err != nil {
 			log.Println("Error initializing network:", err)
 		}
+
+		// Initialize activation after everything else is ready
+		go activation.Validate()
 
 		bootCh <- struct{}{}
 	}()

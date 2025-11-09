@@ -18,7 +18,7 @@ type ClientDevice struct {
 	mu       sync.RWMutex
 	db       *db.Database
 	mdls     *models.Models
-	id       int32
+	id       int64
 	mac      string
 	ip       string
 	hostname string
@@ -37,7 +37,7 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 	}
 }
 
-func (self *ClientDevice) Id() int32 {
+func (self *ClientDevice) Id() int64 {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.id

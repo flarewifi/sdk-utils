@@ -38,7 +38,7 @@ type ISessionsMgrApi interface {
 	CreateSession(
 		tx *sql.Tx,
 		ctx context.Context,
-		devId int32,
+		devId int64,
 		sessionType string,
 		timeSecs int,
 		dataMbytes float64,
@@ -46,7 +46,7 @@ type ISessionsMgrApi interface {
 		downMbits int,
 		upMbits int,
 		useGlobal bool,
-	) (int32, error)
+	) (int64, error)
 
 	// Get the current running session of a client device.
 	CurrSession(clnt IClientDevice) (cs IClientSession, ok bool)
@@ -55,7 +55,7 @@ type ISessionsMgrApi interface {
 	GetSession(ctx context.Context, clnt IClientDevice) (IClientSession, error)
 
 	// SessionSummary returns the session summary for the client device.
-	SessionSummary(tx *sql.Tx, ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
+	SessionSummary(ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
 
 	// Register a hook to find a session for a client device.
 	RegisterSessionProvider(ISessionProvider)

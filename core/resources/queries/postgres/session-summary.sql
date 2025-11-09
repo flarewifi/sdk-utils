@@ -7,7 +7,7 @@ SELECT
     CAST(COALESCE(SUM(data_mbytes) - SUM(consumption_mb), 0.0) AS REAL) AS remaining_data_mb -- :float
 FROM sessions
 WHERE
-    device_id = $1
+    device_id = @device_id
     AND (
         (
             session_type = 'time'

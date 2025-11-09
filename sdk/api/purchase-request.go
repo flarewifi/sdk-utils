@@ -13,7 +13,7 @@ import (
 )
 
 type PurchaseState struct {
-	PurchaseID      int32   `json:"purchase_id"`
+	PurchaseID      int64   `json:"purchase_id"`
 	TotalPayment    float64 `json:"total_payment"`
 	WalletDebit     float64 `json:"wallet_debit"`
 	WalletEndingBal float64 `json:"wallet_ending_bal"`

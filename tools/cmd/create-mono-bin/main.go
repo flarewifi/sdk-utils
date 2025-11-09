@@ -77,10 +77,19 @@ func main() {
 		goArch = runtime.GOARCH
 	}
 
+	env := []string{
+		"GOARCH=" + goArch,
+	}
+
+	if goArch == "amd64" {
+		env = append(env, "CGO_ENABLED=0")
+	}
+
 	flareCliMain := filepath.Join(sdkutils.PathCoreDir, "internal/cli/main.go")
 	opts := sdkutils.GoBuildOpts{
 		BuildTags: os.Getenv("GO_TAGS") + " mono sqlite",
-		GoArch:    goArch,
+		Env:       env,
+		// GoArch:    goArch,
 	}
 
 	fmt.Println("Building flare CLI for mono with:")

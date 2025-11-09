@@ -3,7 +3,7 @@ INSERT INTO wallet_transactions (
   wallet_id, amount, new_balance, description
 ) 
 VALUES 
-  ($1, $2, $3, $4)
+  (@wallet_id, @amount, @new_balance, @description)
 RETURNING *;
 
 
@@ -18,7 +18,7 @@ SELECT
 FROM 
   wallet_transactions 
 WHERE 
-  id = $1 
+  id = @id 
 LIMIT 
   1;
 
@@ -27,9 +27,9 @@ LIMIT
 UPDATE
   wallet_transactions 
 SET 
-  wallet_id = $1,
-  amount = $2,
-  new_balance = $3,
-  description = $4 
+  wallet_id = @wallet_id,
+  amount = @amount,
+  new_balance = @new_balance,
+  description = @description 
 WHERE 
-  id = $5;
+  id = @id;

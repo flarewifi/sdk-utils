@@ -27,9 +27,11 @@ RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architectur
         rm -rf golang.tar.gz
 
 RUN mkdir -p /opt/flarehotspot /var/cache/go && \
+    touch /etc/.tkn && \
     chown -R ubuntu:ubuntu \
     /opt/flarehotspot \
-    /var/cache/go
+    /var/cache/go \
+    /etc/.tkn
 
 USER ubuntu
 
