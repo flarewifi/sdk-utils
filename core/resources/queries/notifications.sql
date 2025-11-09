@@ -1,9 +1,9 @@
 -- name: CreateNotification :one
 INSERT INTO notifications (
-  subject, content, status
+  subject, content, status, type
 )
 VALUES
-  (@subject, @content, @status) RETURNING id;
+  (@subject, @content, @status, @type) RETURNING id;
 
 -- name: GetUnreadNotifications :many
 SELECT *

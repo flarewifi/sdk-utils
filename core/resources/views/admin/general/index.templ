@@ -5,6 +5,7 @@ import "sdk/api"
 templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, machineID string, softwareVersion string, activationStatus string, errors map[string]string) {
 	<div id="application-settings-page">
 		<h3 class="mb-4">{ api.Translate("label", "general_settings") }</h3>
+
 		<!-- System Information Card -->
 		<div class="card mb-4">
 			<div class="card-header">

@@ -5,15 +5,30 @@ import (
 	"core/internal/api"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	sdkapi "sdk/api"
 )
 
+func TestNotificationCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		notifsAPI := g.CoreAPI.NotificationAPI
+		ctx := context.Background()
+
+		err := notifsAPI.AddNotification(ctx, "This is a test notification", "This is only a test notification content", sdkapi.NotificationTypeInfo)
+		if err != nil {
+			log.Printf("add notification error: %v", err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func GetUnreadNotificationsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		notifsAPI := g.CoreAPI.NotificationAPI
-
 		ctx := context.Background()
+
 		notifications, err := notifsAPI.GetUnreadNotifications(ctx)
 		if err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("get notifications error: %v", err))

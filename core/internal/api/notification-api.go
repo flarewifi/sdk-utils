@@ -3,12 +3,16 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	sdkapi "sdk/api"
 
 	"core/db/models"
 )
+
+type NotificationRoutes struct {
+	GetUnreadRoute string
+	UpdateRoute    string
+}
 
 func NewNotificationAPI(api *PluginApi, mdl *models.Models) *NotificationAPI {
 	return &NotificationAPI{
@@ -22,58 +26,26 @@ type NotificationAPI struct {
 	models *models.Models
 }
 
-func (n *NotificationAPI) AddNotification(ctx context.Context, notif *sdkapi.Notification) error {
-	tx, err := n.api.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("unable to begin transaction: %w", err)
+func (n *NotificationAPI) AddNotification(ctx context.Context, subject string, content string, typ sdkapi.NotificationType) error {
+	notif := &sdkapi.Notification{
+		Subject: subject,
+		Content: content,
+		Status:  sdkapi.NotificationStatusUnread,
+		Type:    typ,
 	}
 
-	if _, err := n.models.Notification().Create(tx, ctx, notif); err != nil {
+	_, err := n.models.Notification().Create(ctx, notif)
+	if err != nil {
 		return err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("unable to commit: %w", err)
-	}
-
-	sendEvent(n.api, notif)
+	n.sendEvent(n.api, notif)
 
 	return nil
 }
 
-func sendEvent(api *PluginApi, notif *sdkapi.Notification) {
-	admin, err := api.AcctAPI.Find("admin")
-	if err != nil {
-		log.Println("No admin found:", err)
-	}
-
-	data, err := json.Marshal(map[string]any{
-		"status":  notif.EventStatus,
-		"message": notif.Subject,
-	})
-	if err != nil {
-		log.Println("Install Progress json error:", err)
-	}
-
-	admin.Emit(notif.EventName, data)
-}
-
-func (n *NotificationAPI) GetUnreadNotifications(ctx context.Context) (sdkapi.Notifications, error) {
-	tx, err := n.api.SqlDB().BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	notifications, err := n.models.Notification().GetUnreadNotifications(tx, ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		n.api.Logger().Error(err.Error())
-	}
-
-	return notifications, nil
+func (n *NotificationAPI) GetUnreadNotifications(ctx context.Context) ([]sdkapi.Notification, error) {
+	return n.models.Notification().GetUnreadNotifications(ctx)
 }
 
 func (n *NotificationAPI) UpdateNotificationStatus(ctx context.Context, id int64, status sdkapi.NotificationStatus) error {
@@ -90,9 +62,28 @@ func (n *NotificationAPI) UpdateNotificationStatus(ctx context.Context, id int64
 	return tx.Commit()
 }
 
-func (n *NotificationAPI) GetUnreadNotificationsRoute() sdkapi.NotificationRoutes {
-	return sdkapi.NotificationRoutes{
+func (n *NotificationAPI) GetUnreadNotificationsRoute() NotificationRoutes {
+	return NotificationRoutes{
 		GetUnreadRoute: n.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin.notification.unread"),
 		UpdateRoute:    n.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin.notification.update"),
+	}
+}
+
+func (n *NotificationAPI) sendEvent(api *PluginApi, notif *sdkapi.Notification) {
+	accts, err := api.AcctAPI.GetAll()
+	if err != nil {
+		log.Println("No accounts found:", err)
+		return
+	}
+
+	data, err := json.Marshal(notif)
+	if err != nil {
+		log.Println("Notification json error:", err)
+		return
+	}
+
+	// Send to all admin accounts
+	for _, acct := range accts {
+		acct.Emit(sdkapi.FlareNotificationEvent, data)
 	}
 }

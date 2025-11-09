@@ -7,10 +7,10 @@ import (
 )
 
 type AdminLayoutData struct {
-	Components         sdkapi.IThemeComponents
-	Navs               []sdkapi.AdminNavList
-	NavItems           []sdkapi.AdminNavItem
-	NotificationRoutes sdkapi.NotificationRoutes
+	Components    sdkapi.IThemeComponents
+	Navs          []sdkapi.AdminNavList
+	NavItems      []sdkapi.AdminNavItem
+	Notifications []sdkapi.Notification
 }
 
 templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
@@ -38,11 +38,11 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 						</button>
 					</li>
 				</ul>
-				<div class="d-flex align-items-center justify-content-start gap-2 px-2">
+				<div class="d-flex align-items-center justify-content-start gap-2 ps-2 pe-4">
 					<!-- Navbar Search -->
-					<form 
-						id="navbarSearch" 
-						class="navbar-search w-100 collapse d-md-none" 
+					<form
+						id="navbarSearch"
+						class="navbar-search w-100 collapse d-md-none"
 						autocomplete="off"
 						data-results={ navItemsAsJSON(data.NavItems) }
 					>
@@ -60,33 +60,38 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 									data-url={ api.Http().Helpers().UrlForRoute("admin.search") }
 								/>
 							</div>
-
 							<ul id="searchResults" class="dropdown-menu w-100"></ul>
 						</div>
 					</form>
 					<!-- Notifications -->
 					<form id="notification">
 						<div class="dropdown w-100 position-relative">
-							<button 
+							<button
 								class="btn position-relative p-0 border-0 bg-transparent"
 								id="notifDropdown"
-								data-notif-url={ data.NotificationRoutes.GetUnreadRoute }
-								data-notif-update-url={ data.NotificationRoutes.UpdateRoute }
+								data-notif-url=""
+								data-notif-update-url=""
 								data-bs-toggle="dropdown"
 							>
 								<i class="bi bi-bell fs-4 text-light"></i>
-								<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+								<span
+									class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
 									id="notifBellCount"
-									style="font-size: 0.65rem; transform: translate(-35%, -35%);">
+									style="font-size: 0.65rem; transform: translate(-35%, -35%);"
+								>
 									0
 								</span>
 							</button>
-							<ul 
-								id="notifDropdownMenu" 
+							<ul
+								id="notifDropdownMenu"
 								class="dropdown-menu dropdown-menu-end w-100 w-md-50"
 								style="min-width: 320px;"
+								hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.list") }
+								hx-trigger="sse:notification:info"
+								hx-swap="innerHTML"
 							>
 								<!-- Notifications will be appended here -->
+								@NotificationsList(data.Notifications)
 							</ul>
 						</div>
 					</form>
@@ -159,20 +164,19 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 			<div class="modal fade" id="notifModal" tabindex="-1" aria-labelledby="notifModalTitle" aria-hidden="true">
 				<div class="modal-dialog modal-dialog-centered">
 					<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title fs-6" id="notifModalTitle"></h5>
-					</div>
-					<div class="modal-body">
-						<div id="notifModalContent"></div>
-						<small class="text-muted d-block mt-3" id="notifModalDate"></small>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-					</div>
+						<div class="modal-header">
+							<h5 class="modal-title fs-6" id="notifModalTitle"></h5>
+						</div>
+						<div class="modal-body">
+							<div id="notifModalContent"></div>
+							<small class="text-muted d-block mt-3" id="notifModalDate"></small>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+						</div>
 					</div>
 				</div>
 			</div>
-
 			@colorModes()
 			@data.Components.Scripts()
 		</body>

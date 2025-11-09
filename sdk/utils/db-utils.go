@@ -66,7 +66,7 @@ func Int64ToNullInt64(i *int64) sql.NullInt64 {
 }
 
 func RunInTx(db *sql.DB, ctx context.Context, fn func(tx *sql.Tx) error) error {
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}

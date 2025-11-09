@@ -2,7 +2,6 @@ package themes
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	sdkapi "sdk/api"
 
@@ -17,19 +16,22 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 		CssLib:  sdkapi.CssLibBootstrap5,
 		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
 			navs := api.Http().Navs().GetAdminNavs(r)
-			notifRoutes := api.Notification().GetUnreadNotificationsRoute()
-			log.Println("notifRoutes: ", notifRoutes)
 
 			var navItems []sdkapi.AdminNavItem
 			for _, nav := range navs {
 				navItems = append(navItems, nav.Items...)
 			}
 
+			notifs, err := api.Notification().GetUnreadNotifications(r.Context())
+			if err != nil {
+				notifs = []sdkapi.Notification{}
+			}
+
 			data := admin.AdminLayoutData{
-				Components:         c,
-				Navs:               navs,
-				NavItems:           navItems,
-				NotificationRoutes: notifRoutes,
+				Components:    c,
+				Navs:          navs,
+				NavItems:      navItems,
+				Notifications: notifs,
 			}
 			layout := admin.AdminLayout(api, data)
 			if err := layout.Render(r.Context(), w); err != nil {

@@ -58,3 +58,9 @@
 - For queries that can't work on both database, we create a separate sql files under `resources/queries/sqlite` and `resources/queries/postgres`
 - Separate queries must produce similar Go code
 - For floats, since sqlite only returns string values, we have to force our postgres queries to return strings for float values as well
+
+## Assets
+
+- Assets are based on the assets manifest file
+- There is `resources/assets/manifest.admin.json` for the admin assets, and `resources/assets/manifest.portal.json` for the portal assets
+- Assets are compiled using `@tools/plugins/build-assets.go`
