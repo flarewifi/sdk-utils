@@ -40,7 +40,7 @@ func (self *LogModel) Create(ctx context.Context, pkg string, level string, mess
 		Level:      level,
 		Message:    message,
 		Filepath:   filepath,
-		LineNumber: int32(line),
+		LineNumber: int64(line),
 	})
 	return err
 }
@@ -51,8 +51,8 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 	limit := opts.PerPage
 
 	searchOpts := queries.SearchLogsParams{
-		Offset:     int32(offset),
-		Limit:      int32(limit),
+		Offset:     int64(offset),
+		Limit:      int64(limit),
 		Package:    opts.Package,
 		Level:      opts.Level,
 		SearchText: opts.SearchText,

@@ -306,7 +306,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 func (self *SessionsMgr) CreateSession(
 	tx *sql.Tx,
 	ctx context.Context,
-	devId int32,
+	devId int64,
 	t string,
 	timeSecs int,
 	dataMbytes float64,
@@ -314,7 +314,7 @@ func (self *SessionsMgr) CreateSession(
 	downMbits int,
 	upMbits int,
 	useGlobal bool,
-) (int32, error) {
+) (int64, error) {
 	session, err := self.mdl.Session().Create(tx, ctx, devId, t, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
 	return session.Id(), err
 }

@@ -43,6 +43,8 @@ func NewGlobals() *CoreGlobals {
 	trfcMgr := network.NewTrafficMgr()
 	pmtMgr := NewPaymentMgr()
 
+	clntReg.SetSessionsMgr(clntMgr)
+
 	trfcMgr.Start()
 	clntMgr.ListenTraffic(trfcMgr)
 

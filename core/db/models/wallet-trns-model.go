@@ -3,9 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
-	"strconv"
 
 	"core/db"
 	"core/db/queries"
@@ -20,12 +18,12 @@ func NewWalletTrnsModel(dtb *db.Database, mdls *Models) *WalletTrnsModel {
 	return &WalletTrnsModel{dtb, mdls}
 }
 
-func (self *WalletTrnsModel) Create(tx *sql.Tx, ctx context.Context, wltId int32, amount float64, newBal float64, desc string) (*WalletTrns, error) {
+func (self *WalletTrnsModel) Create(tx *sql.Tx, ctx context.Context, wltId int64, amount float64, newBal float64, desc string) (*WalletTrns, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	wt, err := qtx.CreateWalletTrns(ctx, queries.CreateWalletTrnsParams{
 		WalletID:    wltId,
-		Amount:      fmt.Sprintf("%.6f", amount),
-		NewBalance:  fmt.Sprintf("%.6f", newBal),
+		Amount:      amount,
+		NewBalance:  newBal,
 		Description: desc,
 	})
 	if err != nil {
@@ -33,24 +31,19 @@ func (self *WalletTrnsModel) Create(tx *sql.Tx, ctx context.Context, wltId int32
 		return nil, err
 	}
 
-	newbal, err := strconv.ParseFloat(wt.NewBalance, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	return &WalletTrns{
 		db:          self.db,
 		models:      self.models,
 		id:          wt.ID,
 		walletId:    wt.WalletID,
 		amount:      amount,
-		newBalance:  newbal,
+		newBalance:  newBal,
 		description: wt.Description,
 		createdAt:   wt.CreatedAt,
 	}, nil
 }
 
-func (self *WalletTrnsModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*WalletTrns, error) {
+func (self *WalletTrnsModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*WalletTrns, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	wt, err := qtx.FindWalletTrns(ctx, id)
 	if err != nil {
@@ -58,23 +51,13 @@ func (self *WalletTrnsModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*W
 		return nil, err
 	}
 
-	amount, err := strconv.ParseFloat(wt.Amount, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	newbal, err := strconv.ParseFloat(wt.NewBalance, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	return &WalletTrns{
 		db:          self.db,
 		models:      self.models,
 		id:          wt.ID,
 		walletId:    wt.WalletID,
-		amount:      amount,
-		newBalance:  newbal,
+		amount:      wt.Amount,
+		newBalance:  wt.NewBalance,
 		description: wt.Description,
 		createdAt:   wt.CreatedAt,
 	}, nil

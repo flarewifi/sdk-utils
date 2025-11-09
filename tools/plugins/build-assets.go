@@ -141,6 +141,11 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		indexContent := ""
 		for _, f := range files {
 			f = filepath.Join(pluginDir, AssetsDir, f)
+			if !sdkutils.FsExists(f) {
+				fmt.Printf("Warning: file %s does not exist, skipping...\n", f)
+				continue
+			}
+
 			rel, err := filepath.Rel(filepath.Dir(indexFile), f)
 			if err != nil {
 				return results, err

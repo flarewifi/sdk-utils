@@ -50,6 +50,21 @@ func StrToInt32(id string) int32 {
 	return int32(val)
 }
 
+func StrToInt64(id string) int64 {
+	val, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return val
+}
+
+func Int64ToNullInt64(i *int64) sql.NullInt64 {
+	if i != nil {
+		return sql.NullInt64{Int64: *i, Valid: true}
+	}
+	return sql.NullInt64{Valid: false}
+}
+
 func RunInTx(db *sql.DB, ctx context.Context, fn func(tx *sql.Tx) error) error {
 	tx, err := db.Begin()
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"strconv"
 	"time"
 
 	"core/db"
@@ -20,45 +19,37 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 		models: mdls,
 	}
 
-	price, err := strconv.ParseFloat(p.Price, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	if p != nil {
 		purchase.id = p.ID
 		purchase.deviceId = p.DeviceID
 		purchase.sku = p.Sku
 		purchase.name = p.Name
 		purchase.description = p.Description
-		purchase.price = price
+		purchase.price = p.Price
 		purchase.anyPrice = p.AnyPrice
 		purchase.callbackPluginPkg = p.CallbackPlugin
 		purchase.callbackRoute = p.CallbackRoute
 
 		metadata := make(map[string]string)
-		if err := json.Unmarshal(p.Metadata, &metadata); err != nil {
-			return nil, err
-		}
-
-		dbt, err := strconv.ParseFloat(p.WalletDebit, 64)
-		if err != nil {
-			return nil, err
+		if metadataBytes, ok := p.Metadata.([]byte); ok {
+			if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
+				return nil, err
+			}
 		}
 
 		purchase.metadata = metadata
-		purchase.walletDebit = dbt
+		purchase.walletDebit = p.WalletDebit
 		purchase.cancelledReason = &p.CancelledReason
 
 		if p.WalletTxID.Valid {
-			purchase.walletTxId = &p.WalletTxID.Int32
+			purchase.walletTxId = &p.WalletTxID.Int64
 		}
 
-		if p.ConfirmedAt.Valid {
-			purchase.confirmedAt = &p.ConfirmedAt.Time
+		if confirmedAt, ok := p.ConfirmedAt.(*time.Time); ok && confirmedAt != nil {
+			purchase.confirmedAt = confirmedAt
 		}
-		if p.CancelledAt.Valid {
-			purchase.cancelledAt = &p.CancelledAt.Time
+		if cancelledAt, ok := p.CancelledAt.(*time.Time); ok && cancelledAt != nil {
+			purchase.cancelledAt = cancelledAt
 		}
 
 		purchase.createdAt = p.CreatedAt
@@ -70,8 +61,8 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 type Purchase struct {
 	db                *db.Database
 	models            *Models
-	id                int32
-	deviceId          int32
+	id                int64
+	deviceId          int64
 	sku               string
 	name              string
 	description       string
@@ -81,18 +72,18 @@ type Purchase struct {
 	callbackRoute     string
 	metadata          map[string]string
 	walletDebit       float64
-	walletTxId        *int32
+	walletTxId        *int64
 	confirmedAt       *time.Time
 	cancelledAt       *time.Time
 	cancelledReason   *string
 	createdAt         time.Time
 }
 
-func (self *Purchase) Id() int32 {
+func (self *Purchase) Id() int64 {
 	return self.id
 }
 
-func (self *Purchase) DeviceId() int32 {
+func (self *Purchase) DeviceId() int64 {
 	return self.deviceId
 }
 
@@ -120,7 +111,7 @@ func (self *Purchase) WalletDebit() float64 {
 	return self.walletDebit
 }
 
-func (self *Purchase) WalletTxId() *int32 {
+func (self *Purchase) WalletTxId() *int64 {
 	return self.walletTxId
 }
 
@@ -177,7 +168,7 @@ func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
 		return err
 	}
 
-	var txid *int32
+	var txid *int64
 	dbt := self.walletDebit
 	if dbt > 0 {
 		newBal := wallet.Balance() - dbt
@@ -263,7 +254,7 @@ func (self *Purchase) TotalPayment(tx *sql.Tx, ctx context.Context) (float64, er
 	return total, nil
 }
 
-func (self *Purchase) Update(tx *sql.Tx, ctx context.Context, dbt float64, wtxID *int32, cancelledAt, confirmedAt *time.Time, reason *string) error {
+func (self *Purchase) Update(tx *sql.Tx, ctx context.Context, dbt float64, wtxID *int64, cancelledAt, confirmedAt *time.Time, reason *string) error {
 	err := self.models.purchaseModel.Update(tx, ctx, self.id, dbt, wtxID, cancelledAt, confirmedAt, reason)
 	if err != nil {
 		return err

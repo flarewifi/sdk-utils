@@ -37,6 +37,10 @@ type ClientRegister struct {
 	changedHooks []sdkapi.ClientChangedHookFn
 }
 
+func (reg *ClientRegister) SetSessionsMgr(mgr *SessionsMgr) {
+	reg.mgr = mgr
+}
+
 func (reg *ClientRegister) ClientCreatedHook(fn ...sdkapi.ClientCreatedHookFn) {
 	reg.createdHooks = append(reg.createdHooks, fn...)
 }
@@ -64,13 +68,13 @@ func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac strin
 				clnt = NewClientDevice(reg.db, reg.mdls, dev)
 
 				// call createdHooks functions
-				if len(reg.createdHooks) > 0 {
-					for _, hookFn := range reg.createdHooks {
-						if err := hookFn(ctx, clnt); err != nil {
-							return err
-						}
-					}
-				}
+				// if len(reg.createdHooks) > 0 {
+				// 	for _, hookFn := range reg.createdHooks {
+				// 		if err := hookFn(ctx, clnt); err != nil {
+				// 			return err
+				// 		}
+				// 	}
+				// }
 
 				return nil
 			}

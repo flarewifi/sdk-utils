@@ -14,7 +14,7 @@ import (
 // IClientSession represents a client's internet connection session.
 type IClientSession interface {
 	// Returns the session's ID.
-	Id() int32
+	Id() int64
 
 	// REturns the provider of the session record.
 	Provider() string

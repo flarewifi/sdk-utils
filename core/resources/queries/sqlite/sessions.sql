@@ -6,7 +6,7 @@ INSERT INTO sessions (
   up_mbits, use_global
 )
 VALUES
-  ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;
+  (@device_id, @session_type, @time_secs, @data_mbytes, @exp_days, @down_mbits, @up_mbits, @use_global) RETURNING id;
 
 
 -- name: FindSession :one
@@ -16,7 +16,7 @@ SELECT
 FROM
   sessions
 WHERE
-  id = $1
+  id = @id
 LIMIT
   1;
 
@@ -86,7 +86,7 @@ SELECT
 FROM
   sessions
 WHERE
-  device_id = $1
+  device_id = @device_id
   AND (
     (
       session_type = 'time'
@@ -120,9 +120,9 @@ WHERE
 UPDATE
   sessions
 SET
-  down_mbits = $1,
-  up_mbits = $2,
-  use_global = $3
+  down_mbits = @down_mbits,
+  up_mbits = @up_mbits,
+  use_global = @use_global
 WHERE
   (
     (

@@ -8,7 +8,7 @@
   - Monolithic build - all plugins are compiled as a single binary
 
 ## DO NOT
-- Do not run docker container to check if the buidl succeeds
+- Do not run docker container to check if the build succeeds
 
 ## Build/Dev/Test
 
@@ -57,3 +57,4 @@
 - Our queries must be compatible with both `postgres` and `sqlite`
 - For queries that can't work on both database, we create a separate sql files under `resources/queries/sqlite` and `resources/queries/postgres`
 - Separate queries must produce similar Go code
+- For floats, since sqlite only returns string values, we have to force our postgres queries to return strings for float values as well

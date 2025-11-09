@@ -11,8 +11,8 @@ import (
 type Wallet struct {
 	db        *db.Database
 	models    *Models
-	id        int32
-	deviceId  int32
+	id        int64
+	deviceId  int64
 	balance   float64
 	createdAt time.Time
 }
@@ -24,11 +24,11 @@ func NewWallet(dtb *db.Database, m *Models) *Wallet {
 	}
 }
 
-func (self *Wallet) Id() int32 {
+func (self *Wallet) Id() int64 {
 	return self.id
 }
 
-func (self *Wallet) DeviceId() int32 {
+func (self *Wallet) DeviceId() int64 {
 	return self.deviceId
 }
 

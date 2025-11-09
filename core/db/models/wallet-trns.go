@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
 
@@ -14,8 +13,8 @@ import (
 type WalletTrns struct {
 	db          *db.Database
 	models      *Models
-	id          int32
-	walletId    int32
+	id          int64
+	walletId    int64
 	amount      float64
 	newBalance  float64
 	description string
@@ -29,11 +28,11 @@ func NewWalletTrns(dtb *db.Database, mdls *Models) *WalletTrns {
 	}
 }
 
-func (self *WalletTrns) Id() int32 {
+func (self *WalletTrns) Id() int64 {
 	return self.id
 }
 
-func (self *WalletTrns) WalletId() int32 {
+func (self *WalletTrns) WalletId() int64 {
 	return self.walletId
 }
 
@@ -53,12 +52,12 @@ func (self *WalletTrns) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *WalletTrns) UpdateTx(tx *sql.Tx, ctx context.Context, walletId int32, amount float64, newbal float64, desc string) error {
+func (self *WalletTrns) UpdateTx(tx *sql.Tx, ctx context.Context, walletId int64, amount float64, newbal float64, desc string) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateWalletTrns(ctx, queries.UpdateWalletTrnsParams{
 		WalletID:    walletId,
-		Amount:      fmt.Sprintf("%.6f", amount),
-		NewBalance:  fmt.Sprintf("%.6f", newbal),
+		Amount:      amount,
+		NewBalance:  newbal,
 		Description: desc,
 		ID:          self.id,
 	})
