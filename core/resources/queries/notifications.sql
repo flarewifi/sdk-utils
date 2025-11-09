@@ -6,12 +6,10 @@ VALUES
   (@subject, @content, @status) RETURNING id;
 
 -- name: GetUnreadNotifications :many
-SELECT
-    *
-FROM
-  notifications
-WHERE
-  status = @status;
+SELECT *
+FROM notifications
+WHERE status = @status
+ORDER BY created_at DESC;
 
 -- name: UpdateNotificationStatus :exec
 UPDATE

@@ -36,20 +36,26 @@ func (n *NotificationAPI) AddNotification(ctx context.Context, notif *sdkapi.Not
 		return fmt.Errorf("unable to commit: %w", err)
 	}
 
-	admin, err := n.api.AcctAPI.Find("admin")
+	sendEvent(n.api, notif)
+
+	return nil
+}
+
+func sendEvent(api *PluginApi, notif *sdkapi.Notification) {
+	admin, err := api.AcctAPI.Find("admin")
 	if err != nil {
 		log.Println("No admin found:", err)
 	}
-	data, err := json.Marshal(map[string]string{
-		"success": notif.Subject,
+
+	data, err := json.Marshal(map[string]any{
+		"status":  notif.EventStatus,
+		"message": notif.Subject,
 	})
 	if err != nil {
 		log.Println("Install Progress json error:", err)
 	}
 
 	admin.Emit(notif.EventName, data)
-
-	return nil
 }
 
 func (n *NotificationAPI) GetUnreadNotifications(ctx context.Context) (sdkapi.Notifications, error) {

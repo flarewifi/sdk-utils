@@ -57,7 +57,6 @@ document.addEventListener('alpine:init', () => {
             localStorage.removeItem('plugin_install_loading');
           } else {
             this.startPolling();
-            this.initFlareEvents();
           }
         })
         .catch((err) => {
@@ -80,7 +79,6 @@ document.addEventListener('alpine:init', () => {
             this.progress = state.progress || 15;
             this.message = state.message || 'Resuming...';
             this.startPolling();
-            this.initFlareEvents();
             return;
           }
         } catch {
@@ -151,7 +149,6 @@ document.addEventListener('alpine:init', () => {
 
         if (data.status === 'in-progress') {
           this.startPolling();
-          this.initFlareEvents();
         } else {
           alert('Unexpected response from server.');
           this.isLoading = false;
