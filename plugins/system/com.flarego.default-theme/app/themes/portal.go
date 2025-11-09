@@ -27,23 +27,17 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 			return sdkapi.ViewPage{PageContent: page}
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
+			ctx := r.Context()
 			clnt, err := api.Http().GetClientDevice(r)
 			if err != nil {
 				api.Logger().Error("Error in getting client device: " + err.Error())
 				return sdkapi.ViewPage{}
 			}
 
-			ctx := r.Context()
-			tx, err := api.SqlDB().BeginTx(ctx, nil)
-			if err != nil {
-				api.Logger().Error("Error initializing transaction: " + err.Error())
-				return sdkapi.ViewPage{}
-			}
-			defer tx.Rollback()
-
-			summary, err := api.SessionsMgr().SessionSummary(tx, ctx, clnt)
+			summary, err := api.SessionsMgr().SessionSummary(ctx, clnt)
 			if err != nil {
 				api.Logger().Error("Error in session summary query: " + err.Error())
+				api.Logger().Error("Error in getting client device: " + err.Error())
 				return sdkapi.ViewPage{}
 			}
 
@@ -54,11 +48,6 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				SessionSummary:   summary,
 				IsSessionRunning: ok,
 			})
-
-			if err := tx.Commit(); err != nil {
-				api.Logger().Error("Error committing db transaction: " + err.Error())
-				return sdkapi.ViewPage{}
-			}
 
 			return sdkapi.ViewPage{
 				Assets: sdkapi.ViewAssets{

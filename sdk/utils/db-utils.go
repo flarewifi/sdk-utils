@@ -42,6 +42,14 @@ func StrToNullString(s string) sql.NullString {
 	return sql.NullString{Valid: false}
 }
 
+func StrToInt32(id string) int32 {
+	val, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		return 0
+	}
+	return int32(val)
+}
+
 func RunInTx(db *sql.DB, ctx context.Context, fn func(tx *sql.Tx) error) error {
 	tx, err := db.Begin()
 	if err != nil {

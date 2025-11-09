@@ -14,7 +14,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -59,7 +58,7 @@ type LogLine struct {
 }
 
 var (
-	queId       sync.Mutex
+	queId       = jobque.NewJobQue[any]()
 	LineCount   atomic.Int64
 	logFilePath = filepath.Join(sdkutils.PathTmpDir, "logs", logFilename)
 )
@@ -91,7 +90,7 @@ func GetCallerFileLine(calldepth int) (file string, line int) {
 
 // Returns the total number of lines of the current log file
 func GetLogLines(logFile string) int {
-	line, err := jobque.Exec(&queId, func() (int, error) {
+	result, err := queId.Exec(func() (any, error) {
 		logFilePathToRead := filepath.Join(sdkutils.PathTmpDir, "logs", logFile)
 
 		file, err := os.Open(logFilePathToRead)
@@ -115,14 +114,14 @@ func GetLogLines(logFile string) int {
 		return 0
 	}
 
-	return line
+	return result.(int)
 }
 
 // Returns a map of string : any, formatted based on the log parser
 // and an error. Logs returned will be in the range of start to end,
 // inclusive. Starts at index 0.
 func ReadLogs(start int, end int) ([]*LogLine, error) {
-	ret, err := jobque.Exec(&queId, func() ([]*LogLine, error) {
+	result, err := queId.Exec(func() (any, error) {
 		logs := []*LogLine{}
 
 		// open logs
@@ -184,11 +183,12 @@ func ReadLogs(start int, end int) ([]*LogLine, error) {
 		return nil, err
 	}
 
-	return ret, nil
+	logs := result.([]*LogLine)
+	return logs, nil
 }
 
 func ClearLogs() error {
-	_, err := jobque.Exec(&queId, func() (any, error) {
+	_, err := queId.Exec(func() (any, error) {
 		err := os.WriteFile(logFilePath, []byte(""), sdkutils.PermFile)
 		return nil, err
 	})
@@ -342,7 +342,7 @@ func LogToConsole(file string, line int, level int, title string, body ...any) {
 
 // Logs the log info to the specified file path
 func LogToFile(file string, line int, level int, title string, body ...any) error {
-	_, err := jobque.Exec(&queId, func() (any, error) {
+	_, err := queId.Exec(func() (any, error) {
 		logFile, err := openLogFile()
 		if err != nil {
 			log.Println(err)

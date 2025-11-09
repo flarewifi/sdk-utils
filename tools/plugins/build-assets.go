@@ -121,6 +121,10 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 	}
 
 	for filename, files := range manifest {
+		if len(files) == 0 {
+			continue
+		}
+
 		ext := filepath.Ext(filename)
 		supportedExts := []string{".js", ".css"}
 		if !sdkutils.SliceContains(supportedExts, ext) {

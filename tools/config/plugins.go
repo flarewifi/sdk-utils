@@ -1,14 +1,14 @@
 package config
 
 import (
-	"sync"
 	jobque "tools/job-que"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
-	queID    sync.Mutex
+	readQue  jobque.JobQue[PluginsConfig]
+	writeQue jobque.JobQue[struct{}]
 	jsonFile = "plugins.json"
 )
 
@@ -19,7 +19,7 @@ type PluginsConfig struct {
 
 func ReadPluginsConfig() (PluginsConfig, error) {
 	empTyCfg := PluginsConfig{Recompile: []string{}, Metadata: []sdkutils.PluginMetadata{}}
-	cfg, err := jobque.Exec(&queID, func() (PluginsConfig, error) {
+	cfg, err := readQue.Exec(func() (PluginsConfig, error) {
 		var cfg PluginsConfig
 		err := readConfigFile(jsonFile, &cfg)
 		if err != nil {
@@ -41,8 +41,8 @@ func ReadPluginsConfig() (PluginsConfig, error) {
 }
 
 func WritePluginsConfig(cfg PluginsConfig) error {
-	_, err := jobque.Exec(&queID, func() (any, error) {
-		return nil, writeConfigFile(jsonFile, cfg)
+	_, err := writeQue.Exec(func() (struct{}, error) {
+		return struct{}{}, writeConfigFile(jsonFile, cfg)
 	})
 
 	return err
@@ -50,8 +50,8 @@ func WritePluginsConfig(cfg PluginsConfig) error {
 
 func ResetPluginsConfig() error {
 	cfg := PluginsConfig{Recompile: []string{}, Metadata: []sdkutils.PluginMetadata{}}
-	_, err := jobque.Exec(&queID, func() (any, error) {
-		return nil, writeConfigFile(jsonFile, cfg)
+	_, err := writeQue.Exec(func() (struct{}, error) {
+		return struct{}{}, writeConfigFile(jsonFile, cfg)
 	})
 
 	return err
