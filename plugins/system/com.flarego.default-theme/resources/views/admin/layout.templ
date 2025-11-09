@@ -87,7 +87,7 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 								class="dropdown-menu dropdown-menu-end w-100 w-md-50"
 								style="min-width: 320px;"
 								hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.list") }
-								hx-trigger="sse:notification:info"
+                                hx-trigger={ fmt.Sprintf("sse:%s", sdkapi.FlareNotificationEvent) }
 								hx-swap="innerHTML"
 							>
 								<!-- Notifications will be appended here -->
