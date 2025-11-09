@@ -55,7 +55,7 @@ type ISessionsMgrApi interface {
 	GetSession(ctx context.Context, clnt IClientDevice) (IClientSession, error)
 
 	// SessionSummary returns the session summary for the client device.
-	SessionSummary(tx *sql.Tx, ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
+	SessionSummary(ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
 
 	// Register a hook to find a session for a client device.
 	RegisterSessionProvider(ISessionProvider)

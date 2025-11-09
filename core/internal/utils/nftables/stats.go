@@ -10,6 +10,10 @@ import (
 	cmd "tools/shell"
 )
 
+var (
+	nftStatsQue = jobque.NewJobQue[StatResult]()
+)
+
 type NftListMapResult struct {
 	Nftables []*NftablesData `json:"nftables"`
 }
@@ -47,7 +51,7 @@ type StatResult struct {
 }
 
 func GetStats() (stat StatResult, err error) {
-	result, err := jobque.Exec(&nftQueID, func() (result StatResult, err error) {
+	result, err := nftStatsQue.Exec(func() (result StatResult, err error) {
 		nftlistmac, err := nftListMap(connMacMap)
 		if err != nil {
 			return result, err

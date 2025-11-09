@@ -33,6 +33,16 @@ fi
 if [ -f "$CORE_DIR/sqlc.yml" ]; then
     cp "$CORE_DIR/sqlc.yml" "$TMP_DIR/"
     echo "Copied $CORE_DIR/sqlc.yml"
+    
+    # For SQLite and PostgreSQL, we always use postgresql engine in sqlc
+    # because the generated Go code works with both databases
+    # The SQL queries themselves are database-specific and placed in subdirectories
+    if [ -n "$DRIVER" ]; then
+        # Always use postgresql engine for code generation
+        sed -i.bak 's/engine: .*/engine: postgresql/' "$TMP_DIR/sqlc.yml"
+        echo "Set sqlc.yml engine to: postgresql"
+        rm -f "$TMP_DIR/sqlc.yml.bak"
+    fi
 else
     echo "Error: $CORE_DIR/sqlc.yml not"
     rm -rf "$TMP_DIR"
@@ -74,9 +84,16 @@ if [ -n "$DRIVER" ]; then
 
     if [ -d "$PLUGIN_DIR/resources/queries/$DRIVER" ]; then
         mkdir -p "$TMP_DIR/resources/queries"
+        # Copy database-specific queries (will overwrite base files with same name)
         cp -r "$PLUGIN_DIR/resources/queries/$DRIVER/." "$TMP_DIR/resources/queries/"
         echo "Copied queries/$DRIVER/"
     fi
+    
+    # Remove database-specific subdirectories to prevent sqlc from processing them
+    rm -rf "$TMP_DIR/resources/queries/postgres" 2>/dev/null || true
+    rm -rf "$TMP_DIR/resources/queries/sqlite" 2>/dev/null || true
+    rm -rf "$TMP_DIR/resources/migrations/postgres" 2>/dev/null || true
+    rm -rf "$TMP_DIR/resources/migrations/sqlite" 2>/dev/null || true
 fi
 
 echo "All relevant SQL resources have been copied to: $TMP_DIR"

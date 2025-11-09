@@ -1,14 +1,20 @@
 package jobque
 
+// Exec runs the given functions in series, waiting for each to complete before starting the next.
 import "sync"
 
-// Exec runs the given function after waiting for any
-// previous call on the same mutex to finish.
-//
-// It uses generics so you can return any type (T) along with an error.
-func Exec[T any](mu *sync.Mutex, fn func() (T, error)) (T, error) {
-	mu.Lock()
-	defer mu.Unlock()
+// JobQue serializes function execution using a mutex.
+type JobQue[T any] struct {
+	mu sync.Mutex
+}
 
+func NewJobQue[T any]() *JobQue[T] {
+	return &JobQue[T]{}
+}
+
+// Exec runs the given function in a serialized manner using the JobQue's mutex.
+func (q *JobQue[T]) Exec(fn func() (T, error)) (T, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	return fn()
 }

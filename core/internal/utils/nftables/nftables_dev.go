@@ -19,7 +19,7 @@ const (
 	// connMacSet    string = "connected_macs_set"
 )
 
-var nftQueID sync.Mutex
+var nftQue = jobque.NewJobQue[bool]()
 var nftMu sync.RWMutex
 var initCallbacks []func() error = []func() error{}
 var connTable map[string]bool
@@ -82,27 +82,27 @@ func SetupCaptivePortal(dev string, routerIp string) (err error) {
 }
 
 func Connect(ip string, mac string) error {
-	_, err := jobque.Exec(&nftQueID, func() (any, error) {
+	_, err := nftQue.Exec(func() (bool, error) {
 		nftMu.Lock()
 		defer nftMu.Unlock()
 		err := doConnect(ip, mac)
-		return nil, err
+		return true, err
 	})
 	return err
 }
 
 func Disconnect(ip string, mac string) error {
-	_, err := jobque.Exec(&nftQueID, func() (any, error) {
+	_, err := nftQue.Exec(func() (bool, error) {
 		nftMu.Lock()
 		defer nftMu.Unlock()
 		err := doDisconnect(ip, mac)
-		return nil, err
+		return true, err
 	})
 	return err
 }
 
 func IsConnected(mac string) bool {
-	result, _ := jobque.Exec(&nftQueID, func() (bool, error) {
+	result, _ := nftQue.Exec(func() (bool, error) {
 		nftMu.RLock()
 		defer nftMu.RUnlock()
 		return isConnected(mac), nil

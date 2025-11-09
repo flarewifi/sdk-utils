@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
+	"time"
 	"tools/config"
 	"tools/tags"
 
@@ -50,24 +51,19 @@ func Validate() {
 }
 
 func offlineActivation() (ok bool, err error) {
-	// Read the encrypted token from the activation file
 	encToken, err := sdkutils.FsReadFile(activationFile)
 	if err != nil {
-
 		return false, err
 	}
 
-	// Read the application config to get the secret
 	cfg, err := config.ReadApplicationConfig()
 	if err != nil {
 		return false, err
 	}
 	secret := cfg.Secret + randSeed
 
-	// Decrypt the token
 	decryptedToken, err := crypt.DecryptToken(encToken, secret)
 	if err != nil {
-
 		return false, err
 	}
 
@@ -75,19 +71,9 @@ func offlineActivation() (ok bool, err error) {
 		return false, err
 	}
 
-	// The token is a jwt token, we can do basic validation
-	// This is how it was created in the backend using github.com/golang-jwt/jwt/v5:
-	// claims := jwt.MapClaims{
-	// 	"machine_id": machine.MachineID,
-	// 	"exp":        time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days expiration
-	// 	"iat":        time.Now().Unix(),
-	// }
-
 	machineID := machineuid.GetMachineUID()
 
-	// Parse and validate the token
 	token, err := jwt.Parse(decryptedToken, func(token *jwt.Token) (any, error) {
-		// Only allow HS256
 		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, ErrProcessFail
 		}
@@ -99,15 +85,17 @@ func offlineActivation() (ok bool, err error) {
 	if !token.Valid {
 		return false, errors.New("Activation error: invalid token")
 	}
+
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return false, errors.New("Activation error: failed claim")
 	}
-	// Check machine_id claim exists and matches
+
 	claimID, ok := claims["machine_id"]
 	if !ok {
 		return false, fmt.Errorf("Activation error: failed claim")
 	}
+
 	if claimID != machineID {
 		return false, fmt.Errorf("Activation error: machine ID mismatch")
 	}
@@ -125,7 +113,6 @@ func checkActivationOnline() (ok bool, err error) {
 
 	info, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
 	if err != nil {
-
 		return false, ErrProcessFail
 	}
 
@@ -134,8 +121,9 @@ func checkActivationOnline() (ok bool, err error) {
 		return false, ErrProcessFail
 	}
 
+	machineID := machineuid.GetMachineUID()
 	params := rpc_flarewifi_v1.MachineActivationRequest{
-		MachineId:      machineuid.GetMachineUID(),
+		MachineId:      machineID,
 		CurrentVersion: info.Version,
 		BrandId:        release.BrandId,
 		Os:             strings.ToLower(release.Os),
@@ -150,7 +138,25 @@ func checkActivationOnline() (ok bool, err error) {
 		Channel:        strings.ToLower(cfg.Channel),
 	}
 
-	act, err := srv.MachineActivation(ctx, &params)
+	var act *rpc_flarewifi_v1.MachineActivationResponse
+	maxAttempts := 3
+	retryDelays := []time.Duration{0, 5 * time.Second, 10 * time.Second}
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(retryDelays[attempt])
+		}
+
+		act, err = srv.MachineActivation(ctx, &params)
+		if err == nil {
+			break
+		}
+
+		if attempt == maxAttempts-1 {
+			return false, ErrNetworkIssue
+		}
+	}
+
 	if err != nil {
 		return false, ErrNetworkIssue
 	}

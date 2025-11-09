@@ -16,20 +16,16 @@ import (
 const defaultSpeed int = 100 //mbits download/upload per inteface
 
 var lanMap = sync.Map{}
-var netQue sync.Mutex
+var netQue = jobque.NewJobQue[any]()
 
 func addLan(lan *NetworkLan) {
 	lanMap.Store(lan.Name(), lan)
 }
 
-// func removeLan(ifname string) {
-// 	lanMap.Delete(ifname)
-// }
-
 func listenLanEvents(lan *NetworkLan) {
 	ch := ubus.ListenInterface(lan.Name())
 	for evt := range ch {
-		jobque.Exec(&netQue, func() (any, error) {
+		netQue.Exec(func() (any, error) {
 			if evt.Event == ubus.IfEventDown && lan.Up() {
 				lan.SetStatus(false)
 			}

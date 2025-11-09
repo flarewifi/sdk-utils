@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"sync"
 
 	"core/internal/utils/ifbutil"
 	jobque "tools/job-que"
@@ -12,7 +11,7 @@ import (
 )
 
 var (
-	filterQue sync.Mutex
+	filterQue = jobque.NewJobQue[any]()
 )
 
 type TcIpField string
@@ -123,7 +122,7 @@ func (self *TcFilter) delete(clientIp string) (err error) {
 }
 
 func (self *TcFilter) Setup() error {
-	_, err := jobque.Exec(&filterQue, func() (any, error) {
+	_, err := filterQue.Exec(func() (any, error) {
 		for _, dev := range self.devs() {
 			cmds := []string{}
 			count := len(self.ipsegmt.segments)
@@ -188,7 +187,7 @@ func (self *TcFilter) Reset() (err error) {
 		return err
 	}
 
-	_, err = jobque.Exec(&filterQue, func() (any, error) {
+	_, err = filterQue.Exec(func() (any, error) {
 		for ip, classid := range self.filterList {
 			if err := self.create(ip, classid); err != nil {
 				return nil, err
@@ -202,7 +201,7 @@ func (self *TcFilter) Reset() (err error) {
 
 // Create a tc filter for client ip and classid
 func (self *TcFilter) CreateFilter(clientIp string, classid string) error {
-	_, err := jobque.Exec(&filterQue, func() (any, error) {
+	_, err := filterQue.Exec(func() (any, error) {
 		err := self.create(clientIp, classid)
 		if err != nil {
 			return nil, err
@@ -215,7 +214,7 @@ func (self *TcFilter) CreateFilter(clientIp string, classid string) error {
 
 // Delete a tc filter
 func (self *TcFilter) DeleteFilter(clientIp string) error {
-	_, err := jobque.Exec(&filterQue, func() (any, error) {
+	_, err := filterQue.Exec(func() (any, error) {
 		err := self.delete(clientIp)
 		if err != nil {
 			return nil, err
@@ -227,7 +226,7 @@ func (self *TcFilter) DeleteFilter(clientIp string) error {
 }
 
 func (self *TcFilter) CleanUp() error {
-	_, err := jobque.Exec(&filterQue, func() (any, error) {
+	_, err := filterQue.Exec(func() (any, error) {
 		err := cmd.Exec(fmt.Sprintf("tc filter add dev %s parent 1:0 prio 10 protocol ip u32", self.dev), nil)
 		if err != nil {
 			return nil, err

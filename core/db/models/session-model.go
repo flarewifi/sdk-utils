@@ -105,9 +105,8 @@ func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, id int32, devI
 	return nil
 }
 
-func (self *SessionModel) AvailableForDevice(tx *sql.Tx, ctx context.Context, devId int32) (*Session, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	sRow, err := qtx.FindAvailableSessionForDevice(ctx, devId)
+func (self *SessionModel) AvailableForDevice(ctx context.Context, devId int32) (*Session, error) {
+	sRow, err := self.db.Queries.FindAvailableSessionForDevice(ctx, devId)
 	if err != nil {
 		log.Printf("error finding available session for dev %v: %v", devId, err)
 		return nil, err
@@ -149,13 +148,11 @@ func (self *SessionModel) UpdateAllBandwidth(tx *sql.Tx, ctx context.Context, do
 	return nil
 }
 
-func (self *SessionModel) Summary(tx *sql.Tx, ctx context.Context, deviceID int32) (*sdkapi.ClientSessionSummary, error) {
-	qtx := self.db.Queries.WithTx(tx)
-
+func (self *SessionModel) Summary(ctx context.Context, deviceID int32) (*sdkapi.ClientSessionSummary, error) {
 	var remainingSecs int
 	var remainingDataMb float64
 
-	summary, err := qtx.SessionSummary(ctx, deviceID)
+	summary, err := self.db.Queries.SessionSummary(ctx, deviceID)
 	if err != nil && errors.Is(sql.ErrNoRows, err) {
 		return &sdkapi.ClientSessionSummary{}, nil
 	}

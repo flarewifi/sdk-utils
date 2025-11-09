@@ -7,6 +7,9 @@
   - With go plugins - it can install/uninstall plugins using native go "plugin" package
   - Monolithic build - all plugins are compiled as a single binary
 
+## DO NOT
+- Do not run docker container to check if the buidl succeeds
+
 ## Build/Dev/Test
 
 - `make` Runs the app with plugin install/uninstall capabilities, uses Go build tags "dev postgres"
@@ -33,11 +36,24 @@
 ## Tech Stack
 
 - Using `Go` as primary programming language
+
 - We are not allowed to exceed the go tool chain version defined in `go.work.default` when installing new libraries
 
 - `docker compose` to run the app and database for easy development setup
+
 - `gorilla/mux` for handling the routes
+
 - `templ` for our views
+
 - `sqlc` for our database queries
+
 - `esbuild` Go API for bundling our assets
+
 - `@Makefile` To run common commands
+
+## Database
+
+- We use `sqlc` named params in our sql queries. For example: `select * from devices where mac_address = @mac_address`
+- Our queries must be compatible with both `postgres` and `sqlite`
+- For queries that can't work on both database, we create a separate sql files under `resources/queries/sqlite` and `resources/queries/postgres`
+- Separate queries must produce similar Go code

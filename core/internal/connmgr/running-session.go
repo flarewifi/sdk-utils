@@ -13,7 +13,9 @@ import (
 	jobque "tools/job-que"
 )
 
-var sessionQ sync.Mutex
+var (
+	sessionQue = jobque.NewJobQue[any]()
+)
 
 func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*RunningSession, error) {
 	lan, err := network.FindByIp(clnt.IpAddr())
@@ -83,7 +85,7 @@ func (self *RunningSession) Diff() (secs int, mb float64) {
 }
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
-	_, err := jobque.Exec(&sessionQ, func() (interface{}, error) {
+	_, err := sessionQue.Exec(func() (any, error) {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
@@ -120,7 +122,7 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 }
 
 func (self *RunningSession) Stop(ctx context.Context) error {
-	_, err := jobque.Exec(&sessionQ, func() (interface{}, error) {
+	_, err := sessionQue.Exec(func() (any, error) {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
