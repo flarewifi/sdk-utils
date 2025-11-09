@@ -8,8 +8,8 @@ templ NotificationsList(notifs []sdkapi.Notification) {
 	for _, notif := range notifs {
 		<li class="d-flex flex-column p-2 border-bottom">
 			<a class="dropdown-item text-wrap notif-item text-center">
-				🔔{ notif.Subject }
-                <small class="text-muted text-end mb-2">{ notif.CreatedAt.Format("Jan 3, 2025 2:30PM") }</small>
+				🔔{ notif.Subject } <br>
+                <small class="text-muted text-end mb-2">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
 			</a>
 			<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end">
 				Mark as Read
