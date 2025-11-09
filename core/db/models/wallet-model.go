@@ -3,9 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"core/db"
@@ -32,10 +30,10 @@ func NewWalletModel(dtb *db.Database, mdls *Models) *WalletModel {
 	}
 }
 
-func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, devId int32, bal float64) (*Wallet, error) {
+func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, devId int64, bal float64) (*Wallet, error) {
 	wId, err := self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
 		DeviceID: devId,
-		Balance:  fmt.Sprintf("%.6f", bal),
+		Balance:  bal,
 	})
 	if err != nil {
 		log.Println("error creating wallet:", err)
@@ -45,7 +43,7 @@ func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, devId int32, 
 	return self.Find(tx, ctx, wId)
 }
 
-func (self *WalletModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*Wallet, error) {
+func (self *WalletModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Wallet, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	w, err := qtx.FindWallet(ctx, id)
 	if err != nil {
@@ -53,24 +51,19 @@ func (self *WalletModel) Find(tx *sql.Tx, ctx context.Context, id int32) (*Walle
 		return nil, err
 	}
 
-	bal, err := strconv.ParseFloat(w.Balance, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = bal
+	wallet.balance = w.Balance
 	wallet.createdAt = w.CreatedAt
 
 	return wallet, nil
 }
 
-func (self *WalletModel) Update(tx *sql.Tx, ctx context.Context, id int32, bal float64) error {
+func (self *WalletModel) Update(tx *sql.Tx, ctx context.Context, id int64, bal float64) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateWallet(ctx, queries.UpdateWalletParams{
-		Balance: fmt.Sprintf("%.6f", bal),
+		Balance: bal,
 		ID:      id,
 	})
 	if err != nil {
@@ -83,7 +76,7 @@ func (self *WalletModel) Update(tx *sql.Tx, ctx context.Context, id int32, bal f
 	return nil
 }
 
-func (self *WalletModel) findByDevice(tx *sql.Tx, ctx context.Context, devId int32) (*Wallet, error) {
+func (self *WalletModel) findByDevice(tx *sql.Tx, ctx context.Context, devId int64) (*Wallet, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	w, err := qtx.FindWalletByDeviceId(ctx, devId)
 	if err != nil {
@@ -91,15 +84,10 @@ func (self *WalletModel) findByDevice(tx *sql.Tx, ctx context.Context, devId int
 		return nil, err
 	}
 
-	bal, err := strconv.ParseFloat(w.Balance, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = bal
+	wallet.balance = w.Balance
 	wallet.createdAt = w.CreatedAt
 
 	return wallet, nil

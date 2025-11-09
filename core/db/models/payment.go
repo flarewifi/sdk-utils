@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
 
@@ -14,8 +13,8 @@ import (
 type Payment struct {
 	db         *db.Database
 	models     *Models
-	id         int32
-	purchaseId int32
+	id         int64
+	purchaseId int64
 	amount     float64
 	optname    string
 	createdAt  time.Time
@@ -28,11 +27,11 @@ func NewPayment(dtb *db.Database, mdls *Models) *Payment {
 	}
 }
 
-func (self *Payment) Id() int32 {
+func (self *Payment) Id() int64 {
 	return self.id
 }
 
-func (self *Payment) PurchaseId() int32 {
+func (self *Payment) PurchaseId() int64 {
 	return self.purchaseId
 }
 
@@ -51,7 +50,7 @@ func (self *Payment) CreatedAt() time.Time {
 func (self *Payment) Update(tx *sql.Tx, ctx context.Context, amt float64) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdatePayment(ctx, queries.UpdatePaymentParams{
-		Amount: fmt.Sprintf("%.6f", amt),
+		Amount: amt,
 		ID:     self.id,
 	})
 	if err != nil {

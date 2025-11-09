@@ -4,9 +4,9 @@ INSERT INTO devices (
 )
 VALUES
   (
-    $1,
-    $2,
-    $3
+    @mac_address,
+    @ip_address,
+    @hostname
   ) RETURNING id;
 
 
@@ -21,7 +21,7 @@ SELECT
 FROM
   devices
 WHERE
-  id = $1
+  id = @id
 LIMIT
   1;
 
@@ -37,7 +37,7 @@ SELECT
 FROM
   devices
 WHERE
-  mac_address = $1
+  mac_address = @mac_address
 LIMIT
   1;
 
@@ -46,9 +46,9 @@ LIMIT
 UPDATE
   devices
 SET
-  hostname = $1,
-  ip_address = $2,
-  mac_address = $3,
-  status = $5
+  hostname = @hostname,
+  ip_address = @ip_address,
+  mac_address = @mac_address,
+  status = @status
 WHERE
-  id = $4;
+  id = @id;

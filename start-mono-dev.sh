@@ -32,7 +32,7 @@ if [ $? != 0 ]; then
     exit 1
 fi
 
-MONO_BIN_OUT="$MONO_BUILD_DIR/output/mono-bin-files"
+MONO_BIN_OUT="$ROOT_DIR/output/mono-bin-files"
 APP_DIR="/opt/flarehotspot/app"
 DATA_DIR="/opt/flarehotspot/data"
 

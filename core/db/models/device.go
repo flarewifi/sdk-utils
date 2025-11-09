@@ -10,14 +10,12 @@ import (
 	"core/db/queries"
 
 	sdkapi "sdk/api"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type Device struct {
 	db        *db.Database
 	models    *Models
-	id        int32
+	id        int64
 	ipaddr    string
 	macaddr   string
 	hostname  string
@@ -29,7 +27,7 @@ func NewDevice(d *db.Database, m *Models) *Device {
 	return &Device{db: d, models: m}
 }
 
-func BuildDevice(id int32, mac string, ip string, hostname string, status int32) *Device {
+func BuildDevice(id int64, mac string, ip string, hostname string, status int64) *Device {
 	return &Device{
 		id:       id,
 		ipaddr:   ip,
@@ -39,7 +37,7 @@ func BuildDevice(id int32, mac string, ip string, hostname string, status int32)
 	}
 }
 
-func (self *Device) Id() int32 {
+func (self *Device) Id() int64 {
 	return self.id
 }
 
@@ -66,8 +64,8 @@ func (self *Device) Reload(tx *sql.Tx, ctx context.Context) error {
 		log.Printf("error finding device with id %v: %v", self.id, err)
 	}
 	self.hostname = dRow.Hostname
-	self.macaddr = dRow.IpAddress
-	self.ipaddr = dRow.MacAddress
+	self.macaddr = dRow.MacAddress
+	self.ipaddr = dRow.IpAddress
 	self.status = sdkapi.DeviceStatus(dRow.Status)
 
 	return nil
@@ -80,7 +78,7 @@ func (self *Device) Update(tx *sql.Tx, ctx context.Context, mac string, ip strin
 		IpAddress:  ip,
 		MacAddress: mac,
 		ID:         self.id,
-		Status:     int32(status),
+		Status:     int64(status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", self.id, err)
@@ -106,7 +104,7 @@ func (self *Device) Wallet(tx *sql.Tx, ctx context.Context) (*Wallet, error) {
 	wallet := NewWallet(self.db, self.models)
 	wallet.id = w.ID
 	wallet.deviceId = w.DeviceID
-	wallet.balance = sdkutils.StrToFloat64(w.Balance)
+	wallet.balance = w.Balance
 	wallet.createdAt = w.CreatedAt
 
 	return wallet, nil

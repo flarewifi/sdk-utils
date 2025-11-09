@@ -37,7 +37,7 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*Run
 
 type RunningSession struct {
 	mu         sync.RWMutex
-	clntId     int32
+	clntId     int64
 	ip         string
 	mac        string
 	lan        *network.NetworkLan
@@ -51,7 +51,7 @@ type RunningSession struct {
 	callbacks  []chan error
 }
 
-func (self *RunningSession) ClientId() int32 {
+func (self *RunningSession) ClientId() int64 {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.clntId

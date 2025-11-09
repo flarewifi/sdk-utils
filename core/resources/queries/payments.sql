@@ -1,7 +1,7 @@
 -- name: CreatePayment :one
 INSERT INTO payments (purchase_id, amount, payment_method)
 VALUES
-  ($1, $2, $3) RETURNING id;
+  (@purchase_id, @amount, @payment_method) RETURNING id;
 
 
 -- name: FindPayment :one
@@ -9,7 +9,7 @@ SELECT *
 FROM
   payments
 WHERE
-  id = $1
+  id = @id
 LIMIT
   1;
 
@@ -19,14 +19,14 @@ SELECT *
 FROM
   payments
 WHERE
-  purchase_id = $1;
+  purchase_id = @purchase_id;
 
 
 -- name: UpdatePayment :exec
 UPDATE
   payments
 SET
-  amount = $1
+  amount = @amount
 WHERE
-  id = $2;
+  id = @id;
 

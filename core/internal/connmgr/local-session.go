@@ -21,8 +21,8 @@ type LocalSession struct {
 	mu          sync.RWMutex
 	db          *db.Database
 	mdls        *models.Models
-	id          int32
-	devId       int32
+	id          int64
+	devId       int64
 	sessionType string
 	timeSecs    int
 	dataMb      float64

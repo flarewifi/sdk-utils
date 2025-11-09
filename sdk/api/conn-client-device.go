@@ -24,7 +24,7 @@ const (
 type IClientDevice interface {
 
 	// Returns the database id of the client device ID.
-	Id() int32
+	Id() int64
 
 	// Returns the hostname of the device.
 	Hostname() string

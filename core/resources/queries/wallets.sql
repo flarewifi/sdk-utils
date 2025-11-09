@@ -1,7 +1,7 @@
 -- name: CreateWallet :one
 INSERT INTO wallets (device_id, balance) 
 VALUES 
-  ($1, $2) RETURNING id;
+  (@device_id, @balance) RETURNING id;
 
 
 -- name: FindWallet :one
@@ -13,7 +13,7 @@ SELECT
 FROM 
   wallets 
 WHERE 
-  id = $1 
+  id = @id 
 LIMIT 
   1;
 
@@ -22,9 +22,9 @@ LIMIT
 UPDATE 
   wallets 
 SET 
-  balance = $1 
+  balance = @balance 
 WHERE 
-  id = $2;
+  id = @id;
 
 
 -- name: FindWalletByDeviceId :one
@@ -36,7 +36,7 @@ SELECT
 FROM 
   wallets 
 WHERE 
-  device_id = $1 
+  device_id = @device_id 
 LIMIT 
   1;
 
