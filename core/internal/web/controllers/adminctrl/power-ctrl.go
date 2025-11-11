@@ -48,7 +48,7 @@ func ShutdownCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			time.Sleep(3 * time.Second)
-			cmd.Exec("shutdown -h now", nil)
+			cmd.Exec("halt", nil)
 		}()
 
 		w.Header().Set("Content-Type", "text/html")
