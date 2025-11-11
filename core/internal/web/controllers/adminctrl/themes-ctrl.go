@@ -1,12 +1,10 @@
 package adminctrl
 
 import (
-	"errors"
 	"net/http"
 	sdkapi "sdk/api"
 
 	"core/internal/api"
-	coreforms "core/internal/web/forms"
 	"core/resources/views/admin/themes"
 	"tools/config"
 )
@@ -14,13 +12,33 @@ import (
 func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
-		formTpl, err := g.CoreAPI.HttpAPI.Forms().GetFormTemplate(coreforms.ThemesFormName, r)
-		if err != nil {
-			res.Error(w, r, err, http.StatusInternalServerError)
-			return
+		allPlugins := g.PluginMgr.All()
+		adminThemes := []themes.ThemeOption{}
+		portalThemes := []themes.ThemeOption{}
+
+		for _, p := range allPlugins {
+			features := p.Features()
+			for _, f := range features {
+				if f == "theme:admin" {
+					info := p.Info()
+					adminThemes = append(adminThemes, themes.ThemeOption{Label: info.Name, Value: info.Package})
+				}
+				if f == "theme:portal" {
+					info := p.Info()
+					portalThemes = append(portalThemes, themes.ThemeOption{Label: info.Name, Value: info.Package})
+				}
+			}
 		}
 
-		page := themes.AdminThemesIndex(formTpl)
+		cfg, err := config.ReadThemesConfig()
+		currentPortal := ""
+		currentAdmin := ""
+		if err == nil {
+			currentPortal = cfg.PortalThemePkg
+			currentAdmin = cfg.AdminThemePkg
+		}
+
+		page := themes.AdminThemesIndex(g.CoreAPI, portalThemes, adminThemes, currentPortal, currentAdmin)
 		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
 	}
 }
@@ -28,41 +46,54 @@ func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
-		saveErrorMsg := errors.New(g.CoreAPI.Translate("error", "save_settings_error"))
 
-		httpForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm(coreforms.ThemesFormName, w, r)
+		formValidator := sdkapi.FormWithValidator{
+			FormName: "themes",
+			FormValidators: []sdkapi.FormValidator{
+				{
+					FieldName:  "portal_theme",
+					FieldLabel: g.CoreAPI.Translate("label", "select_portal_theme"),
+					FieldType:  sdkapi.FormFieldTypeString,
+					FieldRules: sdkapi.FormFieldRules{
+						Required: true,
+					},
+				},
+				{
+					FieldName:  "admin_theme",
+					FieldLabel: g.CoreAPI.Translate("label", "select_admin_theme"),
+					FieldType:  sdkapi.FormFieldTypeString,
+					FieldRules: sdkapi.FormFieldRules{
+						Required: true,
+					},
+				},
+			},
+		}
+
+		err := g.CoreAPI.HttpAPI.Forms().ParseFormWithValidator(w, r, formValidator)
 		if err != nil {
-			res.Error(w, r, saveErrorMsg, http.StatusInternalServerError)
-			g.CoreAPI.LoggerAPI.Error(err.Error())
+			themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
+			http.Redirect(w, r, themesIndexUrl, http.StatusSeeOther)
 			return
 		}
 
-		portalTheme, err := httpForm.GetStringValue("themes", "portal_theme")
-		if err != nil {
-			res.Error(w, r, saveErrorMsg, http.StatusInternalServerError)
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
-
-		adminTheme, err := httpForm.GetStringValue("themes", "admin_theme")
-		if err != nil {
-			res.Error(w, r, saveErrorMsg, http.StatusInternalServerError)
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
+		portalTheme := r.FormValue("portal_theme")
+		adminTheme := r.FormValue("admin_theme")
 
 		err = config.WriteThemesConfig(config.ThemesConfig{
 			AdminThemePkg:  adminTheme,
 			PortalThemePkg: portalTheme,
 		})
 		if err != nil {
-			res.Error(w, r, saveErrorMsg, http.StatusInternalServerError)
+			saveErrorMsg := g.CoreAPI.Translate("error", "save_settings_error")
+			res.FlashMsg(w, r, saveErrorMsg, sdkapi.FlashMsgError)
 			g.CoreAPI.LoggerAPI.Error(err.Error())
+			themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
+			http.Redirect(w, r, themesIndexUrl, http.StatusSeeOther)
 			return
 		}
 
 		successfulSavedMsg := g.CoreAPI.Translate("info", "saved_settings_message")
-		api.NewGlobals().CoreAPI.HttpAPI.Response().FlashMsg(w, r, successfulSavedMsg, sdkapi.FlashMsgSuccess)
+		res.FlashMsg(w, r, successfulSavedMsg, sdkapi.FlashMsgSuccess)
 
 		themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
 		http.Redirect(w, r, themesIndexUrl, http.StatusSeeOther)
