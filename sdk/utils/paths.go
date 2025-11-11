@@ -28,7 +28,7 @@ var (
 	PathPluginBackupsDir = filepath.Join(PathAppDir, "plugins", "backups")
 	PathPluginUpdatesDir = filepath.Join(PathAppDir, "plugins", "updates")
 	PathPluginLocalDir   = filepath.Join(PathDataDir, "plugins", "local")
-	PathPluginCacheDir   = filepath.Join(PathConfigDir, "cache", "plugins")
+	PathPluginCacheDir   = filepath.Join(PathConfigDir, "plugins", "cache")
 	PathSystemUpdateDir  = filepath.Join(PathStorageDir, "system", "update")
 	PathCacheDir         = filepath.Join(PathTmpDir, ".cache")
 	PathIsUpdated        = filepath.Join(PathAppDir, ".updated")

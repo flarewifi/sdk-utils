@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-DB_DRIVER="sqlite"
+DB_DRIVER="postgres"
 GO_TAGS="dev $DB_DRIVER"
 OS_CONFIG="wan-lan"
 BUILD_CORE_MAIN="./tools/cmd/build-core"

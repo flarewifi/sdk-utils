@@ -24,7 +24,7 @@ cp go.work.default go.work && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN build-templates && \
     go run -tags="${GO_TAGS}" $CREATE_PUGINS_INIT && \
     echo "Building mono binary..." && \
-    GO_TAGS="${GO_TAGS}" go run -tags="${GO_TAGS}" $BUILD_MONO_BIN
+    go run -tags="${GO_TAGS}" $BUILD_MONO_BIN
 
 
 if [ $? != 0 ]; then
@@ -60,9 +60,12 @@ done
 echo "Copying mono bin files to app directory..."
 # Copy files from mono bin output
 rsync -a $MONO_BIN_OUT/ $APP_DIR/
-
+rsync -a $MONO_BIN_OUT/data/ $DATA_DIR/
 mkdir -p $APP_DIR/.tmp
 touch $APP_DIR/.tmp/.server-up
 rm -rf $APP_DIR/data
 ln -sf $DATA_DIR $APP_DIR/data
+
+echo
+echo "Starting Flare Hotspot Mono Dev Environment..."
 sh -c "cd $APP_DIR && ./start.sh"

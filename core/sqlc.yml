@@ -2,7 +2,7 @@
 
 version: '2'
 sql:
-  - engine: postgresql
+  - engine: sqlite
     queries: [resources/queries]
     schema: [resources/migrations]
     gen:
@@ -10,4 +10,5 @@ sql:
         package: queries
         out: db/queries
         sql_package: "database/sql"
+
 
