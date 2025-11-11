@@ -67,13 +67,6 @@ func UpdateNotificationCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 func NotificationsBellCountCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		notifsAPI := api.Notification()
-		vars := api.Http().MuxVars(r)
-		id := vars["id"]
-		idInt := sdkutils.StrToInt64(id)
-
-		if idInt == 0 {
-			api.Logger().Error("No valid ID.")
-		}
 
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
 		if err != nil {
@@ -97,11 +90,18 @@ func ShowNotificationContentCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 			api.Logger().Error("No valid ID.")
 		}
 
+		// Tag unread once opened.
+		err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead)
+		if err != nil {
+			api.Logger().Error(fmt.Sprintf("update notifications error: %v", err))
+		}
+
 		notif, err := notifsAPI.GetNotificationByID(r.Context(), idInt)
 		if err != nil {
 			api.Logger().Error(fmt.Sprintf("get notifications error: %v", err))
 		}
 
+		w.Header().Set("HX-Trigger", "notificationRead")
 		view := admin.ShowNotificationContent(api, notif)
 		view.Render(r.Context(), w)
 	}

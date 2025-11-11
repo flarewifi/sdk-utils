@@ -12,7 +12,7 @@ templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 			id="notifDropdown"
 			data-bs-toggle="dropdown"
 			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.count") }
-			hx-trigger={ fmt.Sprintf("sse:%s", sdkapi.FlareNotificationEvent) }
+			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
 		>
 			@NotificationsBellCount(notifs)
 		</button>
@@ -21,7 +21,7 @@ templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 			class="dropdown-menu dropdown-menu-end w-100 w-md-50"
 			style="min-width: 320px;"
 			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.list") }
-			hx-trigger={ fmt.Sprintf("sse:%s", sdkapi.FlareNotificationEvent) }
+			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
 		>
 			<!-- Notifications will be appended here -->
 			@NotificationsList(api, notifs)
@@ -77,30 +77,23 @@ templ ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) 
 	<div class="modal-dialog modal-dialog-centered modal-l w-100">
 		<div class="modal-content">
 			<div class="modal-header border-0">
-			<h5 class="modal-title fs-5 fw-bold">{ notif.Subject }</h5>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				<h5 class="modal-title fs-5 fw-bold">{ notif.Subject }</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 
 			<div class="modal-body px-4 py-3">
-			<div id="notifModalContent">
-				<div class="p-3 bg-body-tertiary rounded">
-				{ notif.Content }
+				<div id="notifModalContent">
+					<div class="p-3 bg-body-tertiary rounded">
+						{ notif.Content }
+					</div>
 				</div>
-			</div>
-			<small class="text-muted d-block mt-3 text-end">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+				<small class="text-muted d-block mt-3 text-end">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
 			</div>
 
 			<div class="modal-footer border-0">
-			<button 
-				type="button" 
-				class="btn btn-secondary" 
-				data-bs-dismiss="modal"
-				hx-post={ api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)) }
-				hx-target="#notification"
-				hx-swap="innerHTML"
-			>
-				Close
-			</button>
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+					Close
+				</button>
 			</div>
 		</div>
 	</div>
