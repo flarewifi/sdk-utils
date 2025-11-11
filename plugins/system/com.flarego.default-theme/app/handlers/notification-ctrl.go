@@ -90,7 +90,7 @@ func ShowNotificationContentCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 			api.Logger().Error("No valid ID.")
 		}
 
-		// Tag unread once opened.
+		// Tag as read once opened.
 		err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead)
 		if err != nil {
 			api.Logger().Error(fmt.Sprintf("update notifications error: %v", err))
