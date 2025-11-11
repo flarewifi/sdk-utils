@@ -1,19 +1,66 @@
 package admin
 
 import (
+	"fmt"
 	sdkapi "sdk/api"
 )
 
-templ NotificationsList(notifs []sdkapi.Notification) {
-	for _, notif := range notifs {
-		<li class="d-flex flex-column p-2 border-bottom">
-			<a class="dropdown-item text-wrap notif-item text-center">
-				🔔{ notif.Subject } <br>
-                <small class="text-muted text-end mb-2">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
-			</a>
-			<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end">
-				Mark as Read
-			</button>
+templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
+	<div class="dropdown w-100 position-relative">
+		<button
+			class="btn position-relative p-0 border-0 bg-transparent"
+			id="notifDropdown"
+			data-bs-toggle="dropdown"
+			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.count") }
+			hx-trigger={ fmt.Sprintf("sse:%s", sdkapi.FlareNotificationEvent) }
+		>
+			@NotificationsBellCount(notifs)
+		</button>
+		<ul
+			id="notifDropdownMenu"
+			class="dropdown-menu dropdown-menu-end w-100 w-md-50"
+			style="min-width: 320px;"
+			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.list") }
+			hx-trigger={ fmt.Sprintf("sse:%s", sdkapi.FlareNotificationEvent) }
+		>
+			<!-- Notifications will be appended here -->
+			@NotificationsList(api, notifs)
+		</ul>
+	</div>
+}
+
+templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
+	if len(notifs) == 0 {
+		<li class="d-flex flex-column border-bottom">
+			<p class="dropdown-item text-wrap notif-item text-center">No new notifications</p>
 		</li>
+	} else {
+		for _, notif := range notifs {
+			<li class="d-flex flex-column p-2 border-bottom">
+				<a class="dropdown-item text-wrap notif-item text-center">
+					🔔{ notif.Subject } <br>
+					<small class="text-muted text-end mb-2">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+				</a>
+				<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
+					hx-post={ api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)) }
+					hx-target="#notification"
+					hx-swap="innerHTML"
+				>
+					Mark as Read
+				</button>
+			</li>
+		}
 	}
+}
+
+templ NotificationsBellCount(notifs []sdkapi.Notification) {
+	{{ notifsCount := len(notifs)}}
+	<i class="bi bi-bell fs-4 text-light"></i>
+	<span
+		class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+		id="notifBellCount"
+		style="font-size: 0.65rem; transform: translate(-35%, -35%);"
+	>
+		{ fmt.Sprint(notifsCount) }
+	</span>
 }
