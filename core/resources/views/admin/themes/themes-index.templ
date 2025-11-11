@@ -1,7 +1,32 @@
 package themes
 
-templ AdminThemesIndex(themesForm templ.Component) {
+import "sdk/api"
+
+type ThemeOption struct {
+	Label string
+	Value string
+}
+
+templ AdminThemesIndex(api sdkapi.IPluginApi, portalThemes []ThemeOption, adminThemes []ThemeOption, currentPortal string, currentAdmin string) {
 	<div>
-		@themesForm
+		<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:themes:save")) }>
+			<div class="mb-3">
+				<label for="portal_theme" class="form-label">{ api.Translate("label", "select_portal_theme") }</label>
+				<select class="form-select" id="portal_theme" name="portal_theme" required>
+					for _, opt := range portalThemes {
+						<option value={ opt.Value } if currentPortal == opt.Value { selected }>{ opt.Label }</option>
+					}
+				</select>
+			</div>
+			<div class="mb-3">
+				<label for="admin_theme" class="form-label">{ api.Translate("label", "select_admin_theme") }</label>
+				<select class="form-select" id="admin_theme" name="admin_theme" required>
+					for _, opt := range adminThemes {
+						<option value={ opt.Value } if currentAdmin == opt.Value { selected }>{ opt.Label }</option>
+					}
+				</select>
+			</div>
+			<button type="submit" class="btn btn-primary">{ api.Translate("label", "save_settings") }</button>
+		</form>
 	</div>
 }
