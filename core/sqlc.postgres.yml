@@ -1,0 +1,46 @@
+---
+
+version: '2'
+sql:
+  - engine: postgresql
+    queries: [resources/queries]
+    schema: [resources/migrations]
+    gen:
+      go:
+        package: queries
+        out: db/queries
+        sql_package: "database/sql"
+        overrides:
+          # Force all integers to be int64
+          - db_type: "pg_catalog.int4"
+            go_type: "int64"
+          - db_type: "integer"
+            go_type: "int64"
+          - db_type: "int"
+            go_type: "int64"
+          # Force decimal/numeric types to be float64 instead of string
+          - db_type: "pg_catalog.numeric"
+            go_type: "float64"
+          - db_type: "decimal"
+            go_type: "float64"
+          - db_type: "numeric"
+            go_type: "float64"
+          # Force nullable integers to be sql.NullInt64
+          - db_type: "pg_catalog.int4"
+            go_type:
+              import: "database/sql"
+              type: "NullInt64"
+            nullable: true
+          # Override metadata column to be []byte
+          - column: "purchases.metadata"
+            go_type:
+              type: "[]byte"
+          - column: "purchases.confirmed_at"
+            go_type:
+              type: "sql.NullTime"
+          - column: "purchases.cancelled_at"
+            go_type:
+              type: "sql.NullTime"
+          - column: "sessions.data_mbytes"
+            go_type:
+              type: "sql.NullFloat64"

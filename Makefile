@@ -23,7 +23,7 @@ docs-serve:
 	docker compose up docs
 
 sync-version:
-	docker compose run --rm --build app sh -c \
+	docker compose run --rm app sh -c \
 		'go run -tags="prod mono sqlite" ./tools/cmd/sync-versions/main.go'
 
 devkit:

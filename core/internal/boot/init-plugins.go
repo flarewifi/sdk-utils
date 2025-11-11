@@ -5,10 +5,10 @@ package boot
 import (
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 
 	"core/internal/api"
+	"tools/env"
 	"tools/migrate"
 	"tools/plugins"
 
@@ -20,88 +20,11 @@ func InitPlugins(g *api.CoreGlobals) {
 	localPlugins := plugins.LocalPluginSrcDefs()
 	systemPlugins := plugins.SystemPluginSrcDefs()
 
-	for _, def := range append(systemPlugins, localPlugins...) {
-		var info sdkutils.PluginInfo
-
-		installPath, installed := plugins.FindDefInstallPath(def)
-		recompile := plugins.NeedsRecompile(def)
-		installed = installed && (plugins.ValidateInstallPath(installPath) == nil)
-		if installed {
-			pluginInfo, err := sdkutils.GetPluginInfoFromPath(installPath)
+	if env.GO_ENV != env.ENV_PRODUCTION {
+		for _, def := range append(systemPlugins, localPlugins...) {
+			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
 			if err != nil {
-				log.Printf("Error getting plugin info from %q: %s", installPath, err.Error())
-				continue
-			}
-			info = pluginInfo
-		}
-
-		toBeRemoved := plugins.IsToBeRemoved(info.Package)
-		fmt.Printf("%s is to be removed? %t\n", info.Package, toBeRemoved)
-
-		if toBeRemoved {
-			log.Printf("Plugin %q is marked for removal, uninstalling...", info.Package)
-
-			if err := plugins.UninstallPlugin(info.Package, g.CoreAPI.SqlDB()); err != nil {
-				log.Printf("Error removing %q plugin: %s", info.Package, err.Error())
-			} else {
-				log.Printf("Successfully removed %q plugin", info.Package)
-				continue
-			}
-		}
-
-		if plugins.HasPendingUpdate(info.Package) {
-			log.Printf("Plugin %q has a pending update, installing...", info.Package)
-			err := plugins.MovePendingUpdate(info.Package)
-			if err != nil {
-				log.Printf("Error installing pending update for %q: %s", info.Package, err.Error())
-			} else {
-				log.Printf("Successfully installed update for %q", info.Package)
-				continue
-			}
-		}
-
-		// TODO: handle broken plugins
-		if installed && !recompile {
-			// bp.AppendLog(fmt.Sprintf("Plugin %q is already installed, skipping.", info.Package))
-			log.Printf("Plugin %q is already installed, skipping.", info.Package)
-			continue
-		}
-
-		// create backup, since we are going to reinstall or recompile the plugin
-		if installed {
-			if err := plugins.CreateBackup(info.Package); err != nil {
-				// bp.AppendLog(fmt.Sprintf("Error creating backup for plugin %q: %s", info.Package, err.Error()))
-				log.Printf("Error creating backup for plugin %q: %s", info.Package, err.Error())
-				continue
-			}
-
-			if err := os.RemoveAll(installPath); err != nil {
-				// bp.AppendLog(fmt.Sprintf("Error removing plugin %q: %s", info.Package, err.Error()))
-				log.Printf("Error removing plugin %q: %s", info.Package, err.Error())
-				continue
-			}
-		}
-
-		info, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true})
-		if err != nil {
-			// bp.AppendLog(fmt.Sprintf("Error installing plugin %q: %s", def.String(), err.Error()))
-			log.Printf("Error installing plugin %q: %s", def.String(), err.Error())
-			if plugins.HasBackup(info.Package) {
-				// bp.AppendLog(fmt.Sprintf("Restoring backup for plugin %q", info.Package))
-				log.Printf("Restoring backup for plugin %q", info.Package)
-				if err := plugins.RestoreBackup(info.Package); err != nil {
-					// bp.AppendLog(fmt.Sprintf("Error restoring backup for plugin %q: %s", info.Package, err.Error()))
-					log.Printf("Error restoring backup for plugin %q: %s", info.Package, err.Error())
-				}
-			}
-		} else {
-			// bp.AppendLog(fmt.Sprintf("Successfully installed %q plugin", info.Package))
-			log.Printf("Successfully installed %q plugin", info.Package)
-			if plugins.HasBackup(info.Package) {
-				plugins.RemoveBackup(info.Package)
-			}
-			if plugins.HasPendingUpdate(info.Package) {
-				plugins.RemovePendingUpdate(info.Package)
+				panic(fmt.Sprintf("Error installing plugin %s: %v", def.LocalPath, err))
 			}
 		}
 	}
@@ -135,6 +58,10 @@ func InitPlugins(g *api.CoreGlobals) {
 		}
 
 		migdir := filepath.Join(dir, "resources/migrations")
+		if !sdkutils.FsExists(migdir) {
+			continue
+		}
+
 		if err := migrate.MigrateUp(db, migdir); err != nil {
 			log.Printf("Error in running migration for plugin %s: %+v\n", migdir, err)
 		}

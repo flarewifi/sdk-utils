@@ -24,22 +24,22 @@ TMP_DIR="$(mktemp -d)"
 echo "Temporary working directory created at: $TMP_DIR"
 
 if [ ! -d "$PLUGIN_DIR/resources/queries" ]; then
-  echo "queries directory not found in plugin: $PLUGIN_DIR/resources/queries"
-  echo "skipping sqlc generation."
-  exit 0
+    echo "queries directory not found in plugin: $PLUGIN_DIR/resources/queries"
+    echo "skipping sqlc generation."
+    exit 0
 fi
 
 # Copy core migrations and queries files to temp directory
 (
-  if [ $CORE_DIR = $PLUGIN_DIR ]; then
-      echo "Core and plugin directories are the same. Skipping copy of core files."
-  else
-    ./scripts/copy-sql.sh "core" "$TMP_DIR" "$DRIVER"
-    # Remove core queries
-    rm -rf "$TMP_DIR/resources/queries"
-  fi
+    if [ $CORE_DIR = $PLUGIN_DIR ]; then
+        echo "Core and plugin directories are the same. Skipping copy of core files."
+    else
+        ./scripts/copy-sql.sh "core" "$TMP_DIR" "$DRIVER"
+        # Remove core queries
+        rm -rf "$TMP_DIR/resources/queries"
+    fi
 
-  ./scripts/copy-sql.sh "$PLUGIN_DIR" "$TMP_DIR" "$DRIVER"
+    ./scripts/copy-sql.sh "$PLUGIN_DIR" "$TMP_DIR" "$DRIVER"
 )
 
 # Run sqlc generate

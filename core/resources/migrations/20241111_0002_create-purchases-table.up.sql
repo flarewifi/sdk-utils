@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS purchases (
     any_price BOOLEAN NOT NULL DEFAULT FALSE,
     callback_plugin VARCHAR(255) NOT NULL,
     callback_route VARCHAR(510) NOT NULL,
-    metadata JSONB NOT NULL DEFAULT '{}',
+    metadata TEXT NOT NULL DEFAULT '{}',
 
     wallet_debit DECIMAL(8, 2) NOT NULL DEFAULT 0.0,
     wallet_tx_id INTEGER DEFAULT NULL,
