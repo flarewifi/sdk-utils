@@ -38,7 +38,7 @@ func CopyPluginFiles(pluginSrc string, dest string) (err error) {
 func CopyPluginFilesMono(pluginSrc string, dest string) (err error) {
 	dontCopyFiles := []string{
 		"plugin.so",
-		"resources/migrations",
+		"resources/queries",
 	}
 
 	if err := FsEnsureDir(dest); err != nil {
