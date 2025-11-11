@@ -62,13 +62,6 @@ func (n *NotificationAPI) UpdateNotificationStatus(ctx context.Context, id int64
 	return tx.Commit()
 }
 
-func (n *NotificationAPI) GetUnreadNotificationsRoute() NotificationRoutes {
-	return NotificationRoutes{
-		GetUnreadRoute: n.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin.notification.unread"),
-		UpdateRoute:    n.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin.notification.update"),
-	}
-}
-
 func (n *NotificationAPI) sendEvent(api *PluginApi, notif *sdkapi.Notification) {
 	accts, err := api.AcctAPI.GetAll()
 	if err != nil {
@@ -86,4 +79,8 @@ func (n *NotificationAPI) sendEvent(api *PluginApi, notif *sdkapi.Notification) 
 	for _, acct := range accts {
 		acct.Emit(sdkapi.FlareNotificationEvent, data)
 	}
+}
+
+func (n *NotificationAPI) GetNotificationByID(ctx context.Context, id int64) (sdkapi.Notification, error) {
+	return n.models.Notification().GetNotificationByID(ctx, id)
 }

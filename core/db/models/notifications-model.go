@@ -65,3 +65,21 @@ func (nm *NotificationModel) UpdateNotificationStatus(tx *sql.Tx, ctx context.Co
 		ID:     id,
 	})
 }
+
+func (nm *NotificationModel) GetNotificationByID(ctx context.Context, id int64) (sdkapi.Notification, error) {
+	q := nm.db.Queries
+
+	dbNotif, err := q.GetByID(ctx, id)
+	if err != nil {
+		return sdkapi.Notification{}, fmt.Errorf("get unread notifications error: %w", err)
+	}
+
+	return sdkapi.Notification{
+		ID:        dbNotif.ID,
+		Subject:   dbNotif.Subject,
+		Content:   dbNotif.Content,
+		Status:    sdkapi.NotificationStatus(dbNotif.Status),
+		CreatedAt: dbNotif.CreatedAt.In(time.Local),
+		UpdatedAt: dbNotif.UpdatedAt.In(time.Local),
+	}, nil
+}

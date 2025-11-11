@@ -264,7 +264,15 @@ func AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></main></div></div><!-- Notification Modal --><div class=\"modal fade\" id=\"notifModal\" tabindex=\"-1\" aria-labelledby=\"notifModalTitle\" aria-hidden=\"true\"><div class=\"modal-dialog modal-dialog-centered\"><div class=\"modal-content\"><div class=\"modal-header\"><h5 class=\"modal-title fs-6\" id=\"notifModalTitle\"></h5></div><div class=\"modal-body\"><div id=\"notifModalContent\"></div><small class=\"text-muted d-block mt-3\" id=\"notifModalDate\"></small></div><div class=\"modal-footer\"><button type=\"button\" class=\"btn btn-secondary\" data-bs-dismiss=\"modal\">Close</button></div></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></main></div></div><!-- Notification Modal --><div class=\"modal fade\" id=\"notifModal\" tabindex=\"-1\" aria-labelledby=\"notifModalTitle\" aria-hidden=\"true\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = ShowNotificationContent(api, sdkapi.Notification{}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

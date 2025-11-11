@@ -59,9 +59,4 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Post("/reboot", adminctrl.RebootCtrl(g)).Name("admin.power.reboot")
 		subrouter.Post("/shutdown", adminctrl.ShutdownCtrl(g)).Name("admin.power.shutdown")
 	})
-
-	adminR.Group("/notifications", func(subrouter sdkapi.IHttpRouterInstance) {
-		subrouter.Get("/unread", adminctrl.GetUnreadNotificationsCtrl(g)).Name("admin.notification.unread")
-		subrouter.Post("/update", adminctrl.UpdateNotificationCtrl(g)).Name("admin.notification.update")
-	})
 }

@@ -132,22 +132,16 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 					</main>
 				</div>
 			</div>
+
 			<!-- Notification Modal -->
-			<div class="modal fade" id="notifModal" tabindex="-1" aria-labelledby="notifModalTitle" aria-hidden="true">
-				<div class="modal-dialog modal-dialog-centered">
-					<div class="modal-content">
-						<div class="modal-header">
-							<h5 class="modal-title fs-6" id="notifModalTitle"></h5>
-						</div>
-						<div class="modal-body">
-							<div id="notifModalContent"></div>
-							<small class="text-muted d-block mt-3" id="notifModalDate"></small>
-						</div>
-						<div class="modal-footer">
-							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-						</div>
-					</div>
-				</div>
+			<div 
+				class="modal fade" 
+				id="notifModal" 
+				tabindex="-1" 
+				aria-labelledby="notifModalTitle" 
+				aria-hidden="true"
+			>
+				@ShowNotificationContent(api, sdkapi.Notification{})
 			</div>
 			@colorModes()
 			@data.Components.Scripts()

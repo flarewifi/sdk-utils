@@ -37,10 +37,18 @@ templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 	} else {
 		for _, notif := range notifs {
 			<li class="d-flex flex-column p-2 border-bottom">
-				<a class="dropdown-item text-wrap notif-item text-center">
-					🔔{ notif.Subject } <br>
-					<small class="text-muted text-end mb-2">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+				<a
+					class="dropdown-item text-wrap notif-item text-center"
+					hx-get={ api.Http().Helpers().UrlForRoute("admin.notification.show", "id", fmt.Sprint(notif.ID)) }
+					hx-target="#notifModal"
+					hx-swap="innerHTML"
+					data-bs-toggle="modal"
+					data-bs-target="#notifModal"
+				>
+					🔔{ notif.Subject }<br>
+					<small class="text-muted">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
 				</a>
+
 				<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
 					hx-post={ api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)) }
 					hx-target="#notification"
@@ -63,4 +71,37 @@ templ NotificationsBellCount(notifs []sdkapi.Notification) {
 	>
 		{ fmt.Sprint(notifsCount) }
 	</span>
+}
+
+templ ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) {
+	<div class="modal-dialog modal-dialog-centered modal-l w-100">
+		<div class="modal-content">
+			<div class="modal-header border-0">
+			<h5 class="modal-title fs-5 fw-bold">{ notif.Subject }</h5>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+
+			<div class="modal-body px-4 py-3">
+			<div id="notifModalContent">
+				<div class="p-3 bg-body-tertiary rounded">
+				{ notif.Content }
+				</div>
+			</div>
+			<small class="text-muted d-block mt-3 text-end">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+			</div>
+
+			<div class="modal-footer border-0">
+			<button 
+				type="button" 
+				class="btn btn-secondary" 
+				data-bs-dismiss="modal"
+				hx-post={ api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)) }
+				hx-target="#notification"
+				hx-swap="innerHTML"
+			>
+				Close
+			</button>
+			</div>
+		</div>
+	</div>
 }

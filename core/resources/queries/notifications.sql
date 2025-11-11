@@ -20,3 +20,11 @@ SET
 WHERE
   id = @id;
 
+-- name: GetByID :one
+SELECT *
+FROM
+  notifications
+WHERE
+  id = @id
+LIMIT
+  1;

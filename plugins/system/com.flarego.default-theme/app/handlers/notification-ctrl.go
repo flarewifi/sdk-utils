@@ -31,7 +31,6 @@ func NotificationsListCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 			notifs = []sdkapi.Notification{}
 		}
 
-		log.Printf("notifs: %+v\n", notifs)
 		view := admin.NotificationsList(api, notifs)
 		view.Render(r.Context(), w)
 	}
@@ -44,18 +43,17 @@ func UpdateNotificationCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 		id := vars["id"]
 		idInt := sdkutils.StrToInt64(id)
 
+		var notifs []sdkapi.Notification
 		if idInt == 0 {
 			api.Logger().Error("No valid ID.")
-			return
 		}
 
 		err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead)
 		if err != nil {
 			api.Logger().Error(fmt.Sprintf("update notifications error: %v", err))
-			return
 		}
 
-		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
+		notifs, err = notifsAPI.GetUnreadNotifications(r.Context())
 		if err != nil {
 			log.Printf("get notifications error: %v", err)
 			notifs = []sdkapi.Notification{}
@@ -69,6 +67,14 @@ func UpdateNotificationCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 func NotificationsBellCountCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		notifsAPI := api.Notification()
+		vars := api.Http().MuxVars(r)
+		id := vars["id"]
+		idInt := sdkutils.StrToInt64(id)
+
+		if idInt == 0 {
+			api.Logger().Error("No valid ID.")
+		}
+
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
 		if err != nil {
 			api.Logger().Error(fmt.Sprintf("get notifications error: %v", err))
@@ -76,6 +82,27 @@ func NotificationsBellCountCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 		}
 
 		view := admin.NotificationsBellCount(notifs)
+		view.Render(r.Context(), w)
+	}
+}
+
+func ShowNotificationContentCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		notifsAPI := api.Notification()
+		vars := api.Http().MuxVars(r)
+		id := vars["id"]
+		idInt := sdkutils.StrToInt64(id)
+
+		if idInt == 0 {
+			api.Logger().Error("No valid ID.")
+		}
+
+		notif, err := notifsAPI.GetNotificationByID(r.Context(), idInt)
+		if err != nil {
+			api.Logger().Error(fmt.Sprintf("get notifications error: %v", err))
+		}
+
+		view := admin.ShowNotificationContent(api, notif)
 		view.Render(r.Context(), w)
 	}
 }

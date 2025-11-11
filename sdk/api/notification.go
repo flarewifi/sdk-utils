@@ -34,5 +34,6 @@ type Notification struct {
 type INotificationAPI interface {
 	AddNotification(ctx context.Context, subject string, content string, t NotificationType) error
 	GetUnreadNotifications(ctx context.Context) ([]Notification, error)
+	GetNotificationByID(ctx context.Context, id int64) (Notification, error)
 	UpdateNotificationStatus(ctx context.Context, id int64, status NotificationStatus) error
 }
