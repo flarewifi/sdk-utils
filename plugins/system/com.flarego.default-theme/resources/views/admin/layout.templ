@@ -65,27 +65,7 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 					</form>
 					<!-- Notifications -->
 					<form id="notification">
-						<div class="dropdown w-100 position-relative">
-							<button
-								class="btn position-relative p-0 border-0 bg-transparent"
-								id="notifDropdown"
-								data-bs-toggle="dropdown"
-								hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.count") }
-								hx-trigger={ fmt.Sprintf("sse:%s", sdkapi.FlareNotificationEvent) }
-							>
-								@NotificationsBellCount(data.Notifications)
-							</button>
-							<ul
-								id="notifDropdownMenu"
-								class="dropdown-menu dropdown-menu-end w-100 w-md-50"
-								style="min-width: 320px;"
-								hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.list") }
-                                hx-trigger={ fmt.Sprintf("sse:%s", sdkapi.FlareNotificationEvent) }
-							>
-								<!-- Notifications will be appended here -->
-								@NotificationsList(api, data.Notifications)
-							</ul>
-						</div>
+						@NotificationForm(api, data.Notifications)
 					</form>
 				</div>
 			</header>
