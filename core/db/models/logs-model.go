@@ -51,8 +51,8 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 	limit := opts.PerPage
 
 	searchOpts := queries.SearchLogsParams{
-		Offset:     int64(offset),
-		Limit:      int64(limit),
+		RowOffset:  int64(offset),
+		RowLimit:   int64(limit),
 		Package:    opts.Package,
 		Level:      opts.Level,
 		SearchText: opts.SearchText,

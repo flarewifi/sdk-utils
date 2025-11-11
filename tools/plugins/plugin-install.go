@@ -18,28 +18,15 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-type PluginMetadata struct {
-	Def sdkutils.PluginSrcDef
-}
-
 func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (info sdkutils.PluginInfo, err error) {
 	switch def.Src {
 	case sdkutils.PluginSrcZip:
-		if HasCache(def.LocalPath) {
-			return InstallFromLocalPath(db, def, opts)
-		}
 		info, err = InstallFromLocalPath(db, def, opts)
 
 	case sdkutils.PluginSrcGit:
-		if HasCache(def.LocalPath) {
-			return InstallFromLocalPath(db, def, opts)
-		}
 		info, err = InstallFromGitSrc(db, def, opts)
 
 	case sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem:
-		if HasCache(def.LocalPath) {
-			return InstallFromLocalPath(db, def, opts)
-		}
 		info, err = InstallFromLocalPath(db, def, opts)
 
 	case sdkutils.PluginSrcStore:
@@ -53,14 +40,17 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 }
 
 func InstallFromLocalPath(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (info sdkutils.PluginInfo, err error) {
-	log.Println("Installing plugin from local path: " + def.LocalPath)
+	fmt.Println("Installing plugin from local path: " + def.LocalPath)
+	sdkutils.PrettyPrint(def)
 
 	info, err = sdkutils.GetPluginInfoFromPath(def.LocalPath)
 	if err != nil {
 		return
 	}
 
-	err = InstallPlugin(def.LocalPath, db, InstallOpts{Def: def, RemoveSrc: false})
+	opts.RemoveSrc = false
+
+	err = InstallPlugin(def.LocalPath, db, opts)
 	if err != nil {
 		return
 	}
@@ -160,6 +150,7 @@ type InstallOpts struct {
 
 func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	log.Println("Installing plugin: ", pluginSrc)
+	sdkutils.PrettyPrint(opts)
 
 	var buildpath string
 

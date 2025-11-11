@@ -1,1 +1,7 @@
+data/config
+data/storage
 !data/plugins/local/*
+.tmp/
+.bin/
+plugins/installed
+output/

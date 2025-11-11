@@ -137,6 +137,11 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		outname := strings.TrimSuffix(filename, ext)
 		indexFile := filepath.Join(distPath, outname+"_index"+ext)
 
+		// Ensure parent directory exists for nested filenames
+		if err = sdkutils.FsEnsureDir(filepath.Dir(indexFile)); err != nil {
+			return
+		}
+
 		// Import all files into one file
 		indexContent := ""
 		for _, f := range files {
@@ -169,6 +174,11 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		distPath = filepath.Join(pluginDir, DistDir)
 		outfile := filepath.Join(distPath, outname+ext)
 
+		// Ensure parent directory exists for nested filenames
+		if err = sdkutils.FsEnsureDir(filepath.Dir(outfile)); err != nil {
+			return
+		}
+
 		var result api.BuildResult
 		switch ext {
 		case ".js":
@@ -189,6 +199,11 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 
 		for _, out := range result.OutputFiles {
 			fmt.Println("OutputFile: ", out.Path)
+
+			// Ensure parent directory exists for nested filenames
+			if err = sdkutils.FsEnsureDir(filepath.Dir(out.Path)); err != nil {
+				return
+			}
 
 			if err = sdkutils.FsWriteFile(out.Path, out.Contents); err != nil {
 				return

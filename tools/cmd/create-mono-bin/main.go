@@ -8,6 +8,7 @@ import (
 	"tools"
 	"tools/config"
 	"tools/plugins"
+	"tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -55,7 +56,7 @@ func main() {
 		}
 
 		if err := plugins.WriteMetadata(p, info.Package); err != nil {
-			panic(err)
+			panic(fmt.Errorf("failed to write metadata for plugin %s: %w", info.Name, err))
 		}
 
 		installPath := filepath.Join(sdkutils.PathPluginInstallDir, info.Package)
@@ -77,8 +78,10 @@ func main() {
 		goArch = runtime.GOARCH
 	}
 
+	goTags := tags.GetBuildTags()
 	env := []string{
 		"GOARCH=" + goArch,
+		"GO_TAGS=" + goTags,
 	}
 
 	if goArch == "amd64" {
@@ -87,9 +90,8 @@ func main() {
 
 	flareCliMain := filepath.Join(sdkutils.PathCoreDir, "internal/cli/main.go")
 	opts := sdkutils.GoBuildOpts{
-		BuildTags: os.Getenv("GO_TAGS") + " mono sqlite",
+		BuildTags: goTags,
 		Env:       env,
-		// GoArch:    goArch,
 	}
 
 	fmt.Println("Building flare CLI for mono with:")
@@ -107,6 +109,8 @@ func main() {
 		"core/go.mod",
 		"core/plugin.json",
 		"core/sqlc.yml",
+		"core/sqlc.postgres.yml",
+		"core/sqlc.sqlite.yml",
 		"core/resources/assets/dist",
 		"core/resources/assets/public",
 		"core/resources/migrations",

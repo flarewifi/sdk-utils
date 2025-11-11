@@ -51,7 +51,9 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 		session.deviceId = s.DeviceID
 		session.sessionType = s.SessionType
 		session.timeSecs = int(s.TimeSecs)
-		session.dataMb = s.DataMbytes
+		if s.DataMbytes.Valid {
+			session.dataMb = s.DataMbytes.Float64
+		}
 		session.timeCons = int(s.ConsumptionSecs)
 		session.dataCons = s.ConsumptionMb
 		session.expDays = expDays
@@ -167,7 +169,7 @@ func (self *Session) Update(tx *sql.Tx, ctx context.Context, devId int64, t stri
 		DeviceID:        devId,
 		SessionType:     t,
 		TimeSecs:        int64(secs),
-		DataMbytes:      mb,
+		DataMbytes:      sql.NullFloat64{Float64: mb, Valid: true},
 		ConsumptionSecs: int64(timecon),
 		ConsumptionMb:   datacon,
 		StartedAt:       startedTime,
