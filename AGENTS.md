@@ -20,18 +20,18 @@
 
 ## Project Structure
 
-- `@go.work.default` - Copied to `@go.work`, to be able to work on multiple Go modules
-- `@scripts/` - Scripts that need to run outside of Go context
-- `@sdk/utils/` Go utilities that can be reused in the core and plugins
-- `@sdk/api/` Go interfaces and structs API to build a plugin
-- `@sdk/mkdocs/` Documentation for the `@sdk/api/` usage
-- `@core/` The core of the system, it initializes the application and all the installed plugins
-- `@core/internal/api/` Contains the implementation of `@sdk/api/`
-- `@core/db/` Contains the Go database queries generated from `@core/resources/queries/`
-- `@core/resources/assets/` Contains the javascript and css
-- `@core/resources/views/` Contains the `templ` files for our views
-- `@core/internal/web/` Contains routing, navigation, middlewares and controllers/handlers
-- Each plugin has a corresponding `resources` directory similar to `@core/resources/`
+- `go.work.default` - Copied to `go.work`, to be able to work on multiple Go modules
+- `scripts/` - Scripts that need to run outside of Go context
+- `sdk/utils/` Go utilities that can be reused in the core and plugins
+- `sdk/api/` Go interfaces and structs API to build a plugin
+- `sdk/mkdocs/` Documentation for the `sdk/api/` usage
+- `core/` The core of the system, it initializes the application and all the installed plugins
+- `core/internal/api/` Contains the implementation of `sdk/api/`
+- `core/db/` Contains the Go database queries generated from `core/resources/queries/`
+- `core/resources/assets/` Contains the javascript and css
+- `core/resources/views/` Contains the `templ` files for our views
+- `core/internal/web/` Contains routing, navigation, middlewares and controllers/handlers
+- Each plugin has a corresponding `resources` directory similar to `core/resources/`
 
 ## Tech Stack
 
@@ -57,6 +57,6 @@
 - We use `sqlc` named params in our sql queries. For example: `select * from devices where mac_address = @mac_address`
 - Our queries must be compatible with both `postgres` and `sqlite`
 - For queries that can't work on both database, we create a separate sql files under `resources/queries/sqlite` and `resources/queries/postgres`
-- Separate queries must produce similar Go code
-- For floats, we use `float64` or `sqlc.NullFloat64` type. Column overrides are configured in `@core/sqlc.postgres.yml` and `@core/sqlc.sqlite.yml`
+- Similar queries for `postgres` and `sqlite` must produce similar Go code
+- Column overrides are configured in `core/sqlc.postgres.yml` and `core/sqlc.sqlite.yml`
 - For IDs, we use `int64` type
