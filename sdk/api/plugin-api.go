@@ -65,9 +65,6 @@ type IPluginApi interface {
 	// Returns an instance of the client manager.
 	SessionsMgr() ISessionsMgrApi
 
-	// Returns an instance of database/sql package from go standard library.
-	// SqlDb() *pgxpool.Pool
-
 	// Returns an instance of the themes API.
 	Themes() IThemesApi
 

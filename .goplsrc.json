@@ -11,6 +11,8 @@
     "-node_modules",
     "-sdk/libs",
     "-.tmp",
+    "-output",
+    "-plugins/installed",
     "+plugins/local"
   ]
 }

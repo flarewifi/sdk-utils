@@ -31,8 +31,14 @@ type Notification struct {
 	UpdatedAt time.Time          `json:"updated_at"`
 }
 
+type AddNotificationParams struct {
+	Subject string
+	Content string
+	Type    NotificationType
+}
+
 type INotificationAPI interface {
-	AddNotification(ctx context.Context, subject string, content string, t NotificationType) error
+	AddNotification(ctx context.Context, params AddNotificationParams) error
 	GetUnreadNotifications(ctx context.Context) ([]Notification, error)
 	GetNotificationByID(ctx context.Context, id int64) (Notification, error)
 	UpdateNotificationStatus(ctx context.Context, id int64, status NotificationStatus) error

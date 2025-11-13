@@ -288,7 +288,12 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			if err := sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: extract error: " + err.Error())
-				if err := notifAPI.AddNotification(ctx, "Plugin Installation Failed", zipErrorMsg, sdkapi.NotificationTypeError); err != nil {
+				// if err := notifAPI.AddNotification(ctx, "Plugin Installation Failed", zipErrorMsg, sdkapi.NotificationTypeError); err != nil {
+				if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
+					Subject: "Plugin installation failed",
+					Content: zipErrorMsg,
+					Type:    sdkapi.NotificationTypeError,
+				}); err != nil {
 					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
 					return
 				}
@@ -301,7 +306,11 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: find plugin src error: " + err.Error())
 
-				if err := notifAPI.AddNotification(ctx, "Plugin Installation Failed", zipErrorMsg, sdkapi.NotificationTypeError); err != nil {
+				if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
+					Subject: "Plugin installation failed",
+					Content: zipErrorMsg,
+					Type:    sdkapi.NotificationTypeError,
+				}); err != nil {
 					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
 					return
 				}
@@ -313,7 +322,11 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			if err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("zip install error: get plugins info error: " + err.Error())
-				if err := notifAPI.AddNotification(ctx, "Plugin Installation Failed", zipErrorMsg, sdkapi.NotificationTypeError); err != nil {
+				if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
+					Subject: "Plugin installation failed",
+					Content: zipErrorMsg,
+					Type:    sdkapi.NotificationTypeError,
+				}); err != nil {
 					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
 					return
 				}
@@ -324,7 +337,11 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			pluginCachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
 			if err := sdkutils.FsCopy(pluginSrc, pluginCachePath); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
-				if err := notifAPI.AddNotification(ctx, "Plugin Installation Failed", zipErrorMsg, sdkapi.NotificationTypeError); err != nil {
+				if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
+					Subject: "Plugin installation failed",
+					Content: zipErrorMsg,
+					Type:    sdkapi.NotificationTypeError,
+				}); err != nil {
 					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
 					return
 				}
@@ -340,7 +357,11 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 			if _, err := plugins.InstallFromLocalPath(g.Database.DB, def, plugins.InstallOpts{ForceInstall: false}); err != nil {
 				UpdateStatus(pluginName, FailedStatus, zipErrorMsg, 0)
-				if err := notifAPI.AddNotification(ctx, "Plugin Installation Failed", zipErrorMsg, sdkapi.NotificationTypeError); err != nil {
+				if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
+					Subject: "Plugin installation failed",
+					Content: zipErrorMsg,
+					Type:    sdkapi.NotificationTypeError,
+				}); err != nil {
 					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", pluginName, err.Error()))
 					return
 				}
@@ -362,7 +383,12 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 
-			if err := notifAPI.AddNotification(ctx, "Plugin Installation Successful", successMsg, sdkapi.NotificationTypeSuccess); err != nil {
+			// if err := notifAPI.AddNotification(ctx, "Plugin Installation Successful", successMsg, sdkapi.NotificationTypeSuccess); err != nil {
+			if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
+				Subject: "Plugin Installation Successful",
+				Content: successMsg,
+				Type:    sdkapi.NotificationTypeSuccess,
+			}); err != nil {
 				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via zip file: %v ", info.Package, err.Error()))
 				return
 			}
@@ -421,7 +447,11 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				UpdateStatus(pluginName, FailedStatus, githubErrMsg, 0)
 				g.CoreAPI.LoggerAPI.Error("InstallFromGitSrc: " + err.Error())
 
-				if err := notifAPI.AddNotification(ctx, "Plugin Installation Failed", githubErrMsg, sdkapi.NotificationTypeError); err != nil {
+				if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
+					Subject: "Plugin Installation Failed",
+					Content: githubErrMsg,
+					Type:    sdkapi.NotificationTypeError,
+				}); err != nil {
 					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via github: %v ", pluginName, err.Error()))
 					return
 				}
@@ -442,7 +472,11 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", info.Package)
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 
-			if err := notifAPI.AddNotification(ctx, "Plugin Installation Successful", successMsg, sdkapi.NotificationTypeSuccess); err != nil {
+			if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
+				Subject: "Plugin Installation Successful",
+				Content: successMsg,
+				Type:    sdkapi.NotificationTypeSuccess,
+			}); err != nil {
 				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("Add notification error for %v via github: %v ", info.Package, err.Error()))
 				return
 			}

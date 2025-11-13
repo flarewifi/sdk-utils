@@ -26,12 +26,12 @@ type NotificationAPI struct {
 	models *models.Models
 }
 
-func (n *NotificationAPI) AddNotification(ctx context.Context, subject string, content string, typ sdkapi.NotificationType) error {
+func (n *NotificationAPI) AddNotification(ctx context.Context, params sdkapi.AddNotificationParams) error {
 	notif := &sdkapi.Notification{
-		Subject: subject,
-		Content: content,
+		Subject: params.Subject,
+		Content: params.Content,
+		Type:    params.Type,
 		Status:  sdkapi.NotificationStatusUnread,
-		Type:    typ,
 	}
 
 	_, err := n.models.Notification().Create(ctx, notif)
