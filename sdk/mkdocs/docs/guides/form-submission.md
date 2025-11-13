@@ -88,25 +88,21 @@ templ SampleView(api sdkapi.IPluginApi, errMap map[string]string) {
 
 ## Rendering the form
 
-To render the form in our views, first we need to get the form's template from the HTML we created previously,
-and then render that to our view. To include form validation, we need to pass the result from form API's [Errors](../api/http-forms-api.md#errors) method to our template:
+To render the form in our views, we need to pass the validation errors from the form API's [Errors](../api/http-forms-api.md#errors) method to our template:
 
 ```go
 // handler
 func handler(w http.ResponseWriter, r *http.Request) {
-   res := api.Http().Response()
+    res := api.Http().Response()
 
     // Error map from form's API to use for validation.
     errMap := api.Http().Forms().Errors(w, r, views.SampleForm)
 
     // Retrieve our custom form template.
     sampleViewForm := views.SampleView(api, errMap)
+    
+    // Render form to the admin view
     res.AdminView(w, r, sdkapi.ViewPage{PageContent: sampleViewForm})
-
-    // render form to the admin view
-    api.Http().HttpResponse().AdminView(w, r, sdkapi.ViewPage{
-        PageContent: formTpl,
-    })
 }
 ```
 In the example above, the error map is used to handle form validations. It’s important that the form and field names match, so that each validation error is displayed with the correct input field.

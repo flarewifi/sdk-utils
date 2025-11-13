@@ -75,14 +75,24 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 				"search_text": searchTxt,
 			},
 		})
-		searchFormTpl, err := g.CoreAPI.HttpAPI.Forms().GetFormTemplate("logs-form", r)
-		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
+
+		// Collect package names from all plugins
+		var packages []string
+		pkgs := g.PluginMgr.All()
+		for _, p := range pkgs {
+			info := p.Info()
+			packages = append(packages, info.Package)
 		}
 
-		logsIndex := logsview.Index(g.CoreAPI, result.Logs, searchFormTpl, pagination)
+		searchData := logsview.LogsSearchData{
+			Packages:   packages,
+			Package:    pkg,
+			Level:      level,
+			SearchText: searchTxt,
+			ActionURL:  g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:search"),
+		}
+
+		logsIndex := logsview.Index(g.CoreAPI, result.Logs, searchData, pagination)
 
 		g.CoreAPI.HttpAPI.Response().AdminView(w, r, sdkapi.ViewPage{
 			PageContent: logsIndex,
@@ -92,21 +102,14 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 
 func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		searchForm, err := g.CoreAPI.HttpAPI.Forms().ParseForm("logs-form", w, r)
-		if err != nil {
+		if err := r.ParseForm(); err != nil {
 			g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:logs:index")
 			return
 		}
 
-		searchLogsErr := errors.New(g.CoreAPI.Translate("error", "search_logs_error"))
-
-		pkg, err := searchForm.GetStringValue("search", "package")
-		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-
-			return
-		}
+		pkg := r.FormValue("package")
+		level := r.FormValue("level")
+		searchTxt := r.FormValue("search_text")
 
 		searchURL := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index")
 
@@ -116,22 +119,8 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 			query.Add("package", pkg)
 		}
 
-		level, err := searchForm.GetStringValue("search", "level")
-		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
-		}
-
 		if level != "" {
 			query.Add("level", level)
-		}
-
-		searchTxt, err := searchForm.GetStringValue("search", "search_text")
-		if err != nil {
-			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
-			g.CoreAPI.LoggerAPI.Error(err.Error())
-			return
 		}
 
 		if searchTxt != "" {
