@@ -13,7 +13,11 @@ import (
 func TestSendNotifiCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		err := api.Notification().AddNotification(ctx, "This is a test notification", "info", sdkapi.NotificationTypeInfo)
+		err := api.Notification().AddNotification(ctx, sdkapi.AddNotificationParams{
+			Subject: "Test Notification",
+			Content: "This is a test notification sent from the default theme plugin.",
+			Type:    sdkapi.NotificationTypeInfo,
+		})
 		if err != nil {
 			log.Printf("add test notification error: %v", err)
 		}
