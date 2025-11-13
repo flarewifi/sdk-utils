@@ -59,7 +59,7 @@ func PortalLayout(data PortalLayoutData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("><!-- Theme Layout --><div style=\"padding: 10px; background: gray;\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("><!-- Theme Layout --><div class=\"container\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

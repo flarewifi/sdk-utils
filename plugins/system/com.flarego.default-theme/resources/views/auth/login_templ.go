@@ -33,7 +33,7 @@ func LoginPage(csrfHTML string, data sdkapi.LoginPageData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Login</title><link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\"></head><body><div class=\"position-fixed top-0 start-0 w-100 h-100 bg-secondary bg-opacity-50 d-flex justify-content-center align-items-start\"><div class=\"card shadow-lg p-4 w-100 mt-5 font-sans\" style=\"max-width: 400px;\"><h2 class=\"text-center mb-4\">Log in</h2><form id=\"login-form\" method=\"POST\" action=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div style=\"position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(128, 128, 128, 0.5);\"><div class=\"container\"><div class=\"row\"><div class=\"col-xs-12 col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3 col-lg-4 col-lg-offset-4\" style=\"margin-top: 50px;\"><div class=\"panel panel-default\"><div class=\"panel-body\" style=\"padding: 20px;\"><h2 class=\"text-center\" style=\"margin-bottom: 20px;\">Log in</h2><form id=\"login-form\" method=\"POST\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -42,7 +42,15 @@ func LoginPage(csrfHTML string, data sdkapi.LoginPageData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"mb-3\"><input type=\"text\" class=\"form-control\" name=\"username\" id=\"username\" placeholder=\"Username\" required></div><div class=\"mb-3\"><input type=\"password\" class=\"form-control\" name=\"password\" id=\"password\" placeholder=\"Password\" required></div><div class=\"mb-3\"><button type=\"submit\" class=\"btn btn-primary w-100 mb-3\">Log in</button><div class=\"form-check\"><input type=\"checkbox\" class=\"form-check-input\" id=\"remember\" name=\"remember\"> <label class=\"form-check-label\" for=\"remember\">Remember me</label></div></div></form></div></div></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templ.Raw(csrfHTML).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"form-group\"><input type=\"text\" class=\"form-control\" name=\"username\" id=\"username\" placeholder=\"Username\" required></div><div class=\"form-group\"><input type=\"password\" class=\"form-control\" name=\"password\" id=\"password\" placeholder=\"Password\" required></div><div class=\"form-group\"><button type=\"submit\" class=\"btn btn-primary btn-block\" style=\"margin-bottom: 15px;\">Log in</button><div class=\"checkbox\"><label><input type=\"checkbox\" id=\"remember\" name=\"remember\"> Remember me</label></div></div></form></div></div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

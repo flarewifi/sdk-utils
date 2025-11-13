@@ -17,7 +17,7 @@ templ PortalLayout(data PortalLayoutData) {
 		</head>
 		<body { data.Components.BodyAttrs()... }>
 			<!-- Theme Layout -->
-			<div style="padding: 10px; background: gray;">
+			<div class="container">
 				@data.Components.PageContent()
 			</div>
 			@data.Components.Scripts()
