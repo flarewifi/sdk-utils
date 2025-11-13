@@ -11,9 +11,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
-
-	// "time"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -82,9 +81,13 @@ func (s *SseSocket) Listen() {
 		select {
 		case d := <-s.msgCh:
 			data := string(d.Data)
-			payload := fmt.Sprintf("id: %d\nevent: %s\ndata: %s\n\n", s.msgId, d.MsgType, data)
-			log.Println("Socket data:", fmt.Sprintf("id: %d, event: %s, data: %s", s.msgId, d.MsgType, data))
-			fmt.Fprint(s.res, payload)
+			lines := strings.Split(data, "\n")
+			fmt.Fprintf(s.res, "id: %d\nevent: %s\n", s.msgId, d.MsgType)
+			for _, line := range lines {
+				fmt.Fprintf(s.res, "data: %s\n", line)
+			}
+			fmt.Fprint(s.res, "\n")
+			log.Printf("Socket data: id: %d, event: %s, data: %s", s.msgId, d.MsgType, data)
 			s.Flush()
 			s.msgId += 1
 		case <-s.Done():

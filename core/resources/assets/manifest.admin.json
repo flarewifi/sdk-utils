@@ -1,6 +1,7 @@
 {
   "global.js": [
-    "./admin/js/globals.js"
+    "./admin/js/globals.js",
+    "./admin/js/plugin_install_events.js"
   ],
   "global.css": [
     "./admin/css/global.css"
