@@ -1,0 +1,101 @@
+package admin
+
+import (
+	"fmt"
+	sdkapi "sdk/api"
+)
+
+templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
+	<div class="dropdown w-100 position-relative">
+		<button
+			class="btn position-relative p-0 border-0 bg-transparent"
+			id="notifDropdown"
+			data-bs-toggle="dropdown"
+			data-bs-auto-close="outside"
+			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.count") }
+			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
+		>
+			@NotificationsBellCount(notifs)
+		</button>
+		<ul
+			id="notifDropdownMenu"
+			class="dropdown-menu dropdown-menu-end w-100 w-md-50"
+			style="min-width: 320px;"
+			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.list") }
+			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
+		>
+			<!-- Notifications will be appended here -->
+			@NotificationsList(api, notifs)
+		</ul>
+	</div>
+}
+
+templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
+	if len(notifs) == 0 {
+		<li class="d-flex flex-column border-bottom">
+			<p class="dropdown-item text-wrap notif-item text-center">No new notifications</p>
+		</li>
+	} else {
+		for _, notif := range notifs {
+			<li class="d-flex flex-column p-2 border-bottom">
+				<a
+					class="dropdown-item text-wrap notif-item text-center"
+					hx-get={ api.Http().Helpers().UrlForRoute("admin.notification.show", "id", fmt.Sprint(notif.ID)) }
+					hx-target="#notifModal"
+					hx-swap="innerHTML"
+					data-bs-toggle="modal"
+					data-bs-target="#notifModal"
+				>
+					🔔{ notif.Subject }<br>
+					<small class="text-muted">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+				</a>
+
+				<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
+					hx-post={ api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)) }
+					hx-target="#notifDropdownMenu"
+					hx-swap="innerHTML"
+				>
+					Mark as Read
+				</button>
+			</li>
+		}
+	}
+}
+
+templ NotificationsBellCount(notifs []sdkapi.Notification) {
+	{{ notifsCount := len(notifs)}}
+	<i class="bi bi-bell fs-4 text-light"></i>
+	<span
+		class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+		id="notifBellCount"
+		style="font-size: 0.65rem; transform: translate(-35%, -35%);"
+	>
+		{ fmt.Sprint(notifsCount) }
+	</span>
+}
+
+templ ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) {
+	<div class="modal-dialog modal-dialog-centered modal-l w-100">
+		<div class="modal-content">
+			<div class="modal-header border-0">
+				<h5 class="modal-title fs-5 fw-bold">{ notif.Subject }</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+
+			<div class="modal-body px-4 py-3">
+				<div id="notifModalContent">
+					<div class="p-3 bg-body-tertiary rounded">
+						{ notif.Content }
+					</div>
+				</div>
+				<small class="text-muted d-block mt-3 text-end">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+			</div>
+
+			<div class="modal-footer border-0">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+					Close
+				</button>
+			</div>
+		</div>
+	</div>
+}

@@ -22,10 +22,16 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 				navItems = append(navItems, nav.Items...)
 			}
 
+			notifs, err := api.Notification().GetUnreadNotifications(r.Context())
+			if err != nil {
+				notifs = []sdkapi.Notification{}
+			}
+
 			data := admin.AdminLayoutData{
-				Components: c,
-				Navs:       navs,
-				NavItems:   navItems,
+				Components:    c,
+				Navs:          navs,
+				NavItems:      navItems,
+				Notifications: notifs,
 			}
 			layout := admin.AdminLayout(api, data)
 			if err := layout.Render(r.Context(), w); err != nil {

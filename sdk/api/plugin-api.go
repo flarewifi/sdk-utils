@@ -78,4 +78,7 @@ type IPluginApi interface {
 	Uci() IUciApi
 
 	UI() IUIApi
+
+	// Returns an instance of NotificationAPI.
+	Notification() INotificationAPI
 }

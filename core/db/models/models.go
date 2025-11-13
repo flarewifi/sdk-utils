@@ -5,13 +5,14 @@ import (
 )
 
 type Models struct {
-	deviceModel     *DeviceModel
-	sessionModel    *SessionModel
-	purchaseModel   *PurchaseModel
-	paymentModel    *PaymentModel
-	walletModel     *WalletModel
-	walletTrnsModel *WalletTrnsModel
-	logModel        *LogModel
+	deviceModel       *DeviceModel
+	sessionModel      *SessionModel
+	purchaseModel     *PurchaseModel
+	paymentModel      *PaymentModel
+	walletModel       *WalletModel
+	walletTrnsModel   *WalletTrnsModel
+	logModel          *LogModel
+	notificationModel *NotificationModel
 }
 
 func New(dtb *db.Database) *Models {
@@ -32,6 +33,7 @@ func New(dtb *db.Database) *Models {
 	models.walletModel = walletModel
 	models.walletTrnsModel = walletTrnsModel
 	models.logModel = logModel
+	models.notificationModel = NewNotificationModel(dtb, &models)
 
 	return &models
 }
@@ -62,4 +64,8 @@ func (self *Models) WalletTrns() *WalletTrnsModel {
 
 func (self *Models) Log() *LogModel {
 	return self.logModel
+}
+
+func (self *Models) Notification() *NotificationModel {
+	return self.notificationModel
 }
