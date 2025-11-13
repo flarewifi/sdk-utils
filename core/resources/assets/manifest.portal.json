@@ -5,5 +5,8 @@
   ],
   "global.css": [
     "./portal/css/globals.css"
+  ],
+  "polyfills.js": [
+    "./portal/js/polyfills.js"
   ]
 }
