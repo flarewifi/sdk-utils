@@ -7,7 +7,6 @@ import (
 	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
-	forms "core/internal/web/forms"
 	"core/internal/web/navs"
 	"core/internal/web/routes"
 )
@@ -32,7 +31,6 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 	routes.FormRoutes(g)
 
 	navs.SetAdminNavs(g)
-	forms.RegisterForms(g)
 
 	webutil.RootRouter.PathPrefix("/plugins").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
