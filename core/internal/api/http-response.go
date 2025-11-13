@@ -124,7 +124,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	self.api.ThemesAPI.PortalTheme.LayoutBuilder(w, r, layoutBuilder)
+	themesAPI.PortalTheme.LayoutBuilder(w, r, layoutBuilder)
 }
 
 func (self *HttpResponse) View(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
