@@ -33,7 +33,7 @@ func LoginPage(csrfHTML string, data sdkapi.LoginPageData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"container\"><div class=\"row\"><div class=\"col-md-6 offset-md-3\"><div class=\"py-2\">Sample error</div><div id=\"login-con\"><h1>Login</h1><form id=\"login-form\" method=\"POST\" action=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"d-flex justify-content-center align-items-center vh-100 bg-light\"><div class=\"card shadow-lg p-4\" style=\"width: 100%; max-width: 400px;\"><h2 class=\"text-center mb-4\">Login</h2><form id=\"login-form\" method=\"POST\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -55,14 +55,14 @@ func LoginPage(csrfHTML string, data sdkapi.LoginPageData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if data.UsernameErr != nil {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span type=\"text-muted\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span class=\"text-danger small\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.UsernameErr.Error())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 20, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 24, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -78,14 +78,14 @@ func LoginPage(csrfHTML string, data sdkapi.LoginPageData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if data.PasswordErr != nil {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span type=\"text-muted\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span class=\"text-danger small\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.PasswordErr.Error())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 27, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 37, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -96,7 +96,7 @@ func LoginPage(csrfHTML string, data sdkapi.LoginPageData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div><button type=\"submit\" class=\"btn btn-primary\">Login</button></form></div></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div><button type=\"submit\" class=\"btn btn-primary w-100\">Login</button></form></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
