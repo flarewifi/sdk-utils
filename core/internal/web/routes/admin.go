@@ -22,7 +22,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:dashboard")
 	}))).Methods("GET")
 
-	adminR.Get("/dashboard", adminctrl.AdminDashboardCtrl(g)).Name("admin:dashboard")
+	adminR.Get("/dashboard", adminctrl.AdminIndexCtrl(g)).Name("admin:dashboard")
 
 	// TODO: enable csrf protection
 	rootR.Handle("/login", adminLoginCtrl).Methods("GET").Name("admin:login")

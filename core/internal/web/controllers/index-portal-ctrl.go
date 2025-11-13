@@ -10,7 +10,7 @@ import (
 
 func PortalIndexPage(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, t, err := g.PluginMgr.GetPortalTheme()
+		p, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "get_portal_theme_error")
 			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(errMsg), http.StatusInternalServerError)
@@ -20,7 +20,7 @@ func PortalIndexPage(g *api.CoreGlobals) http.Handler {
 		}
 
 		page := t.PortalTheme.IndexPageFactory(w, r)
-		g.CoreAPI.HttpAPI.Response().PortalView(w, r, page)
+		p.Http().Response().PortalView(w, r, page)
 	})
 }
 

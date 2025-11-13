@@ -31,7 +31,7 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 	}
 
 	sseURL := self.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:sse")
-	assets, err := self.api.Utl.GetAdminAssetsForPage(v, self.assets)
+	assets, err := GetAdminAssetsForPage(self.api.CoreAPI, themeApi.api, self.api, v, self.assets)
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
@@ -71,17 +71,17 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 }
 
 func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
-	api := self.api.CoreAPI
 	q := r.URL.Query()
 	pageUUID := q.Get("t") // Prevent caching
+	coreAPI := self.api.CoreAPI
 
-	_, themeApi, err := self.api.PluginsMgrApi.GetPortalTheme()
+	_, themesAPI, err := self.api.PluginsMgrApi.GetAdminTheme()
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
-	assets, err := self.api.Utl.GetPortalAssetsForPage(v, self.assets)
+	assets, err := GetPortalAssetsForPage(coreAPI, themesAPI.api, self.api, v, self.assets)
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
@@ -99,8 +99,8 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
 	}
 
-	sseURL := api.HttpAPI.Helpers().UrlForRoute("portal.sse")
-	polyfillsURL := api.Http().Helpers().PortalAssetPath("polyfills.js")
+	sseURL := coreAPI.HttpAPI.Helpers().UrlForRoute("portal.sse")
+	polyfillsURL := coreAPI.Http().Helpers().PortalAssetPath("polyfills.js")
 	data := themes.PortalLayoutData{
 		PageUUID:     pageUUID,
 		Assets:       assets,
@@ -108,7 +108,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		PolyfillsURL: polyfillsURL,
 		Flash:        flash,
 	}
-	head := themes.PortalHead(self.api, data)
+	head := themes.PortalHead(self.api.CoreAPI, data)
 	scripts := themes.PortalScripts(data.Assets, flash)
 	htmlAttrs := templ.Attributes{}
 	bodyAttrs := templ.Attributes{
@@ -124,7 +124,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	themeApi.PortalTheme.LayoutBuilder(w, r, layoutBuilder)
+	self.api.ThemesAPI.PortalTheme.LayoutBuilder(w, r, layoutBuilder)
 }
 
 func (self *HttpResponse) View(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {

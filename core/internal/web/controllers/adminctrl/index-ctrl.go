@@ -7,9 +7,9 @@ import (
 	"core/internal/api"
 )
 
-func AdminDashboardCtrl(g *api.CoreGlobals) http.HandlerFunc {
+func AdminIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, t, err := g.PluginMgr.GetAdminTheme()
+		p, t, err := g.PluginMgr.GetAdminTheme()
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "get_admin_theme_error")
 			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(errMsg), http.StatusInternalServerError)
@@ -18,6 +18,6 @@ func AdminDashboardCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 		page := t.AdminTheme.IndexPageFactory(w, r)
-		g.CoreAPI.HttpAPI.Response().AdminView(w, r, page)
+		p.Http().Response().AdminView(w, r, page)
 	}
 }
