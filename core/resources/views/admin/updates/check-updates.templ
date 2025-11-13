@@ -3,12 +3,14 @@ package updatesview
 import "sdk/api"
 
 type SoftwareUpdate struct {
-	EventProgress  string
-	HasUpdate      bool
-	CurrentVersion string
-	NewVersion     string
-	IsDownloading  bool
-	IsDownloaded   bool
+	EventProgress    string
+	HasUpdate        bool
+	CurrentVersion   string
+	NewVersion       string
+	IsDownloading    bool
+	IsDownloaded     bool
+	ReleaseNotes     string
+	ReleaseNotesHTML templ.Component
 }
 
 templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) {
@@ -54,6 +56,14 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 		<div>
 			<small>{ api.Translate("label", "current_version") }: { update.CurrentVersion }</small>
 		</div>
+		if update.ReleaseNotes != "" {
+			<div class="mt-3 mb-3">
+				<strong>{ api.Translate("label", "release_notes") }:</strong>
+				<div class="alert alert-info mt-2">
+					@update.ReleaseNotesHTML
+				</div>
+			</div>
+		}
 		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("system.updates.download")) }>
 			{ api.Translate("label", "download_update") }
 		</a>
