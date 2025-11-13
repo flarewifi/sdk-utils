@@ -21,13 +21,26 @@ function responsive() {
   }
 }
 
-$window.ready(function () {
+$(document).ready(function () {
   $window.on("resize", responsive);
   responsive();
 
   $("[data-bs-target='#navbarSearch']").on("click", function () {
     if ($window.width() <= 768) {
       $("#navbarSearch input").focus();
+    }
+  });
+
+  $("#logoutBtn").on("click", function (e) {
+    e.preventDefault();
+    var confirmLogout = confirm("Are you sure you want to logout?");
+    if (confirmLogout) {
+      var logoutUrl = $(this).data("logout-url");
+      var form = document.createElement("form");
+      form.method = "POST";
+      form.action = logoutUrl;
+      document.body.appendChild(form);
+      form.submit();
     }
   });
 });

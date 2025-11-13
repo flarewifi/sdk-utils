@@ -37,4 +37,6 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 		subrouter.Get("/show/{id}", handlers.ShowNotificationContentCtrl(api)).Name("admin.notification.show")
 	})
 
+	adminR.Post("/logout", handlers.LogoutCtrl(api)).Name(RouteNameLogout)
+
 }

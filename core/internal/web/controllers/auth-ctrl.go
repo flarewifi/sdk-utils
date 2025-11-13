@@ -56,3 +56,15 @@ func AdminAuthenticateCtrl(g *api.CoreGlobals) http.Handler {
 		http.Redirect(w, r, "/admin", http.StatusSeeOther)
 	})
 }
+
+func AdminLogoutCtrl(g *api.CoreGlobals) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := g.CoreAPI.HttpAPI.Auth().SignOut(w); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, "Logged out successfully", sdkapi.FlashMsgSuccess)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	})
+}
