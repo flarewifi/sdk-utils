@@ -2,6 +2,7 @@ package adminctrl
 
 import (
 	"core/internal/api"
+	"core/internal/utils/markdown"
 	"core/internal/utils/updates"
 	updatesview "core/resources/views/admin/updates"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"tools/config"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/a-h/templ"
 )
 
 const (
@@ -98,10 +100,25 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		var update updatesview.SoftwareUpdate
 		if result.HasUpdate {
+			// Parse markdown release notes to HTML
+			var releaseNotesHTML templ.Component
+			if result.ReleaseNotes != "" {
+				htmlContent, err := markdown.ParseMarkdown(result.ReleaseNotes)
+				if err == nil {
+					releaseNotesHTML = templ.Raw(htmlContent)
+				} else {
+					// Fallback to plain text if parsing fails
+					log.Println("Error parsing markdown:", err)
+					releaseNotesHTML = templ.Raw("<pre>" + result.ReleaseNotes + "</pre>")
+				}
+			}
+
 			update = updatesview.SoftwareUpdate{
-				HasUpdate:      true,
-				NewVersion:     result.Version.String(),
-				CurrentVersion: currentVersion.String(),
+				HasUpdate:        true,
+				NewVersion:       result.Version.String(),
+				CurrentVersion:   currentVersion.String(),
+				ReleaseNotes:     result.ReleaseNotes,
+				ReleaseNotesHTML: releaseNotesHTML,
 			}
 		}
 

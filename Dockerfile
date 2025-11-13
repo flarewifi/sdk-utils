@@ -34,11 +34,13 @@ RUN mkdir -p /opt/flarehotspot /var/cache/go && \
     /var/cache/go \
     /etc/.tkn
 
-USER ubuntu
-
 # Install core go modules
 COPY ./core/go.mod ./core/go.mod
 COPY ./core/go.sum ./core/go.sum
+RUN chown -R ubuntu:ubuntu /app
+
+USER ubuntu
+
 RUN cd core && go mod download
 
 # Install additional tools

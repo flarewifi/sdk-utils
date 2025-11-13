@@ -17,6 +17,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/stretchr/testify v1.10.0
 	github.com/twitchtv/twirp v8.1.3+incompatible
+	github.com/yuin/goldmark v1.4.7
 	google.golang.org/protobuf v1.34.2
 	modernc.org/sqlite v1.28.0
 )
