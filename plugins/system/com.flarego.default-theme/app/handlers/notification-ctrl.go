@@ -59,7 +59,8 @@ func UpdateNotificationCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 			notifs = []sdkapi.Notification{}
 		}
 
-		view := admin.NotificationForm(api, notifs)
+		w.Header().Set("HX-Trigger", "notificationRead")
+		view := admin.NotificationsList(api, notifs)
 		view.Render(r.Context(), w)
 	}
 }

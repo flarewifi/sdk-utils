@@ -34,14 +34,14 @@ func NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) templ
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"dropdown w-100 position-relative\"><button class=\"btn position-relative p-0 border-0 bg-transparent\" id=\"notifDropdown\" data-bs-toggle=\"dropdown\" hx-get=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"dropdown w-100 position-relative\"><button class=\"btn position-relative p-0 border-0 bg-transparent\" id=\"notifDropdown\" data-bs-toggle=\"dropdown\" data-bs-auto-close=\"outside\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.notifications.count"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 14, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 15, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -54,7 +54,7 @@ func NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) templ
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 15, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 16, Col: 96}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -75,7 +75,7 @@ func NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) templ
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.notifications.list"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 23, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 24, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -88,7 +88,7 @@ func NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) templ
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 24, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 25, Col: 96}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -145,7 +145,7 @@ func NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) temp
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.notification.show", "id", fmt.Sprint(notif.ID)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 42, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 43, Col: 101}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -158,7 +158,7 @@ func NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) temp
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(notif.Subject)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 48, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 49, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -171,7 +171,7 @@ func NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) temp
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(notif.CreatedAt.Format("Jan 2, 2006 3:04PM"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 49, Col: 77}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 50, Col: 77}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -184,13 +184,13 @@ func NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) temp
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 53, Col: 105}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 54, Col: 105}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-target=\"#notification\" hx-swap=\"innerHTML\">Mark as Read</button></li>")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-target=\"#notifDropdownMenu\" hx-swap=\"innerHTML\">Mark as Read</button></li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -229,7 +229,7 @@ func NotificationsBellCount(notifs []sdkapi.Notification) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(notifsCount))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 72, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 73, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -271,7 +271,7 @@ func ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) t
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(notif.Subject)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 80, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 81, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -284,7 +284,7 @@ func ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) t
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(notif.Content)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 87, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 88, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -297,7 +297,7 @@ func ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) t
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(notif.CreatedAt.Format("Jan 2, 2006 3:04PM"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 90, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 91, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {

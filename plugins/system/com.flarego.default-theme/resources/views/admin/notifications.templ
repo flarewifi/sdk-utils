@@ -11,6 +11,7 @@ templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 			class="btn position-relative p-0 border-0 bg-transparent"
 			id="notifDropdown"
 			data-bs-toggle="dropdown"
+			data-bs-auto-close="outside"
 			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.count") }
 			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
 		>
@@ -51,7 +52,7 @@ templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 
 				<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
 					hx-post={ api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)) }
-					hx-target="#notification"
+					hx-target="#notifDropdownMenu"
 					hx-swap="innerHTML"
 				>
 					Mark as Read
