@@ -75,13 +75,13 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	q := r.URL.Query()
 	pageUUID := q.Get("t") // Prevent caching
 
-	pluginApi, themeApi, err := self.api.PluginsMgrApi.GetPortalTheme()
+	_, themeApi, err := self.api.PluginsMgrApi.GetPortalTheme()
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
-	assets, err := pluginApi.Utl.GetPortalAssetsForPage(v, self.assets)
+	assets, err := self.api.Utl.GetPortalAssetsForPage(v, self.assets)
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return

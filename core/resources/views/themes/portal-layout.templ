@@ -43,7 +43,6 @@ templ PortalHead(api sdkapi.IPluginApi, data PortalLayoutData) {
 }
 
 templ PortalScripts(data PortalAssets, flash *sdkapi.FlashMsg) {
-	<!-- Theme Scripts -->
 	if data.GlobalJsSrc != "" {
 		<script type="text/javascript" src={ data.GlobalJsSrc }></script>
 	}
@@ -61,39 +60,3 @@ templ PortalScripts(data PortalAssets, flash *sdkapi.FlashMsg) {
 	}
 	@livereload.LiveReloadScript()
 }
-
-// templ PortalThemeLayout(api sdkapi.IPluginApi, data PortalLayoutData) {
-// 	<!DOCTYPE html>
-// 	<html lang="en" data-bs-theme="auto">
-// 		<head>
-// 			<meta charset="utf-8"/>
-// 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-// 			<!-- Prevent page from being cached -->
-// 			<meta name="pageuuid" content={ data.PageUUID }/>
-// 			<title>{ api.Translate("label", "flare_hotspot") }</title>
-// 			<!-- Theme Stylesheets -->
-// 			<!-- Theme Head -->
-// 			@data.Head
-// 		</head>
-// 		<body hx-ext="sse" sse-connect={ data.SseURL }>
-// 			<!-- Theme Layout -->
-// 			@data.Layout
-// 			<!-- Theme Scripts -->
-// 			if data.Assets.GlobalJsSrc != "" {
-// 				<script src={ data.Assets.GlobalJsSrc }></script>
-// 			}
-// 			if data.Assets.ThemeJsSrc != "" {
-// 				<script src={ data.Assets.ThemeJsSrc }></script>
-// 			}
-// 			if data.Assets.PluginGlobalJsSrc != "" {
-// 				<script src={ data.Assets.PluginGlobalJsSrc }></script>
-// 			}
-// 			if data.Assets.PageJsSrc != "" {
-// 				<script src={ data.Assets.PageJsSrc }></script>
-// 			}
-// 			if data.Flash != nil {
-// 				<script id="flash-message" data-flash-type={ data.Flash.Type } data-flash-message={ data.Flash.Message } type="text/template"></script>
-// 			}
-// 		</body>
-// 	</html>
-// }

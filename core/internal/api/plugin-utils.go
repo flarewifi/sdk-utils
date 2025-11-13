@@ -60,7 +60,6 @@ func (self *PluginUtils) Resource(path string) string {
 }
 
 func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage, ga *GlobalAssets) (assets themes.AdminAssets, err error) {
-	// h := self.api.CoreAPI.HttpAPI.Helpers().(*HttpHelpers)
 	_, themesApi, err := self.api.PluginsMgrApi.GetAdminTheme()
 	if err != nil {
 		return
@@ -69,10 +68,6 @@ func (self *PluginUtils) GetAdminAssetsForPage(v sdkapi.ViewPage, ga *GlobalAsse
 	globalAssets := GetAssetsPaths(ga)
 	globalJsSrc := globalAssets.AdminJsSrc
 	globalCssHref := globalAssets.AdminCssHref
-
-	// globals := plugins.ReadGlobalAssetsManifest()
-	// globalJsSrc := h.DistPath(globals.AdminJsFile)
-	// globalCssHref := h.DistPath(globals.AdminCssFile)
 
 	var themeJsSrc, themeCssHref string
 	if themesApi.AdminTheme != nil {
@@ -106,11 +101,6 @@ func (self *PluginUtils) GetPortalAssetsForPage(v sdkapi.ViewPage, ga *GlobalAss
 	globalAssets := GetAssetsPaths(ga)
 	globalJsSrc := globalAssets.PortalJsSrc
 	globalCssHref := globalAssets.PortalCssHref
-
-	// globals := plugins.ReadGlobalAssetsManifest()
-	// h := self.api.CoreAPI.HttpAPI.Helpers().(*HttpHelpers)
-	// globalJsSrc := h.DistPath(globals.PortalJsFile)
-	// globalCssHref := h.DistPath(globals.PortalCssFile)
 
 	var themeJsSrc, themeCssHref string
 	if themesApi.PortalTheme != nil {
