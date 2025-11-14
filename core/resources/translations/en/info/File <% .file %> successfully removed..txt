@@ -1,1 +1,1 @@
-File <% .file %> successfully removed.
+File <% .file %> successfully removed

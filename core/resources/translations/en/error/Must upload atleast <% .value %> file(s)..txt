@@ -1,1 +1,1 @@
-Must upload atleast <% .value %> file(s).
+Must upload atleast <% .value %> file(s)

@@ -1,1 +1,1 @@
-<% .label %> must be less than <% .value %>.
+<% .label %> must be less than <% .value %>

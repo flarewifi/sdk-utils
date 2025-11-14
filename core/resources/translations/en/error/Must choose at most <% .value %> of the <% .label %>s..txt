@@ -1,1 +1,1 @@
-Must choose at most <% .value %> of the <% .label %>s.
+Must choose at most <% .value %> of the <% .label %>s

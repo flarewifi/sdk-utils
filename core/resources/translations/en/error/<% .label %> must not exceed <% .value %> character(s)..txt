@@ -1,1 +1,1 @@
-<% .label %> must not exceed <% .value %> character(s).
+<% .label %> must not exceed <% .value %> character(s)

@@ -1,1 +1,1 @@
-Must not exceed <% .value %> mb.
+Must not exceed <% .value %> mb

@@ -1,1 +1,1 @@
-Must have at least <% .value %> rows.
+Must have at least <% .value %> rows

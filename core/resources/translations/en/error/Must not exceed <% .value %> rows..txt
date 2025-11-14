@@ -1,1 +1,1 @@
-Must not exceed <% .value %> rows.
+Must not exceed <% .value %> rows

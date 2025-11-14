@@ -1,1 +1,1 @@
-Problem processing plugin installation from github.
+Problem processing plugin installation from github
