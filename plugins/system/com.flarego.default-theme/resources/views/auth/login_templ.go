@@ -50,7 +50,7 @@ func LoginPage(csrfHTML string, data sdkapi.LoginPageData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"form-group\"><input type=\"text\" class=\"form-control\" name=\"username\" id=\"username\" placeholder=\"Username\" required></div><div class=\"form-group\"><input type=\"password\" class=\"form-control\" name=\"password\" id=\"password\" placeholder=\"Password\" required></div><div class=\"form-group\"><button type=\"submit\" class=\"btn btn-primary btn-block\" style=\"margin-bottom: 15px;\">Log in</button></div></form></div></div></div></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"form-group\"><input type=\"text\" class=\"form-control\" name=\"username\" id=\"username\" placeholder=\"Username\" required></div><div class=\"form-group\"><input type=\"password\" class=\"form-control\" name=\"password\" id=\"password\" placeholder=\"Password\" required></div><div class=\"form-group\"><button type=\"submit\" class=\"btn btn-primary btn-block\" style=\"margin-bottom: 15px; background: linear-gradient(90deg, #2942d5, #1d71f9, #4d8ffb); border: none;\">Log in</button></div></form></div></div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
