@@ -1,0 +1,1 @@
+confirm_clear_used_voucher_message

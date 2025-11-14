@@ -23,38 +23,38 @@ templ InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) {
 		jsonData := template.JS(b)
 	}}
 
-	<h1>{ api.Translate("label", "install_plugin") }</h1>
+	<h1>{ api.Translate("label", "Install Plugin") }</h1>
 	<hr/>
 	<div x-data={ fmt.Sprintf("pluginInstaller(%s)", jsonData) }>
 		@ProgressBar()
 		<form class="form" method="POST" enctype="multipart/form-data" x-bind:action="action_url" @submit.prevent="handleSubmit($event)">
 			<div class="form-group mb-3">
-				<label>{ api.Translate("label", "source") }:</label>
+				<label>{ api.Translate("label", "Source") }:</label>
 				<select name="src" class="form-control" x-model="action_url">
-					<option value={ data.PluginInstallGithubURL }>{ api.Translate("label", "github") }</option>
-					<option value={ data.PluginInstallZipURL }>{ api.Translate("label", "zip_file") }</option>
+					<option value={ data.PluginInstallGithubURL }>{ api.Translate("label", "GitHub") }</option>
+					<option value={ data.PluginInstallZipURL }>{ api.Translate("label", "Zip File") }</option>
 				</select>
 			</div>
 			<template x-if={ fmt.Sprintf("action_url=='%s'", data.PluginInstallGithubURL) }>
 				<div>
 					<div class=" form-group mb-3">
-						<label>{ api.Translate("label", "github_url") }:</label>
+						<label>{ api.Translate("label", "Github URL") }:</label>
 						<input type="text" name="github_repo_url" class="form-control"/>
 					</div>
 					<div class="form-group mb-3">
-						<label>{ api.Translate("label", "branch_commit_hash") }:</label>
+						<label>{ api.Translate("label", "Branch/Commit Hash") }:</label>
 						<input type="text" name="github_ref" class="form-control"/>
 					</div>
 				</div>
 			</template>
 			<template x-if={ fmt.Sprintf("action_url=='%s'", data.PluginInstallZipURL) }>
 				<div class=" form-group mb-3">
-					<label>{ api.Translate("label", "plugin_zip_file") }:</label>
+					<label>{ api.Translate("label", "Plugin Zip File") }:</label>
 					<input type="file" name="plugin_zip_file" class="form-control"/>
 				</div>
 			</template>
 			<div class="form-group">
-				<button type="submit" class="btn btn-primary">{ api.Translate("label", "install") }</button>
+				<button type="submit" class="btn btn-primary">{ api.Translate("label", "Install") }</button>
 			</div>
 		</form>
 	</div>

@@ -30,11 +30,11 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 		jsonData := template.JS(b)
 	}}
 
-	<h1>{ api.Translate("label", "plugins") }</h1>
+	<h1>{ api.Translate("label", "Plugins") }</h1>
 	<hr/>
 	<div class="pb-3" x-data={ fmt.Sprintf("pluginInstaller(%s)", jsonData) }>
 		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:plugins:install")) }>
-			{ api.Translate("label", "install_plugin") }
+			{ api.Translate("label", "Install Plugin") }
 		</a>
 		<div class="pt-3">
 			@ProgressBar()
@@ -43,10 +43,10 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 	<table class="table table-bordered">
 		<thead>
 			<tr>
-				<th>{ api.Translate("label", "name") }</th>
-				<th>{ api.Translate("label", "status") }</th>
-				<th>{ api.Translate("label", "more") }</th>
-				<th>{ api.Translate("label", "actions") }</th>
+				<th>{ api.Translate("label", "Name") }</th>
+				<th>{ api.Translate("label", "Status") }</th>
+				<th>{ api.Translate("label", "More") }</th>
+				<th>{ api.Translate("label", "Actions") }</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -55,13 +55,13 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 				<td>{ p.Info.Name }</td>
 				<td>
 					if p.ToBeRemoved {
-						<span style="color: red;">{ api.Translate("label", "to_be_removed") }</span>
+						<span style="color: red;">{ api.Translate("label", "To Be Removed") }</span>
 					}
 					if p.HasPendingUpdate {
-						<span style="color: green;">{ api.Translate("label", "to_be_updated") }</span>
+						<span style="color: green;">{ api.Translate("label", "To Be Updated") }</span>
 					}
 					if !p.ToBeRemoved && !p.HasPendingUpdate {
-						<span>{ api.Translate("label", "installed") }</span>
+						<span>{ api.Translate("label", "Installed") }</span>
 					}
 				</td>
 				<td>
@@ -72,7 +72,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 						<span hx-boost="true">
 							<a class="btn btn-sm btn-danger" hx-confirm="Are you sure you want to uninstall this plugin?" hx-post={
 							api.Http().Helpers().UrlForRoute("admin:plugins:uninstall", "pkg" , p.Info.Package) }>
-								{ api.Translate("label", "uninstall") }
+								{ api.Translate("label", "Uninstall") }
 							</a>
 						</span>
 					}
@@ -81,7 +81,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 					<a class="btn btn-sm btn-primary" href={
 						templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:plugins:check-updates", "pkg" ,
 						p.Info.Package)) }>
-							{ api.Translate("label", "check_for_updates") }
+							{ api.Translate("label", "Check For Updates") }
 					</a>
 					}
 				</td>

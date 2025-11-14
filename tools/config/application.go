@@ -10,6 +10,11 @@ import (
 
 const applicationJsonFile = "application.json"
 
+var SupportedLanguages = []string{
+	"en", // English
+	"af", // Afrikaans
+}
+
 var defaultAppCfg = sdkapi.AppConfig{
 	Lang:     "en",
 	Currency: "USD",

@@ -14,9 +14,10 @@
 
 - `make` Runs the app with plugin install/uninstall capabilities, uses Go build tags "dev postgres"
 - `make mono` Runs the monolithic app with Go build tags "dev mono sqlite"
-- In production, we replace "dev" with "prod" Go build tag
 - We only use `ES5` syntax in our javascript assets for maximum browser compatibility
 - We don't implement or create test files and unit tests
+- The `go`, `templ`, and `sqlc` files are being watched and built by the running docker container
+- We don't build go, templ and sqlc files. Instead, we watch for the docker logs to see if the build succeeds
 
 ## Project Structure
 

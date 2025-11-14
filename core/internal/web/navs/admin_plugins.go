@@ -11,7 +11,7 @@ func GetAdminPluginNavs(g *api.CoreGlobals) []sdkapi.AdminNavItemOpt {
 	return []sdkapi.AdminNavItemOpt{
 		{
 			Category:  sdkapi.NavCategorySystem,
-			Label:     g.CoreAPI.Translate("label", "plugins"),
+			Label:     g.CoreAPI.Translate("label", "Plugins"),
 			RouteName: "admin:plugins:index",
 			Keywords:  []string{"plugin", "plugins", "extension", "extensions"},
 		},

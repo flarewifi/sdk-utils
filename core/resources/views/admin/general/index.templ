@@ -4,7 +4,7 @@ import "sdk/api"
 
 templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, machineID string, softwareVersion string, activationStatus string, errors map[string]string) {
 	<div id="application-settings-page">
-		<h3 class="mb-4">{ api.Translate("label", "general_settings") }</h3>
+		<h3 class="mb-4">{ api.Translate("label", "General Settings") }</h3>
 
 		<!-- System Information Card -->
 		<div class="card mb-4">
@@ -30,16 +30,16 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, mac
 				</div>
 				<div class="row align-items-center mb-2">
 					<div class="col-md-4">
-						<label class="form-label fw-bold">{ api.Translate("label", "activation_status") }</label>
+						<label class="form-label fw-bold">{ api.Translate("label", "Activation Status") }</label>
 					</div>
 					<div class="col-md-8">
 					<div class="form-control-plaintext">
 						if activationStatus == "validating" {
-							<span>{ api.Translate("label", "validating") }</span>
+							<span>{ api.Translate("label", "Validating") }</span>
 						} else if activationStatus == "activated" {
-							<span class="text-success">{ api.Translate("label", "activated") }</span>
+							<span class="text-success">{ api.Translate("label", "Activated") }</span>
 						} else {
-							<span class="text-danger">{ api.Translate("label", "not_activated") }</span>
+							<span class="text-danger">{ api.Translate("label", "Not Activated") }</span>
 						}
 					</div>
 					</div>
@@ -54,7 +54,7 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, mac
 			<div class="card-body">
 				<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:general:save")) }>
 					<div class="mb-3">
-						<label for="language" class="form-label">{ api.Translate("label", "language") }</label>
+						<label for="language" class="form-label">{ api.Translate("label", "Language") }</label>
 						<select class="form-select" id="language" name="language" required>
 							<option value="en" if cfg.Lang == "en" { selected }>English</option>
 							<option value="es" if cfg.Lang == "es" { selected }>Español</option>
@@ -70,7 +70,7 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, mac
 						}
 					</div>
 					<div class="mb-3">
-						<label for="currency" class="form-label">{ api.Translate("label", "currency") }</label>
+						<label for="currency" class="form-label">{ api.Translate("label", "Currency") }</label>
 						<select class="form-select" id="currency" name="currency" required>
 							<option value="USD" if cfg.Currency == "USD" { selected }>USD - US Dollar</option>
 							<option value="EUR" if cfg.Currency == "EUR" { selected }>EUR - Euro</option>
@@ -87,7 +87,7 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, cfg sdkapi.AppConfig, mac
 							<div class="text-danger mt-1">{ errors["currency"] }</div>
 						}
 					</div>
-					<button type="submit" class="btn btn-primary">{ api.Translate("label", "save_settings") }</button>
+					<button type="submit" class="btn btn-primary">{ api.Translate("label", "Save Settings") }</button>
 				</form>
 			</div>
 		</div>

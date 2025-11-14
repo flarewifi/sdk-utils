@@ -52,7 +52,7 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 			FormValidators: []sdkapi.FormValidator{
 				{
 					FieldName:  "portal_theme",
-					FieldLabel: g.CoreAPI.Translate("label", "select_portal_theme"),
+					FieldLabel: g.CoreAPI.Translate("label", "Select Portal Theme"),
 					FieldType:  sdkapi.FormFieldTypeString,
 					FieldRules: sdkapi.FormFieldRules{
 						Required: true,
@@ -60,7 +60,7 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 				},
 				{
 					FieldName:  "admin_theme",
-					FieldLabel: g.CoreAPI.Translate("label", "select_admin_theme"),
+					FieldLabel: g.CoreAPI.Translate("label", "Select Admin Theme"),
 					FieldType:  sdkapi.FormFieldTypeString,
 					FieldRules: sdkapi.FormFieldRules{
 						Required: true,

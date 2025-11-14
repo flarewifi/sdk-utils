@@ -50,7 +50,7 @@ func AdminThemesIndex(api sdkapi.IPluginApi, portalThemes []ThemeOption, adminTh
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "select_portal_theme"))
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Select Portal Theme"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 14, Col: 96}
 		}
@@ -109,7 +109,7 @@ func AdminThemesIndex(api sdkapi.IPluginApi, portalThemes []ThemeOption, adminTh
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "select_admin_theme"))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Select Admin Theme"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 22, Col: 94}
 		}
@@ -168,7 +168,7 @@ func AdminThemesIndex(api sdkapi.IPluginApi, portalThemes []ThemeOption, adminTh
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "save_settings"))
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Save Settings"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 29, Col: 90}
 		}

@@ -17,7 +17,7 @@ type AdminAssets struct {
 }
 
 templ AdminHead(api sdkapi.IPluginApi, data AdminAssets) {
-	<title>{ api.Translate("label", "web_admin") }</title>
+	<title>{ api.Translate("label", "Web Admin") }</title>
 	if data.GlobalCssHref != "" {
 		<link rel="stylesheet" href={ data.GlobalCssHref }/>
 	}

@@ -58,7 +58,7 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			FormValidators: []sdkapi.FormValidator{
 				{
 					FieldName:  "language",
-					FieldLabel: g.CoreAPI.Translate("label", "language"),
+					FieldLabel: g.CoreAPI.Translate("label", "Language"),
 					FieldType:  sdkapi.FormFieldTypeString,
 					FieldRules: sdkapi.FormFieldRules{
 						Required: true,
@@ -66,7 +66,7 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				},
 				{
 					FieldName:  "currency",
-					FieldLabel: g.CoreAPI.Translate("label", "currency"),
+					FieldLabel: g.CoreAPI.Translate("label", "Currency"),
 					FieldType:  sdkapi.FormFieldTypeString,
 					FieldRules: sdkapi.FormFieldRules{
 						Required: true,

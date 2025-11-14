@@ -38,7 +38,7 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) {
 		if err != nil {
 			<div class="text-danger" data-loading-class="d-none">{ err.Error() }</div>
 		}
-		<div data-loading>{ api.Translate("label", "checking_for_updates") }... </div>
+		<div data-loading>{ api.Translate("label", "Checking for updates") }... </div>
 	</div>
 }
 
@@ -52,20 +52,20 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 		{{ return }}
 	}
 	<div>
-		<div>{ api.Translate("label", "new_version") }: { update.NewVersion }</div>
+		<div>{ api.Translate("label", "New Version") }: { update.NewVersion }</div>
 		<div>
-			<small>{ api.Translate("label", "current_version") }: { update.CurrentVersion }</small>
+			<small>{ api.Translate("label", "Current Version") }: { update.CurrentVersion }</small>
 		</div>
 		if update.ReleaseNotes != "" {
 			<div class="mt-3 mb-3">
-				<strong>{ api.Translate("label", "release_notes") }:</strong>
+				<strong>{ api.Translate("label", "Release Notes") }:</strong>
 				<div class="alert alert-info mt-2">
 					@update.ReleaseNotesHTML
 				</div>
 			</div>
 		}
 		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:download")) }>
-			{ api.Translate("label", "download_update") }
+			{ api.Translate("label", "Download Update") }
 		</a>
 	</div>
 }

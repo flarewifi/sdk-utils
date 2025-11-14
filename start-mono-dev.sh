@@ -18,6 +18,8 @@ cp go.work.default go.work && \
     sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
     cp ./core/internal/api/plugin-init_mono.default \
     ./core/internal/api/plugin-init_mono.go && \
+    echo "Scanning translations..." && \
+    go run -tags="${GO_TAGS}" ./tools/cmd/scan-translations && \
     go run -tags="${GO_TAGS}" $SYNC_VERSION && \
     go run -tags="${GO_TAGS}" $BUILD_ASSETS_MAIN && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
