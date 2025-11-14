@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	RouteNameLogout = "admin:auth:logout"
+	RouteNameAuthenticate = "auth:login"
+	RouteNameLogout       = "admin:auth:logout"
 )
 
 func SetupRoutes(api sdkapi.IPluginApi) {
@@ -33,5 +34,6 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 		subrouter.Get("/show/{id}", handlers.ShowNotificationContentCtrl(api)).Name("admin:notifications:show")
 	})
 
+	pluginR.Post("/login", handlers.AdminAuthenticateCtrl(api)).Name(RouteNameAuthenticate)
 	adminR.Post("/logout", handlers.LogoutCtrl(api)).Name(RouteNameLogout)
 }

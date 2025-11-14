@@ -4,7 +4,7 @@ import (
 	"sdk/api"
 )
 
-templ LoginPage(csrfHTML string, data sdkapi.LoginPageData) {
+templ LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData) {
 	<div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(128, 128, 128, 0.5);">
 		<div class="container">
 			<div class="row">
@@ -12,7 +12,12 @@ templ LoginPage(csrfHTML string, data sdkapi.LoginPageData) {
 					<div class="panel panel-default">
 						<div class="panel-body" style="padding: 20px;">
 							<h2 class="text-center" style="margin-bottom: 20px;">Log in</h2>
-							<form id="login-form" method="POST" action={ templ.SafeURL(data.LoginUrl) }>
+							if data.LoginError != nil {
+								<div class="alert alert-danger" role="alert">
+									{ data.LoginError.Error() }
+								</div>
+							}
+							<form id="login-form" method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("auth:login")) }>
 								@templ.Raw(csrfHTML)
 								<div class="form-group">
 									<input type="text" class="form-control" name="username" id="username" placeholder="Username" required/>

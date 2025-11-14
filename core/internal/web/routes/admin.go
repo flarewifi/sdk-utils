@@ -19,7 +19,6 @@ func AdminRoutes(g *api.CoreGlobals) {
 	adminR.Use(trackNavMw)
 
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
-	adminAuthCtrl := controllers.AdminAuthenticateCtrl(g)
 	adminSseCtrl := adminctrl.AdminSseHandler(g)
 
 	rootR.Handle("/admin", authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +29,6 @@ func AdminRoutes(g *api.CoreGlobals) {
 
 	// TODO: enable csrf protection
 	rootR.Handle("/login", adminLoginCtrl).Methods("GET").Name("admin:login")
-	rootR.Handle("/login", adminAuthCtrl).Methods("POST").Name("admin:authenticate")
 	adminR.Get("/events", adminSseCtrl).Name(api.RouteNameAdminSSE)
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
