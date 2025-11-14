@@ -1,1 +1,0 @@
-Must choose one of the <% .label %>s

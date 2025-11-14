@@ -1,0 +1,1 @@
+pause_setting_add_success

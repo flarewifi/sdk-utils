@@ -1,1 +1,0 @@
-Plugin will be removed after the next reboot

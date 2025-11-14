@@ -17,10 +17,6 @@ const (
 	AuthTokenCookie = "auth-token"
 )
 
-var (
-	ErrAuthenticationFailed = errors.New("authentication failed")
-)
-
 func NewHttpAuth(api *PluginApi) *HttpAuth {
 	return &HttpAuth{
 		api: api,
@@ -74,6 +70,8 @@ func (self *HttpAuth) IsAuthenticated(r *http.Request) (sdkapi.IAccount, error) 
 }
 
 func (self *HttpAuth) Authenticate(username string, password string) (sdkapi.IAccount, error) {
+	ErrAuthenticationFailed := errors.New(self.api.CoreAPI.Translate("error", "Athentication failed"))
+
 	acct, err := accounts.Find(username)
 	if err != nil {
 		return nil, ErrAuthenticationFailed
