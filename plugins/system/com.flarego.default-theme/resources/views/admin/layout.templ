@@ -24,7 +24,7 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 		<body { data.Components.BodyAttrs()... }>
 			<header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
 				<a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="/admin">
-					<img class="logo-img" src={ api.Http().Helpers().PublicPath("images/nexifi_logo.png") } alt="Nexifi Logo"/>
+					<img class="logo-img" src={ api.Http().Helpers().PublicPath("images/flarewifi_logo.png") } alt="Nexifi Logo"/>
 				</a>
 				<ul class="navbar-nav flex-row">
 					<li class="nav-item text-nowrap d-md-none">
@@ -135,11 +135,11 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 			</div>
 
 			<!-- Notification Modal -->
-			<div 
-				class="modal fade" 
-				id="notifModal" 
-				tabindex="-1" 
-				aria-labelledby="notifModalTitle" 
+			<div
+				class="modal fade"
+				id="notifModal"
+				tabindex="-1"
+				aria-labelledby="notifModalTitle"
 				aria-hidden="true"
 			>
 				@ShowNotificationContent(api, sdkapi.Notification{})

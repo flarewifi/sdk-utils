@@ -45,7 +45,7 @@
 }
 
 #sidemenu .nav-category.active > .nav-link {
-  background: linear-gradient(90deg, #1E90FF, #87CEEB);
+  background: linear-gradient(90deg, #2942d5, #1d71f9, #4d8ffb);
   color: var(--bs-white);
 }
 
@@ -81,7 +81,7 @@
 }
 
 #sidemenu .sub-nav-item.active > a.sub-nav-link {
-  background: linear-gradient(90deg, #1E90FF, #87CEEB);
+  background: linear-gradient(90deg, #2942d5, #1d71f9, #4d8ffb);
   color: var(--bs-white);
   /* box-shadow: 0 4px 10px -2px rgba(92, 118, 231, 0.5); */
 }
