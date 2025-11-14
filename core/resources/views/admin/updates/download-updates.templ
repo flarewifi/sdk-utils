@@ -6,7 +6,7 @@ import (
 )
 
 templ DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, err error) {
-    <div id="page" hx-post={ api.Http().Router().UrlForRoute("system.updates.download.status") } hx-trigger="every 1s">
+    <div id="page" hx-post={ api.Http().Router().UrlForRoute("admin:updates:download-status") } hx-trigger="every 1s">
 		@DownloadStatusPartial(api, percent, err)
 	</div>
 }
@@ -22,5 +22,5 @@ templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) {
 
 templ DownloadDonePage(api sdkapi.IPluginApi) {
     <p>Software updates has been downloaded successfully. Reboot to apply softare updates.</p>
-    <a class="btn btn-info" hx-post={ api.Http().Helpers().UrlForRoute("admin.power.reboot.action") } hx-confirm="Are you sure?">Reboot Now</a>
+    <a class="btn btn-info" hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") } hx-confirm="Are you sure?">Reboot Now</a>
 }

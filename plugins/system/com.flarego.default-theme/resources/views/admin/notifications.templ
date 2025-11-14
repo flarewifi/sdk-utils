@@ -12,7 +12,7 @@ templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 			id="notifDropdown"
 			data-bs-toggle="dropdown"
 			data-bs-auto-close="outside"
-			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.count") }
+			hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:count") }
 			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
 		>
 			@NotificationsBellCount(notifs)
@@ -21,7 +21,7 @@ templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 			id="notifDropdownMenu"
 			class="dropdown-menu dropdown-menu-end w-100 w-md-50"
 			style="min-width: 320px;"
-			hx-get={ api.Http().Helpers().UrlForRoute("admin.notifications.list") }
+			hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:list") }
 			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
 		>
 			<!-- Notifications will be appended here -->
@@ -40,7 +40,7 @@ templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 			<li class="d-flex flex-column p-2 border-bottom">
 				<a
 					class="dropdown-item text-wrap notif-item text-center"
-					hx-get={ api.Http().Helpers().UrlForRoute("admin.notification.show", "id", fmt.Sprint(notif.ID)) }
+					hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:show", "id", fmt.Sprint(notif.ID)) }
 					hx-target="#notifModal"
 					hx-swap="innerHTML"
 					data-bs-toggle="modal"
@@ -51,7 +51,7 @@ templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 				</a>
 
 				<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
-					hx-post={ api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)) }
+					hx-post={ api.Http().Helpers().UrlForRoute("admin:notifications:update", "id", fmt.Sprint(notif.ID)) }
 					hx-target="#notifDropdownMenu"
 					hx-swap="innerHTML"
 				>

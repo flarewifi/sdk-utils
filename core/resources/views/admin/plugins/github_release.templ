@@ -45,7 +45,7 @@ templ ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) {
 						<td>{ publishedDate.Format("January 02, 2006") }</td>
 						<td>
 							{{ pairs := []string{"pkg", pluginPkg, "tag" , release.TagName }}}
-							{{ url := api.Http().Helpers().UrlForRoute("admin.plugins.getupdate", pairs...) }}
+							{{ url := api.Http().Helpers().UrlForRoute("admin:plugins:get-update", pairs...) }}
 							<a href={ templ.SafeURL(url) }>
 								Click Here
 							</a>

@@ -26,7 +26,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "updates"),
-				RouteName: "system.updates.check",
+				RouteName: "admin:updates:index",
 				Keywords:  []string{"update", "updates", "upgrade", "upgrades", "software"},
 			},
 		}
@@ -44,13 +44,13 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "reboot"),
-				RouteName: "admin.power.reboot",
+				RouteName: "admin:power:reboot",
 				Keywords:  []string{"power", "reboot", "restart"},
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "shutdown"),
-				RouteName: "admin.power.shutdown",
+				RouteName: "admin:power:shutdown",
 				Keywords:  []string{"power", "shutdown", "off"},
 			},
 		}

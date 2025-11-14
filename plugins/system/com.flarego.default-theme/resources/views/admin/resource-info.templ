@@ -7,7 +7,7 @@ import "fmt"
 templ ResourceInfo(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
 	<div
 		class="row mt-4"
-		hx-get={ api.Http().Helpers().UrlForRoute("admin.system.resource") }
+		hx-get={ api.Http().Helpers().UrlForRoute("admin:system:resource") }
 		hx-trigger="load delay:1s"
 		hx-swap="outerHTML"
 	>

@@ -32,11 +32,11 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		isDownloading := updates.IsDownloading()
 		isDownloaded := updates.IsDownloaded()
 		if isDownloaded {
-			res.Redirect(w, r, "system.updates.download.done")
+			res.Redirect(w, r, "admin:updates:download-done")
 			return
 		}
 		if isDownloading {
-			res.Redirect(w, r, "system.updates.download")
+			res.Redirect(w, r, "admin:updates:download")
 			return
 		}
 
@@ -135,12 +135,12 @@ func DownloadUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		v := newUpdate.Load()
 		update, ok := v.(*updates.SoftwareReleaseUpdate)
 		if !ok {
-			res.Redirect(w, r, "system.updates.check")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
 		if !update.HasUpdate {
-			res.Redirect(w, r, "system.updates.check")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
@@ -170,7 +170,7 @@ func DownloadStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
 		if updates.IsDownloaded() {
-			api.HttpAPI.Response().Redirect(w, r, "system.updates.download.done")
+			api.HttpAPI.Response().Redirect(w, r, "admin:updates:download-done")
 			return
 		}
 
@@ -188,7 +188,7 @@ func DownloadDoneCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
 		if !updates.IsDownloaded() {
-			res.Redirect(w, r, "system.updates.check")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 

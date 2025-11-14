@@ -39,7 +39,7 @@ func NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.notifications.count"))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin:notifications:count"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 15, Col: 73}
 		}
@@ -73,7 +73,7 @@ func NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.notifications.list"))
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin:notifications:list"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 24, Col: 72}
 		}
@@ -143,9 +143,9 @@ func NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) temp
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
-				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.notification.show", "id", fmt.Sprint(notif.ID)))
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin:notifications:show", "id", fmt.Sprint(notif.ID)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 43, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 43, Col: 102}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -182,7 +182,7 @@ func NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) temp
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var10 string
-				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin.notifications.update", "id", fmt.Sprint(notif.ID)))
+				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin:notifications:update", "id", fmt.Sprint(notif.ID)))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 54, Col: 105}
 				}

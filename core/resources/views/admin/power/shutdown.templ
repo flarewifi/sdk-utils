@@ -22,7 +22,7 @@ templ ShutdownPage(api sdkapi.IPluginApi) {
 				<button 
 					type="button" 
 					class="btn btn-danger"
-					hx-post={ api.Http().Helpers().UrlForRoute("admin.power.shutdown.action") }
+					hx-post={ api.Http().Helpers().UrlForRoute("admin:power:shutdown-action") }
 					hx-target="#shutdown-response"
 					hx-confirm="Are you sure you want to shut down the system? This will disconnect all users and power off the device."
 					data-loading-disable>

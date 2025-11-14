@@ -22,7 +22,7 @@ func TestSendNotifiCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 			log.Printf("add test notification error: %v", err)
 		}
 
-		fmt.Fprintf(w, "<button hx-post='%s' hx-swap='outerHTML'>Test notif</button>", api.Http().Helpers().UrlForRoute("admin.notifications.test"))
+		fmt.Fprintf(w, "<button hx-post='%s' hx-swap='outerHTML'>Test notif</button>", api.Http().Helpers().UrlForRoute("admin:notifications:test"))
 	}
 }
 

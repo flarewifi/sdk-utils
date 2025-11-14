@@ -37,18 +37,18 @@ type IThemeComponents interface {
 	Scripts() templ.Component
 }
 
-type LoginPageData struct {
-	LoginUrl    string
-	UsernameErr error
-	PasswordErr error
-}
-
 type AdminThemeOpts struct {
 	CssLib           CSSLib
 	JsFile           string
 	CssFile          string
 	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IThemeComponents)
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
+}
+
+type LoginPageData struct {
+	LoginUrl    string
+	UsernameErr error
+	PasswordErr error
 }
 
 type PortalThemeOpts struct {

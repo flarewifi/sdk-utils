@@ -13,6 +13,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	RouteNameAdminPrefix = "admin:"
+	RouteNameAdminSSE    = "admin:sse"
+)
+
 type HttpRouterApi struct {
 	api          *PluginApi
 	adminRouter  *HttpRouterInstance
@@ -24,8 +29,8 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegis
 	pluginMux := webutil.PluginRouter.PathPrefix(prefix).Subrouter()
 	adminMux := pluginMux.PathPrefix("/admin").Subrouter()
 
-	pluginRouter := &HttpRouterInstance{api, pluginMux}
-	adminRouter := &HttpRouterInstance{api, adminMux}
+	pluginRouter := &HttpRouterInstance{api, pluginMux, false}
+	adminRouter := &HttpRouterInstance{api, adminMux, true}
 
 	return &HttpRouterApi{api, adminRouter, pluginRouter}
 }
@@ -33,6 +38,7 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegis
 func (self *HttpRouterApi) Initialize() {
 	self.pluginRouter.Use(self.api.HttpAPI.middlewares.Device())
 	self.adminRouter.Use(self.api.HttpAPI.middlewares.AdminAuth())
+	self.adminRouter.Use(self.api.HttpAPI.middlewares.TrackNav())
 }
 
 func (self *HttpRouterApi) AdminRouter() sdkapi.IHttpRouterInstance {
@@ -50,7 +56,7 @@ func (self *HttpRouterApi) Use(middleware ...func(http.Handler) http.Handler) {
 }
 
 func (self *HttpRouterApi) MuxRouteName(name sdkapi.PluginRouteName) sdkapi.MuxRouteName {
-	muxname := fmt.Sprintf("%s.%s", self.api.info.Package, string(name))
+	muxname := fmt.Sprintf("%s#%s", self.api.info.Package, string(name))
 	return sdkapi.MuxRouteName(muxname)
 }
 

@@ -49,10 +49,10 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			Plugins: pluginData,
 		}
 
-		pluginZipInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.zip")
-		pluginGithubInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.github")
-		pluginIndexURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.index")
-		checkInstallStatusURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.status")
+		pluginZipInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin:plugins:install-zip")
+		pluginGithubInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin:plugins:install-github")
+		pluginIndexURL := api.HttpAPI.Helpers().UrlForRoute("admin:plugins:index")
+		checkInstallStatusURL := api.HttpAPI.Helpers().UrlForRoute("admin:plugins:status")
 
 		formRoutes := views.FormRoutes{
 			SelectedAction:         pluginGithubInstallURL,
@@ -85,7 +85,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		tarballDownloadURL, err := plugins.GetTarballDownloadURL(tagName, pluginPkg)
 		if err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.index")
+			res.Redirect(w, r, "admin:plugins:index")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
@@ -93,21 +93,21 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		tarball, err := plugins.GetTarballDownloadPath(pluginPkg)
 		if err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.index")
+			res.Redirect(w, r, "admin:plugins:index")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
 		if err := sdkutils.DownloadGitHubTarball(tarballDownloadURL, tarball); err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.index")
+			res.Redirect(w, r, "admin:plugins:index")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
 		if err := plugins.CompileDownloadedTarball(tarball, pluginPkg); err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.index")
+			res.Redirect(w, r, "admin:plugins:index")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
@@ -115,7 +115,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		src, err := sdkutils.FindPluginSrc(filepath.Join(sdkutils.PathTmpDir, "plugins", "downloads", pluginPkg))
 		if err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.index")
+			res.Redirect(w, r, "admin:plugins:index")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
@@ -123,7 +123,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		dst := filepath.Join(sdkutils.PathPluginUpdatesDir, pluginPkg)
 		if err := sdkutils.CopyPluginFiles(src, dst); err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.index")
+			res.Redirect(w, r, "admin:plugins:index")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
@@ -131,13 +131,13 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Remove the source directory after successfully moving its contents
 		if err := plugins.CleanupDownload(); err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.index")
+			res.Redirect(w, r, "admin:plugins:index")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 		}
 
 		githubSuccessMsg := g.CoreAPI.Translate("info", "github__update_success_message")
 		res.FlashMsg(w, r, githubSuccessMsg, sdkapi.FlashMsgSuccess)
-		res.Redirect(w, r, "admin.plugins.index")
+		res.Redirect(w, r, "admin:plugins:index")
 	}
 }
 
@@ -180,10 +180,10 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
 
-		pluginZipInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.zip")
-		pluginGithubInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.install.github")
-		pluginIndexURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.index")
-		checkInstallStatusURL := api.HttpAPI.Helpers().UrlForRoute("admin.plugins.status")
+		pluginZipInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin:plugins:install-zip")
+		pluginGithubInstallURL := api.HttpAPI.Helpers().UrlForRoute("admin:plugins:install-github")
+		pluginIndexURL := api.HttpAPI.Helpers().UrlForRoute("admin:plugins:index")
+		checkInstallStatusURL := api.HttpAPI.Helpers().UrlForRoute("admin:plugins:status")
 
 		page := views.InstallPlugin(api, views.FormRoutes{
 			SelectedAction:         pluginGithubInstallURL,
@@ -233,7 +233,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Parse form (max 10 MB)
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
+			res.Redirect(w, r, "admin:plugins:install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
@@ -242,7 +242,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		file, header, err := r.FormFile("plugin_zip_file")
 		if err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
+			res.Redirect(w, r, "admin:plugins:install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
@@ -263,7 +263,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		out, err := os.Create(filePath)
 		if err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
+			res.Redirect(w, r, "admin:plugins:install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
@@ -271,7 +271,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		if _, err := io.Copy(out, file); err != nil {
 			res.FlashMsg(w, r, zipErrorMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
+			res.Redirect(w, r, "admin:plugins:install")
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
@@ -413,7 +413,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		err := r.ParseMultipartForm(10 << 20)
 		if err != nil {
 			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
+			res.Redirect(w, r, "admin:plugins:install")
 
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
@@ -425,7 +425,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		src, err := sdkutils.ParseGitSource(repoURL)
 		if err != nil {
 			res.FlashMsg(w, r, githubErrMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin.plugins.install")
+			res.Redirect(w, r, "admin:plugins:install")
 
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
@@ -509,6 +509,6 @@ func UninstallPluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		uninstallMsg := g.CoreAPI.Translate("info", "plugin_uninstall_message")
 		res.FlashMsg(w, r, uninstallMsg, sdkapi.FlashMsgSuccess)
-		res.Redirect(w, r, "admin.plugins.index")
+		res.Redirect(w, r, "admin:plugins:index")
 	}
 }
