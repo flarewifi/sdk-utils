@@ -222,22 +222,24 @@ func NotificationsBellCount(notifs []sdkapi.Notification) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		notifsCount := len(notifs)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<i class=\"bi bi-bell fs-4 text-light\"></i> <span class=\"position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger\" id=\"notifBellCount\" style=\"font-size: 0.65rem; transform: translate(-35%, -35%);\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(notifsCount))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 73, Col: 27}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if notifsCount > 0 {
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<i class=\"bi bi-bell fs-4 text-light\"></i> <span class=\"position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger\" id=\"notifBellCount\" style=\"font-size: 0.65rem; transform: translate(-35%, -35%);\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var12 string
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(notifsCount))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 74, Col: 28}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		return templ_7745c5c3_Err
 	})
@@ -271,7 +273,7 @@ func ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) t
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(notif.Subject)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 81, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 83, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -284,7 +286,7 @@ func ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) t
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(notif.Content)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 88, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 90, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -297,7 +299,7 @@ func ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) t
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(notif.CreatedAt.Format("Jan 2, 2006 3:04PM"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 91, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/notifications.templ`, Line: 93, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
