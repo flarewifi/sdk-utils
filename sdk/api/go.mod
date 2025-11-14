@@ -14,8 +14,9 @@ require (
 
 require (
 	github.com/goccy/go-json v0.10.3 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/jackc/pgx/v5 v5.7.1 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )

@@ -13,14 +13,14 @@ type PortalIndexData struct {
 
 templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
 	<div
-		hx-get={ api.Http().Helpers().UrlForRoute("portal.navs") }
+		hx-get={ api.Http().Helpers().UrlForRoute("portal:navs") }
 		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s",
     sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
 	>
 		@NavItems(api, data.Navs)
 	</div>
 	<div
-		hx-get={ api.Http().Helpers().UrlForRoute("sessions.summary") }
+		hx-get={ api.Http().Helpers().UrlForRoute("portal:sessions:summary") }
 		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, every 5s",
     sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
 	>

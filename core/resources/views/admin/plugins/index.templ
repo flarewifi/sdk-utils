@@ -33,7 +33,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 	<h1>{ api.Translate("label", "plugins") }</h1>
 	<hr/>
 	<div class="pb-3" x-data={ fmt.Sprintf("pluginInstaller(%s)", jsonData) }>
-		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.install")) }>
+		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:plugins:install")) }>
 			{ api.Translate("label", "install_plugin") }
 		</a>
 		<div class="pt-3">
@@ -71,7 +71,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 					if !p.ToBeRemoved {
 						<span hx-boost="true">
 							<a class="btn btn-sm btn-danger" hx-confirm="Are you sure you want to uninstall this plugin?" hx-post={
-							api.Http().Helpers().UrlForRoute("admin.plugins.uninstall", "pkg" , p.Info.Package) }>
+							api.Http().Helpers().UrlForRoute("admin:plugins:uninstall", "pkg" , p.Info.Package) }>
 								{ api.Translate("label", "uninstall") }
 							</a>
 						</span>
@@ -79,7 +79,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 
 					if p.Src.GitURL != "" {
 					<a class="btn btn-sm btn-primary" href={
-						templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.plugins.checkupdates", "pkg" ,
+						templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:plugins:check-updates", "pkg" ,
 						p.Info.Package)) }>
 							{ api.Translate("label", "check_for_updates") }
 					</a>

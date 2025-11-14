@@ -213,7 +213,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 				return templ_7745c5c3_Err
 			}
 			pairs := []string{"pkg", pluginPkg, "tag", release.TagName}
-			url := api.Http().Helpers().UrlForRoute("admin.plugins.getupdate", pairs...)
+			url := api.Http().Helpers().UrlForRoute("admin:plugins:get-update", pairs...)
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

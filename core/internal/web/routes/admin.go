@@ -11,8 +11,12 @@ import (
 
 func AdminRoutes(g *api.CoreGlobals) {
 	authMw := g.CoreAPI.HttpAPI.Middlewares().AdminAuth()
+	trackNavMw := g.CoreAPI.HttpAPI.Middlewares().TrackNav()
 	rootR := webutil.RootRouter
 	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
+
+	// Register navigation tracking middleware
+	adminR.Use(trackNavMw)
 
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
 	adminAuthCtrl := controllers.AdminAuthenticateCtrl(g)
@@ -27,7 +31,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 	// TODO: enable csrf protection
 	rootR.Handle("/login", adminLoginCtrl).Methods("GET").Name("admin:login")
 	rootR.Handle("/login", adminAuthCtrl).Methods("POST").Name("admin:authenticate")
-	adminR.Get("/events", adminSseCtrl).Name("admin:sse")
+	adminR.Get("/events", adminSseCtrl).Name(api.RouteNameAdminSSE)
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Group("/general", func(subrouter sdkapi.IHttpRouterInstance) {
@@ -35,11 +39,11 @@ func AdminRoutes(g *api.CoreGlobals) {
 			subrouter.Post("/save", adminctrl.GeneralSettingsSaveCtrl(g)).Name("admin:general:save")
 		})
 		subrouter.Group("/updates", func(subrouter sdkapi.IHttpRouterInstance) {
-			subrouter.Get("/", adminctrl.CheckUpdatesPageCtrl(g)).Name("system.updates.check")
-			subrouter.Post("/query", adminctrl.QuerySoftwareUpdatesCtrl(g)).Name("system.updates.query")
-			subrouter.Get("/download", adminctrl.DownloadUpdatePageCtrl(g)).Name("system.updates.download")
-			subrouter.Post("/download/status", adminctrl.DownloadStatusPartialCtrl(g)).Name("system.updates.download.status")
-			subrouter.Get("/download/done", adminctrl.DownloadDoneCtrl(g)).Name("system.updates.download.done")
+			subrouter.Get("/", adminctrl.CheckUpdatesPageCtrl(g)).Name("admin:updates:index")
+			subrouter.Post("/query", adminctrl.QuerySoftwareUpdatesCtrl(g)).Name("admin:updates:query")
+			subrouter.Get("/download", adminctrl.DownloadUpdatePageCtrl(g)).Name("admin:updates:download")
+			subrouter.Post("/download/status", adminctrl.DownloadStatusPartialCtrl(g)).Name("admin:updates:download-status")
+			subrouter.Get("/download/done", adminctrl.DownloadDoneCtrl(g)).Name("admin:updates:download-done")
 		})
 	})
 
@@ -56,9 +60,9 @@ func AdminRoutes(g *api.CoreGlobals) {
 	AdminPluginRoutes(g)
 
 	adminR.Group("/power", func(subrouter sdkapi.IHttpRouterInstance) {
-		subrouter.Get("/reboot", adminctrl.RebootPageCtrl(g)).Name("admin.power.reboot")
-		subrouter.Post("/reboot", adminctrl.RebootCtrl(g)).Name("admin.power.reboot.action")
-		subrouter.Get("/shutdown", adminctrl.ShutdownPageCtrl(g)).Name("admin.power.shutdown")
-		subrouter.Post("/shutdown", adminctrl.ShutdownCtrl(g)).Name("admin.power.shutdown.action")
+		subrouter.Get("/reboot", adminctrl.RebootPageCtrl(g)).Name("admin:power:reboot")
+		subrouter.Post("/reboot", adminctrl.RebootCtrl(g)).Name("admin:power:reboot-action")
+		subrouter.Get("/shutdown", adminctrl.ShutdownPageCtrl(g)).Name("admin:power:shutdown")
+		subrouter.Post("/shutdown", adminctrl.ShutdownCtrl(g)).Name("admin:power:shutdown-action")
 	})
 }

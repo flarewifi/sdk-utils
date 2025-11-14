@@ -28,7 +28,7 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) {
 				</div>
 				<button class="btn btn-primary mb-3" type="submit" 
 					hx-target="#page" 
-					hx-post={ api.Http().Helpers().UrlForRoute("system.updates.query") } 
+					hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:query") } 
 					hx-include="[name='channel']"
 					data-loading-disable>
 					Check for updates
@@ -64,7 +64,7 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 				</div>
 			</div>
 		}
-		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("system.updates.download")) }>
+		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:download")) }>
 			{ api.Translate("label", "download_update") }
 		</a>
 	</div>
