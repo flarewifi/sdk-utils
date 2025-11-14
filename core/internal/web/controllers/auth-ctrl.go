@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"core/internal/api"
-	webutil "core/internal/utils/web"
 	"errors"
 	"net/http"
 	sdkapi "sdk/api"
@@ -22,39 +21,23 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 			return
 		}
 
-		authRoute := webutil.RootRouter.Get("admin:authenticate")
-		authUrl, _ := authRoute.URL()
+		// Check for flash error message
+		var loginErr error
+		flashType, _ := g.CoreAPI.HttpAPI.Cookie().GetCookie(r, "flash_type")
+		flashMsg, _ := g.CoreAPI.HttpAPI.Cookie().GetCookie(r, "flash_message")
+		if flashType == sdkapi.FlashMsgError && flashMsg != "" {
+			loginErr = errors.New(flashMsg)
+			// Clear flash cookies after reading
+			g.CoreAPI.HttpAPI.Cookie().DeleteCookie(w, "flash_type")
+			g.CoreAPI.HttpAPI.Cookie().DeleteCookie(w, "flash_message")
+		}
 
 		data := sdkapi.LoginPageData{
-			LoginUrl: authUrl.String(),
+			LoginError: loginErr,
 		}
 
 		page := t.PortalTheme.LoginPageFactory(w, r, data)
 		p.Http().Response().PortalView(w, r, page)
-	})
-}
-
-func AdminAuthenticateCtrl(g *api.CoreGlobals) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, g.CoreAPI.Translate("error", "invalid_form_data"), sdkapi.FlashMsgError)
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		username := r.FormValue("username")
-		password := r.FormValue("password")
-
-		acct, err := g.CoreAPI.HttpAPI.Auth().Authenticate(username, password)
-		if err != nil {
-			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, g.CoreAPI.Translate("error", "invalid_credentials"), sdkapi.FlashMsgError)
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		g.CoreAPI.HttpAPI.Auth().SignIn(w, acct)
-		g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, "Logged in successfully", sdkapi.FlashMsgSuccess)
-		http.Redirect(w, r, "/admin", http.StatusSeeOther)
 	})
 }
 

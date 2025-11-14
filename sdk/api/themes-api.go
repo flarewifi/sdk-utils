@@ -46,9 +46,7 @@ type AdminThemeOpts struct {
 }
 
 type LoginPageData struct {
-	LoginUrl    string
-	UsernameErr error
-	PasswordErr error
+	LoginError error
 }
 
 type PortalThemeOpts struct {

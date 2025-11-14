@@ -23,7 +23,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 		},
 		LoginPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.LoginPageData) sdkapi.ViewPage {
 			csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)
-			page := auth.LoginPage(csrfHtml, data)
+			page := auth.LoginPage(api, csrfHtml, data)
 			return sdkapi.ViewPage{
 				Assets: sdkapi.ViewAssets{
 					JsFile:  "auth/login.js",
