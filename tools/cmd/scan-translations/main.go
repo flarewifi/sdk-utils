@@ -21,45 +21,69 @@ type TranslationRef struct {
 func main() {
 	log.Println("Scanning for translation usage...")
 
-	// Collect all translation references from code
-	usedTranslations := make(map[string]*TranslationRef)
+	// Collect translation references from core
+	coreUsed := make(map[string]*TranslationRef)
 
 	// Scan core
-	scanDirectory("core", usedTranslations)
+	scanDirectory("core", coreUsed)
 
-	// Scan system plugins
-	scanDirectory("plugins/system", usedTranslations)
-
-	// Scan local plugins
-	scanDirectory("data/plugins/local", usedTranslations)
-
-	log.Printf("Found %d unique translation references in code", len(usedTranslations))
+	log.Printf("Found %d unique translation references in core", len(coreUsed))
 
 	// Get all supported languages from config
 	supportedLanguages := config.SupportedLanguages
 	log.Printf("Checking translations for languages: %v", supportedLanguages)
 
-	// First, sync existing translation files across all languages
+	// First, sync existing translation files across all languages for core
 	syncExistingTranslations("core/resources/translations", supportedLanguages)
-	syncExistingTranslationsInPlugins("plugins/system", supportedLanguages)
-	syncExistingTranslationsInPlugins("data/plugins/local", supportedLanguages)
 
-	// Create missing translation files for all supported languages
-	createMissingTranslations("core/resources/translations", usedTranslations, supportedLanguages)
-	createMissingTranslationsInPlugins("plugins/system", usedTranslations, supportedLanguages)
-	createMissingTranslationsInPlugins("data/plugins/local", usedTranslations, supportedLanguages)
+	// Create missing translation files for all supported languages for core
+	createMissingTranslations("core/resources/translations", coreUsed, supportedLanguages)
 
-	// Now scan translation files and remove unused ones for all supported languages
-	removeUnusedTranslations("core/resources/translations", usedTranslations, supportedLanguages)
-	removeUnusedTranslationsInPlugins("plugins/system", usedTranslations, supportedLanguages)
-	removeUnusedTranslationsInPlugins("data/plugins/local", usedTranslations, supportedLanguages)
+	// Now scan translation files and remove unused ones for all supported languages for core
+	removeUnusedTranslations("core/resources/translations", coreUsed, supportedLanguages)
 
-	// Remove unsupported language directories
+	// Remove unsupported language directories for core
 	removeUnsupportedLanguages("core/resources/translations", supportedLanguages)
-	removeUnsupportedLanguagesInPlugins("plugins/system", supportedLanguages)
-	removeUnsupportedLanguagesInPlugins("data/plugins/local", supportedLanguages)
+
+	// Process system plugins
+	processPlugins("plugins/system", supportedLanguages)
+
+	// Process local plugins
+	processPlugins("data/plugins/local", supportedLanguages)
 
 	log.Println("Translation scan complete")
+}
+
+// processPlugins processes translations for all plugins in the given directory
+func processPlugins(pluginsDir string, supportedLanguages []string) {
+	if _, err := os.Stat(pluginsDir); os.IsNotExist(err) {
+		return
+	}
+
+	entries, err := os.ReadDir(pluginsDir)
+	if err != nil {
+		log.Printf("Error reading plugins directory %s: %v", pluginsDir, err)
+		return
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		pluginPath := filepath.Join(pluginsDir, entry.Name())
+		pluginUsed := make(map[string]*TranslationRef)
+		scanDirectory(pluginPath, pluginUsed)
+
+		log.Printf("Found %d unique translation references in plugin %s", len(pluginUsed), entry.Name())
+
+		translationsPath := filepath.Join(pluginPath, "resources", "translations")
+
+		syncExistingTranslations(translationsPath, supportedLanguages)
+		createMissingTranslations(translationsPath, pluginUsed, supportedLanguages)
+		removeUnusedTranslations(translationsPath, pluginUsed, supportedLanguages)
+		removeUnsupportedLanguages(translationsPath, supportedLanguages)
+	}
 }
 
 // scanDirectory scans a directory recursively for .go and .templ files
@@ -309,94 +333,6 @@ func removeUnusedTranslations(translationsDir string, usedTranslations map[strin
 	}
 }
 
-// syncExistingTranslationsInPlugins scans plugin directories to sync existing translations
-func syncExistingTranslationsInPlugins(pluginsDir string, supportedLanguages []string) {
-	if _, err := os.Stat(pluginsDir); os.IsNotExist(err) {
-		return
-	}
-
-	// Walk through each plugin
-	entries, err := os.ReadDir(pluginsDir)
-	if err != nil {
-		log.Printf("Error reading plugins directory %s: %v", pluginsDir, err)
-		return
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		pluginPath := filepath.Join(pluginsDir, entry.Name())
-		translationsPath := filepath.Join(pluginPath, "resources", "translations")
-
-		// Only sync if translations directory exists
-		// If it doesn't exist, createMissingTranslations will handle it
-		if _, err := os.Stat(translationsPath); os.IsNotExist(err) {
-			continue
-		}
-
-		syncExistingTranslations(translationsPath, supportedLanguages)
-	}
-}
-
-// createMissingTranslationsInPlugins scans plugin directories to create missing translations
-func createMissingTranslationsInPlugins(pluginsDir string, usedTranslations map[string]*TranslationRef, supportedLanguages []string) {
-	if _, err := os.Stat(pluginsDir); os.IsNotExist(err) {
-		return
-	}
-
-	// Walk through each plugin
-	entries, err := os.ReadDir(pluginsDir)
-	if err != nil {
-		log.Printf("Error reading plugins directory %s: %v", pluginsDir, err)
-		return
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		pluginPath := filepath.Join(pluginsDir, entry.Name())
-		translationsPath := filepath.Join(pluginPath, "resources", "translations")
-
-		// Create translations directory if it doesn't exist, then proceed
-		// The createMissingTranslations function will handle directory creation
-		createMissingTranslations(translationsPath, usedTranslations, supportedLanguages)
-	}
-}
-
-// removeUnusedTranslationsInPlugins scans plugin directories for translation cleanup
-func removeUnusedTranslationsInPlugins(pluginsDir string, usedTranslations map[string]*TranslationRef, supportedLanguages []string) {
-	if _, err := os.Stat(pluginsDir); os.IsNotExist(err) {
-		return
-	}
-
-	// Walk through each plugin
-	entries, err := os.ReadDir(pluginsDir)
-	if err != nil {
-		log.Printf("Error reading plugins directory %s: %v", pluginsDir, err)
-		return
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		pluginPath := filepath.Join(pluginsDir, entry.Name())
-		translationsPath := filepath.Join(pluginPath, "resources", "translations")
-
-		// Only remove unused translations if directory exists
-		if _, err := os.Stat(translationsPath); os.IsNotExist(err) {
-			continue
-		}
-
-		removeUnusedTranslations(translationsPath, usedTranslations, supportedLanguages)
-	}
-}
-
 // removeUnsupportedLanguages removes language directories that are not in the supported languages list
 func removeUnsupportedLanguages(translationsDir string, supportedLanguages []string) {
 	if _, err := os.Stat(translationsDir); os.IsNotExist(err) {
@@ -430,29 +366,5 @@ func removeUnsupportedLanguages(translationsDir string, supportedLanguages []str
 				log.Printf("Error removing unsupported language directory %s: %v", langDir, err)
 			}
 		}
-	}
-}
-
-// removeUnsupportedLanguagesInPlugins scans plugin directories to remove unsupported language directories
-func removeUnsupportedLanguagesInPlugins(pluginsDir string, supportedLanguages []string) {
-	if _, err := os.Stat(pluginsDir); os.IsNotExist(err) {
-		return
-	}
-
-	entries, err := os.ReadDir(pluginsDir)
-	if err != nil {
-		log.Printf("Error reading plugins directory %s: %v", pluginsDir, err)
-		return
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		pluginPath := filepath.Join(pluginsDir, entry.Name())
-		translationsPath := filepath.Join(pluginPath, "resources", "translations")
-
-		removeUnsupportedLanguages(translationsPath, supportedLanguages)
 	}
 }
