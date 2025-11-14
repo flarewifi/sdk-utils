@@ -7,5 +7,11 @@
   ],
   "portal/index.js": [
     "./portal/portal-index.js"
+  ],
+  "auth/login.js": [
+    "./auth/login.js"
+  ],
+  "auth/login.css": [
+    "./auth/login.css"
   ]
 }
