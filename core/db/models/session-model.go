@@ -161,7 +161,13 @@ func (self *SessionModel) Summary(ctx context.Context, deviceID int64) (*sdkapi.
 	}
 
 	remainingSecs = int(summary.RemainingTimeSecs)
+	if remainingSecs < 0 {
+		remainingSecs = 0
+	}
 	remainingDataMb = float64(summary.RemainingDataMb)
+	if remainingDataMb < 0 {
+		remainingDataMb = 0
+	}
 
 	return &sdkapi.ClientSessionSummary{
 		RemainingTimeSecs:   remainingSecs,
