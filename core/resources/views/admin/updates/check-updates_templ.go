@@ -113,7 +113,7 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "checking_for_updates"))
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Checking for updates"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 41, Col: 68}
 		}
@@ -195,7 +195,7 @@ func CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err er
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "new_version"))
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "New Version"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 55, Col: 46}
 		}
@@ -221,7 +221,7 @@ func CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err er
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "current_version"))
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Current Version"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 57, Col: 53}
 		}
@@ -252,7 +252,7 @@ func CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err er
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "release_notes"))
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Release Notes"))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 61, Col: 53}
 			}
@@ -287,7 +287,7 @@ func CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err er
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "download_update"))
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Download Update"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 68, Col: 46}
 		}

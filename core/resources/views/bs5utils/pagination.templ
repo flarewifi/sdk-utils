@@ -85,7 +85,7 @@ templ previousItem(api sdkapi.IPluginApi, opts PaginationOpts) {
 	href := pageHref(opts, opts.CurrentPage-1)
 	}}
 	<li class={ klass }>
-		<a class="page-link" href={ href }>{ api.Translate("label", "previous") }</a>
+		<a class="page-link" href={ href }>{ api.Translate("label", "Previous") }</a>
 	</li>
 }
 
@@ -110,7 +110,7 @@ templ nextItem(api sdkapi.IPluginApi, opts PaginationOpts) {
 	href := pageHref(opts, opts.CurrentPage+1)
 	}}
 	<li class={ klass }>
-		<a class="page-link" href={ href }>{ api.Translate("label", "next") }</a>
+		<a class="page-link" href={ href }>{ api.Translate("label", "Next") }</a>
 	</li>
 }
 

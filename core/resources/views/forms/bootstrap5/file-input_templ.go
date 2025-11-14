@@ -265,7 +265,7 @@ func FileInputField(cfg *fileFieldConfig) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var15 string
-				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "remove"))
+				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "Remove"))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/file-input.templ`, Line: 84, Col: 52}
 				}

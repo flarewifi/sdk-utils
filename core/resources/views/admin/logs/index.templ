@@ -14,7 +14,7 @@ type LogsSearchData struct {
 }
 
 templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData, pagination templ.Component) {
-	<h1>{ api.Translate("label", "system_logs") }</h1>
+	<h1>{ api.Translate("label", "System Logs") }</h1>
 
 	<div class="mt-3">
 		<div class="card">
@@ -26,7 +26,7 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 								type="text" 
 								name="search_text" 
 								class="form-control form-control-sm" 
-								placeholder={ api.Translate("label", "search_logs") }
+								placeholder={ api.Translate("label", "Search Logs") }
 								value={ searchData.SearchText }
 							/>
 						</div>
@@ -47,7 +47,7 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 							</select>
 						</div>
 						<div class="col-md-2">
-							<button type="submit" class="btn btn-primary btn-sm w-100">{ api.Translate("label", "search_logs") }</button>
+							<button type="submit" class="btn btn-primary btn-sm w-100">{ api.Translate("label", "Search Logs") }</button>
 						</div>
 					</div>
 				</form>
@@ -59,9 +59,9 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 		<table class="table table-bordered table-striped">
 			<thead>
 				<tr>
-					<th>{ api.Translate("label", "package") }</th>
-					<th>{ api.Translate("label", "level") }</th>
-					<th>{ api.Translate("label", "message") }</th>
+					<th>{ api.Translate("label", "Package") }</th>
+					<th>{ api.Translate("label", "Level") }</th>
+					<th>{ api.Translate("label", "Message") }</th>
 				</tr>
 			</thead>
 			<tbody>

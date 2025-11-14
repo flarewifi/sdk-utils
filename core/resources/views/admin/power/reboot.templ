@@ -4,7 +4,7 @@ import "sdk/api"
 
 templ RebootPage(api sdkapi.IPluginApi) {
 	<div id="reboot-page">
-		<h3 class="mb-4">{ api.Translate("label", "reboot") }</h3>
+		<h3 class="mb-4">{ api.Translate("label", "Reboot") }</h3>
 		
 		<div class="card">
 			<div class="card-body">
@@ -27,7 +27,7 @@ templ RebootPage(api sdkapi.IPluginApi) {
 					hx-confirm="Are you sure you want to reboot the system? This will disconnect all users."
 					data-loading-disable>
 					<i class="bi bi-arrow-clockwise me-2"></i>
-					{ api.Translate("label", "reboot") }
+					{ api.Translate("label", "Reboot") }
 				</button>
 			</div>
 		</div>

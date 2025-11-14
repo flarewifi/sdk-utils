@@ -13,19 +13,19 @@ func SetAdminNavs(g *api.CoreGlobals) {
 		systemNavs := []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "dashboard"),
+				Label:     g.CoreAPI.Translate("label", "Dashboard"),
 				RouteName: "admin:dashboard",
 				Keywords:  []string{"dashboard"},
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "general"),
+				Label:     g.CoreAPI.Translate("label", "General"),
 				RouteName: "admin:general:index",
 				Keywords:  []string{"settings", "general", "language", "currency", "version", "machine", "id"},
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "updates"),
+				Label:     g.CoreAPI.Translate("label", "Updates"),
 				RouteName: "admin:updates:index",
 				Keywords:  []string{"update", "updates", "upgrade", "upgrades", "software"},
 			},
@@ -37,19 +37,19 @@ func SetAdminNavs(g *api.CoreGlobals) {
 		powerNavs := []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "logs"),
+				Label:     g.CoreAPI.Translate("label", "Logs"),
 				RouteName: "admin:logs:index",
 				Keywords:  []string{"log", "logs", "audit", "audits"},
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "reboot"),
+				Label:     g.CoreAPI.Translate("label", "Reboot"),
 				RouteName: "admin:power:reboot",
 				Keywords:  []string{"power", "reboot", "restart"},
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "shutdown"),
+				Label:     g.CoreAPI.Translate("label", "Shutdown"),
 				RouteName: "admin:power:shutdown",
 				Keywords:  []string{"power", "shutdown", "off"},
 			},
@@ -60,7 +60,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 		themesNavs := []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategoryThemes,
-				Label:     g.CoreAPI.Translate("label", "select_theme"),
+				Label:     g.CoreAPI.Translate("label", "Select Theme"),
 				RouteName: "admin:themes:index",
 				Keywords:  []string{"theme", "themes", "style", "portal", "admin"},
 			},

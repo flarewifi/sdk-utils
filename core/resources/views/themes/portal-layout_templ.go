@@ -58,7 +58,7 @@ func PortalHead(api sdkapi.IPluginApi, data PortalLayoutData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "flare_hotspot"))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Flare Hotspot"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/themes/portal-layout.templ`, Line: 28, Col: 49}
 		}

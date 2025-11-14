@@ -51,7 +51,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "github_releases"))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Github Releases"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/github_release.templ`, Line: 21, Col: 48}
 		}
@@ -69,7 +69,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "no_available_releases"))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "No available releases"))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/github_release.templ`, Line: 23, Col: 55}
 			}
@@ -87,7 +87,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "tag_name"))
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Tag Name"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/github_release.templ`, Line: 28, Col: 44}
 		}
@@ -100,7 +100,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "name"))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Name"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/github_release.templ`, Line: 29, Col: 40}
 		}
@@ -113,7 +113,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "description"))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Description"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/github_release.templ`, Line: 30, Col: 47}
 		}
@@ -126,7 +126,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "published_date"))
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Published Date"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/github_release.templ`, Line: 31, Col: 50}
 		}
@@ -139,7 +139,7 @@ func ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "download_link"))
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Download Link"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/github_release.templ`, Line: 32, Col: 49}
 		}

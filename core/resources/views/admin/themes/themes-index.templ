@@ -11,7 +11,7 @@ templ AdminThemesIndex(api sdkapi.IPluginApi, portalThemes []ThemeOption, adminT
 	<div>
 		<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:themes:save")) }>
 			<div class="mb-3">
-				<label for="portal_theme" class="form-label">{ api.Translate("label", "select_portal_theme") }</label>
+				<label for="portal_theme" class="form-label">{ api.Translate("label", "Select Portal Theme") }</label>
 				<select class="form-select" id="portal_theme" name="portal_theme" required>
 					for _, opt := range portalThemes {
 						<option value={ opt.Value } if currentPortal == opt.Value { selected }>{ opt.Label }</option>
@@ -19,14 +19,14 @@ templ AdminThemesIndex(api sdkapi.IPluginApi, portalThemes []ThemeOption, adminT
 				</select>
 			</div>
 			<div class="mb-3">
-				<label for="admin_theme" class="form-label">{ api.Translate("label", "select_admin_theme") }</label>
+				<label for="admin_theme" class="form-label">{ api.Translate("label", "Select Admin Theme") }</label>
 				<select class="form-select" id="admin_theme" name="admin_theme" required>
 					for _, opt := range adminThemes {
 						<option value={ opt.Value } if currentAdmin == opt.Value { selected }>{ opt.Label }</option>
 					}
 				</select>
 			</div>
-			<button type="submit" class="btn btn-primary">{ api.Translate("label", "save_settings") }</button>
+			<button type="submit" class="btn btn-primary">{ api.Translate("label", "Save Settings") }</button>
 		</form>
 	</div>
 }

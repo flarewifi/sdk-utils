@@ -137,7 +137,7 @@ func MultiInputField(cfg *multiFieldConfig) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "options"))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "Options"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/multi-input.templ`, Line: 44, Col: 64}
 		}
@@ -229,7 +229,7 @@ func MultiInputField(cfg *multiFieldConfig) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "add_item"))
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "Add Item"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/multi-input.templ`, Line: 81, Col: 49}
 		}
@@ -322,7 +322,7 @@ func multiFieldRow(cfg *multiFieldConfig, mfld sdkapi.FormMultiField, mfval sdka
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "edit"))
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "Edit"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/multi-input.templ`, Line: 107, Col: 91}
 		}
@@ -357,7 +357,7 @@ func multiFieldRow(cfg *multiFieldConfig, mfld sdkapi.FormMultiField, mfval sdka
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "delete"))
+		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "Delete"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/multi-input.templ`, Line: 113, Col: 49}
 		}
@@ -439,7 +439,7 @@ func displayValuesFromCookies(cfg *multiFieldConfig, mfld sdkapi.FormMultiField,
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var17 string
-				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "edit"))
+				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "Edit"))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/multi-input.templ`, Line: 158, Col: 97}
 				}
@@ -452,7 +452,7 @@ func displayValuesFromCookies(cfg *multiFieldConfig, mfld sdkapi.FormMultiField,
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var18 string
-				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "delete"))
+				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(cfg.pluginAPI.Translate("label", "Delete"))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/forms/bootstrap5/multi-input.templ`, Line: 164, Col: 52}
 				}
