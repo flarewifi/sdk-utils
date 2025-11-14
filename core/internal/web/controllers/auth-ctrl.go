@@ -16,7 +16,7 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 		}
 
 		res := g.CoreAPI.HttpAPI.Response()
-		_, t, err := g.PluginMgr.GetPortalTheme()
+		p, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
 			res.Error(w, r, errors.New(g.CoreAPI.Translate("error", "get_admin_theme_error")), http.StatusInternalServerError)
 			return
@@ -30,7 +30,7 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 		}
 
 		page := t.PortalTheme.LoginPageFactory(w, r, data)
-		g.CoreAPI.HttpAPI.Response().PortalView(w, r, page)
+		p.Http().Response().PortalView(w, r, page)
 	})
 }
 
