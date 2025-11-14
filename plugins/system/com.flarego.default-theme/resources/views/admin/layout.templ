@@ -75,8 +75,8 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 							<div class="offcanvas-header">
 								<button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
 							</div>
-							<div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 overflow-y-auto">
-								<div id="sidemenu" class="p-3">
+						<div class="offcanvas-body d-md-flex flex-column p-0 overflow-y-auto">
+							<div id="sidemenu" class="p-3 pt-md-3">
 									<ul class="nav-menu" x-data={ menuData(data.Navs) }>
 										for i, nav := range data.Navs {
 											<li

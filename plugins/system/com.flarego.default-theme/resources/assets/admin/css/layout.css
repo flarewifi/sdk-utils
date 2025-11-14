@@ -2,9 +2,20 @@
   text-align: center;
 }
 
+.navbar .navbar-nav.flex-row {
+  margin-left: auto;
+}
+
 .navbar .logo-img {
   display: inline;
   max-height: 30px;
+}
+
+@media (max-width: 767px) {
+  .navbar .logo-img {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 .bi {
@@ -44,6 +55,7 @@
     top: 0;
     left: 0;
     position: fixed;
+    width: 250px;
     height: 100vh;
     overflow-y: auto;
   }
@@ -52,6 +64,11 @@
   }
   .navbar-search {
     display: block;
+  }
+  main.col-md-9 {
+    margin-left: 250px;
+    flex: 0 0 calc(100% - 250px);
+    max-width: calc(100% - 250px);
   }
 }
 
@@ -66,6 +83,19 @@
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.25);
 }
 
+@media (min-width: 768px) {
+  .navbar-brand {
+    width: 250px;
+  }
+}
+
 .navbar .form-control {
   padding: 0.75rem 1rem;
+}
+
+@media (min-width: 768px) {
+  .navbar .d-flex.align-items-center {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
 }
