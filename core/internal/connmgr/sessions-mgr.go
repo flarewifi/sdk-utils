@@ -354,9 +354,17 @@ func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClient
 	}
 
 	timeDiff, mbDiff := rs.Diff()
+	remainingTime := summary.RemainingTimeSecs - timeDiff
+	if remainingTime < 0 {
+		remainingTime = 0
+	}
+	remainingData := summary.RemainingDataMbytes - mbDiff
+	if remainingData < 0 {
+		remainingData = 0
+	}
 	return &sdkapi.ClientSessionSummary{
-		RemainingTimeSecs:   summary.RemainingTimeSecs - timeDiff,
-		RemainingDataMbytes: summary.RemainingDataMbytes - mbDiff,
+		RemainingTimeSecs:   remainingTime,
+		RemainingDataMbytes: remainingData,
 	}, nil
 }
 

@@ -10,6 +10,9 @@
       if (running) {
         var timeEl = $('#session-time');
         var secs = (timeEl.data('value') * 1) - 1;
+        if (secs < 0) {
+          secs = 0;
+        }
         timeEl.data("value", secs.toString());
         timeEl.text(secs.toString());
       }
