@@ -37,8 +37,8 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 func AdminAuthenticateCtrl(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
-			// TODO: Handle error
-			w.WriteHeader(http.StatusBadRequest)
+			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, g.CoreAPI.Translate("error", "invalid_form_data"), sdkapi.FlashMsgError)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
@@ -47,7 +47,8 @@ func AdminAuthenticateCtrl(g *api.CoreGlobals) http.Handler {
 
 		acct, err := g.CoreAPI.HttpAPI.Auth().Authenticate(username, password)
 		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
+			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, g.CoreAPI.Translate("error", "invalid_credentials"), sdkapi.FlashMsgError)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
