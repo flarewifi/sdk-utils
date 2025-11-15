@@ -161,6 +161,22 @@ func scanFile(filePath string, usedTranslations map[string]*TranslationRef) {
 			}
 		}
 	}
+
+	// Check for concatenated translation keys
+	badPattern := regexp.MustCompile(`\.?Translate\(\s*"([^"]+)"\s*,\s*([^"]+)\)`)
+	badMatches := badPattern.FindAllStringSubmatch(string(content), -1)
+
+	for _, match := range badMatches {
+		if len(match) >= 3 {
+			msgType := match[1]
+			secondArg := match[2]
+
+			// Panic if the second argument contains concatenation (+)
+			if strings.Contains(secondArg, "+") {
+				log.Panicf("Concatenated translation key detected in %s: Translate(%q, %s)", filePath, msgType, secondArg)
+			}
+		}
+	}
 }
 
 // syncExistingTranslations ensures that all existing translation files exist in all supported languages
