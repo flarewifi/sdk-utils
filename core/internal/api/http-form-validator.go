@@ -22,78 +22,8 @@ func NewHTTPFormValidator(api *PluginApi) *HTTPFormValidator {
 	}
 }
 
-var errorCookieName = "%v_field_error"
-var valueCookieName = "%v_field_value"
-
 type HTTPFormValidator struct {
 	api *PluginApi
-}
-
-// FormValues implements sdkapi.IFormValues
-type FormValues struct {
-	values map[string]string
-}
-
-// GetStringValue implements sdkapi.IFormValues.GetStringValue
-func (fv *FormValues) GetStringValue(name string) (string, error) {
-	val, ok := fv.values[name]
-	if !ok {
-		return "", fmt.Errorf("field %s not found", name)
-	}
-	return val, nil
-}
-
-// GetIntValue implements sdkapi.IFormValues.GetIntValue
-func (fv *FormValues) GetIntValue(name string) (int64, error) {
-	val, ok := fv.values[name]
-	if !ok {
-		return 0, fmt.Errorf("field %s not found", name)
-	}
-	intVal, err := strconv.ParseInt(val, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("field %s is not a valid integer: %w", name, err)
-	}
-	return intVal, nil
-}
-
-// GetFloatValue implements sdkapi.IFormValues.GetFloatValue
-func (fv *FormValues) GetFloatValue(name string) (float64, error) {
-	val, ok := fv.values[name]
-	if !ok {
-		return 0, fmt.Errorf("field %s not found", name)
-	}
-	floatVal, err := strconv.ParseFloat(val, 64)
-	if err != nil {
-		return 0, fmt.Errorf("field %s is not a valid float: %w", name, err)
-	}
-	return floatVal, nil
-}
-
-// GetBoolValue implements sdkapi.IFormValues.GetBoolValue
-func (fv *FormValues) GetBoolValue(name string) (bool, error) {
-	val, ok := fv.values[name]
-	if !ok {
-		return false, fmt.Errorf("field %s not found", name)
-	}
-	// Handle common boolean representations
-	lowerVal := strings.ToLower(strings.TrimSpace(val))
-	switch lowerVal {
-	case "true", "1", "yes", "on":
-		return true, nil
-	case "false", "0", "no", "off", "":
-		return false, nil
-	default:
-		return false, fmt.Errorf("field %s is not a valid boolean: %s", name, val)
-	}
-}
-
-// GetFilePath implements sdkapi.IFormValues.GetFilePath
-func (fv *FormValues) GetFilePath(name string) (string, error) {
-	val, ok := fv.values[name]
-	if !ok {
-		return "", fmt.Errorf("field %s not found", name)
-	}
-	return val, nil
 }
 
 func (validtr *HTTPFormValidator) validateInteger(val any, min, max int, label string) (errStr string) {
@@ -113,13 +43,13 @@ func (validtr *HTTPFormValidator) validateInteger(val any, min, max int, label s
 	return errStr
 }
 
-func (validtr *HTTPFormValidator) validateDecimal(val any, min, max int, label string) (errStr string) {
+func (validtr *HTTPFormValidator) validateDecimal(val any, min, max float64, label string) (errStr string) {
 	fval := val.(float64)
-	if fval < float64(min) {
+	if fval < min {
 		errStr = validtr.api.Translate("error", "Input value does not meet the required minimum", "label", label, "min", min)
 	}
 
-	if float64(max) != 0 && fval > float64(max) {
+	if max != 0 && fval > max {
 		errStr = validtr.api.Translate("error", "Input value exceeds the maximum allowed", "label", label, "max", max)
 	}
 
@@ -180,19 +110,8 @@ func (validtr *HTTPFormValidator) ValidateAndExtractForm(w http.ResponseWriter, 
 		)
 
 		// Extract validation rules
-		isRequired := false
-		minimum := 0
-		maximum := 0
-		allowedExtensions := ""
-		for _, rule := range rules {
-			switch rule {
-			case sdkapi.FormFieldRuleRequired:
-				isRequired = true
-			case sdkapi.FormFieldRuleFileExt:
-				// This would need to be extracted from a more complex rule structure
-				// For now, we'll skip this
-			}
-		}
+		isRequired := rules.Required
+		allowedExtensions := rules.FileExt
 
 		var errStr string
 		switch fieldType {
@@ -206,10 +125,36 @@ func (validtr *HTTPFormValidator) ValidateAndExtractForm(w http.ResponseWriter, 
 			}
 
 		case sdkapi.FormFieldTypeString:
+			min := 0
+			max := 0
+			if rules.Minimum != "" {
+				min, _ = strconv.Atoi(rules.Minimum)
+			}
+			if rules.Maximum != "" {
+				max, _ = strconv.Atoi(rules.Maximum)
+			}
 			formValues[fieldName] = val
-			errStr = validtr.validateString(isRequired, val, fieldLabel, minimum, maximum)
+			errStr = validtr.validateString(isRequired, val, fieldLabel, min, max)
+			if rules.Email {
+				if !isValidEmail(val) {
+					errStr = validtr.api.Translate("error", "Input value must be a valid email", "label", fieldLabel)
+				}
+			}
+			if rules.Number {
+				if _, err := strconv.ParseFloat(val, 64); err != nil {
+					errStr = validtr.api.Translate("error", "Input value must be a number", "label", fieldLabel)
+				}
+			}
 
 		case sdkapi.FormFieldTypeInteger:
+			min := 0
+			max := 0
+			if rules.Minimum != "" {
+				min, _ = strconv.Atoi(rules.Minimum)
+			}
+			if rules.Maximum != "" {
+				max, _ = strconv.Atoi(rules.Maximum)
+			}
 			formValues[fieldName] = val
 			if !isRequired && val == "" {
 				// Clear any previous error
@@ -221,10 +166,18 @@ func (validtr *HTTPFormValidator) ValidateAndExtractForm(w http.ResponseWriter, 
 				errStr = validtr.api.Translate("error", "Input value must be a valid integer", "label", fieldLabel)
 			} else if err == nil {
 				valInt, _ := strconv.Atoi(val)
-				errStr = validtr.validateInteger(valInt, minimum, maximum, fieldLabel)
+				errStr = validtr.validateInteger(valInt, min, max, fieldLabel)
 			}
 
 		case sdkapi.FormFieldTypeDecimal:
+			minF := 0.0
+			maxF := 0.0
+			if rules.Minimum != "" {
+				minF, _ = strconv.ParseFloat(rules.Minimum, 64)
+			}
+			if rules.Maximum != "" {
+				maxF, _ = strconv.ParseFloat(rules.Maximum, 64)
+			}
 			formValues[fieldName] = val
 			if !isRequired && val == "" {
 				// Clear any previous error
@@ -236,7 +189,7 @@ func (validtr *HTTPFormValidator) ValidateAndExtractForm(w http.ResponseWriter, 
 				errStr = validtr.api.Translate("error", "Input value must be a valid decimal number", "label", fieldLabel)
 			} else if err == nil {
 				valFloat, _ := strconv.ParseFloat(val, 64)
-				errStr = validtr.validateDecimal(valFloat, minimum, maximum, fieldLabel)
+				errStr = validtr.validateDecimal(valFloat, minF, maxF, fieldLabel)
 			}
 
 		case sdkapi.FormFieldTypeBoolean:
@@ -314,6 +267,23 @@ func (validtr *HTTPFormValidator) handleFileUpload(r *http.Request, fieldName, f
 	}
 
 	return tmpFilePath, nil
+}
+
+// isValidEmail performs basic email validation
+func isValidEmail(email string) bool {
+	// Simple email validation
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return false
+	}
+	local, domain := parts[0], parts[1]
+	if local == "" || domain == "" {
+		return false
+	}
+	if !strings.Contains(domain, ".") {
+		return false
+	}
+	return true
 }
 
 // generateRandomID generates a random ID for temp directories

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
+	"strconv"
 	"strings"
 )
 
@@ -33,6 +34,73 @@ func (fe *FormErrorsImpl) HasError(name string) bool {
 // GetError implements sdkapi.FormErrors.GetError
 func (fe *FormErrorsImpl) GetError(name string) string {
 	return fe.errors[name]
+}
+
+// FormValues implements sdkapi.IFormValues
+type FormValues struct {
+	values map[string]string
+}
+
+// GetStringValue implements sdkapi.IFormValues.GetStringValue
+func (fv *FormValues) GetStringValue(name string) (string, error) {
+	val, ok := fv.values[name]
+	if !ok {
+		return "", fmt.Errorf("field %s not found", name)
+	}
+	return val, nil
+}
+
+// GetIntValue implements sdkapi.IFormValues.GetIntValue
+func (fv *FormValues) GetIntValue(name string) (int64, error) {
+	val, ok := fv.values[name]
+	if !ok {
+		return 0, fmt.Errorf("field %s not found", name)
+	}
+	intVal, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("field %s is not a valid integer: %w", name, err)
+	}
+	return intVal, nil
+}
+
+// GetFloatValue implements sdkapi.IFormValues.GetFloatValue
+func (fv *FormValues) GetFloatValue(name string) (float64, error) {
+	val, ok := fv.values[name]
+	if !ok {
+		return 0, fmt.Errorf("field %s not found", name)
+	}
+	floatVal, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		return 0, fmt.Errorf("field %s is not a valid float: %w", name, err)
+	}
+	return floatVal, nil
+}
+
+// GetBoolValue implements sdkapi.IFormValues.GetBoolValue
+func (fv *FormValues) GetBoolValue(name string) (bool, error) {
+	val, ok := fv.values[name]
+	if !ok {
+		return false, fmt.Errorf("field %s not found", name)
+	}
+	// Handle common boolean representations
+	lowerVal := strings.ToLower(strings.TrimSpace(val))
+	switch lowerVal {
+	case "true", "1", "yes", "on":
+		return true, nil
+	case "false", "0", "no", "off", "":
+		return false, nil
+	default:
+		return false, fmt.Errorf("field %s is not a valid boolean: %s", name, val)
+	}
+}
+
+// GetFilePath implements sdkapi.IFormValues.GetFilePath
+func (fv *FormValues) GetFilePath(name string) (string, error) {
+	val, ok := fv.values[name]
+	if !ok {
+		return "", fmt.Errorf("field %s not found", name)
+	}
+	return val, nil
 }
 
 // ParseForm implements sdkapi.IHttpFormsApi.ParseForm

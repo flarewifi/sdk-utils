@@ -47,7 +47,7 @@ type FormFieldValidator struct {
 	FieldName  string
 	FieldLabel string
 	FieldType  FormFieldType
-	FieldRules []FormFieldRule
+	FieldRules FormFieldRules
 }
 
 type FormFieldType string
@@ -60,16 +60,14 @@ const (
 	FormFieldTypeFile    FormFieldType = "file"
 )
 
-type FormFieldRule string
-
-const (
-	FormFieldRuleRequired FormFieldRule = "required" // is field required
-	FormFieldRuleEmail    FormFieldRule = "email"    // is field an email
-	FormFieldRuleNumber   FormFieldRule = "number"   // is field a number
-	FormFieldRuleMinimum  FormFieldRule = "minimum"  // minimum value or length
-	FormFieldRuleMaximum  FormFieldRule = "maximum"  // maximum value or length
-	FormFieldRuleFileExt  FormFieldRule = "file_ext" // allowed file extensions separated by comma (if file input)
-)
+type FormFieldRules struct {
+	Required bool   // value must be provided
+	Email    bool   // value must be a valid email
+	Number   bool   // value must be a number (int or float)
+	Minimum  string // parsable minimum value (for number/float) or length (for string)
+	Maximum  string // parsable maximum value (for number/float) or length (for string)
+	FileExt  string // allowed file extensions separated by comma (if file input)
+}
 
 type FormErrors interface {
 	// Returns true if there is an error for the given field name

@@ -72,13 +72,13 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 					FieldName:  "language",
 					FieldLabel: g.CoreAPI.Translate("label", "Language"),
 					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: []sdkapi.FormFieldRule{sdkapi.FormFieldRuleRequired},
+					FieldRules: sdkapi.FormFieldRules{Required: true},
 				},
 				{
 					FieldName:  "currency",
 					FieldLabel: g.CoreAPI.Translate("label", "Currency"),
 					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: []sdkapi.FormFieldRule{sdkapi.FormFieldRuleRequired},
+					FieldRules: sdkapi.FormFieldRules{Required: true},
 				},
 			},
 		}

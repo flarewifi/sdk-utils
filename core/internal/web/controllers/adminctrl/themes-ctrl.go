@@ -54,13 +54,13 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 					FieldName:  "portal_theme",
 					FieldLabel: g.CoreAPI.Translate("label", "Select Portal Theme"),
 					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: []sdkapi.FormFieldRule{sdkapi.FormFieldRuleRequired},
+					FieldRules: sdkapi.FormFieldRules{Required: true},
 				},
 				{
 					FieldName:  "admin_theme",
 					FieldLabel: g.CoreAPI.Translate("label", "Select Admin Theme"),
 					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: []sdkapi.FormFieldRule{sdkapi.FormFieldRuleRequired},
+					FieldRules: sdkapi.FormFieldRules{Required: true},
 				},
 			},
 		}
