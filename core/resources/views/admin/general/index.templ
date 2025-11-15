@@ -7,7 +7,7 @@ type AdminGeneralSettingsIndexParams struct {
 	MachineID          string
 	SoftwareVersion    string
 	ActivationStatus   string
-	Errors             map[string]string
+	Errors             sdkapi.FormErrors
 	SupportedLanguages []sdkapi.SupportedLanguage
 }
 
@@ -68,10 +68,10 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSettin
 							for _, lang := range params.SupportedLanguages {
 								<option value={ lang.Code } if params.Cfg.Lang == lang.Code { selected }>{ lang.Name }</option>
 							}
-						</select>
-						if params.Errors["language"] != "" {
-							<div class="text-danger mt-1">{ params.Errors["language"] }</div>
-						}
+					</select>
+					if params.Errors.HasError("language") {
+						<div class="text-danger mt-1">{ params.Errors.GetError("language") }</div>
+					}
 					</div>
 					<div class="mb-3">
 						<label for="currency" class="form-label">{ api.Translate("label", "Currency") }</label>
@@ -86,10 +86,10 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSettin
 							<option value="CHF" if params.Cfg.Currency == "CHF" { selected }>CHF - Swiss Franc</option>
 							<option value="INR" if params.Cfg.Currency == "INR" { selected }>INR - Indian Rupee</option>
 							<option value="MXN" if params.Cfg.Currency == "MXN" { selected }>MXN - Mexican Peso</option>
-						</select>
-						if params.Errors["currency"] != "" {
-							<div class="text-danger mt-1">{ params.Errors["currency"] }</div>
-						}
+					</select>
+					if params.Errors.HasError("currency") {
+						<div class="text-danger mt-1">{ params.Errors.GetError("currency") }</div>
+					}
 					</div>
 					<button type="submit" class="btn btn-primary">{ api.Translate("label", "Save Settings") }</button>
 				</form>

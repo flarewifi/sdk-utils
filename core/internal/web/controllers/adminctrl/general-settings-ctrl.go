@@ -34,7 +34,7 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		// Get form errors if any
-		errors := g.CoreAPI.HttpAPI.Forms().Errors(w, r, "general_settings")
+		errors := g.CoreAPI.HttpAPI.Forms().Errors(w, r, "application_settings")
 
 		// Get activation status
 		activationStatus := "not_activated"
@@ -65,30 +65,26 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		res := g.CoreAPI.HttpAPI.Response()
 
 		// Define the form validator
-		formValidator := sdkapi.FormWithValidator{
-			FormName: "application_settings",
-			FormValidators: []sdkapi.FormValidator{
+		formValidator := sdkapi.FormValidator{
+			Name: "application_settings",
+			Validators: []sdkapi.FormFieldValidator{
 				{
 					FieldName:  "language",
 					FieldLabel: g.CoreAPI.Translate("label", "Language"),
 					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: sdkapi.FormFieldRules{
-						Required: true,
-					},
+					FieldRules: []sdkapi.FormFieldRule{sdkapi.FormFieldRuleRequired},
 				},
 				{
 					FieldName:  "currency",
 					FieldLabel: g.CoreAPI.Translate("label", "Currency"),
 					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: sdkapi.FormFieldRules{
-						Required: true,
-					},
+					FieldRules: []sdkapi.FormFieldRule{sdkapi.FormFieldRuleRequired},
 				},
 			},
 		}
 
 		// Parse and validate the form
-		err := g.CoreAPI.HttpAPI.Forms().ParseFormWithValidator(w, r, formValidator)
+		formValues, err := g.CoreAPI.HttpAPI.Forms().ParseForm(w, r, formValidator)
 		if err != nil {
 			// Validation failed, redirect back to the form
 			applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
@@ -97,8 +93,8 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		// Get form values
-		language := r.FormValue("language")
-		currency := r.FormValue("currency")
+		language, _ := formValues.GetStringValue("language")
+		currency, _ := formValues.GetStringValue("currency")
 
 		// Read current config to preserve the Secret field
 		currentCfg, err := config.ReadApplicationConfig()
