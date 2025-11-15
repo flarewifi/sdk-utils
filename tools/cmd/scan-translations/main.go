@@ -5,10 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	"tools/config"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 // TranslationRef represents a reference to a translation
@@ -46,7 +48,7 @@ func main() {
 	// Now scan translation files and remove unused ones for all supported languages for core
 	removeUnusedTranslations("core/resources/translations", coreUsed, supportedLangCodes)
 
-	// Remove unsupported language directories for core
+	// Remove unsupported language directories for core and plugins
 	removeUnsupportedLanguages("core/resources/translations", supportedLangCodes)
 
 	// Process system plugins
@@ -77,17 +79,32 @@ func processPlugins(pluginsDir string, supportedLanguages []string) {
 
 		pluginPath := filepath.Join(pluginsDir, entry.Name())
 		pluginUsed := make(map[string]*TranslationRef)
-		scanDirectory(pluginPath, pluginUsed)
 
-		log.Printf("Found %d unique translation references in plugin %s", len(pluginUsed), entry.Name())
+		processPlugin(pluginPath, supportedLanguages, pluginUsed)
 
-		translationsPath := filepath.Join(pluginPath, "resources", "translations")
+		// scanDirectory(pluginPath, pluginUsed)
 
-		syncExistingTranslations(translationsPath, supportedLanguages)
-		createMissingTranslations(translationsPath, pluginUsed, supportedLanguages)
-		removeUnusedTranslations(translationsPath, pluginUsed, supportedLanguages)
-		removeUnsupportedLanguages(translationsPath, supportedLanguages)
+		// log.Printf("Found %d unique translation references in plugin %s", len(pluginUsed), entry.Name())
+
+		// translationsPath := filepath.Join(pluginPath, "resources", "translations")
+
+		// syncExistingTranslations(translationsPath, supportedLanguages)
+		// createMissingTranslations(translationsPath, pluginUsed, supportedLanguages)
+		// removeUnusedTranslations(translationsPath, pluginUsed, supportedLanguages)
+		// removeUnsupportedLanguages(translationsPath, supportedLanguages)
 	}
+}
+
+func processPlugin(pluginPath string, supportedLanguages []string, pluginUsed map[string]*TranslationRef) {
+	scanDirectory(pluginPath, pluginUsed)
+	log.Printf("Found %d unique translation references in plugin %s", len(pluginUsed), filepath.Base(pluginPath))
+
+	translationsPath := filepath.Join(pluginPath, "resources", "translations")
+
+	syncExistingTranslations(translationsPath, supportedLanguages)
+	createMissingTranslations(translationsPath, pluginUsed, supportedLanguages)
+	removeUnusedTranslations(translationsPath, pluginUsed, supportedLanguages)
+	removeUnsupportedLanguages(translationsPath, supportedLanguages)
 }
 
 // scanDirectory scans a directory recursively for .go and .templ files
@@ -355,13 +372,7 @@ func removeUnsupportedLanguages(translationsDir string, supportedLanguages []str
 		}
 
 		lang := entry.Name()
-		isSupported := false
-		for _, supported := range supportedLanguages {
-			if lang == supported {
-				isSupported = true
-				break
-			}
-		}
+		isSupported := slices.Contains(supportedLanguages, lang)
 
 		if !isSupported {
 			langDir := filepath.Join(translationsDir, lang)

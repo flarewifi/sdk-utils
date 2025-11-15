@@ -337,7 +337,7 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 	s, err := self.mdl.Session().AvailableForDevice(ctx, localClient.id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("No more available sessions")
+			return nil, errors.New(self.coreAPI.Translate("error", "No more available sessions"))
 		}
 		return nil, err
 	}
