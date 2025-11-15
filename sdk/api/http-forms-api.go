@@ -8,14 +8,9 @@ package sdkapi
 
 import (
 	"net/http"
-
-	"github.com/a-h/templ"
 )
 
 type IHttpFormsApi interface {
-	RegisterForm(name string, factory func(r *http.Request) HttpForm) error
-	GetFormTemplate(name string, r *http.Request) (templ.Component, error)
-	ParseForm(name string, w http.ResponseWriter, r *http.Request) (IHttpForm, error)
 	ParseFormWithValidator(w http.ResponseWriter, r *http.Request, form FormWithValidator) error
 	Errors(w http.ResponseWriter, r *http.Request, formName string) map[string]string
 }
