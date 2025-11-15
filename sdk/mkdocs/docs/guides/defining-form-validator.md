@@ -56,9 +56,12 @@ The `FormFieldRules` struct defines validation constraints for a form field.
 
 ```go
 type FormFieldRules struct {
-    Required bool
-    Minimum  int
-    Maximum  int
+    Required bool   // value must be provided
+    Email    bool   // value must be a valid email
+    Number   bool   // value must be a number (int or float)
+    Minimum  string // parsable minimum value (for number/float) or length (for string)
+    Maximum  string // parsable maximum value (for number/float) or length (for string)
+    FileExt  string // allowed file extensions separated by comma (if file input)
 }
 ```
 
@@ -87,21 +90,22 @@ func saveUserSettings(w http.ResponseWriter, r *http.Request) {
             {
                 FieldName:  "username",
                 FieldLabel: "Username",
-                FieldType:  sdkapi.FormFieldTypeText,
+                FieldType:  sdkapi.FormFieldTypeString,
                 FieldRules: sdkapi.FormFieldRules{
                     Required: true,
-                    Minimum:  4,
-                    Maximum:  20,
+                    Minimum:  "4",
+                    Maximum:  "20",
                 },
             },
             {
                 FieldName:  "email",
                 FieldLabel: "Email Address",
-                FieldType:  sdkapi.FormFieldTypeText,
+                FieldType:  sdkapi.FormFieldTypeString,
                 FieldRules: sdkapi.FormFieldRules{
                     Required: true,
-                    Minimum:  5,
-                    Maximum:  100,
+                    Email:    true,
+                    Minimum:  "5",
+                    Maximum:  "100",
                 },
             },
             {
@@ -110,8 +114,8 @@ func saveUserSettings(w http.ResponseWriter, r *http.Request) {
                 FieldType:  sdkapi.FormFieldTypeInteger,
                 FieldRules: sdkapi.FormFieldRules{
                     Required: true,
-                    Minimum:  18,
-                    Maximum:  120,
+                    Minimum:  "18",
+                    Maximum:  "120",
                 },
             },
         },

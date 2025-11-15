@@ -15,7 +15,7 @@ type AdminGeneralSettingsIndexParams struct {
 	MachineID          string
 	SoftwareVersion    string
 	ActivationStatus   string
-	Errors             map[string]string
+	Errors             sdkapi.FormErrors
 	SupportedLanguages []sdkapi.SupportedLanguage
 }
 
@@ -223,15 +223,15 @@ func AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSetting
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if params.Errors["language"] != "" {
+		if params.Errors.HasError("language") {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"text-danger mt-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(params.Errors["language"])
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(params.Errors.GetError("language"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/index.templ`, Line: 73, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/index.templ`, Line: 73, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -359,15 +359,15 @@ func AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSetting
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if params.Errors["currency"] != "" {
+		if params.Errors.HasError("currency") {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"text-danger mt-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(params.Errors["currency"])
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(params.Errors.GetError("currency"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/index.templ`, Line: 91, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/index.templ`, Line: 91, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {

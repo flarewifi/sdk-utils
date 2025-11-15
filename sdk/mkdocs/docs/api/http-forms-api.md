@@ -11,14 +11,17 @@ See [Form Submission](../guides/form-submission.md) documentation for usage exam
 
 ```go
 type IHttpFormsApi interface {
-    ParseFormWithValidator(w http.ResponseWriter, r *http.Request, form FormWithValidator) error
-	Errors(w http.ResponseWriter, r *http.Request, formName string) map[string]string
+    // Parses and validates form data from the http request based on the provided validators.
+    ParseForm(w http.ResponseWriter, r *http.Request, validator FormValidator) (IFormValues, error)
+
+    // Retrieves form validation errors
+    Errors(w http.ResponseWriter, r *http.Request, validatorName string) FormErrors
 }
 ```
 
 ### Methods
 
-#### ParseFormWithValidator
+#### ParseForm
 
 Parses and validates the input values from the HTTP request based on the provided validation rules in the [Form Validator](#form-validator).
 
@@ -26,23 +29,22 @@ Parses and validates the input values from the HTTP request based on the provide
 // handler
 func (w http.ResponseWriter, r *http.Request) {
     formsAPI := api.Http().Forms()
-    formValidator := sdkapi.FormWithValidator{
-        FormName: "my-form",
-        FormValidators: []sdkapi.FormValidator{
+    formValidator := sdkapi.FormValidator{
+        Name: "my-form",
+        Validators: []sdkapi.FormFieldValidator{
             {
                 FieldName:  "username",
                 FieldLabel: "Username",
-                FieldType:  sdkapi.FormFieldTypeText,
+                FieldType:  sdkapi.FormFieldTypeString,
                 FieldRules: sdkapi.FormFieldRules{
                     Required: true,
-                    Minimum:  4,
-                    Maximum:  20,
+                    Minimum:  "5",
                 },
             },
         },
     }
-        
-    err := formsAPI.ParseFormWithValidator(w, r, formValidator)
+
+    formValues, err := formsAPI.ParseForm(w, r, formValidator)
     if err != nil {
         // handle error - validation failed
         // redirect back to form with errors
@@ -50,24 +52,27 @@ func (w http.ResponseWriter, r *http.Request) {
     }
 
     // validation passed - parse request values
-    username := r.FormValue("username")
+    username, _ := formValues.GetStringValue("username")
 }
 ```
 
 #### Errors
 
-Retrieves the validation errors from `ParseFormWithValidator` and returns them as a map, with the field name as the keys.
+Retrieves the validation errors from `ParseForm` and returns them as a FormErrors interface.
 
 ```go
 // handler
 func (w http.ResponseWriter, r *http.Request) {
     formsAPI := api.Http().Forms()
-    
-    formName := "my-form"
-    errMap := formsAPI.Errors(w, r, formName)
-    
-    // Pass the error map to your custom views to display validation errors
-    // Example: views.MyForm(api, errMap)
+
+    validatorName := "my-form"
+    formErrors := formsAPI.Errors(w, r, validatorName)
+
+    // Check for errors
+    if formErrors.HasError("username") {
+        errorMsg := formErrors.GetError("username")
+        // handle error
+    }
 }
 ```
 
@@ -75,16 +80,87 @@ See [Form Submission](../guides/form-submission.md) for a complete example of ha
 
 ---
 
-## FormWithValidator {#form-validator}
+## IFormValues
 
-The `FormWithValidator` struct defines the validation rules for a form.
+The `IFormValues` interface provides methods to retrieve parsed form values.
 
 ### Definition
 
 ```go
-type FormWithValidator struct {
-    FormName       string
-    FormValidators []FormValidator
+type IFormValues interface {
+    // Returns the input field value as a string
+    GetStringValue(name string) (string, error)
+
+    // Returns the input field value as a int64
+    GetIntValue(name string) (int64, error)
+
+    // Returns the input field value as a float64
+    GetFloatValue(name string) (float64, error)
+
+    // Returns the input field value as a bool
+    GetBoolValue(name string) (bool, error)
+
+    // Returns the temp filepath of the uploaded file
+    GetFilePath(name string) (string, error)
+}
+```
+
+### Usage Example
+
+```go
+formValues, err := formsAPI.ParseForm(w, r, formValidator)
+if err != nil {
+    // handle error
+}
+
+username, _ := formValues.GetStringValue("username")
+age, _ := formValues.GetIntValue("age")
+price, _ := formValues.GetFloatValue("price")
+accepted, _ := formValues.GetBoolValue("accept_terms")
+filePath, _ := formValues.GetFilePath("document")
+```
+
+---
+
+## FormErrors
+
+The `FormErrors` interface provides methods to check and retrieve validation errors.
+
+### Definition
+
+```go
+type FormErrors interface {
+    // Returns true if there is an error for the given field name
+    HasError(name string) bool
+
+    // Returns the error message for the given field name
+    GetError(name string) string
+}
+```
+
+### Usage Example
+
+```go
+formErrors := formsAPI.Errors(w, r, "my-form")
+
+if formErrors.HasError("username") {
+    errorMsg := formErrors.GetError("username")
+    // display error
+}
+```
+
+---
+
+## FormValidator {#form-validator}
+
+The `FormValidator` struct defines the validation rules for a form.
+
+### Definition
+
+```go
+type FormValidator struct {
+    Name       string
+    Validators []FormFieldValidator
 }
 ```
 
@@ -92,23 +168,24 @@ type FormWithValidator struct {
 
 | Property | Description |
 | ---- | ----|
-| `FormName` | The unique name of the form. |
-| `FormValidators` | A collection of [FormValidator](#formvalidator) defining validation rules for each field. |
+| `Name` | The unique name of the form validator. |
+| `Validators` | A collection of [FormFieldValidator](#formfieldvalidator) defining validation rules for each field. |
 
 ### Usage Example
 
 ```go
-formValidator := sdkapi.FormWithValidator{
-    FormName: "registration-form",
-    FormValidators: []sdkapi.FormValidator{
+formValidator := sdkapi.FormValidator{
+    Name: "registration-form",
+    Validators: []sdkapi.FormFieldValidator{
         {
             FieldName:  "email",
             FieldLabel: "Email Address",
-            FieldType:  sdkapi.FormFieldTypeText,
+            FieldType:  sdkapi.FormFieldTypeString,
             FieldRules: sdkapi.FormFieldRules{
                 Required: true,
-                Minimum:  5,
-                Maximum:  100,
+                Email:    true,
+                Minimum:  "5",
+                Maximum:  "100",
             },
         },
         {
@@ -117,8 +194,9 @@ formValidator := sdkapi.FormWithValidator{
             FieldType:  sdkapi.FormFieldTypeInteger,
             FieldRules: sdkapi.FormFieldRules{
                 Required: true,
-                Minimum:  18,
-                Maximum:  120,
+                Number:   true,
+                Minimum:  "18",
+                Maximum:  "120",
             },
         },
     },
@@ -127,17 +205,17 @@ formValidator := sdkapi.FormWithValidator{
 
 ---
 
-## FormValidator {#formvalidator}
+## FormFieldValidator {#formfieldvalidator}
 
-The `FormValidator` struct defines validation rules for a single form field.
+The `FormFieldValidator` struct defines validation rules for a single form field.
 
 ### Definition
 
 ```go
-type FormValidator struct {
+type FormFieldValidator struct {
     FieldName  string
     FieldLabel string
-    FieldType  string
+    FieldType  FormFieldType
     FieldRules FormFieldRules
 }
 ```
@@ -149,7 +227,7 @@ type FormValidator struct {
 | `FieldName` | The unique name of the form field. This must match the `name` attribute in your HTML input. |
 | `FieldLabel` | The label for the field. Used in validation error messages. |
 | `FieldType` | The type of the field. See [Field Types](#field-types) for available types. |
-| `FieldRules` | The validation rules for the field. See [FormFieldRules](#formfieldrules). |
+| `FieldRules` | The validation rules for the field. See [FormFieldRule](#formfieldrule). |
 
 ---
 
@@ -157,32 +235,25 @@ type FormValidator struct {
 
 The `FormFieldRules` struct defines validation constraints for a form field.
 
-### Definition
-
 ```go
 type FormFieldRules struct {
-    Required bool
-    Minimum  int
-    Maximum  int
+    Required bool   // value must be provided
+    Email    bool   // value must be a valid email
+    Number   bool   // value must be a number (int or float)
+    Minimum  string // parsable minimum value (for number/float) or length (for string)
+    Maximum  string // parsable maximum value (for number/float) or length (for string)
+    FileExt  string // allowed file extensions separated by comma (if file input)
 }
 ```
 
-### Properties
-
-| Property | Description |
-| ---- | ----|
-| `Required` | Indicates if the field is required. |
-| `Minimum` | Minimum allowed value or minimum number of characters for string values. |
-| `Maximum` | Maximum allowed value or maximum number of characters for string values. |
-
-### Validation Behavior by Field Type
-
-| Field Type | Minimum | Maximum |
-| ---- | ---- | ---- |
-| `FormFieldTypeText` | Minimum string length | Maximum string length |
-| `FormFieldTypeInteger` | Minimum numeric value | Maximum numeric value |
-| `FormFieldTypeDecimal` | Minimum numeric value | Maximum numeric value |
-| `FormFieldTypeBoolean` | Not applicable | Not applicable |
+| Field | Type | Description |
+|-------|------|-------------|
+| `Required` | `bool` | Indicates if the field is required. |
+| `Email` | `bool` | Validates that the field contains a valid email address. |
+| `Number` | `bool` | Validates that the field contains a numeric value. |
+| `Minimum` | `string` | Minimum allowed value (for numbers) or minimum number of characters (for strings). |
+| `Maximum` | `string` | Maximum allowed value (for numbers) or maximum number of characters (for strings). |
+| `FileExt` | `string` | Allowed file extensions separated by comma (for file inputs). |
 
 ---
 
@@ -192,23 +263,24 @@ The following field types are supported for form validation:
 
 | Field Type | Data Type | Description |
 | ---- | ---- | ---- |
-| `sdkapi.FormFieldTypeText` | `string` | Text input fields (including textarea) |
+| `sdkapi.FormFieldTypeString` | `string` | Text input fields (including textarea) |
 | `sdkapi.FormFieldTypeInteger` | `int64` | Integer number input fields |
 | `sdkapi.FormFieldTypeDecimal` | `float64` | Decimal number input fields |
 | `sdkapi.FormFieldTypeBoolean` | `bool` | Boolean/checkbox input fields |
+| `sdkapi.FormFieldTypeFile` | `string` | File upload input fields |
 
 ### Usage Example
 
 ```go
-// Text field validation
+// String field validation
 {
     FieldName:  "description",
     FieldLabel: "Description",
-    FieldType:  sdkapi.FormFieldTypeText,
+    FieldType:  sdkapi.FormFieldTypeString,
     FieldRules: sdkapi.FormFieldRules{
         Required: true,
-        Minimum:  10,   // minimum 10 characters
-        Maximum:  500,  // maximum 500 characters
+        Minimum:  "10",
+        Maximum:  "500",
     },
 }
 
@@ -217,10 +289,11 @@ The following field types are supported for form validation:
     FieldName:  "quantity",
     FieldLabel: "Quantity",
     FieldType:  sdkapi.FormFieldTypeInteger,
-    FieldRules: sdkapi.FormFieldRules{
-        Required: true,
-        Minimum:  1,    // minimum value of 1
-        Maximum:  100,  // maximum value of 100
+    FieldRules: []sdkapi.FormFieldRule{
+        sdkapi.FormFieldRuleRequired,
+        sdkapi.FormFieldRuleNumber,
+        sdkapi.FormFieldRuleMinimum,
+        sdkapi.FormFieldRuleMaximum,
     },
 }
 
@@ -229,10 +302,11 @@ The following field types are supported for form validation:
     FieldName:  "price",
     FieldLabel: "Price",
     FieldType:  sdkapi.FormFieldTypeDecimal,
-    FieldRules: sdkapi.FormFieldRules{
-        Required: true,
-        Minimum:  0,      // minimum value of 0
-        Maximum:  10000,  // maximum value of 10000
+    FieldRules: []sdkapi.FormFieldRule{
+        sdkapi.FormFieldRuleRequired,
+        sdkapi.FormFieldRuleNumber,
+        sdkapi.FormFieldRuleMinimum,
+        sdkapi.FormFieldRuleMaximum,
     },
 }
 
@@ -242,7 +316,18 @@ The following field types are supported for form validation:
     FieldLabel: "Accept Terms",
     FieldType:  sdkapi.FormFieldTypeBoolean,
     FieldRules: sdkapi.FormFieldRules{
-        Required: true,  // user must check the checkbox
+        Required: true,
+    },
+}
+
+// File field validation
+{
+    FieldName:  "document",
+    FieldLabel: "Document",
+    FieldType:  sdkapi.FormFieldTypeFile,
+    FieldRules: sdkapi.FormFieldRules{
+        Required: true,
+        FileExt:  "pdf,doc,docx",
     },
 }
 ```
@@ -256,41 +341,43 @@ Here's a complete example of using the form validator with a custom HTML form:
 ### Define the Form Validator
 
 ```go
-func validateRegistrationForm(w http.ResponseWriter, r *http.Request) error {
+func validateRegistrationForm(w http.ResponseWriter, r *http.Request) (sdkapi.IFormValues, error) {
     formsAPI := api.Http().Forms()
-    
-    formValidator := sdkapi.FormWithValidator{
-        FormName: "registration-form",
-        FormValidators: []sdkapi.FormValidator{
+
+    formValidator := sdkapi.FormValidator{
+        Name: "registration-form",
+        Validators: []sdkapi.FormFieldValidator{
             {
                 FieldName:  "username",
                 FieldLabel: "Username",
-                FieldType:  sdkapi.FormFieldTypeText,
+                FieldType:  sdkapi.FormFieldTypeString,
                 FieldRules: sdkapi.FormFieldRules{
                     Required: true,
-                    Minimum:  4,
-                    Maximum:  20,
+                    Minimum:  "3",
+                    Maximum:  "50",
                 },
             },
             {
                 FieldName:  "email",
                 FieldLabel: "Email",
-                FieldType:  sdkapi.FormFieldTypeText,
-                FieldRules: sdkapi.FormFieldRules{
-                    Required: true,
-                    Minimum:  5,
-                    Maximum:  100,
-                },
+                FieldType:  sdkapi.FormFieldTypeString,
+    FieldRules: sdkapi.FormFieldRules{
+        Required: true,
+        Email:    true,
+        Minimum:  "5",
+        Maximum:  "100",
+    },
             },
             {
                 FieldName:  "age",
                 FieldLabel: "Age",
                 FieldType:  sdkapi.FormFieldTypeInteger,
-                FieldRules: sdkapi.FormFieldRules{
-                    Required: true,
-                    Minimum:  18,
-                    Maximum:  120,
-                },
+    FieldRules: sdkapi.FormFieldRules{
+        Required: true,
+        Number:   true,
+        Minimum:  "1",
+        Maximum:  "1000",
+    },
             },
             {
                 FieldName:  "accept_terms",
@@ -302,8 +389,8 @@ func validateRegistrationForm(w http.ResponseWriter, r *http.Request) error {
             },
         },
     }
-    
-    return formsAPI.ParseFormWithValidator(w, r, formValidator)
+
+    return formsAPI.ParseForm(w, r, formValidator)
 }
 ```
 
@@ -312,12 +399,12 @@ func validateRegistrationForm(w http.ResponseWriter, r *http.Request) error {
 ```go
 func showForm(w http.ResponseWriter, r *http.Request) {
     formsAPI := api.Http().Forms()
-    
+
     // Get validation errors (if any)
-    errMap := formsAPI.Errors(w, r, "registration-form")
-    
+    formErrors := formsAPI.Errors(w, r, "registration-form")
+
     // Render your custom form template with errors
-    formView := views.RegistrationForm(api, errMap)
+    formView := views.RegistrationForm(api, formErrors)
     api.Http().Response().AdminView(w, r, sdkapi.ViewPage{
         PageContent: formView,
     })

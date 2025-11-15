@@ -15,7 +15,7 @@ const (
     IntegerField = "my-integer-field"
 )
 
-templ SampleView(api sdkapi.IPluginApi, errMap map[string]string) {
+templ SampleView(api sdkapi.IPluginApi, formErrors sdkapi.FormErrors) {
     <div class="container">
         <div class="row mb-2">
             <div class="col">
@@ -30,20 +30,18 @@ templ SampleView(api sdkapi.IPluginApi, errMap map[string]string) {
                             method="POST" 
                             action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin.sample.save")) }
                         >
-                            {{
-                                stringFldClass := "form-control"
-                                intFldClass := "form-control"
+                             {{
+                                 stringFldClass := "form-control"
+                                 intFldClass := "form-control"
 
-                                strErr, ok := errMap[StringField]
-                                if ok && strErr != "" {
-                                    stringFldClass += " is-invalid"
-                                }
+                                 if formErrors.HasError(StringField) {
+                                     stringFldClass += " is-invalid"
+                                 }
 
-                                 intErr, ok := errMap[IntegerField]
-                                if ok && intErr != "" {
-                                    intFldClass += " is-invalid"
-                                }
-                            }}
+                                 if formErrors.HasError(IntegerField) {
+                                     intFldClass += " is-invalid"
+                                 }
+                             }}
 
                             <div class="pb-3">
                                 <label for={ StringField } class={ "form-label" }>Sample String Field:</label>
@@ -53,9 +51,9 @@ templ SampleView(api sdkapi.IPluginApi, errMap map[string]string) {
                                     id={ StringField } 
                                     name={ StringField } 
                                 />
-                                if errStr, ok := errMap[StringField]; ok {
-                                    <div class="invalid-feedback">{ errStr }</div>
-                                }
+                                 if formErrors.HasError(StringField) {
+                                     <div class="invalid-feedback">{ formErrors.GetError(StringField) }</div>
+                                 }
                             </div>
 
                             <div class="pb-3">
@@ -66,9 +64,9 @@ templ SampleView(api sdkapi.IPluginApi, errMap map[string]string) {
                                     id={ IntegerField } 
                                     name={ IntegerField } 
                                 />
-                                if errStr, ok := errMap[IntegerField]; ok {
-                                    <div class="invalid-feedback">{ errStr }</div>
-                                }
+                                 if formErrors.HasError(IntegerField) {
+                                     <div class="invalid-feedback">{ formErrors.GetError(IntegerField) }</div>
+                                 }
                             </div>
 
                             <div class="mb-3 align-items-center">
@@ -76,13 +74,13 @@ templ SampleView(api sdkapi.IPluginApi, errMap map[string]string) {
                                     { api.Translate("label", "save") }
                                 </button>
                             </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+                         </form>
+                     </div>
+                 </div>
+             </div>
+         </div>
+     </div>
+ }
 
 ```
 
@@ -95,17 +93,17 @@ To render the form in our views, we need to pass the validation errors from the 
 func handler(w http.ResponseWriter, r *http.Request) {
     res := api.Http().Response()
 
-    // Error map from form's API to use for validation.
-    errMap := api.Http().Forms().Errors(w, r, views.SampleForm)
+    // Form errors from form's API to use for validation.
+    formErrors := api.Http().Forms().Errors(w, r, views.SampleForm)
 
     // Retrieve our custom form template.
-    sampleViewForm := views.SampleView(api, errMap)
-    
+    sampleViewForm := views.SampleView(api, formErrors)
+
     // Render form to the admin view
     res.AdminView(w, r, sdkapi.ViewPage{PageContent: sampleViewForm})
 }
 ```
-In the example above, the error map is used to handle form validations. It’s important that the form and field names match, so that each validation error is displayed with the correct input field.
+In the example above, the form errors are used to handle form validations. It’s important that the form and field names match, so that each validation error is displayed with the correct input field.
 
 ## The form action route
 
@@ -124,9 +122,9 @@ This means that when a user clicks the `Submit` button on the HTML form, it will
 
 ## Handling the form data
 
-To get the form data, first we need to parse our form with our custom-defined form validators using [ParseFormWithValidator](../api/http-forms-api.md#parseformwithvalidator) method.
+To get the form data, first we need to parse our form with our custom-defined form validators using [ParseForm](../api/http-forms-api.md#parseform) method.
 
-Then we can use the [request.FormValue](https://pkg.go.dev/net/http#Request.FormValue) methods to retrieve the values from the form input fields.
+Then we can use the [IFormValues](../api/http-forms-api.md#iformvalues) methods to retrieve the values from the form input fields.
 
 
 ```go
@@ -137,15 +135,15 @@ Then we can use the [request.FormValue](https://pkg.go.dev/net/http#Request.Form
         res := api.Http().Response()
 
         // Define your custom form rules.
-        formRules := []sdkapi.FormValidator{
+        formValidators := []sdkapi.FormFieldValidator{
             {
                 FieldName:  views.StringField, // Input field name. Important that it matches with the field name.
                 FieldLabel: "Sample String Field",
-                FieldType:  sdkapi.FormFieldTypeText, 
+                FieldType:  sdkapi.FormFieldTypeString,
                 FieldRules: sdkapi.FormFieldRules{
                     Required: true,
-                    Minimum:  5,  
-                    Maximum:  10, 
+                    Minimum:  "5",
+                    Maximum:  "100",
                 },
             },
             {
@@ -154,31 +152,32 @@ Then we can use the [request.FormValue](https://pkg.go.dev/net/http#Request.Form
                 FieldType:  sdkapi.FormFieldTypeInteger,
                 FieldRules: sdkapi.FormFieldRules{
                     Required: true,
-                    Minimum:  5, 
-                    Maximum:  10, 
+                    Number:   true,
+                    Minimum:  "1",
+                    Maximum:  "100",
                 },
             },
         }
 
-        formValidator := sdkapi.FormWithValidator{
-            FormName:       views.SampleForm,
-            FormValidators: formRules,
+        formValidator := sdkapi.FormValidator{
+            Name:       views.SampleForm,
+            Validators: formValidators,
         }
 
         // Parse form with the custom form validator.
-        err := api.Http().Forms().ParseFormWithValidator(w, r, formValidator)
+        formValues, err := api.Http().Forms().ParseForm(w, r, formValidator)
         if err != nil {
             res.FlashMsg(w, r, "parsing error", sdkapi.FlashMsgError)
 
             // Redirect back to your form view if there's parsing error.
-            res.Redirect(w, r, "admin.sample") 
+            res.Redirect(w, r, "admin.sample")
 
             return
         }
 
         // Read the form values.
-        stringValue := r.FormValue(views.StringField)
-        intValue := r.FormValue(views.IntegerField)
+        stringValue, _ := formValues.GetStringValue(views.StringField)
+        intValue, _ := formValues.GetIntValue(views.IntegerField)
 
         // Do something with the parsed values.
 

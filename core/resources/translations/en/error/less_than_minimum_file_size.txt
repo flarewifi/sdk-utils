@@ -1,1 +1,0 @@
-less_than_minimum_file_size

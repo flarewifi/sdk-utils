@@ -42,3 +42,54 @@ Likewise, you can use the [IPluginApi.Translate](../api/plugin-api.md#translate)
 ```templ
 <p>{ api.Translate("label", "paid_amount", "amount", 100) }</p>
 ```
+
+## 3. Best Practices for Translation Keys
+
+### Use Generic Phrases, Not Concatenated Variables
+
+When creating translation keys, avoid concatenating variables directly in the key. Instead, use generic descriptive phrases and pass variables as parameters. This approach provides better maintainability and allows translators to understand the context properly.
+
+#### ❌ Bad Example (Concatenating Variables):
+```go
+// Don't do this - concatenating variables in translation keys
+errStr = validtr.api.Translate("error", fieldLabel+" must be at least "+fmt.Sprint(min)+" characters")
+```
+
+#### ✅ Good Example (Generic Keys with Placeholders):
+```go
+// Do this - use generic keys with variables passed separately
+errStr = validtr.api.Translate("error", "Input value does not meet the required minimum characters", "label", fieldLabel, "min", min)
+```
+
+### Translation File Structure
+
+For the good example above, create a translation file at:
+```
+resources/translations/en/error/Input value does not meet the required minimum characters.txt
+```
+
+With content using Go template placeholders:
+```
+<% .label %> must be at least <% .min %> characters
+```
+
+### Benefits of This Approach
+
+1. **Reusability**: The same translation key can be used for different fields (Username, Password, etc.)
+2. **Maintainability**: Translation keys are descriptive and don't change with variable values
+3. **Localization**: Translators see the full context and can properly localize the message
+4. **Consistency**: All similar validation messages use the same generic keys
+5. **Type Safety**: Variables are passed as named parameters, reducing errors
+
+### Common Generic Translation Keys
+
+For form validation, use these generic keys:
+
+- `"Input field is required"` → `<% .label %> is required`
+- `"Input value must be a valid integer"` → `<% .label %> must be a valid integer`
+- `"Input value does not meet the required minimum"` → `<% .label %> must be at least <% .min %>`
+- `"Input value exceeds the maximum allowed"` → `<% .label %> must not exceed <% .max %>`
+- `"File upload is required"` → `<% .label %> is required`
+- `"Invalid file extension uploaded"` → `Invalid file extension for <% .label %>. Allowed extensions: <% .extensions %>`
+
+This pattern ensures your translations are professional, maintainable, and properly localizable.

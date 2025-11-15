@@ -47,37 +47,33 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
 
-		formValidator := sdkapi.FormWithValidator{
-			FormName: "themes",
-			FormValidators: []sdkapi.FormValidator{
+		formValidator := sdkapi.FormValidator{
+			Name: "themes",
+			Validators: []sdkapi.FormFieldValidator{
 				{
 					FieldName:  "portal_theme",
 					FieldLabel: g.CoreAPI.Translate("label", "Select Portal Theme"),
 					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: sdkapi.FormFieldRules{
-						Required: true,
-					},
+					FieldRules: sdkapi.FormFieldRules{Required: true},
 				},
 				{
 					FieldName:  "admin_theme",
 					FieldLabel: g.CoreAPI.Translate("label", "Select Admin Theme"),
 					FieldType:  sdkapi.FormFieldTypeString,
-					FieldRules: sdkapi.FormFieldRules{
-						Required: true,
-					},
+					FieldRules: sdkapi.FormFieldRules{Required: true},
 				},
 			},
 		}
 
-		err := g.CoreAPI.HttpAPI.Forms().ParseFormWithValidator(w, r, formValidator)
+		formValues, err := g.CoreAPI.HttpAPI.Forms().ParseForm(w, r, formValidator)
 		if err != nil {
 			themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
 			http.Redirect(w, r, themesIndexUrl, http.StatusSeeOther)
 			return
 		}
 
-		portalTheme := r.FormValue("portal_theme")
-		adminTheme := r.FormValue("admin_theme")
+		portalTheme, _ := formValues.GetStringValue("portal_theme")
+		adminTheme, _ := formValues.GetStringValue("admin_theme")
 
 		err = config.WriteThemesConfig(config.ThemesConfig{
 			AdminThemePkg:  adminTheme,
