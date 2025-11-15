@@ -33,10 +33,15 @@ func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
 }
 
 type SessionsMgr struct {
+	coreAPI   sdkapi.IPluginApi
 	db        *db.Database
 	mdl       *models.Models
 	sessions  sync.Map
 	providers []sdkapi.ISessionProvider
+}
+
+func (self *SessionsMgr) SetCoreAPI(api sdkapi.IPluginApi) {
+	self.coreAPI = api
 }
 
 func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
@@ -108,7 +113,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 	errReturnCh := make(chan error)
 
 	if clnt.Status() == sdkapi.Blocked {
-		return errors.New("Device is blocked.")
+		return errors.New(self.coreAPI.Translate("error", "Device is blocked"))
 	}
 
 	go func() {

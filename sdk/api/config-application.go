@@ -16,3 +16,8 @@ type IAppCfgApi interface {
 	Get() (AppConfig, error)
 	Save(AppConfig) error
 }
+
+type SupportedLanguage struct {
+	Code string
+	Name string
+}

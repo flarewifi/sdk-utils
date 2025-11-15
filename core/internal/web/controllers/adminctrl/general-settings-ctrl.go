@@ -43,7 +43,19 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		} else if activation.IsActivated.Load() {
 			activationStatus = "activated"
 		}
-		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, cfg, machineID, softwareVersion, activationStatus, errors)
+
+		// Get supported languages
+		supportedLanguages := config.SupportedLanguages
+
+		params := generalview.AdminGeneralSettingsIndexParams{
+			Cfg:                cfg,
+			MachineID:          machineID,
+			SoftwareVersion:    softwareVersion,
+			ActivationStatus:   activationStatus,
+			Errors:             errors,
+			SupportedLanguages: supportedLanguages,
+		}
+		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, params)
 		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
 	}
 }

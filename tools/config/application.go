@@ -10,9 +10,9 @@ import (
 
 const applicationJsonFile = "application.json"
 
-var SupportedLanguages = []string{
-	"en", // English
-	"af", // Afrikaans
+var SupportedLanguages = []sdkapi.SupportedLanguage{
+	{Code: "en", Name: "English"},
+	{Code: "af", Name: "Afrikaans"},
 }
 
 var defaultAppCfg = sdkapi.AppConfig{

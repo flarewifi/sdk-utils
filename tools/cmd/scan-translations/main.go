@@ -31,25 +31,29 @@ func main() {
 
 	// Get all supported languages from config
 	supportedLanguages := config.SupportedLanguages
-	log.Printf("Checking translations for languages: %v", supportedLanguages)
+	var supportedLangCodes []string
+	for _, lang := range supportedLanguages {
+		supportedLangCodes = append(supportedLangCodes, lang.Code)
+	}
+	log.Printf("Checking translations for languages: %v", supportedLangCodes)
 
 	// First, sync existing translation files across all languages for core
-	syncExistingTranslations("core/resources/translations", supportedLanguages)
+	syncExistingTranslations("core/resources/translations", supportedLangCodes)
 
 	// Create missing translation files for all supported languages for core
-	createMissingTranslations("core/resources/translations", coreUsed, supportedLanguages)
+	createMissingTranslations("core/resources/translations", coreUsed, supportedLangCodes)
 
 	// Now scan translation files and remove unused ones for all supported languages for core
-	removeUnusedTranslations("core/resources/translations", coreUsed, supportedLanguages)
+	removeUnusedTranslations("core/resources/translations", coreUsed, supportedLangCodes)
 
 	// Remove unsupported language directories for core
-	removeUnsupportedLanguages("core/resources/translations", supportedLanguages)
+	removeUnsupportedLanguages("core/resources/translations", supportedLangCodes)
 
 	// Process system plugins
-	processPlugins("plugins/system", supportedLanguages)
+	processPlugins("plugins/system", supportedLangCodes)
 
 	// Process local plugins
-	processPlugins("data/plugins/local", supportedLanguages)
+	processPlugins("data/plugins/local", supportedLangCodes)
 
 	log.Println("Translation scan complete")
 }

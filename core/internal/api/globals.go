@@ -39,18 +39,19 @@ func NewGlobals() *CoreGlobals {
 	db := db.NewDatabase()
 	mdls := models.New(db)
 	clntReg := connmgr.NewClientRegister(db, mdls)
-	clntMgr := connmgr.NewSessionsMgr(db, mdls)
+	sessionMgr := connmgr.NewSessionsMgr(db, mdls)
 	trfcMgr := network.NewTrafficMgr()
 	pmtMgr := NewPaymentMgr()
 
-	clntReg.SetSessionsMgr(clntMgr)
+	clntReg.SetSessionsMgr(sessionMgr)
 
 	trfcMgr.Start()
-	clntMgr.ListenTraffic(trfcMgr)
+	sessionMgr.ListenTraffic(trfcMgr)
 
-	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, clntMgr, trfcMgr)
+	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, sessionMgr, trfcMgr)
 	coreApi := NewPluginApi(sdkutils.PathCoreDir, info, assets, plgnMgr, trfcMgr)
 	plgnMgr.InitCoreApi(coreApi)
+	sessionMgr.SetCoreAPI(coreApi)
 
 	return &CoreGlobals{
 		assets,
@@ -58,7 +59,7 @@ func NewGlobals() *CoreGlobals {
 		state,
 		coreApi,
 		clntReg,
-		clntMgr,
+		sessionMgr,
 		trfcMgr,
 		mdls,
 		plgnMgr,
