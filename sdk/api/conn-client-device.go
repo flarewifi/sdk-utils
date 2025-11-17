@@ -20,6 +20,14 @@ const (
 	Blocked
 )
 
+// UpdateDeviceParams holds parameters for updating a client device.
+type UpdateDeviceParams struct {
+	Mac      string
+	Ip       string
+	Hostname string
+	Status   int
+}
+
 // IClientDevice represents a client device connected to the network.
 type IClientDevice interface {
 
@@ -39,7 +47,7 @@ type IClientDevice interface {
 	Status() DeviceStatus
 
 	// Updates the client device.
-	Update(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error
+	Update(tx *sql.Tx, ctx context.Context, params UpdateDeviceParams) error
 
 	// Emits a socket event to a client device.
 	// The event will be propagated to the client's browser via server-sent events.

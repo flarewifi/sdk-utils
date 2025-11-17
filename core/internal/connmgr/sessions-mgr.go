@@ -193,9 +193,12 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 	err := <-errReturnCh
 	if err == nil {
 		err = sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
-			if err := clnt.Update(
-				tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Connected),
-			); err != nil {
+			if err := clnt.Update(tx, ctx, sdkapi.UpdateDeviceParams{
+				Mac:      clnt.MacAddr(),
+				Ip:       clnt.IpAddr(),
+				Hostname: clnt.Hostname(),
+				Status:   int(sdkapi.Connected),
+			}); err != nil {
 				return fmt.Errorf("unable to update device status to connected: %w", err)
 			}
 			return nil
@@ -217,7 +220,12 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 	self.emitClientEvent(sdkapi.EventClientDisconnected, clnt)
 
 	return sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
-		return clnt.Update(tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Disconnected))
+		return clnt.Update(tx, ctx, sdkapi.UpdateDeviceParams{
+			Mac:      clnt.MacAddr(),
+			Ip:       clnt.IpAddr(),
+			Hostname: clnt.Hostname(),
+			Status:   int(sdkapi.Disconnected),
+		})
 	})
 }
 

@@ -39,12 +39,12 @@ func (self *Purchase) Price() float64 {
 	return price
 }
 
-func (self *Purchase) CreatePayment(tx *sql.Tx, ctx context.Context, amount float64, optname string) error {
+func (self *Purchase) CreatePayment(tx *sql.Tx, ctx context.Context, params sdkapi.CreatePaymentParams) error {
 	mdls := self.api.models
 	_, err := mdls.Payment().Create(tx, ctx, models.CreatePaymentParams{
 		PurchaseID:    self.purchase.Id(),
-		Amount:        amount,
-		PaymentMethod: optname,
+		Amount:        params.Amount,
+		PaymentMethod: params.Optname,
 	})
 	return err
 }

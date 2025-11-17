@@ -47,6 +47,18 @@ type ClientSessionSummary struct {
 	RemainingDataMbytes float64
 }
 
+// CreateSessionParams holds parameters for creating a new client session.
+type CreateSessionParams struct {
+	DevId       int64
+	SessionType SessionType
+	TimeSecs    int
+	DataMbytes  float64
+	ExpDays     *int
+	DownMbits   int
+	UpMbits     int
+	UseGlobal   bool
+}
+
 // ISessionsMgrApi is used to manage client devices.
 type ISessionsMgrApi interface {
 
@@ -61,18 +73,7 @@ type ISessionsMgrApi interface {
 	IsConnected(clnt IClientDevice) (connected bool)
 
 	// Create a session for the client device
-	CreateSession(
-		tx *sql.Tx,
-		ctx context.Context,
-		devId int64,
-		sessionType SessionType,
-		timeSecs int,
-		dataMbytes float64,
-		expDays *int,
-		downMbits int,
-		upMbits int,
-		useGlobal bool,
-	) (IClientSession, error)
+	CreateSession(tx *sql.Tx, ctx context.Context, params CreateSessionParams) (IClientSession, error)
 
 	// Get the current running session of a client device.
 	RunningSession(clnt IClientDevice) (cs IClientSession, ok bool)
