@@ -27,6 +27,15 @@ type PaginateResult struct {
 	Count int64
 }
 
+// CreateLogParams holds parameters for creating a new log entry
+type CreateLogParams struct {
+	Package    string
+	Level      string
+	Message    string
+	Filepath   string
+	LineNumber int
+}
+
 func NewLogModel(database *db.Database, mdls *Models) *LogModel {
 	return &LogModel{
 		db:     database,
@@ -34,13 +43,13 @@ func NewLogModel(database *db.Database, mdls *Models) *LogModel {
 	}
 }
 
-func (self *LogModel) Create(ctx context.Context, pkg string, level string, message string, filepath string, line int) error {
+func (self *LogModel) Create(ctx context.Context, params CreateLogParams) error {
 	_, err := self.db.Queries.CreateLog(ctx, queries.CreateLogParams{
-		Package:    sdkutils.StrToNullString(pkg),
-		Level:      level,
-		Message:    message,
-		Filepath:   filepath,
-		LineNumber: int64(line),
+		Package:    sdkutils.StrToNullString(params.Package),
+		Level:      params.Level,
+		Message:    params.Message,
+		Filepath:   params.Filepath,
+		LineNumber: int64(params.LineNumber),
 	})
 	return err
 }

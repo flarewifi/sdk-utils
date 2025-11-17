@@ -46,24 +46,23 @@ func (self *ClientSession) Save(ctx context.Context) error {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
-	id := self.id
-	uid := self.uid
-	providerPkg := self.providerPkg
-
-	devId := self.devId
-	t := sdkapi.SessionType(self.sessionType)
-	timeSecs := self.timeSecs
-	dataMb := self.dataMb
-	timeCons := self.timeCons
-	dataCons := self.dataCons
-	started := self.startedAt
-	exp := self.expDays
-	d := self.downMbits
-	u := self.upMbits
-	g := self.useGlobal
-
 	return sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
-		return self.mdls.Session().Update(tx, ctx, id, uid, providerPkg, devId, t, timeSecs, dataMb, timeCons, dataCons, started, exp, d, u, g)
+		return self.mdls.Session().Update(tx, ctx, models.UpdateSessionParams{
+			ID:          self.id,
+			UID:         self.uid,
+			ProviderPkg: self.providerPkg,
+			DeviceID:    self.devId,
+			SessionType: sdkapi.SessionType(self.sessionType),
+			TimeSecs:    self.timeSecs,
+			DataMbytes:  self.dataMb,
+			TimeCons:    self.timeCons,
+			DataCons:    self.dataCons,
+			StartedAt:   self.startedAt,
+			ExpDays:     self.expDays,
+			DownMbits:   self.downMbits,
+			UpMbits:     self.upMbits,
+			UseGlobal:   self.useGlobal,
+		})
 	})
 }
 

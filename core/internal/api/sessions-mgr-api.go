@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"core/db/models"
 	"core/internal/connmgr"
 	sdkapi "sdk/api"
 
@@ -38,21 +39,21 @@ func (self *SessionsMgrApi) IsConnected(clnt sdkapi.IClientDevice) bool {
 }
 
 // CreateSession creates a session for the client device using the plugin's package name.
-func (self *SessionsMgrApi) CreateSession(
-	tx *sql.Tx,
-	ctx context.Context,
-	devId int64,
-	sessionType sdkapi.SessionType,
-	timeSecs int,
-	dataMbytes float64,
-	expDays *int,
-	downMbits int,
-	upMbits int,
-	useGlobal bool,
-) (sdkapi.IClientSession, error) {
+func (self *SessionsMgrApi) CreateSession(tx *sql.Tx, ctx context.Context, params sdkapi.CreateSessionParams) (sdkapi.IClientSession, error) {
 	uid := uuid.New().String()
 	pkg := self.pluginApi.Info().Package
-	session, err := self.pluginApi.models.Session().Create(tx, ctx, uid, pkg, devId, sessionType, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
+	session, err := self.pluginApi.models.Session().Create(tx, ctx, models.CreateSessionParams{
+		UID:         uid,
+		PluginPkg:   pkg,
+		DeviceID:    params.DevId,
+		SessionType: params.SessionType,
+		TimeSecs:    params.TimeSecs,
+		DataMbytes:  params.DataMbytes,
+		ExpDays:     params.ExpDays,
+		DownMbits:   params.DownMbits,
+		UpMbits:     params.UpMbits,
+		UseGlobal:   params.UseGlobal,
+	})
 	if err != nil {
 		return nil, err
 	}

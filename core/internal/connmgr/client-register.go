@@ -43,7 +43,11 @@ func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac strin
 			if errors.Is(err, sql.ErrNoRows) && dev == nil {
 				log.Println("no device found by mac, creating new device...")
 				// create new device record
-				dev, err = reg.mdls.Device().Create(tx, ctx, mac, ip, hostname)
+				dev, err = reg.mdls.Device().Create(tx, ctx, models.CreateDeviceParams{
+					MacAddress: mac,
+					IpAddress:  ip,
+					Hostname:   hostname,
+				})
 				if err != nil {
 					return err
 				}
@@ -74,7 +78,13 @@ func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac strin
 
 			// old := NewClientDevice(reg.db, reg.mdls, dev.Clone())
 			// Devices are have disconnected status by default.
-			err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Disconnected))
+			err := dev.Update(tx, ctx, models.UpdateDeviceParams{
+				ID:         dev.Id(),
+				MacAddress: mac,
+				IpAddress:  ip,
+				Hostname:   hostname,
+				Status:     int(sdkapi.Disconnected),
+			})
 			if err != nil {
 				fmt.Println("error updating dev: ", err)
 				return fmt.Errorf("could not update dev: %w", err)
@@ -89,7 +99,13 @@ func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac strin
 					return err
 				}
 
-				if err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Connected)); err != nil {
+				if err := dev.Update(tx, ctx, models.UpdateDeviceParams{
+					ID:         dev.Id(),
+					MacAddress: mac,
+					IpAddress:  ip,
+					Hostname:   hostname,
+					Status:     int(sdkapi.Connected),
+				}); err != nil {
 					fmt.Println("error updating dev to connected: ", err)
 					return fmt.Errorf("could not update dev to connected: %w", err)
 				}

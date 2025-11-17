@@ -11,6 +11,20 @@ type QuickAccessNavModel struct {
 	models *Models
 }
 
+// UpsertQuickAccessNavParams holds parameters for upserting a quick access nav
+type UpsertQuickAccessNavParams struct {
+	PluginPkg   string
+	RouteName   string
+	RouteParams string
+}
+
+// FindQuickAccessNavParams holds parameters for finding a quick access nav
+type FindQuickAccessNavParams struct {
+	PluginPkg   string
+	RouteName   string
+	RouteParams string
+}
+
 func NewQuickAccessNavModel(database *db.Database, mdls *Models) *QuickAccessNavModel {
 	return &QuickAccessNavModel{
 		db:     database,
@@ -18,11 +32,11 @@ func NewQuickAccessNavModel(database *db.Database, mdls *Models) *QuickAccessNav
 	}
 }
 
-func (self *QuickAccessNavModel) Upsert(ctx context.Context, pluginPkg string, routeName string, routeParams string) error {
+func (self *QuickAccessNavModel) Upsert(ctx context.Context, params UpsertQuickAccessNavParams) error {
 	err := self.db.Queries.UpsertQuickAccessNav(ctx, queries.UpsertQuickAccessNavParams{
-		PluginPkg:   pluginPkg,
-		RouteName:   routeName,
-		RouteParams: routeParams,
+		PluginPkg:   params.PluginPkg,
+		RouteName:   params.RouteName,
+		RouteParams: params.RouteParams,
 	})
 	return err
 }
@@ -41,11 +55,11 @@ func (self *QuickAccessNavModel) GetTop3(ctx context.Context) ([]*QuickAccessNav
 	return navs, nil
 }
 
-func (self *QuickAccessNavModel) Find(ctx context.Context, pluginPkg string, routeName string, routeParams string) (*QuickAccessNav, error) {
+func (self *QuickAccessNavModel) Find(ctx context.Context, params FindQuickAccessNavParams) (*QuickAccessNav, error) {
 	result, err := self.db.Queries.FindQuickAccessNav(ctx, queries.FindQuickAccessNavParams{
-		PluginPkg:   pluginPkg,
-		RouteName:   routeName,
-		RouteParams: routeParams,
+		PluginPkg:   params.PluginPkg,
+		RouteName:   params.RouteName,
+		RouteParams: params.RouteParams,
 	})
 	if err != nil {
 		return nil, err

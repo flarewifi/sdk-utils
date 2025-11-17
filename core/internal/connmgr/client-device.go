@@ -67,19 +67,25 @@ func (self *ClientDevice) Status() sdkapi.DeviceStatus {
 	return self.status
 }
 
-func (self *ClientDevice) Update(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error {
+func (self *ClientDevice) Update(tx *sql.Tx, ctx context.Context, params sdkapi.UpdateDeviceParams) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	err := self.mdls.Device().Update(tx, ctx, self.id, self.mac, self.ip, self.hostname, status)
+	err := self.mdls.Device().Update(tx, ctx, models.UpdateDeviceParams{
+		ID:         self.id,
+		MacAddress: params.Mac,
+		IpAddress:  params.Ip,
+		Hostname:   params.Hostname,
+		Status:     params.Status,
+	})
 	if err != nil {
 		return err
 	}
 
-	self.hostname = hostname
-	self.mac = mac
-	self.ip = ip
-	self.status = sdkapi.DeviceStatus(status)
+	self.hostname = params.Hostname
+	self.mac = params.Mac
+	self.ip = params.Ip
+	self.status = sdkapi.DeviceStatus(params.Status)
 
 	return nil
 }

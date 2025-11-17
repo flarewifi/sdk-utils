@@ -31,6 +31,12 @@ type PurchaseRequest struct {
 	Metadata      map[string]string
 }
 
+// CreatePaymentParams holds parameters for creating a payment for a purchase.
+type CreatePaymentParams struct {
+	Amount  float64
+	Optname string
+}
+
 // IPurchaseRequest represents a record in purchases table in the database.
 type IPurchaseRequest interface {
 
@@ -44,7 +50,7 @@ type IPurchaseRequest interface {
 	IsFixedPrice() bool
 
 	// Create a payment for the purchase.
-	CreatePayment(tx *sql.Tx, ctx context.Context, amount float64, optname string) error
+	CreatePayment(tx *sql.Tx, ctx context.Context, params CreatePaymentParams) error
 
 	// Pay using the customers wallet.
 	// The amount will be debitted from the wallet once the purchase request has been confirmed.

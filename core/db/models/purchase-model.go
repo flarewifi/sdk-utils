@@ -19,32 +19,55 @@ type PurchaseModel struct {
 	models *Models
 }
 
+// CreatePurchaseParams holds parameters for creating a new purchase
+type CreatePurchaseParams struct {
+	DeviceID       int64
+	SKU            string
+	Name           string
+	Description    string
+	Price          float64
+	AnyPrice       bool
+	CallbackPlugin string
+	CallbackRoute  string
+	Metadata       map[string]string
+}
+
+// UpdatePurchaseParams holds parameters for updating a purchase
+type UpdatePurchaseParams struct {
+	ID              int64
+	WalletDebit     float64
+	WalletTxID      *int64
+	CancelledAt     *time.Time
+	ConfirmedAt     *time.Time
+	CancelledReason *string
+}
+
 func NewPurchaseModel(dtb *db.Database, mdls *Models) *PurchaseModel {
 	return &PurchaseModel{dtb, mdls}
 }
 
-func (self *PurchaseModel) Create(tx *sql.Tx, ctx context.Context, deviceId int64, sku string, name string, desc string, price float64, vprice bool, pkg string, routename string, metadata map[string]string) (*Purchase, error) {
-	b, err := json.Marshal(metadata)
+func (self *PurchaseModel) Create(tx *sql.Tx, ctx context.Context, params CreatePurchaseParams) (*Purchase, error) {
+	b, err := json.Marshal(params.Metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	params := queries.CreatePurchaseParams{
-		DeviceID:       deviceId,
-		Sku:            sku,
-		Name:           name,
-		Description:    desc,
-		Price:          price,
-		AnyPrice:       vprice,
-		CallbackPlugin: pkg,
-		CallbackRoute:  routename,
+	queryParams := queries.CreatePurchaseParams{
+		DeviceID:       params.DeviceID,
+		Sku:            params.SKU,
+		Name:           params.Name,
+		Description:    params.Description,
+		Price:          params.Price,
+		AnyPrice:       params.AnyPrice,
+		CallbackPlugin: params.CallbackPlugin,
+		CallbackRoute:  params.CallbackRoute,
 		Metadata:       b,
 	}
 
-	fmt.Printf("Create Purchase: %+v\n", params)
+	fmt.Printf("Create Purchase: %+v\n", queryParams)
 
 	qtx := self.db.Queries.WithTx(tx)
-	pId, err := qtx.CreatePurchase(ctx, params)
+	pId, err := qtx.CreatePurchase(ctx, queryParams)
 	if err != nil {
 		log.Println("error creating purchase: %w", err)
 		return nil, err
@@ -85,28 +108,28 @@ func (self *PurchaseModel) FindByDeviceId(tx *sql.Tx, ctx context.Context, devic
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) Update(tx *sql.Tx, ctx context.Context, id int64, dbt float64, txid *int64, cancelledAt *time.Time, confirmedAt *time.Time, reason *string) error {
+func (self *PurchaseModel) Update(tx *sql.Tx, ctx context.Context, params UpdatePurchaseParams) error {
 	var cancellReason string
-	if reason != nil {
-		cancellReason = *reason
+	if params.CancelledReason != nil {
+		cancellReason = *params.CancelledReason
 	}
 
 	var walletTxID sql.NullInt64
-	if txid != nil {
-		walletTxID = sql.NullInt64{Int64: *txid, Valid: true}
+	if params.WalletTxID != nil {
+		walletTxID = sql.NullInt64{Int64: *params.WalletTxID, Valid: true}
 	}
 
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
-		WalletDebit:     dbt,
+		WalletDebit:     params.WalletDebit,
 		WalletTxID:      walletTxID,
-		CancelledAt:     sdkutils.TimeToNullTime(cancelledAt),
-		ConfirmedAt:     sdkutils.TimeToNullTime(confirmedAt),
+		CancelledAt:     sdkutils.TimeToNullTime(params.CancelledAt),
+		ConfirmedAt:     sdkutils.TimeToNullTime(params.ConfirmedAt),
 		CancelledReason: cancellReason,
-		ID:              id,
+		ID:              params.ID,
 	})
 	if err != nil {
-		log.Printf("error updating purchase %v: %v", id, err)
+		log.Printf("error updating purchase %v: %v", params.ID, err)
 		return err
 	}
 
