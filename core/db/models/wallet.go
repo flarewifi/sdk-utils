@@ -52,7 +52,10 @@ func (self *Wallet) IncBalance(tx *sql.Tx, ctx context.Context, bal float64) err
 }
 
 func (self *Wallet) Update(tx *sql.Tx, ctx context.Context, bal float64) error {
-	err := self.models.walletModel.Update(tx, ctx, self.id, bal)
+	err := self.models.walletModel.Update(tx, ctx, UpdateWalletParams{
+		ID:      self.id,
+		Balance: bal,
+	})
 	if err != nil {
 		return err
 	}

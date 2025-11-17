@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"core/db/models"
 	"core/internal/utils/logger"
 )
 
@@ -28,7 +29,13 @@ func (l *LoggerApi) Info(message string) error {
 	file, line := logger.GetCallerFileLine(calldepth)
 
 	logger.LogToConsole(file, line, level, message)
-	err := l.api.models.Log().Create(context.Background(), info.Package, LogLevelInfo, message, file, line)
+	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
+		Package:    info.Package,
+		Level:      LogLevelInfo,
+		Message:    message,
+		Filepath:   file,
+		LineNumber: line,
+	})
 	return err
 }
 
@@ -40,7 +47,13 @@ func (l *LoggerApi) Debug(message string) error {
 	file, line := logger.GetCallerFileLine(calldepth)
 
 	logger.LogToConsole(file, line, level, message)
-	err := l.api.models.Log().Create(context.Background(), info.Package, LogLevelDebug, message, file, line)
+	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
+		Package:    info.Package,
+		Level:      LogLevelDebug,
+		Message:    message,
+		Filepath:   file,
+		LineNumber: line,
+	})
 	return err
 }
 
@@ -52,6 +65,12 @@ func (l *LoggerApi) Error(message string) error {
 	file, line := logger.GetCallerFileLine(calldepth)
 
 	logger.LogToConsole(file, line, level, message)
-	err := l.api.models.Log().Create(context.Background(), info.Package, LogLevelError, message, file, line)
+	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
+		Package:    info.Package,
+		Level:      LogLevelError,
+		Message:    message,
+		Filepath:   file,
+		LineNumber: line,
+	})
 	return err
 }

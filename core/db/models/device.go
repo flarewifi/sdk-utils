@@ -71,24 +71,24 @@ func (self *Device) Reload(tx *sql.Tx, ctx context.Context) error {
 	return nil
 }
 
-func (self *Device) Update(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string, status int) error {
+func (self *Device) Update(tx *sql.Tx, ctx context.Context, params UpdateDeviceParams) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
-		Hostname:   hostname,
-		IpAddress:  ip,
-		MacAddress: mac,
+		Hostname:   params.Hostname,
+		IpAddress:  params.IpAddress,
+		MacAddress: params.MacAddress,
 		ID:         self.id,
-		Status:     int64(status),
+		Status:     int64(params.Status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", self.id, err)
 		return err
 	}
 
-	self.hostname = hostname
-	self.ipaddr = ip
-	self.macaddr = mac
-	self.status = sdkapi.DeviceStatus(status)
+	self.hostname = params.Hostname
+	self.ipaddr = params.IpAddress
+	self.macaddr = params.MacAddress
+	self.status = sdkapi.DeviceStatus(params.Status)
 
 	return nil
 }

@@ -180,7 +180,12 @@ func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
 		}
 
 		desc := "Partial payment for " + self.description
-		trns, err := self.models.walletTrnsModel.Create(tx, ctx, wallet.Id(), -dbt, newBal, desc)
+		trns, err := self.models.walletTrnsModel.Create(tx, ctx, CreateWalletTrnsParams{
+			WalletID:    wallet.Id(),
+			Amount:      -dbt,
+			NewBalance:  newBal,
+			Description: desc,
+		})
 		if err != nil {
 			return err
 		}
@@ -222,7 +227,12 @@ func (self *Purchase) Cancel(tx *sql.Tx, ctx context.Context) error {
 			return err
 		}
 
-		trns, err := self.models.walletTrnsModel.Create(tx, ctx, wallet.Id(), pmtTotal, wallet.Balance(), "Refund for "+reason)
+		trns, err := self.models.walletTrnsModel.Create(tx, ctx, CreateWalletTrnsParams{
+			WalletID:    wallet.Id(),
+			Amount:      pmtTotal,
+			NewBalance:  wallet.Balance(),
+			Description: "Refund for " + reason,
+		})
 		if err != nil {
 			log.Println(err)
 			return err
@@ -257,7 +267,14 @@ func (self *Purchase) TotalPayment(tx *sql.Tx, ctx context.Context) (float64, er
 }
 
 func (self *Purchase) Update(tx *sql.Tx, ctx context.Context, dbt float64, wtxID *int64, cancelledAt, confirmedAt *time.Time, reason *string) error {
-	err := self.models.purchaseModel.Update(tx, ctx, self.id, dbt, wtxID, cancelledAt, confirmedAt, reason)
+	err := self.models.purchaseModel.Update(tx, ctx, UpdatePurchaseParams{
+		ID:              self.id,
+		WalletDebit:     dbt,
+		WalletTxID:      wtxID,
+		CancelledAt:     cancelledAt,
+		ConfirmedAt:     confirmedAt,
+		CancelledReason: reason,
+	})
 	if err != nil {
 		return err
 	}

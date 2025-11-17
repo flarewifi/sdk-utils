@@ -14,17 +14,25 @@ type WalletTrnsModel struct {
 	models *Models
 }
 
+// CreateWalletTrnsParams holds parameters for creating a new wallet transaction
+type CreateWalletTrnsParams struct {
+	WalletID    int64
+	Amount      float64
+	NewBalance  float64
+	Description string
+}
+
 func NewWalletTrnsModel(dtb *db.Database, mdls *Models) *WalletTrnsModel {
 	return &WalletTrnsModel{dtb, mdls}
 }
 
-func (self *WalletTrnsModel) Create(tx *sql.Tx, ctx context.Context, wltId int64, amount float64, newBal float64, desc string) (*WalletTrns, error) {
+func (self *WalletTrnsModel) Create(tx *sql.Tx, ctx context.Context, params CreateWalletTrnsParams) (*WalletTrns, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	wt, err := qtx.CreateWalletTrns(ctx, queries.CreateWalletTrnsParams{
-		WalletID:    wltId,
-		Amount:      amount,
-		NewBalance:  newBal,
-		Description: desc,
+		WalletID:    params.WalletID,
+		Amount:      params.Amount,
+		NewBalance:  params.NewBalance,
+		Description: params.Description,
 	})
 	if err != nil {
 		log.Println("error creating wallet transaction:", err)
@@ -36,8 +44,8 @@ func (self *WalletTrnsModel) Create(tx *sql.Tx, ctx context.Context, wltId int64
 		models:      self.models,
 		id:          wt.ID,
 		walletId:    wt.WalletID,
-		amount:      amount,
-		newBalance:  newBal,
+		amount:      params.Amount,
+		newBalance:  params.NewBalance,
 		description: wt.Description,
 		createdAt:   wt.CreatedAt,
 	}, nil

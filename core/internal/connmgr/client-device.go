@@ -71,7 +71,13 @@ func (self *ClientDevice) Update(tx *sql.Tx, ctx context.Context, mac string, ip
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	err := self.mdls.Device().Update(tx, ctx, self.id, self.mac, self.ip, self.hostname, status)
+	err := self.mdls.Device().Update(tx, ctx, models.UpdateDeviceParams{
+		ID:         self.id,
+		MacAddress: self.mac,
+		IpAddress:  self.ip,
+		Hostname:   self.hostname,
+		Status:     status,
+	})
 	if err != nil {
 		return err
 	}

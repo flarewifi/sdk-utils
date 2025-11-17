@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"core/db/models"
 	"core/internal/connmgr"
 	sdkapi "sdk/api"
 
@@ -52,7 +53,18 @@ func (self *SessionsMgrApi) CreateSession(
 ) (sdkapi.IClientSession, error) {
 	uid := uuid.New().String()
 	pkg := self.pluginApi.Info().Package
-	session, err := self.pluginApi.models.Session().Create(tx, ctx, uid, pkg, devId, sessionType, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
+	session, err := self.pluginApi.models.Session().Create(tx, ctx, models.CreateSessionParams{
+		UID:         uid,
+		PluginPkg:   pkg,
+		DeviceID:    devId,
+		SessionType: sessionType,
+		TimeSecs:    timeSecs,
+		DataMbytes:  dataMbytes,
+		ExpDays:     expDays,
+		DownMbits:   downMbits,
+		UpMbits:     upMbits,
+		UseGlobal:   useGlobal,
+	})
 	if err != nil {
 		return nil, err
 	}

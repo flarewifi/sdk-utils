@@ -41,7 +41,11 @@ func (self *Purchase) Price() float64 {
 
 func (self *Purchase) CreatePayment(tx *sql.Tx, ctx context.Context, amount float64, optname string) error {
 	mdls := self.api.models
-	_, err := mdls.Payment().Create(tx, ctx, self.purchase.Id(), amount, optname)
+	_, err := mdls.Payment().Create(tx, ctx, models.CreatePaymentParams{
+		PurchaseID:    self.purchase.Id(),
+		Amount:        amount,
+		PaymentMethod: optname,
+	})
 	return err
 }
 

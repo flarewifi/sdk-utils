@@ -15,16 +15,32 @@ type DeviceModel struct {
 	models *Models
 }
 
+// CreateDeviceParams holds parameters for creating a new device
+type CreateDeviceParams struct {
+	MacAddress string
+	IpAddress  string
+	Hostname   string
+}
+
+// UpdateDeviceParams holds parameters for updating a device
+type UpdateDeviceParams struct {
+	ID         int64
+	MacAddress string
+	IpAddress  string
+	Hostname   string
+	Status     int
+}
+
 func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 	return &DeviceModel{db: database, models: mdls}
 }
 
-func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, mac string, ip string, hostname string) (*Device, error) {
+func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, params CreateDeviceParams) (*Device, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	dId, err := qtx.CreateDevice(ctx, queries.CreateDeviceParams{
-		MacAddress: mac,
-		IpAddress:  ip,
-		Hostname:   hostname,
+		MacAddress: params.MacAddress,
+		IpAddress:  params.IpAddress,
+		Hostname:   params.Hostname,
 	})
 	if err != nil {
 		log.Println("error creating new device:", err)
@@ -98,20 +114,20 @@ func (self *DeviceModel) FindByMac(tx *sql.Tx, ctx context.Context, mac string) 
 	return device, nil
 }
 
-func (self *DeviceModel) Update(tx *sql.Tx, ctx context.Context, id int64, mac string, ip string, hostname string, status int) error {
+func (self *DeviceModel) Update(tx *sql.Tx, ctx context.Context, params UpdateDeviceParams) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
-		ID:         id,
-		MacAddress: mac,
-		IpAddress:  ip,
-		Hostname:   hostname,
-		Status:     int64(status),
+		ID:         params.ID,
+		MacAddress: params.MacAddress,
+		IpAddress:  params.IpAddress,
+		Hostname:   params.Hostname,
+		Status:     int64(params.Status),
 	})
 	if err != nil {
-		log.Printf("error updating device %v: %v", id, err)
+		log.Printf("error updating device %v: %v", params.ID, err)
 		return err
 	}
 
-	log.Printf("Successfully updated device with id %v", id)
+	log.Printf("Successfully updated device with id %v", params.ID)
 	return nil
 }

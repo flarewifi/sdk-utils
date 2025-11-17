@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"core/db/models"
 	"core/internal/web/helpers"
 	sdkapi "sdk/api"
 )
@@ -47,15 +48,17 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 		_, err = self.api.models.Purchase().Create(
 			tx,
 			r.Context(),
-			clnt.Id(),
-			p.Sku,
-			p.Name,
-			p.Description,
-			p.Price,
-			p.AnyPrice,
-			self.api.Info().Package,
-			p.CallbackRoute,
-			p.Metadata,
+			models.CreatePurchaseParams{
+				DeviceID:       clnt.Id(),
+				SKU:            p.Sku,
+				Name:           p.Name,
+				Description:    p.Description,
+				Price:          p.Price,
+				AnyPrice:       p.AnyPrice,
+				CallbackPlugin: self.api.Info().Package,
+				CallbackRoute:  p.CallbackRoute,
+				Metadata:       p.Metadata,
+			},
 		)
 		if err != nil {
 			log.Println("self.api.models.Purchase().Create error:", err)

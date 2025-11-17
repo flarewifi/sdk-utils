@@ -14,16 +14,29 @@ type PaymentModel struct {
 	models *Models
 }
 
+// CreatePaymentParams holds parameters for creating a new payment
+type CreatePaymentParams struct {
+	PurchaseID    int64
+	Amount        float64
+	PaymentMethod string
+}
+
+// UpdatePaymentParams holds parameters for updating a payment
+type UpdatePaymentParams struct {
+	ID     int64
+	Amount float64
+}
+
 func NewPaymentModel(dtb *db.Database, mdls *Models) *PaymentModel {
 	return &PaymentModel{dtb, mdls}
 }
 
-func (self *PaymentModel) Create(tx *sql.Tx, ctx context.Context, purid int64, amt float64, mtd string) (*Payment, error) {
+func (self *PaymentModel) Create(tx *sql.Tx, ctx context.Context, params CreatePaymentParams) (*Payment, error) {
 	qtx := self.db.Queries.WithTx(tx)
 	pId, err := qtx.CreatePayment(ctx, queries.CreatePaymentParams{
-		PurchaseID:    purid,
-		Amount:        amt,
-		PaymentMethod: mtd,
+		PurchaseID:    params.PurchaseID,
+		Amount:        params.Amount,
+		PaymentMethod: params.PaymentMethod,
 	})
 	if err != nil {
 		log.Println("error creating payment:", err)
@@ -87,14 +100,14 @@ func (self *PaymentModel) FindAllByPurchase(tx *sql.Tx, ctx context.Context, pur
 	return payments, nil
 }
 
-func (self *PaymentModel) Update(tx *sql.Tx, ctx context.Context, id int64, amt float64, dbt *float64, txid *int64) error {
+func (self *PaymentModel) Update(tx *sql.Tx, ctx context.Context, params UpdatePaymentParams) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdatePayment(ctx, queries.UpdatePaymentParams{
-		Amount: amt,
-		ID:     id,
+		Amount: params.Amount,
+		ID:     params.ID,
 	})
 	if err != nil {
-		log.Printf("error updating payment %v: %v", id, err)
+		log.Printf("error updating payment %v: %v", params.ID, err)
 		return err
 	}
 

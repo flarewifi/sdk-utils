@@ -21,6 +21,18 @@ type WalletModel struct {
 	createdAt time.Time
 }
 
+// CreateWalletParams holds parameters for creating a new wallet
+type CreateWalletParams struct {
+	DeviceID int64
+	Balance  float64
+}
+
+// UpdateWalletParams holds parameters for updating a wallet
+type UpdateWalletParams struct {
+	ID      int64
+	Balance float64
+}
+
 func NewWalletModel(dtb *db.Database, mdls *Models) *WalletModel {
 	attrs := []string{"id", "device_id", "balance", "created_at"}
 	return &WalletModel{
@@ -30,10 +42,10 @@ func NewWalletModel(dtb *db.Database, mdls *Models) *WalletModel {
 	}
 }
 
-func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, devId int64, bal float64) (*Wallet, error) {
+func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, params CreateWalletParams) (*Wallet, error) {
 	wId, err := self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
-		DeviceID: devId,
-		Balance:  bal,
+		DeviceID: params.DeviceID,
+		Balance:  params.Balance,
 	})
 	if err != nil {
 		log.Println("error creating wallet:", err)
@@ -60,18 +72,18 @@ func (self *WalletModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Walle
 	return wallet, nil
 }
 
-func (self *WalletModel) Update(tx *sql.Tx, ctx context.Context, id int64, bal float64) error {
+func (self *WalletModel) Update(tx *sql.Tx, ctx context.Context, params UpdateWalletParams) error {
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateWallet(ctx, queries.UpdateWalletParams{
-		Balance: bal,
-		ID:      id,
+		Balance: params.Balance,
+		ID:      params.ID,
 	})
 	if err != nil {
-		log.Printf("error updating wallet %v: %v\n", id, err)
+		log.Printf("error updating wallet %v: %v\n", params.ID, err)
 		return err
 	}
 
-	self.balance = bal
+	self.balance = params.Balance
 
 	return nil
 }

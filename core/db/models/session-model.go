@@ -19,26 +19,58 @@ type SessionModel struct {
 	models *Models
 }
 
+// CreateSessionParams holds parameters for creating a new session
+type CreateSessionParams struct {
+	UID         string
+	PluginPkg   string
+	DeviceID    int64
+	SessionType sdkapi.SessionType
+	TimeSecs    int
+	DataMbytes  float64
+	ExpDays     *int
+	DownMbits   int
+	UpMbits     int
+	UseGlobal   bool
+}
+
+// UpdateSessionParams holds parameters for updating a session
+type UpdateSessionParams struct {
+	ID             int64
+	UID            string
+	ProviderPkg    string
+	DeviceID       int64
+	SessionType    sdkapi.SessionType
+	TimeSecs       int
+	DataMbytes     float64
+	TimeCons       int
+	DataCons       float64
+	StartedAt      *time.Time
+	ExpDays        *int
+	DownMbits      int
+	UpMbits        int
+	UseGlobal      bool
+}
+
 func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 	return &SessionModel{dtb, mdls}
 }
 
-func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, uid string, pluginPkg string, devId int64, t sdkapi.SessionType, timeSecs int, dataMbytes float64, exp *int, downMbit int, upMbit int, g bool) (*Session, error) {
+func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, params CreateSessionParams) (*Session, error) {
 	var expDays sql.NullInt64
-	if exp != nil {
-		expDays = sql.NullInt64{Int64: int64(*exp), Valid: true}
+	if params.ExpDays != nil {
+		expDays = sql.NullInt64{Int64: int64(*params.ExpDays), Valid: true}
 	}
 
 	qtx := self.db.Queries.WithTx(tx)
 	sId, err := qtx.CreateSession(ctx, queries.CreateSessionParams{
-		DeviceID:    devId,
-		SessionType: string(t),
-		TimeSecs:    int64(timeSecs),
-		DataMbytes:  sql.NullFloat64{Float64: dataMbytes, Valid: true},
+		DeviceID:    params.DeviceID,
+		SessionType: string(params.SessionType),
+		TimeSecs:    int64(params.TimeSecs),
+		DataMbytes:  sql.NullFloat64{Float64: params.DataMbytes, Valid: true},
 		ExpDays:     expDays,
-		DownMbits:   int64(downMbit),
-		UpMbits:     int64(upMbit),
-		UseGlobal:   g,
+		DownMbits:   int64(params.DownMbits),
+		UpMbits:     int64(params.UpMbits),
+		UseGlobal:   params.UseGlobal,
 	})
 	if err != nil {
 		log.Println("error creating session:", err)
@@ -59,15 +91,15 @@ func (self *SessionModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Sess
 	return session, nil
 }
 
-func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, id int64, uid string, providerPkg string, devId int64, t sdkapi.SessionType, timeSecs int, dataMbytes float64, timeCons int, dataCons float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, params UpdateSessionParams) error {
 	var expDays sql.NullInt64
-	if exp != nil {
-		expDays = sql.NullInt64{Int64: int64(*exp), Valid: true}
+	if params.ExpDays != nil {
+		expDays = sql.NullInt64{Int64: int64(*params.ExpDays), Valid: true}
 	}
 
 	var startedAtTime sql.NullTime
-	if started != nil {
-		startedAtTime = sql.NullTime{Time: *started, Valid: true}
+	if params.StartedAt != nil {
+		startedAtTime = sql.NullTime{Time: *params.StartedAt, Valid: true}
 	}
 
 	types := []sdkapi.SessionType{
@@ -76,31 +108,31 @@ func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, id int64, uid 
 		sdkapi.SessionTypeTimeOrData,
 	}
 
-	if !sdkutils.SliceContains(types, t) {
+	if !sdkutils.SliceContains(types, params.SessionType) {
 		return errors.New("invalid session type")
 	}
 
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateSession(ctx, queries.UpdateSessionParams{
-		DeviceID:        devId,
-		SessionType:     string(t),
-		TimeSecs:        int64(timeSecs),
-		DataMbytes:      sql.NullFloat64{Float64: dataMbytes, Valid: true},
-		ConsumptionSecs: int64(timeCons),
-		ConsumptionMb:   dataCons,
+		DeviceID:        params.DeviceID,
+		SessionType:     string(params.SessionType),
+		TimeSecs:        int64(params.TimeSecs),
+		DataMbytes:      sql.NullFloat64{Float64: params.DataMbytes, Valid: true},
+		ConsumptionSecs: int64(params.TimeCons),
+		ConsumptionMb:   params.DataCons,
 		StartedAt:       startedAtTime,
 		ExpDays:         expDays,
-		DownMbits:       int64(downMbit),
-		UpMbits:         int64(upMbit),
-		UseGlobal:       g,
-		ID:              id,
+		DownMbits:       int64(params.DownMbits),
+		UpMbits:         int64(params.UpMbits),
+		UseGlobal:       params.UseGlobal,
+		ID:              params.ID,
 	})
 	if err != nil {
-		log.Printf("error updating session %v: %v", id, err)
+		log.Printf("error updating session %v: %v", params.ID, err)
 		return err
 	}
 
-	log.Printf("Successfully updated device with id %v", id)
+	log.Printf("Successfully updated device with id %v", params.ID)
 	return nil
 }
 

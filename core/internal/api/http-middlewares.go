@@ -158,9 +158,11 @@ func (self *PluginMiddlewares) trackNavVisit(pluginPkg, pluginRouteName string, 
 	ctx := context.Background()
 	err := self.models.QuickAccessNav().Upsert(
 		ctx,
-		pluginPkg,
-		pluginRouteName,
-		routeParamsJSON,
+		models.UpsertQuickAccessNavParams{
+			PluginPkg:   pluginPkg,
+			RouteName:   pluginRouteName,
+			RouteParams: routeParamsJSON,
+		},
 	)
 	if err != nil {
 		// Log error but don't fail the request
