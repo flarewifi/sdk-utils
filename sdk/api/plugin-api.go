@@ -26,9 +26,6 @@ type IPluginApi interface {
 	// Returns an instance of config API.
 	Config() IConfigApi
 
-	// Returns an instance of the client register.
-	DeviceHooks() IDeviceHooksApi
-
 	// Returns the root directory of the plugin's installation path.
 	Dir() string
 

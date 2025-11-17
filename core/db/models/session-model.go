@@ -23,7 +23,7 @@ func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 	return &SessionModel{dtb, mdls}
 }
 
-func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, devId int64, t string, timeSecs int, dataMbytes float64, exp *int, downMbit int, upMbit int, g bool) (*Session, error) {
+func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, uid string, pluginPkg string, devId int64, t sdkapi.SessionType, timeSecs int, dataMbytes float64, exp *int, downMbit int, upMbit int, g bool) (*Session, error) {
 	var expDays sql.NullInt64
 	if exp != nil {
 		expDays = sql.NullInt64{Int64: int64(*exp), Valid: true}
@@ -32,7 +32,7 @@ func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, devId int64, t
 	qtx := self.db.Queries.WithTx(tx)
 	sId, err := qtx.CreateSession(ctx, queries.CreateSessionParams{
 		DeviceID:    devId,
-		SessionType: t,
+		SessionType: string(t),
 		TimeSecs:    int64(timeSecs),
 		DataMbytes:  sql.NullFloat64{Float64: dataMbytes, Valid: true},
 		ExpDays:     expDays,
@@ -59,7 +59,7 @@ func (self *SessionModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Sess
 	return session, nil
 }
 
-func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, id int64, devId int64, t string, timeSecs int, dataMbytes float64, timeCons int, dataCons float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, id int64, uid string, providerPkg string, devId int64, t sdkapi.SessionType, timeSecs int, dataMbytes float64, timeCons int, dataCons float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
 	var expDays sql.NullInt64
 	if exp != nil {
 		expDays = sql.NullInt64{Int64: int64(*exp), Valid: true}
@@ -70,20 +70,20 @@ func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, id int64, devI
 		startedAtTime = sql.NullTime{Time: *started, Valid: true}
 	}
 
-	types := []string{
+	types := []sdkapi.SessionType{
 		sdkapi.SessionTypeTime,
 		sdkapi.SessionTypeData,
 		sdkapi.SessionTypeTimeOrData,
 	}
 
 	if !sdkutils.SliceContains(types, t) {
-		return sdkapi.ErrInvalidSessionType
+		return errors.New("invalid session type")
 	}
 
 	qtx := self.db.Queries.WithTx(tx)
 	err := qtx.UpdateSession(ctx, queries.UpdateSessionParams{
 		DeviceID:        devId,
-		SessionType:     t,
+		SessionType:     string(t),
 		TimeSecs:        int64(timeSecs),
 		DataMbytes:      sql.NullFloat64{Float64: dataMbytes, Valid: true},
 		ConsumptionSecs: int64(timeCons),

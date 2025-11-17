@@ -24,24 +24,58 @@ var (
 
 func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
 	sessionMgr := &SessionsMgr{
-		db:        dtb,
-		mdl:       mdl,
-		sessions:  sync.Map{},
-		providers: []sdkapi.ISessionProvider{},
+		db:                    dtb,
+		mdl:                   mdl,
+		sessions:              sync.Map{},
+		sessionEventCallbacks: make(map[string][]func(data sdkapi.SessionEventData)),
+		clientEventCallbacks:  make(map[string][]func(clnt sdkapi.IClientDevice)),
 	}
 	return sessionMgr
 }
 
 type SessionsMgr struct {
-	coreAPI   sdkapi.IPluginApi
-	db        *db.Database
-	mdl       *models.Models
-	sessions  sync.Map
-	providers []sdkapi.ISessionProvider
+	coreAPI               sdkapi.IPluginApi
+	pluginsMgr            sdkapi.IPluginsMgrApi
+	db                    *db.Database
+	mdl                   *models.Models
+	sessions              sync.Map
+	sessionEventCallbacks map[string][]func(data sdkapi.SessionEventData)
+	clientEventCallbacks  map[string][]func(clnt sdkapi.IClientDevice)
 }
 
 func (self *SessionsMgr) SetCoreAPI(api sdkapi.IPluginApi) {
 	self.coreAPI = api
+	if api != nil {
+		self.pluginsMgr = api.PluginsMgr()
+	}
+}
+
+func (self *SessionsMgr) OnSessionEvent(event string, callback func(data sdkapi.SessionEventData)) {
+	self.sessionEventCallbacks[event] = append(self.sessionEventCallbacks[event], callback)
+}
+
+func (self *SessionsMgr) OnClientEvent(event string, callback func(clnt sdkapi.IClientDevice)) {
+	self.clientEventCallbacks[event] = append(self.clientEventCallbacks[event], callback)
+}
+
+func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice) {
+	data := sdkapi.SessionEventData{
+		Session: session,
+		Device:  device,
+	}
+	if callbacks, exists := self.sessionEventCallbacks[string(event)]; exists {
+		for _, callback := range callbacks {
+			callback(data)
+		}
+	}
+}
+
+func (self *SessionsMgr) emitClientEvent(event sdkapi.SessionEvent, clnt sdkapi.IClientDevice) {
+	if callbacks, exists := self.clientEventCallbacks[string(event)]; exists {
+		for _, callback := range callbacks {
+			callback(clnt)
+		}
+	}
 }
 
 func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
@@ -147,7 +181,11 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 			return
 		}
 
-		clnt.Emit(sdkapi.EventSessionConnected, []byte(notify))
+		clnt.Emit(string(sdkapi.EventSessionConnected), []byte(notify))
+		if session, ok := self.CurrSession(clnt); ok {
+			self.emitSessionEvent(sdkapi.EventSessionConnected, session, clnt)
+		}
+		self.emitClientEvent(sdkapi.EventClientConnected, clnt)
 		errReturnCh <- nil
 	}()
 
@@ -172,7 +210,11 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 		return err
 	}
 
-	clnt.Emit(sdkapi.EventSessionDisconnected, []byte(notify))
+	clnt.Emit(string(sdkapi.EventSessionDisconnected), []byte(notify))
+	if session, ok := self.CurrSession(clnt); ok {
+		self.emitSessionEvent(sdkapi.EventSessionDisconnected, session, clnt)
+	}
+	self.emitClientEvent(sdkapi.EventClientDisconnected, clnt)
 
 	return sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
 		return clnt.Update(tx, ctx, clnt.MacAddr(), clnt.IpAddr(), clnt.Hostname(), int(sdkapi.Disconnected))
@@ -308,31 +350,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 	return <-errCh
 }
 
-func (self *SessionsMgr) CreateSession(
-	tx *sql.Tx,
-	ctx context.Context,
-	devId int64,
-	t string,
-	timeSecs int,
-	dataMbytes float64,
-	expDays *int,
-	downMbits int,
-	upMbits int,
-	useGlobal bool,
-) (int64, error) {
-	session, err := self.mdl.Session().Create(tx, ctx, devId, t, timeSecs, dataMbytes, expDays, downMbits, upMbits, useGlobal)
-	return session.Id(), err
-}
-
 func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevice) (sdkapi.IClientSession, error) {
-	if len(self.providers) > 0 {
-		for _, provider := range self.providers {
-			if remoteSrc, ok := provider.GetSession(ctx, clnt); remoteSrc != nil && ok {
-				return NewClientSession(remoteSrc), nil
-			}
-		}
-	}
-
 	localClient := clnt.(*ClientDevice)
 	s, err := self.mdl.Session().AvailableForDevice(ctx, localClient.id)
 	if err != nil {
@@ -342,8 +360,8 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 		return nil, err
 	}
 
-	localSrc := NewLocalSession(self.db, self.mdl, s)
-	return NewClientSession(localSrc), nil
+	localSrc := NewClientSession(self.db, self.mdl, self.coreAPI.PluginsMgr(), s)
+	return localSrc, nil
 }
 
 // SessionSummary
@@ -371,8 +389,4 @@ func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClient
 		RemainingTimeSecs:   remainingTime,
 		RemainingDataMbytes: remainingData,
 	}, nil
-}
-
-func (self *SessionsMgr) RegisterSessionProvider(provider sdkapi.ISessionProvider) {
-	self.providers = append(self.providers, provider)
 }
