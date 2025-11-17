@@ -14,6 +14,8 @@ type Session struct {
 	db          *db.Database
 	models      *Models
 	id          int64
+	uid         string
+	providerPkg string
 	deviceId    int64
 	sessionType string
 	timeSecs    int
@@ -27,6 +29,7 @@ type Session struct {
 	upMbits     int
 	useGlobal   bool
 	createdAt   time.Time
+	updatedAt   time.Time
 }
 
 func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
@@ -48,6 +51,8 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 		}
 
 		session.id = s.ID
+		session.uid = s.Uid
+		session.providerPkg = s.ProviderPkg
 		session.deviceId = s.DeviceID
 		session.sessionType = s.SessionType
 		session.timeSecs = int(s.TimeSecs)
@@ -66,6 +71,7 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 		session.upMbits = int(s.UpMbits)
 		session.useGlobal = s.UseGlobal
 		session.createdAt = s.CreatedAt
+		session.updatedAt = s.UpdatedAt
 	}
 
 	return session
@@ -91,6 +97,14 @@ func BuildSession(id int64, devId int64, t string, timeSecs int, dataMb float64,
 
 func (self *Session) Id() int64 {
 	return self.id
+}
+
+func (self *Session) Uid() string {
+	return self.uid
+}
+
+func (self *Session) ProviderPkg() string {
+	return self.providerPkg
 }
 
 func (self *Session) DeviceId() int64 {
@@ -151,6 +165,10 @@ func (self *Session) UseGlobal() bool {
 
 func (self *Session) CreatedAt() time.Time {
 	return self.createdAt
+}
+
+func (self *Session) UpdatedAt() time.Time {
+	return self.updatedAt
 }
 
 func (self *Session) Update(tx *sql.Tx, ctx context.Context, devId int64, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {

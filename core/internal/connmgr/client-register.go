@@ -15,38 +15,21 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-const (
-	EVENT_CLIENT_CREATED = "client:created"
-	EVENT_CLIENT_CHANGED = "client:changed"
-)
-
 func NewClientRegister(dtb *db.Database, mdls *models.Models) *ClientRegister {
 	return &ClientRegister{
-		db:           dtb,
-		mdls:         mdls,
-		createdHooks: []sdkapi.ClientCreatedHookFn{},
-		changedHooks: []sdkapi.ClientChangedHookFn{},
+		db:   dtb,
+		mdls: mdls,
 	}
 }
 
 type ClientRegister struct {
-	db           *db.Database
-	mdls         *models.Models
-	mgr          *SessionsMgr
-	createdHooks []sdkapi.ClientCreatedHookFn
-	changedHooks []sdkapi.ClientChangedHookFn
+	db          *db.Database
+	mdls        *models.Models
+	sessionsMgr *SessionsMgr
 }
 
 func (reg *ClientRegister) SetSessionsMgr(mgr *SessionsMgr) {
-	reg.mgr = mgr
-}
-
-func (reg *ClientRegister) ClientCreatedHook(fn ...sdkapi.ClientCreatedHookFn) {
-	reg.createdHooks = append(reg.createdHooks, fn...)
-}
-
-func (reg *ClientRegister) ClientChangedHook(fn ...sdkapi.ClientChangedHookFn) {
-	reg.changedHooks = append(reg.changedHooks, fn...)
+	reg.sessionsMgr = mgr
 }
 
 func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac string, ip string, hostname string) (sdkapi.IClientDevice, error) {
@@ -66,15 +49,7 @@ func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac strin
 				}
 
 				clnt = NewClientDevice(reg.db, reg.mdls, dev)
-
-				// call createdHooks functions
-				// if len(reg.createdHooks) > 0 {
-				// 	for _, hookFn := range reg.createdHooks {
-				// 		if err := hookFn(ctx, clnt); err != nil {
-				// 			return err
-				// 		}
-				// 	}
-				// }
+				reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
 
 				return nil
 			}
@@ -88,16 +63,16 @@ func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac strin
 
 		// Update device details if need be
 		if changed {
-			connected := reg.mgr.IsConnected(clnt)
+			connected := reg.sessionsMgr.IsConnected(clnt)
 			if connected {
 				// disconnect temporarily
-				err = reg.mgr.Disconnect(ctx, clnt, "Device details changed, reconnecting...")
+				err = reg.sessionsMgr.Disconnect(ctx, clnt, "Device details changed, reconnecting...")
 				if err != nil {
 					return err
 				}
 			}
 
-			old := NewClientDevice(reg.db, reg.mdls, dev.Clone())
+			// old := NewClientDevice(reg.db, reg.mdls, dev.Clone())
 			// Devices are have disconnected status by default.
 			err := dev.Update(tx, ctx, mac, ip, hostname, int(sdkapi.Disconnected))
 			if err != nil {
@@ -105,18 +80,11 @@ func (reg *ClientRegister) Register(dtb *db.Database, r *http.Request, mac strin
 				return fmt.Errorf("could not update dev: %w", err)
 			}
 
-			// call changedHooks functions
-			if len(reg.changedHooks) > 0 {
-				for _, hookFn := range reg.changedHooks {
-					if err := hookFn(ctx, clnt, old); err != nil {
-						return err
-					}
-				}
-			}
+			reg.sessionsMgr.emitClientEvent(sdkapi.EventClientUpdated, clnt)
 
 			// reconnect client device
 			if connected {
-				err := reg.mgr.Connect(ctx, clnt, "Device details changed, reconnected successfully!")
+				err := reg.sessionsMgr.Connect(ctx, clnt, "Device details changed, reconnected successfully!")
 				if err != nil {
 					return err
 				}

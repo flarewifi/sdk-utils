@@ -23,7 +23,7 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 			return
 		}
 
-		_, ok := api.SessionsMgr().CurrSession(clnt)
+		_, ok := api.SessionsMgr().RunningSession(clnt)
 		summaryView := portal.SessionSummary(api, portal.SessionSummaryData{
 			SessionSummary:   summary,
 			IsSessionRunning: ok,

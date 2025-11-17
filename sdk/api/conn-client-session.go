@@ -16,11 +16,14 @@ type IClientSession interface {
 	// Returns the session's ID.
 	Id() int64
 
-	// REturns the provider of the session record.
-	Provider() string
+	// Returns the session's unique identifier.
+	Uid() string
+
+	// Returns the provider plugin of the session record.
+	Plugin() IPluginApi
 
 	// Returns the session type.
-	Type() string
+	Type() SessionType
 
 	// Return the session's available time in seconds.
 	TimeSecs() (sec int)
@@ -45,6 +48,9 @@ type IClientSession interface {
 
 	// Returns the created at time.
 	CreatedAt() time.Time
+
+	// Returns the updated at time.
+	UpdatedAt() time.Time
 
 	// Returns the session's expiration time in days.
 	// If session has no expiration, it returns nil.

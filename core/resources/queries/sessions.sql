@@ -1,11 +1,12 @@
 -- name: CreateSession :one
 INSERT INTO sessions (
+  uid, provider_pkg,
   device_id, session_type, time_secs,
   data_mbytes, exp_days, down_mbits,
   up_mbits, use_global
 )
 VALUES
-  (@device_id, @session_type, @time_secs, @data_mbytes, @exp_days, @down_mbits, @up_mbits, @use_global) RETURNING id;
+  (@uid, @provider_pkg, @device_id, @session_type, @time_secs, @data_mbytes, @exp_days, @down_mbits, @up_mbits, @use_global) RETURNING id;
 
 
 -- name: FindSession :one
@@ -23,6 +24,8 @@ LIMIT
 UPDATE
   sessions
 SET
+    uid = @uid,
+    provider_pkg = @provider_pkg,
     device_id = @device_id,
     session_type = @session_type,
     time_secs = @time_secs,

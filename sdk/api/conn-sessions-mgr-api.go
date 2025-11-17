@@ -11,11 +11,37 @@ import (
 	"database/sql"
 )
 
+// Session Type represents the type of a client session.
+type SessionType string
+
 const (
-	EventSessionConnected    string = "session:connected"
-	EventSessionDisconnected string = "session:disconnected"
+	SessionTypeTime       SessionType = "time"
+	SessionTypeData       SessionType = "data"
+	SessionTypeTimeOrData SessionType = "time-or-data"
 )
 
+// SessionEvent represents the type of a session event.
+type SessionEvent string
+
+const (
+	EventSessionConnected    SessionEvent = "session:connected"
+	EventSessionDisconnected SessionEvent = "session:disconnected"
+	EventSessionExpired      SessionEvent = "session:expired"
+	EventSessionUpdated      SessionEvent = "session:updated"
+
+	EventClientCreated      SessionEvent = "client:created"
+	EventClientUpdated      SessionEvent = "client:updated"
+	EventClientConnected    SessionEvent = "client:connected"
+	EventClientDisconnected SessionEvent = "client:disconnected"
+)
+
+// SessionEventData represents the data associated with a session event.
+type SessionEventData struct {
+	Session IClientSession
+	Device  IClientDevice
+}
+
+// ClientSessionSummary represents a summary of a client's session.
 type ClientSessionSummary struct {
 	RemainingTimeSecs   int
 	RemainingDataMbytes float64
@@ -39,24 +65,27 @@ type ISessionsMgrApi interface {
 		tx *sql.Tx,
 		ctx context.Context,
 		devId int64,
-		sessionType string,
+		sessionType SessionType,
 		timeSecs int,
 		dataMbytes float64,
 		expDays *int,
 		downMbits int,
 		upMbits int,
 		useGlobal bool,
-	) (int64, error)
+	) (IClientSession, error)
 
 	// Get the current running session of a client device.
-	CurrSession(clnt IClientDevice) (cs IClientSession, ok bool)
+	RunningSession(clnt IClientDevice) (cs IClientSession, ok bool)
 
 	// Returns unconsumed session (if any) for the client device.
-	GetSession(ctx context.Context, clnt IClientDevice) (IClientSession, error)
+	AvailableSession(ctx context.Context, clnt IClientDevice) (IClientSession, error)
 
 	// SessionSummary returns the session summary for the client device.
 	SessionSummary(ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
 
-	// Register a hook to find a session for a client device.
-	RegisterSessionProvider(ISessionProvider)
+	// OnSessionEvent registers a callback for session events.
+	OnSessionEvent(event string, callback func(data SessionEventData))
+
+	// OnClientEvent registers a callback for client device events.
+	OnClientEvent(event string, callback func(clnt IClientDevice))
 }

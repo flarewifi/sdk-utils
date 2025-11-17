@@ -16,11 +16,11 @@ import (
 
 func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pmgr *PluginsMgr, trfkMgr *network.TrafficMgr) *PluginApi {
 	pluginApi := &PluginApi{
-		dir:           dir,
-		db:            pmgr.db,
-		PluginsMgrApi: pmgr,
-		ClntReg:       pmgr.clntReg,
-		ClntMgr:       pmgr.clntMgr,
+		dir:            dir,
+		db:             pmgr.db,
+		PluginsMgrApi:  pmgr,
+		ClientRegister: pmgr.clntReg,
+		SessionMgr:     pmgr.clntMgr,
 	}
 
 	pluginApi.info = info
@@ -38,6 +38,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pm
 	NewInAppPurchaseApi(pluginApi)
 	NewUciApi(pluginApi)
 	NewLoggerApi(pluginApi)
+	NewSessionsMgrApi(pluginApi)
 	pluginApi.UIApi = NewUIApi(pluginApi)
 	pluginApi.NotificationAPI = NewNotificationAPI(pluginApi, pmgr.models)
 
@@ -61,8 +62,9 @@ type PluginApi struct {
 	AdsAPI           *AdsApi
 	InAppPurchaseAPI *InAppPurchaseApi
 	PluginsMgrApi    *PluginsMgr
-	ClntReg          *connmgr.ClientRegister
-	ClntMgr          *connmgr.SessionsMgr
+	ClientRegister   *connmgr.ClientRegister
+	SessionMgr       *connmgr.SessionsMgr
+	SessionsMgrAPI   *SessionsMgrApi
 	UciAPI           *UciApi
 	Utl              *PluginUtils
 	LoggerAPI        *LoggerApi
@@ -128,12 +130,8 @@ func (self *PluginApi) Network() sdkapi.INetworkApi {
 	return self.NetworkAPI
 }
 
-func (self *PluginApi) DeviceHooks() sdkapi.IDeviceHooksApi {
-	return self.ClntReg
-}
-
 func (self *PluginApi) SessionsMgr() sdkapi.ISessionsMgrApi {
-	return self.ClntMgr
+	return self.SessionsMgrAPI
 }
 
 func (self *PluginApi) Uci() sdkapi.IUciApi {
