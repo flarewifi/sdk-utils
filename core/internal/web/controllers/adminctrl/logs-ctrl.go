@@ -23,7 +23,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 		var ipage, iPerPage int
 		var err error
 
-		searchLogsErr := errors.New(g.CoreAPI.Translate("error", "Unable to Seacg Logs"))
+		searchLogsErr := errors.New(g.CoreAPI.Translate("error", "Unable to Search Logs"))
 
 		if page != "" {
 			ipage, err = strconv.Atoi(page)

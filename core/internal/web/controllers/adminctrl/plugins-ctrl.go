@@ -507,7 +507,7 @@ func UninstallPluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		uninstallMsg := g.CoreAPI.Translate("info", "Unable to Uninstall Plugin")
+		uninstallMsg := g.CoreAPI.Translate("info", "Plugin Uninstalled Successfully")
 		res.FlashMsg(w, r, uninstallMsg, sdkapi.FlashMsgSuccess)
 		res.Redirect(w, r, "admin:plugins:index")
 	}

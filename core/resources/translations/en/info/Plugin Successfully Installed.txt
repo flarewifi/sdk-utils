@@ -1,1 +1,1 @@
-Plugin Successfully Installed
+Plugin <% .plugin %> successfully installed.
