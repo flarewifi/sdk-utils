@@ -1,48 +1,5 @@
--- name: CreateSession :one
--- engine: postgresql
-INSERT INTO sessions (
-  device_id, session_type, time_secs,
-  data_mbytes, exp_days, down_mbits,
-  up_mbits, use_global
-)
-VALUES
-  (@device_id, @session_type, @time_secs, @data_mbytes, @exp_days, @down_mbits, @up_mbits, @use_global) RETURNING id;
-
-
--- name: FindSession :one
--- engine: postgresql
-SELECT
-    *
-FROM
-  sessions
-WHERE
-  id = @id
-LIMIT
-  1;
-
-
--- name: UpdateSession :exec
--- engine: postgresql
-UPDATE
-  sessions
-SET
-    device_id = @device_id,
-    session_type = @session_type,
-    time_secs = @time_secs,
-    data_mbytes = @data_mbytes,
-    consumption_secs = @consumption_secs,
-    consumption_mb = @consumption_mb,
-    started_at = @started_at,
-    exp_days = @exp_days,
-    down_mbits = @down_mbits,
-    up_mbits = @up_mbits,
-    use_global = @use_global
-WHERE
-  id = @id;
-
-
 -- name: FindAvailableSessionForDevice :one
--- engine: postgresql
+-- engine: sqlite
 SELECT
     *
 FROM
@@ -72,7 +29,7 @@ WHERE
     OR (
       exp_days IS NOT NULL
       AND started_at IS NOT NULL
-      AND NOW() < started_at + (exp_days * interval '1 day')
+      AND datetime('now') < datetime(started_at, '+' || exp_days || ' days')
     )
   )
 LIMIT
@@ -80,7 +37,7 @@ LIMIT
 
 
 -- name: FindSessionsForDev :many
--- engine: postgresql
+-- engine: sqlite
 SELECT
     *
 FROM
@@ -110,13 +67,13 @@ WHERE
     OR (
       exp_days IS NOT NULL
       AND started_at IS NOT NULL
-      AND NOW() < started_at + (exp_days * interval '1 day')
+      AND datetime('now') < datetime(started_at, '+' || exp_days || ' days')
     )
   );
 
 
 -- name: UpdateAllBandwidth :exec
--- engine: postgresql
+-- engine: sqlite
 UPDATE
   sessions
 SET
@@ -147,6 +104,6 @@ WHERE
     OR (
       exp_days IS NOT NULL
       AND started_at IS NOT NULL
-      AND NOW() < started_at + (exp_days * interval '1 day')
+      AND datetime('now') < datetime(started_at, '+' || exp_days || ' days')
     )
   );

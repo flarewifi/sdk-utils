@@ -35,20 +35,20 @@ type CreateSessionParams struct {
 
 // UpdateSessionParams holds parameters for updating a session
 type UpdateSessionParams struct {
-	ID             int64
-	UID            string
-	ProviderPkg    string
-	DeviceID       int64
-	SessionType    sdkapi.SessionType
-	TimeSecs       int
-	DataMbytes     float64
-	TimeCons       int
-	DataCons       float64
-	StartedAt      *time.Time
-	ExpDays        *int
-	DownMbits      int
-	UpMbits        int
-	UseGlobal      bool
+	ID          int64
+	UID         string
+	ProviderPkg string
+	DeviceID    int64
+	SessionType sdkapi.SessionType
+	TimeSecs    int
+	DataMbytes  float64
+	TimeCons    int
+	DataCons    float64
+	StartedAt   *time.Time
+	ExpDays     *int
+	DownMbits   int
+	UpMbits     int
+	UseGlobal   bool
 }
 
 func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
@@ -64,6 +64,8 @@ func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, params CreateS
 	qtx := self.db.Queries.WithTx(tx)
 	sId, err := qtx.CreateSession(ctx, queries.CreateSessionParams{
 		DeviceID:    params.DeviceID,
+		Uid:         params.UID,
+		ProviderPkg: params.PluginPkg,
 		SessionType: string(params.SessionType),
 		TimeSecs:    int64(params.TimeSecs),
 		DataMbytes:  sql.NullFloat64{Float64: params.DataMbytes, Valid: true},
