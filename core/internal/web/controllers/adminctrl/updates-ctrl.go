@@ -69,7 +69,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		api := g.CoreAPI
 		coreInfo := api.Info()
 
-		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "check_updates_error"))
+		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "Unable to Check Updates"))
 		currentVersion, err := semver.NewVersion(coreInfo.Version)
 		if err != nil {
 			log.Println("Error:", err)

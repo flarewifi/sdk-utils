@@ -17,7 +17,7 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 		res := g.CoreAPI.HttpAPI.Response()
 		p, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
-			res.Error(w, r, errors.New(g.CoreAPI.Translate("error", "get_admin_theme_error")), http.StatusInternalServerError)
+			res.Error(w, r, errors.New(g.CoreAPI.Translate("error", "Unable to Get Admin Theme")), http.StatusInternalServerError)
 			return
 		}
 

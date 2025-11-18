@@ -12,7 +12,7 @@ func PortalIndexPage(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
-			errMsg := g.CoreAPI.Translate("error", "get_portal_theme_error")
+			errMsg := g.CoreAPI.Translate("error", "Unable to Get Portal Theme")
 			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(errMsg), http.StatusInternalServerError)
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 

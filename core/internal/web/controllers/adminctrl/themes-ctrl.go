@@ -80,7 +80,7 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 			PortalThemePkg: portalTheme,
 		})
 		if err != nil {
-			saveErrorMsg := g.CoreAPI.Translate("error", "save_settings_error")
+			saveErrorMsg := g.CoreAPI.Translate("error", "Unable to Save Settings")
 			res.FlashMsg(w, r, saveErrorMsg, sdkapi.FlashMsgError)
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
@@ -88,7 +88,7 @@ func SaveThemeSettings(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		successfulSavedMsg := g.CoreAPI.Translate("info", "saved_settings_message")
+		successfulSavedMsg := g.CoreAPI.Translate("info", "Settings Successfully Saved")
 		res.FlashMsg(w, r, successfulSavedMsg, sdkapi.FlashMsgSuccess)
 
 		themesIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:themes:index")
