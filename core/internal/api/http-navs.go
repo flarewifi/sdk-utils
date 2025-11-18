@@ -47,7 +47,7 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 	categoryLabels := map[sdkapi.INavCategory]string{
 		sdkapi.NavCategoryQuickAccess: self.api.CoreAPI.Translate("label", "Quick Access"),
 		sdkapi.NavCategorySystem:      self.api.CoreAPI.Translate("label", "System"),
-		sdkapi.NavCategoryThemes:      self.api.CoreAPI.Translate("label", "Payments"),
+		sdkapi.NavCategoryThemes:      self.api.CoreAPI.Translate("label", "Themes"),
 		sdkapi.NavCategoryPayments:    self.api.CoreAPI.Translate("label", "Payments"),
 		sdkapi.NavCategoryNetwork:     self.api.CoreAPI.Translate("label", "Network"),
 		sdkapi.NavCategoryTools:       self.api.CoreAPI.Translate("label", "Tools"),

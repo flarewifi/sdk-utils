@@ -81,7 +81,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		pluginPkg := vars["pkg"]
 		tagName := vars["tag"]
 
-		githubErrorMsg := g.CoreAPI.Translate("error", "github_update_error")
+		githubErrorMsg := g.CoreAPI.Translate("error", "Unable to Download Updates From Github")
 		tarballDownloadURL, err := plugins.GetTarballDownloadURL(tagName, pluginPkg)
 		if err != nil {
 			res.FlashMsg(w, r, githubErrorMsg, sdkapi.FlashMsgError)
@@ -135,7 +135,7 @@ func DownloadPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 		}
 
-		githubSuccessMsg := g.CoreAPI.Translate("info", "github__update_success_message")
+		githubSuccessMsg := g.CoreAPI.Translate("info", "Github Updates Downloaded")
 		res.FlashMsg(w, r, githubSuccessMsg, sdkapi.FlashMsgSuccess)
 		res.Redirect(w, r, "admin:plugins:index")
 	}
@@ -149,7 +149,7 @@ func CheckPluginUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		vars := api.HttpAPI.MuxVars(r)
 		pluginPkg := vars["pkg"]
 
-		pluginUpdateErrMsg := g.CoreAPI.Translate("error", "plugin_update_error")
+		pluginUpdateErrMsg := g.CoreAPI.Translate("error", "Unable to Update Plugin")
 
 		def, err := plugins.GetPluginDef(pluginPkg)
 		if err != nil {
@@ -228,7 +228,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		coreAPI := g.CoreAPI
 		res := coreAPI.HttpAPI.Response()
 		notifAPI := coreAPI.NotificationAPI
-		zipErrorMsg := g.CoreAPI.Translate("error", "zip_install_error")
+		zipErrorMsg := g.CoreAPI.Translate("error", "Unable to Install From Zip File")
 
 		// Parse form (max 10 MB)
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
@@ -379,7 +379,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			p := api.NewPluginApi(installPath, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr)
 			g.PluginMgr.RegisterPlugin(p)
 
-			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", info.Package)
+			successMsg := g.CoreAPI.Translate("info", "Plugin Successfully Installed", "plugin", info.Package)
 
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 
@@ -406,7 +406,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
 		notifAPI := g.CoreAPI.NotificationAPI
-		githubErrMsg := g.CoreAPI.Translate("error", "github_install_error")
+		githubErrMsg := g.CoreAPI.Translate("error", "Unable to Install from Github")
 
 		// Parse our multipart form, 10 << 20 specifies a maximum
 		// upload of 10 MB files.
@@ -469,7 +469,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			UpdateStatus(pluginName, InProgressStatus, "Adding sample delay", 90)
 			time.Sleep(10 * time.Second)
 
-			successMsg := g.CoreAPI.Translate("info", "plugin_install_success_message", "plugin", info.Package)
+			successMsg := g.CoreAPI.Translate("info", "Plugin Successfully Installed", "plugin", info.Package)
 			UpdateStatus(pluginName, SuccessStatus, successMsg, 100)
 
 			if err := notifAPI.AddNotification(ctx, sdkapi.AddNotificationParams{
@@ -497,7 +497,7 @@ func UninstallPluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		vars := api.HttpAPI.MuxVars(r)
 		pluginPkg := vars["pkg"]
 
-		uninstallErr := g.CoreAPI.Translate("error", "plugin_uninstall_error")
+		uninstallErr := g.CoreAPI.Translate("error", "Unable to Uninstall Plugin")
 
 		err := plugins.MarkToRemove(pluginPkg)
 		if err != nil {
@@ -507,7 +507,7 @@ func UninstallPluginCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		uninstallMsg := g.CoreAPI.Translate("info", "plugin_uninstall_message")
+		uninstallMsg := g.CoreAPI.Translate("info", "Unable to Uninstall Plugin")
 		res.FlashMsg(w, r, uninstallMsg, sdkapi.FlashMsgSuccess)
 		res.Redirect(w, r, "admin:plugins:index")
 	}

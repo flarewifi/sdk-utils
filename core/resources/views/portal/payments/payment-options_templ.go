@@ -54,7 +54,7 @@ func PaymentOptions(api sdkapi.IPluginApi, opts []PaymentOption) templ.Component
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "choose_payment_option"))
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Choose Payment Option"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 13, Col: 57}
 		}

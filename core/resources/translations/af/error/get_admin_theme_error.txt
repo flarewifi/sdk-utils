@@ -1,1 +1,0 @@
-get_admin_theme_error

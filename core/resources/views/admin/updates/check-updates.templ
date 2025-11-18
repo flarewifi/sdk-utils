@@ -48,7 +48,7 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 		{{ 	return }}
 	}
 	if !update.HasUpdate {
-		<div class="alert alert-success">{ api.Translate("label", "software_up_to_date") }</div>
+		<div class="alert alert-success">{ api.Translate("label", "Software up to Date") }</div>
 		{{ return }}
 	}
 	<div>
