@@ -19,6 +19,7 @@ func init() {
 }
 
 func StartServer(r *mux.Router, forever bool) *http.Server {
+
 	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
 	printRoutes(r)

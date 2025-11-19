@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -8,6 +9,8 @@ import (
 	"core/db/models"
 	"core/internal/web/helpers"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewPaymentsApi(api *PluginApi, pmgr *PaymentsMgr) {
@@ -38,35 +41,24 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 			return
 		}
 
-		tx, err := self.api.db.BeginTx(ctx, nil)
-		if err != nil {
-			self.ErrorPage(w, err)
-			return
-		}
-		defer tx.Rollback()
-
-		_, err = self.api.models.Purchase().Create(
-			tx,
-			r.Context(),
-			models.CreatePurchaseParams{
-				DeviceID:       clnt.Id(),
-				SKU:            p.Sku,
-				Name:           p.Name,
-				Description:    p.Description,
-				Price:          p.Price,
-				AnyPrice:       p.AnyPrice,
-				CallbackPlugin: self.api.Info().Package,
-				CallbackRoute:  p.CallbackRoute,
-				Metadata:       p.Metadata,
-			},
-		)
-		if err != nil {
-			log.Println("self.api.models.Purchase().Create error:", err)
-			self.ErrorPage(w, err)
-			return
-		}
-
-		if err := tx.Commit(); err != nil {
+		if err := sdkutils.RunInTx(self.api.SqlDB(), ctx, func(tx *sql.Tx) error {
+			_, err = self.api.models.Purchase().Create(
+				tx,
+				ctx,
+				models.CreatePurchaseParams{
+					DeviceID:       clnt.Id(),
+					SKU:            p.Sku,
+					Name:           p.Name,
+					Description:    p.Description,
+					Price:          p.Price,
+					AnyPrice:       p.AnyPrice,
+					CallbackPlugin: self.api.Info().Package,
+					CallbackRoute:  p.CallbackRoute,
+					Metadata:       p.Metadata,
+				},
+			)
+			return err
+		}); err != nil {
 			self.ErrorPage(w, err)
 			return
 		}
@@ -75,6 +67,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 		coreApi.HttpAPI.Response().Redirect(w, r, "payments:options")
 	}
 
+	// Prevent createting multiple pending purchases
 	purMw := self.api.HttpAPI.middlewares.PendingPurchase()
 	purMw(http.HandlerFunc(handler)).ServeHTTP(w, r)
 }
