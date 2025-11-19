@@ -95,7 +95,8 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 		}
 
 		navs = append(navs, sdkapi.AdminNavList{
-			Category: categoryLabels[category],
+			Category: category,
+			Label:    categoryLabels[category],
 			Items:    navItems,
 		})
 	}

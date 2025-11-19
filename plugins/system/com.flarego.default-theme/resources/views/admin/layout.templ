@@ -88,7 +88,7 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 													class="nav-link w-100"
 													@click.prevent={ fmt.Sprintf("openIndex = (openIndex === %d) ? -1 : %d", i, i) }
 												>
-													<span>{ nav.Category }</span>
+													<span>{ nav.Label }</span>
 													<i class="bi bi-chevron-right"></i>
 												</button>
 												<ul

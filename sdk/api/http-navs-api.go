@@ -54,7 +54,8 @@ type PortalNavItemOpt struct {
 }
 
 type AdminNavList struct {
-	Category string
+	Category INavCategory
+	Label    string
 	Items    []AdminNavItem
 }
 
