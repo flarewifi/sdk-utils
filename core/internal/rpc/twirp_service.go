@@ -2,6 +2,7 @@ package rpc_flarewifi_v1
 
 import (
 	"context"
+	rpcutil "core/internal/utils/rpc"
 	"log"
 	"net/http"
 	"tools/env"
@@ -13,12 +14,7 @@ func GetTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
 	url := env.RPC_BASE_URL + "/flarewifi/" + env.RPC_API_VERSION
 
 	// Create HTTP client with custom RoundTripper for Cloudflare Worker validation
-	httpClient := &http.Client{
-		Transport: &CloudflareAuth{
-			rt: http.DefaultTransport,
-		},
-	}
-
+	httpClient := rpcutil.NewCloudflareClient()
 	srv := NewFlarehotspotServiceProtobufClient(url, httpClient)
 	header := make(http.Header)
 	header.Set("Authorization", "Bearer "+env.RPC_TOKEN)

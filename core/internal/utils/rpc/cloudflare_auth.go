@@ -1,4 +1,4 @@
-package rpc_flarewifi_v1
+package rpcutil
 
 import (
 	"bytes"
@@ -12,6 +12,18 @@ import (
 
 	machineuid "core/internal/utils/machine-uid"
 )
+
+func NewCloudflareClient() *http.Client {
+	tr := NewCloudflareRountripper(http.DefaultTransport)
+	httpClient := &http.Client{
+		Transport: tr,
+	}
+	return httpClient
+}
+
+func NewCloudflareRountripper(rt http.RoundTripper) *CloudflareAuth {
+	return &CloudflareAuth{rt: rt}
+}
 
 // CloudflareAuth adds Cloudflare Worker validation headers to every request.
 // It creates a JWT token signed with Machine-Id + MD5(body) and adds it as Payload-Hash header.

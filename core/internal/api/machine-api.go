@@ -13,6 +13,6 @@ func NewMachineApi(api *PluginApi) {
 	api.MachineAPI = machineApi
 }
 
-func (m *MachineApi) MacineID() string {
+func (m *MachineApi) GetID() string {
 	return machineuid.GetMachineUID()
 }
