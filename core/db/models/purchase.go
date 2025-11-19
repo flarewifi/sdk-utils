@@ -21,6 +21,7 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 
 	if p != nil {
 		purchase.id = p.ID
+		purchase.uid = p.Uid
 		purchase.deviceId = p.DeviceID
 		purchase.sku = p.Sku
 		purchase.name = p.Name
@@ -64,6 +65,7 @@ type Purchase struct {
 	db                *db.Database
 	models            *Models
 	id                int64
+	uid               string
 	deviceId          int64
 	sku               string
 	name              string
@@ -83,6 +85,10 @@ type Purchase struct {
 
 func (self *Purchase) Id() int64 {
 	return self.id
+}
+
+func (self *Purchase) Uid() string {
+	return self.uid
 }
 
 func (self *Purchase) DeviceId() int64 {

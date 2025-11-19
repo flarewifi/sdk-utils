@@ -25,6 +25,18 @@ type Purchase struct {
 	purchase *models.Purchase
 }
 
+func (self *Purchase) Id() int64 {
+	return self.purchase.Id()
+}
+
+func (self *Purchase) Uid() string {
+	return self.purchase.Uid()
+}
+
+func (self *Purchase) Sku() string {
+	return self.purchase.Sku()
+}
+
 func (self *Purchase) Name() string {
 	return self.purchase.Name()
 }

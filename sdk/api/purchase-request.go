@@ -39,6 +39,11 @@ type CreatePaymentParams struct {
 
 // IPurchaseRequest represents a record in purchases table in the database.
 type IPurchaseRequest interface {
+	// Returns the db ID of the purchase request.
+	Id() int64
+
+	// Returns the unique UID of the purchase request.
+	Uid() string
 
 	// Returns the name of the purchase item.
 	Name() string

@@ -14,6 +14,10 @@ import (
 
 // IPluginApi is the root of all plugin APIs.
 type IPluginApi interface {
+
+	// Returns an instance of machine API.
+	Machine() IMachineApi
+
 	// Retusns an instance of database/sql package from go standard library.
 	SqlDB() *sql.DB
 
