@@ -332,9 +332,9 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes)
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "to_be_removed_alert"))
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Plugin Will Be Removed on the Next Restart"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 93, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 93, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -345,9 +345,9 @@ func IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes)
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "to_be_updated_alert"))
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Plugin Will Be Updated on the Next Restart"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 96, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/index.templ`, Line: 96, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {

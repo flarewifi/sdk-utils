@@ -99,7 +99,7 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Read current config to preserve the Secret field
 		currentCfg, err := config.ReadApplicationConfig()
 		if err != nil {
-			saveErrorMsg := g.CoreAPI.Translate("error", "save_settings_error")
+			saveErrorMsg := g.CoreAPI.Translate("error", "Unable to Save Settings")
 			res.FlashMsg(w, r, saveErrorMsg, sdkapi.FlashMsgError)
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
@@ -115,7 +115,7 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			Secret:   currentCfg.Secret, // Preserve existing secret
 		})
 		if err != nil {
-			saveErrorMsg := g.CoreAPI.Translate("error", "save_settings_error")
+			saveErrorMsg := g.CoreAPI.Translate("error", "Unable to Save Settings")
 			res.FlashMsg(w, r, saveErrorMsg, sdkapi.FlashMsgError)
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
@@ -123,7 +123,7 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		successfulSavedMsg := g.CoreAPI.Translate("info", "saved_settings_message")
+		successfulSavedMsg := g.CoreAPI.Translate("info", "Settings Successfully Saved")
 		res.FlashMsg(w, r, successfulSavedMsg, sdkapi.FlashMsgSuccess)
 
 		applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")

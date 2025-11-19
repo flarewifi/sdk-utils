@@ -21,14 +21,14 @@ func DeleteFileCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		if err != nil {
 			log.Println("error removing file: ", err)
 
-			errMsg := g.CoreAPI.Translate("error", "unable_to_remove_file_error", "file", filepath.Base(filePath), "err", err)
+			errMsg := g.CoreAPI.Translate("error", "Unable to Remove File", "file", filepath.Base(filePath), "err", err)
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 			return
 		}
 
 		g.CoreAPI.HttpAPI.Cookie().DeleteCookie(w, cookieName)
 
-		successMsg := g.CoreAPI.Translate("info", "remove_file_success_message", "file", filepath.Base(filePath))
+		successMsg := g.CoreAPI.Translate("info", "File Removed Successfully", "file", filepath.Base(filePath))
 		res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
 	}
 }

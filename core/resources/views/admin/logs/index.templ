@@ -32,7 +32,7 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 						</div>
 						<div class="col-md-3">
 							<select name="package" class="form-select form-select-sm">
-								<option value="">{ api.Translate("label", "logs_all") }</option>
+								<option value="">{ api.Translate("label", "All Logs") }</option>
 								for _, pkg := range searchData.Packages {
 									<option value={ pkg } selected?={ pkg == searchData.Package }>{ pkg }</option>
 								}
@@ -40,10 +40,10 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 						</div>
 						<div class="col-md-3">
 							<select name="level" class="form-select form-select-sm">
-								<option value="">{ api.Translate("label", "logs_all") }</option>
-								<option value="info" selected?={ searchData.Level == "info" }>{ api.Translate("label", "logs_info") }</option>
-								<option value="debug" selected?={ searchData.Level == "debug" }>{ api.Translate("label", "logs_debug") }</option>
-								<option value="error" selected?={ searchData.Level == "error" }>{ api.Translate("label", "logs_error") }</option>
+								<option value="">{ api.Translate("label", "All Logs") }</option>
+								<option value="info" selected?={ searchData.Level == "info" }>{ api.Translate("label", "Info") }</option>
+								<option value="debug" selected?={ searchData.Level == "debug" }>{ api.Translate("label", "Debug") }</option>
+								<option value="error" selected?={ searchData.Level == "error" }>{ api.Translate("label", "Error") }</option>
 							</select>
 						</div>
 						<div class="col-md-2">
