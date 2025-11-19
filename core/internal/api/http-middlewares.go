@@ -11,6 +11,8 @@ import (
 
 	sdkapi "sdk/api"
 
+	sdkutils "github.com/flarehotspot/sdk-utils"
+
 	"core/db/models"
 	"core/internal/connmgr"
 	webutil "core/internal/utils/web"
@@ -62,39 +64,34 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 			ctx := r.Context()
 			errCode := http.StatusInternalServerError
 
-			tx, err := self.api.db.BeginTx(ctx, nil)
+			var shouldRedirect bool
+
+			err := sdkutils.RunInTx(self.api.db.DB, ctx, func(tx *sql.Tx) error {
+				client, err := helpers.CurrentClient(r)
+				if err != nil {
+					return err
+				}
+
+				mdls := self.api.models
+				purchase, err := mdls.Purchase().PendingPurchase(tx, ctx, client.Id())
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					return err
+				}
+
+				if purchase != nil {
+					shouldRedirect = true
+				}
+
+				return nil
+			})
+
 			if err != nil {
 				self.ErrorPage(w, err, errCode)
 				return
 			}
-			defer tx.Rollback()
 
-			client, err := helpers.CurrentClient(r)
-			if err != nil {
-				self.ErrorPage(w, err, errCode)
-				return
-			}
-
-			mdls := self.api.models
-			device, err := mdls.Device().Find(tx, ctx, client.Id())
-			if err != nil {
-				self.ErrorPage(w, err, errCode)
-				return
-			}
-
-			purchase, err := mdls.Purchase().PendingPurchase(tx, ctx, device.Id())
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				self.ErrorPage(w, err, errCode)
-				return
-			}
-
-			if purchase != nil {
+			if shouldRedirect {
 				self.api.HttpAPI.Response().Redirect(w, r, "payments:options")
-				return
-			}
-
-			if err := tx.Commit(); err != nil {
-				self.ErrorPage(w, err, errCode)
 				return
 			}
 
