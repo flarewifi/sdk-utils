@@ -4,7 +4,7 @@ mono: create-network
 	docker compose -f docker-compose.yml -f docker-compose.mono.yml up \
 		--build --remove-orphans --force-recreate
 
-dev:
+postgres:
 	docker compose up --build --remove-orphans --force-recreate
 
 create-network:
