@@ -10,22 +10,6 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func TestSendNotifiCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		err := api.Notification().AddNotification(ctx, sdkapi.AddNotificationParams{
-			Subject: "Test Notification",
-			Content: "This is a test notification sent from the default theme plugin.",
-			Type:    sdkapi.NotificationTypeInfo,
-		})
-		if err != nil {
-			log.Printf("add test notification error: %v", err)
-		}
-
-		fmt.Fprintf(w, "<button hx-post='%s' hx-swap='outerHTML'>Test notif</button>", api.Http().Helpers().UrlForRoute("admin:notifications:test"))
-	}
-}
-
 func NotificationsListCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		notifsAPI := api.Notification()

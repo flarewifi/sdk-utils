@@ -7,10 +7,6 @@ import (
 
 templ AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
 	<h1>Admin Dashboard</h1>
-	<button
-        hx-post={ api.Http().Helpers().UrlForRoute("admin:notifications:test") }
-        hx-swap="none"
-        >Test notif</button>
 
 	@ResourceInfo(api, info)
 }

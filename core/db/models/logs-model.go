@@ -4,7 +4,8 @@ import (
 	"context"
 	"core/db"
 	"core/db/queries"
-	"fmt"
+	"strings"
+	"time"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -54,61 +55,67 @@ func (self *LogModel) Create(ctx context.Context, params CreateLogParams) error 
 	return err
 }
 
+func (self *LogModel) Clear(ctx context.Context) error {
+	_, err := self.db.DB.ExecContext(ctx, "DELETE FROM logs")
+	return err
+}
+
 func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*PaginateResult, error) {
-
-	offset := opts.PerPage * (opts.Page - 1)
-	limit := opts.PerPage
-
-	searchOpts := queries.SearchLogsParams{
-		RowOffset:  int64(offset),
-		RowLimit:   int64(limit),
-		Package:    opts.Package,
-		Level:      opts.Level,
-		SearchText: opts.SearchText,
+	// Build WHERE clause dynamically
+	whereParts := []string{}
+	args := []interface{}{}
+	if opts.Package != "" {
+		whereParts = append(whereParts, "package = ?")
+		args = append(args, opts.Package)
+	}
+	if opts.Level != "" {
+		whereParts = append(whereParts, "level = ?")
+		args = append(args, opts.Level)
+	}
+	if opts.SearchText != "" {
+		whereParts = append(whereParts, "LOWER(message) LIKE ?")
+		args = append(args, "%"+strings.ToLower(opts.SearchText)+"%")
+	}
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = " WHERE " + strings.Join(whereParts, " AND ")
 	}
 
-	tx, err := self.db.BeginTx(ctx, nil)
-	if err != nil {
+	offset := int64(opts.PerPage * (opts.Page - 1))
+	limit := int64(opts.PerPage)
+
+	// Count
+	countQuery := "SELECT COUNT(id) FROM logs" + whereClause
+	var count int64
+	if err := self.db.DB.QueryRowContext(ctx, countQuery, args...).Scan(&count); err != nil {
 		return nil, err
 	}
 
-	qtx := self.db.Queries.WithTx(tx)
-
-	fmt.Printf("Logs filter opts: %+v\n", searchOpts)
-
-	result, err := qtx.SearchLogs(ctx, searchOpts)
+	// Fetch logs
+	logQuery := "SELECT id, package, level, message, filepath, line_number, created_at FROM logs" + whereClause + " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	qArgs := append(args, limit, offset)
+	rows, err := self.db.DB.QueryContext(ctx, logQuery, qArgs...)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	count, err := qtx.SearchCount(ctx, queries.SearchCountParams{
-		Package:    opts.Package,
-		Level:      opts.Level,
-		SearchText: opts.SearchText,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	logs := make([]*Log, len(result))
-	for i, row := range result {
-		log := Log{
-			Package:   row.Package.String,
-			Level:     row.Level,
-			Message:   row.Message,
-			Filepath:  row.Filepath,
-			Line:      int(row.LineNumber),
-			CreatedAt: row.CreatedAt,
+	logs := make([]*Log, 0, limit)
+	for rows.Next() {
+		var l Log
+		var id int64
+		var pkg, lvl, msg, path string
+		var line int64
+		var createdAt time.Time
+		if err := rows.Scan(&id, &pkg, &lvl, &msg, &path, &line, &createdAt); err != nil {
+			return nil, err
 		}
-		logs[i] = &log
+		l = Log{Package: pkg, Level: lvl, Message: msg, Filepath: path, Line: int(line), CreatedAt: createdAt}
+		logs = append(logs, &l)
 	}
-
-	if err := tx.Commit(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return &PaginateResult{
-		Logs:  logs,
-		Count: count,
-	}, nil
+	return &PaginateResult{Logs: logs, Count: count}, nil
 }

@@ -129,6 +129,17 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 
 		searchURL += "?" + query.Encode()
 
+		// Handle clear_logs action
+		if r.FormValue("clear_logs") == "1" {
+			if err := g.Models.Log().Clear(r.Context()); err != nil {
+				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(g.CoreAPI.Translate("error", "Unable to clear logs")), http.StatusInternalServerError)
+				g.CoreAPI.LoggerAPI.Error(err.Error())
+				return
+			}
+			http.Redirect(w, r, g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index"), http.StatusSeeOther)
+			return
+		}
+
 		http.Redirect(w, r, searchURL, http.StatusSeeOther)
 	}
 }
