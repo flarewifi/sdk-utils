@@ -54,6 +54,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 					AnyPrice:       p.AnyPrice,
 					CallbackPlugin: self.api.Info().Package,
 					CallbackRoute:  p.CallbackRoute,
+					WebHookRoute:   p.WebHookRoute,
 					Metadata:       p.Metadata,
 				},
 			)

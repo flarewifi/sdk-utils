@@ -24,4 +24,8 @@ type IHttpMiddlewares interface {
 
 	// Tracks navigation visits for the Quick Access menu.
 	TrackNav() func(http.Handler) http.Handler
+
+	// Authenticates internal webhook requests using JWT tokens.
+	// Verifies the JWT token signed with application secret and adds device/purchase info to context.
+	WebhookAuth() func(http.Handler) http.Handler
 }

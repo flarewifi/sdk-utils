@@ -8,8 +8,12 @@ package sdkapi
 
 type sysacctctx string
 type clientctx string
+type webhookDeviceIDCtx string
+type webhookPurchaseUIDCtx string
 
 var (
-	ClientCtxKey  clientctx  = "clnt"
-	SysAcctCtxKey sysacctctx = "adminacct"
+	ClientCtxKey          clientctx             = "clnt"
+	SysAcctCtxKey         sysacctctx            = "adminacct"
+	WebhookDeviceIDKey    webhookDeviceIDCtx    = "webhook_device_id"
+	WebhookPurchaseUIDKey webhookPurchaseUIDCtx = "webhook_purchase_uid"
 )

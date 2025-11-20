@@ -28,6 +28,7 @@ type PurchaseRequest struct {
 	Price         float64
 	AnyPrice      bool
 	CallbackRoute string
+	WebHookRoute  string
 	Metadata      map[string]string
 }
 
@@ -65,9 +66,12 @@ type IPurchaseRequest interface {
 	// The state includes the total accumulated payment for the purchase and other important details.
 	State(tx *sql.Tx, ctx context.Context) (PurchaseState, error)
 
-	// Executes the payment for the purchase.
-	// This will redirect the user to the callback URL of purchase request.
-	Execute(w http.ResponseWriter, r *http.Request)
+	// Executes the webhook for the purchase.
+	// This will make an internal POST request to the webhook route.
+	Execute(ctx context.Context) error
+
+	// Redirects the user to the callback route of the purchase request.
+	RedirectToCallback(w http.ResponseWriter, r *http.Request)
 
 	// Confirm the purchase.
 	// This must be executed in the purchase callback handler.

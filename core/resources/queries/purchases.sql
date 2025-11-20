@@ -1,6 +1,6 @@
 -- name: CreatePurchase :one
-INSERT INTO purchases (uid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, metadata)
-    VALUES (@uid, @device_id, @sku, @name, @description, @price, @any_price, @callback_plugin, @callback_route, @metadata)
+INSERT INTO purchases (uid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata)
+    VALUES (@uid, @device_id, @sku, @name, @description, @price, @any_price, @callback_plugin, @callback_route, @webhook_route, @metadata)
 RETURNING
     id;
 

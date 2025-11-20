@@ -5,10 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 
 	"core/db/models"
 	sdkapi "sdk/api"
+	"tools/config"
+	"tools/env"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func NewPurchase(api *PluginApi, ctx context.Context, deviceId int64, p *models.Purchase) *Purchase {
@@ -35,6 +41,10 @@ func (self *Purchase) Uid() string {
 
 func (self *Purchase) Sku() string {
 	return self.purchase.Sku()
+}
+
+func (self *Purchase) WebHookRoute() string {
+	return self.purchase.WebHookRoute()
 }
 
 func (self *Purchase) Name() string {
@@ -96,16 +106,93 @@ func (self *Purchase) State(tx *sql.Tx, ctx context.Context) (sdkapi.PurchaseSta
 	return state, nil
 }
 
-func (self *Purchase) Execute(w http.ResponseWriter, r *http.Request) {
+func (self *Purchase) Execute(ctx context.Context) error {
 	pmgr := self.api.PluginsMgr()
 	callbackPkg, ok := pmgr.FindByPkg(self.purchase.CallbackPluginPkg())
 	if !ok {
-		self.ErrorPage(w, errors.New("Unable to find plugin to receive the payment."))
+		return errors.New("Unable to find plugin to receive the payment")
+	}
+
+	// Build the webhook URL
+	webhookRoute := self.purchase.WebHookRoute()
+	if webhookRoute == "" {
+		return errors.New("WebHookRoute is not configured for this purchase")
+	}
+
+	webhookURL := callbackPkg.Http().Helpers().UrlForRoute(webhookRoute)
+
+	// Create POST request to local server using env.LocalBaseURL
+	fullURL := env.LocalBaseURL + webhookURL
+
+	fmt.Println("Webhook URL:", fullURL)
+
+	// Get application secret for JWT signing
+	appCfg, err := config.ReadApplicationConfig()
+	if err != nil {
+		return fmt.Errorf("failed to read application config: %w", err)
+	}
+
+	// Create JWT token with 1-minute expiration
+	now := time.Now()
+	claims := WebhookClaims{
+		DeviceID:    self.deviceId,
+		PurchaseUID: self.purchase.Uid(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(1 * time.Minute)),
+			Issuer:    "flarehotspot-core",
+			Subject:   "webhook-auth",
+		},
+	}
+
+	// Create and sign the token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(appCfg.Secret))
+	if err != nil {
+		return fmt.Errorf("failed to sign JWT token: %w", err)
+	}
+
+	// Create request with context
+	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create webhook request: %w", err)
+	}
+
+	// Add JWT token in Authorization header
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	req.Header.Set("Content-Type", "application/json")
+
+	fmt.Println("Webhook request created with JWT token")
+
+	// Make the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("webhook request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check response status
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("webhook returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	fmt.Println("Webhook executed successfully")
+	return nil
+}
+
+func (self *Purchase) RedirectToCallback(w http.ResponseWriter, r *http.Request) {
+	pmgr := self.api.PluginsMgr()
+	callbackPkg, ok := pmgr.FindByPkg(self.purchase.CallbackPluginPkg())
+	if !ok {
+		self.ErrorPage(w, errors.New("Unable to find plugin for callback"))
 		return
 	}
 
-	fmt.Println("CallbackPkg: ", callbackPkg)
-	callbackPkg.Http().Response().Redirect(w, r, self.purchase.CallbackRoute())
+	callbackRoute := self.purchase.CallbackRoute()
+	fmt.Println("Redirecting to callback route:", callbackRoute)
+	callbackPkg.Http().Response().Redirect(w, r, callbackRoute)
 }
 
 func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
