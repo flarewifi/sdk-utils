@@ -13,6 +13,6 @@
     "-.tmp",
     "-output",
     "-plugins/installed",
-    "+plugins/local"
+    "+data/plugins/local"
   ]
 }
