@@ -8,5 +8,8 @@
   ],
   "polyfills.js": [
     "./portal/js/polyfills.js"
+  ],
+  "payment-options.css": [
+    "./portal/payments/payment-options.css"
   ]
 }

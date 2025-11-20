@@ -16,13 +16,16 @@ func PaymentOptionsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		for i, opt := range result {
 			opts[i] = paymentsview.PaymentOption{
-				Name: opt.Name(),
-				URL:  opt.URL(),
+				Label: opt.Label(),
+				URL:   opt.URL(),
 			}
 		}
 
 		paymentsPage := paymentsview.PaymentOptions(g.CoreAPI, opts)
 		res.PortalView(w, r, sdkapi.ViewPage{
+			Assets: sdkapi.ViewAssets{
+				CssFile: "payment-options.css",
+			},
 			PageContent: paymentsPage,
 		})
 	}

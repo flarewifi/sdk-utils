@@ -1,0 +1,227 @@
+/* Payment Checkout Page Styles */
+
+.payment-checkout-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Header Styles */
+.checkout-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding: 30px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.checkout-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  opacity: 0.95;
+}
+
+.checkout-title {
+  margin: 15px 0 10px 0;
+  font-size: 32px;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.checkout-subtitle {
+  margin: 0;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 400;
+}
+
+/* Payment Options Grid */
+.payment-options-grid {
+  display: block;
+  margin-bottom: 30px;
+}
+
+.payment-option-card {
+  display: block;
+  background: #ffffff;
+  border: 2px solid #e1e8ed;
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 16px;
+  text-decoration: none;
+  color: #333333;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.payment-option-card:hover {
+  transform: translateY(-4px);
+  border-color: #667eea;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+  text-decoration: none;
+  color: #333333;
+}
+
+.payment-option-card:hover .payment-arrow {
+  transform: translateX(5px);
+  color: #667eea;
+}
+
+.payment-option-card:active {
+  transform: translateY(-2px);
+}
+
+.payment-card-inner {
+  display: table;
+  width: 100%;
+}
+
+/* Payment Icon */
+.payment-icon {
+  display: table-cell;
+  vertical-align: middle;
+  width: 60px;
+  font-size: 32px;
+  color: #667eea;
+  text-align: center;
+}
+
+/* Payment Name */
+.payment-name {
+  display: table-cell;
+  vertical-align: middle;
+  margin: 0;
+  padding: 0 20px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* Payment Arrow */
+.payment-arrow {
+  display: table-cell;
+  vertical-align: middle;
+  width: 40px;
+  text-align: right;
+  font-size: 20px;
+  color: #999999;
+  transition: all 0.3s ease;
+}
+
+/* Footer Styles */
+.checkout-footer {
+  text-align: center;
+  padding: 20px;
+  border-top: 1px solid #e1e8ed;
+  margin-top: 30px;
+}
+
+.secure-text {
+  margin: 0;
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.secure-text .glyphicon {
+  margin-right: 8px;
+  color: #28a745;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .checkout-header {
+    padding: 20px 15px;
+  }
+  
+  .checkout-title {
+    font-size: 24px;
+  }
+  
+  .checkout-subtitle {
+    font-size: 16px;
+  }
+  
+  .payment-option-card {
+    padding: 18px;
+  }
+  
+  .payment-icon {
+    width: 50px;
+    font-size: 28px;
+  }
+  
+  .payment-name {
+    font-size: 18px;
+    padding: 0 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .payment-checkout-container {
+    padding: 15px;
+  }
+  
+  .checkout-header {
+    padding: 15px 10px;
+  }
+  
+  .checkout-icon {
+    font-size: 36px;
+  }
+  
+  .checkout-title {
+    font-size: 20px;
+  }
+  
+  .checkout-subtitle {
+    font-size: 14px;
+  }
+  
+  .payment-option-card {
+    padding: 15px;
+  }
+  
+  .payment-icon {
+    width: 40px;
+    font-size: 24px;
+  }
+  
+  .payment-name {
+    font-size: 16px;
+    padding: 0 10px;
+  }
+  
+  .payment-arrow {
+    width: 30px;
+    font-size: 18px;
+  }
+}
+
+/* Loading State (Optional) */
+.payment-option-card.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Focus State for Accessibility */
+.payment-option-card:focus {
+  outline: 3px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Empty State */
+.payment-options-grid:empty::after {
+  content: 'No payment options available';
+  display: block;
+  text-align: center;
+  padding: 40px;
+  color: #999999;
+  font-style: italic;
+}
