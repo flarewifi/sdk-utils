@@ -37,6 +37,11 @@ func (c *BandwdCfgApi) Save(ifname string, cfg sdkapi.IBandwdCfg) error {
 		return err
 	}
 
+	// Initialize the map if it's nil to prevent panic
+	if oldCfg.Lans == nil {
+		oldCfg.Lans = make(map[string]config.IfCfg)
+	}
+
 	oldCfg.Lans[ifname] = config.IfCfg{
 		UseGlobal:       cfg.UseGlobal,
 		GlobalDownMbits: cfg.GlobalDownMbits,
