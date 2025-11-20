@@ -54,3 +54,11 @@ WHERE
     AND device_id = @device_id
 LIMIT 1;
 
+-- name: UpdatePurchaseMetadata :exec
+UPDATE
+    purchases
+SET
+    metadata = @metadata
+WHERE
+    id = @id;
+

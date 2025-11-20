@@ -147,6 +147,10 @@ func (self *Purchase) CallbackRoute() string {
 	return self.callbackRoute
 }
 
+func (self *Purchase) Metadata() map[string]string {
+	return self.metadata
+}
+
 func (self *Purchase) IsConfirmed() bool {
 	return self.confirmedAt != nil
 }

@@ -139,3 +139,24 @@ func (self *PurchaseModel) Update(tx *sql.Tx, ctx context.Context, params Update
 
 	return nil
 }
+
+// UpdateMetadata updates the metadata field of a purchase
+func (self *PurchaseModel) UpdateMetadata(tx *sql.Tx, ctx context.Context, purchaseID int64, metadata map[string]string) error {
+	b, err := json.Marshal(metadata)
+	if err != nil {
+		log.Printf("error marshaling metadata: %v", err)
+		return err
+	}
+
+	qtx := self.db.Queries.WithTx(tx)
+	err = qtx.UpdatePurchaseMetadata(ctx, queries.UpdatePurchaseMetadataParams{
+		ID:       purchaseID,
+		Metadata: b,
+	})
+	if err != nil {
+		log.Printf("error updating purchase metadata %v: %v", purchaseID, err)
+		return err
+	}
+
+	return nil
+}
