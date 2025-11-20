@@ -98,6 +98,7 @@ type AdminNavItemOpt struct {
 	Label       string
 	RouteName   string
 	RouteParams map[string]string
+	Keywords    []string // Used for admin nav search indexing
 }
 ```
 
@@ -114,11 +115,11 @@ The available `INavCategory` options are:
 The `PortalNavItemOpt` is a Go struct the represents a portal navigation menu item.
 
 ```go
-type PortalNavItemOpt struct {
-	Label       string
-	IconUrl     string
-	RouteName   string
-	RouteParams map[string]string
+type PortalNavItem struct {
+	ID       string
+	Label    string
+	IconUrl  string
+	RouteUrl string
 }
 ```
 
@@ -128,14 +129,9 @@ The `AdminNavList` contains a list of admin navigation items which can be used b
 
 ```go
 type AdminNavList struct {
-	Category string
+	Category INavCategory
+	Label    string
 	Items    []AdminNavItem
-}
-
-type AdminNavItem struct {
-    Label    string
-    RouteUrl string
-    IsCurrent bool // true if active route
 }
 ```
 
@@ -144,9 +140,10 @@ type AdminNavItem struct {
 The `PortalNavItem` is a Go struct that represents an individual portal menu item.
 
 ```go
-type PortalNavItem struct {
-	Label    string
-	IconUrl  string
-	RouteUrl string
+type AdminNavItem struct {
+    Label     string
+    RouteUrl  string
+    IsCurrent bool     // true if current active route
+    Keywords  []string // Used for admin nav search indexing
 }
 ```

@@ -53,13 +53,13 @@ config := api.Config()
 fmt.Println(config) // IConfigApi
 ```
 
-### DeviceHooks
+### Machine
 
-It returns the [IDeviceHooksApi](./device-hooks-api.md) object which is used to manage device registration hooks.
+It returns the [IMachineApi](./machine-api.md) object which is used to access machine-specific information and operations.
 
 ```go
-deviceHooks := api.DeviceHooks()
-fmt.Println(deviceHooks) // IDeviceHooksApi
+machine := api.Machine()
+fmt.Println(machine) // IMachineApi
 ```
 
 ### Dir
@@ -135,6 +135,15 @@ network := api.Network()
 fmt.Println(network) // INetworkApi
 ```
 
+### Notification
+
+It returns the [INotificationAPI](./notification.md) object which is used to send notifications to users.
+
+```go
+notification := api.Notification()
+fmt.Println(notification) // INotificationAPI
+```
+
 ### Payments
 
 It return the [IPaymentsApi](./payments-api.md) object which is used to create payment options or create system transactions.
@@ -171,12 +180,12 @@ sessionsMgr := api.SessionsMgr()
 fmt.Println(sessionsMgr) // ISessionsMgrApi
 ```
 
-### SqlDb
+### SqlDB
 
 It returns [\*sql.DB](http://go-database-sql.org/overview.html) instance which is used to query, insert, update and delete database entities.
 
 ```go
-db := api.SqlDb()
+db := api.SqlDB()
 fmt.Println(db) // *sql.DB
 ```
 
@@ -215,7 +224,7 @@ uci := api.Uci()
 fmt.Println(uci) // IUciApi
 ```
 
-### UIApi
+### UI
 
 It returns the [IUIApi](./ui-api.md) object which is used for ui reusable templates.
 

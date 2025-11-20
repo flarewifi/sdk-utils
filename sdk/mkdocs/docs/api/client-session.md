@@ -1,11 +1,11 @@
 # IClientSession
 
-The `IClientSession` represents a session for the [IClientDevice](./client-device.md). It can be manipulated using the [SessionsMgrApi](./sessions-mgr-api.md). To get an instance of `IClientSession`, you can use the [CreateSession](./sessions-mgr-api.md#createsession), [CurrSession](./sessions-mgr-api.md#currsession) or [GetSession](./sessions-mgr-api.md#getsession) methods from [SessionMgrApi](./sessions-mgr-api.md). For example:
+The `IClientSession` represents a session for the [IClientDevice](./client-device.md). It can be manipulated using the [SessionsMgrApi](./sessions-mgr-api.md). To get an instance of `IClientSession`, you can use the [CreateSession](./sessions-mgr-api.md#createsession), [RunningSession](./sessions-mgr-api.md#runningsession) or [AvailableSession](./sessions-mgr-api.md#availablesession) methods from [SessionMgrApi](./sessions-mgr-api.md). For example:
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
-    session, _ := api.SessionsMgr().CurrSession(clnt)
+    session, _ := api.SessionsMgr().RunningSession(clnt)
 }
 ```
 
@@ -13,17 +13,33 @@ func (w http.ResponseWriter, r *http.Request) {
 
 The following methods are available in `IClientSession`.
 
-### Provider
+### Id
 
-Returns the session [provider](../api/session-provider.md) name. The provider name is a `string` value.
+Returns the session's ID as an `int64` value.
 
 ```go
-provider := session.Provider()
+id := session.Id()
+```
+
+### Uid
+
+Returns the session's unique identifier as a `string` value.
+
+```go
+uid := session.Uid()
+```
+
+### Plugin
+
+Returns the provider plugin of the session record as an `IPluginApi` interface.
+
+```go
+plugin := session.Plugin()
 ```
 
 ### Type
 
-Returns the session type. The session type is a `uint8` value.
+Returns the session type. The session type is a `SessionType` value (string type).
 
 ```go
 t := session.Type()
@@ -33,9 +49,9 @@ The available session types are:
 
 | Value | Description
 | --- | ---
-| 0 | Represents a `time` session in seconds. Time sessions are sessions that expire when the allocated time is consumed.
-| 1 | Represents a `data` session in in Megabytes. Data sessions are sessions that expire when the allocated data is consumed.
-| 2 | Represents a `time_or_data` session. Time or data sessions are sessions that are limited by time or data, whichever is consumed first.
+| `"time"` | Represents a `time` session in seconds. Time sessions are sessions that expire when the allocated time is consumed.
+| `"data"` | Represents a `data` session in Megabytes. Data sessions are sessions that expire when the allocated data is consumed.
+| `"time-or-data"` | Represents a `time-or-data` session. Time or data sessions are sessions that are limited by time or data, whichever is consumed first.
 
 ### TimeSecs
 
@@ -101,9 +117,17 @@ Returns a `time.Time` value representing the time the session was created.
 d := session.CreatedAt()
 ```
 
+### UpdatedAt
+
+Returns a `time.Time` value representing the time the session was last updated.
+
+```go
+updated := session.UpdatedAt()
+```
+
 ### ExpDays
 
-Returns a `*uint` value representing the expiration days after the session is started. A `nil` value is returned if the session does not have expiration date.
+Returns a `*int` value representing the expiration days after the session is started. A `nil` value is returned if the session does not have expiration date.
 
 ```go
 exp := session.ExpDays()
@@ -245,7 +269,7 @@ session.Save()
 Save the session changes to the database.
 
 ```go
-session.Save()
+err := session.Save(ctx)
 ```
 
 ### Reload
@@ -253,5 +277,5 @@ session.Save()
 Reload the session data from the database.
 
 ```go
-session.Reload()
+err := session.Reload(ctx)
 ```

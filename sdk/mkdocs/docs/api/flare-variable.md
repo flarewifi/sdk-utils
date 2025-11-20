@@ -2,103 +2,158 @@
 
 The `$flare` variable is a global variable in the browser that contains helper functions to work with the Flare Hotspot API.
 
-## 1. $flare.http {#flare-http}
 
-### $flare.http.get {#flare-http-get}
 
-The `$flare.http.get` method is used to perform a `GET` AJAX request. It accepts two arguments, the first argument is the URL to send the form data to, and the second argument is the query params.
+## 1. $flare.events {#flare-events}
 
-```js
-var queryParams = {amount: 100};
+The `$flare.events` object provides methods to listen to server-sent events (SSE) emitted by the Flare Hotspot backend.
 
-$flare.http.get('/path/to/handler', queryParams)
-    .then(function(response){
-        console.log(response);
-    })
-    .catch(function(error){
-        console.log(error);
-    });
-```
+### $flare.events.on {#flare-events-on}
 
-### $flare.http.post {#flare-http-post}
-
-The `$flare.http.post` method is used to perform a `POST` AJAX request. It accepts two arguments, the first argument is the URL to send the form data to, and the second argument is the form data.
+Registers an event listener for server-sent events.
 
 ```js
-var formData = {amount: 100};
+// Listen for session events
+var listener = $flare.events.on("session:connected", function (event) {
+    console.log("Session connected:", event.data);
+});
 
-$flare.http.post('/path/to/handler', formData)
-    .then(function(response){
-        console.log(response);
-    })
-    .catch(function(error){
-        console.log(error);
-    });
-```
+// Listen for client device events
+$flare.events.on("client:connected", function (event) {
+    console.log("Client connected:", event.data);
+});
 
-!!!warning "Important"
-    You must use [VueResponse](./vue-response.md) in the server side to perform http resposes for both the [$flare.http.get](#flare-http-get) and [$flare.http.post](#flare-http-post) methods.
+// Listen for notifications
+$flare.events.on("flare_notification", function (event) {
+    console.log("New notification:", event.data);
+});
 
-## 2. $flare.vueLazyLoad #{flare-vuelazyload}
-
-The `$flare.vueLazyLoad` method is used to lazy load vue components.
-
-```js
-var component = '<% .Helpers.VueComponentPath "sample-child.vue" %>';
-var lazyComponent = $flare.vueLazyLoad(component);
-
-var app = new Vue({
-    el: '#app',
-    components: {
-        'sample-child': lazyComponent
-    }
+// Listen for plugin installation events (admin only)
+$flare.events.on("install:progress", function (event) {
+    console.log("Installation progress:", event.data);
 });
 ```
 
-## 3. $flare.events {#flare-events}
+**Parameters:**
+- `event` (string): The event name to listen for
+- `callback` (function): The callback function that receives the event data
 
-The `$flare.events` is used to listen to events emitted by the server.
+**Available Events:**
 
-Below is an example of how to listen to an event:
+| Event | Description |
+|-------|-------------|
+| `session:connected` | Emitted when a client session is connected |
+| `session:disconnected` | Emitted when a client session is disconnected |
+| `session:expired` | Emitted when a client session expires |
+| `session:updated` | Emitted when session data is updated |
+| `client:created` | Emitted when a new client device is created |
+| `client:updated` | Emitted when client device data is updated |
+| `client:connected` | Emitted when a client device connects |
+| `client:disconnected` | Emitted when a client device disconnects |
+| `flare_notification` | Emitted when a notification is sent to the user |
+| `install:progress` | Emitted during plugin installation (admin interface only) |
+
+### $flare.events.off {#flare-events-off}
+
+Unregisters an event listener.
 
 ```js
-var listener = $flare.events.on("session:connected", function (data) {
-    console.log("Session connected: ", data);
-});
-```
-
-To unregister an event listener, use the `off` method.
-
-```js
+// Remove a specific listener
 $flare.events.off("session:connected", listener);
+
+// Remove all listeners for an event
+$flare.events.off("session:connected");
 ```
+
+**Parameters:**
+- `event` (string): The event name
+- `callback` (function, optional): The specific callback to remove. If omitted, all listeners for the event are removed.
+
+### $flare.events.ready {#flare-events-ready}
+
+Registers a callback to be executed when the SSE connection is established.
+
+```js
+$flare.events.ready(function() {
+    console.log("SSE connection established");
+    // Now safe to register event listeners
+});
+```
+
+**Parameters:**
+- `callback` (function): The callback function to execute when ready
 
 See the user account events in the [AccountsApi](./accounts-api.md#events) documentation.
 
 See the client device events in the [ClientDevice](./client-device.md#events) documentation.
 
-## 4. $flare.notify {#flare-notify}
+## 2. $flare.notify {#flare-notify}
 
-This is used to display a notification on the browser.
-It has 4 methods: `success`, `info`, `warning` and `error`.
+The `$flare.notify` object provides methods to display toast notifications in the browser. The implementation differs between admin and portal interfaces:
 
-### Success
+- **Admin Interface**: Uses Awesome Notifications library
+- **Portal Interface**: Uses Toastr library
+
+Both implementations provide the same core methods.
+
+### $flare.notify.success {#flare-notify-success}
+
+Displays a success notification.
 
 ```js
-$flare.notify.success('This is a success message.')
+$flare.notify.success('Payment processed successfully!');
+$flare.notify.success('Plugin installed successfully!');
 ```
 
-### Info
+### $flare.notify.info {#flare-notify-info}
+
+Displays an informational notification.
+
 ```js
-$flare.notify.info('This is an info message.')
+$flare.notify.info('Session will expire in 5 minutes.');
+$flare.notify.info('New update available.');
 ```
 
-### Warning
+### $flare.notify.warning {#flare-notify-warning}
+
+Displays a warning notification.
+
 ```js
-$flare.notify.warning('This is a warning message.')
+$flare.notify.warning('Session disconnected due to inactivity.');
+$flare.notify.warning('Low disk space detected.');
 ```
 
-### Error
+### $flare.notify.error {#flare-notify-error}
+
+Displays an error notification.
+
 ```js
-$flare.notify.error('This is an error message.')
+$flare.notify.error('Failed to save settings.');
+$flare.notify.error('Network connection lost.');
 ```
+
+### Admin Interface Additional Methods
+
+The admin interface provides additional notification methods:
+
+```js
+// Alternative warning method
+$flare.notify.warn('This is a warning message.');
+
+// Failed notification (alias for error)
+$flare.notify.failed('Operation failed.');
+```
+
+### Automatic Flash Message Handling
+
+Flash messages set by the server are automatically displayed using the appropriate notification type:
+
+```html
+<!-- Server sets flash message -->
+<div id="flash-message"
+     data-flash-type="success"
+     data-flash-message="Settings saved successfully">
+</div>
+```
+
+The flash message will be automatically displayed as a success notification when the page loads.

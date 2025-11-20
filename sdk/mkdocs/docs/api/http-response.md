@@ -12,7 +12,7 @@ This method is used to render html using the [portal theme](./themes-api.md#port
 func (w http.ResponseWriter, r *http.Request) {
     name := "John"
     welcomePage := views.WelcomePage(name)
-    api.Http().HttpResponse().PortalView(w, r, sdkapi.ViewPage{
+    api.Http().Response().PortalView(w, r, sdkapi.ViewPage{
         PageContent: welcomePage,
     })
 }
@@ -27,7 +27,7 @@ This method is used to render html using the [admin theme](./themes-api.md#admin
 func (w http.ResponseWriter, r *http.Request) {
     name := "Admin"
     welcomePage := views.WelcomePage(name)
-    api.Http().HttpResponse().AdminView(w, r, sdkapi.ViewPage{
+    api.Http().Response().AdminView(w, r, sdkapi.ViewPage{
         PageContent: welcomePage,
     })
 }
@@ -58,7 +58,7 @@ templ SamplePage(name string) {
 func (w http.ResponseWriter, r *http.Request) {
     name := "Admin"
     samplePage := views.SamplePage(name)
-    api.Http().HttpResponse().View(w, r, sdkapi.ViewPage{
+    api.Http().Response().View(w, r, sdkapi.ViewPage{
         PageContent: samplePage,
     })
 }
@@ -74,7 +74,7 @@ func (w http.ResponseWriter, r *http.Request) {
     data := map[string]string{
         "title": "Dashboard",
     }
-    api.Http().HttpResponse().Json(w, data, http.StatusOK)
+    api.Http().Response().Json(w, r, data, http.StatusOK)
 }
 ```
 
@@ -87,7 +87,7 @@ This method is used to redirect a user to another route using the route name as 
 func (w http.ResponseWriter, r *http.Request) {
     routename := "portal:welcome"
     user := "John"
-    api.Http().HttpResponse().Redirect(w, r, routename, "name", user)
+    api.Http().Response().Redirect(w, r, routename, "name", user)
     // Will redirect to route named "portal:welcome" with GET params name=John
 }
 ```
@@ -100,9 +100,9 @@ This method is used to set flash messages to the views. But it does not send an 
 // handler
 func (w http.ResponseWriter, r *http.Request) {
     msg := "Payment successfull!"
-    t := sdkapi.FlasMsgSuccess
-    api.Http().HttpResponse().FlashMsg(w, r, msg, t)
-    api.Http().HttpResponse().Redirect(w, r, "portal:welcome")
+    t := sdkapi.FlashMsgSuccess
+    api.Http().Response().FlashMsg(w, r, msg, t)
+    api.Http().Response().Redirect(w, r, "portal:welcome")
 }
 ```
 
@@ -113,6 +113,17 @@ The available flash message types are:
 - `FlashMsgWarning`
 - `FlashMsgError`
 
+### RedirectToPortal
+
+This method redirects the user to the portal page.
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    api.Http().Response().RedirectToPortal(w, r)
+}
+```
+
 ### Error
 
 This method is used to show consistent error page for unknown errors in your application.
@@ -121,7 +132,7 @@ This method is used to show consistent error page for unknown errors in your app
 // handler
 func (w http.ResponseWriter, r *http.Request) {
     err := errors.New("Something went wrong!")
-    api.Http().HttpResponse().Error(w, r, err, http.StatusInternalServerError)
+    api.Http().Response().Error(w, r, err, http.StatusInternalServerError)
 }
 ```
 
@@ -165,7 +176,7 @@ Then you can render a view together with assets `index.css` and `index.js`:
 func (w http.ResponseWriter, r *http.Request) {
     name := "John"
     welcomePage := views.WelcomePage(name)
-    api.Http().HttpResponse().PortalView(w, r, sdkapi.ViewPage{
+    api.Http().Response().PortalView(w, r, sdkapi.ViewPage{
         Assets: sdkapi.ViewAssets{
             CssFile: "index.css",
             JsFile: "index.js",

@@ -70,9 +70,9 @@ To get the bandwidth configuration of a network interface, use the `IBandwidthCf
 
 ```go
 bwdAPI := api.Config().Bandwidth()
-cfg, err := bwdAPI.Get("eth0")
-if err != nil {
-    // handle error
+cfg, ok := bwdAPI.Get("eth0")
+if !ok {
+    // handle not found
 }
 fmt.Println(cfg) // Bandwidth config
 ```
@@ -153,4 +153,21 @@ if err := json.Unmarshal(data, &myCfg); err != nil {
 fmt.Println(myCfg) // {Field1: "value1", Field2: "value2"}
 
 fmt.Printf("Field1: %s, Field2: %s", myCfg.Field1, myCfg.Field2)
+```
+
+### List
+
+To list all configuration entries under a specific path, use the `IPluginCfgApi.List` method.
+
+```go
+cfgAPI := api.Config().Plugin()
+
+entries, err := cfgAPI.List("some/path")
+if err != nil {
+    // handle error
+}
+
+for _, entry := range entries {
+    fmt.Printf("Name: %s, Path: %s\n", entry.Entry.Name(), entry.Path)
+}
 ```

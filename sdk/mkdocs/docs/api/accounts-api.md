@@ -104,13 +104,10 @@ fmt.Println(perms) // map[string]string{"admin": "The admin permission"}
 
 ### PermDesc
 
-Returns the description of the given permission. It returns a `string` and an `error` object.
+Returns the description of the given permission. It returns a `string`.
 
 ```go
-desc, err := api.Acct().PermDesc("newperm")
-if err != nil {
-    // handle error
-}
+desc := api.Acct().PermDesc("newperm")
 fmt.Println(desc) // "New permission"
 ```
 
@@ -184,7 +181,7 @@ Returns `true` if the user account has all the given permissions. It can be used
 
 ```go
 acct, _ := api.Acct().Find("admin")
-hasAll := acct.HasAllPerms([]string{"master"})
+hasAll := acct.HasAllPerms("master")
 fmt.Println(hasAll) // true
 ```
 
@@ -194,15 +191,15 @@ It returns `true` if the user account has any of the given permissions. It can b
 
 ```go
 acct, _ := api.Acct().Find("admin")
-hasAny := acct.HasAnyPerm([]string{"master"})
+hasAny := acct.HasAnyPerm("master")
 fmt.Println(hasAny) // true
 ```
 
 ### Emit
 
-Emit an [event](#events) to the user account. It returns an `error` object. It accepts an event name and a data object.
+Emit an [event](#events) to the user account. It accepts an event name and data as `[]byte`.
 ```go
-data := map[string]any{"key": "value"} // or any object that can be marshalled into a json
+data := []byte(`{"key": "value"}`)
 acct.Emit("some_event", data)
 ```
 
@@ -250,7 +247,7 @@ You can emit an event to a user account using the [Account.Emit](#emit) method l
 
 ```go
 acct, _ := api.Acct().Find("admin")
-acct.Emit("some_event", map[string]any{"key": "value"})
+acct.Emit("some_event", []byte(`{"key": "value"}`))
 ```
 
 You can listen to this events in the browser using the [$flare.events](./flare-variable.md#flare-events) like so:

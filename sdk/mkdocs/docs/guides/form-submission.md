@@ -111,7 +111,7 @@ When we defined the [HTML form](#build-form) in our example above, we have set t
 This means that when a user clicks the `Submit` button on the HTML form, it will submit the form data to the `admin.sample.save` route using `POST` HTTP method. Thus, one must register the route to a [Router Instance](../api/http-router-api.md).
 
 ```go
-    pluginRouter := api.Http().HttpRouter().PluginRouter()
+    pluginRouter := api.Http().Router().PluginRouter()
 
     pluginRouter.Post("/save", func (w http.ResponseWriter, r *http.Request) {
 
@@ -128,7 +128,7 @@ Then we can use the [IFormValues](../api/http-forms-api.md#iformvalues) methods 
 
 
 ```go
-    pluginRouter := api.Http().HttpRouter().PluginRouter()
+    pluginRouter := api.Http().Router().PluginRouter()
     cfgAPI := api.Config().Plugin()
 
     pluginRouter.Post("/save", func (w http.ResponseWriter, r *http.Request) {

@@ -19,10 +19,10 @@ Below are the methods available on the `IClientDevice` instance.
 
 ### Id
 
-Returns the database `pgtype.UUID` of the client device.
+Returns the database ID of the client device as an `int64`.
 
 ```go
-uuid := clnt.Id()
+id := clnt.Id()
 ```
 
 ### Hostname
@@ -49,19 +49,45 @@ Returns a `string` value of the client device MAC address.
 mac := clnt.MacAddr()
 ```
 
+### Status
+
+Returns the status of the client device as a `DeviceStatus` value.
+
+```go
+status := clnt.Status()
+```
+
+Available device statuses:
+
+| Value | Description
+| --- | ---
+| `1` | `Connected` - Device is connected to the internet
+| `2` | `Disconnected` - Device is disconnected from the internet
+| `3` | `Blocked` - Device is blocked from accessing the internet
+
 ### Update
 
-Updates the client device record in the database.
+Updates the client device record in the database using the `UpdateDeviceParams` struct.
+
+The `UpdateDeviceParams` struct contains:
+
+- `Mac string` - the new MAC address
+- `Ip string` - the new IP address
+- `Hostname string` - the new hostname
+- `Status int` - the new device status (1=Connected, 2=Disconnected, 3=Blocked)
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
     clnt, _ := api.Http().GetClientDevice(r)
-    newMac := "00:11:22:33:44:55"
-    newIp := "192.168.1.123"
-    newHostname := "new-hostname"
 
-    if err := clnt.Update(ctx, newMac, newIp, newHostname); err != nil {
+    params := UpdateDeviceParams{
+        Mac:      "00:11:22:33:44:55",
+        Ip:       "192.168.1.123",
+        Hostname: "new-hostname",
+        Status:   1, // Connected
+    }
+
+    if err := clnt.Update(tx, r.Context(), params); err != nil {
         // handle error
     }
 }
@@ -72,11 +98,11 @@ func (w http.ResponseWriter, r *http.Request) {
 Emits an [event](#events) to the client device.
 
 ```go
-data := map[string]interface{}{"key": "value"}
+data := []byte(`{"key": "value"}`)
 clnt.Emit("some_event", data)
 ```
 
-The `data` parameter can any JSON serializable value.
+The `data` parameter is a `[]byte` containing JSON data.
 
 ### Subscribe
 
@@ -86,16 +112,8 @@ Used to subscribe to an [event](#events) on the client device. It returns a chan
 ch := clnt.Subscribe("some_event")
 
 go func() {
-    clnt.Emit("some_event", map[string]interface{}{"key": "value"})
+    clnt.Emit("some_event", []byte(`{"key": "value"}`))
 }()
-
-bytes := <-ch
-
-var data map[string]interface{}
-
-err := json.Unmarshal(bytes, &data)
-
-fmt.Println(data) // map[key:value]
 ```
 
 ### Unsubscribe
@@ -120,9 +138,9 @@ You can emit an event to a user account using the [ClientDevice.Emit](#emit) met
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
-    clnt, _ := api.Http().Helpers().GetClientDevice(r)
+    clnt, _ := api.Http().GetClientDevice(r)
     evt := "some_event"
-    data := map[string]interface{}{"key": "value"}
+    data := []byte(`{"key": "value"}`)
     clnt.Emit(evt, data)
 }
 ```

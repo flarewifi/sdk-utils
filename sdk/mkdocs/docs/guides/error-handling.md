@@ -1,9 +1,10 @@
 # Error Handling
 
-There are two (2) ways to handle HTTP errors:
+There are three (3) ways to handle HTTP errors:
 
 - Showing an error page
 - Showing a flash message
+- Displaying form validation errors
 
 ## Error Page
 
@@ -30,5 +31,63 @@ func (w http.ResponseWriter, r *http.Request) {
 
     // Redirect back to the form page
     api.Http().HttpResponse().Redirect(w, r, "settings:form")
+}
+```
+
+## Form Validation Errors
+
+To display form validation errors in your views, use the [IHttpFormsApi.Errors](../api/http-forms-api.md#errors) method to retrieve validation errors from a failed form submission. These errors can then be passed to your template for display.
+
+```go
+// handler
+func (w http.ResponseWriter, r *http.Request) {
+    // Get form validation errors
+    formErrors := api.Http().Forms().Errors(w, r, "my-form")
+
+    // Render the form view with errors
+    formView := views.MyForm(api, formErrors)
+    api.Http().Response().AdminView(w, r, sdkapi.ViewPage{
+        PageContent: formView,
+    })
+}
+```
+
+In your template, check for errors and display them:
+
+```templ
+templ MyForm(api sdkapi.IPluginApi, formErrors sdkapi.FormErrors) {
+    <form>
+        <div class="mb-3">
+            <label for="username">Username:</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                class={ templ.Ternary(formErrors.HasError("username"), "form-control is-invalid", "form-control") }
+            />
+            if formErrors.HasError("username") {
+                <div class="invalid-feedback">
+                    { formErrors.GetError("username") }
+                </div>
+            }
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+}
+```
+
+When form validation fails, redirect back to the form with errors preserved:
+
+```go
+// handler for form submission
+func (w http.ResponseWriter, r *http.Request) {
+    formValues, err := api.Http().Forms().ParseForm(w, r, formValidator)
+    if err != nil {
+        // Validation failed - redirect back to form
+        api.Http().Response().Redirect(w, r, "my-form-route")
+        return
+    }
+
+    // Process valid form data...
 }
 ```

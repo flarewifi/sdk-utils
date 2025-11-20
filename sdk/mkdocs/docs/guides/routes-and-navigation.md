@@ -26,7 +26,7 @@ import (
 func main() {}
 
 func Init(api sdkapi.PluginApi) {
-    pluginRouter := api.Http().HttpRouter().PluginRouter()
+    pluginRouter := api.Http().Router().PluginRouter()
     pluginRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
         vars := api.Http().MuxVars(r)
         name := vars["name"]
@@ -35,7 +35,7 @@ func Init(api sdkapi.PluginApi) {
         api.Http().HttpResponse().PortalView(w, r, sdkapi.ViewPage{
             PageContent: welcomePage,
         })
-    }).name("portal:welcome")
+    }).Name("portal:welcome")
 }
 ```
 
@@ -69,7 +69,7 @@ import (
 func main() {}
 
 func Init(api sdkapi.PluginApi) {
-    adminRouter := api.Http().HttpRouter().AdminRouter()
+    adminRouter := api.Http().Router().AdminRouter()
     adminRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
         vars := api.Http().MuxVars(r)
         name := vars["name"]
@@ -78,7 +78,7 @@ func Init(api sdkapi.PluginApi) {
         api.Http().HttpResponse().AdminView(w, r, sdkapi.ViewPage{
             PageContent: welcomePage,
         })
-    }).name("admin:welcome")
+    }).Name("admin:welcome")
 }
 ```
 
@@ -104,10 +104,11 @@ navsAPI.PortalNavsFactory(func(r *http.Request) []PortalNavItemOpt {
         {
             Label:     "Welcome",                   // Menu display text
             RouteName: "portal:welcome",             // Link to the route
-            IconUrl: api.Http().Helpers().ResourcePath("assets/images/some-image.jpg"),
+            IconFile: api.Http().Helpers().ResourcePath("assets/images/some-image.jpg"),
             RouteParams: map[string]string{
                 "name": "John",
             },
+        },
         },
     }
 })
@@ -144,7 +145,7 @@ To generate URLs for a route, we will use the name of the route. In the example 
 To generate the URL for the route `portal:welcome`, we will use the [IHttpRouterApi.UrlForRoute](../api/http-router-api.md#urlforroute) method:
 
 ```go
-url := api.Http().HttpRouter().UrlForRoute("portal:welcome", "name", "John")
+url := api.Http().Router().UrlForRoute("portal:welcome", "name", "John")
 fmt.Println(url)
 // => /p/com.mydomain.myplugin/1.0.0/welcome/John
 ```
@@ -154,7 +155,7 @@ The example showed us how to generate a URL from a named route and how to set a 
 For multiple URL params, you can add more pairs to the `UrlForRoute` method. For example, if the route URL is `/welcome/:name/:gender/:age`:
 
 ```go
-url := api.Http().HttpRouter().UrlForRoute("portal:welcome", "name", "John", "gender", "male", "age", "21")
+url := api.Http().Router().UrlForRoute("portal:welcome", "name", "John", "gender", "male", "age", "21")
 fmt.Println(url)
 // => /p/com.mydomain.myplugin/1.0.0/welcome/John/male/21
 ```
@@ -162,7 +163,7 @@ fmt.Println(url)
 If you want to generate route for a third-party plugin or the core system, we will use the [IHttpRouterApi.UrlForPkgRoute](../api/http-router-api.md#urlforpkgroute) method:
 
 ```go
-url := api.Http().HttpRouter().UrlForPkgRoute("com.flarego.core", "admin:index", "name", "John")
+url := api.Http().Router().UrlForPkgRoute("com.flarego.core", "admin:index", "name", "John")
 ```
 
 ## URL Parameters {#url-params}

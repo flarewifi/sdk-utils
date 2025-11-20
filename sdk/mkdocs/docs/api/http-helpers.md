@@ -55,3 +55,14 @@ Alias to [IHttpRouterApi.UrlForRoute](./http-router-api.md#urlforroute) method.
 ### UrlForPkgRoute
 
 Alias to [IHttpRouterApi.UrlForPkgRoute](./http-router-api.md#urlforpkgroute) method.
+
+### RemoveFile
+
+Removes a file at the specified path.
+
+```go
+err := api.Http().Helpers().RemoveFile("/path/to/file.txt")
+if err != nil {
+    // handle error
+}
+```

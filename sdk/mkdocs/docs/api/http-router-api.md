@@ -14,14 +14,14 @@ Below are the available methods in `IHttpRouterApi`:
 This method returns the [admin router](#router-instance) for the admin routes. Routes generated from the admin router are prefixed with `/admin` and are only accessible to authenticated user [accounts](./accounts-api.md#account-instance). To get the admin router instance:
 
 ```go
-adminRouter := api.Http().HttpRouter().AdminRouter()
+adminRouter := api.Http().Router().AdminRouter()
 ```
 
 ### Plugin Router {#plugin-router}
 This method returns the [plugin router](#router-instance) of the plugin. Routes generated from the plugin router are accessible to all users. To get the plugin router instance:
 
 ```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
+pluginRouter := api.Http().Router().PluginRouter()
 ```
 
 ### Use {#use}
@@ -35,7 +35,7 @@ middleware := func (next http.Handler) http.Handler {
     })
 }
 
-api.Http().HttpRouter().Use(middleware)
+api.Http().Router().Use(middleware)
 ```
 
 ### UrlForRoute
@@ -43,7 +43,7 @@ api.Http().HttpRouter().Use(middleware)
 This method is used to generate the url for the given plugin route name. This method accepts two arguments, the first argument is the route name and the second argument is a map of route parameters. The route parameters are key-value pairs. The example below generates a URL for the route name `portal.welcome` with a route path `/welcome/{name}`:
 
 ```go
-url := api.Http().HttpRouter().UrlForRoute("portal.welcome", "name", "John")
+url := api.Http().Router().UrlForRoute("portal.welcome", "name", "John")
 ```
 
 ### UrlForPkgRoute
@@ -51,7 +51,7 @@ url := api.Http().HttpRouter().UrlForRoute("portal.welcome", "name", "John")
 This method is used to generate the url for third-party plugin route name. This method accepts three arguments, the first argument is the plugin package name (e.g `com.mydomain.myplugin`) in which the route name belongs to, the second argument is the route name and the third argument is the route parameters, similar to [UrlForRoute](#urlforroute) method.
 
 ```go
-url := api.Http().HttpRouter().UrlForPkgRoute("com.mydomain.myplugin", "portal.welcome", "name", "John")
+url := api.Http().Router().UrlForPkgRoute("com.mydomain.myplugin", "portal.welcome", "name", "John")
 ```
 
 ---
@@ -68,7 +68,7 @@ This can be used to nest more route groups. Take a look at the example below:
 
 ```go
 // Get the router instance
-router := api.Http().HttpRouter().PluginRouter()
+router := api.Http().Router().PluginRouter()
 router.Group("/payments", func (subrouter sdkhttp.HttpRouterInstance) {
     // Add route for /payments/received
     subrouter.Post("/receieved", func(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +82,7 @@ router.Group("/payments", func (subrouter sdkhttp.HttpRouterInstance) {
 This method is used to create a route for the `GET` http method. It accepts tree (or more) arguments, the first argument is the route path, the second argument is the [handler function](#handler-function) and the third and subsequent arguments are the list of (optional) [middlewares](#middlewares). Take a look at the example below:
 
 ```go
-router := api.Http().HttpRouter().PluginRouter()
+router := api.Http().Router().PluginRouter()
 router.Get("/payments/options", func(w http.ResponseWriter, r *http.Request) {
     // Handle the request
 }).Name("payments.options") // set the route name
@@ -93,7 +93,7 @@ router.Get("/payments/options", func(w http.ResponseWriter, r *http.Request) {
 This method is used to create a route for the `POST` http method. It accepts three (or more) arguments, the first argument is the route path, the second argument is the [handler function](#handler-function) and the third and subsequent arguments are the list of (optional) [middlewares](#middlewares). Take a look at the example below:
 
 ```go
-router := api.Http().HttpRouter().AdminRouter()
+router := api.Http().Router().AdminRouter()
 router.Post("/settings/save", func(w http.ResponseWriter, r *http.Request) {
     // Handle the request
 }).Name("settings.save") // set the route name
@@ -122,11 +122,11 @@ func(w http.ResponseWriter, r *http.Request) {
 Handler functions are used when you register a route to a router. An example below is a handler function that gets executed when a user navigates to `/welcome` URL.
 
 ```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
+pluginRouter := api.Http().Router().PluginRouter()
 pluginRouter.Get("/welcome", func (w http.ResponseWriter, r *http.Request) {
     // Handler function code here...
     w.Write([]byte("Welcome to Flare Hotspot!"))
-}).name("portal:welcome")
+}).Name("portal:welcome")
 ```
 
 ---
@@ -153,16 +153,16 @@ middleware := func (next http.Handler) http.Handler {
 Below is using a middleware for plugin sub-router:
 
 ```go
-api.Http().HttpRouter().PluginRouter().Group("/payments", func (subrouter sdkhttp.HttpRouterInstance) {
-    subrouter.Use(middware)
+api.Http().Router().PluginRouter().Group("/payments", func (subrouter IHttpRouterInstance) {
+    subrouter.Use(middleware)
 })
 ```
 
 Below is using a middleware for admin sub-router:
 
 ```go
-api.Http().HttpRouter().AdminRouter().Group("/settings", func (subrouter sdkhttp.HttpRouterInstance) {
-    subrouter.Use(middware)
+api.Http().Router().AdminRouter().Group("/settings", func (subrouter IHttpRouterInstance) {
+    subrouter.Use(middleware)
 })
 ```
 
@@ -184,11 +184,11 @@ Below are the list of available built-in middlewares in `IHttpMiddlewares`:
 It returns a middleware that ensures that only authenticated admins can access the route.
 
 ```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
+pluginRouter := api.Http().Router().PluginRouter()
 authMw := httpMw.AdminAuth()
 handler := func(w http.ResponseWriter, r *http.Request) {
     // handle the http request...
-    // this is a progected page
+    // this is a protected page
 }
 pluginRouter.Get("/protected-page", handler, authMw)
 ```
@@ -198,8 +198,8 @@ pluginRouter.Get("/protected-page", handler, authMw)
 It returns a middleware that caches the response throughout the duration of the application lifetime which can improve system performance.
 
 ```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
-cacheMw := api.Http().Middlewares().CacheResponse()
+pluginRouter := api.Http().Router().PluginRouter()
+cacheMw := api.Http().Middlewares().CacheResponse(30) // cache for 30 days
 handler := func(w http.ResponseWriter, r *http.Request) {
     // handle the http request...
     // response will be cached while the app is running
@@ -212,25 +212,38 @@ pluginRouter.Get("/some-generated-image.png", handler, cacheMw)
 It returns a middleware for identifying client devices. See [IClientDevice](./client-device.md).
 
 ```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
-cacheMw := api.Http().Middlewares().Device()
+pluginRouter := api.Http().Router().PluginRouter()
+deviceMw := api.Http().Middlewares().Device()
 handler := func(w http.ResponseWriter, r *http.Request) {
     // handle the http request...
     clnt, err := api.Http().GetClientDevice(r)
 }
-pluginRouter.Get("/some/page", handler, cacheMw)
+pluginRouter.Get("/some/page", handler, deviceMw)
 ```
 
 #### PendingPurchase
 
 It returns a middleware that redirects the user to the pending order payment page when a pending purchase request is present.
 
-
 ```go
-pluginRouter := api.Http().HttpRouter().PluginRouter()
+pluginRouter := api.Http().Router().PluginRouter()
 pendingMw := httpMw.PendingPurchase()
 handler := func(w http.ResponseWriter, r *http.Request) {
     // handle the http request...
 }
 pluginRouter.Get("/some-checkout-page", handler, pendingMw)
+```
+
+#### TrackNav
+
+It returns a middleware that tracks navigation visits for the Quick Access menu.
+
+```go
+pluginRouter := api.Http().Router().PluginRouter()
+trackMw := httpMw.TrackNav()
+handler := func(w http.ResponseWriter, r *http.Request) {
+    // handle the http request...
+    // navigation to this route will be tracked
+}
+pluginRouter.Get("/some/page", handler, trackMw)
 ```
