@@ -91,7 +91,7 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 			}
 
 			if shouldRedirect {
-				self.api.HttpAPI.Response().Redirect(w, r, "payments:options")
+				self.api.CoreAPI.HttpAPI.Response().Redirect(w, r, "payments:options")
 				return
 			}
 

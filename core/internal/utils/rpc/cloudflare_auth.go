@@ -45,13 +45,17 @@ func (a *CloudflareAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	machineID := a.machindID
 
 	// Read request body to compute hash
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return nil, err
-	}
+	var body []byte
+	var err error
 
-	// Restore the body for the actual request
-	req.Body = io.NopCloser(bytes.NewReader(body))
+	if req.Body != nil {
+		body, err = io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		// Restore the body for the actual request
+		req.Body = io.NopCloser(bytes.NewReader(body))
+	}
 
 	// Compute MD5 hash of request body
 	bodyMD5 := computeMD5(body)

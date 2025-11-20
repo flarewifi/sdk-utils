@@ -2,6 +2,18 @@
 
 package machineuid
 
+import (
+	"path/filepath"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
+)
+
 func GetMachineUID() string {
-	return "53aa574a4c8e58c67616d9dadc94f20c76fccda8"
+	f := filepath.Join(sdkutils.PathAppDir, "MACHINE_UID")
+	uid, err := sdkutils.FsReadFile(f)
+	if err != nil {
+		return "machine_001"
+	}
+
+	return uid
 }
