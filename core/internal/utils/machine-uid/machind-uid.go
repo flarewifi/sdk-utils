@@ -97,9 +97,9 @@ func readAllNetworkMACs() []string {
 		ifaceName := entry.Name()
 
 		// Skip virtual and special interfaces
-		if isVirtualInterface(ifaceName) {
-			continue
-		}
+		// if isVirtualInterface(ifaceName) {
+		// 	continue
+		// }
 
 		mac := readInterfaceMAC(ifaceName)
 		if mac != "" {
