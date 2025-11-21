@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"time"
 
@@ -52,9 +51,8 @@ func (self *WalletTrns) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *WalletTrns) UpdateTx(tx *sql.Tx, ctx context.Context, walletId int64, amount float64, newbal float64, desc string) error {
-	qtx := self.db.Queries.WithTx(tx)
-	err := qtx.UpdateWalletTrns(ctx, queries.UpdateWalletTrnsParams{
+func (self *WalletTrns) UpdateTx(ctx context.Context, walletId int64, amount float64, newbal float64, desc string) error {
+	err := self.db.Queries.UpdateWalletTrns(ctx, queries.UpdateWalletTrnsParams{
 		WalletID:    walletId,
 		Amount:      amount,
 		NewBalance:  newbal,

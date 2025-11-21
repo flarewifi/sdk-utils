@@ -4,7 +4,6 @@ import (
 	"context"
 	"core/db"
 	"core/db/queries"
-	"database/sql"
 	"fmt"
 	sdkapi "sdk/api"
 	"time"
@@ -57,10 +56,8 @@ func (nm *NotificationModel) GetUnreadNotifications(ctx context.Context) ([]sdka
 	return notifications, nil
 }
 
-func (nm *NotificationModel) UpdateNotificationStatus(tx *sql.Tx, ctx context.Context, id int64, status sdkapi.NotificationStatus) error {
-	qtx := nm.db.Queries.WithTx(tx)
-
-	return qtx.UpdateNotificationStatus(ctx, queries.UpdateNotificationStatusParams{
+func (nm *NotificationModel) UpdateNotificationStatus(ctx context.Context, id int64, status sdkapi.NotificationStatus) error {
+	return nm.db.Queries.UpdateNotificationStatus(ctx, queries.UpdateNotificationStatusParams{
 		Status: int64(status),
 		ID:     id,
 	})

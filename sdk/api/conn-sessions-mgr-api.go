@@ -8,7 +8,6 @@ package sdkapi
 
 import (
 	"context"
-	"database/sql"
 )
 
 // Session Type represents the type of a client session.
@@ -76,7 +75,7 @@ type ISessionsMgrApi interface {
 	IsConnected(clnt IClientDevice) (connected bool)
 
 	// Create a session for the client device
-	CreateSession(tx *sql.Tx, ctx context.Context, params CreateSessionParams) (IClientSession, error)
+	CreateSession(ctx context.Context, params CreateSessionParams) (IClientSession, error)
 
 	// Get the current running session of a client device.
 	RunningSession(clnt IClientDevice) (cs IClientSession, ok bool)

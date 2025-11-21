@@ -11,8 +11,6 @@ import (
 
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
-
 	"core/db/models"
 	"core/internal/connmgr"
 	webutil "core/internal/utils/web"
@@ -75,28 +73,21 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 
 			var shouldRedirect bool
 
-			err := sdkutils.RunInTx(self.api.db.DB, ctx, func(tx *sql.Tx) error {
-				client, err := helpers.CurrentClient(r)
-				if err != nil {
-					return err
-				}
-
-				mdls := self.api.models
-				purchase, err := mdls.Purchase().PendingPurchase(tx, ctx, client.Id())
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
-					return err
-				}
-
-				if purchase != nil {
-					shouldRedirect = true
-				}
-
-				return nil
-			})
-
+			client, err := helpers.CurrentClient(r)
 			if err != nil {
 				self.ErrorPage(w, err, errCode)
 				return
+			}
+
+			mdls := self.api.models
+			purchase, err := mdls.Purchase().PendingPurchase(ctx, client.Id())
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				self.ErrorPage(w, err, errCode)
+				return
+			}
+
+			if purchase != nil {
+				shouldRedirect = true
 			}
 
 			if shouldRedirect {

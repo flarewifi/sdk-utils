@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"time"
 
@@ -57,9 +56,8 @@ func (self *Device) Status() sdkapi.DeviceStatus {
 	return self.status
 }
 
-func (self *Device) Reload(tx *sql.Tx, ctx context.Context) error {
-	qtx := self.db.Queries.WithTx(tx)
-	dRow, err := qtx.FindDevice(ctx, self.id)
+func (self *Device) Reload(ctx context.Context) error {
+	dRow, err := self.db.Queries.FindDevice(ctx, self.id)
 	if err != nil {
 		log.Printf("error finding device with id %v: %v", self.id, err)
 	}
@@ -71,9 +69,8 @@ func (self *Device) Reload(tx *sql.Tx, ctx context.Context) error {
 	return nil
 }
 
-func (self *Device) Update(tx *sql.Tx, ctx context.Context, params UpdateDeviceParams) error {
-	qtx := self.db.Queries.WithTx(tx)
-	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
+func (self *Device) Update(ctx context.Context, params UpdateDeviceParams) error {
+	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		Hostname:   params.Hostname,
 		IpAddress:  params.IpAddress,
 		MacAddress: params.MacAddress,
@@ -93,9 +90,8 @@ func (self *Device) Update(tx *sql.Tx, ctx context.Context, params UpdateDeviceP
 	return nil
 }
 
-func (self *Device) Wallet(tx *sql.Tx, ctx context.Context) (*Wallet, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	w, err := qtx.FindWalletByDeviceId(ctx, self.id)
+func (self *Device) Wallet(ctx context.Context) (*Wallet, error) {
+	w, err := self.db.Queries.FindWalletByDeviceId(ctx, self.id)
 	if err != nil {
 		log.Printf("error finding wallet by device id %v: %v", self.id, err)
 		return nil, err
@@ -110,9 +106,8 @@ func (self *Device) Wallet(tx *sql.Tx, ctx context.Context) (*Wallet, error) {
 	return wallet, nil
 }
 
-func (self *Device) NextSession(tx *sql.Tx, ctx context.Context) (*Session, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	sRow, err := qtx.FindAvailableSessionForDevice(ctx, self.id)
+func (self *Device) NextSession(ctx context.Context) (*Session, error) {
+	sRow, err := self.db.Queries.FindAvailableSessionForDevice(ctx, self.id)
 	if err != nil {
 		log.Printf("error finding available session for device %v: %v", self.id, err)
 		return nil, err
@@ -122,9 +117,8 @@ func (self *Device) NextSession(tx *sql.Tx, ctx context.Context) (*Session, erro
 	return session, nil
 }
 
-func (self *Device) Sessions(tx *sql.Tx, ctx context.Context) ([]*Session, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	sessionsRow, err := qtx.FindSessionsForDev(ctx, self.id)
+func (self *Device) Sessions(ctx context.Context) ([]*Session, error) {
+	sessionsRow, err := self.db.Queries.FindSessionsForDev(ctx, self.id)
 	if err != nil {
 		log.Printf("error finding sessions for dev %v: %v", self.id, err)
 		return nil, err

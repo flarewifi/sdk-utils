@@ -8,7 +8,6 @@ package sdkapi
 
 import (
 	"context"
-	"database/sql"
 )
 
 type DeviceStatus int
@@ -47,7 +46,7 @@ type IClientDevice interface {
 	Status() DeviceStatus
 
 	// Updates the client device.
-	Update(tx *sql.Tx, ctx context.Context, params UpdateDeviceParams) error
+	Update(ctx context.Context, params UpdateDeviceParams) error
 
 	// Emits a socket event to a client device.
 	// The event will be propagated to the client's browser via server-sent events.

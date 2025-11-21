@@ -49,17 +49,7 @@ func (n *NotificationAPI) GetUnreadNotifications(ctx context.Context) ([]sdkapi.
 }
 
 func (n *NotificationAPI) UpdateNotificationStatus(ctx context.Context, id int64, status sdkapi.NotificationStatus) error {
-	tx, err := n.api.SqlDB().Begin()
-	if err != nil {
-		return err
-	}
-
-	if err := n.models.Notification().
-		UpdateNotificationStatus(tx, ctx, id, status); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return n.models.Notification().UpdateNotificationStatus(ctx, id, status)
 }
 
 func (n *NotificationAPI) sendEvent(api *PluginApi, notif *sdkapi.Notification) {

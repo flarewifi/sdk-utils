@@ -48,7 +48,7 @@ func NewPurchaseModel(dtb *db.Database, mdls *Models) *PurchaseModel {
 	return &PurchaseModel{dtb, mdls}
 }
 
-func (self *PurchaseModel) Create(tx *sql.Tx, ctx context.Context, params CreatePurchaseParams) (*Purchase, error) {
+func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchaseParams) (*Purchase, error) {
 	b, err := json.Marshal(params.Metadata)
 	if err != nil {
 		return nil, err
@@ -72,19 +72,17 @@ func (self *PurchaseModel) Create(tx *sql.Tx, ctx context.Context, params Create
 
 	fmt.Printf("Create Purchase: %+v\n", queryParams)
 
-	qtx := self.db.Queries.WithTx(tx)
-	pId, err := qtx.CreatePurchase(ctx, queryParams)
+	pId, err := self.db.Queries.CreatePurchase(ctx, queryParams)
 	if err != nil {
 		log.Println("error creating purchase: %w", err)
 		return nil, err
 	}
 
-	return self.Find(tx, ctx, pId)
+	return self.Find(ctx, pId)
 }
 
-func (self *PurchaseModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Purchase, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	p, err := qtx.FindPurchase(ctx, id)
+func (self *PurchaseModel) Find(ctx context.Context, id int64) (*Purchase, error) {
+	p, err := self.db.Queries.FindPurchase(ctx, id)
 	if err != nil {
 		log.Println("error finding purchase: %w", err)
 		return nil, err
@@ -92,9 +90,8 @@ func (self *PurchaseModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Pur
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) PendingPurchase(tx *sql.Tx, ctx context.Context, deviceId int64) (*Purchase, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	p, err := qtx.FindPendingPurchase(ctx, deviceId)
+func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId int64) (*Purchase, error) {
+	p, err := self.db.Queries.FindPendingPurchase(ctx, deviceId)
 	if err != nil {
 		log.Printf("error finding pending purchase with dev id %v: %v\n", deviceId, err)
 		return nil, err
@@ -103,9 +100,8 @@ func (self *PurchaseModel) PendingPurchase(tx *sql.Tx, ctx context.Context, devi
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) FindByDeviceId(tx *sql.Tx, ctx context.Context, deviceId int64) (*Purchase, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	p, err := qtx.FindPurchaseByDeviceId(ctx, deviceId)
+func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId int64) (*Purchase, error) {
+	p, err := self.db.Queries.FindPurchaseByDeviceId(ctx, deviceId)
 	if err != nil {
 		log.Printf("error finding purchase by device id %v: %v", deviceId, err)
 		return nil, err
@@ -114,9 +110,8 @@ func (self *PurchaseModel) FindByDeviceId(tx *sql.Tx, ctx context.Context, devic
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) FindByUID(tx *sql.Tx, ctx context.Context, uid string) (*Purchase, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	p, err := qtx.FindPurchaseByUID(ctx, uid)
+func (self *PurchaseModel) FindByUID(ctx context.Context, uid string) (*Purchase, error) {
+	p, err := self.db.Queries.FindPurchaseByUID(ctx, uid)
 	if err != nil {
 		log.Printf("error finding purchase by uid %v: %v", uid, err)
 		return nil, err
@@ -125,7 +120,7 @@ func (self *PurchaseModel) FindByUID(tx *sql.Tx, ctx context.Context, uid string
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) Update(tx *sql.Tx, ctx context.Context, params UpdatePurchaseParams) error {
+func (self *PurchaseModel) Update(ctx context.Context, params UpdatePurchaseParams) error {
 	var cancellReason string
 	if params.CancelledReason != nil {
 		cancellReason = *params.CancelledReason
@@ -136,8 +131,7 @@ func (self *PurchaseModel) Update(tx *sql.Tx, ctx context.Context, params Update
 		walletTxID = sql.NullInt64{Int64: *params.WalletTxID, Valid: true}
 	}
 
-	qtx := self.db.Queries.WithTx(tx)
-	err := qtx.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
+	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
 		WalletDebit:     params.WalletDebit,
 		WalletTxID:      walletTxID,
 		CancelledAt:     sdkutils.TimeToNullTime(params.CancelledAt),
@@ -154,15 +148,14 @@ func (self *PurchaseModel) Update(tx *sql.Tx, ctx context.Context, params Update
 }
 
 // UpdateMetadata updates the metadata field of a purchase
-func (self *PurchaseModel) UpdateMetadata(tx *sql.Tx, ctx context.Context, purchaseID int64, metadata map[string]string) error {
+func (self *PurchaseModel) UpdateMetadata(ctx context.Context, purchaseID int64, metadata map[string]string) error {
 	b, err := json.Marshal(metadata)
 	if err != nil {
 		log.Printf("error marshaling metadata: %v", err)
 		return err
 	}
 
-	qtx := self.db.Queries.WithTx(tx)
-	err = qtx.UpdatePurchaseMetadata(ctx, queries.UpdatePurchaseMetadataParams{
+	err = self.db.Queries.UpdatePurchaseMetadata(ctx, queries.UpdatePurchaseMetadataParams{
 		ID:       purchaseID,
 		Metadata: b,
 	})

@@ -13,8 +13,6 @@ import (
 	"core/internal/network"
 	"core/internal/utils/nftables"
 	sdkapi "sdk/api"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 var (
@@ -192,17 +190,15 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 	// Handle error from goroutine
 	err := <-errReturnCh
 	if err == nil {
-		err = sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
-			if err := clnt.Update(tx, ctx, sdkapi.UpdateDeviceParams{
-				Mac:      clnt.MacAddr(),
-				Ip:       clnt.IpAddr(),
-				Hostname: clnt.Hostname(),
-				Status:   int(sdkapi.Connected),
-			}); err != nil {
-				return fmt.Errorf("unable to update device status to connected: %w", err)
-			}
-			return nil
+		err = clnt.Update(ctx, sdkapi.UpdateDeviceParams{
+			Mac:      clnt.MacAddr(),
+			Ip:       clnt.IpAddr(),
+			Hostname: clnt.Hostname(),
+			Status:   int(sdkapi.Connected),
 		})
+		if err != nil {
+			err = fmt.Errorf("unable to update device status to connected: %w", err)
+		}
 	}
 	return err
 }
@@ -219,13 +215,11 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 	}
 	self.emitClientEvent(sdkapi.EventClientDisconnected, clnt)
 
-	return sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
-		return clnt.Update(tx, ctx, sdkapi.UpdateDeviceParams{
-			Mac:      clnt.MacAddr(),
-			Ip:       clnt.IpAddr(),
-			Hostname: clnt.Hostname(),
-			Status:   int(sdkapi.Disconnected),
-		})
+	return clnt.Update(ctx, sdkapi.UpdateDeviceParams{
+		Mac:      clnt.MacAddr(),
+		Ip:       clnt.IpAddr(),
+		Hostname: clnt.Hostname(),
+		Status:   int(sdkapi.Disconnected),
 	})
 }
 

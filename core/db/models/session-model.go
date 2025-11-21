@@ -55,14 +55,13 @@ func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 	return &SessionModel{dtb, mdls}
 }
 
-func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, params CreateSessionParams) (*Session, error) {
+func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams) (*Session, error) {
 	var expDays sql.NullInt64
 	if params.ExpDays != nil {
 		expDays = sql.NullInt64{Int64: int64(*params.ExpDays), Valid: true}
 	}
 
-	qtx := self.db.Queries.WithTx(tx)
-	sId, err := qtx.CreateSession(ctx, queries.CreateSessionParams{
+	sId, err := self.db.Queries.CreateSession(ctx, queries.CreateSessionParams{
 		DeviceID:    params.DeviceID,
 		Uid:         params.UID,
 		ProviderPkg: params.PluginPkg,
@@ -79,12 +78,11 @@ func (self *SessionModel) Create(tx *sql.Tx, ctx context.Context, params CreateS
 		return nil, err
 	}
 
-	return self.Find(tx, ctx, sId)
+	return self.Find(ctx, sId)
 }
 
-func (self *SessionModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Session, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	sRow, err := qtx.FindSession(ctx, id)
+func (self *SessionModel) Find(ctx context.Context, id int64) (*Session, error) {
+	sRow, err := self.db.Queries.FindSession(ctx, id)
 	if err != nil {
 		log.Printf("error finding session %v: %v", id, err)
 		return nil, err
@@ -93,7 +91,7 @@ func (self *SessionModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Sess
 	return session, nil
 }
 
-func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, params UpdateSessionParams) error {
+func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams) error {
 	var expDays sql.NullInt64
 	if params.ExpDays != nil {
 		expDays = sql.NullInt64{Int64: int64(*params.ExpDays), Valid: true}
@@ -114,8 +112,7 @@ func (self *SessionModel) Update(tx *sql.Tx, ctx context.Context, params UpdateS
 		return errors.New("invalid session type")
 	}
 
-	qtx := self.db.Queries.WithTx(tx)
-	err := qtx.UpdateSession(ctx, queries.UpdateSessionParams{
+	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		DeviceID:        params.DeviceID,
 		SessionType:     string(params.SessionType),
 		TimeSecs:        int64(params.TimeSecs),
@@ -149,9 +146,8 @@ func (self *SessionModel) AvailableForDevice(ctx context.Context, devId int64) (
 	return session, nil
 }
 
-func (self *SessionModel) SessionsForDev(tx *sql.Tx, ctx context.Context, devId int64) ([]*Session, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	sRows, err := qtx.FindSessionsForDev(ctx, devId)
+func (self *SessionModel) SessionsForDev(ctx context.Context, devId int64) ([]*Session, error) {
+	sRows, err := self.db.Queries.FindSessionsForDev(ctx, devId)
 	if err != nil {
 		log.Println("error finding available sessions for dev:", err)
 		return nil, err
@@ -165,9 +161,8 @@ func (self *SessionModel) SessionsForDev(tx *sql.Tx, ctx context.Context, devId 
 	return sessions, nil
 }
 
-func (self *SessionModel) UpdateAllBandwidth(tx *sql.Tx, ctx context.Context, downMbit int, upMbit int, g bool) error {
-	qtx := self.db.Queries.WithTx(tx)
-	err := qtx.UpdateAllBandwidth(ctx, queries.UpdateAllBandwidthParams{
+func (self *SessionModel) UpdateAllBandwidth(ctx context.Context, downMbit int, upMbit int, g bool) error {
+	err := self.db.Queries.UpdateAllBandwidth(ctx, queries.UpdateAllBandwidthParams{
 		DownMbits: int64(downMbit),
 		UpMbits:   int64(upMbit),
 		UseGlobal: g,

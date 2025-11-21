@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -10,8 +9,6 @@ import (
 	"core/db/models"
 	"core/internal/web/helpers"
 	sdkapi "sdk/api"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewPaymentsApi(api *PluginApi, pmgr *PaymentsMgr) {
@@ -42,25 +39,22 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 			return
 		}
 
-		if err := sdkutils.RunInTx(self.api.SqlDB(), ctx, func(tx *sql.Tx) error {
-			_, err = self.api.models.Purchase().Create(
-				tx,
-				ctx,
-				models.CreatePurchaseParams{
-					DeviceID:       clnt.Id(),
-					SKU:            p.Sku,
-					Name:           p.Name,
-					Description:    p.Description,
-					Price:          p.Price,
-					AnyPrice:       p.AnyPrice,
-					CallbackPlugin: self.api.Info().Package,
-					CallbackRoute:  p.CallbackRoute,
-					WebHookRoute:   p.WebHookRoute,
-					Metadata:       p.Metadata,
-				},
-			)
-			return err
-		}); err != nil {
+		_, err = self.api.models.Purchase().Create(
+			ctx,
+			models.CreatePurchaseParams{
+				DeviceID:       clnt.Id(),
+				SKU:            p.Sku,
+				Name:           p.Name,
+				Description:    p.Description,
+				Price:          p.Price,
+				AnyPrice:       p.AnyPrice,
+				CallbackPlugin: self.api.Info().Package,
+				CallbackRoute:  p.CallbackRoute,
+				WebHookRoute:   p.WebHookRoute,
+				Metadata:       p.Metadata,
+			},
+		)
+		if err != nil {
 			self.ErrorPage(w, err)
 			return
 		}
@@ -75,7 +69,6 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 }
 
 func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRequest, error) {
-	ctx := r.Context()
 	mdls := self.api.models
 	clnt, err := helpers.CurrentClient(r)
 	if err != nil {
@@ -83,13 +76,7 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 		return nil, err
 	}
 
-	tx, err := self.api.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	p, err := mdls.Purchase().PendingPurchase(tx, r.Context(), clnt.Id())
+	p, err := mdls.Purchase().PendingPurchase(r.Context(), clnt.Id())
 	if err != nil {
 		log.Println("mdls.Purchase().FindByDeviceId error:", err)
 		return nil, err
@@ -100,10 +87,6 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 		return nil, errors.New("Purchase is already processed")
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
 	purchase := NewPurchase(self.api, r.Context(), clnt.Id(), p)
 	return purchase, nil
 }
@@ -112,13 +95,7 @@ func (self *PaymentsApi) FindPurchaseRequestByUID(uid string) (sdkapi.IPurchaseR
 	ctx := context.Background()
 	mdls := self.api.models
 
-	tx, err := self.api.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	p, err := mdls.Purchase().FindByUID(tx, ctx, uid)
+	p, err := mdls.Purchase().FindByUID(ctx, uid)
 	if err != nil {
 		log.Printf("mdls.Purchase().FindByUID error for uid %s: %v", uid, err)
 		return nil, err
@@ -127,10 +104,6 @@ func (self *PaymentsApi) FindPurchaseRequestByUID(uid string) (sdkapi.IPurchaseR
 	if p.IsCancelled() || p.IsConfirmed() {
 		log.Println("Purchase is already processed")
 		return nil, errors.New("Purchase is already processed")
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
 	}
 
 	purchase := NewPurchase(self.api, ctx, p.DeviceId(), p)

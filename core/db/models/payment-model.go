@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"log"
 
 	"core/db"
@@ -31,9 +30,8 @@ func NewPaymentModel(dtb *db.Database, mdls *Models) *PaymentModel {
 	return &PaymentModel{dtb, mdls}
 }
 
-func (self *PaymentModel) Create(tx *sql.Tx, ctx context.Context, params CreatePaymentParams) (*Payment, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	pId, err := qtx.CreatePayment(ctx, queries.CreatePaymentParams{
+func (self *PaymentModel) Create(ctx context.Context, params CreatePaymentParams) (*Payment, error) {
+	pId, err := self.db.Queries.CreatePayment(ctx, queries.CreatePaymentParams{
 		PurchaseID:    params.PurchaseID,
 		Amount:        params.Amount,
 		PaymentMethod: params.PaymentMethod,
@@ -43,7 +41,7 @@ func (self *PaymentModel) Create(tx *sql.Tx, ctx context.Context, params CreateP
 		return nil, err
 	}
 
-	p, err := qtx.FindPayment(ctx, pId)
+	p, err := self.db.Queries.FindPayment(ctx, pId)
 	if err != nil {
 		log.Printf("error finding payemnt %v: %v", pId, err)
 		return nil, err
@@ -59,9 +57,8 @@ func (self *PaymentModel) Create(tx *sql.Tx, ctx context.Context, params CreateP
 	return payment, nil
 }
 
-func (self *PaymentModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Payment, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	p, err := qtx.FindPayment(ctx, id)
+func (self *PaymentModel) Find(ctx context.Context, id int64) (*Payment, error) {
+	p, err := self.db.Queries.FindPayment(ctx, id)
 	if err != nil {
 		log.Printf("error finding payment %v: %v", id, err)
 		return nil, err
@@ -77,10 +74,9 @@ func (self *PaymentModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Paym
 	return payment, nil
 }
 
-func (self *PaymentModel) FindAllByPurchase(tx *sql.Tx, ctx context.Context, purId int64) ([]*Payment, error) {
-	qtx := self.db.Queries.WithTx(tx)
+func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId int64) ([]*Payment, error) {
 	payments := []*Payment{}
-	pRows, err := qtx.FindAllPaymentsByPurchaseId(ctx, purId)
+	pRows, err := self.db.Queries.FindAllPaymentsByPurchaseId(ctx, purId)
 	if err != nil {
 		log.Printf("error finding payments by purchase id %v: %v", purId, err)
 		return nil, err
@@ -100,9 +96,8 @@ func (self *PaymentModel) FindAllByPurchase(tx *sql.Tx, ctx context.Context, pur
 	return payments, nil
 }
 
-func (self *PaymentModel) Update(tx *sql.Tx, ctx context.Context, params UpdatePaymentParams) error {
-	qtx := self.db.Queries.WithTx(tx)
-	err := qtx.UpdatePayment(ctx, queries.UpdatePaymentParams{
+func (self *PaymentModel) Update(ctx context.Context, params UpdatePaymentParams) error {
+	err := self.db.Queries.UpdatePayment(ctx, queries.UpdatePaymentParams{
 		Amount: params.Amount,
 		ID:     params.ID,
 	})

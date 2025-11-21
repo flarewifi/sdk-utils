@@ -8,7 +8,6 @@ package sdkapi
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 )
 
@@ -65,15 +64,15 @@ type IPurchaseRequest interface {
 	IsFixedPrice() bool
 
 	// Create a payment for the purchase.
-	CreatePayment(tx *sql.Tx, ctx context.Context, params CreatePaymentParams) error
+	CreatePayment(ctx context.Context, params CreatePaymentParams) error
 
 	// Pay using the customers wallet.
 	// The amount will be debitted from the wallet once the purchase request has been confirmed.
-	PayWithWallet(tx *sql.Tx, ctx context.Context, amount float64) error
+	PayWithWallet(ctx context.Context, amount float64) error
 
 	// Returns the state of the purchase.
 	// The state includes the total accumulated payment for the purchase and other important details.
-	State(tx *sql.Tx, ctx context.Context) (PurchaseState, error)
+	State(ctx context.Context) (PurchaseState, error)
 
 	// Executes the webhook for the purchase.
 	// This will make an internal POST request to the webhook route.
@@ -84,10 +83,10 @@ type IPurchaseRequest interface {
 	RedirectToCallback(w http.ResponseWriter, r *http.Request)
 
 	// Confirm the purchase.
-	// This must be executed in the purchase callback handler.
-	Confirm(tx *sql.Tx, ctx context.Context) error
+	// This must be executed in the purchase webhook handler.
+	Confirm(ctx context.Context) error
 
 	// Cancel the purchase.
-	// This must be executed in the purchase callback handler.
-	Cancel(tx *sql.Tx, ctx context.Context) error
+	// This must be executed in the purchase webhook handler.
+	Cancel(ctx context.Context) error
 }

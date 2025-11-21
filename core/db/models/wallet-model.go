@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"time"
 
@@ -42,7 +41,7 @@ func NewWalletModel(dtb *db.Database, mdls *Models) *WalletModel {
 	}
 }
 
-func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, params CreateWalletParams) (*Wallet, error) {
+func (self *WalletModel) CreateTx(ctx context.Context, params CreateWalletParams) (*Wallet, error) {
 	wId, err := self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
 		DeviceID: params.DeviceID,
 		Balance:  params.Balance,
@@ -52,12 +51,11 @@ func (self *WalletModel) CreateTx(tx *sql.Tx, ctx context.Context, params Create
 		return nil, err
 	}
 
-	return self.Find(tx, ctx, wId)
+	return self.Find(ctx, wId)
 }
 
-func (self *WalletModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Wallet, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	w, err := qtx.FindWallet(ctx, id)
+func (self *WalletModel) Find(ctx context.Context, id int64) (*Wallet, error) {
+	w, err := self.db.Queries.FindWallet(ctx, id)
 	if err != nil {
 		log.Printf("error finding wallet %v: %v", id, err)
 		return nil, err
@@ -72,9 +70,8 @@ func (self *WalletModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Walle
 	return wallet, nil
 }
 
-func (self *WalletModel) Update(tx *sql.Tx, ctx context.Context, params UpdateWalletParams) error {
-	qtx := self.db.Queries.WithTx(tx)
-	err := qtx.UpdateWallet(ctx, queries.UpdateWalletParams{
+func (self *WalletModel) Update(ctx context.Context, params UpdateWalletParams) error {
+	err := self.db.Queries.UpdateWallet(ctx, queries.UpdateWalletParams{
 		Balance: params.Balance,
 		ID:      params.ID,
 	})
@@ -88,9 +85,8 @@ func (self *WalletModel) Update(tx *sql.Tx, ctx context.Context, params UpdateWa
 	return nil
 }
 
-func (self *WalletModel) findByDevice(tx *sql.Tx, ctx context.Context, devId int64) (*Wallet, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	w, err := qtx.FindWalletByDeviceId(ctx, devId)
+func (self *WalletModel) findByDevice(ctx context.Context, devId int64) (*Wallet, error) {
+	w, err := self.db.Queries.FindWalletByDeviceId(ctx, devId)
 	if err != nil {
 		log.Printf("error finding wallet by device %v: %v", devId, err)
 		return nil, err

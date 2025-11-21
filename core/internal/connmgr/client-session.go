@@ -2,15 +2,12 @@ package connmgr
 
 import (
 	"context"
-	"database/sql"
 	"sync"
 	"time"
 
 	"core/db"
 	"core/db/models"
 	sdkapi "sdk/api"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewClientSession(dtb *db.Database, mdls *models.Models, pluginsMgr sdkapi.IPluginsMgrApi, s *models.Session) *ClientSession {
@@ -46,23 +43,21 @@ func (self *ClientSession) Save(ctx context.Context) error {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
-	return sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
-		return self.mdls.Session().Update(tx, ctx, models.UpdateSessionParams{
-			ID:          self.id,
-			UID:         self.uid,
-			ProviderPkg: self.providerPkg,
-			DeviceID:    self.devId,
-			SessionType: sdkapi.SessionType(self.sessionType),
-			TimeSecs:    self.timeSecs,
-			DataMbytes:  self.dataMb,
-			TimeCons:    self.timeCons,
-			DataCons:    self.dataCons,
-			StartedAt:   self.startedAt,
-			ExpDays:     self.expDays,
-			DownMbits:   self.downMbits,
-			UpMbits:     self.upMbits,
-			UseGlobal:   self.useGlobal,
-		})
+	return self.mdls.Session().Update(ctx, models.UpdateSessionParams{
+		ID:          self.id,
+		UID:         self.uid,
+		ProviderPkg: self.providerPkg,
+		DeviceID:    self.devId,
+		SessionType: sdkapi.SessionType(self.sessionType),
+		TimeSecs:    self.timeSecs,
+		DataMbytes:  self.dataMb,
+		TimeCons:    self.timeCons,
+		DataCons:    self.dataCons,
+		StartedAt:   self.startedAt,
+		ExpDays:     self.expDays,
+		DownMbits:   self.downMbits,
+		UpMbits:     self.upMbits,
+		UseGlobal:   self.useGlobal,
 	})
 }
 
@@ -70,14 +65,7 @@ func (self *ClientSession) Reload(ctx context.Context) (err error) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	var s *models.Session
-	err = sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
-		s, err = self.mdls.Session().Find(tx, ctx, self.id)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	s, err := self.mdls.Session().Find(ctx, self.id)
 
 	if err != nil {
 		return err

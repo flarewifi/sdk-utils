@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"core/db"
@@ -40,9 +39,9 @@ func (self *Wallet) CreatedAt() time.Time {
 	return self.createdAt
 }
 
-func (self *Wallet) IncBalance(tx *sql.Tx, ctx context.Context, bal float64) error {
+func (self *Wallet) IncBalance(ctx context.Context, bal float64) error {
 	newbal := self.balance + bal
-	err := self.Update(tx, ctx, newbal)
+	err := self.Update(ctx, newbal)
 	if err != nil {
 		return err
 	}
@@ -51,8 +50,8 @@ func (self *Wallet) IncBalance(tx *sql.Tx, ctx context.Context, bal float64) err
 	return nil
 }
 
-func (self *Wallet) Update(tx *sql.Tx, ctx context.Context, bal float64) error {
-	err := self.models.walletModel.Update(tx, ctx, UpdateWalletParams{
+func (self *Wallet) Update(ctx context.Context, bal float64) error {
+	err := self.models.walletModel.Update(ctx, UpdateWalletParams{
 		ID:      self.id,
 		Balance: bal,
 	})
@@ -63,8 +62,8 @@ func (self *Wallet) Update(tx *sql.Tx, ctx context.Context, bal float64) error {
 	return nil
 }
 
-func (self *Wallet) AvailableBal(tx *sql.Tx, ctx context.Context) (float64, error) {
-	pending, err := self.models.purchaseModel.PendingPurchase(tx, ctx, self.deviceId)
+func (self *Wallet) AvailableBal(ctx context.Context) (float64, error) {
+	pending, err := self.models.purchaseModel.PendingPurchase(ctx, self.deviceId)
 	if err != nil {
 		return 0, nil
 	}

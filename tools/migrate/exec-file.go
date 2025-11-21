@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"core/db"
 	"database/sql"
 	"fmt"
 	"log"
@@ -9,7 +8,7 @@ import (
 )
 
 func execFile(path string, tx *sql.Tx) error {
-	content, err := patchFile(path, db.Driver)
+	content, err := patchFile(path, "postgres")
 	if err != nil {
 		return err
 	}

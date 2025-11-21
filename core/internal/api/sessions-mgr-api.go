@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 
 	"core/db/models"
 	"core/internal/connmgr"
@@ -25,7 +24,7 @@ type SessionsMgrApi struct {
 
 // FindClientById finds a client device by its ID.
 func (self *SessionsMgrApi) FindClientById(ctx context.Context, devId int64) (sdkapi.IClientDevice, error) {
-	device, err := self.pluginApi.models.Device().Find(nil, ctx, devId)
+	device, err := self.pluginApi.models.Device().Find(ctx, devId)
 	if err != nil {
 		return nil, err
 	}
@@ -49,10 +48,10 @@ func (self *SessionsMgrApi) IsConnected(clnt sdkapi.IClientDevice) bool {
 }
 
 // CreateSession creates a session for the client device using the plugin's package name.
-func (self *SessionsMgrApi) CreateSession(tx *sql.Tx, ctx context.Context, params sdkapi.CreateSessionParams) (sdkapi.IClientSession, error) {
+func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.CreateSessionParams) (sdkapi.IClientSession, error) {
 	uid := uuid.New().String()
 	pkg := self.pluginApi.Info().Package
-	session, err := self.pluginApi.models.Session().Create(tx, ctx, models.CreateSessionParams{
+	session, err := self.pluginApi.models.Session().Create(ctx, models.CreateSessionParams{
 		UID:         uid,
 		PluginPkg:   pkg,
 		DeviceID:    params.DevId,

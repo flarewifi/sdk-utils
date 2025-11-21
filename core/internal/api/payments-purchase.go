@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,9 +62,9 @@ func (self *Purchase) Price() float64 {
 	return price
 }
 
-func (self *Purchase) CreatePayment(tx *sql.Tx, ctx context.Context, params sdkapi.CreatePaymentParams) error {
+func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePaymentParams) error {
 	mdls := self.api.models
-	_, err := mdls.Payment().Create(tx, ctx, models.CreatePaymentParams{
+	_, err := mdls.Payment().Create(ctx, models.CreatePaymentParams{
 		PurchaseID:    self.purchase.Id(),
 		Amount:        params.Amount,
 		PaymentMethod: params.Optname,
@@ -73,25 +72,25 @@ func (self *Purchase) CreatePayment(tx *sql.Tx, ctx context.Context, params sdka
 	return err
 }
 
-func (self *Purchase) PayWithWallet(tx *sql.Tx, ctx context.Context, dbt float64) error {
-	err := self.purchase.Update(tx, ctx, dbt, nil, self.purchase.CancelledAt(), self.purchase.ConfirmedAt(), nil)
+func (self *Purchase) PayWithWallet(ctx context.Context, dbt float64) error {
+	err := self.purchase.Update(ctx, dbt, nil, self.purchase.CancelledAt(), self.purchase.ConfirmedAt(), nil)
 	return err
 }
 
-func (self *Purchase) State(tx *sql.Tx, ctx context.Context) (sdkapi.PurchaseState, error) {
+func (self *Purchase) State(ctx context.Context) (sdkapi.PurchaseState, error) {
 	state := sdkapi.PurchaseState{}
 
-	device, err := self.api.models.Device().Find(tx, ctx, self.deviceId)
+	device, err := self.api.models.Device().Find(ctx, self.deviceId)
 	if err != nil {
 		return state, err
 	}
 
-	wallet, err := device.Wallet(tx, ctx)
+	wallet, err := device.Wallet(ctx)
 	if err != nil {
 		return state, err
 	}
 
-	total, err := self.purchase.TotalPayment(tx, ctx)
+	total, err := self.purchase.TotalPayment(ctx)
 	if err != nil {
 		return state, err
 	}
@@ -206,12 +205,12 @@ func (self *Purchase) RedirectToCallback(w http.ResponseWriter, r *http.Request)
 	callbackPkg.Http().Response().Redirect(w, r, callbackRoute)
 }
 
-func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
-	return self.purchase.Confirm(tx, ctx)
+func (self *Purchase) Confirm(ctx context.Context) error {
+	return self.purchase.Confirm(ctx)
 }
 
-func (self *Purchase) Cancel(tx *sql.Tx, ctx context.Context) error {
-	return self.purchase.Cancel(tx, ctx)
+func (self *Purchase) Cancel(ctx context.Context) error {
+	return self.purchase.Cancel(ctx)
 }
 
 func (self *Purchase) ErrorPage(w http.ResponseWriter, err error) {

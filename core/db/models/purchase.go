@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"time"
@@ -169,18 +168,18 @@ func (self *Purchase) FixedPrice() (float64, bool) {
 	return self.price, !self.anyPrice
 }
 
-func (self *Purchase) Device(tx *sql.Tx, ctx context.Context) (*Device, error) {
-	return self.models.deviceModel.Find(tx, ctx, self.deviceId)
+func (self *Purchase) Device(ctx context.Context) (*Device, error) {
+	return self.models.deviceModel.Find(ctx, self.deviceId)
 }
 
-func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
-	dev, err := self.Device(tx, ctx)
+func (self *Purchase) Confirm(ctx context.Context) error {
+	dev, err := self.Device(ctx)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	wallet, err := dev.Wallet(tx, ctx)
+	wallet, err := dev.Wallet(ctx)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -190,13 +189,13 @@ func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
 	dbt := self.walletDebit
 	if dbt > 0 {
 		newBal := wallet.Balance() - dbt
-		err = wallet.Update(tx, ctx, newBal)
+		err = wallet.Update(ctx, newBal)
 		if err != nil {
 			return errors.New("unable to update balance: " + err.Error())
 		}
 
 		desc := "Partial payment for " + self.description
-		trns, err := self.models.walletTrnsModel.Create(tx, ctx, CreateWalletTrnsParams{
+		trns, err := self.models.walletTrnsModel.Create(ctx, CreateWalletTrnsParams{
 			WalletID:    wallet.Id(),
 			Amount:      -dbt,
 			NewBalance:  newBal,
@@ -211,17 +210,17 @@ func (self *Purchase) Confirm(tx *sql.Tx, ctx context.Context) error {
 	}
 
 	now := time.Now()
-	return self.Update(tx, ctx, dbt, txid, nil, &now, nil)
+	return self.Update(ctx, dbt, txid, nil, &now, nil)
 }
 
-func (self *Purchase) Cancel(tx *sql.Tx, ctx context.Context) error {
-	dev, err := self.Device(tx, ctx)
+func (self *Purchase) Cancel(ctx context.Context) error {
+	dev, err := self.Device(ctx)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	pmtTotal, err := self.TotalPayment(tx, ctx)
+	pmtTotal, err := self.TotalPayment(ctx)
 	if err != nil {
 		return err
 	}
@@ -231,19 +230,19 @@ func (self *Purchase) Cancel(tx *sql.Tx, ctx context.Context) error {
 	cancelledAt := time.Now()
 
 	if pmtTotal > 0 {
-		wallet, err := dev.Wallet(tx, ctx)
+		wallet, err := dev.Wallet(ctx)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 
-		err = wallet.IncBalance(tx, ctx, pmtTotal)
+		err = wallet.IncBalance(ctx, pmtTotal)
 		if err != nil {
 			log.Println("Error updating wallet balance: ", err)
 			return err
 		}
 
-		trns, err := self.models.walletTrnsModel.Create(tx, ctx, CreateWalletTrnsParams{
+		trns, err := self.models.walletTrnsModel.Create(ctx, CreateWalletTrnsParams{
 			WalletID:    wallet.Id(),
 			Amount:      pmtTotal,
 			NewBalance:  wallet.Balance(),
@@ -255,18 +254,18 @@ func (self *Purchase) Cancel(tx *sql.Tx, ctx context.Context) error {
 		}
 
 		trnsId := trns.Id()
-		return self.Update(tx, ctx, dbt, &trnsId, &cancelledAt, nil, &reason)
+		return self.Update(ctx, dbt, &trnsId, &cancelledAt, nil, &reason)
 	}
 
-	return self.Update(tx, ctx, dbt, nil, &cancelledAt, nil, &reason)
+	return self.Update(ctx, dbt, nil, &cancelledAt, nil, &reason)
 }
 
-func (self *Purchase) Payments(tx *sql.Tx, ctx context.Context) ([]*Payment, error) {
-	return self.models.paymentModel.FindAllByPurchase(tx, ctx, self.id)
+func (self *Purchase) Payments(ctx context.Context) ([]*Payment, error) {
+	return self.models.paymentModel.FindAllByPurchase(ctx, self.id)
 }
 
-func (self *Purchase) TotalPayment(tx *sql.Tx, ctx context.Context) (float64, error) {
-	pmts, err := self.Payments(tx, ctx)
+func (self *Purchase) TotalPayment(ctx context.Context) (float64, error) {
+	pmts, err := self.Payments(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -282,8 +281,8 @@ func (self *Purchase) TotalPayment(tx *sql.Tx, ctx context.Context) (float64, er
 	return total, nil
 }
 
-func (self *Purchase) Update(tx *sql.Tx, ctx context.Context, dbt float64, wtxID *int64, cancelledAt, confirmedAt *time.Time, reason *string) error {
-	err := self.models.purchaseModel.Update(tx, ctx, UpdatePurchaseParams{
+func (self *Purchase) Update(ctx context.Context, dbt float64, wtxID *int64, cancelledAt, confirmedAt *time.Time, reason *string) error {
+	err := self.models.purchaseModel.Update(ctx, UpdatePurchaseParams{
 		ID:              self.id,
 		WalletDebit:     dbt,
 		WalletTxID:      wtxID,

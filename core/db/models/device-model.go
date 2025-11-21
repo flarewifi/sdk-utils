@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	sdkapi "sdk/api"
 
@@ -35,9 +34,8 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 	return &DeviceModel{db: database, models: mdls}
 }
 
-func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, params CreateDeviceParams) (*Device, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	dId, err := qtx.CreateDevice(ctx, queries.CreateDeviceParams{
+func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) (*Device, error) {
+	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
 		MacAddress: params.MacAddress,
 		IpAddress:  params.IpAddress,
 		Hostname:   params.Hostname,
@@ -47,7 +45,7 @@ func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, params CreateDe
 		return nil, err
 	}
 
-	d, err := qtx.FindDevice(ctx, dId)
+	d, err := self.db.Queries.FindDevice(ctx, dId)
 	if err != nil {
 		log.Printf("error finding device %v: %v\n", dId, err)
 		return nil, err
@@ -64,7 +62,7 @@ func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, params CreateDe
 		status:    sdkapi.DeviceStatus(d.Status),
 	}
 
-	_, err = qtx.CreateWallet(ctx, queries.CreateWalletParams{
+	_, err = self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
 		DeviceID: dId,
 		Balance:  0.0,
 	})
@@ -75,15 +73,8 @@ func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, params CreateDe
 	return dev, nil
 }
 
-func (self *DeviceModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Device, error) {
-	var d queries.FindDeviceRow
-	var err error
-	if tx != nil {
-		qtx := self.db.Queries.WithTx(tx)
-		d, err = qtx.FindDevice(ctx, id)
-	} else {
-		d, err = self.db.Queries.FindDevice(ctx, id)
-	}
+func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
+	d, err := self.db.Queries.FindDevice(ctx, id)
 	if err != nil {
 		log.Printf("error finding device %v: %v", id, err)
 		return nil, err
@@ -101,10 +92,9 @@ func (self *DeviceModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Devic
 	return device, nil
 }
 
-func (self *DeviceModel) FindByMac(tx *sql.Tx, ctx context.Context, mac string) (*Device, error) {
-	qtx := self.db.Queries.WithTx(tx)
+func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, error) {
 	device := NewDevice(self.db, self.models)
-	d, err := qtx.FindDeviceByMac(ctx, mac)
+	d, err := self.db.Queries.FindDeviceByMac(ctx, mac)
 	if err != nil {
 		log.Printf("error finding device %s: %v", mac, err)
 		return nil, err
@@ -120,9 +110,8 @@ func (self *DeviceModel) FindByMac(tx *sql.Tx, ctx context.Context, mac string) 
 	return device, nil
 }
 
-func (self *DeviceModel) Update(tx *sql.Tx, ctx context.Context, params UpdateDeviceParams) error {
-	qtx := self.db.Queries.WithTx(tx)
-	err := qtx.UpdateDevice(ctx, queries.UpdateDeviceParams{
+func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) error {
+	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		ID:         params.ID,
 		MacAddress: params.MacAddress,
 		IpAddress:  params.IpAddress,

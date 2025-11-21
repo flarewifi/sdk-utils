@@ -2,7 +2,6 @@ package connmgr
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"sync"
 
@@ -67,11 +66,11 @@ func (self *ClientDevice) Status() sdkapi.DeviceStatus {
 	return self.status
 }
 
-func (self *ClientDevice) Update(tx *sql.Tx, ctx context.Context, params sdkapi.UpdateDeviceParams) error {
+func (self *ClientDevice) Update(ctx context.Context, params sdkapi.UpdateDeviceParams) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	err := self.mdls.Device().Update(tx, ctx, models.UpdateDeviceParams{
+	err := self.mdls.Device().Update(ctx, models.UpdateDeviceParams{
 		ID:         self.id,
 		MacAddress: params.Mac,
 		IpAddress:  params.Ip,

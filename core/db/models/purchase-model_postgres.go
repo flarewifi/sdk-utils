@@ -14,7 +14,7 @@ import (
 
 // FindPurchaseByAttrs finds a pending purchase by matching metadata attributes
 // This is the PostgreSQL implementation using JSONB operators
-func (self *PurchaseModel) FindPurchaseByAttrs(tx *sql.Tx, ctx context.Context, attrs map[string]string) (*Purchase, error) {
+func (self *PurchaseModel) FindPurchaseByAttrs(ctx context.Context, attrs map[string]string) (*Purchase, error) {
 	if len(attrs) == 0 {
 		return nil, fmt.Errorf("attrs map cannot be empty")
 	}
@@ -31,7 +31,7 @@ func (self *PurchaseModel) FindPurchaseByAttrs(tx *sql.Tx, ctx context.Context, 
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, uid, device_id, sku, name, description, price, any_price, 
+		SELECT id, uid, device_id, sku, name, description, price, any_price,
 		       callback_plugin, callback_route, metadata, wallet_debit, wallet_tx_id,
 		       confirmed_at, cancelled_at, cancelled_reason, created_at
 		FROM purchases
@@ -43,17 +43,7 @@ func (self *PurchaseModel) FindPurchaseByAttrs(tx *sql.Tx, ctx context.Context, 
 
 	log.Printf("FindPurchaseByAttrs (Postgres) query: %s, args: %v", query, args)
 
-	var qtx interface {
-		QueryRowContext(context.Context, string, ...interface{}) *sql.Row
-	}
-
-	if tx != nil {
-		qtx = tx
-	} else {
-		qtx = self.db.DB
-	}
-
-	row := qtx.QueryRowContext(ctx, query, args...)
+	row := self.db.DB.QueryRowContext(ctx, query, args...)
 
 	var p queries.Purchase
 	err := row.Scan(
