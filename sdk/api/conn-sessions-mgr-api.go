@@ -62,6 +62,9 @@ type CreateSessionParams struct {
 // ISessionsMgrApi is used to manage client devices.
 type ISessionsMgrApi interface {
 
+	// Finds a client device by its ID.
+	FindClientById(ctx context.Context, devId int64) (IClientDevice, error)
+
 	// Connects a client device to the internet.
 	Connect(ctx context.Context, clnt IClientDevice, notify string) error
 

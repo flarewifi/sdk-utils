@@ -23,6 +23,16 @@ type SessionsMgrApi struct {
 	pluginApi *PluginApi
 }
 
+// FindClientById finds a client device by its ID.
+func (self *SessionsMgrApi) FindClientById(ctx context.Context, devId int64) (sdkapi.IClientDevice, error) {
+	device, err := self.pluginApi.models.Device().Find(nil, ctx, devId)
+	if err != nil {
+		return nil, err
+	}
+	clnt := connmgr.NewClientDevice(self.pluginApi.db, self.pluginApi.models, device)
+	return clnt, nil
+}
+
 // Connect connects a client device to the internet.
 func (self *SessionsMgrApi) Connect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
 	return self.pluginApi.SessionMgr.Connect(ctx, clnt, notify)

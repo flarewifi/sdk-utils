@@ -1,8 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -106,7 +108,7 @@ func (self *Purchase) State(tx *sql.Tx, ctx context.Context) (sdkapi.PurchaseSta
 	return state, nil
 }
 
-func (self *Purchase) Execute(ctx context.Context) error {
+func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) error {
 	pmgr := self.api.PluginsMgr()
 	callbackPkg, ok := pmgr.FindByPkg(self.purchase.CallbackPluginPkg())
 	if !ok {
@@ -152,8 +154,14 @@ func (self *Purchase) Execute(ctx context.Context) error {
 		return fmt.Errorf("failed to sign JWT token: %w", err)
 	}
 
-	// Create request with context
-	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, nil)
+	// Marshal params to JSON
+	jsonData, err := json.Marshal(params)
+	if err != nil {
+		return fmt.Errorf("failed to marshal execute params: %w", err)
+	}
+
+	// Create request with context and JSON body
+	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create webhook request: %w", err)
 	}

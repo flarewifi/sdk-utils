@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log"
@@ -104,6 +105,35 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 	}
 
 	purchase := NewPurchase(self.api, r.Context(), clnt.Id(), p)
+	return purchase, nil
+}
+
+func (self *PaymentsApi) GetPurchaseRequestByUID(uid string) (sdkapi.IPurchaseRequest, error) {
+	ctx := context.Background()
+	mdls := self.api.models
+
+	tx, err := self.api.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	p, err := mdls.Purchase().FindByUID(tx, ctx, uid)
+	if err != nil {
+		log.Printf("mdls.Purchase().FindByUID error for uid %s: %v", uid, err)
+		return nil, err
+	}
+
+	if p.IsCancelled() || p.IsConfirmed() {
+		log.Println("Purchase is already processed")
+		return nil, errors.New("Purchase is already processed")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	purchase := NewPurchase(self.api, ctx, p.DeviceId(), p)
 	return purchase, nil
 }
 

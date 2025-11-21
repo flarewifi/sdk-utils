@@ -29,4 +29,7 @@ type IPaymentsApi interface {
 
 	// Returns the pending purchase for the client device.
 	GetPurchaseRequest(r *http.Request) (IPurchaseRequest, error)
+
+	// Returns the purchase request by its unique identifier.
+	GetPurchaseRequestByUID(uid string) (IPurchaseRequest, error)
 }

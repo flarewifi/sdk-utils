@@ -114,6 +114,17 @@ func (self *PurchaseModel) FindByDeviceId(tx *sql.Tx, ctx context.Context, devic
 	return NewPurchase(self.db, self.models, &p)
 }
 
+func (self *PurchaseModel) FindByUID(tx *sql.Tx, ctx context.Context, uid string) (*Purchase, error) {
+	qtx := self.db.Queries.WithTx(tx)
+	p, err := qtx.FindPurchaseByUID(ctx, uid)
+	if err != nil {
+		log.Printf("error finding purchase by uid %v: %v", uid, err)
+		return nil, err
+	}
+
+	return NewPurchase(self.db, self.models, &p)
+}
+
 func (self *PurchaseModel) Update(tx *sql.Tx, ctx context.Context, params UpdatePurchaseParams) error {
 	var cancellReason string
 	if params.CancelledReason != nil {

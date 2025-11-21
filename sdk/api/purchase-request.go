@@ -20,6 +20,12 @@ type PurchaseState struct {
 	WalletRealBal   float64 `json:"wallet_real_bal"`
 }
 
+// ExecuteParams holds parameters for executing a purchase webhook.
+type ExecuteParams struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
 // PurchaseRequest represents a purchase to be made by the customer.
 type PurchaseRequest struct {
 	Sku           string
@@ -68,7 +74,8 @@ type IPurchaseRequest interface {
 
 	// Executes the webhook for the purchase.
 	// This will make an internal POST request to the webhook route.
-	Execute(ctx context.Context) error
+	// The params contain the success status and message to be passed to the webhook handler.
+	Execute(ctx context.Context, params ExecuteParams) error
 
 	// Redirects the user to the callback route of the purchase request.
 	RedirectToCallback(w http.ResponseWriter, r *http.Request)
