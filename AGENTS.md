@@ -18,7 +18,7 @@
 - We don't implement or create test files and unit tests
 - The `go`, `templ`, and `sqlc` files are being watched and built by the running docker container
 - We don't build go, templ and sqlc files. Instead, we watch for the docker logs to see if the build succeeds
-- When the docker logs prints `Listening on port :3000 ` it means the build is successful
+- Watch docker logs but don't run them. When it prints `Listening on port :3000 ` it means the build is successful
 
 ## Project Structure
 

@@ -12,47 +12,30 @@ import (
 )
 
 // GetMachineUID returns a unique identifier for the OpenWRT device.
-// It attempts to use:
-// 1. MAC address of eth0 + serial from /proc/cpuinfo
-// 2. If either is missing, it falls back to all available network interface MACs
+// It uses:
+// 1. CPU serial from /proc/cpuinfo (if available)
+// 2. MAC addresses from all physical network interfaces (excludes virtual interfaces)
 // 3. The combined identifiers are hashed using SHA-1
 func GetMachineUID() string {
-	eth0MAC := readEth0MAC()
-	serial := readCPUSerial()
-
 	var identifiers []string
 
-	// If we have both eth0 MAC and serial, use them
-	if eth0MAC != "" && serial != "" {
-		identifiers = append(identifiers, eth0MAC, serial)
-	} else {
-		// Otherwise, collect all available identifiers
-		if eth0MAC != "" {
-			identifiers = append(identifiers, eth0MAC)
-		}
-		if serial != "" {
-			identifiers = append(identifiers, serial)
-		}
-
-		// If we're missing either, add all network interface MACs as fallback
-		if eth0MAC == "" || serial == "" {
-			allMACs := readAllNetworkMACs()
-			identifiers = append(identifiers, allMACs...)
-		}
+	// Get CPU serial if available
+	serial := readCPUSerial()
+	if serial != "" {
+		identifiers = append(identifiers, serial)
 	}
 
-	// If we have no identifiers at all, return empty string
+	// Get all physical network interface MACs (excludes docker, virbr, veth, etc.)
+	allMACs := readAllNetworkMACs()
+	identifiers = append(identifiers, allMACs...)
+
+	// If no identifiers at all, return empty string
 	if len(identifiers) == 0 {
 		return ""
 	}
 
 	// Hash the combined identifiers
 	return sdkutils.Sha1Hash(identifiers...)
-}
-
-// readEth0MAC reads the MAC address of eth0 interface
-func readEth0MAC() string {
-	return readInterfaceMAC("eth0")
 }
 
 // readInterfaceMAC reads the MAC address of a specific network interface
