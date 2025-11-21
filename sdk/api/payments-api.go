@@ -31,5 +31,5 @@ type IPaymentsApi interface {
 	GetPurchaseRequest(r *http.Request) (IPurchaseRequest, error)
 
 	// Returns the purchase request by its unique identifier.
-	GetPurchaseRequestByUID(uid string) (IPurchaseRequest, error)
+	FindPurchaseRequestByUID(uid string) (IPurchaseRequest, error)
 }

@@ -154,6 +154,9 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 		return fmt.Errorf("failed to sign JWT token: %w", err)
 	}
 
+	// Set device ID in params
+	params.DeviceID = self.deviceId
+
 	// Marshal params to JSON
 	jsonData, err := json.Marshal(params)
 	if err != nil {

@@ -108,7 +108,7 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 	return purchase, nil
 }
 
-func (self *PaymentsApi) GetPurchaseRequestByUID(uid string) (sdkapi.IPurchaseRequest, error) {
+func (self *PaymentsApi) FindPurchaseRequestByUID(uid string) (sdkapi.IPurchaseRequest, error) {
 	ctx := context.Background()
 	mdls := self.api.models
 

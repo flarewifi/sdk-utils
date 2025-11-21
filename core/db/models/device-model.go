@@ -76,8 +76,14 @@ func (self *DeviceModel) Create(tx *sql.Tx, ctx context.Context, params CreateDe
 }
 
 func (self *DeviceModel) Find(tx *sql.Tx, ctx context.Context, id int64) (*Device, error) {
-	qtx := self.db.Queries.WithTx(tx)
-	d, err := qtx.FindDevice(ctx, id)
+	var d queries.FindDeviceRow
+	var err error
+	if tx != nil {
+		qtx := self.db.Queries.WithTx(tx)
+		d, err = qtx.FindDevice(ctx, id)
+	} else {
+		d, err = self.db.Queries.FindDevice(ctx, id)
+	}
 	if err != nil {
 		log.Printf("error finding device %v: %v", id, err)
 		return nil, err
