@@ -101,11 +101,6 @@ func (self *PaymentsApi) FindPurchaseRequestByUID(uid string) (sdkapi.IPurchaseR
 		return nil, err
 	}
 
-	if p.IsCancelled() || p.IsConfirmed() {
-		log.Println("Purchase is already processed")
-		return nil, errors.New("Purchase is already processed")
-	}
-
 	purchase := NewPurchase(self.api, ctx, p.DeviceId(), p)
 	return purchase, nil
 }
