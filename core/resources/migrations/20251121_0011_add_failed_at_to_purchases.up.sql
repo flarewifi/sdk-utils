@@ -1,2 +1,0 @@
-ALTER TABLE purchases ADD COLUMN failed_at TIMESTAMP NULL;
-ALTER TABLE purchases ADD COLUMN failed_reason TEXT NOT NULL DEFAULT '';
