@@ -161,7 +161,7 @@ func (self *Purchase) IsConfirmed() bool {
 }
 
 func (self *Purchase) IsCancelled() bool {
-	return self.confirmedAt != nil
+	return self.cancelledAt != nil
 }
 
 func (self *Purchase) FixedPrice() (float64, bool) {

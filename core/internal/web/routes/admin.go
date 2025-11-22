@@ -5,6 +5,7 @@ import (
 	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/controllers/adminctrl"
+	"core/internal/web/middlewares"
 	"net/http"
 	sdkapi "sdk/api"
 )
@@ -12,23 +13,25 @@ import (
 func AdminRoutes(g *api.CoreGlobals) {
 	authMw := g.CoreAPI.HttpAPI.Middlewares().AdminAuth()
 	trackNavMw := g.CoreAPI.HttpAPI.Middlewares().TrackNav()
+	httpsRedirectMw := middlewares.HTTPSRedirect()
 	rootR := webutil.RootRouter
 	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
 
-	// Register navigation tracking middleware
+	// Register HTTPS redirect and navigation tracking middleware to admin router
+	adminR.Use(httpsRedirectMw)
 	adminR.Use(trackNavMw)
 
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
 	adminSseCtrl := adminctrl.AdminSseHandler(g)
 
-	rootR.Handle("/admin", authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	rootR.Handle("/admin", httpsRedirectMw(authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:dashboard")
-	}))).Methods("GET")
+	})))).Methods("GET")
 
 	adminR.Get("/dashboard", adminctrl.AdminIndexCtrl(g)).Name("admin:dashboard")
 
 	// TODO: enable csrf protection
-	rootR.Handle("/login", adminLoginCtrl).Methods("GET").Name("admin:login")
+	rootR.Handle("/login", httpsRedirectMw(adminLoginCtrl)).Methods("GET").Name("admin:login")
 	adminR.Get("/events", adminSseCtrl).Name(api.RouteNameAdminSSE)
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {

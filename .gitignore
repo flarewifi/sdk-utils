@@ -11,6 +11,7 @@
 /data/config
 /data/plugins/local/*
 /data/storage
+/data/system
 !/data/plugins/local/.keep
 /plugins/installed
 /plugins/updates

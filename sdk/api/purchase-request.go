@@ -9,6 +9,7 @@ package sdkapi
 import (
 	"context"
 	"net/http"
+	"time"
 )
 
 type PurchaseState struct {
@@ -54,14 +55,62 @@ type IPurchaseRequest interface {
 	// Returns the unique UID of the purchase request.
 	Uid() string
 
+	// Returns the device ID associated with the purchase.
+	DeviceId() int64
+
+	// Returns the SKU of the purchase item.
+	Sku() string
+
 	// Returns the name of the purchase item.
 	Name() string
 
-	// Returns the price
+	// Returns the description of the purchase item.
+	Description() string
+
+	// Returns the price of the purchase item.
 	Price() float64
+
+	// Returns true if the purchase request allows any price.
+	AnyPrice() bool
 
 	// Returns true if the purchase request has a fixed price.
 	IsFixedPrice() bool
+
+	// Returns the wallet debit amount for the purchase.
+	WalletDebit() float64
+
+	// Returns the wallet transaction ID if available.
+	WalletTxId() *int64
+
+	// Returns the timestamp when the purchase was confirmed.
+	ConfirmedAt() *time.Time
+
+	// Returns the timestamp when the purchase was cancelled.
+	CancelledAt() *time.Time
+
+	// Returns the reason for cancellation if cancelled.
+	CancelledReason() *string
+
+	// Returns the timestamp when the purchase was created.
+	CreatedAt() time.Time
+
+	// Returns the callback plugin package name.
+	CallbackPluginPkg() string
+
+	// Returns the callback route for the purchase.
+	CallbackRoute() string
+
+	// Returns the webhook route for the purchase.
+	WebHookRoute() string
+
+	// Returns the metadata associated with the purchase.
+	Metadata() map[string]string
+
+	// Returns true if the purchase is confirmed.
+	IsConfirmed() bool
+
+	// Returns true if the purchase is cancelled.
+	IsCancelled() bool
 
 	// Create a payment for the purchase.
 	CreatePayment(ctx context.Context, params CreatePaymentParams) error

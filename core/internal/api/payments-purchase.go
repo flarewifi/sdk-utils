@@ -52,6 +52,18 @@ func (self *Purchase) Name() string {
 	return self.purchase.Name()
 }
 
+func (self *Purchase) DeviceId() int64 {
+	return self.purchase.DeviceId()
+}
+
+func (self *Purchase) Description() string {
+	return self.purchase.Description()
+}
+
+func (self *Purchase) AnyPrice() bool {
+	return self.purchase.AnyPrice()
+}
+
 func (self *Purchase) IsFixedPrice() bool {
 	_, isfixed := self.purchase.FixedPrice()
 	return isfixed
@@ -60,6 +72,50 @@ func (self *Purchase) IsFixedPrice() bool {
 func (self *Purchase) Price() float64 {
 	price, _ := self.purchase.FixedPrice()
 	return price
+}
+
+func (self *Purchase) WalletDebit() float64 {
+	return self.purchase.WalletDebit()
+}
+
+func (self *Purchase) WalletTxId() *int64 {
+	return self.purchase.WalletTxId()
+}
+
+func (self *Purchase) ConfirmedAt() *time.Time {
+	return self.purchase.ConfirmedAt()
+}
+
+func (self *Purchase) CancelledAt() *time.Time {
+	return self.purchase.CancelledAt()
+}
+
+func (self *Purchase) CancelledReason() *string {
+	return self.purchase.CancelledReason()
+}
+
+func (self *Purchase) CreatedAt() time.Time {
+	return self.purchase.CreatedAt()
+}
+
+func (self *Purchase) CallbackPluginPkg() string {
+	return self.purchase.CallbackPluginPkg()
+}
+
+func (self *Purchase) CallbackRoute() string {
+	return self.purchase.CallbackRoute()
+}
+
+func (self *Purchase) Metadata() map[string]string {
+	return self.purchase.Metadata()
+}
+
+func (self *Purchase) IsConfirmed() bool {
+	return self.purchase.IsConfirmed()
+}
+
+func (self *Purchase) IsCancelled() bool {
+	return self.purchase.IsCancelled()
 }
 
 func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePaymentParams) error {
@@ -171,6 +227,7 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 	// Add JWT token in Authorization header
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Purchase-Webhook", "true")
 
 	fmt.Println("Webhook request created with JWT token")
 

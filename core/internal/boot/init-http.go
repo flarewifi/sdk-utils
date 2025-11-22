@@ -49,5 +49,6 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	}
 
 	log.Println("Starting server...")
+	web.StartHTTPSServer(webutil.RootRouter)
 	web.StartServer(webutil.RootRouter, true)
 }
