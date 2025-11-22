@@ -24,7 +24,6 @@ LIMIT
 UPDATE
   sessions
 SET
-    uid = @uid,
     provider_pkg = @provider_pkg,
     device_id = @device_id,
     session_type = @session_type,

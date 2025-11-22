@@ -6,12 +6,15 @@ toolchain go1.21.13
 
 require (
 	github.com/a-h/templ v0.2.793
+	github.com/flarehotspot/sdk-utils v0.1.11
 	github.com/shirou/gopsutil/v4 v4.25.2
 )
 
 require (
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/goccy/go-json v0.10.3 // indirect
+	github.com/jackc/pgx/v5 v5.7.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect

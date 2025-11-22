@@ -5,6 +5,7 @@ package env
 const (
 	GO_ENV          int8   = ENV_PRODUCTION
 	HTTP_PORT       int    = 80
+	HTTPS_PORT      int    = 443
 	LocalBaseURL    string = "http://127.0.0.1"
 	RPC_TOKEN       string = "aC!g9r#8xHkQp24C"
 	RPC_API_VERSION string = "v1"

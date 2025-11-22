@@ -183,6 +183,7 @@ func (self *Session) Update(ctx context.Context, devId int64, t string, secs int
 	}
 
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
+		ProviderPkg:     self.providerPkg,
 		DeviceID:        devId,
 		SessionType:     t,
 		TimeSecs:        int64(secs),

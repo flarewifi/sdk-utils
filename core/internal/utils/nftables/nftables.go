@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	internetTable string = "internet"
-	forward       string = "FORWARD"
-	prerouting    string = "PREROUTING"
-	connMacMap    string = "connected_macs_map"
-	connIpMap     string = "connected_ips_map"
-	connMacSet    string = "connected_macs_set"
+	internetTable   string = "internet"
+	forward         string = "FORWARD"
+	prerouting      string = "PREROUTING"
+	connMacMap      string = "connected_macs_map"
+	connIpMap       string = "connected_ips_map"
+	connMacSet      string = "connected_macs_set"
+	forwardPriority int    = 50 // Priority for internet FORWARD chain
 )
 
 var (
@@ -55,7 +56,7 @@ func Setup() (err error) {
 	cmds := []string{
 		fmt.Sprintf("nft add table ip %s", internetTable),
 		fmt.Sprintf("nft add chain ip %s %s '{ type nat hook prerouting priority dstnat; policy accept ; }'", internetTable, prerouting),
-		fmt.Sprintf("nft add chain ip %s %s '{ type filter hook forward priority filter ; policy drop ; }'", internetTable, forward),
+		fmt.Sprintf("nft add chain ip %s %s '{ type filter hook forward priority %d ; policy drop ; }'", internetTable, forward, forwardPriority),
 		fmt.Sprintf("nft add map ip %s %s '{ type ipv4_addr : verdict ; counter; }'", internetTable, connIpMap),
 		fmt.Sprintf("nft add map ip %s %s '{ type ether_addr : verdict ; counter; }'", internetTable, connMacMap),
 		fmt.Sprintf("nft add set ip %s %s '{ type ether_addr; }'", internetTable, connMacSet),

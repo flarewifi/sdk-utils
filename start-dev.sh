@@ -10,6 +10,10 @@ SYNC_VERSION="./tools/cmd/sync-versions/main.go"
 FLARE_CLI_MAIN="./core/internal/cli"
 FLARE_BIN="./bin/flare"
 
+# Clean installed plugins to ensure fresh rebuild
+echo "Cleaning installed plugins..."
+rm -rf plugins/installed
+
 cp go.work.default go.work && \
     echo "Generating templ files..." && \
     rm -rf **/*_templ.go && \

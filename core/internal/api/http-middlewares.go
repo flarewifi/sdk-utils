@@ -65,6 +65,10 @@ func (self *PluginMiddlewares) CacheResponse(days int) func(http.Handler) http.H
 	return middlewares.CacheResponse(days)
 }
 
+func (self *PluginMiddlewares) HTTPSRedirect() func(http.Handler) http.Handler {
+	return middlewares.HTTPSRedirect()
+}
+
 func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

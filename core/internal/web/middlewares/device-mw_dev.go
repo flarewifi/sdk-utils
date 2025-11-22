@@ -23,6 +23,12 @@ func DeviceMiddleware(dtb *db.Database, clntMgr *connmgr.ClientRegister) func(ne
 				return
 			}
 
+			// Skip device middleware for internal webhook requests
+			if r.Header.Get("X-Purchase-Webhook") == "true" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			var ip, mac string
 
 			macval, _ := r.Cookie("mac")
