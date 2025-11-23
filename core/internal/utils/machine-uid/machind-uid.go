@@ -12,16 +12,12 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func GetMachineUID() string {
-	return "test_machine"
-}
-
 // GetMachineUID returns a unique identifier for the OpenWRT device.
 // It uses:
 // 1. CPU serial from /proc/cpuinfo (if available)
 // 2. MAC addresses from all physical network interfaces (excludes virtual interfaces)
 // 3. The combined identifiers are hashed using SHA-1
-func xGetMachineUID() string {
+func GetMachineUID() string {
 	log.Println("[DEBUG] GetMachineUID: Starting machine UID generation")
 	var identifiers []string
 
