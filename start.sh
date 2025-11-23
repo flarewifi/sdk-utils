@@ -10,26 +10,43 @@ export BACKUP_DIR="$STORAGE_DIR/system/backup"
 export PATH="$APP_DIR/bin:$PATH"
 
 apply_updates() {
-    echo "\n\nFound software update, copying..." && \
-        rm -rf $BACKUP_DIR && \
-        cp -r $APP_DIR $BACKUP_DIR && \
+    EXTRACT_TMP="$FLARE_DIR/extract_tmp" && \
+    echo "\n\nFound software update, applying..." && \
+        # Clean old app directory
         rm -rf $APP_DIR/* && \
-        cp -r $SOFTWARE_UPDATE_DIR/* $APP_DIR && \
+        echo "Cleaned old application files" && \
+        # Clean extract tmp directory to free up space
+        rm -rf $EXTRACT_TMP && \
+        mkdir -p $EXTRACT_TMP && \
+        echo "Extracting software update to $EXTRACT_TMP..." && \
+        tar -xzf $SOFTWARE_UPDATE_DIR/*.tar.gz -C $EXTRACT_TMP && \
+        echo "Finding application root directory..." && \
+        BIN_DIR=$(find $EXTRACT_TMP -type d -name "bin" | head -n 1) && \
+        if [ -z "$BIN_DIR" ]; then \
+            echo "ERROR: No bin directory found in update package!" && \
+            return 1; \
+        fi && \
+        APP_ROOT=$(dirname $BIN_DIR) && \
+        echo "Found application root at $APP_ROOT" && \
+        echo "Moving application files to $APP_DIR..." && \
+        mv $APP_ROOT/* $APP_DIR/ && \
+        echo "Cleaning up temporary files..." && \
+        rm -rf $EXTRACT_TMP && \
         rm -rf $SOFTWARE_UPDATE_DIR && \
         cd $APP_DIR && \
         touch $APP_DIR/.updated && \
-        echo "Software updates copied successfully."
+        echo "Software updates applied successfully."
 }
 
 revert_updates() {
-    if [ -e $BACKUP_DIR ]; then
+    if [ -e $BACKUP_DIR/backup.tar.gz ]; then
         echo "\n\nOld version is available, reverting updates..." && \
             rm -rf $APP_DIR/* && \
-            cp -r $BACKUP_DIR/* $APP_DIR && \
+            tar -xzf $BACKUP_DIR/backup.tar.gz -C $APP_DIR && \
             rm -rf $BACKUP_DIR && \
             cd $APP_DIR && \
             touch $APP_DIR/.reverted && \
-            echo "Old version copied successfully."
+            echo "Old version restored successfully."
     else
         echo "\n\nNo backup of old version is available" && exit 1
     fi

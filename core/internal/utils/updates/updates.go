@@ -2,9 +2,13 @@ package updates
 
 import (
 	rpc "core/internal/rpc"
+	"crypto/md5"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -143,57 +147,102 @@ func DownloadSoftwareRelease(releaseFileUrl string, md5sum string) {
 
 func downloadSystemFile(fileURL string, expectedChecksum string) (resultCh chan DownloadResult) {
 	resultCh = make(chan DownloadResult)
-	downloadFilePath := filepath.Join(sdkutils.PathTmpDir, "system", "update", filepath.Base(fileURL))
-
-	// Create download options with checksum verification
-	opts := &sdkutils.DownloadWithProgressOpts{
-		Md5Checksum: expectedChecksum,
-	}
-	percentCh, errCh := sdkutils.DownloadWithProgress(fileURL, downloadFilePath, opts)
+	downloadFilePath := filepath.Join(sdkutils.PathSystemUpdateDir, filepath.Base(fileURL))
 
 	go func() {
 		defer close(resultCh)
-		defer os.RemoveAll(downloadFilePath)
+
+		log.Println("Downloading compressed update file from", fileURL)
+
+		// Ensure the destination directory exists
+		if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
+			result := DownloadResult{Error: ErrDownload}
+			resultCh <- result
+			return
+		}
+
+		// Make HTTP request
+		resp, err := http.Get(fileURL)
+		if err != nil {
+			result := DownloadResult{Error: ErrDownload}
+			resultCh <- result
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			result := DownloadResult{Error: ErrDownload}
+			resultCh <- result
+			return
+		}
+
+		totalSize := resp.ContentLength
+		if totalSize <= 0 {
+			result := DownloadResult{Error: ErrDownload}
+			resultCh <- result
+			return
+		}
+
+		// Create the output file
+		file, err := os.Create(downloadFilePath)
+		if err != nil {
+			result := DownloadResult{Error: ErrDownload}
+			resultCh <- result
+			return
+		}
+		defer file.Close()
+
+		// Create a hash writer for checksum verification
+		hasher := md5.New()
+		writer := io.MultiWriter(file, hasher)
+
+		// Download with progress tracking
+		downloaded := int64(0)
+		lastPercent := -1
+		buf := make([]byte, 32*1024)
 
 		for {
-			result := DownloadResult{}
-			select {
-			case percent := <-percentCh:
-				// do something with the percentage
-				result.Percent = percent
-				resultCh <- result
-
-			case err, ok := <-errCh:
-				if !ok {
-					return
-				}
-
-				if err != nil {
-					fmt.Println("Error downloading software update", err)
-					// Check if it's a checksum error
-					if errors.Is(err, sdkutils.ErrChecksumVerificationFailed) {
-						result.Error = ErrChecksumMismatch
-					} else {
-						result.Error = ErrDownload
-					}
+			n, err := resp.Body.Read(buf)
+			if n > 0 {
+				_, writeErr := writer.Write(buf[:n])
+				if writeErr != nil {
+					result := DownloadResult{Error: ErrDownload}
 					resultCh <- result
 					return
 				}
-
-				log.Println("Extracting updates files to", sdkutils.PathSystemUpdateDir)
-				err = sdkutils.FsExtract(downloadFilePath, sdkutils.PathSystemUpdateDir)
-				if err != nil {
-					fmt.Println("Error extracting update files", err)
-					result.Error = ErrExtract
-					resultCh <- result
-					return
+				downloaded += int64(n)
+				currentPercent := int((downloaded * 100) / totalSize)
+				if currentPercent != lastPercent {
+					resultCh <- DownloadResult{Percent: currentPercent}
+					lastPercent = currentPercent
 				}
-
-				result.Percent = 100
+			}
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				result := DownloadResult{Error: ErrDownload}
 				resultCh <- result
 				return
 			}
 		}
+
+		// Verify checksum after download completes
+		if expectedChecksum != "" {
+			actualChecksum := base64.StdEncoding.EncodeToString(hasher.Sum(nil))
+			if actualChecksum != expectedChecksum {
+				log.Printf("Checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum)
+				os.Remove(downloadFilePath)
+				result := DownloadResult{Error: ErrChecksumMismatch}
+				resultCh <- result
+				return
+			}
+			log.Println("Checksum verified successfully")
+		}
+
+		log.Println("Compressed update file downloaded to", downloadFilePath)
+		result := DownloadResult{Percent: 100}
+		resultCh <- result
 	}()
 
 	return resultCh
