@@ -3,6 +3,7 @@
 package machineuid
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -53,6 +54,7 @@ func GetMachineUID() string {
 
 	if machineUID != "" && machineUID != uid {
 		// Machine UID has changed
+		log.Println("Warning: Machine UID has changed from", machineUID, "to", uid)
 	}
 
 	// Verify if cached UID matches
