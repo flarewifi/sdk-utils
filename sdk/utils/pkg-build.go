@@ -65,7 +65,7 @@ func DefaultGoBuildArgs(tags string) []string {
 	args := []string{}
 	args = append(args, "-ldflags='-s -w'", "-trimpath", "-buildvcs=false")
 	if tags != "" {
-		args = append(args, fmt.Sprintf("-tags='%s'", TrimRedundantWords(tags)))
+		args = append(args, fmt.Sprintf("-tags='%s'", TrimRedundantWords(tags, " ")))
 	}
 
 	return args

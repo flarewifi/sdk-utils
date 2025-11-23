@@ -8,20 +8,30 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func GetMachineUID() string {
-	return "test_machine"
-}
+var (
+	mu         sync.Mutex
+	machineUID string
+	verified   bool
+)
 
 // GetMachineUID returns a unique identifier for the OpenWRT device.
 // It uses:
 // 1. CPU serial from /proc/cpuinfo (if available)
 // 2. MAC addresses from all physical network interfaces (excludes virtual interfaces)
 // 3. The combined identifiers are hashed using SHA-1
-func xGetMachineUID() string {
+func GetMachineUID() string {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if machineUID != "" && verified {
+		return machineUID
+	}
+
 	log.Println("[DEBUG] GetMachineUID: Starting machine UID generation")
 	var identifiers []string
 
@@ -49,6 +59,19 @@ func xGetMachineUID() string {
 	// Hash the combined identifiers
 	uid := sdkutils.Sha1Hash(identifiers...)
 	log.Printf("[DEBUG] GetMachineUID: Generated UID: %s", uid)
+
+	if machineUID != "" && machineUID != uid {
+		log.Printf("[DEBUG] GetMachineUID: Warning - Machine UID has changed from %s to %s", machineUID, uid)
+	}
+
+	// Verify if cached UID matches
+	if machineUID != "" && machineUID == uid {
+		verified = true
+	}
+
+	// Cache the result
+	machineUID = uid
+
 	return uid
 }
 
@@ -120,17 +143,14 @@ func readAllNetworkMACs() []string {
 	log.Printf("[DEBUG] readAllNetworkMACs: Found %d network entries", len(entries))
 	var macs []string
 	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
 		ifaceName := entry.Name()
 		log.Printf("[DEBUG] readAllNetworkMACs: Processing interface: %s", ifaceName)
 
 		// Skip virtual and special interfaces
-		// if isVirtualInterface(ifaceName) {
-		// 	continue
-		// }
+		if isVirtualInterface(ifaceName) {
+			log.Printf("[DEBUG] readAllNetworkMACs: Skipping virtual/special interface: %s", ifaceName)
+			continue
+		}
 
 		mac := readInterfaceMAC(ifaceName)
 		if mac != "" {
@@ -139,6 +159,7 @@ func readAllNetworkMACs() []string {
 	}
 
 	// Sort for consistency
+	sdkutils.TrimRedundantWords(strings.Join(macs, " "), " ")
 	sort.Strings(macs)
 	log.Printf("[DEBUG] readAllNetworkMACs: Final sorted MACs: %v", macs)
 	return macs
