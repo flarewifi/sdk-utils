@@ -64,9 +64,10 @@ func TrimChars(str string, chars ...string) string {
 	return str
 }
 
-// RemoveRedundant removes duplicate words from a string while preserving order.
-func TrimRedundantWords(input string) string {
-	words := strings.Fields(input) // Split string by whitespace
+// TrimRedundantWords removes duplicate words from a string while preserving
+// the order of their first occurrence, based on the specified separator.
+func TrimRedundantWords(input string, separator string) string {
+	words := strings.Fields(input) // Split string by separator
 	seen := make(map[string]bool)
 	var result []string
 
@@ -77,7 +78,7 @@ func TrimRedundantWords(input string) string {
 		}
 	}
 
-	return strings.Join(result, " ")
+	return strings.Join(result, separator)
 }
 
 // FilenameFromTranslationKey converts a translation key to a filesystem-safe filename
