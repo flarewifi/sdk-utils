@@ -35,6 +35,9 @@ down:
 	docker compose down
 
 deploy-arm64:
-	rm -rf ./output/mono-bin-files ./plugins/installed
-	GO_ARCH=arm64 go run -tags="prod mono sqlite" ./tools/cmd/create-mono-bin/main.go && \
+	rm -rf \
+		./core/plugin.so \
+		./output/mono-bin-files \
+		./plugins/installed && \
+		GO_ARCH=arm64 go run -tags="prod mono sqlite" ./tools/cmd/create-mono-bin/main.go && \
 		rsync -avz --delete --exclude='data' output/mono-bin-files/ root@10.0.0.1:/opt/flarehotspot/app/
