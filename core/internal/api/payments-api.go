@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
 	"core/db/models"
 	"core/internal/web/helpers"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	sdkapi "sdk/api"
 )
 
@@ -103,6 +105,33 @@ func (self *PaymentsApi) FindPurchaseRequestByUID(uid string) (sdkapi.IPurchaseR
 
 	purchase := NewPurchase(self.api, ctx, p.DeviceId(), p)
 	return purchase, nil
+}
+
+func (self *PaymentsApi) FormatCurrency(amount float64) string {
+	// Get current currency from config
+	cfg, err := self.api.ConfigAPI.Application().Get()
+	if err != nil {
+		// Fallback to USD if config is not available
+		return self.formatCurrencyWithCode(amount, "USD")
+	}
+	return self.formatCurrencyWithCode(amount, cfg.Currency)
+}
+
+// formatCurrencyWithCode formats a float64 amount as a currency string with the given currency code.
+func (self *PaymentsApi) formatCurrencyWithCode(amount float64, currencyCode string) string {
+	// Format with 2 decimal places
+	formatted := fmt.Sprintf("%.2f", amount)
+
+	// Get currency symbol from the centralized currency table
+	symbol := sdkutils.GetCurrencySymbol(currencyCode)
+
+	// If symbol is the same as currency code (not found), format as "amount code"
+	if symbol == currencyCode {
+		return formatted + " " + currencyCode
+	}
+
+	// Otherwise, use the symbol
+	return symbol + formatted
 }
 
 func (self *PaymentsApi) ErrorPage(w http.ResponseWriter, err error) {

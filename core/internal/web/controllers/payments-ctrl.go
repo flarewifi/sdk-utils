@@ -11,7 +11,7 @@ import (
 func PaymentOptionsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
-		_, err := g.CoreAPI.PaymentsAPI.GetPurchaseRequest(r)
+		purchase, err := g.CoreAPI.PaymentsAPI.GetPurchaseRequest(r)
 		if err != nil {
 			res.RedirectToPortal(w, r)
 			return
@@ -26,9 +26,10 @@ func PaymentOptionsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
-		paymentsPage := paymentsview.PaymentOptions(g.CoreAPI, opts)
+		paymentsPage := paymentsview.PaymentOptions(g.CoreAPI, purchase, opts)
 		res.PortalView(w, r, sdkapi.ViewPage{
 			Assets: sdkapi.ViewAssets{
+				JsFile:  "payment-options.js",
 				CssFile: "payment-options.css",
 			},
 			PageContent: paymentsPage,

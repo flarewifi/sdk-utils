@@ -15,6 +15,7 @@ type FormRoutes struct {
 	PluginInstallGithubURL string `json:"plugin_install_github_url"`
 	PluginIndexURL         string `json:"plugin_index_url"`
 	CheckInstallStatusURL  string `json:"check_install_status_url"`
+	InstallingMessage      string `json:"installing_message"`
 }
 
 templ InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) {
@@ -71,7 +72,7 @@ templ ProgressBar(){
 				:aria-valuenow="progress"
 				aria-valuemin="0"
 				aria-valuemax="100"
-				x-text="message || `Installing... (${progress}%)`"
+				x-text="message || `${data.InstallingMessage} (${progress}%)`"
 			>
 			</div>
 		</div>

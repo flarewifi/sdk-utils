@@ -48,7 +48,7 @@ func AdminLogoutCtrl(g *api.CoreGlobals) http.Handler {
 			return
 		}
 
-		g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, "Logged out successfully", sdkapi.FlashMsgSuccess)
+		g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, g.CoreAPI.Translate("success", "Logged out successfully"), sdkapi.FlashMsgSuccess)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	})
 }

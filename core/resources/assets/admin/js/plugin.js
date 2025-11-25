@@ -30,7 +30,7 @@ document.addEventListener('alpine:init', () => {
       this.file_name = state.file_name || '';
       this.action_url = state.action || this.plugin_install_github_url;
       this.progress = state.progress || 15;
-      this.message = state.message || 'Installing...';
+      this.message = state.message || 'Installing';
       this.isLoading = true;
 
       const pluginName =
@@ -174,7 +174,7 @@ document.addEventListener('alpine:init', () => {
           console.log('data: ', data);
 
           this.progress = data.progress || 15;
-          this.message = data.message || 'Installing...';
+          this.message = data.message || 'Installing';
 
           // persist progress
           const state = JSON.parse(

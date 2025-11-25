@@ -15,6 +15,7 @@ require (
 	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v5 v5.7.1
+	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/stretchr/testify v1.10.0
 	github.com/twitchtv/twirp v8.1.3+incompatible
 	github.com/yuin/goldmark v1.4.13

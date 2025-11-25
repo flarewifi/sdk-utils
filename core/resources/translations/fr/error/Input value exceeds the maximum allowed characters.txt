@@ -1,0 +1,1 @@
+<% .label %> ne doit pas dépasser <% .max %> caractères

@@ -7,8 +7,10 @@ import (
 	"core/internal/api"
 	"core/internal/utils/activation"
 	machineuid "core/internal/utils/machine-uid"
+	"core/internal/utils/sysinfo"
 	generalview "core/resources/views/admin/general"
 	"tools/config"
+	"tools/env"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -36,6 +38,13 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get form errors if any
 		errors := g.CoreAPI.HttpAPI.Forms().Errors(w, r, "application_settings")
 
+		// Get system info
+		systemInfo, err := sysinfo.GetSystemInfo()
+		if err != nil {
+			// If there's an error, provide empty/default system info
+			systemInfo = &sysinfo.SystemInfo{}
+		}
+
 		// Get activation status
 		activationStatus := "not_activated"
 		if activation.IsValidating.Load() {
@@ -47,13 +56,22 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get supported languages
 		supportedLanguages := config.SupportedLanguages
 
+		// Get supported currencies
+		supportedCurrencies := []sdkapi.SupportedCurrency{
+			{Code: sdkapi.CurrencyUsDollar, Name: "US Dollar", Symbol: "$"},
+			{Code: sdkapi.CurrencyPhilippinePeso, Name: "Philippine Peso", Symbol: "₱"},
+			{Code: sdkapi.CurrencyNigerianNaira, Name: "Nigerian Naira", Symbol: "₦"},
+		}
+
 		params := generalview.AdminGeneralSettingsIndexParams{
-			Cfg:                cfg,
-			MachineID:          machineID,
-			SoftwareVersion:    softwareVersion,
-			ActivationStatus:   activationStatus,
-			Errors:             errors,
-			SupportedLanguages: supportedLanguages,
+			Cfg:                 cfg,
+			MachineID:           machineID,
+			SoftwareVersion:     softwareVersion,
+			ActivationStatus:    activationStatus,
+			Errors:              errors,
+			SupportedLanguages:  supportedLanguages,
+			SupportedCurrencies: supportedCurrencies,
+			SystemInfo:          systemInfo,
 		}
 		page := generalview.AdminGeneralSettingsIndex(g.CoreAPI, params)
 		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
@@ -107,6 +125,9 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		// Check if language changed
+		languageChanged := currentCfg.Lang != language
+
 		// Save the application config
 		err = config.WriteApplicationConfig(sdkapi.AppConfig{
 			Lang:     language,
@@ -121,6 +142,14 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
 			http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)
 			return
+		}
+
+		// Handle language switching if language changed (skip in dev mode)
+		if languageChanged && env.GO_ENV != env.ENV_DEV {
+			if err := sdkutils.SwitchAllLanguages(currentCfg.Lang, language); err != nil {
+				g.CoreAPI.LoggerAPI.Error("Failed to switch language: " + err.Error())
+				// Don't fail the save operation, just log the error
+			}
 		}
 
 		successfulSavedMsg := g.CoreAPI.Translate("info", "Settings Successfully Saved")

@@ -1,0 +1,1 @@
+<% .label %> doit être un entier valide

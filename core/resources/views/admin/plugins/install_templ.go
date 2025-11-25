@@ -23,6 +23,7 @@ type FormRoutes struct {
 	PluginInstallGithubURL string `json:"plugin_install_github_url"`
 	PluginIndexURL         string `json:"plugin_index_url"`
 	CheckInstallStatusURL  string `json:"check_install_status_url"`
+	InstallingMessage      string `json:"installing_message"`
 }
 
 func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
@@ -56,7 +57,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Install Plugin"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 26, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 27, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -69,7 +70,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("pluginInstaller(%s)", jsonData))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 28, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 29, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -90,7 +91,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Source"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 32, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 33, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -103,7 +104,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.PluginInstallGithubURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 34, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 35, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -116,7 +117,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "GitHub"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 34, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 35, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -129,7 +130,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.PluginInstallZipURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 35, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 36, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -142,7 +143,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Zip File"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 35, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 36, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -155,7 +156,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("action_url=='%s'", data.PluginInstallGithubURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 38, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 39, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -168,7 +169,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Github URL"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 41, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 42, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -181,7 +182,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Branch/Commit Hash"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 45, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 46, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -194,7 +195,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("action_url=='%s'", data.PluginInstallZipURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 50, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 51, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -207,7 +208,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Plugin Zip File"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 52, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 53, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -220,7 +221,7 @@ func InstallPlugin(api sdkapi.IPluginApi, data FormRoutes) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Install"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 57, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/plugins/install.templ`, Line: 58, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -255,7 +256,7 @@ func ProgressBar() templ.Component {
 			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<template x-if=\"isLoading\"><div class=\"progress\" style=\"height: 15px;\"><div id=\"progressBar\" class=\"progress-bar progress-bar-striped progress-bar-animated\" role=\"progressbar\" :style=\"`width: ${progress}%;`\" :aria-valuenow=\"progress\" aria-valuemin=\"0\" aria-valuemax=\"100\" x-text=\"message || `Installing... (${progress}%)`\"></div></div></template>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<template x-if=\"isLoading\"><div class=\"progress\" style=\"height: 15px;\"><div id=\"progressBar\" class=\"progress-bar progress-bar-striped progress-bar-animated\" role=\"progressbar\" :style=\"`width: ${progress}%;`\" :aria-valuenow=\"progress\" aria-valuemin=\"0\" aria-valuemax=\"100\" x-text=\"message || `${data.InstallingMessage} (${progress}%)`\"></div></div></template>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

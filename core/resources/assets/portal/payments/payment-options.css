@@ -22,6 +22,7 @@
   font-size: 48px;
   margin-bottom: 15px;
   opacity: 0.95;
+  text-align: center;
 }
 
 .checkout-title {
@@ -39,9 +40,102 @@
   font-weight: 400;
 }
 
+/* Purchase Summary */
+.purchase-summary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.summary-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  text-align: center;
+}
+
+.summary-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.summary-content {
+  display: block;
+}
+
+.summary-content .table {
+  margin-bottom: 0;
+  background: transparent;
+}
+
+.summary-content .table > tbody > tr > td {
+  border: none;
+  color: #ffffff;
+  padding: 12px 8px;
+}
+
+.summary-label {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+.summary-value {
+  font-weight: 400;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.summary-divider td {
+  padding: 8px 0;
+  border-bottom: none;
+}
+
+.divider-line {
+  margin: 0;
+  border-top: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.summary-price td {
+  padding-top: 16px;
+  padding-bottom: 8px;
+}
+
+.summary-price .price-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.summary-price .price-amount {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 20px;
+  letter-spacing: 0.5px;
+}
+
+/* Payment Options Section */
+.payment-options-section {
+  margin: 30px 0;
+}
+
+.payment-options-title {
+  text-align: center;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
 /* Payment Options Grid */
 .payment-options-grid {
   display: block;
+  margin-top: 20px;
   margin-bottom: 30px;
 }
 
@@ -125,13 +219,13 @@
 .secure-text {
   margin: 0;
   font-size: 14px;
-  color: #6c757d;
+  color: #ffffff;
   font-weight: 500;
 }
 
 .secure-text .glyphicon {
   margin-right: 8px;
-  color: #28a745;
+  color: #ffffff;
 }
 
 /* Responsive Design */
@@ -160,6 +254,34 @@
   .payment-name {
     font-size: 18px;
     padding: 0 15px;
+  }
+  
+  .purchase-summary {
+    padding: 18px;
+  }
+  
+  .summary-title {
+    font-size: 18px;
+  }
+  
+  .summary-content .table > tbody > tr > td {
+    padding: 10px 6px;
+  }
+  
+  .summary-label {
+    font-size: 13px;
+  }
+  
+  .summary-value {
+    font-size: 13px;
+  }
+  
+  .summary-price .price-label {
+    font-size: 14px;
+  }
+  
+  .summary-price .price-amount {
+    font-size: 18px;
   }
 }
 
@@ -202,6 +324,34 @@
     width: 30px;
     font-size: 18px;
   }
+  
+  .purchase-summary {
+    padding: 15px;
+  }
+  
+  .summary-title {
+    font-size: 16px;
+  }
+  
+  .summary-content .table > tbody > tr > td {
+    padding: 8px 4px;
+  }
+  
+  .summary-label {
+    font-size: 12px;
+  }
+  
+  .summary-value {
+    font-size: 12px;
+  }
+  
+  .summary-price .price-label {
+    font-size: 13px;
+  }
+  
+  .summary-price .price-amount {
+    font-size: 16px;
+  }
 }
 
 /* Loading State (Optional) */
@@ -222,6 +372,42 @@
   display: block;
   text-align: center;
   padding: 40px;
-  color: #999999;
+  color: rgba(255, 255, 255, 0.7);
   font-style: italic;
+}
+/* Disabled State */
+.payment-option-card.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Loading State */
+.payment-option-card.loading .payment-arrow {
+  display: none;
+}
+
+.payment-option-card.loading .payment-loading-spinner {
+  display: table-cell;
+}
+
+.payment-loading-spinner {
+  display: none;
+  vertical-align: middle;
+  width: 40px;
+  text-align: right;
+}
+
+.spinner-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #e1e8ed;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

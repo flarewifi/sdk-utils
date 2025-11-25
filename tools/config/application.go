@@ -12,8 +12,19 @@ const applicationJsonFile = "application.json"
 
 var SupportedLanguages = []sdkapi.SupportedLanguage{
 	{Code: "en", Name: "English"},
-	{Code: "af", Name: "Afrikaans"},
+	{Code: "am", Name: "Amharic"},
+	{Code: "ar", Name: "Arabic (Sudan)"},
+	{Code: "es", Name: "Spanish"},
+	{Code: "fr", Name: "French"},
+	{Code: "id", Name: "Indonesian"},
+	{Code: "in", Name: "Hindi"},
+	{Code: "prs", Name: "Dari"},
+	{Code: "ps", Name: "Pashto"},
+	{Code: "ru", Name: "Russian"},
+	{Code: "sw", Name: "Swahili"},
 }
+
+var SupportedCurrencies = sdkutils.SupportedCurrencies
 
 var defaultAppCfg = sdkapi.AppConfig{
 	Lang:     "en",

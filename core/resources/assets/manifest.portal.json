@@ -11,5 +11,8 @@
   ],
   "payment-options.css": [
     "./portal/payments/payment-options.css"
+  ],
+  "payment-options.js": [
+    "./portal/payments/payment-options.js"
   ]
 }
