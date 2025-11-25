@@ -38,6 +38,7 @@ type UntranslatedEntry struct {
 type ScanConfig struct {
 	DryRun             bool
 	Verbose            bool
+	Silent             bool
 	MaxConcurrency     int
 	JSON               bool
 	UntranslatedReport bool
@@ -46,6 +47,12 @@ type ScanConfig struct {
 	CorePath           string
 	SystemPluginsPath  string
 	LocalPluginsPath   string
+}
+
+// ShouldSuppressLogs returns true if logs should be suppressed
+// Automatically silences logs for JSON/report modes to avoid breaking parsers
+func (sc *ScanConfig) ShouldSuppressLogs() bool {
+	return sc.Silent || sc.JSON || sc.UntranslatedReport || sc.ListUntranslated
 }
 
 // ScanError represents a structured error during scanning
@@ -74,6 +81,7 @@ type TranslationStats struct {
 	FileUsage       map[string]int // Count by file path
 	UnusedCount     int
 	TotalReferences int
+	mu              sync.RWMutex // Mutex for thread-safe access
 }
 
 // ScanReport holds the results of the scan
@@ -91,6 +99,7 @@ func main() {
 	scanConfig := &ScanConfig{}
 	flag.BoolVar(&scanConfig.DryRun, "dry-run", false, "Show what would be done without making changes")
 	flag.BoolVar(&scanConfig.Verbose, "verbose", false, "Enable verbose logging")
+	flag.BoolVar(&scanConfig.Silent, "silent", false, "Only output if there are errors, warnings, or untranslated content")
 	flag.IntVar(&scanConfig.MaxConcurrency, "concurrency", 5, "Maximum concurrent plugin processing")
 	flag.BoolVar(&scanConfig.JSON, "json", false, "Output results in JSON format")
 	flag.BoolVar(&scanConfig.UntranslatedReport, "untranslated-report", false, "Generate report of untranslated content for AI translation tools")
@@ -101,7 +110,7 @@ func main() {
 	flag.StringVar(&scanConfig.LocalPluginsPath, "local-plugins-path", "data/plugins/local", "Path to local plugins directory")
 	flag.Parse()
 
-	if scanConfig.DryRun {
+	if scanConfig.DryRun && !scanConfig.Silent {
 		log.Println("DRY RUN MODE - No files will be modified")
 	}
 
@@ -113,7 +122,9 @@ func main() {
 		},
 	}
 
-	log.Println("Scanning for translation usage...")
+	if !scanConfig.ShouldSuppressLogs() {
+		log.Println("Scanning for translation usage...")
+	}
 
 	// Collect translation references from core
 	coreUsed := make(map[string]*TranslationRef)
@@ -126,7 +137,7 @@ func main() {
 	report.TotalKeys = len(coreUsed)
 	report.UsedKeys = len(coreUsed)
 
-	if scanConfig.Verbose {
+	if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 		log.Printf("Found %d unique translation references in core", len(coreUsed))
 	}
 
@@ -136,7 +147,9 @@ func main() {
 	for _, lang := range supportedLanguages {
 		supportedLangCodes = append(supportedLangCodes, lang.Code)
 	}
-	log.Printf("Checking translations for languages: %v", supportedLangCodes)
+	if !scanConfig.ShouldSuppressLogs() {
+		log.Printf("Checking translations for languages: %v", supportedLangCodes)
+	}
 
 	// Process core translations
 	coreTranslationsPath := filepath.Join(scanConfig.CorePath, "resources", "translations")
@@ -157,15 +170,17 @@ func main() {
 	// Filter by language if specified
 	if scanConfig.Language != "" {
 		filterReportByLanguage(report, scanConfig.Language)
-		if !scanConfig.JSON && !scanConfig.UntranslatedReport && !scanConfig.ListUntranslated {
+		if !scanConfig.ShouldSuppressLogs() {
 			log.Printf("Filtering results for language: %s", scanConfig.Language)
 		}
 	}
 
 	// Print report
-	printReport(report, scanConfig.JSON, scanConfig.UntranslatedReport, scanConfig.ListUntranslated)
+	printReport(report, scanConfig)
 
-	log.Println("Translation scan complete")
+	if !scanConfig.ShouldSuppressLogs() {
+		log.Println("Translation scan complete")
+	}
 }
 
 // filterReportByLanguage filters the report to only include entries for a specific language
@@ -233,15 +248,15 @@ func collectExistingTranslations(translationsDir string, supportedLanguages []st
 		})
 	}
 
-	if scanConfig.Verbose {
+	if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 		log.Printf("Found %d existing translation keys to sync across languages", len(existingTranslations))
 	}
 
 	return existingTranslations
 }
 
-func printReport(report *ScanReport, jsonOutput bool, untranslatedReport bool, listUntranslated bool) {
-	if listUntranslated {
+func printReport(report *ScanReport, scanConfig *ScanConfig) {
+	if scanConfig.ListUntranslated {
 		// Output just the untranslated file paths, one per line (unique)
 		fileSet := make(map[string]bool)
 		for _, entry := range report.Untranslated {
@@ -261,7 +276,7 @@ func printReport(report *ScanReport, jsonOutput bool, untranslatedReport bool, l
 		return
 	}
 
-	if untranslatedReport {
+	if scanConfig.UntranslatedReport {
 		// Output only untranslated entries in JSON format for AI tools
 		jsonData, err := json.MarshalIndent(report.Untranslated, "", "  ")
 		if err != nil {
@@ -271,13 +286,25 @@ func printReport(report *ScanReport, jsonOutput bool, untranslatedReport bool, l
 		return
 	}
 
-	if jsonOutput {
+	if scanConfig.JSON {
 		jsonData, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			log.Fatalf("Failed to marshal report to JSON: %v", err)
 		}
 		fmt.Println(string(jsonData))
 		return
+	}
+
+	// Silent mode - only print if there are issues
+	if scanConfig.Silent {
+		hasIssues := len(report.Operations) > 0 ||
+			len(report.Errors) > 0 ||
+			len(report.Warnings) > 0 ||
+			len(report.Untranslated) > 0
+
+		if !hasIssues {
+			return // No output - everything is OK
+		}
 	}
 
 	fmt.Printf("\n=== Translation Scan Report ===\n")
@@ -376,7 +403,7 @@ func processPlugin(pluginPath string, supportedLanguages []string, scanConfig *S
 		return
 	}
 
-	if scanConfig.Verbose {
+	if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 		log.Printf("Found %d unique translation references in plugin %s", len(pluginUsed), filepath.Base(pluginPath))
 	}
 
@@ -443,11 +470,13 @@ func scanFile(filePath string, usedTranslations map[string]*TranslationRef, stat
 				FilePath:    translationKey,
 			}
 
-			// Collect statistics
+			// Collect statistics (thread-safe)
+			stats.mu.Lock()
 			stats.TypeUsage[msgType]++
 			stats.KeyUsage[translationKey]++
 			stats.FileUsage[filePath]++
 			stats.TotalReferences++
+			stats.mu.Unlock()
 		}
 	}
 
@@ -503,7 +532,7 @@ func syncExistingTranslations(translationsDir string, existingTranslations map[s
 						Details:   "language directory",
 					})
 				} else {
-					if scanConfig.Verbose {
+					if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 						log.Printf("Creating language directory: %s", langDir)
 					}
 					if err := os.MkdirAll(langDir, 0755); err != nil {
@@ -545,7 +574,7 @@ func syncExistingTranslations(translationsDir string, existingTranslations map[s
 					if err := os.WriteFile(translationFilePath, []byte(defaultContent), 0644); err != nil {
 						report.Errors = append(report.Errors, ScanError{Path: translationFilePath, Op: "syncing translation file", Err: err, Fatal: false})
 					} else {
-						if scanConfig.Verbose {
+						if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 							log.Printf("Synced translation [%s]: %s", lang, translationFilePath)
 						}
 					}
@@ -587,7 +616,7 @@ func createMissingTranslations(translationsDir string, usedTranslations map[stri
 					Details:   "language directory",
 				})
 			} else {
-				if scanConfig.Verbose {
+				if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 					log.Printf("Creating language directory: %s", langDir)
 				}
 				if err := os.MkdirAll(langDir, 0755); err != nil {
@@ -631,7 +660,7 @@ func createMissingTranslations(translationsDir string, usedTranslations map[stri
 					if err := os.WriteFile(translationFilePath, []byte(ref.ModifiedKey), 0644); err != nil {
 						report.Errors = append(report.Errors, ScanError{Path: translationFilePath, Op: "creating translation file", Err: err, Fatal: false})
 					} else {
-						if scanConfig.Verbose {
+						if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 							log.Printf("Created missing translation [%s]: %s (default: %s)", lang, translationFilePath, ref.ModifiedKey)
 						}
 					}
@@ -652,7 +681,7 @@ func removeUnusedTranslations(translationsDir string, usedTranslations map[strin
 	for _, lang := range supportedLanguages {
 		langDir := filepath.Join(translationsDir, lang)
 		if _, err := os.Stat(langDir); os.IsNotExist(err) {
-			if scanConfig.Verbose {
+			if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 				log.Printf("Language directory not found: %s", langDir)
 			}
 			continue
@@ -691,7 +720,7 @@ func removeUnusedTranslations(translationsDir string, usedTranslations map[strin
 						Details:   "unused translation",
 					})
 				} else {
-					if scanConfig.Verbose {
+					if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 						log.Printf("Removing unused translation [%s]: %s", lang, path)
 					}
 					if err := os.Remove(path); err != nil {
@@ -786,9 +815,10 @@ func collectUntranslatedFromDir(translationsDir string, supportedLanguages []str
 			key := strings.TrimSuffix(filename, ".txt")
 
 			// Check if this appears to be untranslated
-			// For now, we'll consider it untranslated if the content equals the key
+			// We consider it untranslated if the content equals the key
 			// (which is how we create default content)
-			if contentStr == key {
+			// Skip English language as it's the source language
+			if contentStr == key && lang != "en" {
 				entry := UntranslatedEntry{
 					Key:         key,
 					Type:        msgType,
@@ -833,7 +863,7 @@ func removeUnsupportedLanguages(translationsDir string, supportedLanguages []str
 					Details:   "unsupported language directory",
 				})
 			} else {
-				if scanConfig.Verbose {
+				if scanConfig.Verbose && !scanConfig.ShouldSuppressLogs() {
 					log.Printf("Removing unsupported language directory: %s", langDir)
 				}
 				if err := os.RemoveAll(langDir); err != nil {
