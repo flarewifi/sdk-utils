@@ -53,3 +53,17 @@ func GetTextTemplate(path string) (*texttemplate.Template, error) {
 	textTmplCache.Store(path, tmpl)
 	return tmpl, nil
 }
+
+// ClearCache clears all cached templates
+// This should be called when switching languages to ensure new translations are loaded
+func ClearCache() {
+	htmlTmplCache.Range(func(key, value interface{}) bool {
+		htmlTmplCache.Delete(key)
+		return true
+	})
+
+	textTmplCache.Range(func(key, value interface{}) bool {
+		textTmplCache.Delete(key)
+		return true
+	})
+}

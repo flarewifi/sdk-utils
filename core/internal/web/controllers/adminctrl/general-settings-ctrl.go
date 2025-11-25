@@ -6,6 +6,7 @@ import (
 
 	"core/internal/api"
 	"core/internal/utils/activation"
+	"core/internal/utils/flaretmpl"
 	machineuid "core/internal/utils/machine-uid"
 	"core/internal/utils/sysinfo"
 	generalview "core/resources/views/admin/general"
@@ -149,6 +150,10 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			if err := sdkutils.SwitchAllLanguages(currentCfg.Lang, language); err != nil {
 				g.CoreAPI.LoggerAPI.Error("Failed to switch language: " + err.Error())
 				// Don't fail the save operation, just log the error
+			} else {
+				// Clear template cache to ensure new language translations are loaded
+				flaretmpl.ClearCache()
+				g.CoreAPI.LoggerAPI.Info("Language switched and template cache cleared")
 			}
 		}
 

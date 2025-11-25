@@ -277,6 +277,7 @@ res.View(w, r, sdkapi.ViewPage{
    - UI labels and text: Render translated strings in templates, access via data attributes
    - Notifications: Use translated messages
    - **Debug/console logs**: Can remain in English (not user-facing)
+   - **⚠️ For complex translation work**: Delegate to translations agent (`@.opencode/agent/translations.md`)
 
 ### When researching htmx:
 1. Check htmx v1.9.12 documentation
@@ -300,6 +301,25 @@ res.View(w, r, sdkapi.ViewPage{
    - Placeholders: `placeholder={ api.Translate("label", "Enter name") }`
    - Titles: `title={ api.Translate("label", "Page Title") }`
    - **DO NOT** hardcode any user-visible text strings
+   - **⚠️ DELEGATE to translations agent** (`@.opencode/agent/translations.md`) for:
+     - Translation audits and scanning for hardcoded text
+     - Translation key structure and naming conventions
+     - Batch translation operations using custom tools
+     - Translation verification and completeness checks
+     - Translation best practices guidance
+
+### When working with translations in frontend:
+1. **Always use `api.Translate()`** for all user-facing text
+2. **Delegate to translations agent** (`@.opencode/agent/translations.md`) for:
+   - Scanning code for hardcoded text
+   - Planning translation key structure
+   - Batch translation operations
+   - Verification that all text is translated
+   - Translation best practices guidance
+3. **In templates**: Use `{ api.Translate("label", "Text") }` syntax
+4. **In JavaScript**: Pass translated strings from backend via data attributes or script variables
+5. **Exception**: Debug console.log() can remain in English (not user-facing)
+6. **Translation types**: `"label"`, `"error"`, `"success"`, `"info"`, `"warning"`, custom types
 
 ### When generating URLs in templates:
 1. Never hardcode paths - always use `UrlForRoute()`
@@ -391,6 +411,12 @@ res.View(w, r, sdkapi.ViewPage{
   - **Debug logs**: Can remain in English (console.log for debugging)
   - **User-facing content**: Must always use the translation system
   - **Translation types**: `"label"`, `"error"`, `"success"`, `"info"`, `"warning"`, custom types
+  - **⚠️ DELEGATE translation work to translations agent** (`@.opencode/agent/translations.md`) for:
+    - Translation audits and scanning for hardcoded text
+    - Translation key structure and naming conventions
+    - Batch translation operations using custom tools (`translate-scan`, `translate-update`, `translate-batch`)
+    - Translation verification and completeness checks
+    - Translation best practices guidance
 
 ## Reference Documentation
 - Full rendering guide: `sdk/mkdocs/docs/guides/rendering-views.md`

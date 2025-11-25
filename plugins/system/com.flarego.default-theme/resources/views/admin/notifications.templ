@@ -31,35 +31,35 @@ templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 }
 
 templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
-	if len(notifs) == 0 {
-		<li class="d-flex flex-column border-bottom">
-			<p class="dropdown-item text-wrap notif-item text-center">No new notifications</p>
-		</li>
-	} else {
-		for _, notif := range notifs {
-			<li class="d-flex flex-column p-2 border-bottom">
-				<a
-					class="dropdown-item text-wrap notif-item text-center"
-					hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:show", "id", fmt.Sprint(notif.ID)) }
-					hx-target="#notifModal"
-					hx-swap="innerHTML"
-					data-bs-toggle="modal"
-					data-bs-target="#notifModal"
-				>
-					🔔{ notif.Subject }<br>
-					<small class="text-muted">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
-				</a>
-
-				<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
-					hx-post={ api.Http().Helpers().UrlForRoute("admin:notifications:update", "id", fmt.Sprint(notif.ID)) }
-					hx-target="#notifDropdownMenu"
-					hx-swap="innerHTML"
-				>
-					Mark as Read
-				</button>
+		if len(notifs) == 0 {
+			<li class="d-flex flex-column border-bottom">
+				<p class="dropdown-item text-wrap notif-item text-center">{ api.Translate("label", "No new notifications") }</p>
 			</li>
+		} else {
+			for _, notif := range notifs {
+				<li class="d-flex flex-column p-2 border-bottom">
+					<a
+						class="dropdown-item text-wrap notif-item text-center"
+						hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:show", "id", fmt.Sprint(notif.ID)) }
+						hx-target="#notifModal"
+						hx-swap="innerHTML"
+						data-bs-toggle="modal"
+						data-bs-target="#notifModal"
+					>
+						🔔{ notif.Subject }<br>
+						<small class="text-muted">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+					</a>
+
+					<button class="btn btn-sm btn-link text-decoration-none text-primary mark-read-btn align-self-end"
+						hx-post={ api.Http().Helpers().UrlForRoute("admin:notifications:update", "id", fmt.Sprint(notif.ID)) }
+						hx-target="#notifDropdownMenu"
+						hx-swap="innerHTML"
+					>
+						{ api.Translate("label", "Mark as Read") }
+					</button>
+				</li>
+			}
 		}
-	}
 }
 
 templ NotificationsBellCount(notifs []sdkapi.Notification) {
@@ -95,7 +95,7 @@ templ ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) 
 
 			<div class="modal-footer border-0">
 				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-					Close
+					{ api.Translate("label", "Close") }
 				</button>
 			</div>
 		</div>
