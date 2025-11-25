@@ -6,3 +6,7 @@ CREATE TABLE IF NOT EXISTS wallets (
 
     FOREIGN KEY (device_id) REFERENCES devices (id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS index_wallets_device_id ON wallets(device_id);
+
+CREATE INDEX IF NOT EXISTS index_wallets_device_id ON wallets(device_id);

@@ -18,3 +18,8 @@ CREATE TABLE IF NOT EXISTS sessions (
 
     FOREIGN KEY (device_id) REFERENCES devices (id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS index_sessions_device_id ON sessions(device_id);
+
+
+CREATE INDEX IF NOT EXISTS index_sessions_device_id ON sessions(device_id);

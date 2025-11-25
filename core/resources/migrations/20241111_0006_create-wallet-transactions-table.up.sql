@@ -8,3 +8,5 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
 
     FOREIGN KEY (wallet_id) REFERENCES wallets (id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS index_wallet_transactions_wallet_id ON wallet_transactions(wallet_id);

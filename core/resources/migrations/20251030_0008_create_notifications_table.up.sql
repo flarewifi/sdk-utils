@@ -7,3 +7,5 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS index_notifications_status ON notifications(status);
