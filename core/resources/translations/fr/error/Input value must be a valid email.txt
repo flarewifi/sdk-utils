@@ -1,0 +1,1 @@
+La valeur saisie doit être un e-mail valide

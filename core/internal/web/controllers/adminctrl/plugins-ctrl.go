@@ -60,6 +60,7 @@ func PluginsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			PluginInstallZipURL:    pluginZipInstallURL,
 			PluginIndexURL:         pluginIndexURL,
 			CheckInstallStatusURL:  checkInstallStatusURL,
+			InstallingMessage:      g.CoreAPI.Translate("info", "Installing"),
 		}
 		page := views.IndexPage(g.CoreAPI, data, formRoutes)
 		view := sdkapi.ViewPage{
@@ -191,6 +192,7 @@ func PluginInstallIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			PluginInstallZipURL:    pluginZipInstallURL,
 			PluginIndexURL:         pluginIndexURL,
 			CheckInstallStatusURL:  checkInstallStatusURL,
+			InstallingMessage:      api.Translate("info", "Installing"),
 		})
 
 		view := sdkapi.ViewPage{
@@ -282,7 +284,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		go func(filePath string, filename, pluginName string) {
 			ctx := context.Background()
 
-			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
+			UpdateStatus(pluginName, InProgressStatus, "Installing", 50)
 
 			pluginTmpDir := filepath.Join(sdkutils.PathTmpDir, "plugins", "extracted", sdkutils.RandomStr(16))
 			if err := sdkutils.FsExtract(filePath, pluginTmpDir); err != nil {
@@ -436,7 +438,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		ctx := context.Background()
 
 		go func() {
-			UpdateStatus(pluginName, InProgressStatus, "Installing...", 50)
+			UpdateStatus(pluginName, InProgressStatus, "Installing", 50)
 
 			info, err := plugins.InstallFromGitSrc(g.Database.DB, sdkutils.PluginSrcDef{
 				Src:    sdkutils.PluginSrcGit,

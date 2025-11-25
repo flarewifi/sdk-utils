@@ -1,14 +1,20 @@
 package general
 
-import "sdk/api"
+import (
+	"fmt"
+	"sdk/api"
+	"core/internal/utils/sysinfo"
+)
 
 type AdminGeneralSettingsIndexParams struct {
-	Cfg                sdkapi.AppConfig
-	MachineID          string
-	SoftwareVersion    string
-	ActivationStatus   string
-	Errors             sdkapi.FormErrors
-	SupportedLanguages []sdkapi.SupportedLanguage
+	Cfg                 sdkapi.AppConfig
+	MachineID           string
+	SoftwareVersion     string
+	ActivationStatus    string
+	Errors              sdkapi.FormErrors
+	SupportedLanguages  []sdkapi.SupportedLanguage
+	SupportedCurrencies []sdkapi.SupportedCurrency
+	SystemInfo          *sysinfo.SystemInfo
 }
 
 templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSettingsIndexParams) {
@@ -18,12 +24,12 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSettin
 		<!-- System Information Card -->
 		<div class="card mb-4">
 			<div class="card-header">
-				<h5 class="mb-0">System Information</h5>
+				<h5 class="mb-0">{ api.Translate("label", "System Information") }</h5>
 			</div>
 			<div class="card-body">
 				<div class="row align-items-center mb-2">
 					<div class="col-md-4">
-						<label class="form-label fw-bold">Machine ID</label>
+						<label class="form-label fw-bold">{ api.Translate("label", "Machine ID") }</label>
 					</div>
 					<div class="col-md-8">
 						<div class="form-control-plaintext">{ params.MachineID }</div>
@@ -31,7 +37,7 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSettin
 				</div>
 				<div class="row align-items-center mb-2">
 					<div class="col-md-4">
-						<label class="form-label fw-bold">Software Version</label>
+						<label class="form-label fw-bold">{ api.Translate("label", "Software Version") }</label>
 					</div>
 					<div class="col-md-8">
 						<div class="form-control-plaintext">{ params.SoftwareVersion }</div>
@@ -55,10 +61,11 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSettin
 				</div>
 			</div>
 		</div>
+
 		<!-- Application Settings Card -->
-		<div class="card">
+		<div class="card mb-4">
 			<div class="card-header">
-				<h5 class="mb-0">Application Settings</h5>
+				<h5 class="mb-0">{ api.Translate("label", "Application Settings") }</h5>
 			</div>
 			<div class="card-body">
 				<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:general:save")) }>
@@ -68,32 +75,119 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSettin
 							for _, lang := range params.SupportedLanguages {
 								<option value={ lang.Code } if params.Cfg.Lang == lang.Code { selected }>{ lang.Name }</option>
 							}
-					</select>
-					if params.Errors.HasError("language") {
-						<div class="text-danger mt-1">{ params.Errors.GetError("language") }</div>
-					}
+						</select>
+						if params.Errors.HasError("language") {
+							<div class="text-danger mt-1">{ params.Errors.GetError("language") }</div>
+						}
 					</div>
 					<div class="mb-3">
 						<label for="currency" class="form-label">{ api.Translate("label", "Currency") }</label>
 						<select class="form-select" id="currency" name="currency" required>
-							<option value="USD" if params.Cfg.Currency == "USD" { selected }>USD - US Dollar</option>
-							<option value="EUR" if params.Cfg.Currency == "EUR" { selected }>EUR - Euro</option>
-							<option value="GBP" if params.Cfg.Currency == "GBP" { selected }>GBP - British Pound</option>
-							<option value="JPY" if params.Cfg.Currency == "JPY" { selected }>JPY - Japanese Yen</option>
-							<option value="CNY" if params.Cfg.Currency == "CNY" { selected }>CNY - Chinese Yuan</option>
-							<option value="CAD" if params.Cfg.Currency == "CAD" { selected }>CAD - Canadian Dollar</option>
-							<option value="AUD" if params.Cfg.Currency == "AUD" { selected }>AUD - Australian Dollar</option>
-							<option value="CHF" if params.Cfg.Currency == "CHF" { selected }>CHF - Swiss Franc</option>
-							<option value="INR" if params.Cfg.Currency == "INR" { selected }>INR - Indian Rupee</option>
-							<option value="MXN" if params.Cfg.Currency == "MXN" { selected }>MXN - Mexican Peso</option>
-					</select>
-					if params.Errors.HasError("currency") {
-						<div class="text-danger mt-1">{ params.Errors.GetError("currency") }</div>
-					}
+							for _, currency := range params.SupportedCurrencies {
+								<option value={ currency.Code } if params.Cfg.Currency == currency.Code { selected }>{ currency.Code } - { currency.Name }</option>
+							}
+						</select>
+						if params.Errors.HasError("currency") {
+							<div class="text-danger mt-1">{ params.Errors.GetError("currency") }</div>
+						}
 					</div>
 					<button type="submit" class="btn btn-primary">{ api.Translate("label", "Save Settings") }</button>
 				</form>
 			</div>
 		</div>
+
+		<!-- System Resources Card -->
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">{ api.Translate("label", "System Resources") }</h5>
+			</div>
+			<div class="card-body">
+				<div class="row">
+					<!-- CPU Card -->
+					<div class="col-md-4 mb-3">
+						<div class="card h-100">
+							<div class="card-header">
+								<h6 class="card-title mb-0">{ api.Translate("label", "CPU") }</h6>
+							</div>
+							<div class="card-body">
+								<p class="mb-2">
+									<strong>{ api.Translate("label", "Architecture") }:</strong>
+									<span>{ params.SystemInfo.Arch }</span>
+								</p>
+								<p class="mb-2"><strong>{ api.Translate("label", "Cores") }:</strong> { fmt.Sprintf("%d", params.SystemInfo.NumCPU) }</p>
+								if len(params.SystemInfo.CPUPercent) > 0 {
+									<p class="mb-1"><strong>{ api.Translate("label", "Usage per Core") }:</strong></p>
+									<ul class="list-unstyled ms-3 mb-2">
+										for i, percent := range params.SystemInfo.CPUPercent {
+											<li>Core { fmt.Sprintf("%d", i+1) }: { fmt.Sprintf("%.1f%%", percent) }</li>
+										}
+									</ul>
+								}
+								if len(params.SystemInfo.CPUTemperature) > 0 {
+									<p class="mb-1"><strong>{ api.Translate("label", "Temperature") }:</strong></p>
+									<ul class="list-unstyled ms-3">
+										for i, temp := range params.SystemInfo.CPUTemperature {
+											<li>Sensor { fmt.Sprintf("%d", i) }: { fmt.Sprintf("%.1f°C", temp) }</li>
+										}
+									</ul>
+								}
+							</div>
+						</div>
+					</div>
+					<!-- Memory Card -->
+					<div class="col-md-4 mb-3">
+						<div class="card h-100">
+							<div class="card-header">
+								<h6 class="card-title mb-0">{ api.Translate("label", "Memory") }</h6>
+							</div>
+							<div class="card-body">
+								<p class="mb-2"><strong>{ api.Translate("label", "Total") }:</strong> { fmt.Sprintf("%.2f GB", float64(params.SystemInfo.MemTotal)/1024/1024/1024) }</p>
+								<p class="mb-2"><strong>{ api.Translate("label", "Used") }:</strong> { fmt.Sprintf("%.2f GB", float64(params.SystemInfo.MemUsed)/1024/1024/1024) }</p>
+								<p class="mb-2"><strong>{ api.Translate("label", "Usage") }:</strong> { fmt.Sprintf("%.1f%%", params.SystemInfo.MemUsedPercent) }</p>
+								@progressBar(params.SystemInfo.MemUsedPercent)
+							</div>
+						</div>
+					</div>
+					<!-- Disk Card -->
+					<div class="col-md-4 mb-3">
+						<div class="card h-100">
+							<div class="card-header">
+								<h6 class="card-title mb-0">{ api.Translate("label", "Disk") }</h6>
+							</div>
+							<div class="card-body">
+								<p class="mb-2"><strong>{ api.Translate("label", "Total") }:</strong> { fmt.Sprintf("%.2f GB", float64(params.SystemInfo.DiskTotal)/1024/1024/1024) }</p>
+								<p class="mb-2"><strong>{ api.Translate("label", "Used") }:</strong> { fmt.Sprintf("%.2f GB", float64(params.SystemInfo.DiskUsed)/1024/1024/1024) }</p>
+								<p class="mb-2"><strong>{ api.Translate("label", "Usage") }:</strong> { fmt.Sprintf("%.1f%%", params.SystemInfo.DiskUsedPercent) }</p>
+								@progressBar(params.SystemInfo.DiskUsedPercent)
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 	</div>
+}
+
+templ progressBar(percent float64) {
+	<div class="progress" style="height: 20px;">
+		<div
+			class={ fmt.Sprintf("progress-bar %s", getProgressBarColor(percent)) }
+			role="progressbar"
+			aria-valuenow={ fmt.Sprintf("%.0f", percent) }
+			aria-valuemin="0"
+			aria-valuemax="100"
+		>
+			@templ.Raw(fmt.Sprintf(`<style>.progress-bar[aria-valuenow="%.0f"] { width: %.1f%% }</style>`, percent, percent))
+			{ fmt.Sprintf("%.1f%%", percent) }
+		</div>
+	</div>
+}
+
+func getProgressBarColor(percent float64) string {
+	if percent >= 90 {
+		return "bg-danger"
+	} else if percent >= 75 {
+		return "bg-warning"
+	}
+	return "bg-success"
 }

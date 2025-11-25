@@ -16,11 +16,11 @@ templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) {
 		<p class="alert alert-danger">Error: { err.Error() }</p>
 		{{ return }}
 	}
-	<p>Downloading updates...</p>
-	<p>Download Percent: { fmt.Sprintf("%d", percent) }</p>
+	<p>{ api.Translate("info", "Downloading updates") }</p>
+	<p>{ api.Translate("label", "Download Percent") }: { fmt.Sprintf("%d", percent) }</p>
 }
 
 templ DownloadDonePage(api sdkapi.IPluginApi) {
-    <p>Software updates has been downloaded successfully. Reboot to apply softare updates.</p>
-    <a class="btn btn-info" hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") } hx-confirm="Are you sure?">Reboot Now</a>
+    <p>{ api.Translate("success", "Software updates have been downloaded successfully. Reboot to apply software updates.") }</p>
+    <a class="btn btn-info" hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") } hx-confirm={ api.Translate("label", "Are you sure?") }>{ api.Translate("label", "Reboot Now") }</a>
 }

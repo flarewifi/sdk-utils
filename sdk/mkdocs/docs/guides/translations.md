@@ -25,6 +25,8 @@ The translate method can also be called within views using the `{ api.Translate(
 <h1>{ api.Translate("label", "save") }</h1>
 ```
 
+When a translation file is missing, the running code will automatically generate it for each supported language. You can edit the translation files once they are generated.
+
 ## 2. Translations With Variables
 
 Let's say you want to display an amount in a label. You can use the  [IPluginApi.Translate](../api/plugin-api.md#translate) method with variables to achieve this. For example, if you have the following translation text with a vairable `amount`:
@@ -44,6 +46,34 @@ Likewise, you can use the [IPluginApi.Translate](../api/plugin-api.md#translate)
 ```
 
 ## 3. Best Practices for Translation Keys
+
+### Use Generic, Professional Wording
+
+**Avoid ellipsis (...), multiple exclamation marks (!!), and informal language in translation messages.** Use clear, professional wording that is appropriate for enterprise software.
+
+#### ❌ Bad Examples:
+```go
+// Avoid ellipsis - too informal
+api.Translate("info", "Loading data...")
+
+// Avoid multiple exclamation marks - too excited
+api.Translate("success", "Data saved successfully!!")
+
+// Avoid casual language
+api.Translate("error", "Oops! Something went wrong")
+```
+
+#### ✅ Good Examples:
+```go
+// Use clear, professional wording
+api.Translate("info", "Loading data")
+
+// Use single punctuation appropriately
+api.Translate("success", "Data saved successfully")
+
+// Use professional error messages
+api.Translate("error", "An error occurred while processing your request")
+```
 
 ### Use Generic Phrases, Not Concatenated Variables
 
@@ -73,14 +103,6 @@ With content using Go template placeholders:
 <% .label %> must be at least <% .min %> characters
 ```
 
-### Benefits of This Approach
-
-1. **Reusability**: The same translation key can be used for different fields (Username, Password, etc.)
-2. **Maintainability**: Translation keys are descriptive and don't change with variable values
-3. **Localization**: Translators see the full context and can properly localize the message
-4. **Consistency**: All similar validation messages use the same generic keys
-5. **Type Safety**: Variables are passed as named parameters, reducing errors
-
 ### Common Generic Translation Keys
 
 For form validation, use these generic keys:
@@ -92,4 +114,30 @@ For form validation, use these generic keys:
 - `"File upload is required"` → `<% .label %> is required`
 - `"Invalid file extension uploaded"` → `Invalid file extension for <% .label %>. Allowed extensions: <% .extensions %>`
 
-This pattern ensures your translations are professional, maintainable, and properly localizable.
+### Use Professional Wording
+
+**Avoid ellipsis (...), multiple exclamation marks (!!), and informal language in translation messages.** Use clear, professional wording appropriate for enterprise software.
+
+#### ❌ Bad Examples:
+```go
+// Avoid ellipsis - too informal
+api.Translate("info", "Loading data...")
+
+// Avoid multiple exclamation marks - too excited
+api.Translate("success", "Data saved successfully!!")
+
+// Avoid casual language
+api.Translate("error", "Oops! Something went wrong")
+```
+
+#### ✅ Good Examples:
+```go
+// Use clear, professional wording
+api.Translate("info", "Loading data")
+
+// Use single punctuation appropriately
+api.Translate("success", "Data saved successfully")
+
+// Use professional error messages
+api.Translate("error", "An error occurred while processing your request")
+```

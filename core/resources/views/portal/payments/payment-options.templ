@@ -7,29 +7,69 @@ type PaymentOption struct {
 	URL  string
 }
 
-templ PaymentOptions(api sdkapi.IPluginApi, opts []PaymentOption) {
+templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opts []PaymentOption) {
 	<div class="payment-checkout-container">
-		<div class="checkout-header">
-			<div class="checkout-icon">
-				<span class="glyphicon glyphicon-shopping-cart"></span>
+		<div class="purchase-summary">
+			<div class="summary-header">
+				<div class="checkout-icon">
+					<span class="glyphicon glyphicon-shopping-cart"></span>
+				</div>
+				<h3 class="summary-title">{ api.Translate("label", "Purchase Summary") }</h3>
 			</div>
-			<h1 class="checkout-title">{ api.Translate("label", "Pending Purchase") }</h1>
-			<p class="checkout-subtitle">{ api.Translate("label", "Choose Payment Option") }</p>
+			<div class="summary-content">
+				<table class="table">
+					<tbody>
+						<tr class="summary-item product-name">
+							<td class="summary-label">{ api.Translate("label", "Item") }</td>
+							<td class="summary-value">{ purchase.Name() }</td>
+						</tr>
+						if purchase.Description() != "" {
+							<tr class="summary-item product-description">
+								<td class="summary-label">{ api.Translate("label", "Description") }</td>
+								<td class="summary-value">{ purchase.Description() }</td>
+							</tr>
+						}
+						<tr class="summary-item product-sku">
+							<td class="summary-label">{ api.Translate("label", "SKU") }</td>
+							<td class="summary-value">{ purchase.Sku() }</td>
+						</tr>
+						<tr class="summary-divider">
+							<td colspan="2"><hr class="divider-line"/></td>
+						</tr>
+						<tr class="summary-item summary-price">
+							<td class="summary-label price-label">{ api.Translate("label", "Total Price") }</td>
+							<td class="summary-value price-amount">
+								if purchase.IsFixedPrice() {
+									{ api.Payments().FormatCurrency(purchase.Price()) }
+								} else {
+									{ api.Translate("label", "Any Amount") }
+								}
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
-		<div class="payment-options-grid">
-			for _, opt := range opts {
-				<a href={ templ.SafeURL(opt.URL) } class="payment-option-card" aria-label={ "Select " + opt.Label }>
-					<div class="payment-card-inner">
-						<div class="payment-icon">
-							<span class="glyphicon glyphicon-credit-card"></span>
-						</div>
+		<div class="payment-options-section">
+			<h3 class="payment-options-title">{ api.Translate("label", "Choose Payment Options") }</h3>
+			<div class="payment-options-grid">
+				for _, opt := range opts {
+					<a href={ templ.SafeURL(opt.URL) } class="payment-option-card" aria-label={ "Select " + opt.Label }>
+						<div class="payment-card-inner">
+							<div class="payment-icon">
+								<span class="glyphicon glyphicon-credit-card"></span>
+							</div>
 						<h3 class="payment-name">{ opt.Label }</h3>
 						<div class="payment-arrow">
 							<span class="glyphicon glyphicon-chevron-right"></span>
 						</div>
+						<div class="payment-loading-spinner">
+							<div class="spinner-icon"></div>
+						</div>
 					</div>
-				</a>
-			}
+					</a>
+				}
+			</div>
 		</div>
 		<div class="checkout-footer">
 			<p class="secure-text">

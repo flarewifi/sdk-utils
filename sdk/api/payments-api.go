@@ -8,12 +8,17 @@ package sdkapi
 
 import (
 	"net/http"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-// List of supported currencies
+// Re-export currency types from sdk-utils
+type SupportedCurrency = sdkutils.SupportedCurrency
+
 const (
-	CurrencyPhilippinePeso string = "PHP"
-	CurrencyUsDollar       string = "USD"
+	CurrencyPhilippinePeso = sdkutils.CurrencyPhilippinePeso
+	CurrencyUsDollar       = sdkutils.CurrencyUsDollar
+	CurrencyNigerianNaira  = sdkutils.CurrencyNigerianNaira
 )
 
 // IPaymentsApi is used to handle customer payments.
@@ -32,4 +37,7 @@ type IPaymentsApi interface {
 
 	// Returns the purchase request by its unique identifier.
 	FindPurchaseRequestByUID(uid string) (IPurchaseRequest, error)
+
+	// Formats a float64 amount as currency string using the current application currency.
+	FormatCurrency(amount float64) string
 }

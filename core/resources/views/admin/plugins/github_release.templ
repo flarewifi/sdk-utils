@@ -47,7 +47,7 @@ templ ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) {
 							{{ pairs := []string{"pkg", pluginPkg, "tag" , release.TagName }}}
 							{{ url := api.Http().Helpers().UrlForRoute("admin:plugins:get-update", pairs...) }}
 							<a href={ templ.SafeURL(url) }>
-								Click Here
+								{ api.Translate("label", "Click Here") }
 							</a>
 						</td>
 					</tr>

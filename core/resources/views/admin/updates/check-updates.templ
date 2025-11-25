@@ -3,69 +3,116 @@ package updatesview
 import "sdk/api"
 
 type SoftwareUpdate struct {
-	EventProgress    string
 	HasUpdate        bool
 	CurrentVersion   string
 	NewVersion       string
-	IsDownloading    bool
-	IsDownloaded     bool
 	ReleaseNotes     string
 	ReleaseNotesHTML templ.Component
 }
 
 templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) {
 	<div id="page">
-		<div>
-			<h3 class="mb-3">Software Updates</h3>
-			<form>
-				<div class="mb-3">
-					<label for="channel" class="form-label">Update Channel</label>
-					<select class="form-select" id="channel" name="channel">
-						<option value="stable" if channel == "stable" { selected }>Stable</option>
-						<option value="beta" if channel == "beta" { selected }>Beta</option>
-						<option value="development" if channel == "development" { selected }>Development</option>
-					</select>
-				</div>
-				<button class="btn btn-primary mb-3" type="submit" 
-					hx-target="#page" 
-					hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:query") } 
-					hx-include="[name='channel']"
-					data-loading-disable>
-					Check for updates
-				</button>
-			</form>
+		<div class="card shadow-sm">
+			<div class="card-body">
+				<h3 class="card-title mb-4">{ api.Translate("label", "Software Updates") }</h3>
+				
+				if err != nil {
+					<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+						<strong>{ api.Translate("label", "Error") }:</strong> { err.Error() }
+						<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+					</div>
+				}
+				
+				<form>
+					<div class="mb-3">
+						<label for="channel" class="form-label">{ api.Translate("label", "Update Channel") }</label>
+						<select class="form-select" id="channel" name="channel" aria-describedby="channel-help">
+							<option value="stable" if channel == "stable" { selected }>
+								{ api.Translate("label", "Stable") } - { api.Translate("label", "Recommended") }
+							</option>
+							<option value="beta" if channel == "beta" { selected }>
+								{ api.Translate("label", "Beta") } - { api.Translate("label", "Pre-release") }
+							</option>
+							<option value="development" if channel == "development" { selected }>
+								{ api.Translate("label", "Development") } - { api.Translate("label", "Cutting edge") }
+							</option>
+						</select>
+						<div id="channel-help" class="form-text">
+							{ api.Translate("label", "Select the update channel for your system") }
+						</div>
+					</div>
+					
+					<button class="btn btn-primary" type="submit" 
+						hx-target="#page" 
+						hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:query") } 
+						hx-include="[name='channel']"
+						data-loading-disable>
+						<span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" data-loading></span>
+						<span data-loading-class="d-none">{ api.Translate("label", "Check for updates") }</span>
+						<span class="d-none" data-loading>{ api.Translate("label", "Checking for updates") }...</span>
+					</button>
+				</form>
+			</div>
 		</div>
-		if err != nil {
-			<div class="text-danger" data-loading-class="d-none">{ err.Error() }</div>
-		}
-		<div data-loading>{ api.Translate("label", "Checking for updates") }... </div>
 	</div>
 }
 
 templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err error) {
 	if err != nil {
-		<div class="alert alert-danger">{ err.Error() }</div>
+		<div class="alert alert-danger alert-dismissible fade show" role="alert">
+			<strong>{ api.Translate("label", "Error") }:</strong> { err.Error() }
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
 		{{ 	return }}
 	}
 	if !update.HasUpdate {
-		<div class="alert alert-success">{ api.Translate("label", "Software up to Date") }</div>
+		<div class="alert alert-success alert-dismissible fade show" role="alert">
+			<i class="bi bi-check-circle me-2"></i>
+			{ api.Translate("label", "Software up to Date") }
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
 		{{ return }}
 	}
-	<div>
-		<div>{ api.Translate("label", "New Version") }: { update.NewVersion }</div>
-		<div>
-			<small>{ api.Translate("label", "Current Version") }: { update.CurrentVersion }</small>
-		</div>
-		if update.ReleaseNotes != "" {
-			<div class="mt-3 mb-3">
-				<strong>{ api.Translate("label", "Release Notes") }:</strong>
-				<div class="alert alert-info mt-2">
-					@update.ReleaseNotesHTML
+	<div class="card border-secondary shadow-sm">
+		<div class="card-body">
+			<h4 class="card-title text-info mb-4">
+				<i class="bi bi-arrow-up-circle me-2"></i>
+				{ api.Translate("label", "Update Available") }
+			</h4>
+			
+			<div class="row mb-4">
+				<div class="col-md-6">
+					<div class="p-3 rounded border border-secondary">
+						<small class="text-body-secondary d-block">{ api.Translate("label", "Current Version") }</small>
+						<code class="fs-5 d-block mt-2">{ update.CurrentVersion }</code>
+					</div>
+				</div>
+				<div class="col-md-6">
+					<div class="p-3 rounded border border-info bg-info bg-opacity-10">
+						<small class="text-info-emphasis d-block fw-bold">{ api.Translate("label", "New Version") }</small>
+						<code class="fs-5 text-info-emphasis fw-bold d-block mt-2">{ update.NewVersion }</code>
+					</div>
 				</div>
 			</div>
-		}
-		<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:download")) }>
-			{ api.Translate("label", "Download Update") }
-		</a>
+			
+			if update.ReleaseNotes != "" {
+				<div class="mb-4">
+					<h5 class="mb-3">
+						<i class="bi bi-file-text me-2"></i>
+						{ api.Translate("label", "Release Notes") }
+					</h5>
+					<div class="p-3 rounded border border-secondary overflow-auto" style="max-height: 400px;">
+						@update.ReleaseNotesHTML
+					</div>
+				</div>
+			}
+			
+			<div class="d-flex justify-content-start gap-2">
+				<a class="btn btn-primary" href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:download")) }>
+					<i class="bi bi-download me-2"></i>
+					{ api.Translate("label", "Download and Install Update") }
+				</a>
+			</div>
+		</div>
 	</div>
 }

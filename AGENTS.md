@@ -6,9 +6,62 @@
 - It has two types of build:
   - With go plugins - it can install/uninstall plugins using native go "plugin" package
   - Monolithic build - all plugins are compiled as a single binary
+- Plugin-based architecture allows third-party developers to extend functionality
+- Core should remain minimal and stable - new features should be plugins when possible
 
-## DO NOT
-- Do not run docker container to check if the build succeeds
+## ⚠️ CRITICAL: Core vs Plugin Development
+
+### Default Strategy: Prefer Plugin Development
+
+**ALWAYS assume the user wants plugin-specific features unless explicitly told otherwise.**
+
+- ✅ **New features** → Create as plugins
+- ✅ **Custom functionality** → Develop in plugins
+- ✅ **Optional features** → Plugin architecture
+- ❌ **Core modifications** → Only with explicit user confirmation
+
+### When to Modify Core
+
+Only modify core files when:
+- User **explicitly requests** core modification
+- User **explicitly confirms** your plan to modify core
+- Fixing bugs in existing core functionality
+- Adding foundational APIs that plugins will use
+- Modifying shared infrastructure (HTTP server, database layer, plugin system)
+
+### Core File Protection
+
+**NEVER modify without explicit permission:**
+- `core/resources/migrations/` - **CRITICAL**: Core database schema
+- `core/resources/queries/` - Core SQL queries
+- `core/resources/views/` - Core view templates
+- `core/internal/api/` - Core API implementation
+- `sdk/` - Plugin API and utilities
+- `tools/` - Build tools
+
+**Safe to modify (plugin development):**
+- `data/plugins/local/{plugin-name}/` - Plugin-specific code
+- `plugins/system/{plugin-name}/` - System plugins (when explicitly developing that plugin)
+
+## Critical Rules
+
+### DO NOT
+
+- Do not run docker container to check if the build succeeds - docker is already running and watching files
+- NEVER import `sdk/api` into `sdk/utils` - this creates import cycles. `sdk/utils` should only contain basic utilities and types, while `sdk/api` can import from `sdk/utils`
+- NEVER modify core migrations when building plugin features - each plugin must have its own migrations
+- NEVER hardcode user-facing text - always use the translations API (`api.Translate()`)
+- NEVER modify `go.work` or `go.mod` files without explicit permission - these control critical dependencies
+
+### ALWAYS
+
+- Use translations API for ALL user-facing text
+- Support both PostgreSQL and SQLite in queries
+- Use `int64` for database IDs
+- Use ES5 JavaScript syntax (no ES6+)
+- Check docker logs to verify builds (`Listening on port :3000` = success)
+- Prefer plugin development over core modifications
+- Use named parameters in SQL queries (`@parameter_name`)
 
 ## Build/Dev/Test
 
@@ -64,3 +117,96 @@
 - Similar queries for `postgres` and `sqlite` must produce similar Go code
 - Column overrides are configured in `core/sqlc.postgres.yml` and `core/sqlc.sqlite.yml`
 - For IDs, we use `int64` type
+
+### Plugin-Specific Migrations
+
+- **CRITICAL**: Each plugin must have its own migrations directory (e.g., `data/plugins/local/{plugin-name}/resources/migrations/`)
+- Plugin migrations should **only** create tables/schemas specific to that plugin
+- Use proper foreign key constraints to reference core tables, but **never alter core tables**
+- If a plugin needs data from core tables, use JOIN queries instead of modifying core schema
+- Plugin queries should be in the plugin's own `resources/queries/` directory
+
+## Translations & Internationalization
+
+### Critical Rule: Always Use Translations API
+
+**ALL user-facing text must use the translations API** - no hardcoded strings allowed.
+
+### In Go Code
+```go
+// Flash messages
+api.Http().Response().FlashMsg(
+    w, r,
+    api.Translate("error", "Failed to create session"),
+    sdkapi.FlashMsgError,
+)
+
+// Error messages
+errorMsg := api.Translate("error", "Invalid input", "field", "email")
+
+// Labels and UI text
+label := api.Translate("label", "Username")
+```
+
+### In Templ Templates
+```templ
+// Page titles
+<h1>{ api.Translate("label", "Sessions") }</h1>
+
+// Table headers
+<th>{ api.Translate("label", "Device") }</th>
+
+// Buttons and links
+<button>{ api.Translate("label", "Save") }</button>
+
+// Form placeholders
+<input placeholder={ api.Translate("label", "Enter name") }/>
+```
+
+### In JavaScript
+- User-facing strings (alerts, notifications, UI labels) must be translated
+- Pass translated strings from backend or use translation endpoint
+- Debug/console logs can remain in English (not user-facing)
+
+### Translation Types
+- `"label"` - UI labels, buttons, navigation, form fields
+- `"error"` - Error messages shown to users
+- `"success"` - Success messages
+- `"info"` - Informational messages
+- `"warning"` - Warning messages
+- Custom types as needed for your plugin
+
+### Exception: Debug Logs
+- Internal debug logs and development console output can remain in English
+- Anything displayed to end users **must** be translated
+
+## Frontend Development
+
+### CSS Frameworks
+- **Bootstrap 3.4.1** - Portal pages only (captive portal for end users)
+- **Bootstrap 5.3.3** - Admin dashboard only
+- Never mix versions - check which section you're working in
+
+### JavaScript
+- **ES5 syntax only** - Maximum browser compatibility for embedded devices
+- Use `var` instead of `let`/`const`
+- Use `function() {}` instead of arrow functions `() => {}`
+- No template literals - use string concatenation
+- No modern ES6+ features
+
+### Libraries
+- **htmx v1.9.12** - Primary dynamic HTML framework
+- **Alpine.js** - Reactive components (admin dashboard)
+- **jQuery** - v1.12.4 (core), v3.7.1 (theme)
+
+### Asset Loading
+- Assets defined in `manifest.admin.json` and `manifest.portal.json`
+- Use `ViewAssets` struct to specify JS/CSS per page
+- Global assets (`global.js`, `global.css`) load automatically
+- Docker watch mode auto-rebuilds assets
+
+### URL Generation
+- **NEVER hardcode URLs** - always use `api.Http().Helpers().UrlForRoute()`
+- Route naming: `section:subsection:action` (e.g., `"admin:plugins:install"`)
+- Parameters as key-value pairs: `UrlForRoute("admin:device:info", "id", deviceID)`
+- Wrap with `templ.SafeURL()` for href/action attributes

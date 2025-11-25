@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"tools"
 	"tools/config"
+	toolsenv "tools/env"
 	"tools/plugins"
 	"tools/tags"
 
@@ -127,6 +128,13 @@ func main() {
 		// Copy app files to tmp output directory
 		if err := sdkutils.FsCopy(filepath.Join(sdkutils.PathAppDir, f), filepath.Join(outputDir, f)); err != nil {
 			panic(fmt.Errorf("failed to copy %s to tmp output directory: %w", f, err))
+		}
+	}
+
+	// Skip translation compression in dev mode
+	if toolsenv.GO_ENV != toolsenv.ENV_DEV {
+		if err := sdkutils.CompressAllTranslations(outputDir); err != nil {
+			panic(fmt.Errorf("failed to compress translations: %w", err))
 		}
 	}
 

@@ -1,0 +1,1 @@
+Esto apagará el sistema. Todas las sesiones activas serán terminadas.

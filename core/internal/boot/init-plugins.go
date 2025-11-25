@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"core/internal/api"
+	"tools/config"
 	"tools/env"
 	"tools/migrate"
 	"tools/plugins"
@@ -29,6 +30,15 @@ func InitPlugins(g *api.CoreGlobals) {
 		}
 	}
 
+	// Get current language for translations (only needed if not in dev mode)
+	currentLang := "en"
+	if env.GO_ENV != env.ENV_DEV {
+		cfg, err := config.ReadApplicationConfig()
+		if err == nil {
+			currentLang = cfg.Lang
+		}
+	}
+
 	// Load plugins
 	pluginDirs := plugins.InstalledPluginDirs()
 	log.Println("Installed plugin directories:", pluginDirs)
@@ -45,6 +55,13 @@ func InitPlugins(g *api.CoreGlobals) {
 			}
 
 			continue
+		}
+
+		// Ensure plugin translations are available for current language (skip in dev mode)
+		if env.GO_ENV != env.ENV_DEV {
+			if err := sdkutils.EnsureTranslations(dir, currentLang); err != nil {
+				log.Printf("Warning: Failed to ensure translations for plugin %s: %v", info.Package, err)
+			}
 		}
 
 		p := api.NewPluginApi(dir, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr)
