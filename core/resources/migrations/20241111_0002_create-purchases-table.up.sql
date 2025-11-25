@@ -23,6 +23,3 @@ CREATE TABLE IF NOT EXISTS purchases (
 );
 
 CREATE INDEX IF NOT EXISTS index_purchases_device_id ON purchases(device_id);
-
-
-CREATE INDEX IF NOT EXISTS index_purchases_device_id ON purchases(device_id);

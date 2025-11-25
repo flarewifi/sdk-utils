@@ -8,5 +8,3 @@ CREATE TABLE IF NOT EXISTS wallets (
 );
 
 CREATE INDEX IF NOT EXISTS index_wallets_device_id ON wallets(device_id);
-
-CREATE INDEX IF NOT EXISTS index_wallets_device_id ON wallets(device_id);

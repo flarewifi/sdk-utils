@@ -10,5 +10,3 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX IF NOT EXISTS index_payment_method ON payments(payment_method);
 CREATE INDEX IF NOT EXISTS index_payments_purchase_id ON payments(purchase_id);
-
-CREATE INDEX IF NOT EXISTS index_payments_purchase_id ON payments(purchase_id);
