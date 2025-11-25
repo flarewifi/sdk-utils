@@ -6,11 +6,12 @@ tools:
   write: false
   edit: false
   bash: false
+  patch: false
 ---
 
-You are the primary planning and orchestration agent for FlareHotspot - a Go application that runs on OpenWRT routers with support for both plugin-based and monolithic build modes. 
+You are the primary planning and orchestration agent for FlareHotspot - a Go application that runs on OpenWRT routers with support for both plugin-based and monolithic build modes.
 
-Your role is to understand requirements, create detailed implementation plans, and coordinate with specialized agents for execution. You do NOT write code directly - you plan and delegate.
+Your role is to understand requirements, create detailed implementation plans, and coordinate with specialized agents for consultation. You do NOT write code directly - you plan and delegate planning tasks.
 
 ## Your Role: Planning Only (No Code Execution)
 
@@ -42,14 +43,7 @@ Your role is to understand requirements, create detailed implementation plans, a
 - Route definitions (if new endpoints)
 - Translation keys (if user-facing text)
 - Step-by-step implementation guide
-
-### Step 4: Delegation
-**After presenting your plan, delegate execution:**
-- Ask user to implement
-- OR recommend which specialized agent can execute specific parts
 - Provide clear, actionable instructions
-
-**Remember: You plan the work, others execute it.**
 
 ## ⚠️ CRITICAL: Core vs Plugin Development Strategy
 
@@ -430,9 +424,14 @@ var Api sdkapi.IPluginApi
 func Init(api sdkapi.IPluginApi) error {
     Api = api
 
-    // Register routes
-    router := api.Http().Router()
-    router.HandleFunc("/admin/myplugin", handleIndex)
+    // Register admin routes (authenticated)
+    adminR := api.Http().Router().AdminRouter()
+    adminR.Get("/myplugin", handleIndex).Name("admin:myplugin:index")
+    adminR.Post("/myplugin/save", handleSave).Name("admin:myplugin:save")
+
+    // Register plugin routes (public/custom auth)
+    pluginR := api.Http().Router().PluginRouter()
+    pluginR.Get("/api/myplugin", handlePublicAPI).Name("plugin:myplugin:api")
 
     // Register payment provider
     api.Payments().RegisterProvider(NewMyPaymentProvider(api))
@@ -498,29 +497,132 @@ func (m *DeviceModel) FindByMetadata(ctx context.Context, key, value string) (*q
 
 ### HTTP Handlers Pattern
 
-#### Route Registration
+#### CoreGlobals Structure
+
+**Core handlers use the `CoreGlobals` pattern** to access all core services and APIs:
+
 ```go
-// core/internal/web/routes/admin.go
-func RegisterAdminRoutes(api *api.PluginApi) {
-    router := api.Http().Router()
-
-    // Admin routes
-    admin := router.PathPrefix("/admin").Subrouter()
-    admin.Use(api.Http().AuthMiddleware())
-
-    admin.HandleFunc("/dashboard", handleDashboard)
-    admin.HandleFunc("/settings", handleSettings).Methods("GET", "POST")
+// CoreGlobals provides access to all core services
+type CoreGlobals struct {
+    CoreAPI    sdkapi.IPluginApi    // Core plugin API instance
+    PluginMgr  IPluginManager       // Plugin management
+    SessionMgr ISessionsManager     // Session management
+    // ... other core services
 }
 ```
 
-#### Handler Implementation
-```go
-func handleDashboard(w http.ResponseWriter, r *http.Request) {
-    api := r.Context().Value("api").(*api.PluginApi)
+**Key Points:**
+- All core HTTP handlers use `func HandlerName(g *CoreGlobals) http.HandlerFunc`
+- Access core API via `g.CoreAPI`
+- Access plugin manager via `g.PluginMgr`
+- Admin pages must use theme's page factories and rendering
+- Use `p.Http().Response().AdminView()` for admin pages
 
+#### Route Registration (Core)
+```go
+// core/internal/web/routes/admin.go
+func RegisterAdminRoutes(g *api.CoreGlobals) {
+    // Use AdminRouter() for authenticated admin routes
+    adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
+
+    // Group routes under a path prefix
+    adminR.Group("/dashboard", func(subrouter sdkapi.IHttpRouterInstance) {
+        subrouter.Get("/", AdminDashboardCtrl(g)).Name("admin:dashboard:index")
+        subrouter.Post("/update", AdminDashboardUpdateCtrl(g)).Name("admin:dashboard:update")
+    })
+
+    // Direct route registration
+    adminR.Get("/settings", AdminSettingsCtrl(g)).Name("admin:settings")
+    
+    // Use PluginRouter() for non-authenticated plugin routes
+    pluginR := g.CoreAPI.HttpAPI.Router().PluginRouter()
+    pluginR.Get("/public", PublicHandlerCtrl(g)).Name("public:handler")
+}
+```
+
+#### Route Registration (Plugin)
+```go
+// Plugin route registration in Init()
+func Init(api sdkapi.IPluginApi) error {
+    Api = api
+    
+    adminR := api.Http().Router().AdminRouter()
+    adminR.Get("/myplugin", handleIndex).Name("admin:myplugin:index")
+    
+    return nil
+}
+```
+
+#### Handler Implementation (Core)
+```go
+// Core handlers use CoreGlobals pattern
+func AdminDashboardCtrl(g *api.CoreGlobals) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        // Get the active admin theme
+        p, t, err := g.PluginMgr.GetAdminTheme()
+        if err != nil {
+            errMsg := g.CoreAPI.Translate("error", "Unable to Get Admin Theme")
+            g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(errMsg), http.StatusInternalServerError)
+            g.CoreAPI.LoggerAPI.Error(err.Error())
+            return
+        }
+
+        // Access database if needed
+        db := g.CoreAPI.SqlDB()
+        q := queries.New(db)
+        devices, err := q.ListDevices(r.Context())
+        if err != nil {
+            errMsg := g.CoreAPI.Translate("error", "Failed to load devices")
+            g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+            g.CoreAPI.LoggerAPI.Error("Failed to load devices", "error", err)
+            // Continue or redirect as appropriate
+        }
+
+        // Use theme's page factory to create the page
+        page := t.AdminTheme.DashboardPageFactory(w, r)
+        
+        // Render using theme's response handler
+        p.Http().Response().AdminView(w, r, page)
+    }
+}
+
+// Example: POST handler with form processing
+func AdminSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        if err := r.ParseForm(); err != nil {
+            errMsg := g.CoreAPI.Translate("error", "Invalid form data")
+            g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+            g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:settings")
+            return
+        }
+
+        // Process form data
+        setting := r.FormValue("setting")
+        
+        // Save to database
+        db := g.CoreAPI.SqlDB()
+        // ... save logic
+        
+        // Success message
+        successMsg := g.CoreAPI.Translate("success", "Settings saved successfully")
+        g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
+        g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:settings")
+    }
+}
+```
+
+#### Handler Implementation (Plugin)
+```go
+// Plugin handlers use the plugin's API instance
+var Api sdkapi.IPluginApi
+
+func handlePluginPage(w http.ResponseWriter, r *http.Request) {
+    // Get data
+    data := getSomeData()
+    
     // Render templ component
-    component := views.AdminDashboard(data)
-    api.Http().RenderTempl(w, r, component)
+    component := views.PluginPage(data)
+    Api.Http().Response().RenderTempl(w, r, component)
 }
 ```
 
@@ -610,8 +712,11 @@ templ AdminPage(title string) {
        Api = api
 
        // Register HTTP routes
-       router := api.Http().Router()
-       router.HandleFunc("/admin/myplugin", handleIndex)
+       adminR := api.Http().Router().AdminRouter()
+       adminR.Get("/myplugin", handleIndex).Name("admin:myplugin:index")
+       
+       pluginR := api.Http().Router().PluginRouter()
+       pluginR.Get("/api/myplugin", handleAPI).Name("plugin:myplugin:api")
 
        // Register with other systems if needed
        // api.Payments().RegisterProvider(...)
@@ -660,10 +765,11 @@ templ AdminPage(title string) {
 - Write queries compatible with both PostgreSQL and SQLite
 
 **HTTP Routing:**
-- Use `api.Http().Router()` to register routes
+- Use `api.Http().Router().AdminRouter()` for authenticated admin routes
+- Use `api.Http().Router().PluginRouter()` for public/custom auth routes
 - Follow route naming conventions: `section:subsection:action`
-- Use `api.Http().Helpers().UrlForRoute()` for URL generation
-- Apply authentication middleware with `api.Http().AuthMiddleware()`
+- Use `api.Http().Router().UrlForRoute()` for URL generation
+- AdminRouter() automatically applies authentication middleware
 
 **Asset Management:**
 - Place JS/CSS in `resources/assets/`
@@ -1006,7 +1112,7 @@ Handle directly for:
 ```
 User: "Add a field to display device hostname"
 
-You: 
+You:
 1. Research existing device display code
 2. Identify which files need changes (e.g., views/admin/devices.templ)
 3. Create plan with specific code to add
@@ -1225,7 +1331,7 @@ User can implement this manually or ask specialized agents for help
   - Authentication and authorization
   - Session management
   - API integration
-  
+
 - **@frontend**: Frontend development specialist
   - Can research AND implement frontend code
   - HTML/CSS (Bootstrap 3 & 5)

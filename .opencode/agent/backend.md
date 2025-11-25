@@ -7,6 +7,7 @@ tools:
   write: false
   edit: false
   bash: false
+  patch: false
 ---
 
 # Backend Agent for FlareHotspot
@@ -188,23 +189,42 @@ router.Get("/path", handler, middleware1, middleware2).Name("route:name")
 
 ### Generate URLs from Route Names
 
+**For Plugins:**
 ```go
 // Within same plugin
-url := api.Http().Helpers().UrlForRoute("admin:sessions:index")
+url := api.Http().Router().UrlForRoute("admin:sessions:index")
 // Returns: /p/com.example.plugin/1.0.0/admin/sessions
 
 // With parameters
-url := api.Http().Helpers().UrlForRoute(
+url := api.Http().Router().UrlForRoute(
     "admin:sessions:delete",
     "id", "123",
 )
 // Returns: /p/com.example.plugin/1.0.0/admin/sessions/delete/123
 
 // From another plugin
-url := api.Http().Helpers().UrlForPkgRoute(
+url := api.Http().Router().UrlForPkgRoute(
     "com.other.plugin",
     "admin:feature:index",
 )
+```
+
+**For Core:**
+```go
+// Within core handlers using CoreGlobals
+url := g.CoreAPI.HttpAPI.Router().UrlForRoute("admin:dashboard")
+
+// With parameters
+url := g.CoreAPI.HttpAPI.Router().UrlForRoute(
+    "admin:devices:show",
+    "id", "123",
+)
+```
+
+**Legacy Helper (Still Available):**
+```go
+// Also available via Helpers() - both work
+url := api.Http().Helpers().UrlForRoute("admin:sessions:index")
 ```
 
 ### URL Generation in Views (templ)
@@ -214,27 +234,29 @@ templ SessionList(api sdkapi.IPluginApi, sessions []Session) {
     <div>
         for _, session := range sessions {
             <div>
-                <a href={ templ.URL(api.Http().Helpers().UrlForRoute(
+                <a href={ templ.URL(api.Http().Router().UrlForRoute(
                     "admin:sessions:show",
                     "id", fmt.Sprint(session.ID),
                 )) }>
-                    View Session
+                    { api.Translate("label", "View Session") }
                 </a>
 
                 <form
-                    hx-post={ api.Http().Helpers().UrlForRoute(
+                    hx-post={ api.Http().Router().UrlForRoute(
                         "admin:sessions:delete",
                         "id", fmt.Sprint(session.ID),
                     ) }
-                    hx-confirm="Delete this session?"
+                    hx-confirm={ api.Translate("confirm", "Delete this session?") }
                 >
-                    <button type="submit">Delete</button>
+                    <button type="submit">{ api.Translate("label", "Delete") }</button>
                 </form>
             </div>
         }
     </div>
 }
 ```
+
+**Note:** Both `api.Http().Router().UrlForRoute()` and `api.Http().Helpers().UrlForRoute()` work, but using `Router()` is the direct API method.
 
 ## View Rendering
 
@@ -364,7 +386,218 @@ api.Http().Response().RedirectToPortal(w, r)
 
 ## Controller Patterns
 
-### Standard Controller Structure
+### ⚠️ CRITICAL: Two Different Controller Patterns
+
+**FlareHotspot uses different controller patterns for core vs plugin handlers:**
+
+1. **Core Handlers** (in `core/internal/web/controllers/`):
+   ```go
+   func HandlerName(g *api.CoreGlobals) http.HandlerFunc {
+       return func(w http.ResponseWriter, r *http.Request) {
+           // Access core services via g.CoreAPI, g.Models, g.PluginMgr, etc.
+       }
+   }
+   ```
+
+2. **Plugin Handlers** (in `data/plugins/local/{plugin}/app/controllers/`):
+   ```go
+   func HandlerName(api sdkapi.IPluginApi) http.HandlerFunc {
+       return func(w http.ResponseWriter, r *http.Request) {
+           // Access plugin API via api.Http(), api.Models(), etc.
+       }
+   }
+   ```
+
+**Key Differences:**
+
+| Aspect | Core Handlers | Plugin Handlers |
+|--------|---------------|-----------------|
+| **Parameter** | `g *api.CoreGlobals` | `api sdkapi.IPluginApi` |
+| **Pointer?** | Yes (`*api.CoreGlobals`) | No (interface type) |
+| **HTTP API** | `g.CoreAPI.HttpAPI` | `api.Http()` |
+| **Database** | `g.Models` | `api.Models()` |
+| **Translation** | `g.CoreAPI.Translate()` | `api.Translate()` |
+| **Logger** | `g.CoreAPI.LoggerAPI` | `api.Logger()` |
+| **Plugin Manager** | `g.PluginMgr` | `api.Http().Helpers().PluginMgr()` |
+| **Theme Access** | `g.PluginMgr.GetAdminTheme()` | N/A (plugins don't access themes) |
+| **Location** | `core/internal/web/controllers/` | `data/plugins/*/app/controllers/` |
+
+### CoreGlobals Structure (Core Handlers Only)
+
+**Core handlers use the `CoreGlobals` pattern** to access all core services:
+
+```go
+// CoreGlobals provides access to all core services
+type CoreGlobals struct {
+    GlobalAssets   *GlobalAssets      // Global asset management
+    Database       *db.Database       // Database connection
+    State          *AppState          // Application state
+    CoreAPI        *PluginApi         // Core plugin API instance
+    ClientRegister *connmgr.ClientRegister  // Client registration
+    ClientMgr      *connmgr.SessionsMgr     // Session management
+    TrafficMgr     *network.TrafficMgr      // Traffic management
+    Models         *models.Models     // Database models
+    PluginMgr      *PluginsMgr       // Plugin management
+    PaymentsMgr    *PaymentsMgr      // Payment management
+}
+```
+
+**Key Differences:**
+- **Core handlers**: Use `func HandlerName(g *api.CoreGlobals) http.HandlerFunc`
+- **Plugin handlers**: Use `func HandlerName(api sdkapi.IPluginApi) http.HandlerFunc`
+
+### Core Controller Pattern (Admin Pages with Theme)
+
+```go
+package adminctrl
+
+import (
+    "errors"
+    "net/http"
+    "core/internal/api"
+)
+
+func AdminIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        // 1. Get the active admin theme
+        p, t, err := g.PluginMgr.GetAdminTheme()
+        if err != nil {
+            errMsg := g.CoreAPI.Translate("error", "Unable to Get Admin Theme")
+            g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(errMsg), http.StatusInternalServerError)
+            g.CoreAPI.LoggerAPI.Error(err.Error())
+            return
+        }
+
+        // 2. Use theme's page factory to create the page
+        page := t.AdminTheme.IndexPageFactory(w, r)
+        
+        // 3. Render using theme's response handler
+        p.Http().Response().AdminView(w, r, page)
+    }
+}
+```
+
+### Core Controller Pattern (With Data Access)
+
+```go
+func AdminDashboardCtrl(g *api.CoreGlobals) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        // 1. Get theme
+        p, t, err := g.PluginMgr.GetAdminTheme()
+        if err != nil {
+            errMsg := g.CoreAPI.Translate("error", "Unable to Get Admin Theme")
+            g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(errMsg), http.StatusInternalServerError)
+            g.CoreAPI.LoggerAPI.Error(err.Error())
+            return
+        }
+
+        // 2. Access database using CoreGlobals.Models
+        ctx := r.Context()
+        sessions, err := g.Models.Session().ListActive(ctx)
+        if err != nil {
+            g.CoreAPI.LoggerAPI.Error("Failed to load sessions", "error", err)
+            // Continue with empty data or show error
+        }
+
+        devices, err := g.Models.Device().List(ctx)
+        if err != nil {
+            g.CoreAPI.LoggerAPI.Error("Failed to load devices", "error", err)
+        }
+
+        // 3. Create page with data
+        page := t.AdminTheme.DashboardPageFactory(w, r, sessions, devices)
+        
+        // 4. Render
+        p.Http().Response().AdminView(w, r, page)
+    }
+}
+```
+
+### Core Controller Pattern (POST with Form Processing)
+
+```go
+func AdminSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        // 1. Parse form
+        if err := r.ParseForm(); err != nil {
+            errMsg := g.CoreAPI.Translate("error", "Invalid form data")
+            g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+            g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:settings")
+            return
+        }
+
+        // 2. Validate form
+        validator := g.CoreAPI.HttpAPI.Forms().NewValidator()
+        validator.Required("setting_name", r.FormValue("setting_name"))
+        
+        if !validator.Valid() {
+            errors := validator.Errors()
+            // Re-render form with errors
+            p, t, _ := g.PluginMgr.GetAdminTheme()
+            page := t.AdminTheme.SettingsPageFactory(w, r, errors)
+            p.Http().Response().AdminView(w, r, page)
+            return
+        }
+
+        // 3. Save to database
+        ctx := r.Context()
+        err := g.Models.Config().Update(ctx, r.FormValue("setting_name"), r.FormValue("value"))
+        if err != nil {
+            errMsg := g.CoreAPI.Translate("error", "Failed to save settings")
+            g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+            g.CoreAPI.LoggerAPI.Error("Save failed", "error", err)
+            g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:settings")
+            return
+        }
+
+        // 4. Success
+        successMsg := g.CoreAPI.Translate("success", "Settings saved successfully")
+        g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
+        g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:settings")
+    }
+}
+```
+
+### Core Route Registration
+
+```go
+// core/internal/web/routes/admin.go
+func RegisterAdminRoutes(g *api.CoreGlobals) {
+    // Use CoreAPI to access router
+    adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
+
+    // Register routes with CoreGlobals handlers
+    adminR.Get("/dashboard", adminctrl.AdminDashboardCtrl(g)).Name("admin:dashboard")
+    adminR.Get("/settings", adminctrl.AdminSettingsCtrl(g)).Name("admin:settings")
+    adminR.Post("/settings/save", adminctrl.AdminSettingsSaveCtrl(g)).Name("admin:settings:save")
+
+    // Group routes
+    adminR.Group("/devices", func(subrouter sdkapi.IHttpRouterInstance) {
+        subrouter.Get("/", adminctrl.DevicesListCtrl(g)).Name("admin:devices:index")
+        subrouter.Get("/{id}", adminctrl.DeviceShowCtrl(g)).Name("admin:devices:show")
+    })
+}
+```
+
+### Plugin Route Registration
+
+```go
+// data/plugins/local/myplugin/app/routes.go
+func SetupRoutes(api sdkapi.IPluginApi) {
+    // Get plugin routers
+    adminR := api.Http().Router().AdminRouter()
+    pluginR := api.Http().Router().PluginRouter()
+
+    // Register routes with plugin handlers (pass api, not &api)
+    adminR.Get("/inventory", controllers.SalesInventoryFormCtrl(api)).Name("admin:inventory:form")
+    adminR.Post("/inventory/save", controllers.SalesInventorySaveCtrl(api)).Name("admin:inventory:save")
+
+    // Portal routes
+    pluginR.Get("/purchase", controllers.PortalPurchaseCtrl(api)).Name("portal:purchase")
+}
+```
+
+### Plugin Controller Pattern (Standard)
 
 ```go
 package controllers
@@ -375,6 +608,7 @@ import (
     "com.example.plugin/app/views"
 )
 
+// Note: api is sdkapi.IPluginApi, NOT a pointer (*sdkapi.IPluginApi)
 func ShowResourceCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         // 1. Get route parameters
@@ -416,7 +650,7 @@ func ShowResourceCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 }
 ```
 
-### Form Processing Controller
+### Plugin Form Processing Controller
 
 ```go
 func CreateResourceCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
@@ -429,7 +663,7 @@ func CreateResourceCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
             return
         }
 
-        // 2. Validate form
+        // 2. Validate form with translations
         validator := api.Http().Forms().NewValidator()
         validator.Required("name", r.FormValue("name"))
         validator.MinLength("name", r.FormValue("name"), 3)
@@ -450,13 +684,15 @@ func CreateResourceCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
             Email: r.FormValue("email"),
         })
         if err != nil {
-            api.Http().Response().FlashMsg(w, r, "Failed to create resource", sdkapi.FlashMsgError)
+            errMsg := api.Translate("error", "Failed to create resource")
+            api.Http().Response().FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
             api.Http().Response().Redirect(w, r, "admin:resources:new")
             return
         }
 
-        // 4. Success response
-        api.Http().Response().FlashMsg(w, r, "Resource created", sdkapi.FlashMsgSuccess)
+        // 4. Success response with translation
+        successMsg := api.Translate("success", "Resource created successfully")
+        api.Http().Response().FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
         api.Http().Response().Redirect(w, r, "admin:resources:show", "id", resource.ID)
     }
 }

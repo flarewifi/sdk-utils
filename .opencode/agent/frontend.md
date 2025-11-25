@@ -7,6 +7,7 @@ tools:
   write: false
   edit: false
   bash: false
+  patch: false
 ---
 
 # Frontend Agent for FlareHotspot
@@ -51,7 +52,7 @@ Your role is to:
 - **Bootstrap Icons 1.13.1**: Icon library for admin dashboard
 
 ### JavaScript Libraries & Versions
-- **jQuery**: 
+- **jQuery**:
   - v1.12.4 (core assets - for ES5 compatibility)
   - v3.7.1 (default theme)
 - **htmx v1.9.12**: Primary framework for dynamic HTML
@@ -213,7 +214,7 @@ res.View(w, r, sdkapi.ViewPage{
 @data.Components.Head()       // Loads CSS from ViewAssets
 @data.Components.Scripts()    // Loads JS from ViewAssets
 
-// Portal layout  
+// Portal layout
 @PortalHead(api, data)        // Includes polyfills + CSS
 @PortalScripts(data, flash)   // Scripts with flash messages
 ```

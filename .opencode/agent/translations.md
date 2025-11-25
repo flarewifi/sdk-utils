@@ -7,6 +7,7 @@ tools:
   write: false
   edit: false
   bash: false
+  patch: false
 ---
 
 # Translations Agent for FlareHotspot
@@ -163,7 +164,7 @@ User: "We need to translate all untranslated content"
 Translations Agent (you):
 - Scans all languages
 - Identifies: 200 Spanish, 180 French, 150 Arabic files need translation
-- Returns: "Recommend parallel processing: assign Spanish to Agent 1, French to Agent 2, 
+- Returns: "Recommend parallel processing: assign Spanish to Agent 1, French to Agent 2,
   Arabic to Agent 3 for faster completion"
 
 Coordinator spawns 3 parallel agents:
@@ -175,14 +176,14 @@ Agent 1 (Spanish):
 - Verifies completion
 
 Agent 2 (French) - simultaneously:
-- translate-scan(language="fr")  
+- translate-scan(language="fr")
 - Generates French translations
 - translate-batch(updates=[...french...])
 - Verifies completion
 
 Agent 3 (Arabic) - simultaneously:
 - translate-scan(language="ar")
-- Generates Arabic translations  
+- Generates Arabic translations
 - translate-batch(updates=[...arabic...])
 - Verifies completion
 
@@ -590,7 +591,7 @@ templ SessionsTable(api sdkapi.IPluginApi, sessions []Session) {
 templ SessionForm(api sdkapi.IPluginApi, errors map[string]string, formData url.Values) {
     <form method="POST" action={ templ.URL(api.Http().Helpers().UrlForRoute("admin:sessions:create")) }>
         @templ.Raw(api.Http().Helpers().CsrfHtmlTag(r))
-        
+
         <div class="mb-3">
             <label for="device_id" class="form-label">
                 { api.Translate("label", "Device ID") }
@@ -920,7 +921,7 @@ User: "Are there untranslated Spanish error messages?"
 
 Translations Agent (you):
 - Analyzes request
-- Returns: "Recommend using translate-scan with operation='list-untranslated', 
+- Returns: "Recommend using translate-scan with operation='list-untranslated',
   type='error', language='es' to find untranslated Spanish error messages"
 
 Parent Agent:

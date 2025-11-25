@@ -7,6 +7,7 @@ tools:
   write: false
   edit: false
   bash: false
+  patch: false
 ---
 
 # SQL Agent for FlareHotspot
