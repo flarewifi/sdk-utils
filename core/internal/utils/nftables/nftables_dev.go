@@ -4,19 +4,20 @@ package nftables
 
 import (
 	"log"
-	"strings"
 	"sync"
 
 	jobque "tools/job-que"
 )
 
 const (
-	// internetTable string = "internet"
-	// forward       string = "FORWARD"
-	// prerouting    string = "PREROUTING"
-	connMacMap string = "connected_macs_map"
-	connIpMap  string = "connected_ips_map"
-	// connMacSet    string = "connected_macs_set"
+	fw4Table        string = "fw4"      // OpenWrt default table (for jump rules)
+	internetTable   string = "internet" // Our custom table
+	tableFamily     string = "inet"     // inet family (handles both ipv4 and ipv6)
+	forwardChain    string = "forward"
+	preroutingChain string = "prerouting"
+	connMacMap      string = "connected_macs_map"
+	connIpMap       string = "connected_ips_map"
+	connMacSet      string = "connected_macs_set"
 )
 
 var nftQue = jobque.NewJobQue[bool]()
@@ -60,10 +61,6 @@ func doDisconnect(_ string, mac string) error {
 	}
 	log.Println("nftables disconnected: " + mac)
 	return nil
-}
-
-func JumpChain(mac string) string {
-	return "counter_" + strings.ReplaceAll(mac, ":", "")
 }
 
 func Cleanup() {}

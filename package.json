@@ -12,5 +12,5 @@
   "license": "ISC",
   "main": "index.js",
   "name": "@flare/core",
-  "version": "0.1.16"
+  "version": "0.1.21"
 }

@@ -27,11 +27,12 @@ var (
 	ErrExtract          = errors.New("System update error: extract failed")
 	ErrChecksumMismatch = errors.New("System update error: checksum verification failed")
 
-	osReleaseFile   = "/etc/os_release.json"
-	downloading     atomic.Bool
-	downloadPercent atomic.Int32
-	prevPercent     atomic.Int32
-	downloadError   atomic.Pointer[error]
+	osReleaseFile        = "/etc/os_release.json"
+	downloadCompleteFile = ".download-complete"
+	downloading          atomic.Bool
+	downloadPercent      atomic.Int32
+	prevPercent          atomic.Int32
+	downloadError        atomic.Pointer[error]
 )
 
 type SoftwareReleaseUpdate struct {
@@ -119,6 +120,10 @@ func DownloadSoftwareRelease(releaseFileUrl string, md5sum string) {
 		defer downloading.Store(false)
 		defer downloadPercent.Store(0)
 		defer prevPercent.Store(0)
+
+		// Remove any existing completion marker before starting new download
+		markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
+		os.Remove(markerPath)
 
 		if err := sdkutils.FsEmptyDir(sdkutils.PathPluginUpdatesDir); err != nil {
 			downloadError.Store(&err)
@@ -241,6 +246,13 @@ func downloadSystemFile(fileURL string, expectedChecksum string) (resultCh chan 
 		}
 
 		log.Println("Compressed update file downloaded to", downloadFilePath)
+
+		// Create completion marker file
+		markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
+		if err := os.WriteFile(markerPath, []byte("complete"), 0644); err != nil {
+			log.Println("Warning: failed to create download completion marker:", err)
+		}
+
 		result := DownloadResult{Percent: 100}
 		resultCh <- result
 	}()
@@ -266,5 +278,6 @@ func DownloadError() error {
 }
 
 func IsDownloaded() bool {
-	return sdkutils.FsExists(sdkutils.PathSystemUpdateDir)
+	markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
+	return sdkutils.FsExists(markerPath)
 }

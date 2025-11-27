@@ -1,8 +1,9 @@
+//go:build !dev
+
 package shell
 
 import (
 	"errors"
-	"io"
 	"log"
 	"os/exec"
 	"os/user"
@@ -12,14 +13,6 @@ import (
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
-
-type ExecOpts struct {
-	User   *string
-	Stdout io.Writer
-	Stderr io.Writer
-	Dir    string
-	Env    []string
-}
 
 var shell string
 

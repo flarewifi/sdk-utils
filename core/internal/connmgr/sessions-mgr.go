@@ -378,15 +378,21 @@ func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClient
 		return summary, nil
 	}
 
-	timeDiff, mbDiff := rs.Diff()
-	remainingTime := summary.RemainingTimeSecs - timeDiff
+	// Get unsaved data consumption diff
+	mbDiff := rs.Diff()
+
+	// Time is calculated dynamically in RemainingTime(), so use it directly
+	remainingTime := rs.GetSession().RemainingTime()
 	if remainingTime < 0 {
 		remainingTime = 0
 	}
+
+	// Subtract unsaved data consumption from remaining data
 	remainingData := summary.RemainingDataMbytes - mbDiff
 	if remainingData < 0 {
 		remainingData = 0
 	}
+
 	return &sdkapi.ClientSessionSummary{
 		RemainingTimeSecs:   remainingTime,
 		RemainingDataMbytes: remainingData,
