@@ -5,6 +5,5 @@ import (
 )
 
 func main() {
-	tools.SyncCoreVersion()
 	tools.SyncGoVersion()
 }
