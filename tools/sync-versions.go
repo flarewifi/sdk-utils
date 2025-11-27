@@ -6,27 +6,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
-
-func SyncCoreVersion() {
-	version := plugins.GetCoreInfo().Version
-	packageJSON := "package.json"
-	var pkg map[string]any
-	err := sdkutils.JsonRead(packageJSON, &pkg)
-	if err != nil {
-		panic(err)
-	}
-	pkg["version"] = version
-	err = sdkutils.JsonWrite(packageJSON, pkg)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Updated package.json version to", version)
-}
 
 func SyncGoVersion() {
 	b, err := os.ReadFile(filepath.Join(sdkutils.PathAppDir, ".go-version"))
