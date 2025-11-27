@@ -1,1 +1,1 @@
-Admin Dashboard
+Tableau de Bord Admin

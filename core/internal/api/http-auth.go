@@ -70,7 +70,7 @@ func (self *HttpAuth) IsAuthenticated(r *http.Request) (sdkapi.IAccount, error) 
 }
 
 func (self *HttpAuth) Authenticate(username string, password string) (sdkapi.IAccount, error) {
-	ErrAuthenticationFailed := errors.New(self.api.CoreAPI.Translate("error", "Athentication failed"))
+	ErrAuthenticationFailed := errors.New(self.api.CoreAPI.Translate("error", "Authentication failed"))
 
 	acct, err := accounts.Find(username)
 	if err != nil {

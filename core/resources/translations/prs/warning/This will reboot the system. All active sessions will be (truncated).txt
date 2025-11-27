@@ -1,1 +1,1 @@
-This will reboot the system. All active sessions will be (truncated)
+این سیستم را راه‌اندازی مجدد خواهد کرد. همه نشست‌های فعال خاتمه خواهند شد.

@@ -1,1 +1,1 @@
-This will reboot the system. All active sessions will be (truncated)
+यह सिस्टम को पुनः प्रारंभ करेगा। सभी सक्रिय सत्र समाप्त कर दिए जाएंगे।

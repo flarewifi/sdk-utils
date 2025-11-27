@@ -1,1 +1,1 @@
-This will shut down the system. All active sessions will (truncated)
+Это выключит систему. Все активные сеансы будут завершены.

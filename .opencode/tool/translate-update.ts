@@ -3,8 +3,11 @@ import * as fs from "fs"
 import * as path from "path"
 
 export default tool({
-  description: "Update FlareHotspot translation files with language-specific translations",
+  description: "Update a single FlareHotspot translation file for a specific language. Language parameter is REQUIRED.",
   args: {
+    language: tool.schema
+      .string()
+      .describe("REQUIRED: Language code (en, es, fr, am, ar, id, in, prs, ps, ru, sw)"),
     filePath: tool.schema
       .string()
       .describe("Relative path from project root to translation file (e.g., core/resources/translations/es/label/Welcome.txt)"),
@@ -18,23 +21,77 @@ export default tool({
       .describe("Create the file if it doesn't exist"),
   },
   async execute(args, context) {
-    const { filePath, content, createMissing = false } = args
+    const { language, filePath, content, createMissing = false } = args
 
     try {
+      // Validate language parameter
+      if (!language) {
+        return `❌ ERROR: The 'language' parameter is REQUIRED.
+
+Usage: translate-update({ language: "xx", filePath: "...", content: "..." })
+
+Supported languages: en, es, fr, am, ar, id, in, prs, ps, ru, sw
+
+💡 TIP: Use translate-scan with operation="list-languages" to see all supported languages.`
+      }
+      
+      // Validate language code format
+      if (!/^[a-z]{2,3}$/.test(language)) {
+        return `❌ ERROR: Invalid language code format: "${language}"
+Language codes must be 2-3 lowercase letters.
+
+Supported languages: en, es, fr, am, ar, id, in, prs, ps, ru, sw`
+      }
+      
+      // Validate language is supported
+      const supportedLanguages = ["en", "es", "fr", "am", "ar", "id", "in", "prs", "ps", "ru", "sw"]
+      if (!supportedLanguages.includes(language)) {
+        return `❌ ERROR: Unsupported language: "${language}"
+
+Supported languages: ${supportedLanguages.join(", ")}
+
+💡 TIP: Use translate-scan with operation="list-languages" to see all supported languages.`
+      }
+      
       // Get current working directory (should be project root)
       const cwd = process.cwd()
       const fullPath = path.join(cwd, filePath)
+
+      // Validate that this is a translation file
+      if (!filePath.includes('/translations/') || !filePath.endsWith('.txt')) {
+        return `❌ ERROR: Invalid translation file path. Must be in /translations/ directory and end with .txt
+
+Provided path: ${filePath}`
+      }
+
+      // Extract language from path and validate it matches the language parameter
+      const langMatch = filePath.match(/\/translations\/([a-z]{2,3})\//)
+      if (!langMatch) {
+        return `❌ ERROR: Could not extract language code from file path.
+
+File path must contain /translations/{language}/ pattern.
+Provided path: ${filePath}
+Expected language: ${language}`
+      }
+      
+      const pathLanguage = langMatch[1]
+      if (pathLanguage !== language) {
+        return `❌ ERROR: Language mismatch!
+
+Language parameter: ${language}
+Language in file path: ${pathLanguage}
+
+The language parameter must match the language in the file path.
+Either change the language parameter to "${pathLanguage}" or update the file path to use /translations/${language}/`
+      }
 
       // Check if file exists
       const fileExists = fs.existsSync(fullPath)
       
       if (!fileExists && !createMissing) {
-        return `Error: File does not exist: ${filePath}\nUse createMissing: true to create it.`
-      }
+        return `❌ ERROR: File does not exist: ${filePath}
 
-      // Validate that this is a translation file
-      if (!filePath.includes('/translations/') || !filePath.endsWith('.txt')) {
-        return `Error: Invalid translation file path. Must be in /translations/ directory and end with .txt`
+Use createMissing: true to create it.`
       }
 
       // Create directory if it doesn't exist
@@ -48,18 +105,22 @@ export default tool({
       if (fileExists) {
         oldContent = fs.readFileSync(fullPath, "utf-8")
       }
-
-      // Extract language from path
-      const langMatch = filePath.match(/\/translations\/([a-z]{2,3})\//)
-      const language = langMatch ? langMatch[1] : 'unknown'
       
       // Write new content
       fs.writeFileSync(fullPath, content, "utf-8")
 
       const action = fileExists ? "Updated" : "Created"
-      return `✅ ${action} translation file [${language.toUpperCase()}]: ${filePath}\n\nOld content:\n${oldContent || "(new file)"}\n\nNew content:\n${content}`
+      return `✅ ${action} ${language.toUpperCase()} translation: ${filePath}
+
+Old content:
+${oldContent || "(new file)"}
+
+New content:
+${content}
+
+💡 TIP: Use translate-batch to update multiple ${language.toUpperCase()} files at once`
     } catch (error) {
-      return `Error updating translation: ${error}`
+      return `❌ ERROR updating translation: ${error}`
     }
   },
 })
