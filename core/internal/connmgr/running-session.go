@@ -36,19 +36,19 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*Run
 }
 
 type RunningSession struct {
-	mu         sync.RWMutex
-	clntId     int64
-	ip         string
-	mac        string
-	lan        *network.NetworkLan
-	tcClassId  *tc.TcClassId
-	tcFilter   *tc.TcFilter
-	timeTicker *time.Ticker
-	tickerDone chan bool
-	session    sdkapi.IClientSession
-	diffTime   int
-	diffMb     float64
-	callbacks  []chan error
+	mu          sync.RWMutex
+	clntId      int64
+	ip          string
+	mac         string
+	lan         *network.NetworkLan
+	tcClassId   *tc.TcClassId
+	tcFilter    *tc.TcFilter
+	timeTimer   *time.Timer
+	timerCancel context.CancelFunc
+	timerCtx    context.Context
+	session     sdkapi.IClientSession
+	diffMb      float64
+	callbacks   []chan error
 }
 
 func (self *RunningSession) ClientId() int64 {
@@ -78,10 +78,10 @@ func (self *RunningSession) Done() <-chan error {
 	return ch
 }
 
-func (self *RunningSession) Diff() (secs int, mb float64) {
+func (self *RunningSession) Diff() (mb float64) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
-	return self.diffTime, self.diffMb
+	return self.diffMb
 }
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
@@ -110,9 +110,9 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 			}
 		}
 
-		if self.timeTicker == nil {
-			self.initTimeTicker()
-			log.Println("Session Tick has started...")
+		if self.timeTimer == nil {
+			self.initTimeTimer(s)
+			log.Println("Session timer has started...")
 		}
 
 		return nil, nil
@@ -124,13 +124,39 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 func (self *RunningSession) Stop(ctx context.Context) error {
 	_, err := sessionQue.Exec(func() (any, error) {
 		self.mu.Lock()
-		defer self.mu.Unlock()
+
+		// Calculate and record elapsed time since started_at
+		if self.session != nil && self.session.StartedAt() != nil {
+			elapsed := int(time.Since(*self.session.StartedAt()).Seconds())
+
+			// Add elapsed time to existing consumption
+			currentCons := self.session.TimeConsumption()
+			self.session.SetTimeCons(currentCons + elapsed)
+
+			log.Printf("Recording elapsed time: %d seconds (total consumption: %d)\n",
+				elapsed, currentCons+elapsed)
+
+			// Reset started_at to nil since session is stopping
+			self.session.SetStartedAt(nil)
+		}
 
 		err := self.save(ctx)
-		self.cleanUpTick()
-		self.runCallbacks(err)
+		self.cleanUpTimer()
 
-		return nil, nil
+		// Collect callbacks while holding lock
+		callbacks := self.callbacks
+		self.callbacks = []chan error{}
+
+		// Release lock before sending to channels
+		self.mu.Unlock()
+
+		// Send to callbacks without holding lock
+		for _, cb := range callbacks {
+			cb <- err
+		}
+		log.Println("Done running callbacks.")
+
+		return nil, err
 	})
 
 	return err
@@ -169,11 +195,11 @@ func (self *RunningSession) CleanupTc() error {
 
 func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	self.mu.Lock()
-	defer self.mu.Unlock()
 
 	download, dlOK := stats.Download[self.ip]
 	upload, upOK := stats.Upload[strings.ToUpper(self.mac)]
 
+	var shouldStop bool
 	if dlOK && upOK {
 		dataconMb := float64(download.Bytes+upload.Bytes) / (1 * 1000 * 1000)
 		log.Println("CONSUMPTION MB: ", dataconMb)
@@ -182,56 +208,84 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 
 		if self.isConsumed() {
 			log.Println("Session data is consumed!!!")
-			go self.Stop(context.Background())
+			shouldStop = true
 		}
+	}
+
+	self.mu.Unlock()
+
+	// Call Stop() after releasing the lock to avoid deadlock
+	if shouldStop {
+		go self.Stop(context.Background())
 	}
 }
 
-func (self *RunningSession) initTimeTicker() {
-	tickerCh := make(chan bool)
-	ticker := time.NewTicker(time.Second)
+func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
+	// Calculate remaining time
+	remainingSecs := s.RemainingTime()
 
-	self.timeTicker = ticker
-	self.tickerDone = tickerCh
+	if remainingSecs <= 0 {
+		log.Println("Session time already consumed, stopping immediately")
+		go self.Stop(context.Background())
+		return
+	}
 
+	// Create cancellable context
+	ctx, cancel := context.WithCancel(context.Background())
+	self.timerCtx = ctx
+	self.timerCancel = cancel
+
+	// Create timer for remaining duration
+	duration := time.Duration(remainingSecs) * time.Second
+	timer := time.NewTimer(duration)
+	self.timeTimer = timer
+
+	log.Printf("Session timer started for %d seconds\n", remainingSecs)
+
+	// Start timer goroutine
 	go func() {
-		self.mu.RLock()
-		s := self.session
-		self.mu.RUnlock()
+		// Periodic save ticker (every 15 seconds)
+		saveTicker := time.NewTicker(15 * time.Second)
+		defer saveTicker.Stop()
 
 		for {
 			select {
-			case <-tickerCh:
+			case <-ctx.Done():
+				// Timer was cancelled
+				log.Println("Session timer cancelled")
 				return
-			case <-ticker.C:
-				go func() {
-					self.mu.RLock()
-					defer self.mu.RUnlock()
 
-					s.IncTimeCons(1)
-					self.diffTime++
+			case <-timer.C:
+				// Timer expired - session time consumed
+				log.Println("Session timer expired - time consumed!")
+				go self.Stop(context.Background())
+				return
 
-					remaining := s.TimeSecs() - s.TimeConsumption()
-					log.Printf("time tick: %d remaining...\n", remaining)
+			case <-saveTicker.C:
+				// Periodic save
+				self.mu.RLock()
+				currentSession := self.session
+				self.mu.RUnlock()
 
-					// save every 15s
-					if s.TimeConsumption()%15 == 0 {
-						err := self.save(context.Background())
-						if err != nil {
-							log.Println(err)
-							go self.Stop(context.Background())
-							return
-						}
-						// reset diff counters
-						self.diffTime = 0
-						self.diffMb = 0
-					}
+				// Calculate elapsed time since started_at
+				if startedAt := currentSession.StartedAt(); startedAt != nil {
+					elapsed := int(time.Since(*startedAt).Seconds())
+					log.Printf("Periodic save: %d seconds elapsed, %d remaining\n",
+						elapsed, currentSession.RemainingTime())
+				}
 
-					if self.isConsumed() {
-						log.Println("Session time is consumed!!!")
-						go self.Stop(context.Background())
-					}
-				}()
+				// Save current state (data consumption changes)
+				err := self.save(context.Background())
+				if err != nil {
+					log.Println("Error saving session:", err)
+					go self.Stop(context.Background())
+					return
+				}
+
+				// Reset diff counter for data
+				self.mu.Lock()
+				self.diffMb = 0
+				self.mu.Unlock()
 			}
 		}
 	}()
@@ -281,15 +335,21 @@ func (self *RunningSession) updateTc() error {
 	return self.lan.ChangeClass(self.tcClassId.Uint(), downMbits, upMbits)
 }
 
-func (self *RunningSession) cleanUpTick() {
-	log.Println("Cleaning up session tick...")
-	if self.timeTicker != nil {
-		self.timeTicker.Stop()
-		self.timeTicker = nil
-		self.tickerDone <- true
-		self.tickerDone = nil
+func (self *RunningSession) cleanUpTimer() {
+	log.Println("Cleaning up session timer...")
+
+	if self.timerCancel != nil {
+		self.timerCancel() // Cancel the timer context
+		self.timerCancel = nil
+		self.timerCtx = nil
 	}
-	log.Println("Done cleaning session tick.")
+
+	if self.timeTimer != nil {
+		self.timeTimer.Stop()
+		self.timeTimer = nil
+	}
+
+	log.Println("Done cleaning session timer.")
 }
 
 func (self *RunningSession) save(ctx context.Context) error {
@@ -305,14 +365,6 @@ func (self *RunningSession) save(ctx context.Context) error {
 	return nil
 }
 
-func (self *RunningSession) runCallbacks(err error) {
-	for _, cb := range self.callbacks {
-		cb <- err
-	}
-	self.callbacks = []chan error{}
-	log.Println("Done running callbacks.")
-}
-
 func (self *RunningSession) expired() (ok bool) {
 	expiresAt := self.session.ExpiresAt()
 	if expiresAt != nil {
@@ -326,7 +378,7 @@ func (self *RunningSession) isConsumed() bool {
 	t := s.Type()
 
 	if t == sdkapi.SessionTypeTime || t == sdkapi.SessionTypeTimeOrData {
-		isTimeConsumed := s.TimeConsumption() >= s.TimeSecs()
+		isTimeConsumed := s.RemainingTime() <= 0
 		return isTimeConsumed || self.expired()
 	}
 

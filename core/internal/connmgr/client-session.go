@@ -157,7 +157,20 @@ func (self *ClientSession) DataConsumption() (mbytes float64) {
 func (self *ClientSession) RemainingTime() (sec int) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
-	return self.timeSecs - self.timeCons
+
+	remaining := self.timeSecs - self.timeCons
+
+	// If session is running, subtract elapsed time since started_at
+	if self.startedAt != nil {
+		elapsed := int(time.Since(*self.startedAt).Seconds())
+		remaining -= elapsed
+	}
+
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	return remaining
 }
 
 // RemainingData returns the session's remaining data in megabytes.

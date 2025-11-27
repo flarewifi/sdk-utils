@@ -2,29 +2,21 @@ package sdkutils
 
 import "fmt"
 
-func FormatDuration(secs int) string {
-	days := secs / (24 * 3600)
-	secs %= 24 * 3600
-
-	hours := secs / 3600
-	secs %= 3600
-
-	minutes := secs / 60
-	secs %= 60
-
-	result := ""
-	if days > 0 {
-		result += fmt.Sprintf("%dd ", days)
+// FormatByteData formats data in megabytes as a string, using GB if >= 1024 MB
+func FormatByteData(dataMB float64) string {
+	if dataMB >= 1024 {
+		return fmt.Sprintf("%.1fG", dataMB/1024)
 	}
-	if hours > 0 {
-		result += fmt.Sprintf("%dh ", hours)
-	}
-	if minutes > 0 {
-		result += fmt.Sprintf("%dm ", minutes)
-	}
-	if secs > 0 || result == "" {
-		result += fmt.Sprintf("%ds", secs)
-	}
+	return fmt.Sprintf("%.2f MB", dataMB)
+}
 
-	return result
+// FormatTimeSecs formats seconds into days:hours:minutes:seconds string
+func FormatTimeSecs(timeSec int) string {
+	days := timeSec / 86400
+	timeSec %= 86400
+	hours := timeSec / 3600
+	timeSec %= 3600
+	minutes := timeSec / 60
+	seconds := timeSec % 60
+	return fmt.Sprintf("%dd:%dh:%dm:%ds", days, hours, minutes, seconds)
 }
