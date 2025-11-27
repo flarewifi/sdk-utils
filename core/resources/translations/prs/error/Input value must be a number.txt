@@ -1,1 +1,1 @@
-Input value must be a number
+مقدار ورودی باید عدد باشد

@@ -1,1 +1,1 @@
-Are you sure you want to clear all logs?
+Вы уверены, что хотите очистить все журналы?

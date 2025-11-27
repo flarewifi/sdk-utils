@@ -1,2 +1,1 @@
-Buscar Actualizaciones
-
+Check for updates

@@ -13,14 +13,67 @@ templ DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, err err
 
 templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) {
 	if err != nil {
-		<p class="alert alert-danger">Error: { err.Error() }</p>
+		<div class="alert alert-danger alert-dismissible fade show" role="alert">
+			<i class="bi bi-exclamation-triangle me-2"></i>
+			<strong>{ api.Translate("label", "Error") }:</strong> { err.Error() }
+		</div>
 		{{ return }}
 	}
-	<p>{ api.Translate("info", "Downloading updates") }</p>
-	<p>{ api.Translate("label", "Download Percent") }: { fmt.Sprintf("%d", percent) }</p>
+	
+	<div class="card shadow-sm" x-data={ fmt.Sprintf("{percent: %d}", percent) }>
+		<div class="card-body">
+			<h4 class="card-title mb-4">
+				<i class="bi bi-download me-2"></i>
+				{ api.Translate("info", "Downloading updates") }
+			</h4>
+			
+			<div class="mb-3">
+				<div class="d-flex justify-content-between align-items-center mb-2">
+					<span class="text-body-secondary">{ api.Translate("label", "Download Progress") }</span>
+					<span class="badge bg-primary" x-text="`${percent}%`"></span>
+				</div>
+				
+				<div class="progress" style="height: 30px">
+					<div 
+						class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+						role="progressbar" 
+						:style="`width: ${percent}%`"
+						:aria-valuenow="percent"
+						aria-valuemin="0" 
+						aria-valuemax="100"
+						x-text="`${percent}%`">
+					</div>
+				</div>
+			</div>
+			
+			<div class="alert alert-info mb-0" role="alert">
+				<i class="bi bi-info-circle me-2"></i>
+				{ api.Translate("info", "Please wait while the update is being downloaded. Do not close this page or turn off the device.") }
+			</div>
+		</div>
+	</div>
 }
 
 templ DownloadDonePage(api sdkapi.IPluginApi) {
-    <p>{ api.Translate("success", "Software updates have been downloaded successfully. Reboot to apply software updates.") }</p>
-    <a class="btn btn-info" hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") } hx-confirm={ api.Translate("label", "Are you sure?") }>{ api.Translate("label", "Reboot Now") }</a>
+	<div class="card shadow-sm">
+		<div class="card-body">
+			<div class="alert alert-success mb-4" role="alert">
+				<i class="bi bi-check-circle me-2"></i>
+				{ api.Translate("success", "Software updates downloaded successfully. Reboot to apply.") }
+			</div>
+			
+			<div id="reboot-response"></div>
+			
+			<button 
+				type="button"
+				class="btn btn-primary" 
+				hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") } 
+				hx-target="#reboot-response"
+				hx-confirm={ api.Translate("label", "Are you sure?") }
+				data-loading-disable>
+				<i class="bi bi-arrow-clockwise me-2"></i>
+				{ api.Translate("label", "Reboot Now") }
+			</button>
+		</div>
+	</div>
 }

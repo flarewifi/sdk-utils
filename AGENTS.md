@@ -176,6 +176,15 @@ label := api.Translate("label", "Username")
 - `"warning"` - Warning messages
 - Custom types as needed for your plugin
 
+### Translation Key Length Limit
+
+**Keys with >10 words are automatically truncated to 10 words + " (truncated)"**
+
+- Truncation is **VALID** behavior - system handles it automatically
+- Files created: `First ten words of the key (truncated).txt`
+- Shorter keys preferred for readability, but truncated keys work fine
+- Build warnings are informational (8-10 words: INFO, 11+ words: WARNING)
+
 ### Exception: Debug Logs
 - Internal debug logs and development console output can remain in English
 - Anything displayed to end users **must** be translated

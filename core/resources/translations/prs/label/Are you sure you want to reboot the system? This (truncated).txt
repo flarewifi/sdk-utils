@@ -1,1 +1,1 @@
-Are you sure you want to reboot the system? This (truncated)
+آیا مطمئن هستید که می‌خواهید سیستم را راه‌اندازی مجدد کنید؟ این همه کاربران را قطع ارتباط خواهد کرد.

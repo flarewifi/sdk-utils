@@ -14,7 +14,7 @@ func RedirectToLanIP(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
 			res := api.Http().Response()
 			clnt, err := api.Http().GetClientDevice(r)
 			if err != nil {
-				res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+				res.FlashMsg(w, r, api.Translate("error", "Unable to get client device"), sdkapi.FlashMsgError)
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -22,14 +22,14 @@ func RedirectToLanIP(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
 			ip := clnt.IpAddr()
 			lan, err := network.FindByIp(ip)
 			if err != nil {
-				res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+				res.FlashMsg(w, r, api.Translate("error", "Unable to find network interface"), sdkapi.FlashMsgError)
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			lanIP, err := lan.GetInterface().IpV4Addr()
 			if err != nil {
-				res.FlashMsg(w, r, err.Error(), sdkapi.FlashMsgError)
+				res.FlashMsg(w, r, api.Translate("error", "Unable to get network address"), sdkapi.FlashMsgError)
 				next.ServeHTTP(w, r)
 				return
 			}

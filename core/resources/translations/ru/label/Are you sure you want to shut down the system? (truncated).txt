@@ -1,1 +1,1 @@
-Are you sure you want to shut down the system? (truncated)
+Вы уверены, что хотите выключить систему? Это отключит всех пользователей и выключит устройство.

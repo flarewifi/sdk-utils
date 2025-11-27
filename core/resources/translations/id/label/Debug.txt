@@ -1,1 +1,1 @@
-Debug
+Mode Debug

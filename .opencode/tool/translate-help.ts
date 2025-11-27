@@ -4,7 +4,7 @@ export default tool({
   description: "Get help and examples for FlareHotspot translation system",
   args: {
     topic: tool.schema
-      .enum(["overview", "usage", "variables", "types", "file-structure", "best-practices"])
+      .enum(["overview", "usage", "variables", "types", "file-structure", "best-practices", "languages"])
       .optional()
       .default("overview")
       .describe("Help topic to display"),
@@ -20,21 +20,51 @@ FlareHotspot Translation System Overview
 The translation system uses file-based translations with:
 - Location: resources/translations/{lang}/{type}/{key}.txt
 - API: api.Translate(type, key, ...variables)
-- Auto-generation: Missing files are created automatically
+- Source of Truth: English (/en) directory - all other languages sync from it
+- Auto-sync: Files in /en are automatically synced to other languages
 - Variables: Use <% .variableName %> syntax in .txt files
 
-Supported Languages: en, es, fr, am, ar, id, prs, ps, ru, sw
+⚠️ CRITICAL: Per-Language Operations
+- ALL translation tools require a language parameter
+- Exception: translate-scan with operation="list-languages"
+- Each tool operation works on ONE language at a time
+- Different AI agents can work on different languages in parallel
+
+⚠️ IMPORTANT: English-First Workflow
+- All translation files MUST be created in /en first
+- The scanner syncs /en files to other languages automatically
+- Auto-creation available: Use --create-missing flag to create from code references
+- Manual creation option: Create English files manually if preferred
 
 Tools available:
-- translate-scan: Scan for untranslated content
-- translate-update: Update a single translation file
-- translate-batch: Update multiple files at once
+- translate-scan: Scan for untranslated content (REQUIRES language param)
+- translate-update: Update a single translation file (REQUIRES language param)
+- translate-batch: Batch update files for ONE language (REQUIRES language param)
 - translate-help: This help system
 
-Example workflow:
-1. Run translate-scan to find untranslated content
-2. Use AI to generate translations
-3. Apply with translate-batch
+Command-line tools:
+- make translations-check: Validate translation coverage
+- make translation-report: Generate detailed markdown report
+- make find-missing LANG=xx: Find missing translations for a language
+
+Example workflow (automatic):
+1. List supported languages: translate-scan({ operation: "list-languages" })
+2. Add Translate() call in code
+3. Auto-create files: go run -tags="dev" ./tools/translator --create-missing
+4. Scan for untranslated: translate-scan({ operation: "list-untranslated", language: "es" })
+5. Use AI to generate translations
+6. Apply with translate-batch({ language: "es", updates: [...] })
+7. Validate: translate-scan({ operation: "validate", language: "es" })
+
+Example workflow (manual):
+1. List supported languages: translate-scan({ operation: "list-languages" })
+2. Add Translate() call in code
+3. Manually create English file in /en directory
+4. Run Go scanner to sync: go run -tags="dev" ./tools/translator
+5. Scan for untranslated: translate-scan({ operation: "list-untranslated", language: "es" })
+6. Use AI to generate translations
+7. Apply with translate-batch({ language: "es", updates: [...] })
+8. Validate: translate-scan({ operation: "validate", language: "es" })
 `,
 
       usage: `
@@ -140,6 +170,8 @@ DO:
 ✅ Translate ALL user-facing text
 ✅ Use appropriate translation types
 ✅ Test with different languages
+✅ Always specify language parameter in translation tools
+✅ Process one language at a time
 
 DON'T:
 ❌ Hardcode user-facing strings
@@ -148,6 +180,7 @@ DON'T:
 ❌ Skip translating error messages
 ❌ Create language-specific keys
 ❌ Translate debug/console logs
+❌ Mix different languages in a single batch update
 
 Generic key example:
   // Good
@@ -155,6 +188,91 @@ Generic key example:
   
   // Bad - creates different keys for each field
   api.Translate("error", fieldLabel + " must be at least " + min + " characters")
+
+Tool usage examples:
+  // Good - specify language
+  translate-scan({ operation: "summary", language: "es" })
+  translate-batch({ language: "fr", updates: [...] })
+  
+  // Bad - missing language parameter
+  translate-scan({ operation: "summary" }) // ❌ ERROR
+  translate-batch({ updates: [...] }) // ❌ ERROR
+`,
+
+      languages: `
+Supported Languages
+===================
+
+To see the current list of supported languages with full names:
+  translate-scan({ operation: "list-languages" })
+
+The list of supported languages is defined in:
+  tools/config/application.go (SupportedLanguages variable)
+
+Currently supported language codes:
+  en  - English (default, source of truth)
+  es  - Spanish
+  fr  - French
+  am  - Amharic
+  ar  - Arabic (Sudan)
+  id  - Indonesian
+  in  - Hindi
+  prs - Dari
+  ps  - Pashto
+  ru  - Russian
+  sw  - Swahili
+
+Per-Language Workflow:
+======================
+
+1. List languages:
+   translate-scan({ operation: "list-languages" })
+
+2. Scan for untranslated (REQUIRES language):
+   translate-scan({ operation: "list-untranslated", language: "es" })
+
+3. Update single file (REQUIRES language):
+   translate-update({ 
+     language: "es",
+     filePath: "core/resources/translations/es/label/Welcome.txt",
+     content: "Bienvenido"
+   })
+
+4. Batch update (REQUIRES language, all files must match):
+   translate-batch({
+     language: "es",
+     updates: [
+       { filePath: "core/.../es/label/Welcome.txt", content: "Bienvenido" },
+       { filePath: "core/.../es/error/Failed.txt", content: "Falló" }
+     ]
+   })
+
+5. Validate (REQUIRES language):
+   translate-scan({ operation: "validate", language: "es" })
+
+Parallel Processing:
+===================
+
+Different AI agents can work on different languages simultaneously:
+
+Agent 1: Spanish
+  translate-scan({ operation: "summary", language: "es" })
+  translate-batch({ language: "es", updates: [...] })
+
+Agent 2: French  
+  translate-scan({ operation: "summary", language: "fr" })
+  translate-batch({ language: "fr", updates: [...] })
+
+Agent 3: German
+  translate-scan({ operation: "summary", language: "de" })
+  translate-batch({ language: "de", updates: [...] })
+
+This approach:
+- Prevents language mixing errors
+- Enables parallel processing
+- Reduces token usage per operation
+- Makes delegation clearer
+- Improves audit trails
 `,
     }
 

@@ -1,1 +1,1 @@
-This will reboot the system. All active sessions will be (truncated)
+دا به سیستم بیا پیل کړي. ٹولې فعالې نشستونې به ختم شي.

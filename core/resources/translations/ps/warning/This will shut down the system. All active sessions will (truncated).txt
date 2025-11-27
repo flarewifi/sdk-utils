@@ -1,1 +1,1 @@
-This will shut down the system. All active sessions will (truncated)
+دا به سیستم بند کړي. ٹولې فعالې نشستونې به ختم شي.

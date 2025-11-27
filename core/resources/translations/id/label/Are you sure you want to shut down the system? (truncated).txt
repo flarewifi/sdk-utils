@@ -1,1 +1,1 @@
-Are you sure you want to shut down the system? (truncated)
+Apakah Anda yakin ingin mematikan sistem? Ini akan memutuskan semua pengguna dan mematikan perangkat.

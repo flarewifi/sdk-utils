@@ -10,6 +10,20 @@ import (
 	"tools/config"
 )
 
+// truncateTranslationKey truncates translation keys that exceed 10 words
+// This matches the logic used by the translation scanner
+func truncateTranslationKey(key string) string {
+	fields := strings.Fields(key)
+	wordCount := len(fields)
+
+	// Truncate to 10 words if exceeds limit
+	if wordCount > 10 {
+		return strings.Join(fields[:10], " ") + " (truncated)"
+	}
+
+	return key
+}
+
 // TranslateMessage is the unified translation function used by all APIs
 // It converts translation keys to filesystem-safe filenames and auto-creates missing translations
 func TranslateMessage(translationsDir string, msgtype string, msgk string, pairs ...any) string {
@@ -20,8 +34,11 @@ func TranslateMessage(translationsDir string, msgtype string, msgk string, pairs
 
 	appcfg, _ := config.ReadApplicationConfig()
 
+	// Apply the same truncation logic as the translation scanner
+	truncatedKey := truncateTranslationKey(msgk)
+
 	// Convert translation key to filesystem-safe filename
-	filename := sdkutils.FilenameFromTranslationKey(msgk)
+	filename := sdkutils.FilenameFromTranslationKey(truncatedKey)
 	f := filepath.Join(translationsDir, appcfg.Lang, msgtype, filename+".txt")
 
 	tmpl, err := flaretmpl.GetTextTemplate(f)

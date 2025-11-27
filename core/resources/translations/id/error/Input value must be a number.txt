@@ -1,1 +1,1 @@
-Input value must be a number
+Nilai input harus berupa angka
