@@ -3,7 +3,16 @@
 SELECT
     device_id,
     COUNT(*) AS total_sessions,
-    COALESCE(SUM(time_secs), 0) - COALESCE(SUM(consumption_secs), 0) AS remaining_time_secs,
+    CAST(COALESCE(
+        SUM(
+            CASE
+                WHEN started_at IS NOT NULL THEN
+                    time_secs - consumption_secs - CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
+                ELSE
+                    time_secs - consumption_secs
+            END
+        ), 0
+    ) AS INTEGER) AS remaining_time_secs,
     CAST(COALESCE(SUM(data_mbytes) - SUM(consumption_mb), 0.0) AS REAL) AS remaining_data_mb -- :float
 FROM sessions
 WHERE
@@ -11,7 +20,14 @@ WHERE
     AND (
         (
             session_type = 'time'
-            AND consumption_secs < time_secs
+            AND (
+                CASE
+                    WHEN started_at IS NOT NULL THEN
+                        time_secs - consumption_secs - CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
+                    ELSE
+                        time_secs - consumption_secs
+                END
+            ) > 0
         )
         OR (
             session_type = 'data'
@@ -20,7 +36,14 @@ WHERE
         OR (
             session_type = 'time-or-data'
             AND consumption_mb < data_mbytes
-            AND consumption_secs < time_secs
+            AND (
+                CASE
+                    WHEN started_at IS NOT NULL THEN
+                        time_secs - consumption_secs - CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
+                    ELSE
+                        time_secs - consumption_secs
+                END
+            ) > 0
         )
     )
     AND (

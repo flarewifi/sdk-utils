@@ -65,10 +65,6 @@ func SetupLanInterfaces() (err error) {
 		_, ok := cfg.Lans[ifname]
 		if ok {
 			lan := NewNetworkLan(ifname)
-			err := lan.SetupCaptivePortal()
-			if err != nil {
-				return err
-			}
 
 			err = lan.SetupHFSC()
 			if err != nil {

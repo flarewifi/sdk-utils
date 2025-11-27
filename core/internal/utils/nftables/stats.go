@@ -83,7 +83,7 @@ func GetStats() (stat StatResult, err error) {
 func nftListMap(mapname string) (*NftListMapResult, error) {
 	var out bytes.Buffer
 
-	command := fmt.Sprintf("nft -n -j list map ip internet %s", mapname)
+	command := fmt.Sprintf("nft -n -j list map %s %s %s", tableFamily, internetTable, mapname)
 	if err := cmd.ExecOutput(command, &out); err != nil {
 		return nil, err
 	}

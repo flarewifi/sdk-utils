@@ -44,3 +44,6 @@ sql:
           - column: "sessions.data_mbytes"
             go_type:
               type: "sql.NullFloat64"
+          - column: "session_summary.remaining_time_secs"
+            go_type:
+              type: "int64"
