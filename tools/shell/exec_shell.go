@@ -4,7 +4,6 @@ package shell
 
 import (
 	"errors"
-	"log"
 	"os/exec"
 	"os/user"
 	"strconv"
@@ -55,11 +54,11 @@ func execShell(command string, opts *ExecOpts) (err error) {
 			// Get the UID and GID for the target user
 			uid, err := strconv.Atoi(targetUser.Uid)
 			if err != nil {
-				log.Fatalf("Failed to get UID for user '%s': %v", targetUser.Username, err)
+				return err
 			}
 			gid, err := strconv.Atoi(targetUser.Gid)
 			if err != nil {
-				log.Fatalf("Failed to get GID for user '%s': %v", targetUser.Username, err)
+				return err
 			}
 
 			// Set the process attributes to run as the target user
@@ -75,11 +74,6 @@ func execShell(command string, opts *ExecOpts) (err error) {
 	var stderr strings.Builder
 	if !hasStderr {
 		cmd.Stderr = &stderr
-	}
-
-	log.Printf("Executing '%s': %s\n", shell, command)
-	if opts != nil && opts.Dir != "" {
-		log.Printf("Executing in: %s\n", opts.Dir)
 	}
 
 	if err = cmd.Run(); err != nil {
