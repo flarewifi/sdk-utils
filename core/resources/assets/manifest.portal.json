@@ -1,18 +1,24 @@
 {
   "global.js": [
-    "./portal/js/globals.js",
-    "./portal/js/polyfills.js"
-  ],
-  "global.css": [
-    "./portal/css/globals.css"
+    "./portal/js/globals.js"
   ],
   "polyfills.js": [
     "./portal/js/polyfills.js"
   ],
-  "payment-options.css": [
-    "./portal/payments/payment-options.css"
-  ],
   "payment-options.js": [
     "./portal/payments/payment-options.js"
+  ],
+  "portal-register.js": [
+    "./portal/js/device-token.js",
+    "./portal/js/portal-register-ajax.js"
+  ],
+  "global.css": [
+    "./portal/css/globals.css"
+  ],
+  "portal-redirect.css": [
+    "./portal/css/portal-redirect.css"
+  ],
+  "payment-options.css": [
+    "./portal/payments/payment-options.css"
   ]
 }

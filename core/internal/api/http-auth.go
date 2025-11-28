@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	AuthTokenCookie = "auth-token"
+	AUTH_TOKEN_COOKIE = "auth_token"
 )
 
 func NewHttpAuth(api *PluginApi) *HttpAuth {
@@ -38,8 +38,9 @@ func (self *HttpAuth) CurrentAcct(r *http.Request) (sdkapi.IAccount, error) {
 }
 
 func (self *HttpAuth) IsAuthenticated(r *http.Request) (sdkapi.IAccount, error) {
-	authtoken, err := self.api.CoreAPI.HttpAPI.Cookie().GetCookie(r, AuthTokenCookie)
+	authtoken, err := self.api.CoreAPI.HttpAPI.Cookie().GetCookie(r, AUTH_TOKEN_COOKIE)
 	if err != nil {
+		// Try header if cookie not found
 		bearer := r.Header.Get("Authorization")
 		splitToken := strings.Split(bearer, "Bearer ")
 		if len(splitToken) != 2 {
@@ -96,11 +97,11 @@ func (self *HttpAuth) SignIn(w http.ResponseWriter, acct sdkapi.IAccount) error 
 		return err
 	}
 
-	self.api.CoreAPI.HttpAPI.Cookie().SetCookie(w, AuthTokenCookie, token)
+	self.api.CoreAPI.HttpAPI.Cookie().SetCookie(w, AUTH_TOKEN_COOKIE, token, nil)
 	return nil
 }
 
 func (self *HttpAuth) SignOut(w http.ResponseWriter) error {
-	self.api.CoreAPI.HttpAPI.Cookie().SetCookie(w, AuthTokenCookie, "")
+	self.api.CoreAPI.HttpAPI.Cookie().SetCookie(w, AUTH_TOKEN_COOKIE, "", nil)
 	return nil
 }

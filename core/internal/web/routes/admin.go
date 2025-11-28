@@ -24,7 +24,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
 	adminSseCtrl := adminctrl.AdminSseHandler(g)
 
-	rootR.Handle("/admin", httpsRedirectMw(authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	webutil.AdminRouter.Handle("/", httpsRedirectMw(authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:dashboard")
 	})))).Methods("GET")
 

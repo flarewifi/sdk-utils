@@ -30,6 +30,8 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 		purchase.callbackPluginPkg = p.CallbackPlugin
 		purchase.callbackRoute = p.CallbackRoute
 		purchase.webhookRoute = p.WebhookRoute
+		purchase.processing = p.Processing
+		purchase.paymentUrl = p.PaymentUrl
 
 		metadata := make(map[string]string)
 		if len(p.Metadata) > 0 {
@@ -81,6 +83,8 @@ type Purchase struct {
 	confirmedAt       *time.Time
 	cancelledAt       *time.Time
 	cancelledReason   *string
+	processing        bool
+	paymentUrl        string
 	createdAt         time.Time
 }
 
@@ -156,6 +160,14 @@ func (self *Purchase) Metadata() map[string]string {
 	return self.metadata
 }
 
+func (self *Purchase) Processing() bool {
+	return self.processing
+}
+
+func (self *Purchase) PaymentUrl() string {
+	return self.paymentUrl
+}
+
 func (self *Purchase) IsConfirmed() bool {
 	return self.confirmedAt != nil
 }
@@ -210,7 +222,16 @@ func (self *Purchase) Confirm(ctx context.Context) error {
 	}
 
 	now := time.Now()
-	return self.Update(ctx, dbt, txid, nil, &now, nil)
+	err = self.Update(ctx, dbt, txid, nil, &now, nil)
+	if err != nil {
+		return err
+	}
+
+	// Clear processing state when purchase is confirmed
+	self.processing = false
+	self.paymentUrl = ""
+
+	return nil
 }
 
 func (self *Purchase) Cancel(ctx context.Context) error {
@@ -254,10 +275,22 @@ func (self *Purchase) Cancel(ctx context.Context) error {
 		}
 
 		trnsId := trns.Id()
-		return self.Update(ctx, dbt, &trnsId, &cancelledAt, nil, &reason)
+		err = self.Update(ctx, dbt, &trnsId, &cancelledAt, nil, &reason)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = self.Update(ctx, dbt, nil, &cancelledAt, nil, &reason)
+		if err != nil {
+			return err
+		}
 	}
 
-	return self.Update(ctx, dbt, nil, &cancelledAt, nil, &reason)
+	// Clear processing state when purchase is cancelled
+	self.processing = false
+	self.paymentUrl = ""
+
+	return nil
 }
 
 func (self *Purchase) Payments(ctx context.Context) ([]*Payment, error) {
@@ -289,6 +322,8 @@ func (self *Purchase) Update(ctx context.Context, dbt float64, wtxID *int64, can
 		CancelledAt:     cancelledAt,
 		ConfirmedAt:     confirmedAt,
 		CancelledReason: reason,
+		Processing:      self.processing,
+		PaymentUrl:      self.paymentUrl,
 	})
 	if err != nil {
 		return err
@@ -299,6 +334,31 @@ func (self *Purchase) Update(ctx context.Context, dbt float64, wtxID *int64, can
 	self.cancelledAt = cancelledAt
 	self.confirmedAt = confirmedAt
 	self.cancelledReason = reason
+
+	return nil
+}
+
+func (self *Purchase) SetProcessing(ctx context.Context, paymentUrl string) error {
+	// If paymentUrl is empty, clear processing state
+	// If paymentUrl is provided, set processing to true
+	processing := paymentUrl != ""
+
+	err := self.models.purchaseModel.Update(ctx, UpdatePurchaseParams{
+		ID:              self.id,
+		WalletDebit:     self.walletDebit,
+		WalletTxID:      self.walletTxId,
+		CancelledAt:     self.cancelledAt,
+		ConfirmedAt:     self.confirmedAt,
+		CancelledReason: self.cancelledReason,
+		Processing:      processing,
+		PaymentUrl:      paymentUrl,
+	})
+	if err != nil {
+		return err
+	}
+
+	self.processing = processing
+	self.paymentUrl = paymentUrl
 
 	return nil
 }

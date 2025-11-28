@@ -13,9 +13,6 @@ type IHttpMiddlewares interface {
 	// Authenticate the user as admin.
 	AdminAuth() func(http.Handler) http.Handler
 
-	// Retrieves the user's device from the request.
-	Device() func(http.Handler) http.Handler
-
 	// Adds a cache-control header to the response.
 	CacheResponse(days int) func(http.Handler) http.Handler
 

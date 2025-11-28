@@ -39,6 +39,8 @@ type PurchaseRequest struct {
 	CallbackRoute string
 	WebHookRoute  string
 	Metadata      map[string]string
+	Processing    bool
+	PaymentUrl    string
 }
 
 // CreatePaymentParams holds parameters for creating a payment for a purchase.
@@ -111,6 +113,17 @@ type IPurchaseRequest interface {
 
 	// Returns true if the purchase is cancelled.
 	IsCancelled() bool
+
+	// Returns true if the purchase is still processing.
+	Processing() bool
+
+	// Returns the payment URL for the purchase.
+	PaymentUrl() string
+
+	// Set the processing state and payment URL for the purchase.
+	// If paymentUrl is empty, it clears the processing state (sets processing to false).
+	// If paymentUrl is provided, it sets processing to true and stores the URL.
+	SetProcessing(ctx context.Context, paymentUrl string) error
 
 	// Create a payment for the purchase.
 	CreatePayment(ctx context.Context, params CreatePaymentParams) error

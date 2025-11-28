@@ -4,7 +4,9 @@ package middlewares
 
 import (
 	"core/internal/network"
+	"net"
 	"net/http"
+	"regexp"
 	sdkapi "sdk/api"
 )
 
@@ -12,14 +14,23 @@ func RedirectToLanIP(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			res := api.Http().Response()
-			clnt, err := api.Http().GetClientDevice(r)
+
+			// Get ip from http request
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
 			if err != nil {
-				res.FlashMsg(w, r, api.Translate("error", "Unable to get client device"), sdkapi.FlashMsgError)
+				res.FlashMsg(w, r, api.Translate("error", "Unable to parse remote address"), sdkapi.FlashMsgError)
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			ip := clnt.IpAddr()
+			// IPv4 pattern check
+			pattern := `^(\d{1,3}\.){3}\d{1,3}$`
+			if matched, _ := regexp.Match(pattern, []byte(ip)); !matched {
+				res.FlashMsg(w, r, api.Translate("error", "Invalid client IP address"), sdkapi.FlashMsgError)
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			lan, err := network.FindByIp(ip)
 			if err != nil {
 				res.FlashMsg(w, r, api.Translate("error", "Unable to find network interface"), sdkapi.FlashMsgError)

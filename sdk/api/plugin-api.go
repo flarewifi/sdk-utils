@@ -75,6 +75,7 @@ type IPluginApi interface {
 	// Returns an instance of the uci API.
 	Uci() IUciApi
 
+	// Returns an instance of the UI API.
 	UI() IUIApi
 
 	// Returns an instance of NotificationAPI.

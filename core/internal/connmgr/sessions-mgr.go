@@ -48,6 +48,22 @@ func (self *SessionsMgr) SetCoreAPI(api sdkapi.IPluginApi) {
 	}
 }
 
+func (self *SessionsMgr) Init(ctx context.Context) error {
+	// First, update consumption for all running sessions
+	err := self.db.Queries.BulkUpdateTimeConsumption(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to update consumption before reset: %w", err)
+	}
+
+	// Then reset all started_at fields to NULL
+	err = self.db.Queries.ResetAllStartedAt(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to reset started_at fields: %w", err)
+	}
+
+	return nil
+}
+
 func (self *SessionsMgr) OnSessionEvent(event string, callback func(data sdkapi.SessionEventData)) {
 	self.sessionEventCallbacks[event] = append(self.sessionEventCallbacks[event], callback)
 }
@@ -314,6 +330,11 @@ func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *Runni
 	}
 
 	return rs, true
+}
+
+// GetRunningSession returns the running session for a client device (public wrapper)
+func (self *SessionsMgr) GetRunningSession(clnt sdkapi.IClientDevice) (rs *RunningSession, ok bool) {
+	return self.getRunningSession(clnt)
 }
 
 func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevice) error {

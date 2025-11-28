@@ -107,3 +107,13 @@ WHERE
       AND datetime('now') < datetime(started_at, '+' || exp_days || ' days')
     )
   );
+
+
+-- name: BulkUpdateTimeConsumption :exec
+-- engine: sqlite
+UPDATE
+  sessions
+SET
+  consumption_secs = consumption_secs + CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
+WHERE
+  started_at IS NOT NULL;
