@@ -1,12 +1,13 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"core/db"
 	"core/db/models"
 	"core/internal/connmgr"
-	"core/internal/web/helpers"
+	devicetoken "core/internal/utils/device-token"
 	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
@@ -19,29 +20,33 @@ func NewHttpApi(api *PluginApi, db *db.Database, assets *GlobalAssets, clnt *con
 	middlewares := NewPluginMiddlewares(api, mdls, dmgr, pmgr)
 	httpRouter := NewHttpRouterApi(api, db, clnt)
 	httpForm := NewHttpFormApi(api)
+	httpCookie := NewHttpCookie(api)
 
 	httpApi := &HttpApi{
-		api:         api,
-		auth:        auth,
-		httpRouter:  httpRouter,
-		navsApi:     navs,
-		httpResp:    httpResp,
-		middlewares: middlewares,
-		formsApi:    httpForm,
+		api:            api,
+		auth:           auth,
+		httpRouter:     httpRouter,
+		navsApi:        navs,
+		httpResp:       httpResp,
+		middlewares:    middlewares,
+		formsApi:       httpForm,
+		httpCookie:     httpCookie,
+		clientRegister: clnt,
 	}
 
 	api.HttpAPI = httpApi
 }
 
 type HttpApi struct {
-	api         *PluginApi
-	auth        *HttpAuth
-	httpRouter  *HttpRouterApi
-	navsApi     *HttpNavsApi
-	formsApi    *HttpFormApi
-	httpResp    *HttpResponse
-	httpCookie  *HttpCookie
-	middlewares *PluginMiddlewares
+	api            *PluginApi
+	auth           *HttpAuth
+	httpRouter     *HttpRouterApi
+	navsApi        *HttpNavsApi
+	formsApi       *HttpFormApi
+	httpResp       *HttpResponse
+	httpCookie     *HttpCookie
+	middlewares    *PluginMiddlewares
+	clientRegister *connmgr.ClientRegister
 }
 
 func (self *HttpApi) Initialize() {
@@ -49,7 +54,27 @@ func (self *HttpApi) Initialize() {
 }
 
 func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, error) {
-	return helpers.CurrentClient(r)
+	var deviceID int64
+	var err error
+
+	// Priority 1: Check X-Device-Token header (localStorage-based AJAX auth)
+	deviceID, err = devicetoken.GetDeviceFromHeader(r)
+	if err != nil {
+		// Priority 2: Fallback to cookie (traditional auth)
+		deviceID, err = devicetoken.GetDeviceCookie(r)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get device from header or cookie: %w", err)
+		}
+	}
+
+	// Query device from database
+	ctx := r.Context()
+	clnt, err := self.clientRegister.FindByID(ctx, deviceID)
+	if err != nil {
+		return nil, fmt.Errorf("device not found: %w", err)
+	}
+
+	return clnt, nil
 }
 
 func (self *HttpApi) Cookie() sdkapi.IHttpCookie {

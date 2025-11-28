@@ -19,6 +19,11 @@ func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api
 
 	minify := env.GO_ENV == env.ENV_PRODUCTION
 
+	pure := []string{}
+	if minify {
+		pure = []string{"console.debug", "console.log", "console.info", "console.warn"}
+	}
+
 	result := api.Build(api.BuildOptions{
 		EntryPoints: []string{indexfile},
 		Outfile:     outfile,
@@ -33,6 +38,7 @@ func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api
 		AllowOverwrite:    true,
 		MinifyWhitespace:  minify,
 		MinifyIdentifiers: minify,
+		Pure:              pure,
 		Write:             false,
 	})
 

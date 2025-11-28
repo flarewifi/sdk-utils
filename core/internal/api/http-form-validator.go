@@ -199,7 +199,7 @@ func (validtr *HTTPFormValidator) ValidateAndExtractForm(w http.ResponseWriter, 
 		}
 
 		if errStr != "" {
-			cookie.SetCookie(w, cookieName, errStr)
+			cookie.SetCookie(w, cookieName, errStr, nil)
 			validateErr = errors.New("field validation error")
 		} else {
 			// Clear any previous error

@@ -2,13 +2,30 @@
 
 package hostfinder
 
-import "fmt"
+import (
+	"net/http"
+)
 
-func FindByIp(ip string) (*HostData, error) {
-	fmt.Println("[DEV] Finding host by IP:", ip)
+func GetHostFromRequest(r *http.Request) (*HostData, error) {
+	// Get IP from ip_addr cookie in dev
+	defaultIP := "10.0.0.10"
+
+	var ipAddr string
+	ipCookie, err := r.Cookie("ip_addr")
+	if err != nil {
+		ipAddr = defaultIP
+	}
+
+	if ipCookie == nil {
+		ipAddr = defaultIP
+	} else {
+		if ipCookie.Value == "" {
+			ipAddr = defaultIP
+		}
+	}
 
 	return &HostData{
-		IpAddr:   ip,
+		IpAddr:   ipAddr,
 		MacAddr:  "00:00:00:00:00:00",
 		Hostname: "localhost",
 	}, nil

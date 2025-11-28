@@ -1,0 +1,13 @@
+package portalview
+
+import sdkapi "sdk/api"
+
+templ PortalRedirectPage(api sdkapi.IPluginApi, redirectUrl string, registerUrl string, fallbackUrl string) {
+    <div id="loading-container" class="loading-container" 
+         data-redirect-url={ redirectUrl }
+         data-register-url={ registerUrl }
+         data-fallback-url={ fallbackUrl }>
+        <div class="spinner"></div>
+        <div class="loading-text">{ api.Translate("label", "Loading") }...</div>
+    </div>
+}

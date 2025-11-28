@@ -4,12 +4,19 @@ package hostfinder
 
 import (
 	"errors"
+	"net"
+	"net/http"
 	"strings"
 
 	"core/internal/utils/arp"
 )
 
-func FindByIp(ip string) (*HostData, error) {
+func GetHostFromRequest(r *http.Request) (*HostData, error) {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return nil, err
+	}
+
 	mac, ok := arp.Search(ip)
 	if !ok {
 		return nil, errors.New("cannot find host with IP: " + ip)

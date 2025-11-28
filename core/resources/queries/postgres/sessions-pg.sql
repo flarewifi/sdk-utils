@@ -107,3 +107,13 @@ WHERE
       AND NOW() < started_at + (exp_days * interval '1 day')
     )
   );
+
+
+-- name: BulkUpdateTimeConsumption :exec
+-- engine: postgresql
+UPDATE
+  sessions
+SET
+  consumption_secs = consumption_secs + EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER
+WHERE
+  started_at IS NOT NULL;

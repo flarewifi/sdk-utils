@@ -1,13 +1,10 @@
 package boot
 
 import (
+	"context"
 	"core/internal/api"
 	"core/internal/utils/activation"
 	"log"
-	"tools/config"
-	"tools/env"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func Init(g *api.CoreGlobals) {
@@ -19,11 +16,6 @@ func Init(g *api.CoreGlobals) {
 		g.Database.WaitReady()
 		log.Println("Database is ready.")
 
-		// Ensure current language translations are available (decompress if needed)
-		if err := initCoreTranslations(); err != nil {
-			log.Printf("Warning: Failed to initialize translations: %v", err)
-		}
-
 		InitOpkg()
 		RunCoreMigrations(g)
 		InitPlugins(g)
@@ -33,6 +25,14 @@ func Init(g *api.CoreGlobals) {
 			log.Println("Error initializing network:", err)
 		}
 
+		// Initialize sessions manager
+		ctx := context.Background()
+		if err := g.ClientMgr.Init(ctx); err != nil {
+			log.Println("Error initializing sessions manager:", err)
+		} else {
+			log.Println("Sessions manager initialized successfully.")
+		}
+
 		// Initialize activation after everything else is ready
 		go activation.Validate()
 
@@ -40,21 +40,4 @@ func Init(g *api.CoreGlobals) {
 	}()
 
 	InitHttpServer(g, bootCh)
-}
-
-// initCoreTranslations ensures the current language translations are available
-func initCoreTranslations() error {
-	// Skip translation decompression in dev mode
-	if env.GO_ENV == env.ENV_DEV {
-		return nil
-	}
-
-	// Read current application config to get the language
-	cfg, err := config.ReadApplicationConfig()
-	if err != nil {
-		return err
-	}
-
-	// Ensure the current language is available for core
-	return sdkutils.EnsureTranslations(sdkutils.PathCoreDir, cfg.Lang)
 }

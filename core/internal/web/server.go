@@ -7,6 +7,7 @@ import (
 	"core/internal/api"
 	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
+	"core/internal/web/middlewares"
 	"core/internal/web/navs"
 	"core/internal/web/routes"
 )
@@ -31,8 +32,16 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 
 	navs.SetAdminNavs(g)
 
+	redirectToLanIpMw := middlewares.RedirectToLanIP(g.CoreAPI)
+
 	webutil.RootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Warning: unknown route requested: ", r.URL.Path)
-		http.Redirect(w, r, "/", http.StatusFound)
+
+		// Redirect to LAN IP
+		h := redirectToLanIpMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/", http.StatusFound)
+		}))
+
+		h.ServeHTTP(w, r)
 	})
 }

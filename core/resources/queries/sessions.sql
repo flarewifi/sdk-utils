@@ -39,3 +39,12 @@ SET
 WHERE
   id = @id;
 
+
+-- name: ResetAllStartedAt :exec
+UPDATE
+  sessions
+SET
+    started_at = NULL
+WHERE
+    started_at IS NOT NULL;
+

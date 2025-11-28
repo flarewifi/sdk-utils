@@ -118,6 +118,18 @@ func (self *Purchase) IsCancelled() bool {
 	return self.purchase.IsCancelled()
 }
 
+func (self *Purchase) Processing() bool {
+	return self.purchase.Processing()
+}
+
+func (self *Purchase) PaymentUrl() string {
+	return self.purchase.PaymentUrl()
+}
+
+func (self *Purchase) SetProcessing(ctx context.Context, paymentUrl string) error {
+	return self.purchase.SetProcessing(ctx, paymentUrl)
+}
+
 func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePaymentParams) error {
 	mdls := self.api.models
 	_, err := mdls.Payment().Create(ctx, models.CreatePaymentParams{

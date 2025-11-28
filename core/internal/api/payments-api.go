@@ -2,15 +2,16 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
 	"core/db/models"
-	"core/internal/web/helpers"
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewPaymentsApi(api *PluginApi, pmgr *PaymentsMgr) {
@@ -34,7 +35,8 @@ func (self *PaymentsApi) NewPaymentProvider(provider sdkapi.IPaymentProvider) {
 func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdkapi.PurchaseRequest) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		clnt, err := helpers.CurrentClient(r)
+
+		clnt, err := self.api.Http().GetClientDevice(r)
 		if err != nil {
 			log.Println("helpers.CurrentClient error:", err)
 			self.ErrorPage(w, err)
@@ -54,6 +56,8 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 				CallbackRoute:  p.CallbackRoute,
 				WebHookRoute:   p.WebHookRoute,
 				Metadata:       p.Metadata,
+				Processing:     p.Processing,
+				PaymentUrl:     p.PaymentUrl,
 			},
 		)
 		if err != nil {
@@ -72,7 +76,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 
 func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRequest, error) {
 	mdls := self.api.models
-	clnt, err := helpers.CurrentClient(r)
+	clnt, err := self.api.HttpAPI.GetClientDevice(r)
 	if err != nil {
 		log.Println("helpers.CurrentClient error:", err)
 		return nil, err
@@ -80,6 +84,10 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 
 	p, err := mdls.Purchase().PendingPurchase(r.Context(), clnt.Id())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Println("No pending purchase found for device:", clnt.Id())
+			return nil, errors.New("No pending purchase found")
+		}
 		log.Println("mdls.Purchase().FindByDeviceId error:", err)
 		return nil, err
 	}

@@ -99,7 +99,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
 	}
 
-	sseURL := coreAPI.HttpAPI.Helpers().UrlForRoute("portal.sse")
+	sseURL := coreAPI.HttpAPI.Helpers().UrlForRoute("portal:sse")
 	polyfillsURL := coreAPI.Http().Helpers().PortalAssetPath("polyfills.js")
 	data := themes.PortalLayoutData{
 		PageUUID:     pageUUID,
@@ -141,8 +141,8 @@ func (self *HttpResponse) Json(w http.ResponseWriter, r *http.Request, data any,
 }
 
 func (self *HttpResponse) FlashMsg(w http.ResponseWriter, r *http.Request, msg string, t string) {
-	self.api.HttpAPI.Cookie().SetCookie(w, "flash_type", t)
-	self.api.HttpAPI.Cookie().SetCookie(w, "flash_message", msg)
+	self.api.HttpAPI.Cookie().SetCookie(w, "flash_type", t, nil)
+	self.api.HttpAPI.Cookie().SetCookie(w, "flash_message", msg, nil)
 }
 
 func (self *HttpResponse) Redirect(w http.ResponseWriter, r *http.Request, routeName string, pairs ...string) {
@@ -156,7 +156,7 @@ func (self *HttpResponse) Redirect(w http.ResponseWriter, r *http.Request, route
 }
 
 func (self *HttpResponse) RedirectToPortal(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/?t="+sdkutils.RandomStr(16), http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (self *HttpResponse) Error(w http.ResponseWriter, r *http.Request, err error, status int) {

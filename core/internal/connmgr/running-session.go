@@ -18,8 +18,12 @@ var (
 )
 
 func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*RunningSession, error) {
+	log.Printf("[Running Session] Creating new running session - DeviceID=%d, MAC=%s, IP=%s",
+		clnt.Id(), clnt.MacAddr(), clnt.IpAddr())
+
 	lan, err := network.FindByIp(clnt.IpAddr())
 	if err != nil {
+		log.Printf("[Running Session] ERROR - Failed to find LAN for IP %s: %v", clnt.IpAddr(), err)
 		return nil, err
 	}
 
@@ -31,6 +35,9 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*Run
 		lan:       lan,
 		callbacks: []chan error{},
 	}
+
+	log.Printf("[Running Session] Running session created successfully - DeviceID=%d, MAC=%s, IP=%s, LAN=%s",
+		rs.clntId, rs.mac, rs.ip, lan.Name())
 
 	return &rs, nil
 }
@@ -82,6 +89,96 @@ func (self *RunningSession) Diff() (mb float64) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.diffMb
+}
+
+// UpdateNetworkDetails updates the MAC and IP address when device network details change
+func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, newIP string) error {
+	log.Printf("[Running Session] UpdateNetworkDetails - DeviceID=%d, OldMAC=%s, NewMAC=%s, OldIP=%s, NewIP=%s",
+		self.clntId, self.mac, newMac, self.ip, newIP)
+
+	_, err := sessionQue.Exec(func() (any, error) {
+		self.mu.Lock()
+		defer self.mu.Unlock()
+
+		oldIP := self.ip
+		oldMac := self.mac
+
+		// Check if network details actually changed
+		if oldIP == newIP && oldMac == newMac {
+			log.Printf("[Running Session] No network changes detected for device %d", self.clntId)
+			return nil, nil
+		}
+
+		// Update stored values
+		self.ip = newIP
+		self.mac = newMac
+
+		// Check if LAN changed (IP might be on different network)
+		if oldIP != newIP {
+			log.Printf("[Running Session] IP changed, checking if LAN changed...")
+			newLan, err := network.FindByIp(newIP)
+			if err != nil {
+				log.Printf("[Running Session] ERROR - Failed to find LAN for new IP %s: %v", newIP, err)
+				return nil, err
+			}
+
+			// If LAN changed, we need to recreate TC rules on the new interface
+			if newLan.Name() != self.lan.Name() {
+				log.Printf("[Running Session] LAN changed from %s to %s, recreating TC rules...",
+					self.lan.Name(), newLan.Name())
+
+				// Clean up old TC rules
+				if self.tcClassId != nil {
+					classid := self.tcClassId.Uint()
+					log.Printf("[Running Session] Removing old TC filter for IP %s", oldIP)
+					if err := self.lan.DelFilter(oldIP, classid); err != nil {
+						log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
+					}
+
+					log.Printf("[Running Session] Removing old TC class %d", classid)
+					if err := self.lan.DelClass(classid); err != nil {
+						log.Printf("[Running Session] WARNING - Failed to delete old class: %v", err)
+					}
+					self.tcClassId = nil
+				}
+
+				// Update LAN reference
+				self.lan = newLan
+
+				// Recreate TC rules on new interface
+				log.Printf("[Running Session] Creating new TC rules on interface %s", newLan.Name())
+				if err := self.initTc(); err != nil {
+					log.Printf("[Running Session] ERROR - Failed to create TC rules: %v", err)
+					return nil, err
+				}
+				log.Printf("[Running Session] TC rules recreated successfully")
+			} else {
+				// Same LAN, just update the filter
+				log.Printf("[Running Session] Same LAN, updating TC filter from IP %s to %s", oldIP, newIP)
+				if self.tcClassId != nil {
+					classid := self.tcClassId.Uint()
+
+					// Remove old filter
+					if err := self.lan.DelFilter(oldIP, classid); err != nil {
+						log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
+					}
+
+					// Create new filter with new IP
+					if err := self.lan.CreateFilter(newIP, classid); err != nil {
+						log.Printf("[Running Session] ERROR - Failed to create new filter: %v", err)
+						return nil, err
+					}
+					log.Printf("[Running Session] TC filter updated successfully")
+				}
+			}
+		}
+
+		log.Printf("[Running Session] Network details updated successfully - DeviceID=%d, NewMAC=%s, NewIP=%s",
+			self.clntId, self.mac, self.ip)
+		return nil, nil
+	})
+
+	return err
 }
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {

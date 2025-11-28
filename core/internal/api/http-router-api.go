@@ -27,16 +27,20 @@ type HttpRouterApi struct {
 func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegister) *HttpRouterApi {
 	prefix := fmt.Sprintf("/%s/%s", api.info.Package, api.info.Version)
 	pluginMux := webutil.PluginRouter.PathPrefix(prefix).Subrouter()
-	adminMux := pluginMux.PathPrefix("/admin").Subrouter()
+	adminMux := webutil.AdminRouter.PathPrefix(prefix).Subrouter()
 
 	pluginRouter := &HttpRouterInstance{api, pluginMux, false}
 	adminRouter := &HttpRouterInstance{api, adminMux, true}
+
+	// Add 404 handler for admin routes - redirect to /admin
+	adminMux.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/admin", http.StatusFound)
+	})
 
 	return &HttpRouterApi{api, adminRouter, pluginRouter}
 }
 
 func (self *HttpRouterApi) Initialize() {
-	self.pluginRouter.Use(self.api.HttpAPI.middlewares.Device())
 	self.adminRouter.Use(self.api.HttpAPI.middlewares.HTTPSRedirect())
 	self.adminRouter.Use(self.api.HttpAPI.middlewares.AdminAuth())
 	self.adminRouter.Use(self.api.HttpAPI.middlewares.TrackNav())

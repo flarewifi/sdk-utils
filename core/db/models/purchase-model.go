@@ -32,6 +32,8 @@ type CreatePurchaseParams struct {
 	CallbackRoute  string
 	WebHookRoute   string
 	Metadata       map[string]string
+	Processing     bool
+	PaymentUrl     string
 }
 
 // UpdatePurchaseParams holds parameters for updating a purchase
@@ -42,6 +44,8 @@ type UpdatePurchaseParams struct {
 	CancelledAt     *time.Time
 	ConfirmedAt     *time.Time
 	CancelledReason *string
+	Processing      bool
+	PaymentUrl      string
 }
 
 func NewPurchaseModel(dtb *db.Database, mdls *Models) *PurchaseModel {
@@ -68,6 +72,8 @@ func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchasePara
 		CallbackRoute:  params.CallbackRoute,
 		WebhookRoute:   params.WebHookRoute,
 		Metadata:       b,
+		Processing:     params.Processing,
+		PaymentUrl:     params.PaymentUrl,
 	}
 
 	fmt.Printf("Create Purchase: %+v\n", queryParams)
@@ -137,6 +143,8 @@ func (self *PurchaseModel) Update(ctx context.Context, params UpdatePurchasePara
 		CancelledAt:     sdkutils.TimeToNullTime(params.CancelledAt),
 		ConfirmedAt:     sdkutils.TimeToNullTime(params.ConfirmedAt),
 		CancelledReason: cancellReason,
+		Processing:      params.Processing,
+		PaymentUrl:      params.PaymentUrl,
 		ID:              params.ID,
 	})
 	if err != nil {

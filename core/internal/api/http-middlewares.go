@@ -14,7 +14,6 @@ import (
 	"core/db/models"
 	"core/internal/connmgr"
 	webutil "core/internal/utils/web"
-	"core/internal/web/helpers"
 	"core/internal/web/middlewares"
 	"tools/config"
 
@@ -57,10 +56,6 @@ func (self *PluginMiddlewares) AdminAuth() func(http.Handler) http.Handler {
 	}
 }
 
-func (self *PluginMiddlewares) Device() func(http.Handler) http.Handler {
-	return middlewares.DeviceMiddleware(self.api.db, self.creg)
-}
-
 func (self *PluginMiddlewares) CacheResponse(days int) func(http.Handler) http.Handler {
 	return middlewares.CacheResponse(days)
 }
@@ -70,41 +65,45 @@ func (self *PluginMiddlewares) HTTPSRedirect() func(http.Handler) http.Handler {
 }
 
 func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler {
+	coreAPI := self.api.CoreAPI
+
 	return func(next http.Handler) http.Handler {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			errCode := http.StatusInternalServerError
+			res := coreAPI.HttpAPI.Response()
 
-			var shouldRedirect bool
-
-			client, err := helpers.CurrentClient(r)
+			client, err := self.api.Http().GetClientDevice(r)
 			if err != nil {
-				self.ErrorPage(w, err, errCode)
+				res.FlashMsg(w, r, coreAPI.Translate("error", "Client device not registered"), sdkapi.FlashMsgError)
+				res.RedirectToPortal(w, r)
 				return
 			}
 
 			mdls := self.api.models
 			purchase, err := mdls.Purchase().PendingPurchase(ctx, client.Id())
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				self.ErrorPage(w, err, errCode)
+				res.FlashMsg(w, r, coreAPI.Translate("error", "Client device not registered"), sdkapi.FlashMsgError)
+				res.RedirectToPortal(w, r)
 				return
 			}
 
 			if purchase != nil {
-				shouldRedirect = true
-			}
+				// If purchase is processing and has a payment URL, redirect to it
+				if purchase.Processing() && purchase.PaymentUrl() != "" {
+					http.Redirect(w, r, purchase.PaymentUrl(), http.StatusSeeOther)
+					return
+				}
 
-			if shouldRedirect {
-				self.api.CoreAPI.HttpAPI.Response().Redirect(w, r, "payments:options")
+				// Otherwise, redirect to payment options page with info message
+				res.FlashMsg(w, r, coreAPI.Translate("info", "You have a pending purchase. Please complete it before proceeding."), sdkapi.FlashMsgInfo)
+				res.Redirect(w, r, "payments:options")
 				return
 			}
 
 			next.ServeHTTP(w, r)
-
 		})
 
-		deviceMw := self.Device()
-		return deviceMw(handler)
+		return handler
 	}
 
 }
@@ -206,7 +205,7 @@ func (self *PluginMiddlewares) WebhookAuth() func(http.Handler) http.Handler {
 			}
 
 			// Parse and verify token
-			token, err := jwt.ParseWithClaims(tokenString, &WebhookClaims{}, func(token *jwt.Token) (interface{}, error) {
+			token, err := jwt.ParseWithClaims(tokenString, &WebhookClaims{}, func(token *jwt.Token) (any, error) {
 				// Verify signing method
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
