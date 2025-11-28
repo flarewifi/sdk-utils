@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	fw4Table        string = "fw4"      // OpenWrt default table (for jump rules)
 	internetTable   string = "internet" // Our custom table
 	tableFamily     string = "inet"     // inet family (handles both ipv4 and ipv6)
 	forwardChain    string = "forward"
