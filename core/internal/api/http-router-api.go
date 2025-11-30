@@ -8,14 +8,15 @@ import (
 	"core/db"
 	"core/internal/connmgr"
 	webutil "core/internal/utils/web"
+	"core/internal/web/middlewares"
 	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
 )
 
 const (
-	RouteNameAdminPrefix = "admin:"
-	RouteNameAdminSSE    = "admin:sse"
+	RouteNameAdminPrefix = middlewares.RouteNameAdminPrefix
+	RouteNameAdminSSE    = middlewares.RouteNameAdminSSE
 )
 
 type HttpRouterApi struct {
@@ -43,7 +44,7 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegis
 func (self *HttpRouterApi) Initialize() {
 	self.adminRouter.Use(self.api.HttpAPI.middlewares.HTTPSRedirect())
 	self.adminRouter.Use(self.api.HttpAPI.middlewares.AdminAuth())
-	self.adminRouter.Use(self.api.HttpAPI.middlewares.TrackNav())
+	self.adminRouter.Use(middlewares.TrackNav(self.api.models))
 }
 
 func (self *HttpRouterApi) AdminRouter() sdkapi.IHttpRouterInstance {

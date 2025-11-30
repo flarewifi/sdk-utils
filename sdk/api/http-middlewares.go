@@ -19,9 +19,6 @@ type IHttpMiddlewares interface {
 	// Checks if the user has a pending purchase. If yes, redirects to payment options page.
 	PendingPurchase() func(http.Handler) http.Handler
 
-	// Tracks navigation visits for the Quick Access menu.
-	TrackNav() func(http.Handler) http.Handler
-
 	// Authenticates internal webhook requests using JWT tokens.
 	// Verifies the JWT token signed with application secret and adds device/purchase info to context.
 	WebhookAuth() func(http.Handler) http.Handler
