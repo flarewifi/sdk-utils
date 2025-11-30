@@ -49,10 +49,10 @@ func (self *SessionsMgrApi) IsConnected(clnt sdkapi.IClientDevice) bool {
 
 // CreateSession creates a session for the client device using the plugin's package name.
 func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.CreateSessionParams) (sdkapi.IClientSession, error) {
-	uid := uuid.New().String()
+	sessionUUID := uuid.New().String()
 	pkg := self.pluginApi.Info().Package
 	session, err := self.pluginApi.models.Session().Create(ctx, models.CreateSessionParams{
-		UID:         uid,
+		UUID:        sessionUUID,
 		PluginPkg:   pkg,
 		DeviceID:    params.DevId,
 		SessionType: params.SessionType,

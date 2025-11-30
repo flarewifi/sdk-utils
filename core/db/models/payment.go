@@ -26,11 +26,11 @@ func NewPayment(dtb *db.Database, mdls *Models) *Payment {
 	}
 }
 
-func (self *Payment) Id() int64 {
+func (self *Payment) ID() int64 {
 	return self.id
 }
 
-func (self *Payment) PurchaseId() int64 {
+func (self *Payment) PurchaseID() int64 {
 	return self.purchaseId
 }
 

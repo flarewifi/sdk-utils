@@ -27,7 +27,7 @@ func AddSocket(key string, socket *SseSocket) {
 	sockets = append(sockets, socket)
 	socketStore.Store(key, sockets)
 
-	log.Printf("Socket %s attached to \"%s\"...", socket.Id(), key)
+	log.Printf("Socket %s attached to \"%s\"...", socket.ID(), key)
 
 	go func() {
 		<-socket.Done()
@@ -40,7 +40,7 @@ func RemoveSocket(key string, socket *SseSocket) {
 	if ok {
 		sockets := v.([]*SseSocket)
 		sockets = sdkutils.SliceFilter(sockets, func(item *SseSocket) bool {
-			return item.Id() != socket.Id()
+			return item.ID() != socket.ID()
 		})
 
 		if len(sockets) == 0 {
@@ -49,7 +49,7 @@ func RemoveSocket(key string, socket *SseSocket) {
 			socketStore.Store(key, sockets)
 		}
 
-		log.Printf("Socket %s detached from \"%s\"...\n", socket.Id(), key)
+		log.Printf("Socket %s detached from \"%s\"...\n", socket.ID(), key)
 	}
 }
 

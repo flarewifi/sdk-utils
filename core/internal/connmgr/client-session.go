@@ -22,7 +22,7 @@ type ClientSession struct {
 	mdls        *models.Models
 	pluginsMgr  sdkapi.IPluginsMgrApi
 	id          int64
-	uid         string
+	uuid        string
 	providerPkg string
 	devId       int64
 	sessionType string
@@ -45,7 +45,7 @@ func (self *ClientSession) Save(ctx context.Context) error {
 
 	return self.mdls.Session().Update(ctx, models.UpdateSessionParams{
 		ID:          self.id,
-		UID:         self.uid,
+		UUID:        self.uuid,
 		ProviderPkg: self.providerPkg,
 		DeviceID:    self.devId,
 		SessionType: sdkapi.SessionType(self.sessionType),
@@ -76,10 +76,10 @@ func (self *ClientSession) Reload(ctx context.Context) (err error) {
 }
 
 func (self *ClientSession) load(s *models.Session) {
-	self.id = s.Id()
-	self.uid = s.Uid()
+	self.id = s.ID()
+	self.uuid = s.UUID()
 	self.providerPkg = s.ProviderPkg()
-	self.devId = s.DeviceId()
+	self.devId = s.DeviceID()
 	self.sessionType = s.SessionType()
 	self.timeSecs = s.TimeSecs()
 	self.dataMb = s.DataMbyte()
@@ -94,18 +94,18 @@ func (self *ClientSession) load(s *models.Session) {
 	self.updatedAt = s.UpdatedAt()
 }
 
-// Id returns the session's ID.
-func (self *ClientSession) Id() int64 {
+// ID returns the session's ID.
+func (self *ClientSession) ID() int64 {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.id
 }
 
-// Uid returns the session's unique identifier.
-func (self *ClientSession) Uid() string {
+// UUID returns the session's UUID.
+func (self *ClientSession) UUID() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
-	return self.uid
+	return self.uuid
 }
 
 // Plugin returns the provider plugin of the session record.

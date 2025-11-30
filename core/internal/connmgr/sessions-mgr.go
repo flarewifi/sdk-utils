@@ -244,7 +244,7 @@ func (self *SessionsMgr) IsConnected(clnt sdkapi.IClientDevice) (connected bool)
 }
 
 func (self *SessionsMgr) CurrSession(clnt sdkapi.IClientDevice) (cs sdkapi.IClientSession, ok bool) {
-	v, ok := self.sessions.Load(clnt.Id())
+	v, ok := self.sessions.Load(clnt.ID())
 	if !ok {
 		return nil, false
 	}
@@ -273,7 +273,7 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 
 			rs, ok := self.getRunningSession(clnt)
 			if !ok {
-				rs, err = NewRunningSession(clnt, cs)
+				rs, err = NewRunningSession(clnt, cs, self)
 				if err != nil {
 					errCh <- err
 					return
@@ -285,7 +285,7 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 					return
 				}
 
-				self.sessions.Store(clnt.Id(), rs)
+				self.sessions.Store(clnt.ID(), rs)
 			} else {
 				err = rs.Start(ctx, cs)
 				if err != nil {
@@ -319,7 +319,7 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 }
 
 func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *RunningSession, ok bool) {
-	v, ok := self.sessions.Load(clnt.Id())
+	v, ok := self.sessions.Load(clnt.ID())
 	if !ok {
 		return nil, false
 	}
@@ -365,7 +365,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 			}
 		}
 
-		self.sessions.Delete(clnt.Id())
+		self.sessions.Delete(clnt.ID())
 
 		errCh <- nil
 	}()
@@ -389,7 +389,7 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 
 // SessionSummary
 func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
-	summary, err := self.mdl.Session().Summary(ctx, clnt.Id())
+	summary, err := self.mdl.Session().Summary(ctx, clnt.ID())
 	if err != nil {
 		return nil, err
 	}

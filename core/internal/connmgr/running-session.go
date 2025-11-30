@@ -17,9 +17,14 @@ var (
 	sessionQue = jobque.NewJobQue[any]()
 )
 
-func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*RunningSession, error) {
+// SessionEventEmitter interface for emitting session events
+type SessionEventEmitter interface {
+	emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice)
+}
+
+func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitter SessionEventEmitter) (*RunningSession, error) {
 	log.Printf("[Running Session] Creating new running session - DeviceID=%d, MAC=%s, IP=%s",
-		clnt.Id(), clnt.MacAddr(), clnt.IpAddr())
+		clnt.ID(), clnt.MacAddr(), clnt.IpAddr())
 
 	lan, err := network.FindByIp(clnt.IpAddr())
 	if err != nil {
@@ -29,10 +34,12 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*Run
 
 	rs := RunningSession{
 		session:   s,
-		clntId:    clnt.Id(),
+		clnt:      clnt,
+		clntId:    clnt.ID(),
 		ip:        clnt.IpAddr(),
 		mac:       clnt.MacAddr(),
 		lan:       lan,
+		emitter:   emitter,
 		callbacks: []chan error{},
 	}
 
@@ -44,6 +51,7 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession) (*Run
 
 type RunningSession struct {
 	mu          sync.RWMutex
+	clnt        sdkapi.IClientDevice
 	clntId      int64
 	ip          string
 	mac         string
@@ -54,6 +62,7 @@ type RunningSession struct {
 	timerCancel context.CancelFunc
 	timerCtx    context.Context
 	session     sdkapi.IClientSession
+	emitter     SessionEventEmitter
 	diffMb      float64
 	callbacks   []chan error
 }
@@ -219,6 +228,10 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 }
 
 func (self *RunningSession) Stop(ctx context.Context) error {
+	return self.StopWithReason(ctx, false)
+}
+
+func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) error {
 	_, err := sessionQue.Exec(func() (any, error) {
 		self.mu.Lock()
 
@@ -239,6 +252,11 @@ func (self *RunningSession) Stop(ctx context.Context) error {
 
 		err := self.save(ctx)
 		self.cleanUpTimer()
+
+		// Emit session:expired event if session expired (time/data consumed or date passed)
+		if expired && self.emitter != nil && self.clnt != nil {
+			self.emitter.emitSessionEvent(sdkapi.EventSessionExpired, self.session, self.clnt)
+		}
 
 		// Collect callbacks while holding lock
 		callbacks := self.callbacks
@@ -311,9 +329,9 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 
 	self.mu.Unlock()
 
-	// Call Stop() after releasing the lock to avoid deadlock
+	// Call StopWithReason() after releasing the lock to avoid deadlock
 	if shouldStop {
-		go self.Stop(context.Background())
+		go self.StopWithReason(context.Background(), true)
 	}
 }
 
@@ -323,7 +341,7 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 
 	if remainingSecs <= 0 {
 		log.Println("Session time already consumed, stopping immediately")
-		go self.Stop(context.Background())
+		go self.StopWithReason(context.Background(), true)
 		return
 	}
 
@@ -355,13 +373,15 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 			case <-timer.C:
 				// Timer expired - session time consumed
 				log.Println("Session timer expired - time consumed!")
-				go self.Stop(context.Background())
+				go self.StopWithReason(context.Background(), true)
 				return
 
 			case <-saveTicker.C:
 				// Periodic save
 				self.mu.RLock()
 				currentSession := self.session
+				currentClnt := self.clnt
+				currentEmitter := self.emitter
 				self.mu.RUnlock()
 
 				// Calculate elapsed time since started_at
@@ -377,6 +397,11 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 					log.Println("Error saving session:", err)
 					go self.Stop(context.Background())
 					return
+				}
+
+				// Emit session:updated event after successful save
+				if currentEmitter != nil && currentClnt != nil {
+					currentEmitter.emitSessionEvent(sdkapi.EventSessionUpdated, currentSession, currentClnt)
 				}
 
 				// Reset diff counter for data

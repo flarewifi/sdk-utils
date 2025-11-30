@@ -27,11 +27,11 @@ func NewWalletTrns(dtb *db.Database, mdls *Models) *WalletTrns {
 	}
 }
 
-func (self *WalletTrns) Id() int64 {
+func (self *WalletTrns) ID() int64 {
 	return self.id
 }
 
-func (self *WalletTrns) WalletId() int64 {
+func (self *WalletTrns) WalletID() int64 {
 	return self.walletId
 }
 

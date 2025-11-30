@@ -18,6 +18,7 @@ type ClientDevice struct {
 	db       *db.Database
 	mdls     *models.Models
 	id       int64
+	uuid     string
 	mac      string
 	ip       string
 	hostname string
@@ -28,7 +29,8 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 	return &ClientDevice{
 		db:       dtb,
 		mdls:     mdls,
-		id:       d.Id(),
+		id:       d.ID(),
+		uuid:     d.UUID(),
 		mac:      d.MacAddr(),
 		ip:       d.IpAddr(),
 		hostname: d.Hostname(),
@@ -36,10 +38,16 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 	}
 }
 
-func (self *ClientDevice) Id() int64 {
+func (self *ClientDevice) ID() int64 {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.id
+}
+
+func (self *ClientDevice) UUID() string {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.uuid
 }
 
 func (self *ClientDevice) Hostname() string {
@@ -75,6 +83,7 @@ func (self *ClientDevice) Update(ctx context.Context, params sdkapi.UpdateDevice
 		MacAddress: params.Mac,
 		IpAddress:  params.Ip,
 		Hostname:   params.Hostname,
+		UUID:       params.UUID,
 		Status:     params.Status,
 	})
 	if err != nil {
@@ -84,6 +93,7 @@ func (self *ClientDevice) Update(ctx context.Context, params sdkapi.UpdateDevice
 	self.hostname = params.Hostname
 	self.mac = params.Mac
 	self.ip = params.Ip
+	self.uuid = params.UUID
 	self.status = sdkapi.DeviceStatus(params.Status)
 
 	return nil

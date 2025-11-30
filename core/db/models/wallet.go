@@ -23,11 +23,11 @@ func NewWallet(dtb *db.Database, m *Models) *Wallet {
 	}
 }
 
-func (self *Wallet) Id() int64 {
+func (self *Wallet) ID() int64 {
 	return self.id
 }
 
-func (self *Wallet) DeviceId() int64 {
+func (self *Wallet) DeviceID() int64 {
 	return self.deviceId
 }
 

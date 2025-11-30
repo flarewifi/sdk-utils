@@ -51,14 +51,14 @@ type CreatePaymentParams struct {
 
 // IPurchaseRequest represents a record in purchases table in the database.
 type IPurchaseRequest interface {
-	// Returns the db ID of the purchase request.
-	Id() int64
+	// Returns the database ID of the purchase request.
+	ID() int64
 
-	// Returns the unique UID of the purchase request.
-	Uid() string
+	// Returns the UUID of the purchase request.
+	UUID() string
 
 	// Returns the device ID associated with the purchase.
-	DeviceId() int64
+	DeviceID() int64
 
 	// Returns the SKU of the purchase item.
 	Sku() string
@@ -82,7 +82,7 @@ type IPurchaseRequest interface {
 	WalletDebit() float64
 
 	// Returns the wallet transaction ID if available.
-	WalletTxId() *int64
+	WalletTxID() *int64
 
 	// Returns the timestamp when the purchase was confirmed.
 	ConfirmedAt() *time.Time

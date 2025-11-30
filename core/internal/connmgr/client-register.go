@@ -103,7 +103,7 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 			if clnt.MacAddr() != params.MacAddr {
 				// MAC changed - check if new MAC already belongs to another device
 				existingDev, macErr := reg.mdls.Device().FindByMac(ctx, params.MacAddr)
-				if macErr == nil && existingDev != nil && existingDev.Id() != clnt.Id() {
+				if macErr == nil && existingDev != nil && existingDev.ID() != clnt.ID() {
 					// MAC conflict: New MAC already belongs to another device
 					// This prevents cookie sharing across devices
 					// Keep the cookie device, but only update IP/hostname (not MAC)

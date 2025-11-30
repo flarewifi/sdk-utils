@@ -15,6 +15,7 @@ type Device struct {
 	db        *db.Database
 	models    *Models
 	id        int64
+	uuid      string
 	ipaddr    string
 	macaddr   string
 	hostname  string
@@ -26,9 +27,10 @@ func NewDevice(d *db.Database, m *Models) *Device {
 	return &Device{db: d, models: m}
 }
 
-func BuildDevice(id int64, mac string, ip string, hostname string, status int64) *Device {
+func BuildDevice(id int64, uuid string, mac string, ip string, hostname string, status int64) *Device {
 	return &Device{
 		id:       id,
+		uuid:     uuid,
 		ipaddr:   ip,
 		macaddr:  mac,
 		hostname: hostname,
@@ -36,8 +38,12 @@ func BuildDevice(id int64, mac string, ip string, hostname string, status int64)
 	}
 }
 
-func (self *Device) Id() int64 {
+func (self *Device) ID() int64 {
 	return self.id
+}
+
+func (self *Device) UUID() string {
+	return self.uuid
 }
 
 func (self *Device) Hostname() string {
@@ -64,16 +70,18 @@ func (self *Device) Reload(ctx context.Context) error {
 	self.hostname = dRow.Hostname
 	self.macaddr = dRow.MacAddress
 	self.ipaddr = dRow.IpAddress
+	self.uuid = dRow.Uuid
 	self.status = sdkapi.DeviceStatus(dRow.Status)
 
 	return nil
 }
 
-func (self *Device) Update(ctx context.Context, params UpdateDeviceParams) error {
+func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams) error {
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		Hostname:   params.Hostname,
-		IpAddress:  params.IpAddress,
-		MacAddress: params.MacAddress,
+		IpAddress:  params.Ip,
+		MacAddress: params.Mac,
+		Uuid:       params.UUID,
 		ID:         self.id,
 		Status:     int64(params.Status),
 	})
@@ -83,8 +91,9 @@ func (self *Device) Update(ctx context.Context, params UpdateDeviceParams) error
 	}
 
 	self.hostname = params.Hostname
-	self.ipaddr = params.IpAddress
-	self.macaddr = params.MacAddress
+	self.ipaddr = params.Ip
+	self.macaddr = params.Mac
+	self.uuid = params.UUID
 	self.status = sdkapi.DeviceStatus(params.Status)
 
 	return nil
@@ -135,12 +144,14 @@ func (self *Device) Sessions(ctx context.Context) ([]*Session, error) {
 
 func (self *Device) Clone() *Device {
 	return &Device{
-		db:       self.db,
-		models:   self.models,
-		id:       self.id,
-		ipaddr:   self.ipaddr,
-		macaddr:  self.macaddr,
-		hostname: self.hostname,
-		status:   self.status,
+		db:        self.db,
+		models:    self.models,
+		id:        self.id,
+		uuid:      self.uuid,
+		ipaddr:    self.ipaddr,
+		macaddr:   self.macaddr,
+		hostname:  self.hostname,
+		status:    self.status,
+		createdAt: self.createdAt,
 	}
 }

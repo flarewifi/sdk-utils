@@ -14,10 +14,10 @@ import (
 // IClientSession represents a client's internet connection session.
 type IClientSession interface {
 	// Returns the session's ID.
-	Id() int64
+	ID() int64
 
-	// Returns the session's unique identifier.
-	Uid() string
+	// Returns the session's UUID.
+	UUID() string
 
 	// Returns the provider plugin of the session record.
 	Plugin() IPluginApi

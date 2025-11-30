@@ -35,8 +35,8 @@ type IPaymentsApi interface {
 	// Returns the pending purchase for the client device.
 	GetPurchaseRequest(r *http.Request) (IPurchaseRequest, error)
 
-	// Returns the purchase request by its unique identifier.
-	FindPurchaseRequestByUID(uid string) (IPurchaseRequest, error)
+	// Returns the purchase request by its UUID.
+	FindPurchaseRequestByUUID(uuid string) (IPurchaseRequest, error)
 
 	// Formats a float64 amount as currency string using the current application currency.
 	FormatCurrency(amount float64) string

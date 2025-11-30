@@ -55,7 +55,7 @@ type SseData struct {
 	Data    []byte
 }
 
-func (s *SseSocket) Id() string {
+func (s *SseSocket) ID() string {
 	return s.id
 }
 

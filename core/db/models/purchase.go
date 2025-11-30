@@ -20,7 +20,7 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 
 	if p != nil {
 		purchase.id = p.ID
-		purchase.uid = p.Uid
+		purchase.uuid = p.Uuid
 		purchase.deviceId = p.DeviceID
 		purchase.sku = p.Sku
 		purchase.name = p.Name
@@ -67,7 +67,7 @@ type Purchase struct {
 	db                *db.Database
 	models            *Models
 	id                int64
-	uid               string
+	uuid              string
 	deviceId          int64
 	sku               string
 	name              string
@@ -88,15 +88,15 @@ type Purchase struct {
 	createdAt         time.Time
 }
 
-func (self *Purchase) Id() int64 {
+func (self *Purchase) ID() int64 {
 	return self.id
 }
 
-func (self *Purchase) Uid() string {
-	return self.uid
+func (self *Purchase) UUID() string {
+	return self.uuid
 }
 
-func (self *Purchase) DeviceId() int64 {
+func (self *Purchase) DeviceID() int64 {
 	return self.deviceId
 }
 
@@ -124,7 +124,7 @@ func (self *Purchase) WalletDebit() float64 {
 	return self.walletDebit
 }
 
-func (self *Purchase) WalletTxId() *int64 {
+func (self *Purchase) WalletTxID() *int64 {
 	return self.walletTxId
 }
 
@@ -208,7 +208,7 @@ func (self *Purchase) Confirm(ctx context.Context) error {
 
 		desc := "Partial payment for " + self.description
 		trns, err := self.models.walletTrnsModel.Create(ctx, CreateWalletTrnsParams{
-			WalletID:    wallet.Id(),
+			WalletID:    wallet.ID(),
 			Amount:      -dbt,
 			NewBalance:  newBal,
 			Description: desc,
@@ -217,7 +217,7 @@ func (self *Purchase) Confirm(ctx context.Context) error {
 			return err
 		}
 
-		id := trns.Id()
+		id := trns.ID()
 		txid = &id
 	}
 
@@ -264,7 +264,7 @@ func (self *Purchase) Cancel(ctx context.Context) error {
 		}
 
 		trns, err := self.models.walletTrnsModel.Create(ctx, CreateWalletTrnsParams{
-			WalletID:    wallet.Id(),
+			WalletID:    wallet.ID(),
 			Amount:      pmtTotal,
 			NewBalance:  wallet.Balance(),
 			Description: "Refund for " + reason,
@@ -274,7 +274,7 @@ func (self *Purchase) Cancel(ctx context.Context) error {
 			return err
 		}
 
-		trnsId := trns.Id()
+		trnsId := trns.ID()
 		err = self.Update(ctx, dbt, &trnsId, &cancelledAt, nil, &reason)
 		if err != nil {
 			return err

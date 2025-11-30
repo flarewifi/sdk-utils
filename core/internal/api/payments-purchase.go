@@ -32,12 +32,12 @@ type Purchase struct {
 	purchase *models.Purchase
 }
 
-func (self *Purchase) Id() int64 {
-	return self.purchase.Id()
+func (self *Purchase) ID() int64 {
+	return self.purchase.ID()
 }
 
-func (self *Purchase) Uid() string {
-	return self.purchase.Uid()
+func (self *Purchase) UUID() string {
+	return self.purchase.UUID()
 }
 
 func (self *Purchase) Sku() string {
@@ -52,8 +52,8 @@ func (self *Purchase) Name() string {
 	return self.purchase.Name()
 }
 
-func (self *Purchase) DeviceId() int64 {
-	return self.purchase.DeviceId()
+func (self *Purchase) DeviceID() int64 {
+	return self.purchase.DeviceID()
 }
 
 func (self *Purchase) Description() string {
@@ -78,8 +78,8 @@ func (self *Purchase) WalletDebit() float64 {
 	return self.purchase.WalletDebit()
 }
 
-func (self *Purchase) WalletTxId() *int64 {
-	return self.purchase.WalletTxId()
+func (self *Purchase) WalletTxID() *int64 {
+	return self.purchase.WalletTxID()
 }
 
 func (self *Purchase) ConfirmedAt() *time.Time {
@@ -133,7 +133,7 @@ func (self *Purchase) SetProcessing(ctx context.Context, paymentUrl string) erro
 func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePaymentParams) error {
 	mdls := self.api.models
 	_, err := mdls.Payment().Create(ctx, models.CreatePaymentParams{
-		PurchaseID:    self.purchase.Id(),
+		PurchaseID:    self.purchase.ID(),
 		Amount:        params.Amount,
 		PaymentMethod: params.Optname,
 	})
@@ -166,7 +166,7 @@ func (self *Purchase) State(ctx context.Context) (sdkapi.PurchaseState, error) {
 	walletDebit := self.purchase.WalletDebit()
 	walletEndBal := wallet.Balance() - walletDebit
 
-	state.PurchaseID = self.purchase.Id()
+	state.PurchaseID = self.purchase.ID()
 	state.TotalPayment = total
 	state.WalletDebit = walletDebit
 	state.WalletEndingBal = walletEndBal
@@ -205,7 +205,7 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 	now := time.Now()
 	claims := WebhookClaims{
 		DeviceID:    self.deviceId,
-		PurchaseUID: self.purchase.Uid(),
+		PurchaseUID: self.purchase.UUID(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(1 * time.Minute)),

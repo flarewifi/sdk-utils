@@ -1,12 +1,12 @@
 -- name: CreateSession :one
 INSERT INTO sessions (
-  uid, provider_pkg,
+  uuid, provider_pkg,
   device_id, session_type, time_secs,
   data_mbytes, exp_days, down_mbits,
   up_mbits, use_global
 )
 VALUES
-  (@uid, @provider_pkg, @device_id, @session_type, @time_secs, @data_mbytes, @exp_days, @down_mbits, @up_mbits, @use_global) RETURNING id;
+  (@uuid, @provider_pkg, @device_id, @session_type, @time_secs, @data_mbytes, @exp_days, @down_mbits, @up_mbits, @use_global) RETURNING id;
 
 
 -- name: FindSession :one

@@ -46,7 +46,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 		_, err = self.api.models.Purchase().Create(
 			ctx,
 			models.CreatePurchaseParams{
-				DeviceID:       clnt.Id(),
+				DeviceID:       clnt.ID(),
 				SKU:            p.Sku,
 				Name:           p.Name,
 				Description:    p.Description,
@@ -82,10 +82,10 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 		return nil, err
 	}
 
-	p, err := mdls.Purchase().PendingPurchase(r.Context(), clnt.Id())
+	p, err := mdls.Purchase().PendingPurchase(r.Context(), clnt.ID())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Println("No pending purchase found for device:", clnt.Id())
+			log.Println("No pending purchase found for device:", clnt.ID())
 			return nil, errors.New("No pending purchase found")
 		}
 		log.Println("mdls.Purchase().FindByDeviceId error:", err)
@@ -97,21 +97,21 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 		return nil, errors.New("Purchase is already processed")
 	}
 
-	purchase := NewPurchase(self.api, r.Context(), clnt.Id(), p)
+	purchase := NewPurchase(self.api, r.Context(), clnt.ID(), p)
 	return purchase, nil
 }
 
-func (self *PaymentsApi) FindPurchaseRequestByUID(uid string) (sdkapi.IPurchaseRequest, error) {
+func (self *PaymentsApi) FindPurchaseRequestByUUID(uuid string) (sdkapi.IPurchaseRequest, error) {
 	ctx := context.Background()
 	mdls := self.api.models
 
-	p, err := mdls.Purchase().FindByUID(ctx, uid)
+	p, err := mdls.Purchase().FindByUUID(ctx, uuid)
 	if err != nil {
-		log.Printf("mdls.Purchase().FindByUID error for uid %s: %v", uid, err)
+		log.Printf("mdls.Purchase().FindByUUID error for uuid %s: %v", uuid, err)
 		return nil, err
 	}
 
-	purchase := NewPurchase(self.api, ctx, p.DeviceId(), p)
+	purchase := NewPurchase(self.api, ctx, p.DeviceID(), p)
 	return purchase, nil
 }
 

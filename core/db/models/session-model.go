@@ -21,7 +21,7 @@ type SessionModel struct {
 
 // CreateSessionParams holds parameters for creating a new session
 type CreateSessionParams struct {
-	UID         string
+	UUID        string
 	PluginPkg   string
 	DeviceID    int64
 	SessionType sdkapi.SessionType
@@ -36,7 +36,7 @@ type CreateSessionParams struct {
 // UpdateSessionParams holds parameters for updating a session
 type UpdateSessionParams struct {
 	ID          int64
-	UID         string
+	UUID        string
 	ProviderPkg string
 	DeviceID    int64
 	SessionType sdkapi.SessionType
@@ -63,7 +63,7 @@ func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams
 
 	sId, err := self.db.Queries.CreateSession(ctx, queries.CreateSessionParams{
 		DeviceID:    params.DeviceID,
-		Uid:         params.UID,
+		Uuid:        params.UUID,
 		ProviderPkg: params.PluginPkg,
 		SessionType: string(params.SessionType),
 		TimeSecs:    int64(params.TimeSecs),

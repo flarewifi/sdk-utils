@@ -80,7 +80,7 @@ func (self *PluginMiddlewares) PendingPurchase() func(http.Handler) http.Handler
 			}
 
 			mdls := self.api.models
-			purchase, err := mdls.Purchase().PendingPurchase(ctx, client.Id())
+			purchase, err := mdls.Purchase().PendingPurchase(ctx, client.ID())
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				res.FlashMsg(w, r, coreAPI.Translate("error", "Client device not registered"), sdkapi.FlashMsgError)
 				res.RedirectToPortal(w, r)

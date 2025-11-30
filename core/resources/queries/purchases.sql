@@ -1,6 +1,6 @@
 -- name: CreatePurchase :one
-INSERT INTO purchases (uid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url)
-    VALUES (@uid, @device_id, @sku, @name, @description, @price, @any_price, @callback_plugin, @callback_route, @webhook_route, @metadata, @processing, @payment_url)
+INSERT INTO purchases (uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url)
+    VALUES (@uuid, @device_id, @sku, @name, @description, @price, @any_price, @callback_plugin, @callback_route, @webhook_route, @metadata, @processing, @payment_url)
 RETURNING
     id;
 
@@ -13,13 +13,13 @@ WHERE
     id = @id
 LIMIT 1;
 
--- name: FindPurchaseByUID :one
+-- name: FindPurchaseByUUID :one
 SELECT
     *
 FROM
     purchases
 WHERE
-    uid = @uid
+    uuid = @uuid
 LIMIT 1;
 
 -- name: FindPurchaseByDeviceId :one

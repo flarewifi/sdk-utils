@@ -18,6 +18,7 @@ func Init(g *api.CoreGlobals) {
 
 		InitOpkg()
 		RunCoreMigrations(g)
+		BackfillDeviceUUIDs(g)
 		InitPlugins(g)
 		InitAssets(g)
 		InitAccounts()

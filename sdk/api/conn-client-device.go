@@ -24,14 +24,18 @@ type UpdateDeviceParams struct {
 	Mac      string
 	Ip       string
 	Hostname string
+	UUID     string
 	Status   int
 }
 
 // IClientDevice represents a client device connected to the network.
 type IClientDevice interface {
 
-	// Returns the database id of the client device ID.
-	Id() int64
+	// Returns the database ID of the client device.
+	ID() int64
+
+	// Returns the UUID of the device.
+	UUID() string
 
 	// Returns the hostname of the device.
 	Hostname() string

@@ -70,7 +70,7 @@ func (bp *BootProgress) AddSocket(s *sse.SseSocket) {
 	defer bp.mu.Unlock()
 	bp.sockets = append(bp.sockets, s)
 
-	log.Println("Socket added to boot progress: ", s.Id())
+	log.Println("Socket added to boot progress: ", s.ID())
 
 	go func() {
 		<-s.Done()
@@ -80,14 +80,14 @@ func (bp *BootProgress) AddSocket(s *sse.SseSocket) {
 
 		sockets := []*sse.SseSocket{}
 		for _, ss := range sockets {
-			if s.Id() != ss.Id() {
+			if s.ID() != ss.ID() {
 				sockets = append(sockets, s)
 			}
 		}
 
 		bp.sockets = sockets
 
-		log.Println("Socket removed from boot progress: ", s.Id())
+		log.Println("Socket removed from boot progress: ", s.ID())
 	}()
 }
 

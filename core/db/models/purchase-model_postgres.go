@@ -31,7 +31,7 @@ func (self *PurchaseModel) FindPurchaseByAttrs(ctx context.Context, attrs map[st
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, uid, device_id, sku, name, description, price, any_price,
+		SELECT id, uuid, device_id, sku, name, description, price, any_price,
 		       callback_plugin, callback_route, metadata, wallet_debit, wallet_tx_id,
 		       confirmed_at, cancelled_at, cancelled_reason, created_at
 		FROM purchases
@@ -48,7 +48,7 @@ func (self *PurchaseModel) FindPurchaseByAttrs(ctx context.Context, attrs map[st
 	var p queries.Purchase
 	err := row.Scan(
 		&p.ID,
-		&p.Uid,
+		&p.Uuid,
 		&p.DeviceID,
 		&p.Sku,
 		&p.Name,

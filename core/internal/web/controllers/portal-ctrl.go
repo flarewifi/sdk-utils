@@ -81,14 +81,14 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Only set cookie if validation passed
 		if shouldSetCookie {
-			if err := devicetoken.SetDeviceCookie(w, clnt.Id()); err != nil {
+			if err := devicetoken.SetDeviceCookie(w, clnt.ID()); err != nil {
 				fmt.Println("DeviceMiddleware: Failed to set device cookie:", err)
 			}
 		} else {
 			fmt.Println("DeviceMiddleware: Cookie validation failed, not setting cookie")
 		}
 
-		fmt.Println("DeviceMiddleware: Registered device:", clnt.Id(), clnt.MacAddr(), clnt.IpAddr())
+		fmt.Println("DeviceMiddleware: Registered device:", clnt.ID(), clnt.MacAddr(), clnt.IpAddr())
 		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "portal:index")
 	}
 }
@@ -211,7 +211,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Generate JWT device token for localStorage
 		machineID := machineuid.GetMachineUID()
-		deviceToken, err := devicetoken.GenerateDeviceToken(clnt.Id(), machineID)
+		deviceToken, err := devicetoken.GenerateDeviceToken(clnt.ID(), machineID)
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "Failed to generate device token")
 			fmt.Println("PortalRegisterAjax: Failed to generate device token:", err)
@@ -226,7 +226,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Set cookie as fallback (only if validation passed)
 		if shouldSetCookie {
-			if err := devicetoken.SetDeviceCookie(w, clnt.Id()); err != nil {
+			if err := devicetoken.SetDeviceCookie(w, clnt.ID()); err != nil {
 				fmt.Println("PortalRegisterAjax: Failed to set device cookie:", err)
 			}
 		} else {
@@ -236,7 +236,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get redirect URL
 		redirectUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:index")
 
-		fmt.Println("PortalRegisterAjax: Success - device:", clnt.Id(), clnt.MacAddr(), clnt.IpAddr(), "updated:", updated)
+		fmt.Println("PortalRegisterAjax: Success - device:", clnt.ID(), clnt.MacAddr(), clnt.IpAddr(), "updated:", updated)
 
 		// Return JSON response with device token
 		w.Header().Set("Content-Type", "application/json")
@@ -244,7 +244,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":      true,
 			"device_token": deviceToken,
-			"device_id":    clnt.Id(),
+			"device_id":    clnt.ID(),
 			"redirect_url": redirectUrl,
 			"updated":      updated,
 		})

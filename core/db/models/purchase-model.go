@@ -61,7 +61,7 @@ func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchasePara
 	uid := uuid.New()
 
 	queryParams := queries.CreatePurchaseParams{
-		Uid:            uid.String(),
+		Uuid:           uid.String(),
 		DeviceID:       params.DeviceID,
 		Sku:            params.SKU,
 		Name:           params.Name,
@@ -116,10 +116,10 @@ func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId int64) (
 	return NewPurchase(self.db, self.models, &p)
 }
 
-func (self *PurchaseModel) FindByUID(ctx context.Context, uid string) (*Purchase, error) {
-	p, err := self.db.Queries.FindPurchaseByUID(ctx, uid)
+func (self *PurchaseModel) FindByUUID(ctx context.Context, uuid string) (*Purchase, error) {
+	p, err := self.db.Queries.FindPurchaseByUUID(ctx, uuid)
 	if err != nil {
-		log.Printf("error finding purchase by uid %v: %v", uid, err)
+		log.Printf("error finding purchase by uuid %v: %v", uuid, err)
 		return nil, err
 	}
 

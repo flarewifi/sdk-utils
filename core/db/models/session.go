@@ -14,7 +14,7 @@ type Session struct {
 	db          *db.Database
 	models      *Models
 	id          int64
-	uid         string
+	uuid        string
 	providerPkg string
 	deviceId    int64
 	sessionType string
@@ -51,7 +51,7 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 		}
 
 		session.id = s.ID
-		session.uid = s.Uid
+		session.uuid = s.Uuid
 		session.providerPkg = s.ProviderPkg
 		session.deviceId = s.DeviceID
 		session.sessionType = s.SessionType
@@ -95,19 +95,19 @@ func BuildSession(id int64, devId int64, t string, timeSecs int, dataMb float64,
 	}
 }
 
-func (self *Session) Id() int64 {
+func (self *Session) ID() int64 {
 	return self.id
 }
 
-func (self *Session) Uid() string {
-	return self.uid
+func (self *Session) UUID() string {
+	return self.uuid
 }
 
 func (self *Session) ProviderPkg() string {
 	return self.providerPkg
 }
 
-func (self *Session) DeviceId() int64 {
+func (self *Session) DeviceID() int64 {
 	return self.deviceId
 }
 

@@ -3,10 +3,12 @@ package models
 import (
 	"context"
 	"log"
-	sdkapi "sdk/api"
 
 	"core/db"
 	"core/db/queries"
+
+	"github.com/google/uuid"
+	sdkapi "sdk/api"
 )
 
 type DeviceModel struct {
@@ -27,6 +29,7 @@ type UpdateDeviceParams struct {
 	MacAddress string
 	IpAddress  string
 	Hostname   string
+	UUID       string
 	Status     int
 }
 
@@ -35,10 +38,13 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 }
 
 func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) (*Device, error) {
+	uid := uuid.New()
+
 	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
 		MacAddress: params.MacAddress,
 		IpAddress:  params.IpAddress,
 		Hostname:   params.Hostname,
+		Uuid:       uid.String(),
 	})
 	if err != nil {
 		log.Println("error creating new device:", err)
@@ -55,6 +61,7 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		db:        self.db,
 		models:    self.models,
 		id:        d.ID,
+		uuid:      d.Uuid,
 		macaddr:   d.MacAddress,
 		ipaddr:    d.IpAddress,
 		hostname:  d.Hostname,
@@ -82,6 +89,7 @@ func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
 
 	device := NewDevice(self.db, self.models)
 	device.id = d.ID
+	device.uuid = d.Uuid
 	device.macaddr = d.MacAddress
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
@@ -101,6 +109,26 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 	}
 
 	device.id = d.ID
+	device.uuid = d.Uuid
+	device.macaddr = d.MacAddress
+	device.ipaddr = d.IpAddress
+	device.hostname = d.Hostname
+	device.createdAt = d.CreatedAt.Time
+	device.status = sdkapi.DeviceStatus(d.Status)
+
+	return device, nil
+}
+
+func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, error) {
+	device := NewDevice(self.db, self.models)
+	d, err := self.db.Queries.FindDeviceByUUID(ctx, uid)
+	if err != nil {
+		log.Printf("error finding device by UUID %s: %v", uid, err)
+		return nil, err
+	}
+
+	device.id = d.ID
+	device.uuid = d.Uuid
 	device.macaddr = d.MacAddress
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
@@ -116,6 +144,7 @@ func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) 
 		MacAddress: params.MacAddress,
 		IpAddress:  params.IpAddress,
 		Hostname:   params.Hostname,
+		Uuid:       params.UUID,
 		Status:     int64(params.Status),
 	})
 	if err != nil {
@@ -124,5 +153,33 @@ func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) 
 	}
 
 	log.Printf("Successfully updated device with id %v", params.ID)
+	return nil
+}
+
+// BackfillEmptyUUIDs generates UUIDs for all devices that have empty UUID fields
+func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
+	devices, err := self.db.Queries.FindDevicesWithEmptyUUID(ctx)
+	if err != nil {
+		log.Printf("error finding devices with empty UUID: %v", err)
+		return err
+	}
+
+	for _, d := range devices {
+		uid := uuid.New()
+		err := self.db.Queries.UpdateDeviceUUID(ctx, queries.UpdateDeviceUUIDParams{
+			ID:   d.ID,
+			Uuid: uid.String(),
+		})
+		if err != nil {
+			log.Printf("error updating UUID for device %v: %v", d.ID, err)
+			return err
+		}
+		log.Printf("Generated UUID %s for device %v", uid.String(), d.ID)
+	}
+
+	if len(devices) > 0 {
+		log.Printf("Backfilled UUIDs for %d devices", len(devices))
+	}
+
 	return nil
 }
