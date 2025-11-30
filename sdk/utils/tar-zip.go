@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/ulikunitz/xz"
 )
 
 // CompressZip compresses files into a zip file
@@ -174,6 +176,83 @@ func Untar(tarGzFile, outputDir string) error {
 			if err := os.MkdirAll(outputPath, os.FileMode(header.Mode)); err != nil {
 				return err
 			}
+			continue
+		}
+
+		// Handle files
+		file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode))
+		if err != nil {
+			return err
+		}
+
+		if _, err = io.Copy(file, tr); err != nil {
+			file.Close() // dont use defer
+			return err
+		}
+
+		file.Close() // dont use defer
+
+		fmt.Printf("Extracted: %s\n", outputPath)
+	}
+
+	return nil
+}
+
+// UntarXz extracts tar.xz file to a output directory
+func UntarXz(tarXzFile, outputDir string) error {
+	if err := FsEnsureDir(filepath.Dir(outputDir)); err != nil {
+		return err
+	}
+
+	// Open the tar.xz file
+	file, err := os.Open(tarXzFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create an xz reader
+	xr, err := xz.NewReader(file)
+	if err != nil {
+		return err
+	}
+
+	// Create a tar reader
+	tr := tar.NewReader(xr)
+
+	// Iterate through the files in the tar archive
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+
+		if err != nil {
+			return err
+		}
+
+		// Construct the full output path
+		outputPath := filepath.Join(outputDir, header.Name)
+
+		// Handle directories
+		if header.Typeflag == tar.TypeDir {
+			if err := os.MkdirAll(outputPath, os.FileMode(header.Mode)); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// Ensure parent directory exists
+		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+			return err
+		}
+
+		// Handle symlinks
+		if header.Typeflag == tar.TypeSymlink {
+			if err := os.Symlink(header.Linkname, outputPath); err != nil {
+				return err
+			}
+			fmt.Printf("Extracted symlink: %s -> %s\n", outputPath, header.Linkname)
 			continue
 		}
 

@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 
-ROOT_DIR="$(pwd)"
+CGO_ENABLED=0
 DB_DRIVER="sqlite"
 OS_CONFIG="wan-lan-mono"
 GO_TAGS="dev mono $DB_DRIVER"
-CREATE_PUGINS_INIT="./tools/cmd/make-mono/main.go"
 SYNC_VERSION="./tools/cmd/sync-versions/main.go"
 BUILD_ASSETS_MAIN="./tools/cmd/build-assets/main.go"
-BUILD_MONO_BIN="./tools/cmd/create-mono-bin/main.go"
+MONO_BIN_PREPARE="./tools/cmd/mono-bin-prepare/main.go"
+MONO_BIN_COMPILE="./tools/cmd/mono-bin-compile/main.go"
+MONO_BIN_COPY_OUTPUT="./tools/cmd/mono-bin-copy-output/main.go"
+MONO_BIN_OUTDIR=".tmp/mono-bin"
 FLARE_CLI_MAIN="./core/internal/cli/main.go"
 
 cp go.work.default go.work && \
@@ -18,15 +20,13 @@ cp go.work.default go.work && \
     sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
     cp ./core/internal/api/plugin-init_mono.default \
     ./core/internal/api/plugin-init_mono.go && \
-    echo "Scanning translations..." && \
-    go run -tags="${GO_TAGS}" ./tools/translator --silent && \
     go run -tags="${GO_TAGS}" $SYNC_VERSION && \
     go run -tags="${GO_TAGS}" $BUILD_ASSETS_MAIN && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN build-templates && \
-    go run -tags="${GO_TAGS}" $CREATE_PUGINS_INIT && \
-    echo "Building mono binary..." && \
-    go run -tags="${GO_TAGS}" $BUILD_MONO_BIN
+    go run -tags="${GO_TAGS}" $MONO_BIN_PREPARE && \
+    go run -tags="${GO_TAGS}" $MONO_BIN_COMPILE && \
+    go run -tags="${GO_TAGS}" $MONO_BIN_COPY_OUTPUT --outdir="${MONO_BIN_OUTDIR}"
 
 
 if [ $? != 0 ]; then
@@ -34,7 +34,6 @@ if [ $? != 0 ]; then
     exit 1
 fi
 
-MONO_BIN_OUT="$ROOT_DIR/output/mono-bin-files"
 APP_DIR="/opt/flarehotspot/app"
 DATA_DIR="/opt/flarehotspot/data"
 
@@ -61,8 +60,8 @@ done
 
 echo "Copying mono bin files to app directory..."
 # Copy files from mono bin output
-rsync -a $MONO_BIN_OUT/ $APP_DIR/
-rsync -a $MONO_BIN_OUT/data/ $DATA_DIR/
+rsync -a $MONO_BIN_OUTDIR/ $APP_DIR/
+rsync -a $MONO_BIN_OUTDIR/data/ $DATA_DIR/
 mkdir -p $APP_DIR/.tmp
 touch $APP_DIR/.tmp/.server-up
 rm -rf $APP_DIR/data

@@ -198,3 +198,100 @@ func DownloadDoneCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		})
 	}
 }
+
+func SysupgradePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.HttpAPI.Response()
+
+		// If already downloaded, redirect to download-done page
+		if updates.IsDownloaded() {
+			res.Redirect(w, r, "admin:updates:download-done")
+			return
+		}
+
+		uploadUrl := api.HttpAPI.Helpers().UrlForRoute("admin:updates:sysupgrade-upload")
+		csrfHTML := api.HttpAPI.Helpers().CsrfHtmlTag(r)
+		maxSizeMB := updates.GetMaxFileSizeMB()
+		allowedExts := updates.GetAllowedExtensions()
+
+		page := updatesview.SysupgradePage(api, uploadUrl, csrfHTML, maxSizeMB, allowedExts)
+		res.AdminView(w, r, sdkapi.ViewPage{
+			PageContent: page,
+		})
+	}
+}
+
+func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.HttpAPI.Response()
+
+		// Parse multipart form (100 MB max)
+		if err := r.ParseMultipartForm(updates.MaxSysupgradeFileSize); err != nil {
+			log.Println("Error parsing multipart form:", err)
+			errMsg := api.Translate("error", "Failed to parse upload form")
+			page := updatesview.SysupgradeUploadError(api, errMsg)
+			page.Render(r.Context(), w)
+			return
+		}
+
+		// Get uploaded file
+		file, header, err := r.FormFile("sysupgrade_file")
+		if err != nil {
+			log.Println("Error getting form file:", err)
+			errMsg := api.Translate("error", "No file uploaded")
+			page := updatesview.SysupgradeUploadError(api, errMsg)
+			page.Render(r.Context(), w)
+			return
+		}
+		defer file.Close()
+
+		// Validate file
+		if err := updates.ValidateSysupgradeFile(header.Filename, header.Size); err != nil {
+			log.Println("File validation error:", err)
+			var errMsg string
+			switch err {
+			case updates.ErrInvalidFileExtension:
+				errMsg = api.Translate("error", "Invalid file type. Only .bin and .img files are allowed.")
+			case updates.ErrFileTooLarge:
+				errMsg = api.Translate("error", "File size exceeds maximum allowed limit.")
+			default:
+				errMsg = api.Translate("error", "File validation failed")
+			}
+			page := updatesview.SysupgradeUploadError(api, errMsg)
+			page.Render(r.Context(), w)
+			return
+		}
+
+		// Save the file
+		if err := updates.SaveSysupgradeFile(file, header.Filename); err != nil {
+			log.Println("Error saving sysupgrade file:", err)
+			errMsg := api.Translate("error", "Failed to save firmware file")
+			page := updatesview.SysupgradeUploadError(api, errMsg)
+			page.Render(r.Context(), w)
+			return
+		}
+
+		// Validate firmware compatibility with the device
+		if err := updates.ValidateSysupgradeCompatibility(); err != nil {
+			log.Println("Firmware compatibility check failed:", err)
+			// Remove the incompatible firmware file
+			updates.RemoveSysupgradeFile()
+			var errMsg string
+			switch err {
+			case updates.ErrIncompatibleFirmware:
+				errMsg = api.Translate("error", "The uploaded firmware is not compatible with this device.")
+			default:
+				errMsg = api.Translate("error", "Firmware validation failed")
+			}
+			page := updatesview.SysupgradeUploadError(api, errMsg)
+			page.Render(r.Context(), w)
+			return
+		}
+
+		// Success - redirect to download-done page
+		res.FlashMsg(w, r, api.Translate("success", "Firmware uploaded and validated successfully"), sdkapi.FlashMsgSuccess)
+		res.Redirect(w, r, "admin:updates:download-done")
+	}
+}

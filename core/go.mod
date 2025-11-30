@@ -18,6 +18,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/stretchr/testify v1.10.0
 	github.com/twitchtv/twirp v8.1.3+incompatible
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/yuin/goldmark v1.4.13
 	google.golang.org/protobuf v1.34.2
 	modernc.org/sqlite v1.28.0

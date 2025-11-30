@@ -588,6 +588,7 @@ func FsWriteFile(path string, data []byte) error {
 var (
 	MagicNumZip                 = []byte{0x50, 0x4B, 0x03, 0x04}
 	MagicNumGzip                = []byte{0x1F, 0x8B}
+	MagicNumXz                  = []byte{0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00}
 	ErrUnknownCompressionFormat = errors.New("unknown compression format")
 )
 
@@ -597,9 +598,10 @@ func FsExtract(file string, dest string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
-	// Read the first 4 bytes (or more if needed for other formats)
-	buf := make([]byte, 4)
+	// Read the first 6 bytes (needed for XZ magic number detection)
+	buf := make([]byte, 6)
 	if _, err := f.Read(buf); err != nil {
 		return err
 	}
@@ -610,6 +612,8 @@ func FsExtract(file string, dest string) error {
 		return Unzip(file, dest)
 	case bytes.HasPrefix(buf, MagicNumGzip):
 		return Untar(file, dest)
+	case bytes.HasPrefix(buf, MagicNumXz):
+		return UntarXz(file, dest)
 	}
 
 	return ErrUnknownCompressionFormat

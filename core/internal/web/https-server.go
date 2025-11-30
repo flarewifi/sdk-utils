@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	certDir  = filepath.Join(sdkutils.PathDataDir, "system", "certs")
+	certDir  = filepath.Join(sdkutils.PathDataDir, "storage", "certs")
 	certFile = filepath.Join(certDir, "server.crt")
 	keyFile  = filepath.Join(certDir, "server.key")
 	// Renew certificates when they expire within this duration

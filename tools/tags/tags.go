@@ -8,9 +8,11 @@ func HasGoTag(tag string) bool {
 }
 
 func GetBuildTags() string {
-	return strings.Join([]string{
+	tags := []string{
 		env(),
 		mono(),
+		cgoTag(),
 		database(),
-	}, " ")
+	}
+	return strings.Join(tags, " ")
 }

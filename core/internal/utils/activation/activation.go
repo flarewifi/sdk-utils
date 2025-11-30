@@ -123,6 +123,8 @@ func checkActivationOnline() (ok bool, err error) {
 
 	machineID := machineuid.GetMachineUID()
 	params := rpc_flarewifi_v1.MachineActivationRequest{
+		DeviceModel:    release.DeviceModel,
+		DeviceConfig:   release.DeviceConfig,
 		MachineId:      machineID,
 		CurrentVersion: info.Version,
 		BrandId:        release.BrandId,
@@ -131,10 +133,9 @@ func checkActivationOnline() (ok bool, err error) {
 		OsTarget:       release.OsTarget,
 		OsArch:         release.OsArch,
 		OsProfile:      release.OsProfile,
-		OsConfig:       release.OsConfig,
 		GoVersion:      sdkutils.GO_VERSION,
 		GoArch:         sdkutils.GOARCH,
-		IsMono:         tags.HasGoTag("mono"),
+		Monolythic:     tags.HasGoTag("mono"),
 		Channel:        strings.ToLower(cfg.Channel),
 	}
 
