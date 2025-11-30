@@ -15,7 +15,8 @@ func PortalRoutes(g *api.CoreGlobals) {
 	rootR := webutil.RootRouter
 	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
 	redirectToLanIpMw := middlewares.RedirectToLanIP(g.CoreAPI)
-	pendingPurchaseMw := g.CoreAPI.HttpAPI.Middlewares().PendingPurchase()
+	httpRedirectMw := middlewares.HTTPRedirect()
+	pendingPurchaseMw := middlewares.PendingPurchase(g.CoreAPI, g.Models)
 
 	portalSseCtrl := controllers.PortalSseHandler(g)
 	portalRedirectCtrl := controllers.PortalRedirectCtrl(g)
@@ -24,10 +25,11 @@ func PortalRoutes(g *api.CoreGlobals) {
 	portalIndexPageCtrl := controllers.PortalIndexPage(g)
 
 	// Root route redirects to /portal
+	// Applies HTTPRedirect middleware to redirect HTTPS to HTTP
 	rootR.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		h := redirectToLanIpMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := httpRedirectMw(redirectToLanIpMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			coreAPI.HttpAPI.Response().Redirect(w, r, "portal:redirector")
-		}))
+		})))
 		h.ServeHTTP(w, r)
 	}).Methods("GET").Name("portal:root")
 
@@ -38,14 +40,21 @@ func PortalRoutes(g *api.CoreGlobals) {
 		subrouter.Get("/redirect", portalRedirectCtrl).
 			Name("portal:redirector")
 
-		subrouter.Get("/register", portalRegisterCtrl).
-			Name("portal:register")
+		// /portal/register - applies HTTPRedirect middleware
+		subrouter.Get("/register", func(w http.ResponseWriter, r *http.Request) {
+			h := httpRedirectMw(http.HandlerFunc(portalRegisterCtrl))
+			h.ServeHTTP(w, r)
+		}).Name("portal:register")
 
-		subrouter.Post("/register/ajax", portalRegisterAjaxCtrl).
-			Name("portal:register:ajax")
+		// /portal/register/ajax - applies HTTPRedirect middleware
+		subrouter.Post("/register/ajax", func(w http.ResponseWriter, r *http.Request) {
+			h := httpRedirectMw(http.HandlerFunc(portalRegisterAjaxCtrl))
+			h.ServeHTTP(w, r)
+		}).Name("portal:register:ajax")
 
+		// /portal/index - applies HTTPRedirect and PendingPurchase middlewares
 		subrouter.Get("/index", func(w http.ResponseWriter, r *http.Request) {
-			h := pendingPurchaseMw(http.HandlerFunc(portalIndexPageCtrl))
+			h := httpRedirectMw(pendingPurchaseMw(http.HandlerFunc(portalIndexPageCtrl)))
 			h.ServeHTTP(w, r)
 		}).Name("portal:index")
 

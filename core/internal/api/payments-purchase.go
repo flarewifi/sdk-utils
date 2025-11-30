@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"core/db/models"
+	"core/internal/web/helpers"
 	sdkapi "sdk/api"
 	"tools/config"
 	"tools/env"
@@ -203,7 +204,7 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 
 	// Create JWT token with 1-minute expiration
 	now := time.Now()
-	claims := WebhookClaims{
+	claims := helpers.WebhookClaims{
 		DeviceID:    self.deviceId,
 		PurchaseUID: self.purchase.UUID(),
 		RegisteredClaims: jwt.RegisteredClaims{

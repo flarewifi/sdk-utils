@@ -17,7 +17,6 @@ func NewHttpApi(api *PluginApi, db *db.Database, assets *GlobalAssets, clnt *con
 	navs := NewNavsApi(api)
 	auth := NewHttpAuth(api)
 	httpResp := NewHttpResponse(api, assets)
-	middlewares := NewPluginMiddlewares(api, mdls, dmgr, pmgr)
 	httpRouter := NewHttpRouterApi(api, db, clnt)
 	httpForm := NewHttpFormApi(api)
 	httpCookie := NewHttpCookie(api)
@@ -28,7 +27,6 @@ func NewHttpApi(api *PluginApi, db *db.Database, assets *GlobalAssets, clnt *con
 		httpRouter:     httpRouter,
 		navsApi:        navs,
 		httpResp:       httpResp,
-		middlewares:    middlewares,
 		formsApi:       httpForm,
 		httpCookie:     httpCookie,
 		clientRegister: clnt,
@@ -45,7 +43,6 @@ type HttpApi struct {
 	formsApi       *HttpFormApi
 	httpResp       *HttpResponse
 	httpCookie     *HttpCookie
-	middlewares    *PluginMiddlewares
 	clientRegister *connmgr.ClientRegister
 }
 
@@ -95,10 +92,6 @@ func (self *HttpApi) Forms() sdkapi.IHttpFormsApi {
 
 func (self *HttpApi) Helpers() sdkapi.IHttpHelpers {
 	return NewHttpHelpers(self.api)
-}
-
-func (self *HttpApi) Middlewares() sdkapi.IHttpMiddlewares {
-	return self.middlewares
 }
 
 func (self *HttpApi) Response() sdkapi.IHttpResponse {
