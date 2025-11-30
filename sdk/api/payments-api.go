@@ -40,4 +40,9 @@ type IPaymentsApi interface {
 
 	// Formats a float64 amount as currency string using the current application currency.
 	FormatCurrency(amount float64) string
+
+	// WebhookAuth authenticates internal webhook requests using JWT tokens.
+	// Verifies the JWT token signed with application secret.
+	// Returns nil if authentication is successful, or an error if it fails.
+	WebhookAuth(r *http.Request) error
 }

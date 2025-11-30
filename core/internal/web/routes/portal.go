@@ -16,7 +16,7 @@ func PortalRoutes(g *api.CoreGlobals) {
 	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
 	redirectToLanIpMw := middlewares.RedirectToLanIP(g.CoreAPI)
 	httpRedirectMw := middlewares.HTTPRedirect()
-	pendingPurchaseMw := g.CoreAPI.HttpAPI.Middlewares().PendingPurchase()
+	pendingPurchaseMw := middlewares.PendingPurchase(g.CoreAPI, g.Models)
 
 	portalSseCtrl := controllers.PortalSseHandler(g)
 	portalRedirectCtrl := controllers.PortalRedirectCtrl(g)

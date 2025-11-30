@@ -9,6 +9,8 @@ import (
 	"net/http"
 
 	"core/db/models"
+	"core/internal/web/helpers"
+	"core/internal/web/middlewares"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -70,7 +72,7 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 	}
 
 	// Prevent createting multiple pending purchases
-	purMw := self.api.HttpAPI.middlewares.PendingPurchase()
+	purMw := middlewares.PendingPurchase(self.api.CoreAPI, self.api.models)
 	purMw(http.HandlerFunc(handler)).ServeHTTP(w, r)
 }
 
@@ -146,4 +148,8 @@ func (self *PaymentsApi) ErrorPage(w http.ResponseWriter, err error) {
 	// TODO: show error page
 	w.WriteHeader(500)
 	w.Write([]byte(err.Error()))
+}
+
+func (self *PaymentsApi) WebhookAuth(r *http.Request) error {
+	return helpers.WebhookAuth(r)
 }

@@ -22,9 +22,6 @@ type IHttpApi interface {
 	// Returns the cookie API
 	Cookie() IHttpCookie
 
-	// Returns the built in http middlewares
-	Middlewares() IHttpMiddlewares
-
 	// Returns helper methods for views and handlers.
 	Helpers() IHttpHelpers
 

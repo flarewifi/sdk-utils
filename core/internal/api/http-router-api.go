@@ -42,8 +42,8 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegis
 }
 
 func (self *HttpRouterApi) Initialize() {
-	self.adminRouter.Use(self.api.HttpAPI.middlewares.HTTPSRedirect())
-	self.adminRouter.Use(self.api.HttpAPI.middlewares.AdminAuth())
+	self.adminRouter.Use(middlewares.HTTPSRedirect())
+	self.adminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
 	self.adminRouter.Use(middlewares.TrackNav(self.api.models))
 }
 

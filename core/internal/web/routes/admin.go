@@ -11,7 +11,7 @@ import (
 )
 
 func AdminRoutes(g *api.CoreGlobals) {
-	authMw := g.CoreAPI.HttpAPI.Middlewares().AdminAuth()
+	authMw := middlewares.AdminAuth(g.CoreAPI)
 	trackNavMw := middlewares.TrackNav(g.Models)
 	httpsRedirectMw := middlewares.HTTPSRedirect()
 	rootR := webutil.RootRouter
