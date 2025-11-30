@@ -56,6 +56,8 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
 	params := rpc.FetchLatestSoftwareReleaseRequest{
+		DeviceModel:    release.DeviceModel,
+		DeviceConfig:   release.DeviceConfig,
 		CurrentVersion: currentVersion.String(),
 		BrandId:        release.BrandId,
 		Os:             strings.ToLower(release.Os),
@@ -63,10 +65,9 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 		OsTarget:       release.OsTarget,
 		OsArch:         release.OsArch,
 		OsProfile:      release.OsProfile,
-		OsConfig:       release.OsConfig,
 		GoVersion:      sdkutils.GO_VERSION,
 		GoArch:         sdkutils.GOARCH,
-		IsMono:         tags.HasGoTag("mono"),
+		Monolythic:     tags.HasGoTag("mono"),
 		Channel:        strings.ToLower(cfg.Channel),
 	}
 

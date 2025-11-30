@@ -1,4 +1,4 @@
-//go:build sqlite && !cgo
+//go:build sqlite && cgo
 
 package db
 
@@ -15,7 +15,7 @@ import (
 	queries "core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	_ "modernc.org/sqlite" // Pure-Go SQLite driver
+	_ "github.com/mattn/go-sqlite3" // CGO SQLite driver for cross-compilation
 )
 
 const (
@@ -33,7 +33,7 @@ func NewDatabase() *Database {
 }
 
 func newSQLiteDatabase(dbpath string) *Database {
-	log.Println("Initializing SQLite database...")
+	log.Println("Initializing SQLite database (CGO driver)...")
 
 	var db Database
 
@@ -52,8 +52,9 @@ func newSQLiteDatabase(dbpath string) *Database {
 			}
 		}
 
+		// mattn/go-sqlite3 uses "sqlite3" driver name and slightly different connection string
 		dburl := fmt.Sprintf("file:%s?_busy_timeout=5000&_journal_mode=WAL", dbpath)
-		sqlDB, err := sql.Open("sqlite", dburl)
+		sqlDB, err := sql.Open("sqlite3", dburl)
 		if err != nil {
 			log.Println("Error opening SQLite DB:", err)
 			db.ConnErr = err
