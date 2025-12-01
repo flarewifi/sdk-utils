@@ -116,6 +116,7 @@ make postgres   # Plugin-based (PostgreSQL)
 6. **Consult subagents for EVERY new feature** - @backend, @frontend, @sql, @translations
 7. **Use translations for ALL user-facing text** - `api.Translate()`
 8. **Default to plugin development** unless explicitly told otherwise
+9. **Update SDK documentation** (`sdk/mkdocs/docs/`) when modifying core code that affects the plugin API (interfaces in `sdk/api/`, implementations in `core/internal/api/`)
 
 ## Go Patterns
 

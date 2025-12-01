@@ -20,6 +20,17 @@ LIMIT
   1;
 
 
+-- name: FindSessionByUUID :one
+SELECT
+    *
+FROM
+  sessions
+WHERE
+  uuid = @uuid
+LIMIT
+  1;
+
+
 -- name: UpdateSession :exec
 UPDATE
   sessions

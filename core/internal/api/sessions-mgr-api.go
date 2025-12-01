@@ -32,6 +32,26 @@ func (self *SessionsMgrApi) FindClientById(ctx context.Context, devId int64) (sd
 	return clnt, nil
 }
 
+// FindDeviceByUUID finds a client device by its globally unique identifier.
+func (self *SessionsMgrApi) FindDeviceByUUID(ctx context.Context, uuid string) (sdkapi.IClientDevice, error) {
+	device, err := self.pluginApi.models.Device().FindByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	clnt := connmgr.NewClientDevice(self.pluginApi.db, self.pluginApi.models, device)
+	return clnt, nil
+}
+
+// FindSessionByUUID finds a session by its globally unique identifier.
+func (self *SessionsMgrApi) FindSessionByUUID(ctx context.Context, uuid string) (sdkapi.IClientSession, error) {
+	session, err := self.pluginApi.models.Session().FindByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	cs := connmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), session)
+	return cs, nil
+}
+
 // Connect connects a client device to the internet.
 func (self *SessionsMgrApi) Connect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
 	return self.pluginApi.SessionMgr.Connect(ctx, clnt, notify)

@@ -29,6 +29,17 @@ Returns the session's unique identifier as a `string` value.
 uuid := session.UUID()
 ```
 
+### DeviceID
+
+Returns the database ID of the device that owns this session as an `int64` value. This is useful when you need to look up the device associated with a session, particularly in cloud sync scenarios.
+
+```go
+deviceID := session.DeviceID()
+
+// Use with FindClientById to get the full device
+device, err := api.SessionsMgr().FindClientById(ctx, deviceID)
+```
+
 ### Plugin
 
 Returns the provider plugin of the session record as an `IPluginApi` interface.

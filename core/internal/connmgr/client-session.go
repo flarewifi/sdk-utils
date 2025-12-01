@@ -108,6 +108,13 @@ func (self *ClientSession) UUID() string {
 	return self.uuid
 }
 
+// DeviceID returns the device ID that owns this session.
+func (self *ClientSession) DeviceID() int64 {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.devId
+}
+
 // Plugin returns the provider plugin of the session record.
 func (self *ClientSession) Plugin() sdkapi.IPluginApi {
 	self.mu.RLock()

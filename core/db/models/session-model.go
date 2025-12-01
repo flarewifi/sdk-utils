@@ -91,6 +91,16 @@ func (self *SessionModel) Find(ctx context.Context, id int64) (*Session, error) 
 	return session, nil
 }
 
+func (self *SessionModel) FindByUUID(ctx context.Context, uuid string) (*Session, error) {
+	sRow, err := self.db.Queries.FindSessionByUUID(ctx, uuid)
+	if err != nil {
+		log.Printf("error finding session by UUID %s: %v", uuid, err)
+		return nil, err
+	}
+	session := NewSession(self.db, self.models, &sRow)
+	return session, nil
+}
+
 func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams) error {
 	var expDays sql.NullInt64
 	if params.ExpDays != nil {
