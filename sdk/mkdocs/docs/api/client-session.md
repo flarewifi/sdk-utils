@@ -13,20 +13,20 @@ func (w http.ResponseWriter, r *http.Request) {
 
 The following methods are available in `IClientSession`.
 
-### Id
+### ID
 
 Returns the session's ID as an `int64` value.
 
 ```go
-id := session.Id()
+id := session.ID()
 ```
 
-### Uid
+### UUID
 
 Returns the session's unique identifier as a `string` value.
 
 ```go
-uid := session.Uid()
+uuid := session.UUID()
 ```
 
 ### Plugin

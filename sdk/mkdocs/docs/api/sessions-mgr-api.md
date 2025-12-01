@@ -4,6 +4,20 @@ The `ISessionsMgrApi` contains methods to manage the client device [sessions](./
 
 ## ISessionsMgrApi Methods
 
+### FindClientById
+
+Finds a client device by its database ID. It takes a [context](https://gobyexample.com/context) and the device ID as parameters.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    devId := int64(123)
+    clnt, err := api.SessionsMgr().FindClientById(r.Context(), devId)
+    if err != nil {
+        // handle error
+    }
+}
+```
+
 ### Connect
 
 This method will connect the client device to the internet if the client device has available [IClientSession](./client-session.md) to consume.
@@ -40,7 +54,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### CreateSession
 
-It creates a [IClientSession](./client-session.md) for the [IClientDevice](./client-device.md). It takes a `*sql.Tx`, `context.Context`, and `CreateSessionParams` struct as arguments.
+It creates a [IClientSession](./client-session.md) for the [IClientDevice](./client-device.md). It takes a `context.Context` and `CreateSessionParams` struct as arguments.
 
 The `CreateSessionParams` struct contains:
 
@@ -60,7 +74,7 @@ func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
 
     params := CreateSessionParams{
-        DevId:       clnt.Id(),
+        DevId:       clnt.ID(),
         SessionType: "time-or-data",
         TimeSecs:    3600,     // 1 hour
         DataMbytes:  100.0,    // 100 MB
@@ -70,7 +84,7 @@ func (w http.ResponseWriter, r *http.Request) {
         UseGlobal:   false,
     }
 
-    session, err := api.SessionsMgr().CreateSession(tx, r.Context(), params)
+    session, err := api.SessionsMgr().CreateSession(r.Context(), params)
 }
 ```
 

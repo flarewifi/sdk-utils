@@ -102,6 +102,6 @@ func (self *HttpApi) MuxVars(r *http.Request) map[string]string {
 	return mux.Vars(r)
 }
 
-func (self *HttpApi) Navs() sdkapi.INavpsApi {
+func (self *HttpApi) Navs() sdkapi.INavsApi {
 	return self.navsApi
 }

@@ -36,7 +36,7 @@ type IHttpApi interface {
 	MuxVars(r *http.Request) map[string]string
 
 	// Returns the navs API.
-	Navs() INavpsApi
+	Navs() INavsApi
 
 	// Returns the http forms API
 	Forms() IHttpFormsApi

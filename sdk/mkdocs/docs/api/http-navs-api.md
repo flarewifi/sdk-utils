@@ -98,28 +98,32 @@ type AdminNavItemOpt struct {
 	Label       string
 	RouteName   string
 	RouteParams map[string]string
+	ExtraAttrs  map[string]any
 	Keywords    []string // Used for admin nav search indexing
 }
 ```
 
 The available `INavCategory` options are:
 
+- `sdkapi.NavCategoryQuickAccess`
 - `sdkapi.NavCategorySystem`
 - `sdkapi.NavCategoryPayments`
 - `sdkapi.NavCategoryThemes`
 - `sdkapi.NavCategoryNetwork`
 - `sdkapi.NavCategoryTools`
 
-## PortalNavItemOpt {#portal-nav-item}
+## PortalNavItemOpt {#portal-nav-item-opt}
 
-The `PortalNavItemOpt` is a Go struct the represents a portal navigation menu item.
+The `PortalNavItemOpt` is a Go struct that represents a portal navigation menu item option:
 
 ```go
-type PortalNavItem struct {
-	ID       string
-	Label    string
-	IconUrl  string
-	RouteUrl string
+type PortalNavItemOpt struct {
+	Label       string
+	IconFile    string
+	RouteName   string
+	RouteParams map[string]string
+	ExtraAttrs  map[string]any
+	Metadata    any
 }
 ```
 
@@ -135,15 +139,29 @@ type AdminNavList struct {
 }
 ```
 
-## PortalNavItem {#portal-nav-item}
+## AdminNavItem {#admin-nav-item-result}
 
-The `PortalNavItem` is a Go struct that represents an individual portal menu item.
+The `AdminNavItem` is a Go struct that represents an individual admin menu item returned by `GetAdminNavs()`.
 
 ```go
 type AdminNavItem struct {
-    Label     string
-    RouteUrl  string
-    IsCurrent bool     // true if current active route
-    Keywords  []string // Used for admin nav search indexing
+	Label     string
+	RouteUrl  string
+	IsCurrent bool     // true if current active route
+	Keywords  []string // Used for admin nav search indexing
+}
+```
+
+## PortalNavItem {#portal-nav-item}
+
+The `PortalNavItem` is a Go struct that represents an individual portal menu item returned by `GetPortalItems()`.
+
+```go
+type PortalNavItem struct {
+	ID         string
+	Label      string
+	IconUrl    string
+	RouteUrl   string
+	ExtraAttrs map[string]any
 }
 ```

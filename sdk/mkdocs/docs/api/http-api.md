@@ -32,12 +32,8 @@ auth := api.Http().Auth()
 
 It returns an instance of [IHttpCookie](./http-cookie.md).
 
-### Middlewares
-
-It returns an instance of `IHttpMiddlewares` that contains the built-in middlewares.
-
 ```go
-middlewares := api.Http().Middlewares()
+cookie := api.Http().Cookie()
 ```
 
 ### Helpers

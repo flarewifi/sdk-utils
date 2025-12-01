@@ -17,12 +17,20 @@ The `clnt` variable is an instance of the `IClientDevice` interface.
 
 Below are the methods available on the `IClientDevice` instance.
 
-### Id
+### ID
 
 Returns the database ID of the client device as an `int64`.
 
 ```go
-id := clnt.Id()
+id := clnt.ID()
+```
+
+### UUID
+
+Returns the UUID of the client device as a `string`.
+
+```go
+uuid := clnt.UUID()
 ```
 
 ### Hostname
@@ -74,6 +82,7 @@ The `UpdateDeviceParams` struct contains:
 - `Mac string` - the new MAC address
 - `Ip string` - the new IP address
 - `Hostname string` - the new hostname
+- `UUID string` - the device UUID
 - `Status int` - the new device status (1=Connected, 2=Disconnected, 3=Blocked)
 
 ```go
@@ -84,10 +93,11 @@ func (w http.ResponseWriter, r *http.Request) {
         Mac:      "00:11:22:33:44:55",
         Ip:       "192.168.1.123",
         Hostname: "new-hostname",
+        UUID:     clnt.UUID(),
         Status:   1, // Connected
     }
 
-    if err := clnt.Update(tx, r.Context(), params); err != nil {
+    if err := clnt.Update(r.Context(), params); err != nil {
         // handle error
     }
 }
