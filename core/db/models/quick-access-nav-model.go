@@ -41,8 +41,8 @@ func (self *QuickAccessNavModel) Upsert(ctx context.Context, params UpsertQuickA
 	return err
 }
 
-func (self *QuickAccessNavModel) GetTop3(ctx context.Context) ([]*QuickAccessNav, error) {
-	result, err := self.db.Queries.GetTop3QuickAccessNavs(ctx)
+func (self *QuickAccessNavModel) GetTop5(ctx context.Context) ([]*QuickAccessNav, error) {
+	result, err := self.db.Queries.GetTop5QuickAccessNavs(ctx)
 	if err != nil {
 		return nil, err
 	}

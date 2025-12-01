@@ -107,8 +107,8 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 func (self *HttpNavsApi) getQuickAccessNavItems(r *http.Request) []sdkapi.AdminNavItem {
 	ctx := r.Context()
 
-	// Get top 3 most visited navigation items
-	quickAccessNavs, err := self.api.models.QuickAccessNav().GetTop3(ctx)
+	// Get top 5 most visited navigation items
+	quickAccessNavs, err := self.api.models.QuickAccessNav().GetTop5(ctx)
 	if err != nil {
 		fmt.Println("Error fetching quick access navs:", err)
 		return []sdkapi.AdminNavItem{}

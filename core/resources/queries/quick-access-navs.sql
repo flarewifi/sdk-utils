@@ -16,7 +16,7 @@ DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 
--- name: GetTop3QuickAccessNavs :many
+-- name: GetTop5QuickAccessNavs :many
 SELECT
   id,
   plugin_pkg,
@@ -30,7 +30,7 @@ FROM
 ORDER BY
   visit_count DESC
 LIMIT
-  3;
+  5;
 
 
 -- name: FindQuickAccessNav :one
