@@ -2,10 +2,10 @@ package routes
 
 import (
 	"core/internal/api"
-	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/controllers/adminctrl"
 	"core/internal/web/middlewares"
+	"core/internal/web/router"
 	"net/http"
 	sdkapi "sdk/api"
 )
@@ -14,7 +14,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 	authMw := middlewares.AdminAuth(g.CoreAPI)
 	trackNavMw := middlewares.TrackNav(g.Models)
 	httpsRedirectMw := middlewares.HTTPSRedirect()
-	rootR := webutil.RootRouter
+	rootR := router.RootRouter
 	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
 
 	// Register HTTPS redirect and navigation tracking middleware to admin router
@@ -24,7 +24,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
 	adminSseCtrl := adminctrl.AdminSseHandler(g)
 
-	webutil.AdminRouter.Handle("/", httpsRedirectMw(authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.AdminRouter.Handle("/", httpsRedirectMw(authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:dashboard")
 	})))).Methods("GET")
 

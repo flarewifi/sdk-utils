@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"core/internal/api"
-	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/middlewares"
 	"core/internal/web/navs"
+	"core/internal/web/router"
 	"core/internal/web/routes"
 )
 
@@ -20,7 +20,7 @@ func SetupBootRoutes(g *api.CoreGlobals) {
 
 func SetupAppRoutes(g *api.CoreGlobals) {
 	// GET "/boot/status" 200 OK
-	webutil.RootRouter.HandleFunc(controllers.BootStatusURL, func(w http.ResponseWriter, r *http.Request) {
+	router.RootRouter.HandleFunc(controllers.BootStatusURL, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -34,7 +34,7 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 
 	redirectToLanIpMw := middlewares.RedirectToLanIP(g.CoreAPI)
 
-	webutil.RootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.RootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Warning: unknown route requested: ", r.URL.Path)
 
 		// Redirect to LAN IP

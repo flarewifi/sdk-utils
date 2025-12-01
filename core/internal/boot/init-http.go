@@ -7,15 +7,15 @@ import (
 	"time"
 
 	"core/internal/api"
-	webutil "core/internal/utils/web"
 	"core/internal/web"
+	"core/internal/web/router"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	web.SetupBootRoutes(g)
-	server := web.StartServer(webutil.BootingRouter, false)
+	server := web.StartServer(router.BootingRouter, false)
 
 	// Wait for boot process to complete
 	<-bootCh
@@ -49,6 +49,6 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	}
 
 	log.Println("Starting server...")
-	web.StartHTTPSServer(webutil.RootRouter)
-	web.StartServer(webutil.RootRouter, true)
+	web.StartHTTPSServer(router.RootRouter)
+	web.StartServer(router.RootRouter, true)
 }

@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"core/internal/api"
-	webutils "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/middlewares"
+	"core/internal/web/router"
 	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
@@ -15,17 +15,17 @@ import (
 func PluginAssets(g *api.CoreGlobals) {
 	allPlugins := g.PluginMgr.All()
 	for _, p := range allPlugins {
-		setupAssetsRoutes(webutils.RootRouter, p)
+		setupAssetsRoutes(router.RootRouter, p)
 	}
 }
 
 func BootingAssets(g *api.CoreGlobals) {
 	p := g.CoreAPI
-	setupAssetsRoutes(webutils.BootingRouter, p)
+	setupAssetsRoutes(router.BootingRouter, p)
 }
 
 func GlobalAssets(g *api.CoreGlobals) {
-	r := webutils.RootRouter
+	r := router.RootRouter
 	cacheMw := middlewares.CacheResponse(365) // cache for 1 year
 	assets := api.GetAssetsPaths(g.GlobalAssets)
 

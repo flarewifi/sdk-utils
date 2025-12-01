@@ -7,8 +7,8 @@ import (
 
 	"core/db"
 	"core/internal/connmgr"
-	webutil "core/internal/utils/web"
 	"core/internal/web/middlewares"
+	"core/internal/web/router"
 	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
@@ -27,8 +27,8 @@ type HttpRouterApi struct {
 
 func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegister) *HttpRouterApi {
 	prefix := fmt.Sprintf("/%s/%s", api.info.Package, api.info.Version)
-	pluginMux := webutil.PluginRouter.PathPrefix(prefix).Subrouter()
-	adminMux := webutil.AdminRouter.PathPrefix(prefix).Subrouter()
+	pluginMux := router.PluginRouter.PathPrefix(prefix).Subrouter()
+	adminMux := router.AdminRouter.PathPrefix(prefix).Subrouter()
 
 	pluginRouter := &HttpRouterInstance{api, pluginMux, false}
 	adminRouter := &HttpRouterInstance{api, adminMux, true}
@@ -57,7 +57,7 @@ func (self *HttpRouterApi) PluginRouter() sdkapi.IHttpRouterInstance {
 
 func (self *HttpRouterApi) Use(middleware ...func(http.Handler) http.Handler) {
 	for _, mw := range middleware {
-		webutil.RootRouter.Use(mux.MiddlewareFunc(mw))
+		router.RootRouter.Use(mux.MiddlewareFunc(mw))
 	}
 }
 
@@ -67,7 +67,7 @@ func (self *HttpRouterApi) MuxRouteName(name sdkapi.PluginRouteName) sdkapi.MuxR
 }
 
 func (self *HttpRouterApi) UrlForMuxRoute(muxname sdkapi.MuxRouteName, pairs ...string) string {
-	route := webutil.RootRouter.Get(string(muxname))
+	route := router.RootRouter.Get(string(muxname))
 	if route == nil {
 		log.Println("Error: route not found for " + string(muxname))
 		return "Error: route not found for " + string(muxname)

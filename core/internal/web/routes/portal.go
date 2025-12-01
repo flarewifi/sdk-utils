@@ -4,15 +4,15 @@ import (
 	"net/http"
 
 	"core/internal/api"
-	webutil "core/internal/utils/web"
 	"core/internal/web/controllers"
 	"core/internal/web/middlewares"
+	"core/internal/web/router"
 	sdkapi "sdk/api"
 )
 
 func PortalRoutes(g *api.CoreGlobals) {
 	coreAPI := g.CoreAPI
-	rootR := webutil.RootRouter
+	rootR := router.RootRouter
 	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
 	redirectToLanIpMw := middlewares.RedirectToLanIP(g.CoreAPI)
 	httpRedirectMw := middlewares.HTTPRedirect()
