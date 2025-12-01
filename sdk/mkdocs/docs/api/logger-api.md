@@ -38,7 +38,7 @@ api.Logger().Debug("Fetching user data from database...")
 ### Logging an Error Message
 
 ```go
-api.Logger().Debug("Database connection failed!")
+api.Logger().Error("Database connection failed!")
 ```
 
 ## Additional Resources
