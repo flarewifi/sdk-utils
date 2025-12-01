@@ -67,8 +67,6 @@ nav:
       - "IPaymentsApi": api/payments-api.md
       - "IPluginApi": api/plugin-api.md
       - "ISessionsMgrApi": api/sessions-mgr-api.md
-      - "ISessionProvider": api/session-provider.md
-      - "ISessionSource": api/session-source.md
       - "IThemesApi": api/themes-api.md
       - "Assets Manifest": api/assets-manifest.md
       - "window.$flare": api/flare-variable.md

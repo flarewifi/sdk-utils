@@ -48,3 +48,8 @@ func (p *PluginCfgApi) List(path string) ([]*sdkapi.ConfigEntry, error) {
 
 	return files, nil
 }
+
+func (p *PluginCfgApi) Delete(path string) error {
+	file := filepath.Join(p.PluginCfgPath, path)
+	return os.RemoveAll(file)
+}
