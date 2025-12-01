@@ -18,7 +18,7 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-The route must use the [Device built-in middleware](./http-router-api.md#device).
+The route must use the Device middleware from `api.Http().Middlewares().Device()`.
 
 ### Auth
 
@@ -34,7 +34,7 @@ It returns an instance of [IHttpCookie](./http-cookie.md).
 
 ### Middlewares
 
-It returns an instance of [IHttpMiddlewares](./http-router-api.md#middlewares) that contains the built-in middlewares.
+It returns an instance of `IHttpMiddlewares` that contains the built-in middlewares.
 
 ```go
 middlewares := api.Http().Middlewares()

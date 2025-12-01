@@ -1,7 +1,7 @@
 # IHttpRouterApi
 The `IHttpRouterApi` is the backend for http routing in Flare Hotspot. There are two (2) kinds of http routers:
 
-- `AdminRouter` - a router for the admin pages of the plugin that uses the [AdminAuth](#admin-auth) middleware.
+- `AdminRouter` - a router for the admin pages of the plugin that requires admin authentication.
 - `PluginRouter` - a router for general purpose routing within the plugin
 
 ---
@@ -167,83 +167,3 @@ api.Http().Router().AdminRouter().Group("/settings", func (subrouter IHttpRouter
 ```
 
 In the examples above, the middleware is used to perform operations on the request before it reaches the handler function inside the sub-router. But it can also be used directly on the [PluginRouter](#plugin-router) or the [AdminRouter](#admin-router).
-
-### Built-in Middlewares {#built-in-middlewares}
-
-To get an instance of the built-in `IHttpMiddlewares`:
-
-```go
-httpMw := api.Http().Middlewares()
-fmt.Println(httpMw) // IHttpMiddlewares
-```
-
-Below are the list of available built-in middlewares in `IHttpMiddlewares`:
-
-#### AdminAuth {#admin-auth}
-
-It returns a middleware that ensures that only authenticated admins can access the route.
-
-```go
-pluginRouter := api.Http().Router().PluginRouter()
-authMw := httpMw.AdminAuth()
-handler := func(w http.ResponseWriter, r *http.Request) {
-    // handle the http request...
-    // this is a protected page
-}
-pluginRouter.Get("/protected-page", handler, authMw)
-```
-
-#### CacheResponse {#cache-response}
-
-It returns a middleware that caches the response throughout the duration of the application lifetime which can improve system performance.
-
-```go
-pluginRouter := api.Http().Router().PluginRouter()
-cacheMw := api.Http().Middlewares().CacheResponse(30) // cache for 30 days
-handler := func(w http.ResponseWriter, r *http.Request) {
-    // handle the http request...
-    // response will be cached while the app is running
-}
-pluginRouter.Get("/some-generated-image.png", handler, cacheMw)
-```
-
-#### Device {#device}
-
-It returns a middleware for identifying client devices. See [IClientDevice](./client-device.md).
-
-```go
-pluginRouter := api.Http().Router().PluginRouter()
-deviceMw := api.Http().Middlewares().Device()
-handler := func(w http.ResponseWriter, r *http.Request) {
-    // handle the http request...
-    clnt, err := api.Http().GetClientDevice(r)
-}
-pluginRouter.Get("/some/page", handler, deviceMw)
-```
-
-#### PendingPurchase
-
-It returns a middleware that redirects the user to the pending order payment page when a pending purchase request is present.
-
-```go
-pluginRouter := api.Http().Router().PluginRouter()
-pendingMw := httpMw.PendingPurchase()
-handler := func(w http.ResponseWriter, r *http.Request) {
-    // handle the http request...
-}
-pluginRouter.Get("/some-checkout-page", handler, pendingMw)
-```
-
-#### TrackNav
-
-It returns a middleware that tracks navigation visits for the Quick Access menu.
-
-```go
-pluginRouter := api.Http().Router().PluginRouter()
-trackMw := httpMw.TrackNav()
-handler := func(w http.ResponseWriter, r *http.Request) {
-    // handle the http request...
-    // navigation to this route will be tracked
-}
-pluginRouter.Get("/some/page", handler, trackMw)
-```
