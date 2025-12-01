@@ -16,6 +16,16 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) {
 			<div class="card-body">
 				<h3 class="card-title mb-4">{ api.Translate("label", "Software Updates") }</h3>
 				
+				<div class="alert alert-light border mb-4" role="alert">
+					<div class="d-flex align-items-center">
+						<i class="bi bi-info-circle me-2"></i>
+						<span>
+							<strong>{ api.Translate("label", "Current Version") }:</strong> 
+							<code class="ms-2">{ api.Info().Version }</code>
+						</span>
+					</div>
+				</div>
+				
 				if err != nil {
 					<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
 						<strong>{ api.Translate("label", "Error") }:</strong> { err.Error() }

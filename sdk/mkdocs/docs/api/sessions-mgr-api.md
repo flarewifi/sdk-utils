@@ -18,6 +18,42 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### FindDeviceByUUID
+
+Finds a client device by its globally unique identifier (UUID). This is useful for cloud sync scenarios where the cloud server needs to reference devices by their UUID rather than local database ID.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    uuid := "550e8400-e29b-41d4-a716-446655440000"
+    clnt, err := api.SessionsMgr().FindDeviceByUUID(r.Context(), uuid)
+    if err != nil {
+        // handle error - device not found
+    }
+    // Use the device...
+}
+```
+
+### FindSessionByUUID
+
+Finds a session by its globally unique identifier (UUID). This is useful for cloud sync scenarios where the cloud server needs to terminate or query sessions by their UUID.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    sessionUUID := "660e8400-e29b-41d4-a716-446655440001"
+    session, err := api.SessionsMgr().FindSessionByUUID(r.Context(), sessionUUID)
+    if err != nil {
+        // handle error - session not found
+    }
+    
+    // Get the device that owns this session
+    deviceID := session.DeviceID()
+    device, _ := api.SessionsMgr().FindClientById(r.Context(), deviceID)
+    
+    // Terminate the session by disconnecting the device
+    api.SessionsMgr().Disconnect(r.Context(), device, "Session terminated by cloud")
+}
+```
+
 ### Connect
 
 This method will connect the client device to the internet if the client device has available [IClientSession](./client-session.md) to consume.
@@ -152,4 +188,78 @@ Available client events:
 api.SessionsMgr().OnClientEvent("client:connected", func(clnt IClientDevice) {
     // Handle client connected event
 })
+```
+
+## Cloud Sync Integration
+
+The `ISessionsMgrApi` provides methods that enable cloud synchronization of sessions and devices. This allows you to build plugins that sync local hotspot data to a cloud server and receive remote commands.
+
+### Syncing Events to Cloud
+
+Use the event callbacks to push incremental updates to your cloud server:
+
+```go
+func Init(api sdkapi.IPluginApi) {
+    machineID := api.Machine().GetID()
+    
+    // Sync session events
+    api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionConnected, func(data sdkapi.SessionEventData) {
+        syncToCloud(machineID, "session_connected", map[string]interface{}{
+            "session_uuid": data.Session.UUID(),
+            "device_uuid":  data.Device.UUID(),
+            "device_id":    data.Session.DeviceID(),
+        })
+    })
+    
+    // Sync client events
+    api.SessionsMgr().OnClientEvent(sdkapi.EventClientCreated, func(clnt sdkapi.IClientDevice) {
+        syncToCloud(machineID, "client_created", map[string]interface{}{
+            "device_uuid": clnt.UUID(),
+            "mac_addr":    clnt.MacAddr(),
+            "hostname":    clnt.Hostname(),
+        })
+    })
+}
+```
+
+### Receiving Cloud Commands
+
+Use UUID-based lookups to process commands from your cloud server:
+
+```go
+func handleCloudCommand(ctx context.Context, api sdkapi.IPluginApi, cmd CloudCommand) error {
+    switch cmd.Action {
+    case "terminate_session":
+        // Find session by UUID from cloud
+        session, err := api.SessionsMgr().FindSessionByUUID(ctx, cmd.SessionUUID)
+        if err != nil {
+            return err
+        }
+        
+        // Get the device and disconnect
+        device, err := api.SessionsMgr().FindClientById(ctx, session.DeviceID())
+        if err != nil {
+            return err
+        }
+        
+        return api.SessionsMgr().Disconnect(ctx, device, "Terminated by cloud")
+        
+    case "block_device":
+        // Find device by UUID from cloud
+        device, err := api.SessionsMgr().FindDeviceByUUID(ctx, cmd.DeviceUUID)
+        if err != nil {
+            return err
+        }
+        
+        // Block the device
+        return device.Update(ctx, sdkapi.UpdateDeviceParams{
+            Mac:      device.MacAddr(),
+            Ip:       device.IpAddr(),
+            Hostname: device.Hostname(),
+            UUID:     device.UUID(),
+            Status:   int(sdkapi.Blocked),
+        })
+    }
+    return nil
+}
 ```

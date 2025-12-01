@@ -65,6 +65,16 @@ type ISessionsMgrApi interface {
 	// Finds a client device by its ID.
 	FindClientById(ctx context.Context, devId int64) (IClientDevice, error)
 
+	// FindDeviceByUUID finds a client device by its globally unique identifier.
+	// This is useful for cloud sync scenarios where the cloud server needs to
+	// reference devices by their UUID rather than local database ID.
+	FindDeviceByUUID(ctx context.Context, uuid string) (IClientDevice, error)
+
+	// FindSessionByUUID finds a session by its globally unique identifier.
+	// This is useful for cloud sync scenarios where the cloud server needs to
+	// terminate or query sessions by their UUID.
+	FindSessionByUUID(ctx context.Context, uuid string) (IClientSession, error)
+
 	// Connects a client device to the internet.
 	Connect(ctx context.Context, clnt IClientDevice, notify string) error
 

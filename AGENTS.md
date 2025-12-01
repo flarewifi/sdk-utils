@@ -62,6 +62,7 @@ Only modify core files when:
 - Check docker logs to verify builds (`Listening on port :3000` = success)
 - Prefer plugin development over core modifications
 - Use named parameters in SQL queries (`@parameter_name`)
+- **Update SDK documentation** (`sdk/mkdocs/docs/`) when modifying core code that affects the plugin API (interfaces in `sdk/api/`, implementations in `core/internal/api/`)
 
 ## Build/Dev/Test
 

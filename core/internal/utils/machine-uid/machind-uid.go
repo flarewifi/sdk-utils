@@ -50,7 +50,7 @@ func GetMachineUID() string {
 	}
 
 	// Hash the combined identifiers
-	uid := sdkutils.Sha1Hash(identifiers...)
+	uid := strings.ToUpper(sdkutils.Sha1Hash(identifiers...))
 
 	if machineUID != "" && machineUID != uid {
 		// Machine UID has changed

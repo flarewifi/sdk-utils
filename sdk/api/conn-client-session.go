@@ -19,6 +19,9 @@ type IClientSession interface {
 	// Returns the session's UUID.
 	UUID() string
 
+	// Returns the device ID that owns this session.
+	DeviceID() int64
+
 	// Returns the provider plugin of the session record.
 	Plugin() IPluginApi
 
