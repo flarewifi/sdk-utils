@@ -13,9 +13,16 @@ Lang
 : The language used throughout the application. The default is `en`. The supported languages are:
 
 - `en` - English
+- `am` - Amharic
+- `ar` - Arabic (Sudan)
 - `es` - Spanish
+- `fr` - French
 - `id` - Indonesian
-- `ms` - Malay
+- `in` - Hindi
+- `prs` - Dari
+- `ps` - Pashto
+- `ru` - Russian
+- `sw` - Swahili
 
 Secret
 : The secret key used to sign the JWT tokens and other encryptions.
@@ -171,3 +178,17 @@ for _, entry := range entries {
     fmt.Printf("Name: %s, Path: %s\n", entry.Entry.Name(), entry.Path)
 }
 ```
+
+### Delete
+
+Use the `IPluginCfgApi.Delete` method to remove a configuration entry.
+
+```go
+cfgAPI := api.Config().Plugin()
+
+if err := cfgAPI.Delete("some_key"); err != nil {
+    // handle error
+}
+```
+
+This method removes the specified path from the plugin's configuration directory. It works for both individual files and directories with nested contents.

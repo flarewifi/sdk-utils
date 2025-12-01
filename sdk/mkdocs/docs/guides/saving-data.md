@@ -1,45 +1,44 @@
 # Saving Data
 
-## Saving Data
+## Writing Data
 
-To save the plugin data like plugin settings, configuration and statistics, we use the  [IPluginCfgApi.Write](../api/config-api.md#write) method.
-Using this API ensures that the user-defined configuration and data for your plugin can be migrated properly when a machine owner upgrades or
-migrate the sytem to another machine.
+Use the [IPluginCfgApi.Write](../api/config-api.md#write) method to save plugin data such as settings, configuration, and statistics. This API ensures that your plugin's data can be properly migrated when the system is upgraded or moved to new hardware.
 
 ```go
 import "encoding/json"
 // ...
 
-// Define custom struct for your plugin settings
+// Define a custom struct for your plugin settings
 type MyPluginConfig struct {
     MySetting       string  `json:"my_setting"`
     OtherSetting    int     `json:"other_setting"`
 }
 
-// Create an instance of the struct and assign values
+// Create an instance and assign values
 myConfig := MyPluginConfig{
     MySetting:      "my_value",
     OtherSetting:   123,
 }
 
-// Convert the values into []bytes
+// Convert to bytes
 data, err := json.Marshal(myConfig)
 if err != nil {
     // handle error
 }
 
-// Save the data into a string key "my_key"
+// Save the data using a key
 err := api.Config().Plugin().Write("my_key", data)
 if err != nil {
     // handle error
 }
 ```
 
-Plugin configuration requires `string` key identifier in writing and reading data.
+Plugin configuration uses a `string` key to identify data when writing and reading.
 
-## Retreiving Data
+## Reading Data
 
-To get the plugin data for a specific key, use the [IPluginCfgApi.Read](../api/config-api.md#read) method:
+Use the [IPluginCfgApi.Read](../api/config-api.md#read) method to retrieve plugin data for a specific key:
+
 ```go
 import "encoding/json"
 // ...
@@ -50,7 +49,7 @@ if err != nil {
     // handle error
 }
 
-// Assign the data into your struct instance
+// Unmarshal into your struct
 var myConfig MyPluginConfig
 if err := json.Unmarshal(data, &myConfig); err != nil {
     // handle error
@@ -59,4 +58,15 @@ if err := json.Unmarshal(data, &myConfig); err != nil {
 fmt.Println(myConfig) // {MySetting: "my_value", OtherSetting: 123}
 ```
 
+## Deleting Data
 
+Use the [IPluginCfgApi.Delete](../api/config-api.md#delete) method to remove plugin data for a specific key:
+
+```go
+err := api.Config().Plugin().Delete("my_key")
+if err != nil {
+    // handle error
+}
+```
+
+This method removes the specified path from the plugin's configuration directory. It works for both individual files and directories with nested contents.

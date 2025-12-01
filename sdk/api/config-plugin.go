@@ -17,6 +17,9 @@ type IPluginCfgApi interface {
 
 	// List entries inside the path
 	List(path string) ([]*ConfigEntry, error)
+
+	// Delete a path inside the plugin configuration
+	Delete(path string) error
 }
 
 type ConfigEntry struct {
