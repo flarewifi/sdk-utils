@@ -25,8 +25,8 @@ func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
 		db:                    dtb,
 		mdl:                   mdl,
 		sessions:              sync.Map{},
-		sessionEventCallbacks: make(map[string][]func(data sdkapi.SessionEventData)),
-		clientEventCallbacks:  make(map[string][]func(clnt sdkapi.IClientDevice)),
+		sessionEventCallbacks: make(map[sdkapi.SessionEvent][]func(data sdkapi.SessionEventData)),
+		clientEventCallbacks:  make(map[sdkapi.ClientEvent][]func(clnt sdkapi.IClientDevice)),
 	}
 	return sessionMgr
 }
@@ -37,8 +37,8 @@ type SessionsMgr struct {
 	db                    *db.Database
 	mdl                   *models.Models
 	sessions              sync.Map
-	sessionEventCallbacks map[string][]func(data sdkapi.SessionEventData)
-	clientEventCallbacks  map[string][]func(clnt sdkapi.IClientDevice)
+	sessionEventCallbacks map[sdkapi.SessionEvent][]func(data sdkapi.SessionEventData)
+	clientEventCallbacks  map[sdkapi.ClientEvent][]func(clnt sdkapi.IClientDevice)
 }
 
 func (self *SessionsMgr) SetCoreAPI(api sdkapi.IPluginApi) {
@@ -64,11 +64,11 @@ func (self *SessionsMgr) Init(ctx context.Context) error {
 	return nil
 }
 
-func (self *SessionsMgr) OnSessionEvent(event string, callback func(data sdkapi.SessionEventData)) {
+func (self *SessionsMgr) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData)) {
 	self.sessionEventCallbacks[event] = append(self.sessionEventCallbacks[event], callback)
 }
 
-func (self *SessionsMgr) OnClientEvent(event string, callback func(clnt sdkapi.IClientDevice)) {
+func (self *SessionsMgr) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice)) {
 	self.clientEventCallbacks[event] = append(self.clientEventCallbacks[event], callback)
 }
 
@@ -77,15 +77,15 @@ func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdk
 		Session: session,
 		Device:  device,
 	}
-	if callbacks, exists := self.sessionEventCallbacks[string(event)]; exists {
+	if callbacks, exists := self.sessionEventCallbacks[event]; exists {
 		for _, callback := range callbacks {
 			callback(data)
 		}
 	}
 }
 
-func (self *SessionsMgr) emitClientEvent(event sdkapi.SessionEvent, clnt sdkapi.IClientDevice) {
-	if callbacks, exists := self.clientEventCallbacks[string(event)]; exists {
+func (self *SessionsMgr) emitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) {
+	if callbacks, exists := self.clientEventCallbacks[event]; exists {
 		for _, callback := range callbacks {
 			callback(clnt)
 		}
@@ -403,16 +403,11 @@ func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClient
 	mbDiff := rs.Diff()
 
 	// Time is calculated dynamically in RemainingTime(), so use it directly
-	remainingTime := rs.GetSession().RemainingTime()
-	if remainingTime < 0 {
-		remainingTime = 0
-	}
+	remainingTime := max(rs.GetSession().RemainingTime(), 0)
 
 	// Subtract unsaved data consumption from remaining data
 	remainingData := summary.RemainingDataMbytes - mbDiff
-	if remainingData < 0 {
-		remainingData = 0
-	}
+	remainingData = max(remainingData, 0)
 
 	return &sdkapi.ClientSessionSummary{
 		RemainingTimeSecs:   remainingTime,

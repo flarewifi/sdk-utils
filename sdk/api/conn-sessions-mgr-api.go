@@ -21,6 +21,7 @@ const (
 
 // SessionEvent represents the type of a session event.
 type SessionEvent string
+type ClientEvent string
 
 const (
 	EventSessionConnected    SessionEvent = "session:connected"
@@ -28,10 +29,10 @@ const (
 	EventSessionExpired      SessionEvent = "session:expired"
 	EventSessionUpdated      SessionEvent = "session:updated"
 
-	EventClientCreated      SessionEvent = "client:created"
-	EventClientUpdated      SessionEvent = "client:updated"
-	EventClientConnected    SessionEvent = "client:connected"
-	EventClientDisconnected SessionEvent = "client:disconnected"
+	EventClientCreated      ClientEvent = "client:created"
+	EventClientUpdated      ClientEvent = "client:updated"
+	EventClientConnected    ClientEvent = "client:connected"
+	EventClientDisconnected ClientEvent = "client:disconnected"
 )
 
 // SessionEventData represents the data associated with a session event.
@@ -87,8 +88,8 @@ type ISessionsMgrApi interface {
 	SessionSummary(ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
 
 	// OnSessionEvent registers a callback for session events.
-	OnSessionEvent(event string, callback func(data SessionEventData))
+	OnSessionEvent(event SessionEvent, callback func(data SessionEventData))
 
 	// OnClientEvent registers a callback for client device events.
-	OnClientEvent(event string, callback func(clnt IClientDevice))
+	OnClientEvent(event ClientEvent, callback func(clnt IClientDevice))
 }

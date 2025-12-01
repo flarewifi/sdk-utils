@@ -86,11 +86,11 @@ func (self *SessionsMgrApi) SessionSummary(ctx context.Context, clnt sdkapi.ICli
 }
 
 // OnSessionEvent registers a callback for session events.
-func (self *SessionsMgrApi) OnSessionEvent(event string, callback func(data sdkapi.SessionEventData)) {
+func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData)) {
 	self.pluginApi.SessionMgr.OnSessionEvent(event, callback)
 }
 
 // OnClientEvent registers a callback for client device events.
-func (self *SessionsMgrApi) OnClientEvent(event string, callback func(clnt sdkapi.IClientDevice)) {
+func (self *SessionsMgrApi) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice)) {
 	self.pluginApi.SessionMgr.OnClientEvent(event, callback)
 }
