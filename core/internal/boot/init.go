@@ -4,6 +4,7 @@ import (
 	"context"
 	"core/internal/api"
 	"core/internal/utils/activation"
+	"core/internal/utils/updates"
 	"log"
 )
 
@@ -36,6 +37,9 @@ func Init(g *api.CoreGlobals) {
 
 		// Initialize activation after everything else is ready
 		go activation.Validate()
+
+		// Start scheduled update checker (runs at 2AM daily)
+		updates.StartScheduledUpdateChecker()
 
 		bootCh <- struct{}{}
 	}()

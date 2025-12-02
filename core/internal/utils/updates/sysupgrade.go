@@ -5,10 +5,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	cmd "tools/shell"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
@@ -36,13 +38,7 @@ var (
 func ValidateSysupgradeFile(filename string, fileSize int64) error {
 	// Check file extension
 	ext := strings.ToLower(filepath.Ext(filename))
-	validExt := false
-	for _, allowed := range allowedExtensions {
-		if ext == allowed {
-			validExt = true
-			break
-		}
-	}
+	validExt := slices.Contains(allowedExtensions, ext)
 	if !validExt {
 		return ErrInvalidFileExtension
 	}

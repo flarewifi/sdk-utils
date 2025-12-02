@@ -119,6 +119,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				CurrentVersion:   currentVersion.String(),
 				ReleaseNotes:     result.ReleaseNotes,
 				ReleaseNotesHTML: releaseNotesHTML,
+				IsSysupgrade:     result.IsSysupgrade,
 			}
 		}
 
@@ -161,7 +162,12 @@ func DownloadUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		if !isDownloaded && !isDownloading {
 			// Initiate the process of downloading and installing of software updates
-			go updates.DownloadSoftwareRelease(update.ReleseFileURL, update.ReleaseFileChecksum)
+			go updates.DownloadSoftwareUpdate(updates.DownloadParams{
+				FileURL:      update.ReleseFileURL,
+				Checksum:     update.ReleaseFileChecksum,
+				OutputPath:   updates.GetUpdateOutputPath(update.ReleseFileURL, update.IsSysupgrade),
+				IsSysupgrade: update.IsSysupgrade,
+			})
 		}
 	}
 }
@@ -192,7 +198,10 @@ func DownloadDoneCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		page := updatesview.DownloadDonePage(api)
+		// Check if this is a sysupgrade by looking for the sysupgrade file
+		isSysupgrade := updates.IsSysupgradeReady()
+
+		page := updatesview.DownloadDonePage(api, isSysupgrade)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
