@@ -42,7 +42,7 @@ func ReadApplicationConfig() (sdkapi.AppConfig, error) {
 		fmt.Println(err)
 		fmt.Println("Generating default application configuration...")
 		defaultFile := filepath.Join(sdkutils.PathDefaultsDir, applicationJsonFile)
-		writeConfigFile(defaultFile, defaultAppCfg)
+		err = writeConfigFile(defaultFile, defaultAppCfg)
 		return defaultAppCfg, err
 	}
 
