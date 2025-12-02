@@ -9,18 +9,23 @@ import (
 )
 
 func readConfigFile(f string, out any) error {
-	location := filepath.Join(sdkutils.PathConfigDir, f)
-	bytes, err := os.ReadFile(location)
-	if err != nil {
-		// read from defaults
-		location = filepath.Join(sdkutils.PathDefaultsDir, f)
-		bytes, err = os.ReadFile(location)
-		if err != nil {
-			return err
+	configFile := filepath.Join(sdkutils.PathConfigDir, f)
+
+	b, err := os.ReadFile(configFile)
+	if err == nil {
+		if err = json.Unmarshal(b, out); err == nil {
+			return nil // Success: config read and parsed
 		}
 	}
 
-	return json.Unmarshal(bytes, out)
+	// Fallback: read from defaults on any error (file not found or invalid JSON)
+	configFile = filepath.Join(sdkutils.PathDefaultsDir, f)
+	b, err = os.ReadFile(configFile)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(b, out)
 }
 
 func writeConfigFile(f string, config any) error {
