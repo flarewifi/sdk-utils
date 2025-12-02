@@ -28,7 +28,7 @@ var (
 	ErrChecksumMismatch = errors.New("System update error: checksum verification failed")
 
 	osReleaseFile        = "/etc/os_release.json"
-	downloadCompleteFile = ".download-complete"
+	downloadCompleteFile = ".dl_software_update_complete"
 	downloading          atomic.Bool
 	downloadPercent      atomic.Int32
 	prevPercent          atomic.Int32
@@ -41,6 +41,8 @@ type SoftwareReleaseUpdate struct {
 	ReleaseFileChecksum string
 	ReleaseNotes        string
 	HasUpdate           bool
+	IsSysupgrade        bool
+	ForceUpdate         bool
 }
 
 func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleaseUpdate, error) {
@@ -96,6 +98,8 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 		ReleseFileURL:       result.FileUrl,
 		ReleaseFileChecksum: result.FileChecksum,
 		ReleaseNotes:        result.ReleaseNotes,
+		IsSysupgrade:        result.IsSysupgrade,
+		ForceUpdate:         result.ForceUpdate,
 	}
 
 	return update, nil
@@ -106,10 +110,17 @@ type DownloadResult struct {
 	Error   error
 }
 
-func DownloadSoftwareRelease(releaseFileUrl string, md5sum string) {
-	isDownloading := downloading.Load()
+// DownloadParams contains parameters for downloading a software update
+type DownloadParams struct {
+	FileURL      string // URL to download from
+	IsSysupgrade bool   // Whether this is a firmware sysupgrade
+	Checksum     string // MD5 checksum for verification (base64 encoded)
+	OutputPath   string // Destination file path
+}
 
-	if isDownloading {
+// DownloadSoftwareUpdate downloads a software update file to the specified output path.
+func DownloadSoftwareUpdate(params DownloadParams) {
+	if downloading.Load() {
 		return
 	}
 
@@ -122,20 +133,23 @@ func DownloadSoftwareRelease(releaseFileUrl string, md5sum string) {
 		defer downloadPercent.Store(0)
 		defer prevPercent.Store(0)
 
-		// Remove any existing completion marker before starting new download
-		markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
-		os.Remove(markerPath)
-
-		if err := sdkutils.FsEmptyDir(sdkutils.PathPluginUpdatesDir); err != nil {
-			downloadError.Store(&err)
-			return
+		// Clean up before starting new download
+		if params.IsSysupgrade {
+			RemoveSysupgradeFile()
+		} else {
+			markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
+			os.Remove(markerPath)
+			if err := sdkutils.FsEmptyDir(sdkutils.PathPluginUpdatesDir); err != nil {
+				downloadError.Store(&err)
+				return
+			}
 		}
 
-		ch := downloadSystemFile(releaseFileUrl, md5sum)
+		ch := downloadFile(params)
 
 		for result := range ch {
 			if result.Error != nil {
-				log.Println("Error downloading system files:", result.Error)
+				log.Println("Error downloading update file:", result.Error)
 				downloadError.Store(&result.Error)
 				return
 			}
@@ -151,49 +165,45 @@ func DownloadSoftwareRelease(releaseFileUrl string, md5sum string) {
 	}()
 }
 
-func downloadSystemFile(fileURL string, expectedChecksum string) (resultCh chan DownloadResult) {
+// downloadFile downloads a file from FileURL to OutputPath with checksum verification
+func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 	resultCh = make(chan DownloadResult)
-	downloadFilePath := filepath.Join(sdkutils.PathSystemUpdateDir, filepath.Base(fileURL))
 
 	go func() {
 		defer close(resultCh)
 
-		log.Println("Downloading compressed update file from", fileURL)
+		log.Println("Downloading update file from", params.FileURL, "to", params.OutputPath)
 
 		// Ensure the destination directory exists
-		if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
-			result := DownloadResult{Error: ErrDownload}
-			resultCh <- result
+		outputDir := filepath.Dir(params.OutputPath)
+		if err := sdkutils.FsEnsureDir(outputDir); err != nil {
+			resultCh <- DownloadResult{Error: ErrDownload}
 			return
 		}
 
 		// Make HTTP request
-		resp, err := http.Get(fileURL)
+		resp, err := http.Get(params.FileURL)
 		if err != nil {
-			result := DownloadResult{Error: ErrDownload}
-			resultCh <- result
+			resultCh <- DownloadResult{Error: ErrDownload}
 			return
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			result := DownloadResult{Error: ErrDownload}
-			resultCh <- result
+			resultCh <- DownloadResult{Error: ErrDownload}
 			return
 		}
 
 		totalSize := resp.ContentLength
 		if totalSize <= 0 {
-			result := DownloadResult{Error: ErrDownload}
-			resultCh <- result
+			resultCh <- DownloadResult{Error: ErrDownload}
 			return
 		}
 
 		// Create the output file
-		file, err := os.Create(downloadFilePath)
+		file, err := os.Create(params.OutputPath)
 		if err != nil {
-			result := DownloadResult{Error: ErrDownload}
-			resultCh <- result
+			resultCh <- DownloadResult{Error: ErrDownload}
 			return
 		}
 		defer file.Close()
@@ -212,8 +222,8 @@ func downloadSystemFile(fileURL string, expectedChecksum string) (resultCh chan 
 			if n > 0 {
 				_, writeErr := writer.Write(buf[:n])
 				if writeErr != nil {
-					result := DownloadResult{Error: ErrDownload}
-					resultCh <- result
+					os.Remove(params.OutputPath)
+					resultCh <- DownloadResult{Error: ErrDownload}
 					return
 				}
 				downloaded += int64(n)
@@ -227,38 +237,53 @@ func downloadSystemFile(fileURL string, expectedChecksum string) (resultCh chan 
 				break
 			}
 			if err != nil {
-				result := DownloadResult{Error: ErrDownload}
-				resultCh <- result
+				os.Remove(params.OutputPath)
+				resultCh <- DownloadResult{Error: ErrDownload}
 				return
 			}
 		}
 
 		// Verify checksum after download completes
-		if expectedChecksum != "" {
+		if params.Checksum != "" {
 			actualChecksum := base64.StdEncoding.EncodeToString(hasher.Sum(nil))
-			if actualChecksum != expectedChecksum {
-				log.Printf("Checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum)
-				os.Remove(downloadFilePath)
-				result := DownloadResult{Error: ErrChecksumMismatch}
-				resultCh <- result
+			if actualChecksum != params.Checksum {
+				log.Printf("Checksum mismatch: expected %s, got %s", params.Checksum, actualChecksum)
+				os.Remove(params.OutputPath)
+				resultCh <- DownloadResult{Error: ErrChecksumMismatch}
 				return
 			}
 			log.Println("Checksum verified successfully")
 		}
 
-		log.Println("Compressed update file downloaded to", downloadFilePath)
+		log.Println("Update file downloaded to", params.OutputPath)
+
+		// Ensure the marker directory exists
+		if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
+			log.Println("Warning: failed to create marker directory:", err)
+		}
 
 		// Create completion marker file
 		markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
-		if err := os.WriteFile(markerPath, []byte("complete"), 0644); err != nil {
+		markerContent := "complete"
+		if params.IsSysupgrade {
+			markerContent = "sysupgrade"
+		}
+		if err := os.WriteFile(markerPath, []byte(markerContent), 0644); err != nil {
 			log.Println("Warning: failed to create download completion marker:", err)
 		}
 
-		result := DownloadResult{Percent: 100}
-		resultCh <- result
+		resultCh <- DownloadResult{Percent: 100}
 	}()
 
 	return resultCh
+}
+
+// GetUpdateOutputPath returns the appropriate output path based on update type
+func GetUpdateOutputPath(fileUrl string, isSysupgrade bool) string {
+	if isSysupgrade {
+		return SysupgradePath
+	}
+	return filepath.Join(sdkutils.PathSystemUpdateDir, filepath.Base(fileUrl))
 }
 
 func IsDownloading() bool {

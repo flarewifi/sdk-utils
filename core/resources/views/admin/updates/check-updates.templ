@@ -8,6 +8,7 @@ type SoftwareUpdate struct {
 	NewVersion       string
 	ReleaseNotes     string
 	ReleaseNotesHTML templ.Component
+	IsSysupgrade     bool
 }
 
 templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) {
@@ -105,7 +106,20 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 			<h4 class="card-title text-info mb-4">
 				<i class="bi bi-arrow-up-circle me-2"></i>
 				{ api.Translate("label", "Update Available") }
+				if update.IsSysupgrade {
+					<span class="badge bg-warning text-dark ms-2">
+						<i class="bi bi-cpu me-1"></i>
+						{ api.Translate("label", "Firmware Update") }
+					</span>
+				}
 			</h4>
+			
+			if update.IsSysupgrade {
+				<div class="alert alert-warning mb-4" role="alert">
+					<i class="bi bi-exclamation-triangle me-2"></i>
+					<strong>{ api.Translate("label", "Firmware Update") }:</strong> { api.Translate("info", "This update includes a full firmware upgrade. The device will be flashed and rebooted automatically.") }
+				</div>
+			}
 			
 			<div class="row mb-4">
 				<div class="col-md-6">
