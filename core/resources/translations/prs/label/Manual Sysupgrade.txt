@@ -1,1 +1,1 @@
-Manual Sysupgrade
+ارتقای دستی سیستم

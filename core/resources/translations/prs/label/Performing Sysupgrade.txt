@@ -1,1 +1,1 @@
-Performing Sysupgrade
+در حال انجام ارتقای سیستم

@@ -1,1 +1,1 @@
-Firmware downloaded and verified successfully. Ready to perform sysupgrade.
+فریمور با موفقیت دانلود و تأیید شد. آماده انجام ارتقای سیستم.

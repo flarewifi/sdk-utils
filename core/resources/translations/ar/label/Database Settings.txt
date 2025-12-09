@@ -1,1 +1,1 @@
-Database Settings
+إعدادات قاعدة البيانات

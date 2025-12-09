@@ -1,1 +1,1 @@
-Firmware validation failed
+فشل التحقق من صحة البرنامج الثابت

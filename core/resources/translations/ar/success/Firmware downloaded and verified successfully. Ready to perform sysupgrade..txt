@@ -1,1 +1,1 @@
-Firmware downloaded and verified successfully. Ready to perform sysupgrade.
+تم تحميل البرنامج الثابت والتحقق منه بنجاح. جاهز لإجراء ترقية النظام.

@@ -1,1 +1,1 @@
-Failed to generate device token
+فشل في إنشاء رمز الجهاز

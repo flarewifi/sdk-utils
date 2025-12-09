@@ -1,1 +1,1 @@
-Perform Sysupgrade
+إجراء ترقية النظام

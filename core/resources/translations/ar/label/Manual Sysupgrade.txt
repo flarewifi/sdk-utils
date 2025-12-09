@@ -1,1 +1,1 @@
-Manual Sysupgrade
+ترقية النظام يدوياً

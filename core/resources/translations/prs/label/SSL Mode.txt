@@ -1,1 +1,1 @@
-SSL Mode
+حالت SSL

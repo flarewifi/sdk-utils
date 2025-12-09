@@ -1,1 +1,1 @@
-Database reset successfully
+تم إعادة تعيين قاعدة البيانات بنجاح

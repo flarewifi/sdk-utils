@@ -1,1 +1,1 @@
-PostgreSQL database settings are configured in the database configuration file
+تنظیمات پایگاه داده PostgreSQL در فایل پیکربندی پایگاه داده تنظیم شده است

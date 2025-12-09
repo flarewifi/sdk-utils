@@ -1,1 +1,1 @@
-Invalid client IP address
+آدرس IP مشتری نامعتبر است

@@ -1,1 +1,1 @@
-Failed to reset database
+فشل في إعادة تعيين قاعدة البيانات

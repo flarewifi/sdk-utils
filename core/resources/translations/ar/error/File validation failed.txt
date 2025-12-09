@@ -1,1 +1,1 @@
-File validation failed
+فشل التحقق من صحة الملف

@@ -1,1 +1,1 @@
-Invalid client IP address
+عنوان IP للعميل غير صالح

@@ -1,1 +1,1 @@
-Firmware validation failed
+اعتبارسنجی فریمور ناموفق بود
