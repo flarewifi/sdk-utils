@@ -1,0 +1,50 @@
+package database
+
+import (
+	"sdk/api"
+	"tools/config"
+)
+
+type AdminDatabaseSettingsIndexParams struct {
+	Cfg    *config.DbConfig
+	Errors sdkapi.FormErrors
+}
+
+templ AdminDatabaseSettingsIndex(api sdkapi.IPluginApi, params AdminDatabaseSettingsIndexParams) {
+	<div id="database-settings-page">
+		<h3 class="mb-4">{ api.Translate("label", "Database Settings") }</h3>
+		<!-- Database Information Card -->
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">{ api.Translate("label", "Database Information") }</h5>
+			</div>
+			<div class="card-body">
+				@databaseInfo(api, params)
+			</div>
+		</div>
+		<!-- Database Reset Card -->
+		<div class="card mb-4 border-danger">
+			<div class="card-header bg-danger text-white">
+				<h5 class="mb-0">{ api.Translate("label", "Danger Zone") }</h5>
+			</div>
+			<div class="card-body">
+				<h6 class="text-danger">{ api.Translate("label", "Reset Database") }</h6>
+				<p class="text-muted">
+					{ api.Translate("warning", "This will delete all data from the database and recreate the schema This action cannot be undone") }
+				</p>
+				<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:database:reset")) } onsubmit="return confirm(this.getAttribute('data-confirm'));" data-confirm={ api.Translate("warning", "Are you sure you want to reset the database All data will be lost") }>
+					<div class="form-check mb-3">
+						<input class="form-check-input" type="checkbox" id="confirm_reset" name="confirm_reset" value="yes" required/>
+						<label class="form-check-label" for="confirm_reset">
+							{ api.Translate("label", "I understand that this will delete all data") }
+						</label>
+					</div>
+					<button type="submit" class="btn btn-danger">
+						<i class="bi bi-exclamation-triangle-fill me-2"></i>
+						{ api.Translate("label", "Reset Database") }
+					</button>
+				</form>
+			</div>
+		</div>
+	</div>
+}

@@ -65,8 +65,9 @@ import (
 
 func main() {}
 
-func Init(api sdkapi.PluginApi) {
+func Init(api sdkapi.IPluginApi) error {
     // Rest of the code...
+    return nil
 }
 ```
 

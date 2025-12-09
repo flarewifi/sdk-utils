@@ -124,6 +124,32 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### RedirectSuccess
+
+This method redirects the user to a custom URL with a visual "Redirecting..." message and a 3-second delay. This provides a smooth user experience for success actions like completed payments, successful registrations, or external redirects.
+
+```go
+// handler - redirect to external URL
+func (w http.ResponseWriter, r *http.Request) {
+    api.Http().Response().RedirectSuccess(w, r, "https://example.com")
+}
+
+// handler - redirect to internal route
+func (w http.ResponseWriter, r *http.Request) {
+    successURL := api.Http().Helpers().UrlForRoute("portal:index")
+    api.Http().Response().RedirectSuccess(w, r, successURL)
+}
+```
+
+**Use cases:**
+
+- Redirecting to external websites after successful actions
+- Providing visual feedback before navigation
+- Creating smooth transitions between pages
+- Post-payment success redirects
+
+**Note:** The redirect page displays a translated "Redirecting..." message with a loading spinner for 3 seconds before navigating to the specified URL.
+
 ### Error
 
 This method is used to show consistent error page for unknown errors in your application.

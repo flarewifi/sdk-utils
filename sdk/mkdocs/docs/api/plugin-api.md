@@ -15,10 +15,11 @@ import (
 func main() {}
 
 // Plugin entry point
-func Init(api sdkapi.IPluginApi) {
+func Init(api sdkapi.IPluginApi) error {
     // You can start using the SDK here.
     // You can configure your routes, define your plugin components
     // and register items in the portal and admin navigation menu, and more.
+    return nil
 }
 ```
 

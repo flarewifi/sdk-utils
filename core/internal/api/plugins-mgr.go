@@ -1,7 +1,10 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
+	"path/filepath"
 	sdkplugin "sdk/api"
 
 	"core/db"
@@ -9,6 +12,9 @@ import (
 	"core/internal/connmgr"
 	"core/internal/network"
 	"tools/config"
+	"tools/migrate"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *connmgr.ClientRegister, clntMgr *connmgr.SessionsMgr, trfkMgr *network.TrafficMgr) *PluginsMgr {
@@ -120,4 +126,36 @@ func (self *PluginsMgr) GetPortalTheme() (*PluginApi, *ThemesApi, error) {
 	}
 
 	return p.(*PluginApi), themeApi, nil
+}
+
+// RerunPluginMigrations re-runs migrations for all loaded plugins
+// This is used after database reset to recreate plugin tables
+func (self *PluginsMgr) RerunPluginMigrations(newDB *sql.DB) error {
+	log.Println("Re-running plugin migrations after database reset...")
+
+	for _, p := range self.plugins {
+		// Skip core plugin (already migrated)
+		if p.Info().Package == "com.flarego.core" {
+			continue
+		}
+
+		pluginDir := p.Dir()
+		migdir := filepath.Join(pluginDir, "resources/migrations")
+
+		if !sdkutils.FsExists(migdir) {
+			log.Printf("No migrations directory for plugin %s, skipping...", p.Info().Package)
+			continue
+		}
+
+		log.Printf("Running migrations for plugin: %s", p.Info().Package)
+		// Pass the plugin directory, not the migrations subdirectory
+		// This ensures proper temp directory isolation per plugin
+		if err := migrate.MigrateUp(newDB, pluginDir); err != nil {
+			return fmt.Errorf("failed to run migrations for plugin %s: %w", p.Info().Package, err)
+		}
+		log.Printf("Successfully ran migrations for plugin: %s", p.Info().Package)
+	}
+
+	log.Println("All plugin migrations completed successfully")
+	return nil
 }

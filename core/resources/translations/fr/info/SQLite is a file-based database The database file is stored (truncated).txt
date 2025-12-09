@@ -1,0 +1,1 @@
+SQLite is a file-based database The database file is stored locally on the device
