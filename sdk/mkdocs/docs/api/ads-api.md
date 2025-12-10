@@ -16,9 +16,10 @@ fmt.Println(adsAPI) // IAdsApi
 Initializes the ads API with the given app ID from your ad provider. This should be called during plugin initialization to configure the ad service.
 
 ```go
-func Init(api sdkapi.IPluginApi) {
+func Init(api sdkapi.IPluginApi) error {
     // Initialize ads with your AdSense app ID
     api.Ads().Init("ca-pub-1234567890123456")
+    return nil
 }
 ```
 
@@ -33,9 +34,10 @@ import (
     sdkapi "sdk/api"
 )
 
-func Init(api sdkapi.IPluginApi) {
+func Init(api sdkapi.IPluginApi) error {
     // Initialize the ads API with your AdSense publisher ID
     api.Ads().Init("ca-pub-1234567890123456")
+    return nil
 }
 ```
 

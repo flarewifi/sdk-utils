@@ -199,7 +199,7 @@ The `ISessionsMgrApi` provides methods that enable cloud synchronization of sess
 Use the event callbacks to push incremental updates to your cloud server:
 
 ```go
-func Init(api sdkapi.IPluginApi) {
+func Init(api sdkapi.IPluginApi) error {
     machineID := api.Machine().GetID()
     
     // Sync session events

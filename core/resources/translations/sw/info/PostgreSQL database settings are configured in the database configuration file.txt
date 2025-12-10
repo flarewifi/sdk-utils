@@ -1,0 +1,1 @@
+Mipangilio ya hifadhidata ya PostgreSQL imeundwa katika faili ya usanidi wa hifadhidata

@@ -11,8 +11,9 @@ import (
 
 func main() {}
 
-func Init(api sdkapi.IPluginApi) {
+func Init(api sdkapi.IPluginApi) error {
 	app.SetupRoutes(api)
 	themes.SetPortalTheme(api)
 	themes.SetAdminTheme(api)
+	return nil
 }

@@ -51,6 +51,10 @@ type IHttpResponse interface {
 	// Redirect to portal
 	RedirectToPortal(w http.ResponseWriter, r *http.Request)
 
+	// Redirect to a custom URL with a success message and 3-second delay
+	// Shows "Redirecting..." message before redirecting to the specified URL
+	RedirectSuccess(w http.ResponseWriter, r *http.Request, redirectURL string)
+
 	// Used to send flash messages.
 	// For example, if you want to send a success message, you can use Flash(w, r, "Payment successful", sdkapi.FlashMsgSuccess)
 	// Note that this does not send the http response immediately.

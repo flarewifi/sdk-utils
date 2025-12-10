@@ -25,7 +25,7 @@ import (
 
 func main() {}
 
-func Init(api sdkapi.PluginApi) {
+func Init(api sdkapi.IPluginApi) error {
     pluginRouter := api.Http().Router().PluginRouter()
     pluginRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
         vars := api.Http().MuxVars(r)
@@ -36,6 +36,7 @@ func Init(api sdkapi.PluginApi) {
             PageContent: welcomePage,
         })
     }).Name("portal:welcome")
+    return nil
 }
 ```
 
@@ -68,7 +69,7 @@ import (
 
 func main() {}
 
-func Init(api sdkapi.PluginApi) {
+func Init(api sdkapi.IPluginApi) error {
     adminRouter := api.Http().Router().AdminRouter()
     adminRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
         vars := api.Http().MuxVars(r)
@@ -79,6 +80,7 @@ func Init(api sdkapi.PluginApi) {
             PageContent: welcomePage,
         })
     }).Name("admin:welcome")
+    return nil
 }
 ```
 

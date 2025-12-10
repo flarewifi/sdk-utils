@@ -12,11 +12,17 @@
     "./portal/js/device-token.js",
     "./portal/js/portal-register-ajax.js"
   ],
+  "portal-success-redirect.js": [
+    "./portal/js/portal-success-redirect.js"
+  ],
   "global.css": [
     "./portal/css/globals.css"
   ],
   "portal-redirect.css": [
     "./portal/css/portal-redirect.css"
+  ],
+  "portal-success-redirect.css": [
+    "./portal/css/portal-success-redirect.css"
   ],
   "payment-options.css": [
     "./portal/payments/payment-options.css"

@@ -88,11 +88,15 @@ func MakePluginInitMono() {
 		}
 		// Load plugin
 		api = NewPluginApi(pluginDir, info, g.GlobalAssets, self, self.trfkMgr)
-		%s.Init(api)
-		api.Initialize(coreAPI)
-		api.LoadAssetsManifest()
-		self.plugins = append(self.plugins, api)
-		fmt.Println("Loaded mono plugin:" + pkg)
+		// Standard signature: func Init(api sdkapi.IPluginApi) error
+		if err := %s.Init(api); err != nil {
+			fmt.Println("Error initializing plugin", pkg, ":", err)
+		} else {
+			api.Initialize(coreAPI)
+			api.LoadAssetsManifest()
+			self.plugins = append(self.plugins, api)
+			fmt.Println("Loaded mono plugin:" + pkg)
+		}
 	}
 
 		`, pkg, importVar)

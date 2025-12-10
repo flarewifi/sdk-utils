@@ -24,8 +24,14 @@ func (api *PluginApi) Init() error {
 		return err
 	}
 
-	initFn := initSym.(func(sdkapi.IPluginApi))
-	initFn(api)
+	// Standard signature: func Init(api sdkapi.IPluginApi) error
+	if initFn, ok := initSym.(func(sdkapi.IPluginApi) error); ok {
+		if err := initFn(api); err != nil {
+			return err
+		}
+		return nil
+	}
 
+	log.Println("Error: Init function has unexpected signature")
 	return nil
 }

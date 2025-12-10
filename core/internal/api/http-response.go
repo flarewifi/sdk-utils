@@ -6,6 +6,7 @@ import (
 	sdkapi "sdk/api"
 
 	"core/resources/views"
+	portalview "core/resources/views/portal"
 	"core/resources/views/themes"
 
 	"github.com/a-h/templ"
@@ -157,6 +158,18 @@ func (self *HttpResponse) Redirect(w http.ResponseWriter, r *http.Request, route
 
 func (self *HttpResponse) RedirectToPortal(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (self *HttpResponse) RedirectSuccess(w http.ResponseWriter, r *http.Request, redirectURL string) {
+	page := portalview.PortalSuccessRedirectPage(self.api.CoreAPI, redirectURL)
+	v := sdkapi.ViewPage{
+		Assets: sdkapi.ViewAssets{
+			JsFile:  "portal-success-redirect.js",
+			CssFile: "portal-success-redirect.css",
+		},
+		PageContent: page,
+	}
+	self.api.CoreAPI.HttpAPI.Response().PortalView(w, r, v)
 }
 
 func (self *HttpResponse) Error(w http.ResponseWriter, r *http.Request, err error, status int) {

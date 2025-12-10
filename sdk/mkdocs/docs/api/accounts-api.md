@@ -11,9 +11,10 @@ To obtain an instance of the `IAccountsApi`:
 import (
     sdkapi "sdk/api"
 )
-func Init(api sdkapi.IPluginApi) {
+func Init(api sdkapi.IPluginApi) error {
     acctAPI := api.Acct()
     fmt.Println(acctAPI) // IAccountsApi
+    return nil
 }
 ```
 

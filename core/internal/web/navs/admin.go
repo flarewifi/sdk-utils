@@ -30,6 +30,17 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				RouteName: "admin:updates:index",
 				Keywords:  []string{"update", "updates", "upgrade", "upgrades", "software"},
 			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "Database"),
+				RouteName: "admin:database:index",
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Database"),
+					g.CoreAPI.Translate("label", "Database Settings"),
+					g.CoreAPI.Translate("label", "Reset Database"),
+					"sqlite", "postgresql", "postgres",
+				},
+			},
 		}
 
 		// Append plugin navs

@@ -1,0 +1,75 @@
+//go:build postgres
+
+package database
+
+import (
+	"sdk/api"
+	"fmt"
+)
+
+templ databaseInfo(api sdkapi.IPluginApi, params AdminDatabaseSettingsIndexParams) {
+	<div class="row align-items-center mb-2">
+		<div class="col-md-4">
+			<label class="form-label fw-bold">{ api.Translate("label", "Database Type") }</label>
+		</div>
+		<div class="col-md-8">
+			<div class="form-control-plaintext">
+				<span class="badge bg-success">PostgreSQL</span>
+			</div>
+		</div>
+	</div>
+	<div class="row align-items-center mb-2">
+		<div class="col-md-4">
+			<label class="form-label fw-bold">{ api.Translate("label", "Host") }</label>
+		</div>
+		<div class="col-md-8">
+			<div class="form-control-plaintext">
+				<code>{ params.Cfg.Host }</code>
+			</div>
+		</div>
+	</div>
+	<div class="row align-items-center mb-2">
+		<div class="col-md-4">
+			<label class="form-label fw-bold">{ api.Translate("label", "Port") }</label>
+		</div>
+		<div class="col-md-8">
+			<div class="form-control-plaintext">
+				<code>{ fmt.Sprintf("%d", params.Cfg.Port) }</code>
+			</div>
+		</div>
+	</div>
+	<div class="row align-items-center mb-2">
+		<div class="col-md-4">
+			<label class="form-label fw-bold">{ api.Translate("label", "Database Name") }</label>
+		</div>
+		<div class="col-md-8">
+			<div class="form-control-plaintext">
+				<code>{ params.Cfg.Database }</code>
+			</div>
+		</div>
+	</div>
+	<div class="row align-items-center mb-2">
+		<div class="col-md-4">
+			<label class="form-label fw-bold">{ api.Translate("label", "Username") }</label>
+		</div>
+		<div class="col-md-8">
+			<div class="form-control-plaintext">
+				<code>{ params.Cfg.Username }</code>
+			</div>
+		</div>
+	</div>
+	<div class="row align-items-center mb-2">
+		<div class="col-md-4">
+			<label class="form-label fw-bold">{ api.Translate("label", "SSL Mode") }</label>
+		</div>
+		<div class="col-md-8">
+			<div class="form-control-plaintext">
+				<code>{ params.Cfg.SslMode }</code>
+			</div>
+		</div>
+	</div>
+	<div class="alert alert-info mt-3">
+		<i class="bi bi-info-circle me-2"></i>
+		{ api.Translate("info", "PostgreSQL database settings are configured in the database configuration file") }
+	</div>
+}
