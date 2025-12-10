@@ -1,4 +1,4 @@
-//go:build !dev && !staging
+//go:build !dev
 
 package env
 
