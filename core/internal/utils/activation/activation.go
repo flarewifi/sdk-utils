@@ -6,6 +6,7 @@ import (
 	machineuid "core/internal/utils/machine-uid"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -155,6 +156,11 @@ func checkActivationOnline() (ok bool, err error) {
 
 		if attempt == maxAttempts-1 {
 			return false, ErrNetworkIssue
+		}
+
+		if err != nil {
+			logMsg := fmt.Sprintf("Activation attempt %d failed: %v", attempt+1, err)
+			log.Println(logMsg)
 		}
 	}
 
