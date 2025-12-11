@@ -141,7 +141,31 @@ api.Http().Response().FlashMsg(w, r, api.Translate("success", "Session created")
 - 8-10 words: `ℹ️ INFO: Translation key is close to 10 word limit`
 - 11+ words: `⚠️ WARNING: Translation key exceeds 10 word limit ... Will be truncated to: ...`
 
-### 3. Exception: Debug Logs Only
+### 3. Punctuation Must Be Added in Code, Not in Translation Keys
+
+**Translation keys should NOT include trailing punctuation. Add punctuation when calling `api.Translate()`.**
+
+```go
+// ❌ WRONG - Punctuation in translation key
+api.Translate("success", "Firmware uploaded successfully.")
+
+// ✅ CORRECT - Punctuation added in code
+api.Translate("success", "Firmware uploaded successfully") + "."
+```
+
+```templ
+// ❌ WRONG - Punctuation in translation key
+{ api.Translate("success", "Operation completed.") }
+
+// ✅ CORRECT - Punctuation added in template
+{ api.Translate("success", "Operation completed") }.
+```
+
+**Translation file content should also exclude trailing punctuation:**
+- Filename: `Firmware uploaded successfully.txt`
+- Content: `Firmware uploaded successfully` (no period)
+
+### 4. Exception: Debug Logs Only
 
 ```go
 // ✅ OK - Internal debug log (not shown to users)

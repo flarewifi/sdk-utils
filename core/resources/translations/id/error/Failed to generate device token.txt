@@ -1,1 +1,1 @@
-Failed to generate device token
+Gagal menghasilkan token perangkat

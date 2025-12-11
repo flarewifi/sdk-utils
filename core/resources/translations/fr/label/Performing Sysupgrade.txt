@@ -1,1 +1,1 @@
-Performing Sysupgrade
+Effectuant Sysupgrade

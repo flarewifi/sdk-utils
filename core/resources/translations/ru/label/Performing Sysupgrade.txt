@@ -1,1 +1,1 @@
-Performing Sysupgrade
+Выполняется обновление системы

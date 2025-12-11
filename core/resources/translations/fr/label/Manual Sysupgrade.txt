@@ -1,1 +1,1 @@
-Manual Sysupgrade
+Sysupgrade manuel

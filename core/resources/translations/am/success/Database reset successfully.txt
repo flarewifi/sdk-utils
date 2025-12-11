@@ -1,1 +1,1 @@
-Database reset successfully
+የውሂብ ጎታ እንደነበር መለስ ተሳኗል

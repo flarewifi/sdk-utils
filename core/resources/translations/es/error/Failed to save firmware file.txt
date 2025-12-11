@@ -1,1 +1,1 @@
-Failed to save firmware file
+Error al guardar archivo de firmware

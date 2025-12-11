@@ -1,1 +1,1 @@
-Failed to reset database
+Error al restablecer base de datos

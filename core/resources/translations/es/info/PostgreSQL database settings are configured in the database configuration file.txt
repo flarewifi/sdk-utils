@@ -1,1 +1,1 @@
-PostgreSQL database settings are configured in the database configuration file
+La configuración de la base de datos PostgreSQL se configura en el archivo de configuración de la base de datos

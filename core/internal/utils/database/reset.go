@@ -1,4 +1,4 @@
-//go:build sqlite
+//go:build sqlite && !cgo
 
 package database
 
@@ -8,8 +8,7 @@ import (
 	"log"
 	"os"
 
-	_ "modernc.org/sqlite"
-
+	"core/db"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"tools/config"
 	"tools/migrate"
@@ -44,7 +43,7 @@ func ResetDatabase(sqldb *sql.DB, pluginMigrationsFn func(*sql.DB) error) (*sql.
 
 	// Reconnect to the database (this will create a new empty database)
 	log.Println("Reconnecting to database...")
-	newDB, err := sql.Open("sqlite", dbCfg.SqlitePath)
+	newDB, err := sql.Open(db.SqliteDriverName, dbCfg.SqlitePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconnect to database: %w", err)
 	}

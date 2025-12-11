@@ -10,11 +10,11 @@ templ RebootPage(api sdkapi.IPluginApi) {
 			<div class="card-body">
 				<div class="alert alert-warning mb-4">
 					<i class="bi bi-exclamation-triangle me-2"></i>
-					<strong>{ api.Translate("label", "Warning") }:</strong> { api.Translate("warning", "This will reboot the system. All active sessions will be terminated.") }
+					<strong>{ api.Translate("label", "Warning") }:</strong> { api.Translate("warning", "This will reboot the system. All active sessions will be terminated") }.
 				</div>
 				
 				<p class="mb-4">
-					{ api.Translate("info", "Click the button below to reboot the system. The system will be unavailable for a few minutes during the reboot process.") }
+					{ api.Translate("info", "Click the button below to reboot the system. The system will be unavailable for a few minutes during the reboot process") }.
 				</p>
 				
 				<div id="reboot-response"></div>
@@ -24,7 +24,7 @@ templ RebootPage(api sdkapi.IPluginApi) {
 					class="btn btn-danger"
 					hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") }
 					hx-target="#reboot-response"
-					hx-confirm={ api.Translate("label", "Are you sure you want to reboot the system? This will disconnect all users.") }
+					hx-confirm={ api.Translate("label", "Are you sure you want to reboot the system? This will disconnect all users") + "." }
 					data-loading-disable>
 					<i class="bi bi-arrow-clockwise me-2"></i>
 					{ api.Translate("label", "Reboot") }

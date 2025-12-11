@@ -1,1 +1,1 @@
-Invalid request format
+Formato de solicitud inválido

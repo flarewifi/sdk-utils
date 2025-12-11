@@ -1,1 +1,1 @@
-Failed to generate device token
+Не удалось сгенерировать токен устройства

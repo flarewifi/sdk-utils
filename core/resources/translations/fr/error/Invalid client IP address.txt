@@ -1,1 +1,1 @@
-Invalid client IP address
+Adresse IP client invalide

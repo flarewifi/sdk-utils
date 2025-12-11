@@ -39,7 +39,7 @@ func PendingPurchase(api sdkapi.IPluginApi, mdls *models.Models) func(http.Handl
 				}
 
 				// Otherwise, redirect to payment options page with info message
-				res.FlashMsg(w, r, api.Translate("info", "You have a pending purchase. Please complete it before proceeding."), sdkapi.FlashMsgInfo)
+				res.FlashMsg(w, r, api.Translate("info", "You have a pending purchase. Please complete it before proceeding")+".", sdkapi.FlashMsgInfo)
 				res.Redirect(w, r, "payments:options")
 				return
 			}

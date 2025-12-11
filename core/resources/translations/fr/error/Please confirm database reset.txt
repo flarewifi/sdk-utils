@@ -1,1 +1,1 @@
-Please confirm database reset
+Veuillez confirmer la réinitialisation de la base de données

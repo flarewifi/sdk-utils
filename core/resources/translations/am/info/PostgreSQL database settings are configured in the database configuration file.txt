@@ -1,1 +1,1 @@
-PostgreSQL database settings are configured in the database configuration file
+PostgreSQL የውሂብ ጎታ ቅንብሮች በውሂብ ጎታ ቅንብር ፋይል ውስጥ ተሰይማል

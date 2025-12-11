@@ -15,7 +15,6 @@ import (
 	queries "core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	_ "modernc.org/sqlite" // Pure-Go SQLite driver
 )
 
 const (
@@ -53,7 +52,7 @@ func newSQLiteDatabase(dbpath string) *Database {
 		}
 
 		dburl := fmt.Sprintf("file:%s?_busy_timeout=5000&_journal_mode=WAL", dbpath)
-		sqlDB, err := sql.Open("sqlite", dburl)
+		sqlDB, err := sql.Open(SqliteDriverName, dburl)
 		if err != nil {
 			log.Println("Error opening SQLite DB:", err)
 			db.ConnErr = err

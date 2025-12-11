@@ -1,1 +1,1 @@
-Failed to parse upload form
+Error al analizar formulario de carga

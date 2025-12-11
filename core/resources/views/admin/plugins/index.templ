@@ -70,7 +70,7 @@ templ IndexPage(api sdkapi.IPluginApi, data IndexPageData, formRoutes FormRoutes
 				<td >
 					if !p.ToBeRemoved {
 						<span hx-boost="true">
-							<a class="btn btn-sm btn-danger" hx-confirm={ api.Translate("label", "Are you sure you want to uninstall this plugin?") } hx-post={
+							<a class="btn btn-sm btn-danger" hx-confirm={ api.Translate("label", "Are you sure you want to uninstall this plugin") + "?" } hx-post={
 							api.Http().Helpers().UrlForRoute("admin:plugins:uninstall", "pkg" , p.Info.Package) }>
 								{ api.Translate("label", "Uninstall") }
 							</a>

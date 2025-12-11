@@ -1,1 +1,1 @@
-Firmware validation failed
+Validasi firmware gagal

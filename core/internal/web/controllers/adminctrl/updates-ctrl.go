@@ -262,9 +262,9 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			var errMsg string
 			switch err {
 			case updates.ErrInvalidFileExtension:
-				errMsg = api.Translate("error", "Invalid file type. Only .bin and .img files are allowed.")
+				errMsg = api.Translate("error", "Invalid file type. Only .bin and .img files are allowed") + "."
 			case updates.ErrFileTooLarge:
-				errMsg = api.Translate("error", "File size exceeds maximum allowed limit.")
+				errMsg = api.Translate("error", "File size exceeds maximum allowed limit") + "."
 			default:
 				errMsg = api.Translate("error", "File validation failed")
 			}
@@ -290,7 +290,7 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			var errMsg string
 			switch err {
 			case updates.ErrIncompatibleFirmware:
-				errMsg = api.Translate("error", "The uploaded firmware is not compatible with this device.")
+				errMsg = api.Translate("error", "The uploaded firmware is not compatible with this device") + "."
 			default:
 				errMsg = api.Translate("error", "Firmware validation failed")
 			}
