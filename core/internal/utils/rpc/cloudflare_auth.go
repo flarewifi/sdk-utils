@@ -11,23 +11,23 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func NewCloudflareClient(machindID string) *http.Client {
-	tr := NewCloudflareRountripper(http.DefaultTransport, machindID)
+func NewCloudflareClient(machineID string) *http.Client {
+	tr := NewCloudflareRoundTripper(http.DefaultTransport, machineID)
 	httpClient := &http.Client{
 		Transport: tr,
 	}
 	return httpClient
 }
 
-func NewCloudflareRountripper(rt http.RoundTripper, machindID string) *CloudflareAuth {
-	return &CloudflareAuth{rt: rt, machindID: machindID}
+func NewCloudflareRoundTripper(rt http.RoundTripper, machineID string) *CloudflareAuth {
+	return &CloudflareAuth{rt: rt, machineID: machineID}
 }
 
 // CloudflareAuth adds Cloudflare Worker validation headers to every request.
 // It creates a JWT token signed with Machine-Id + MD5(body) and adds it as Payload-Hash header.
 type CloudflareAuth struct {
 	rt        http.RoundTripper
-	machindID string
+	machineID string
 }
 
 // computeMD5 computes MD5 hash and returns it as lowercase base64 string.
@@ -42,7 +42,7 @@ func computeMD5(message []byte) string {
 // It adds Payload-Hash (JWT token) and Machine-Id headers before forwarding the request.
 func (a *CloudflareAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Get machine ID
-	machineID := a.machindID
+	machineID := a.machineID
 
 	// Read request body to compute hash
 	var body []byte

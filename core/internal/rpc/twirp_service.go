@@ -12,7 +12,7 @@ import (
 )
 
 func GetTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
-	url := env.RPC_BASE_URL + "/flarewifi/" + env.RPC_API_VERSION
+	url := env.RPC_PROXY_URL + "/flarewifi/" + env.RPC_API_VERSION
 
 	// Create HTTP client with custom RoundTripper for Cloudflare Worker validation
 	machineID := machineuid.GetMachineUID()
@@ -20,6 +20,7 @@ func GetTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
 	srv := NewFlarehotspotServiceProtobufClient(url, httpClient)
 	header := make(http.Header)
 	header.Set("Authorization", "Bearer "+env.RPC_TOKEN)
+	header.Set("Forward-To", env.RPC_UPSTREAM_URL)
 
 	ctx := context.Background()
 	ctx, err := twirp.WithHTTPRequestHeaders(ctx, header)
