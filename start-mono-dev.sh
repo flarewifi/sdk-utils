@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-CGO_ENABLED=0
+CGO_ENABLED=1
 DB_DRIVER="sqlite"
 OS_CONFIG="wan-lan-mono"
-GO_TAGS="dev mono $DB_DRIVER"
+GO_TAGS="dev mono $DB_DRIVER cgo"
 SYNC_VERSION="./tools/cmd/sync-versions/main.go"
 BUILD_ASSETS_MAIN="./tools/cmd/build-assets/main.go"
 MONO_BIN_PREPARE="./tools/cmd/mono-bin-prepare/main.go"

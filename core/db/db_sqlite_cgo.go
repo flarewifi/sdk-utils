@@ -15,7 +15,6 @@ import (
 	queries "core/db/queries"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	_ "github.com/mattn/go-sqlite3" // CGO SQLite driver for cross-compilation
 )
 
 const (
@@ -52,9 +51,8 @@ func newSQLiteDatabase(dbpath string) *Database {
 			}
 		}
 
-		// mattn/go-sqlite3 uses "sqlite3" driver name and slightly different connection string
 		dburl := fmt.Sprintf("file:%s?_busy_timeout=5000&_journal_mode=WAL", dbpath)
-		sqlDB, err := sql.Open("sqlite3", dburl)
+		sqlDB, err := sql.Open(SqliteDriverName, dburl)
 		if err != nil {
 			log.Println("Error opening SQLite DB:", err)
 			db.ConnErr = err

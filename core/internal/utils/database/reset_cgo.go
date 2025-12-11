@@ -1,4 +1,4 @@
-//go:build sqlite && !cgo
+//go:build sqlite && cgo
 
 package database
 
@@ -19,7 +19,7 @@ import (
 // Returns the new database connection that should replace the old one
 // pluginMigrationsFn is called after core migrations to run plugin migrations
 func ResetDatabase(sqldb *sql.DB, pluginMigrationsFn func(*sql.DB) error) (*sql.DB, error) {
-	log.Println("Starting database reset (SQLite)...")
+	log.Println("Starting database reset (SQLite with CGO driver)...")
 
 	// Get database configuration
 	dbCfg, err := config.ReadDatabaseConfig()
