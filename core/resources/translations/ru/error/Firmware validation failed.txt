@@ -1,1 +1,1 @@
-Firmware validation failed
+Проверка прошивки не удалась

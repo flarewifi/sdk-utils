@@ -59,7 +59,7 @@ templ SysupgradePage(api sdkapi.IPluginApi, uploadUrl string, csrfHTML string, m
 templ SysupgradeUploadSuccess(api sdkapi.IPluginApi) {
 	<div class="alert alert-success" role="alert">
 		<i class="bi bi-check-circle me-2"></i>
-		{ api.Translate("success", "Firmware uploaded successfully.") }
+		{ api.Translate("success", "Firmware uploaded successfully") }.
 	</div>
 }
 

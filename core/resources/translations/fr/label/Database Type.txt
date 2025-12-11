@@ -1,1 +1,1 @@
-Database Type
+Type de base de données

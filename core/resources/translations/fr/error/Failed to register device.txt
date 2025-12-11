@@ -1,1 +1,1 @@
-Failed to register device
+Échec d'enregistrement de l'appareil

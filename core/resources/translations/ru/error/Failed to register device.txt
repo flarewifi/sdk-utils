@@ -1,1 +1,1 @@
-Failed to register device
+Не удалось зарегистрировать устройство

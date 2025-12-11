@@ -1,1 +1,1 @@
-Failed to reset database
+Échec de réinitialisation de la base de données

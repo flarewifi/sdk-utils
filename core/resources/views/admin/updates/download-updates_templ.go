@@ -161,15 +161,15 @@ func DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) templ.
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Please wait while the update is being downloaded. Do not close this page or turn off the device."))
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Please wait while the update is being downloaded. Do not close this page or turn off the device"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 51, Col: 127}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 51, Col: 126}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(".</div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -208,15 +208,15 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("success", "Firmware downloaded and verified successfully. Ready to perform sysupgrade."))
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("success", "Firmware downloaded and verified successfully. Ready to perform sysupgrade"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 63, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 63, Col: 109}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div><div class=\"alert alert-warning mb-4\" role=\"alert\"><i class=\"bi bi-exclamation-triangle me-2\"></i> <strong>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(".</div><div class=\"alert alert-warning mb-4\" role=\"alert\"><i class=\"bi bi-exclamation-triangle me-2\"></i> <strong>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -234,15 +234,15 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "The device will be flashed with new firmware and will reboot. Do not power off the device during this process."))
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "The device will be flashed with new firmware and will reboot. Do not power off the device during this process"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 68, Col: 198}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 68, Col: 197}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(".</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -252,15 +252,15 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("success", "Software updates downloaded successfully. Reboot to apply."))
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("success", "Software updates downloaded successfully. Reboot to apply"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 73, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 73, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(".</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -288,9 +288,9 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
-			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Are you sure you want to perform the firmware upgrade? The device will be flashed and rebooted."))
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Are you sure you want to perform the firmware upgrade? The device will be flashed and rebooted") + "?")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 85, Col: 139}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 85, Col: 144}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {

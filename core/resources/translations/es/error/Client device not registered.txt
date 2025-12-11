@@ -1,1 +1,1 @@
-Client device not registered
+Dispositivo cliente no registrado

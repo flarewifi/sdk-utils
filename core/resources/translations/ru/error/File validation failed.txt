@@ -1,1 +1,1 @@
-File validation failed
+Проверка файла не удалась

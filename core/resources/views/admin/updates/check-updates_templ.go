@@ -306,15 +306,15 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Have a firmware file? Upload it manually to update your device."))
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Have a firmware file? Upload it manually to update your device"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 77, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 77, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><a href=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(".</p><a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -477,15 +477,15 @@ func CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err er
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var29 string
-			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "This update includes a full firmware upgrade. The device will be flashed and rebooted automatically."))
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "This update includes a full firmware upgrade. The device will be flashed and rebooted automatically"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 120, Col: 196}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 120, Col: 195}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(".</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

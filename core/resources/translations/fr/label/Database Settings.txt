@@ -1,1 +1,1 @@
-Database Settings
+Paramètres de base de données

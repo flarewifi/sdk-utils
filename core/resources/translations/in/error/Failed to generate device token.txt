@@ -1,1 +1,1 @@
-Failed to generate device token
+डिवाइस टोकन जनरेट करने में विफल

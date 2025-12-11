@@ -1,1 +1,1 @@
-Failed to reset database
+डेटाबेस रीसेट करने में विफल

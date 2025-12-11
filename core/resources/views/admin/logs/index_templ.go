@@ -249,9 +249,9 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Are you sure you want to clear all logs?"))
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Are you sure you want to clear all logs") + "?")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 53, Col: 133}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 53, Col: 138}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -264,7 +264,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Clear Logs"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 53, Col: 211}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 53, Col: 216}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {

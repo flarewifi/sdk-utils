@@ -1,1 +1,1 @@
-Performing Sysupgrade
+Melakukan Sysupgrade

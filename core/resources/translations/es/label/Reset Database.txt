@@ -1,1 +1,1 @@
-Reset Database
+Restablecer Base de Datos

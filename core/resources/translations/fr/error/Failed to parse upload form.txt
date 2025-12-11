@@ -1,1 +1,1 @@
-Failed to parse upload form
+Échec d'analyse du formulaire de téléchargement

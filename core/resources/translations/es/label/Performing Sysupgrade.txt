@@ -1,1 +1,1 @@
-Performing Sysupgrade
+Realizando Sysupgrade

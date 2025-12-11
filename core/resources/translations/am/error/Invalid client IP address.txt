@@ -1,1 +1,1 @@
-Invalid client IP address
+ልክ ያልሆነ የያልተለመደ IP አድራሻ
