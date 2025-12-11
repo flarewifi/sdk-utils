@@ -1,1 +1,1 @@
-Invalid file type. Only .bin and .img files are allowed
+ناسم دوتنه ډول. یوازې .bin او .img دوتنې اجازه دي

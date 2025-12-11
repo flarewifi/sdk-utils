@@ -1,1 +1,1 @@
-Firmware downloaded and verified successfully. Ready to perform sysupgrade
+Firmware descargado y verificado correctamente. Listo para realizar sysupgrade

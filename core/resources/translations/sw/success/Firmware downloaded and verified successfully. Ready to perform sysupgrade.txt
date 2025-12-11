@@ -1,1 +1,1 @@
-Firmware downloaded and verified successfully. Ready to perform sysupgrade
+Firmware imepakuliwa na kuthibitishwa kwa mafanikio. Tayari kufanya sysupgrade

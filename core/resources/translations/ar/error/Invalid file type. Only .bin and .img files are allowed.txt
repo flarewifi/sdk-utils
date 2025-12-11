@@ -1,1 +1,1 @@
-Invalid file type. Only .bin and .img files are allowed
+نوع ملف غير صحيح. يُسمح فقط بملفات .bin و .img

@@ -1,1 +1,1 @@
-File size exceeds maximum allowed limit
+Размер файла превышает максимально допустимый предел

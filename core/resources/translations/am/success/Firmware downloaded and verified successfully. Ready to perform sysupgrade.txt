@@ -1,1 +1,1 @@
-Firmware downloaded and verified successfully. Ready to perform sysupgrade
+ፋርምዌር ተወረወረ እና ተረጋገጠ በተሳካ መልክ። ለስዑግሬድ ዝግጁ ነው

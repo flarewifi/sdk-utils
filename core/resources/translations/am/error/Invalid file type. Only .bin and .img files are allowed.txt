@@ -1,1 +1,1 @@
-Invalid file type. Only .bin and .img files are allowed
+የፋይል አይነት ልክ አይደለም። ብቻ .bin እና .img ፋይሎች ይፈቀዳሉ

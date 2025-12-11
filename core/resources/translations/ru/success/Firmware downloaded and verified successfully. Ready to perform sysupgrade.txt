@@ -1,1 +1,1 @@
-Firmware downloaded and verified successfully. Ready to perform sysupgrade
+Прошивка успешно загружена и проверена. Готово к выполнению sysupgrade
