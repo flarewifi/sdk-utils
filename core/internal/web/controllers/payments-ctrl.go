@@ -36,3 +36,31 @@ func PaymentOptionsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		})
 	}
 }
+
+func CancelPurchaseCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res := g.CoreAPI.HttpAPI.Response()
+		ctx := r.Context()
+
+		// Get the pending purchase from session
+		purchase, err := g.CoreAPI.PaymentsAPI.GetPurchaseRequest(r)
+		if err != nil {
+			res.FlashMsg(w, r, g.CoreAPI.Translate("error", "No pending purchase found"), sdkapi.FlashMsgError)
+			res.RedirectToPortal(w, r)
+			return
+		}
+
+		// Cancel the purchase (handles refunds automatically)
+		err = purchase.Cancel(ctx)
+		if err != nil {
+			g.CoreAPI.Logger().Error("Failed to cancel purchase: " + err.Error())
+			res.FlashMsg(w, r, g.CoreAPI.Translate("error", "Failed to cancel purchase"), sdkapi.FlashMsgError)
+			res.Redirect(w, r, "payments:options")
+			return
+		}
+
+		// Show success message and redirect to portal
+		res.FlashMsg(w, r, g.CoreAPI.Translate("success", "Purchase cancelled successfully"), sdkapi.FlashMsgSuccess)
+		res.RedirectToPortal(w, r)
+	}
+}

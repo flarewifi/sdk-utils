@@ -31,6 +31,7 @@ type ClientSession struct {
 	timeCons    int
 	dataCons    float64
 	startedAt   *time.Time
+	resumedAt   *time.Time
 	expDays     *int
 	downMbits   int
 	upMbits     int
@@ -54,6 +55,7 @@ func (self *ClientSession) Save(ctx context.Context) error {
 		TimeCons:    self.timeCons,
 		DataCons:    self.dataCons,
 		StartedAt:   self.startedAt,
+		ResumedAt:   self.resumedAt,
 		ExpDays:     self.expDays,
 		DownMbits:   self.downMbits,
 		UpMbits:     self.upMbits,
@@ -90,6 +92,7 @@ func (self *ClientSession) load(s *models.Session) {
 	self.useGlobal = s.UseGlobal()
 	self.expDays = s.ExpDays()
 	self.startedAt = s.StartedAt()
+	self.resumedAt = s.ResumedAt()
 	self.createdAt = s.CreatedAt()
 	self.updatedAt = s.UpdatedAt()
 }
@@ -167,9 +170,9 @@ func (self *ClientSession) RemainingTime() (sec int) {
 
 	remaining := self.timeSecs - self.timeCons
 
-	// If session is running, subtract elapsed time since started_at
-	if self.startedAt != nil {
-		elapsed := int(time.Since(*self.startedAt).Seconds())
+	// If session is running, subtract elapsed time since resumed_at
+	if self.resumedAt != nil {
+		elapsed := int(time.Since(*self.resumedAt).Seconds())
 		remaining -= elapsed
 	}
 
@@ -187,11 +190,18 @@ func (self *ClientSession) RemainingData() (mbytes float64) {
 	return self.dataMb - self.dataCons
 }
 
-// StartedAt returns the time when session was started.
+// StartedAt returns the time when session was first started.
 func (self *ClientSession) StartedAt() *time.Time {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.startedAt
+}
+
+// ResumedAt returns the time when session was last resumed.
+func (self *ClientSession) ResumedAt() *time.Time {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.resumedAt
 }
 
 // CreatedAt returns the created at time.
@@ -298,12 +308,20 @@ func (self *ClientSession) SetDataCons(mbytes float64) {
 	self.dataCons = mbytes
 }
 
-// SetStartedAt sets the time when session was started.
+// SetStartedAt sets the time when session was first started.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetStartedAt(started *time.Time) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.startedAt = started
+}
+
+// SetResumedAt sets the time when session was last resumed.
+// This value is not saved until Save() method is called.
+func (self *ClientSession) SetResumedAt(resumed *time.Time) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	self.resumedAt = resumed
 }
 
 // SetExpDays sets the session's expiration time in days.

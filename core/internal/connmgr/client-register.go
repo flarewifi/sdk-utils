@@ -46,7 +46,7 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 
 	// Disconnect if currently has a running session
 	if hasRunningSession {
-		err := reg.sessionsMgr.Disconnect(ctx, clnt, "Device network details changed, reconnecting...")
+		err := reg.sessionsMgr.Disconnect(ctx, clnt, reg.sessionsMgr.coreAPI.Translate("info", "Device network details changed, reconnecting"))
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 
 	// Reconnect if was previously running a session
 	if hasRunningSession {
-		err := reg.sessionsMgr.Connect(ctx, clnt, "Device network details updated, reconnected successfully!")
+		err := reg.sessionsMgr.Connect(ctx, clnt, reg.sessionsMgr.coreAPI.Translate("success", "Device network details updated, reconnected successfully"))
 		if err != nil {
 			return err
 		}

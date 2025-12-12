@@ -411,3 +411,135 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Cancel Purchase Section */
+.cancel-purchase-section {
+  text-align: center;
+  margin: 30px 0 20px 0;
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cancel-text {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 400;
+}
+
+.cancel-form {
+  margin: 0;
+}
+
+.btn-cancel {
+  background-color: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.btn-cancel:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.btn-cancel:active {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(0.98);
+}
+
+.btn-cancel:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.cancel-icon {
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.cancel-label {
+  display: inline;
+}
+
+.cancel-spinner {
+  display: none;
+  margin-left: 8px;
+}
+
+/* Loading state for cancel button */
+.btn-cancel.loading {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.btn-cancel.loading .cancel-label {
+  display: none;
+}
+
+.btn-cancel.loading .cancel-icon {
+  display: none;
+}
+
+.btn-cancel.loading .cancel-spinner {
+  display: inline-block;
+}
+
+.spinner-icon-small {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+/* Responsive adjustments for cancel section */
+@media (max-width: 768px) {
+  .cancel-purchase-section {
+    padding: 15px;
+    margin: 20px 0 15px 0;
+  }
+  
+  .cancel-text {
+    font-size: 13px;
+  }
+  
+  .btn-cancel {
+    padding: 8px 20px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cancel-purchase-section {
+    padding: 12px;
+    margin: 15px 0 10px 0;
+  }
+  
+  .cancel-text {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .btn-cancel {
+    padding: 8px 18px;
+    font-size: 13px;
+  }
+  
+  .cancel-icon {
+    font-size: 13px;
+    margin-right: 6px;
+  }
+}

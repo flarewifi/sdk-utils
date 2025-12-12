@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"core/db"
 	"core/db/models"
@@ -16,8 +17,7 @@ import (
 )
 
 var (
-	ErrSessionQuery = errors.New("Error in session query")
-	ErrSessionEmpty = errors.New("Device has no more available sessions.")
+// Removed hardcoded error messages - now translated at runtime
 )
 
 func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
@@ -55,10 +55,16 @@ func (self *SessionsMgr) Init(ctx context.Context) error {
 		return fmt.Errorf("failed to update consumption before reset: %w", err)
 	}
 
-	// Then reset all started_at fields to NULL
-	err = self.db.Queries.ResetAllStartedAt(ctx)
+	// Then reset all resumed_at fields to NULL
+	err = self.db.Queries.ResetAllResumedAt(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to reset started_at fields: %w", err)
+		return fmt.Errorf("failed to reset resumed_at fields: %w", err)
+	}
+
+	// Reset all device connection statuses to disconnected
+	err = self.db.Queries.ResetAllDeviceStatuses(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to reset device statuses: %w", err)
 	}
 
 	return nil
@@ -166,13 +172,13 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 
 	go func() {
 		if _, ok := self.CurrSession(clnt); ok {
-			errReturnCh <- errors.New("Device is already connected.")
+			errReturnCh <- errors.New(self.coreAPI.Translate("error", "Device is already connected"))
 			return
 		}
 
 		_, err := self.GetSession(ctx, clnt)
 		if err != nil {
-			errReturnCh <- ErrSessionEmpty
+			errReturnCh <- errors.New(self.coreAPI.Translate("error", "Device has no more available sessions"))
 			return
 		}
 
@@ -387,30 +393,98 @@ func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevi
 	return localSrc, nil
 }
 
-// SessionSummary
+// SessionSummary returns the total remaining time/data from ALL sessions for a client device.
+// The database queries return the total based on saved consumption values.
+// We need to subtract both elapsed time and unsaved data consumption for running sessions.
 func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
 	summary, err := self.mdl.Session().Summary(ctx, clnt.ID())
 	if err != nil {
 		return nil, err
 	}
 
+	// Check if there's a running session
 	rs, ok := self.getRunningSession(clnt)
 	if !ok {
+		// No running session, return database totals as-is
 		return summary, nil
 	}
 
-	// Get unsaved data consumption diff
-	mbDiff := rs.Diff()
+	// Calculate elapsed time for the running session since resumed_at
+	var elapsedSecs int = 0
+	if rs.GetSession().ResumedAt() != nil {
+		elapsedSecs = int(time.Since(*rs.GetSession().ResumedAt()).Seconds())
+	}
 
-	// Time is calculated dynamically in RemainingTime(), so use it directly
-	remainingTime := max(rs.GetSession().RemainingTime(), 0)
+	// Get unsaved data consumption diff (data consumed but not yet written to DB)
+	mbDiff := rs.DiffMb()
 
-	// Subtract unsaved data consumption from remaining data
+	// Subtract both elapsed time and unsaved data consumption
+	remainingTime := summary.RemainingTimeSecs - elapsedSecs
 	remainingData := summary.RemainingDataMbytes - mbDiff
+
+	// Ensure we don't go below zero
+	remainingTime = max(remainingTime, 0)
 	remainingData = max(remainingData, 0)
 
 	return &sdkapi.ClientSessionSummary{
 		RemainingTimeSecs:   remainingTime,
 		RemainingDataMbytes: remainingData,
 	}, nil
+}
+
+// FindSessionByID finds a session by its database ID and wraps it into an IClientSession object.
+func (self *SessionsMgr) FindSessionByID(ctx context.Context, sessionID int64) (sdkapi.IClientSession, error) {
+	s, err := self.mdl.Session().Find(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	localSrc := NewClientSession(self.db, self.mdl, self.coreAPI.PluginsMgr(), s)
+	return localSrc, nil
+}
+
+// NewSession wraps session data into an IClientSession object without performing
+// additional database queries.
+func (self *SessionsMgr) NewSession(params sdkapi.NewSessionParams) sdkapi.IClientSession {
+	// Create a models.Session from the params using BuildSession
+	s := models.BuildSession(models.BuildSessionParams{
+		DB:          self.db,
+		Models:      self.mdl,
+		ID:          params.ID,
+		UUID:        params.UUID,
+		ProviderPkg: params.ProviderPkg,
+		DeviceID:    params.DeviceID,
+		SessionType: string(params.SessionType),
+		TimeSecs:    params.TimeSecs,
+		DataMbytes:  params.DataMbytes,
+		TimeCons:    params.ConsumptionSecs,
+		DataCons:    params.ConsumptionMb,
+		StartedAt:   params.StartedAt,
+		ResumedAt:   params.ResumedAt,
+		ExpDays:     params.ExpDays,
+		DownMbits:   params.DownMbits,
+		UpMbits:     params.UpMbits,
+		UseGlobal:   params.UseGlobal,
+		CreatedAt:   params.CreatedAt,
+		UpdatedAt:   params.UpdatedAt,
+	})
+	return NewClientSession(self.db, self.mdl, self.coreAPI.PluginsMgr(), s)
+}
+
+// NewClientDevice wraps device data into an IClientDevice object without performing
+// additional database queries.
+func (self *SessionsMgr) NewClientDevice(params sdkapi.NewDeviceParams) sdkapi.IClientDevice {
+	// Create a models.Device from the params using BuildDevice
+	d := models.BuildDevice(models.BuildDeviceParams{
+		DB:        self.db,
+		Models:    self.mdl,
+		ID:        params.ID,
+		UUID:      params.UUID,
+		MacAddr:   params.MacAddress,
+		IpAddr:    params.IpAddress,
+		Hostname:  params.Hostname,
+		Status:    params.Status,
+		CreatedAt: params.CreatedAt,
+		UpdatedAt: params.UpdatedAt,
+	})
+	return NewClientDevice(self.db, self.mdl, d)
 }

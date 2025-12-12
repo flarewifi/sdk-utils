@@ -49,6 +49,7 @@ for f in \
     "tools" \
     "go.work" \
     "go.sum" \
+    "hosts.json" \
     "start.sh" \
     ; do
 

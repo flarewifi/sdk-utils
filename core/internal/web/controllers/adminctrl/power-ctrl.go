@@ -40,14 +40,14 @@ func RebootCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html")
 		var msg string
 		if isSysupgrade {
-			msg = g.CoreAPI.Translate("info", "System is upgrading firmware This may take several minutes Do not power off the device")
+			msg = g.CoreAPI.Translate("info", "Firmware upgrade in progress. Do not power off the device")
 		} else {
 			msg = g.CoreAPI.Translate("info", "System is rebooting Please wait a few minutes before reconnecting")
 		}
-		w.Write([]byte(fmt.Sprintf(`<div class="alert alert-success">
-			<i class="bi bi-check-circle me-2"></i>
-			%s
-		</div>`, msg)))
+		w.Write([]byte(fmt.Sprintf(`<div id="notification-area" class="alert alert-info mb-4">
+		<i class="bi bi-info-circle me-2"></i>
+		%s
+	</div>`, msg)))
 	}
 }
 

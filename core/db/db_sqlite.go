@@ -51,7 +51,7 @@ func newSQLiteDatabase(dbpath string) *Database {
 			}
 		}
 
-		dburl := fmt.Sprintf("file:%s?_busy_timeout=5000&_journal_mode=WAL", dbpath)
+		dburl := fmt.Sprintf("file:%s?_busy_timeout=5000&_journal_mode=WAL&_loc=UTC", dbpath)
 		sqlDB, err := sql.Open(SqliteDriverName, dburl)
 		if err != nil {
 			log.Println("Error opening SQLite DB:", err)
@@ -72,6 +72,13 @@ func newSQLiteDatabase(dbpath string) *Database {
 		if err != nil {
 			db.ConnErr = err
 			return
+		}
+
+		// Force UTC timezone for all timestamp operations
+		_, err = sqlDB.ExecContext(context.Background(), "PRAGMA timezone = 'UTC'")
+		if err != nil {
+			log.Println("Warning: Failed to set SQLite timezone to UTC:", err)
+			// Don't fail - _loc=UTC in connection string should handle it
 		}
 
 		db.DB = sqlDB

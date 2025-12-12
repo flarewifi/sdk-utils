@@ -27,14 +27,32 @@ func NewDevice(d *db.Database, m *Models) *Device {
 	return &Device{db: d, models: m}
 }
 
-func BuildDevice(id int64, uuid string, mac string, ip string, hostname string, status int64) *Device {
+// BuildDeviceParams holds parameters for building a Device object.
+type BuildDeviceParams struct {
+	DB        *db.Database
+	Models    *Models
+	ID        int64
+	UUID      string
+	MacAddr   string
+	IpAddr    string
+	Hostname  string
+	Status    sdkapi.DeviceStatus
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// BuildDevice creates a Device object from the provided parameters.
+func BuildDevice(params BuildDeviceParams) *Device {
 	return &Device{
-		id:       id,
-		uuid:     uuid,
-		ipaddr:   ip,
-		macaddr:  mac,
-		hostname: hostname,
-		status:   sdkapi.DeviceStatus(status),
+		db:        params.DB,
+		models:    params.Models,
+		id:        params.ID,
+		uuid:      params.UUID,
+		ipaddr:    params.IpAddr,
+		macaddr:   params.MacAddr,
+		hostname:  params.Hostname,
+		status:    params.Status,
+		createdAt: params.CreatedAt,
 	}
 }
 

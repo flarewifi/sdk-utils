@@ -46,8 +46,11 @@ type IClientSession interface {
 	// Returns the session's remaining data in megabytes.
 	RemainingData() (mbytes float64)
 
-	// Returns the time when session was started.
+	// Returns the time when session was first started.
 	StartedAt() *time.Time
+
+	// Returns the time when session was last resumed.
+	ResumedAt() *time.Time
 
 	// Returns the created at time.
 	CreatedAt() time.Time
@@ -97,9 +100,13 @@ type IClientSession interface {
 	// This value is not saved until Save() method is called.
 	SetDataCons(mbytes float64)
 
-	// Sets the time when session was started.
+	// Sets the time when session was first started.
 	// This value is not saved until Save() method is called.
 	SetStartedAt(started *time.Time)
+
+	// Sets the time when session was last resumed.
+	// This value is not saved until Save() method is called.
+	SetResumedAt(resumed *time.Time)
 
 	// Sets the session's expiration time in days.
 	// This value is not saved until Save() method is called.

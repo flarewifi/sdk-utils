@@ -198,7 +198,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"card shadow-sm\"><div class=\"card-body\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"card shadow-sm\"><div class=\"card-body\"><div id=\"notification-area\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -210,7 +210,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("success", "Firmware downloaded and verified successfully. Ready to perform sysupgrade"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 63, Col: 109}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 64, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -223,7 +223,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Warning"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 68, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 69, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -236,7 +236,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "The device will be flashed with new firmware and will reboot. Do not power off the device during this process"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 68, Col: 197}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 69, Col: 198}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -254,7 +254,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("success", "Software updates downloaded successfully. Reboot to apply"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 73, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 74, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -265,7 +265,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"reboot-response\"></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -283,14 +283,14 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-target=\"#reboot-response\" hx-confirm=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-target=\"#notification-area\" hx-swap=\"outerHTML\" hx-confirm=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Are you sure you want to perform the firmware upgrade? The device will be flashed and rebooted") + "?")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 85, Col: 144}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 86, Col: 144}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -303,7 +303,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Perform Sysupgrade"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 88, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 89, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -316,7 +316,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Performing Sysupgrade"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 89, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 90, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -334,20 +334,20 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin:power:reboot-action"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 95, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 96, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-target=\"#reboot-response\" hx-confirm=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-target=\"#notification-area\" hx-swap=\"outerHTML\" hx-confirm=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Are you sure?"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 97, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 99, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -360,7 +360,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Reboot Now"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 100, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 102, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -373,7 +373,7 @@ func DownloadDonePage(api sdkapi.IPluginApi, isSysupgrade bool) templ.Component 
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Rebooting"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 101, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 103, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {

@@ -219,6 +219,11 @@ api.Http().Response().FlashMsg(w, r, api.Translate("error", "Invalid input"), sd
 - Minor refactoring
 - Quick single-file edits
 
+### When to Escalate to Subagents
+- **Multiple templ edit failures** - If you encounter 2+ failed edits in templ files, consult @frontend immediately
+- **Complex template changes** - Multi-component UI updates, layout restructuring
+- **CSS/JavaScript integration** - Asset loading, Bootstrap version conflicts, ES5 compatibility
+
 ## Common Scenarios
 
 ### Adding New Feature
@@ -253,6 +258,12 @@ api.Http().Response().FlashMsg(w, r, api.Translate("error", "Invalid input"), sd
 ### Database Type Mismatch
 - Use `int64` for IDs
 - Check sqlc overrides
+
+### Multiple Templ Edit Failures
+- **After 2+ failed templ edits**: Stop and consult @frontend
+- Frontend agent has specialized context for templ syntax, component patterns, and UI structure
+- Provide failed edit attempts and error messages to @frontend
+- Let @frontend handle complex template modifications
 
 ---
 

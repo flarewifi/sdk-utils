@@ -10,6 +10,29 @@ import (
 	"core/db/queries"
 )
 
+// BuildSessionParams holds parameters for building a Session object from existing data.
+type BuildSessionParams struct {
+	DB          *db.Database
+	Models      *Models
+	ID          int64
+	UUID        string
+	ProviderPkg string
+	DeviceID    int64
+	SessionType string
+	TimeSecs    int
+	DataMbytes  float64
+	TimeCons    int
+	DataCons    float64
+	StartedAt   *time.Time
+	ResumedAt   *time.Time
+	ExpDays     *int
+	DownMbits   int
+	UpMbits     int
+	UseGlobal   bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type Session struct {
 	db          *db.Database
 	models      *Models
@@ -23,6 +46,7 @@ type Session struct {
 	timeCons    int
 	dataCons    float64
 	startedAt   *time.Time
+	resumedAt   *time.Time
 	expDays     *int
 	expiresAt   *time.Time
 	downMbits   int
@@ -50,6 +74,11 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 			startedAt = &s.StartedAt.Time
 		}
 
+		var resumedAt *time.Time
+		if s.ResumedAt.Valid {
+			resumedAt = &s.ResumedAt.Time
+		}
+
 		session.id = s.ID
 		session.uuid = s.Uuid
 		session.providerPkg = s.ProviderPkg
@@ -63,6 +92,7 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 		session.dataCons = s.ConsumptionMb
 		session.expDays = expDays
 		session.startedAt = startedAt
+		session.resumedAt = resumedAt
 
 		// TODO: fix proper expiry calculation
 		// session.expiresAt = sRow.ExpiresAt
@@ -77,21 +107,31 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 	return session
 }
 
-func BuildSession(id int64, devId int64, t string, timeSecs int, dataMb float64, timeCons int, dataCons float64, startedAt *time.Time, expDays *int, expiresAt *time.Time, dmbits int, umbits int, g bool) *Session {
+// BuildSession creates a Session with all fields from session data.
+// This is useful for wrapping existing session data without database queries.
+// Use this when you have session data from queries and want to create a Session object
+// that can be wrapped into IClientSession via NewClientSession().
+func BuildSession(params BuildSessionParams) *Session {
 	return &Session{
-		id:          id,
-		deviceId:    devId,
-		sessionType: t,
-		timeSecs:    timeSecs,
-		dataMb:      dataMb,
-		timeCons:    timeCons,
-		dataCons:    dataCons,
-		startedAt:   startedAt,
-		expDays:     expDays,
-		expiresAt:   expiresAt,
-		downMbits:   dmbits,
-		upMbits:     umbits,
-		useGlobal:   g,
+		db:          params.DB,
+		models:      params.Models,
+		id:          params.ID,
+		uuid:        params.UUID,
+		providerPkg: params.ProviderPkg,
+		deviceId:    params.DeviceID,
+		sessionType: params.SessionType,
+		timeSecs:    params.TimeSecs,
+		dataMb:      params.DataMbytes,
+		timeCons:    params.TimeCons,
+		dataCons:    params.DataCons,
+		startedAt:   params.StartedAt,
+		resumedAt:   params.ResumedAt,
+		expDays:     params.ExpDays,
+		downMbits:   params.DownMbits,
+		upMbits:     params.UpMbits,
+		useGlobal:   params.UseGlobal,
+		createdAt:   params.CreatedAt,
+		updatedAt:   params.UpdatedAt,
 	}
 }
 
@@ -135,6 +175,10 @@ func (self *Session) StartedAt() *time.Time {
 	return self.startedAt
 }
 
+func (self *Session) ResumedAt() *time.Time {
+	return self.resumedAt
+}
+
 func (self *Session) ExpDays() *int {
 	return self.expDays
 }
@@ -171,10 +215,15 @@ func (self *Session) UpdatedAt() time.Time {
 	return self.updatedAt
 }
 
-func (self *Session) Update(ctx context.Context, devId int64, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+func (self *Session) Update(ctx context.Context, devId int64, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, resumed *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
 	var startedTime sql.NullTime
 	if started != nil {
 		startedTime = sql.NullTime{Time: *started, Valid: true}
+	}
+
+	var resumedTime sql.NullTime
+	if resumed != nil {
+		resumedTime = sql.NullTime{Time: *resumed, Valid: true}
 	}
 
 	var expDays sql.NullInt64
@@ -191,6 +240,7 @@ func (self *Session) Update(ctx context.Context, devId int64, t string, secs int
 		ConsumptionSecs: int64(timecon),
 		ConsumptionMb:   datacon,
 		StartedAt:       startedTime,
+		ResumedAt:       resumedTime,
 		ExpDays:         expDays,
 		DownMbits:       int64(downMbit),
 		UpMbits:         int64(upMbit),
@@ -209,6 +259,7 @@ func (self *Session) Update(ctx context.Context, devId int64, t string, secs int
 	self.timeCons = timecon
 	self.dataCons = datacon
 	self.startedAt = started
+	self.resumedAt = resumed
 	self.downMbits = downMbit
 	self.upMbits = upMbit
 
@@ -216,5 +267,5 @@ func (self *Session) Update(ctx context.Context, devId int64, t string, secs int
 }
 
 func (self *Session) Save(ctx context.Context) error {
-	return self.Update(ctx, self.deviceId, self.sessionType, self.timeSecs, self.dataMb, self.timeCons, self.dataCons, self.startedAt, self.expDays, self.downMbits, self.upMbits, self.useGlobal)
+	return self.Update(ctx, self.deviceId, self.sessionType, self.timeSecs, self.dataMb, self.timeCons, self.dataCons, self.startedAt, self.resumedAt, self.expDays, self.downMbits, self.upMbits, self.useGlobal)
 }

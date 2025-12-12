@@ -6,32 +6,43 @@ FROM
   sessions
 WHERE
   device_id = @device_id
-  AND (
-    (
-      session_type = 'time'
-      AND consumption_secs < time_secs
+    AND (
+        -- Pure time sessions: check time accounting for elapsed time if running
+        (
+            session_type = 'time'
+            AND (
+                (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+                OR
+                (resumed_at IS NOT NULL AND time_secs - consumption_secs - CAST((julianday('now') - julianday(resumed_at)) * 86400 AS INTEGER) > 0)
+            )
+        )
+        OR
+        -- Pure data sessions: only check data
+        (
+            session_type = 'data'
+            AND consumption_mb < data_mbytes
+        )
+        OR
+        -- Time-or-data sessions: check BOTH time AND data (expires when EITHER runs out)
+        (
+            session_type = 'time-or-data'
+            AND consumption_mb < data_mbytes
+            AND (
+                (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+                OR
+                (resumed_at IS NOT NULL AND time_secs - consumption_secs - CAST((julianday('now') - julianday(resumed_at)) * 86400 AS INTEGER) > 0)
+            )
+        )
     )
-    OR (
-      session_type = 'data'
-      AND consumption_mb < data_mbytes
+    AND (
+        exp_days IS NULL
+        OR started_at IS NULL
+        OR (
+            exp_days IS NOT NULL
+            AND started_at IS NOT NULL
+            AND datetime('now') < datetime(started_at, '+' || exp_days || ' days')
+        )
     )
-    OR (
-      session_type = 'time-or-data'
-      AND consumption_mb < data_mbytes
-      AND consumption_secs < time_secs
-    )
-  )
-  AND (
-    (
-      exp_days IS NULL
-      OR started_at IS NULL
-    )
-    OR (
-      exp_days IS NOT NULL
-      AND started_at IS NOT NULL
-      AND datetime('now') < datetime(started_at, '+' || exp_days || ' days')
-    )
-  )
 LIMIT
   1;
 
@@ -45,18 +56,31 @@ FROM
 WHERE
   device_id = @device_id
   AND (
+    -- Pure time sessions: check time accounting for elapsed time if running
     (
       session_type = 'time'
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - CAST((julianday('now') - julianday(resumed_at)) * 86400 AS INTEGER) > 0)
+      )
     )
-    OR (
+    OR
+    -- Pure data sessions: only check data
+    (
       session_type = 'data'
       AND consumption_mb < data_mbytes
     )
-    OR (
+    OR
+    -- Time-or-data sessions: check BOTH time AND data (expires when EITHER runs out)
+    (
       session_type = 'time-or-data'
       AND consumption_mb < data_mbytes
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - CAST((julianday('now') - julianday(resumed_at)) * 86400 AS INTEGER) > 0)
+      )
     )
   )
   AND (
@@ -82,18 +106,31 @@ SET
   use_global = @use_global
 WHERE
   (
+    -- Pure time sessions: check time accounting for elapsed time if running
     (
       session_type = 'time'
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - CAST((julianday('now') - julianday(resumed_at)) * 86400 AS INTEGER) > 0)
+      )
     )
-    OR (
+    OR
+    -- Pure data sessions: only check data
+    (
       session_type = 'data'
       AND consumption_mb < data_mbytes
     )
-    OR (
+    OR
+    -- Time-or-data sessions: check BOTH time AND data (expires when EITHER runs out)
+    (
       session_type = 'time-or-data'
       AND consumption_mb < data_mbytes
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - CAST((julianday('now') - julianday(resumed_at)) * 86400 AS INTEGER) > 0)
+      )
     )
   )
   AND (
@@ -114,6 +151,6 @@ WHERE
 UPDATE
   sessions
 SET
-  consumption_secs = consumption_secs + CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
+  consumption_secs = consumption_secs + CAST((julianday('now') - julianday(resumed_at)) * 86400 AS INTEGER)
 WHERE
-  started_at IS NOT NULL;
+  resumed_at IS NOT NULL;

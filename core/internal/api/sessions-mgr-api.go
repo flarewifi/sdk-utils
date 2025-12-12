@@ -105,6 +105,23 @@ func (self *SessionsMgrApi) SessionSummary(ctx context.Context, clnt sdkapi.ICli
 	return self.pluginApi.SessionMgr.SessionSummary(ctx, clnt)
 }
 
+// FindSessionByID finds a session by its database ID and wraps it into an IClientSession object.
+func (self *SessionsMgrApi) FindSessionByID(ctx context.Context, sessionID int64) (sdkapi.IClientSession, error) {
+	return self.pluginApi.SessionMgr.FindSessionByID(ctx, sessionID)
+}
+
+// NewSession wraps session data into an IClientSession object without performing
+// additional database queries.
+func (self *SessionsMgrApi) NewSession(params sdkapi.NewSessionParams) sdkapi.IClientSession {
+	return self.pluginApi.SessionMgr.NewSession(params)
+}
+
+// NewClientDevice wraps device data into an IClientDevice object without performing
+// additional database queries.
+func (self *SessionsMgrApi) NewClientDevice(params sdkapi.NewDeviceParams) sdkapi.IClientDevice {
+	return self.pluginApi.SessionMgr.NewClientDevice(params)
+}
+
 // OnSessionEvent registers a callback for session events.
 func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData)) {
 	self.pluginApi.SessionMgr.OnSessionEvent(event, callback)

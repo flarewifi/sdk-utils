@@ -25,6 +25,11 @@ mkdir data
 unzip openwrt-files.zip -d data/openwrt-files
 ```
 
+Create `hosts.json` for mocking device MAC or IP:
+
+```sh
+cp hosts.json.sample hosts.json
+```
 
 # Start the server
 
