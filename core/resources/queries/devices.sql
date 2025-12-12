@@ -97,3 +97,12 @@ SET
   uuid = @uuid
 WHERE
   id = @id;
+
+
+-- name: ResetAllDeviceStatuses :exec
+UPDATE
+  devices
+SET
+  status = 2
+WHERE
+  status != 2;

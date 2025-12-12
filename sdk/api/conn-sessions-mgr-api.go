@@ -8,6 +8,7 @@ package sdkapi
 
 import (
 	"context"
+	"time"
 )
 
 // Session Type represents the type of a client session.
@@ -59,6 +60,41 @@ type CreateSessionParams struct {
 	UseGlobal   bool
 }
 
+// NewSessionParams holds session data fields for wrapping an existing session row
+// into an IClientSession object without performing database queries.
+type NewSessionParams struct {
+	ID              int64
+	UUID            string
+	ProviderPkg     string
+	DeviceID        int64
+	SessionType     SessionType
+	TimeSecs        int
+	DataMbytes      float64
+	ConsumptionSecs int
+	ConsumptionMb   float64
+	StartedAt       *time.Time
+	ResumedAt       *time.Time
+	ExpDays         *int
+	DownMbits       int
+	UpMbits         int
+	UseGlobal       bool
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// NewDeviceParams holds device data fields for wrapping an existing device row
+// into an IClientDevice object without performing database queries.
+type NewDeviceParams struct {
+	ID         int64
+	UUID       string
+	MacAddress string
+	IpAddress  string
+	Hostname   string
+	Status     DeviceStatus
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 // ISessionsMgrApi is used to manage client devices.
 type ISessionsMgrApi interface {
 
@@ -96,6 +132,24 @@ type ISessionsMgrApi interface {
 
 	// SessionSummary returns the session summary for the client device.
 	SessionSummary(ctx context.Context, clnt IClientDevice) (*ClientSessionSummary, error)
+
+	// FindSessionByID finds a session by its database ID and wraps it into an IClientSession object.
+	// This is useful for displaying session information in templates and controllers
+	// where you have a session ID from database queries but need access to SDK methods
+	// like RemainingTime() and RemainingData() which account for elapsed time.
+	FindSessionByID(ctx context.Context, sessionID int64) (IClientSession, error)
+
+	// NewSession wraps session data into an IClientSession object without performing
+	// additional database queries. This is useful when you already have session data from queries
+	// and want to use SDK methods like RemainingTime() and RemainingData() which account for
+	// elapsed time. The params parameter contains all session fields from the database row.
+	NewSession(params NewSessionParams) IClientSession
+
+	// NewClientDevice wraps device data into an IClientDevice object without performing
+	// additional database queries. This is useful when you already have device data from queries
+	// and want to use SDK methods like Update(), Emit(), and Subscribe(). The params parameter
+	// contains all device fields from the database row.
+	NewClientDevice(params NewDeviceParams) IClientDevice
 
 	// OnSessionEvent registers a callback for session events.
 	OnSessionEvent(event SessionEvent, callback func(data SessionEventData))

@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS devices (
+    id INTEGER PRIMARY KEY,
+    uuid VARCHAR(36) NOT NULL DEFAULT '',
+    ip_address VARCHAR(15) NOT NULL DEFAULT '',
+    mac_address VARCHAR(17) NOT NULL DEFAULT '',
+    hostname VARCHAR(64) NOT NULL DEFAULT '',
+    status INTEGER NOT NULL DEFAULT 2,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS index_mac_address ON devices(mac_address);
+CREATE UNIQUE INDEX IF NOT EXISTS index_device_uuid ON devices(uuid) WHERE uuid != '';

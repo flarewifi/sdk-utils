@@ -41,3 +41,4 @@ main.exe
 .vscode/
 data.zip
 data*.zip
+hosts.json

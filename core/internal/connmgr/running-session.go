@@ -94,7 +94,7 @@ func (self *RunningSession) Done() <-chan error {
 	return ch
 }
 
-func (self *RunningSession) Diff() (mb float64) {
+func (self *RunningSession) DiffMb() (mb float64) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.diffMb
@@ -195,11 +195,24 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
+		// Reload session from database to get latest consumption values
+		// This is critical when resuming a paused session to avoid using stale data
+		if err := s.Reload(ctx); err != nil {
+			return nil, err
+		}
+
 		self.session = s
 
+		// Set first start time if this is the first time session is starting
 		if s.StartedAt() == nil {
-			started := time.Now()
+			started := time.Now().UTC()
 			s.SetStartedAt(&started)
+		}
+
+		// Set resumed time to track current running period
+		if s.ResumedAt() == nil {
+			resumed := time.Now().UTC()
+			s.SetResumedAt(&resumed)
 
 			if err := s.Save(ctx); err != nil {
 				return nil, err
@@ -235,9 +248,9 @@ func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) er
 	_, err := sessionQue.Exec(func() (any, error) {
 		self.mu.Lock()
 
-		// Calculate and record elapsed time since started_at
-		if self.session != nil && self.session.StartedAt() != nil {
-			elapsed := int(time.Since(*self.session.StartedAt()).Seconds())
+		// Calculate and record elapsed time since resumed_at
+		if self.session != nil && self.session.ResumedAt() != nil {
+			elapsed := int(time.Since(*self.session.ResumedAt()).Seconds())
 
 			// Add elapsed time to existing consumption
 			currentCons := self.session.TimeConsumption()
@@ -246,8 +259,8 @@ func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) er
 			log.Printf("Recording elapsed time: %d seconds (total consumption: %d)\n",
 				elapsed, currentCons+elapsed)
 
-			// Reset started_at to nil since session is stopping
-			self.session.SetStartedAt(nil)
+			// Reset resumed_at to nil since session is stopping
+			self.session.SetResumedAt(nil)
 		}
 
 		err := self.save(ctx)
@@ -384,9 +397,9 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 				currentEmitter := self.emitter
 				self.mu.RUnlock()
 
-				// Calculate elapsed time since started_at
-				if startedAt := currentSession.StartedAt(); startedAt != nil {
-					elapsed := int(time.Since(*startedAt).Seconds())
+				// Calculate elapsed time since resumed_at
+				if resumedAt := currentSession.ResumedAt(); resumedAt != nil {
+					elapsed := int(time.Since(*resumedAt).Seconds())
 					log.Printf("Periodic save: %d seconds elapsed, %d remaining\n",
 						elapsed, currentSession.RemainingTime())
 				}

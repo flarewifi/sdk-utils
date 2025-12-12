@@ -45,6 +45,7 @@ type UpdateSessionParams struct {
 	TimeCons    int
 	DataCons    float64
 	StartedAt   *time.Time
+	ResumedAt   *time.Time
 	ExpDays     *int
 	DownMbits   int
 	UpMbits     int
@@ -112,6 +113,11 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 		startedAtTime = sql.NullTime{Time: *params.StartedAt, Valid: true}
 	}
 
+	var resumedAtTime sql.NullTime
+	if params.ResumedAt != nil {
+		resumedAtTime = sql.NullTime{Time: *params.ResumedAt, Valid: true}
+	}
+
 	types := []sdkapi.SessionType{
 		sdkapi.SessionTypeTime,
 		sdkapi.SessionTypeData,
@@ -123,6 +129,7 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 	}
 
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
+		ProviderPkg:     params.ProviderPkg,
 		DeviceID:        params.DeviceID,
 		SessionType:     string(params.SessionType),
 		TimeSecs:        int64(params.TimeSecs),
@@ -130,6 +137,7 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 		ConsumptionSecs: int64(params.TimeCons),
 		ConsumptionMb:   params.DataCons,
 		StartedAt:       startedAtTime,
+		ResumedAt:       resumedAtTime,
 		ExpDays:         expDays,
 		DownMbits:       int64(params.DownMbits),
 		UpMbits:         int64(params.UpMbits),
@@ -187,23 +195,22 @@ func (self *SessionModel) UpdateAllBandwidth(ctx context.Context, downMbit int, 
 }
 
 func (self *SessionModel) Summary(ctx context.Context, deviceID int64) (*sdkapi.ClientSessionSummary, error) {
-	var remainingSecs int
-	var remainingDataMb float64
-
-	summary, err := self.db.Queries.SessionSummary(ctx, deviceID)
-	if err != nil && errors.Is(sql.ErrNoRows, err) {
-		return &sdkapi.ClientSessionSummary{}, nil
-	}
-
-	if err != nil {
+	// Get remaining time from time-based sessions
+	timeSecs, err := self.db.Queries.SessionSummaryTime(ctx, deviceID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
-
-	remainingSecs = int(summary.RemainingTimeSecs)
+	remainingSecs := int(timeSecs)
 	if remainingSecs < 0 {
 		remainingSecs = 0
 	}
-	remainingDataMb = float64(summary.RemainingDataMb)
+
+	// Get remaining data from data-based sessions
+	dataMb, err := self.db.Queries.SessionSummaryData(ctx, deviceID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	remainingDataMb := float64(dataMb)
 	if remainingDataMb < 0 {
 		remainingDataMb = 0
 	}

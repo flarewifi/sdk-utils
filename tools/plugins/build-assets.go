@@ -58,7 +58,6 @@ func BuildAssets(pluginDir string) (err error) {
 		if err = sdkutils.JsonRead(adminManifestPath, &manifest); err != nil {
 			return fmt.Errorf("failed to read admin manifest: %w", err)
 		}
-		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
 
 		if results, err := compileManifest(pluginDir, manifest, api.ES2017); err != nil {
 			return fmt.Errorf("failed to compile admin manifest: %w", err)
@@ -73,7 +72,6 @@ func BuildAssets(pluginDir string) (err error) {
 		if err = sdkutils.JsonRead(portalManifestPath, &manifest); err != nil {
 			return fmt.Errorf("failed to read portal manifest: %w", err)
 		}
-		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
 
 		if results, err := compileManifest(pluginDir, manifest, api.ES5); err != nil {
 			return fmt.Errorf("failed to compile portal manifest: %w", err)
@@ -88,7 +86,6 @@ func BuildAssets(pluginDir string) (err error) {
 		if err = sdkutils.JsonRead(bootManifestPath, &manifest); err != nil {
 			return fmt.Errorf("failed to read boot manifest: %w", err)
 		}
-		fmt.Printf("Compiling assets manifest: %+v\n", manifest)
 
 		if results, err := compileManifest(pluginDir, manifest, api.ES2017); err != nil {
 			return fmt.Errorf("failed to compile boot manifest: %w", err)
@@ -169,8 +166,6 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		}
 		defer os.Remove(indexFile)
 
-		fmt.Printf("Compiling index file: %s: %s\n", indexFile, indexContent)
-
 		distPath = filepath.Join(pluginDir, DistDir)
 		outfile := filepath.Join(distPath, outname+ext)
 
@@ -198,8 +193,6 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		}
 
 		for _, out := range result.OutputFiles {
-			fmt.Println("OutputFile: ", out.Path)
-
 			// Ensure parent directory exists for nested filenames
 			if err = sdkutils.FsEnsureDir(filepath.Dir(out.Path)); err != nil {
 				return
@@ -220,7 +213,6 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 					results.Styles[filename] = fileIndex
 				}
 			}
-			fmt.Printf("Outputfile written to: %s\n", out.Path)
 		}
 	}
 

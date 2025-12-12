@@ -1,1 +1,0 @@
-ALTER TABLE purchases ADD COLUMN webhook_route VARCHAR(510) NOT NULL DEFAULT '';

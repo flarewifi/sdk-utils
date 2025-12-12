@@ -43,6 +43,7 @@ SET
     consumption_secs = @consumption_secs,
     consumption_mb = @consumption_mb,
     started_at = @started_at,
+    resumed_at = @resumed_at,
     exp_days = @exp_days,
     down_mbits = @down_mbits,
     up_mbits = @up_mbits,
@@ -51,11 +52,11 @@ WHERE
   id = @id;
 
 
--- name: ResetAllStartedAt :exec
+-- name: ResetAllResumedAt :exec
 UPDATE
   sessions
 SET
-    started_at = NULL
+    resumed_at = NULL
 WHERE
-    started_at IS NOT NULL;
+    resumed_at IS NOT NULL;
 

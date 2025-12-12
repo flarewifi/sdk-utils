@@ -133,6 +133,13 @@ func newPostgresDatabase(cfg *config.DbConfig) *Database {
 			return
 		}
 
+		// Force UTC timezone for all timestamp operations
+		_, err = sqlDB.ExecContext(context.Background(), "SET TIME ZONE 'UTC'")
+		if err != nil {
+			log.Println("Warning: Failed to set PostgreSQL timezone to UTC:", err)
+			// Don't fail - continue with default timezone
+		}
+
 		db.DB = sqlDB
 		db.Queries = *queries.New(sqlDB)
 	}(&db)

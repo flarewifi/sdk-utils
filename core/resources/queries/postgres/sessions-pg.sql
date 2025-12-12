@@ -7,18 +7,31 @@ FROM
 WHERE
   device_id = @device_id
   AND (
+    -- Pure time sessions: check time accounting for elapsed time if running
     (
       session_type = 'time'
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
+      )
     )
-    OR (
+    OR
+    -- Pure data sessions: only check data
+    (
       session_type = 'data'
       AND consumption_mb < data_mbytes
     )
-    OR (
+    OR
+    -- Time-or-data sessions: check BOTH time AND data (expires when EITHER runs out)
+    (
       session_type = 'time-or-data'
       AND consumption_mb < data_mbytes
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
+      )
     )
   )
   AND (
@@ -45,18 +58,31 @@ FROM
 WHERE
   device_id = @device_id
   AND (
+    -- Pure time sessions: check time accounting for elapsed time if running
     (
       session_type = 'time'
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
+      )
     )
-    OR (
+    OR
+    -- Pure data sessions: only check data
+    (
       session_type = 'data'
       AND consumption_mb < data_mbytes
     )
-    OR (
+    OR
+    -- Time-or-data sessions: check BOTH time AND data (expires when EITHER runs out)
+    (
       session_type = 'time-or-data'
       AND consumption_mb < data_mbytes
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
+      )
     )
   )
   AND (
@@ -82,18 +108,31 @@ SET
   use_global = @use_global
 WHERE
   (
+    -- Pure time sessions: check time accounting for elapsed time if running
     (
       session_type = 'time'
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
+      )
     )
-    OR (
+    OR
+    -- Pure data sessions: only check data
+    (
       session_type = 'data'
       AND consumption_mb < data_mbytes
     )
-    OR (
+    OR
+    -- Time-or-data sessions: check BOTH time AND data (expires when EITHER runs out)
+    (
       session_type = 'time-or-data'
       AND consumption_mb < data_mbytes
-      AND consumption_secs < time_secs
+      AND (
+        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
+        OR
+        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
+      )
     )
   )
   AND (
@@ -114,6 +153,6 @@ WHERE
 UPDATE
   sessions
 SET
-  consumption_secs = consumption_secs + EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER
+  consumption_secs = consumption_secs + EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER
 WHERE
-  started_at IS NOT NULL;
+  resumed_at IS NOT NULL;

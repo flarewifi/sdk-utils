@@ -221,7 +221,7 @@ func (self *Purchase) Confirm(ctx context.Context) error {
 		txid = &id
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	err = self.Update(ctx, dbt, txid, nil, &now, nil)
 	if err != nil {
 		return err
@@ -248,7 +248,7 @@ func (self *Purchase) Cancel(ctx context.Context) error {
 
 	reason := "Cancelled purchase: " + self.description
 	dbt := self.walletDebit
-	cancelledAt := time.Now()
+	cancelledAt := time.Now().UTC()
 
 	if pmtTotal > 0 {
 		wallet, err := dev.Wallet(ctx)

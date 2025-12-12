@@ -15,6 +15,8 @@ Frontend development specialist for FlareHotspot - responsible for implementing 
 3. ✅ Implement - Make necessary file changes
 4. ✅ Verify - Check docker logs for build success (look for `Listening on port :3000`)
 
+**If templ syntax fails after 2-3 iterations:** Consult https://templ.guide for authoritative syntax reference.
+
 ## Technology Stack
 
 ### CSS Frameworks

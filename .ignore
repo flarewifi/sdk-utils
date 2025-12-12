@@ -5,3 +5,4 @@ data/storage
 .bin/
 plugins/installed
 output/
+!hosts.json
