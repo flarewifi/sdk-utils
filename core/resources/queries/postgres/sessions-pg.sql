@@ -1,5 +1,6 @@
 -- name: FindAvailableSessionForDevice :one
 -- engine: postgresql
+-- Note: Elapsed time for running sessions is handled in Go code
 SELECT
     *
 FROM
@@ -7,14 +8,10 @@ FROM
 WHERE
   device_id = @device_id
   AND (
-    -- Pure time sessions: check time accounting for elapsed time if running
+    -- Pure time sessions: check saved consumption only
     (
       session_type = 'time'
-      AND (
-        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
-        OR
-        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
-      )
+      AND time_secs > consumption_secs
     )
     OR
     -- Pure data sessions: only check data
@@ -27,11 +24,7 @@ WHERE
     (
       session_type = 'time-or-data'
       AND consumption_mb < data_mbytes
-      AND (
-        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
-        OR
-        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
-      )
+      AND time_secs > consumption_secs
     )
   )
   AND (
@@ -51,6 +44,7 @@ LIMIT
 
 -- name: FindSessionsForDev :many
 -- engine: postgresql
+-- Note: Elapsed time for running sessions is handled in Go code
 SELECT
     *
 FROM
@@ -58,14 +52,10 @@ FROM
 WHERE
   device_id = @device_id
   AND (
-    -- Pure time sessions: check time accounting for elapsed time if running
+    -- Pure time sessions: check saved consumption only
     (
       session_type = 'time'
-      AND (
-        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
-        OR
-        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
-      )
+      AND time_secs > consumption_secs
     )
     OR
     -- Pure data sessions: only check data
@@ -78,11 +68,7 @@ WHERE
     (
       session_type = 'time-or-data'
       AND consumption_mb < data_mbytes
-      AND (
-        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
-        OR
-        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
-      )
+      AND time_secs > consumption_secs
     )
   )
   AND (
@@ -100,6 +86,7 @@ WHERE
 
 -- name: UpdateAllBandwidth :exec
 -- engine: postgresql
+-- Note: Elapsed time for running sessions is handled in Go code
 UPDATE
   sessions
 SET
@@ -108,14 +95,10 @@ SET
   use_global = @use_global
 WHERE
   (
-    -- Pure time sessions: check time accounting for elapsed time if running
+    -- Pure time sessions: check saved consumption only
     (
       session_type = 'time'
-      AND (
-        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
-        OR
-        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
-      )
+      AND time_secs > consumption_secs
     )
     OR
     -- Pure data sessions: only check data
@@ -128,11 +111,7 @@ WHERE
     (
       session_type = 'time-or-data'
       AND consumption_mb < data_mbytes
-      AND (
-        (resumed_at IS NULL AND time_secs - consumption_secs > 0)
-        OR
-        (resumed_at IS NOT NULL AND time_secs - consumption_secs - EXTRACT(EPOCH FROM (NOW() - resumed_at))::INTEGER > 0)
-      )
+      AND time_secs > consumption_secs
     )
   )
   AND (
