@@ -20,9 +20,10 @@ const (
 )
 
 type HttpRouterApi struct {
-	api          *PluginApi
-	adminRouter  *HttpRouterInstance
-	pluginRouter *HttpRouterInstance
+	api               *PluginApi
+	adminRouter       *HttpRouterInstance
+	pluginRouter      *HttpRouterInstance
+	portalMiddlewares []func(http.Handler) http.Handler
 }
 
 func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegister) *HttpRouterApi {
@@ -33,12 +34,12 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegis
 	pluginRouter := &HttpRouterInstance{api, pluginMux, false}
 	adminRouter := &HttpRouterInstance{api, adminMux, true}
 
-	// Add 404 handler for admin routes - redirect to /admin
-	adminMux.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin", http.StatusFound)
-	})
-
-	return &HttpRouterApi{api, adminRouter, pluginRouter}
+	return &HttpRouterApi{
+		api:               api,
+		adminRouter:       adminRouter,
+		pluginRouter:      pluginRouter,
+		portalMiddlewares: []func(http.Handler) http.Handler{},
+	}
 }
 
 func (self *HttpRouterApi) Initialize() {
@@ -93,4 +94,12 @@ func (self *HttpRouterApi) UrlForPkgRoute(pkg string, name string, pairs ...stri
 		return ""
 	}
 	return otherPkg.Http().Helpers().UrlForRoute(name, pairs...)
+}
+
+func (self *HttpRouterApi) UseForPortal(middlewares ...func(http.Handler) http.Handler) {
+	self.portalMiddlewares = append(self.portalMiddlewares, middlewares...)
+}
+
+func (self *HttpRouterApi) GetPortalMiddlewares() []func(http.Handler) http.Handler {
+	return self.portalMiddlewares
 }

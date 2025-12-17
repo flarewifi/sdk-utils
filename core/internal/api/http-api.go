@@ -1,14 +1,16 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"core/db"
 	"core/db/models"
 	"core/internal/connmgr"
 	devicetoken "core/internal/utils/device-token"
-	"core/internal/utils/hostfinder"
 	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
@@ -65,32 +67,17 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 		}
 	}
 
-	// Query device from database
-	ctx := r.Context()
+	// Query device from database with timeout
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
 	clnt, err := self.clientRegister.FindByID(ctx, deviceID)
 	if err != nil {
-		return nil, fmt.Errorf("device not found: %w", err)
-	}
-
-	// Check if device network details have changed and update if needed
-	h, err := hostfinder.GetHostFromRequest(r)
-	if err == nil {
-		ipChanged := h.IpAddr != clnt.IpAddr()
-		macChanged := h.MacAddr != clnt.MacAddr()
-		hostnameChanged := h.Hostname != clnt.Hostname()
-
-		if ipChanged || macChanged || hostnameChanged {
-			// Re-register to update device details
-			clnt, _, err = self.clientRegister.Register(ctx, connmgr.ClientRegisterParams{
-				CookieDeviceID: &deviceID,
-				MacAddr:        h.MacAddr,
-				IpAddr:         h.IpAddr,
-				Hostname:       h.Hostname,
-			})
-			if err != nil {
-				// Don't fail - return the device as-is
-			}
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("[TIMEOUT] GetClientDevice exceeded 2s timeout for DeviceID=%d", deviceID)
+			return nil, fmt.Errorf("device lookup timed out")
 		}
+		return nil, fmt.Errorf("device not found: %w", err)
 	}
 
 	return clnt, nil

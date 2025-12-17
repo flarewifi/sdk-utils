@@ -2,12 +2,12 @@ package api
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"core/db/models"
 	"core/internal/connmgr"
 	sdkapi "sdk/api"
-
-	"github.com/google/uuid"
 )
 
 func NewSessionsMgrApi(pluginApi *PluginApi) *SessionsMgrApi {
@@ -69,8 +69,53 @@ func (self *SessionsMgrApi) IsConnected(clnt sdkapi.IClientDevice) bool {
 
 // CreateSession creates a session for the client device using the plugin's package name.
 func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.CreateSessionParams) (sdkapi.IClientSession, error) {
-	sessionUUID := uuid.New().String()
+	// Validate UUID
+	if params.UUID == "" {
+		return nil, errors.New("session UUID is required")
+	}
+
+	// Fetch device for event emission
+	device, err := self.FindClientById(ctx, params.DevId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use provided UUID and get plugin package
+	sessionUUID := params.UUID
 	pkg := self.pluginApi.Info().Package
+
+	// Create a preview session object for the "before" event
+	// This allows plugins to inspect what will be created and potentially prevent it
+	// Note: ID will be 0 since it hasn't been created yet
+	previewSession := models.BuildSession(models.BuildSessionParams{
+		DB:          self.pluginApi.db,
+		Models:      self.pluginApi.models,
+		ID:          0, // Not yet created
+		UUID:        sessionUUID,
+		ProviderPkg: pkg,
+		DeviceID:    params.DevId,
+		SessionType: string(params.SessionType),
+		TimeSecs:    params.TimeSecs,
+		DataMbytes:  params.DataMbytes,
+		TimeCons:    0,
+		DataCons:    0,
+		StartedAt:   nil,
+		ResumedAt:   nil,
+		ExpDays:     params.ExpDays,
+		DownMbits:   params.DownMbits,
+		UpMbits:     params.UpMbits,
+		UseGlobal:   params.UseGlobal,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	})
+	previewCS := connmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), previewSession)
+
+	// Emit EventSessionBeforeCreated - plugins can return error to prevent creation
+	if err := self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionBeforeCreated, previewCS, device); err != nil {
+		return nil, err
+	}
+
+	// Create session in database
 	session, err := self.pluginApi.models.Session().Create(ctx, models.CreateSessionParams{
 		UUID:        sessionUUID,
 		PluginPkg:   pkg,
@@ -86,7 +131,22 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 	if err != nil {
 		return nil, err
 	}
+
+	// Wrap session in IClientSession interface
 	cs := connmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), session)
+
+	// Set consumption values if provided (for cloud sync)
+	if params.ConsumptionSecs > 0 || params.ConsumptionMb > 0 {
+		cs.SetTimeCons(params.ConsumptionSecs)
+		cs.SetDataCons(params.ConsumptionMb)
+		if err = cs.Save(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	// Emit EventSessionCreated - notify plugins that session was created
+	self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionCreated, cs, device)
+
 	return cs, nil
 }
 
@@ -123,11 +183,11 @@ func (self *SessionsMgrApi) NewClientDevice(params sdkapi.NewDeviceParams) sdkap
 }
 
 // OnSessionEvent registers a callback for session events.
-func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData)) {
+func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData) error) {
 	self.pluginApi.SessionMgr.OnSessionEvent(event, callback)
 }
 
 // OnClientEvent registers a callback for client device events.
-func (self *SessionsMgrApi) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice)) {
+func (self *SessionsMgrApi) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice) error) {
 	self.pluginApi.SessionMgr.OnClientEvent(event, callback)
 }

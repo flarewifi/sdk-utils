@@ -2,7 +2,9 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 
 	"core/db"
 	"core/db/queries"
@@ -37,8 +39,28 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 	return &DeviceModel{db: database, models: mdls}
 }
 
+// validateDeviceFields checks that required device fields are not blank
+func validateDeviceFields(uuid, ip, mac string) error {
+	if strings.TrimSpace(uuid) == "" {
+		return fmt.Errorf("uuid cannot be blank")
+	}
+	if strings.TrimSpace(ip) == "" {
+		return fmt.Errorf("ip address cannot be blank")
+	}
+	if strings.TrimSpace(mac) == "" {
+		return fmt.Errorf("mac address cannot be blank")
+	}
+	return nil
+}
+
 func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) (*Device, error) {
 	uid := uuid.New()
+
+	// Validate required fields
+	if err := validateDeviceFields(uid.String(), params.IpAddress, params.MacAddress); err != nil {
+		log.Printf("device validation failed: %v", err)
+		return nil, err
+	}
 
 	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
 		MacAddress: params.MacAddress,
@@ -139,6 +161,12 @@ func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, e
 }
 
 func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) error {
+	// Validate required fields
+	if err := validateDeviceFields(params.UUID, params.IpAddress, params.MacAddress); err != nil {
+		log.Printf("device validation failed: %v", err)
+		return err
+	}
+
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		ID:         params.ID,
 		MacAddress: params.MacAddress,
