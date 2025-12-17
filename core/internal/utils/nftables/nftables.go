@@ -3,9 +3,11 @@
 package nftables
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	jobque "tools/job-que"
 	cmd "tools/shell"
@@ -73,40 +75,78 @@ func Setup() (err error) {
 }
 
 func SetupCaptivePortal(dev string, routerIp string) (err error) {
-	_, err = nftQue.Exec(func() (any, error) {
-		cmds := []string{
-			// Add rules to our custom prerouting chain
-			// Allow already authenticated devices to bypass captive portal
-			fmt.Sprintf("nft add rule %s %s %s ether saddr @%s counter accept", tableFamily, internetTable, preroutingChain, connMacSet),
-			// Redirect HTTP/HTTPS traffic to captive portal
-			fmt.Sprintf("nft add rule %s %s %s iif %s tcp dport '{ 80, 443 }' counter dnat ip to %s", tableFamily, internetTable, preroutingChain, dev, routerIp),
-		}
-		err := cmd.ExecAll(cmds)
-		return nil, err
-	})
+	contextInfo := fmt.Sprintf("Device=%s, RouterIP=%s", dev, routerIp)
+
+	_, err = nftQue.ExecWithTimeout(
+		4*time.Second,
+		"Setup Captive Portal",
+		contextInfo,
+		func() (any, error) {
+			cmds := []string{
+				// Add rules to our custom prerouting chain
+				// Allow already authenticated devices to bypass captive portal
+				fmt.Sprintf("nft add rule %s %s %s ether saddr @%s counter accept", tableFamily, internetTable, preroutingChain, connMacSet),
+				// Redirect HTTP/HTTPS traffic to captive portal
+				fmt.Sprintf("nft add rule %s %s %s iif %s tcp dport '{ 80, 443 }' counter dnat ip to %s", tableFamily, internetTable, preroutingChain, dev, routerIp),
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			err := cmd.ExecAllWithContext(ctx, cmds)
+			return nil, err
+		},
+	)
 	return err
 }
 
 func Connect(ip string, mac string) error {
-	_, err := nftQue.Exec(func() (any, error) {
-		err := doConnect(ip, mac)
-		return nil, err
-	})
+	contextInfo := fmt.Sprintf("IP=%s, MAC=%s", ip, mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		3*time.Second,
+		"Connect Device",
+		contextInfo,
+		func() (any, error) {
+			err := doConnect(ip, mac)
+			return nil, err
+		},
+	)
 	return err
 }
 
 func Disconnect(ip string, mac string) error {
-	_, err := nftQue.Exec(func() (any, error) {
-		err := doDisconnect(ip, mac)
-		return nil, err
-	})
+	contextInfo := fmt.Sprintf("IP=%s, MAC=%s", ip, mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		3*time.Second,
+		"Disconnect Device",
+		contextInfo,
+		func() (any, error) {
+			err := doDisconnect(ip, mac)
+			return nil, err
+		},
+	)
 	return err
 }
 
 func IsConnected(mac string) bool {
-	result, _ := nftQue.Exec(func() (any, error) {
-		return isConnected(mac), nil
-	})
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	result, err := nftQue.ExecWithTimeout(
+		1*time.Second,
+		"Check Connection Status",
+		contextInfo,
+		func() (any, error) {
+			return isConnected(mac), nil
+		},
+	)
+
+	if err != nil {
+		log.Printf("[ERROR] IsConnected check failed for %s: %v", mac, err)
+		return false
+	}
+
 	return result.(bool)
 }
 
@@ -122,7 +162,10 @@ func runInitCallbacks() {
 }
 
 func isConnected(mac string) bool {
-	err := cmd.Exec(fmt.Sprintf("nft get element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, mac), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	err := cmd.ExecWithContext(ctx, fmt.Sprintf("nft get element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, mac), nil)
 	return err == nil
 }
 
@@ -137,7 +180,10 @@ func doConnect(ip string, mac string) error {
 			fmt.Sprintf("nft add element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, mac),
 		}
 
-		return cmd.ExecAll(cmds)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		return cmd.ExecAllWithContext(ctx, cmds)
 	}
 
 	return nil
@@ -151,7 +197,11 @@ func doDisconnect(ip string, mac string) error {
 			fmt.Sprintf("nft delete element %s %s %s { %s : accept }", tableFamily, internetTable, connMacMap, mac),
 			fmt.Sprintf("nft delete element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, mac),
 		}
-		return cmd.ExecAll(cmds)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		return cmd.ExecAllWithContext(ctx, cmds)
 	}
 	return nil
 }

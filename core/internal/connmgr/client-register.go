@@ -42,14 +42,27 @@ func (reg *ClientRegister) FindByID(ctx context.Context, deviceID int64) (sdkapi
 // UpdateDevice updates device network details and handles reconnection if needed
 func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClientDevice, newMac, newIP, newHostname string) error {
 	// Check if device has a running session (before updating)
-	_, hasRunningSession := reg.sessionsMgr.GetRunningSession(clnt)
+	rs, hasRunningSession := reg.sessionsMgr.GetRunningSession(clnt)
 
-	// Disconnect if currently has a running session
+	// If there's a running session, update its network details first
+	// This ensures TC rules and internal state are updated before disconnect/reconnect
 	if hasRunningSession {
+		// Update the running session's MAC and IP addresses
+		// This will update TC (traffic control) rules to point to the new IP
+		if err := rs.UpdateNetworkDetails(ctx, newMac, newIP); err != nil {
+			return fmt.Errorf("failed to update running session network details: %w", err)
+		}
+
+		// Now disconnect the session (it already has updated network details)
 		err := reg.sessionsMgr.Disconnect(ctx, clnt, reg.sessionsMgr.coreAPI.Translate("info", "Device network details changed, reconnecting"))
 		if err != nil {
 			return err
 		}
+	}
+
+	// Emit before update hook and check for errors
+	if err := reg.sessionsMgr.emitClientEvent(sdkapi.EventClientBeforeUpdated, clnt); err != nil {
+		return err
 	}
 
 	// Update device in database with new network details
@@ -173,6 +186,12 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 		}
 
 		clnt = NewClientDevice(reg.db, reg.mdls, dev)
+
+		// Emit before created hook and check for errors
+		if err := reg.sessionsMgr.emitClientEvent(sdkapi.EventClientBeforeCreated, clnt); err != nil {
+			return nil, false, err
+		}
+
 		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
 
 		return clnt, true, nil

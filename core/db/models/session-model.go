@@ -57,6 +57,21 @@ func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 }
 
 func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams) (*Session, error) {
+	// Validate UUID
+	if params.UUID == "" {
+		return nil, errors.New("session UUID cannot be empty")
+	}
+
+	// Validate bandwidth speeds
+	if !params.UseGlobal {
+		if params.DownMbits <= 0 {
+			return nil, errors.New("download speed must be greater than zero")
+		}
+		if params.UpMbits <= 0 {
+			return nil, errors.New("upload speed must be greater than zero")
+		}
+	}
+
 	var expDays sql.NullInt64
 	if params.ExpDays != nil {
 		expDays = sql.NullInt64{Int64: int64(*params.ExpDays), Valid: true}
@@ -103,6 +118,16 @@ func (self *SessionModel) FindByUUID(ctx context.Context, uuid string) (*Session
 }
 
 func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams) error {
+	// Validate bandwidth speeds
+	if !params.UseGlobal {
+		if params.DownMbits <= 0 {
+			return errors.New("download speed must be greater than zero")
+		}
+		if params.UpMbits <= 0 {
+			return errors.New("upload speed must be greater than zero")
+		}
+	}
+
 	var expDays sql.NullInt64
 	if params.ExpDays != nil {
 		expDays = sql.NullInt64{Int64: int64(*params.ExpDays), Valid: true}
@@ -180,6 +205,16 @@ func (self *SessionModel) SessionsForDev(ctx context.Context, devId int64) ([]*S
 }
 
 func (self *SessionModel) UpdateAllBandwidth(ctx context.Context, downMbit int, upMbit int, g bool) error {
+	// Validate bandwidth speeds
+	if !g {
+		if downMbit <= 0 {
+			return errors.New("download speed must be greater than zero")
+		}
+		if upMbit <= 0 {
+			return errors.New("upload speed must be greater than zero")
+		}
+	}
+
 	err := self.db.Queries.UpdateAllBandwidth(ctx, queries.UpdateAllBandwidthParams{
 		DownMbits: int64(downMbit),
 		UpMbits:   int64(upMbit),

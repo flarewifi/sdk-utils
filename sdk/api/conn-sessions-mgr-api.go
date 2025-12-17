@@ -23,17 +23,35 @@ const (
 // SessionEvent represents the type of a session event.
 type SessionEvent string
 type ClientEvent string
+type PortalEvent string
 
 const (
-	EventSessionConnected    SessionEvent = "session:connected"
-	EventSessionDisconnected SessionEvent = "session:disconnected"
-	EventSessionExpired      SessionEvent = "session:expired"
-	EventSessionUpdated      SessionEvent = "session:updated"
+	EventSessionBeforeCreated SessionEvent = "session:before:created"
+	EventSessionCreated       SessionEvent = "session:created"
 
-	EventClientCreated      ClientEvent = "client:created"
-	EventClientUpdated      ClientEvent = "client:updated"
-	EventClientConnected    ClientEvent = "client:connected"
-	EventClientDisconnected ClientEvent = "client:disconnected"
+	EventSessionBeforeConnected SessionEvent = "session:before:connected"
+	EventSessionConnected       SessionEvent = "session:connected"
+
+	EventSessionBeforeDisconnected SessionEvent = "session:before:disconnected"
+	EventSessionDisconnected       SessionEvent = "session:disconnected"
+
+	EventSessionBeforeExpired SessionEvent = "session:before:expired"
+	EventSessionExpired       SessionEvent = "session:expired"
+
+	EventSessionBeforeUpdated SessionEvent = "session:before:updated"
+	EventSessionUpdated       SessionEvent = "session:updated"
+
+	EventClientBeforeCreated ClientEvent = "client:before:created"
+	EventClientCreated       ClientEvent = "client:created"
+
+	EventClientBeforeUpdated ClientEvent = "client:before:updated"
+	EventClientUpdated       ClientEvent = "client:updated"
+
+	EventClientBeforeConnected ClientEvent = "client:before:connected"
+	EventClientConnected       ClientEvent = "client:connected"
+
+	EventClientBeforeDisconnected ClientEvent = "client:before:disconnected"
+	EventClientDisconnected       ClientEvent = "client:disconnected"
 )
 
 // SessionEventData represents the data associated with a session event.
@@ -50,14 +68,17 @@ type ClientSessionSummary struct {
 
 // CreateSessionParams holds parameters for creating a new client session.
 type CreateSessionParams struct {
-	DevId       int64
-	SessionType SessionType
-	TimeSecs    int
-	DataMbytes  float64
-	ExpDays     *int
-	DownMbits   int
-	UpMbits     int
-	UseGlobal   bool
+	UUID            string // Required: Session UUID (use uuid.New().String() to generate)
+	DevId           int64
+	SessionType     SessionType
+	TimeSecs        int
+	DataMbytes      float64
+	ExpDays         *int
+	DownMbits       int
+	UpMbits         int
+	UseGlobal       bool
+	ConsumptionSecs int     // Optional: Time consumption in seconds (for cloud sync)
+	ConsumptionMb   float64 // Optional: Data consumption in megabytes (for cloud sync)
 }
 
 // NewSessionParams holds session data fields for wrapping an existing session row
@@ -152,8 +173,12 @@ type ISessionsMgrApi interface {
 	NewClientDevice(params NewDeviceParams) IClientDevice
 
 	// OnSessionEvent registers a callback for session events.
-	OnSessionEvent(event SessionEvent, callback func(data SessionEventData))
+	OnSessionEvent(event SessionEvent, callback func(data SessionEventData) error)
 
 	// OnClientEvent registers a callback for client device events.
-	OnClientEvent(event ClientEvent, callback func(clnt IClientDevice))
+	//
+	// The callback can be used for both 'before' and 'after' events.
+	// For 'before' events (EventClientBefore*), the callback can return an error to prevent the event from occurring.
+	// For 'after' events (EventClient*), the callback is purely for notifications.
+	OnClientEvent(event ClientEvent, callback func(clnt IClientDevice) error)
 }

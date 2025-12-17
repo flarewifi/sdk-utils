@@ -25,8 +25,8 @@ func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
 		db:                    dtb,
 		mdl:                   mdl,
 		sessions:              sync.Map{},
-		sessionEventCallbacks: make(map[sdkapi.SessionEvent][]func(data sdkapi.SessionEventData)),
-		clientEventCallbacks:  make(map[sdkapi.ClientEvent][]func(clnt sdkapi.IClientDevice)),
+		sessionEventCallbacks: sync.Map{},
+		clientEventCallbacks:  sync.Map{},
 	}
 	return sessionMgr
 }
@@ -37,8 +37,8 @@ type SessionsMgr struct {
 	db                    *db.Database
 	mdl                   *models.Models
 	sessions              sync.Map
-	sessionEventCallbacks map[sdkapi.SessionEvent][]func(data sdkapi.SessionEventData)
-	clientEventCallbacks  map[sdkapi.ClientEvent][]func(clnt sdkapi.IClientDevice)
+	sessionEventCallbacks sync.Map // map[sdkapi.SessionEvent][]func(data sdkapi.SessionEventData) error
+	clientEventCallbacks  sync.Map // map[sdkapi.ClientEvent][]func(clnt sdkapi.IClientDevice) error
 }
 
 func (self *SessionsMgr) SetCoreAPI(api sdkapi.IPluginApi) {
@@ -70,32 +70,55 @@ func (self *SessionsMgr) Init(ctx context.Context) error {
 	return nil
 }
 
-func (self *SessionsMgr) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData)) {
-	self.sessionEventCallbacks[event] = append(self.sessionEventCallbacks[event], callback)
+func (self *SessionsMgr) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData) error) {
+	callbacks := []func(data sdkapi.SessionEventData) error{}
+	if existing, ok := self.sessionEventCallbacks.Load(event); ok {
+		callbacks = existing.([]func(data sdkapi.SessionEventData) error)
+	}
+	callbacks = append(callbacks, callback)
+	self.sessionEventCallbacks.Store(event, callbacks)
 }
 
-func (self *SessionsMgr) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice)) {
-	self.clientEventCallbacks[event] = append(self.clientEventCallbacks[event], callback)
+func (self *SessionsMgr) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice) error) {
+	callbacks := []func(clnt sdkapi.IClientDevice) error{}
+	if existing, ok := self.clientEventCallbacks.Load(event); ok {
+		callbacks = existing.([]func(clnt sdkapi.IClientDevice) error)
+	}
+	callbacks = append(callbacks, callback)
+	self.clientEventCallbacks.Store(event, callbacks)
 }
 
-func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice) {
+func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice) error {
 	data := sdkapi.SessionEventData{
 		Session: session,
 		Device:  device,
 	}
-	if callbacks, exists := self.sessionEventCallbacks[event]; exists {
+	if callbacksVal, exists := self.sessionEventCallbacks.Load(event); exists {
+		callbacks := callbacksVal.([]func(data sdkapi.SessionEventData) error)
 		for _, callback := range callbacks {
-			callback(data)
+			if err := callback(data); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
-func (self *SessionsMgr) emitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) {
-	if callbacks, exists := self.clientEventCallbacks[event]; exists {
+// EmitSessionEvent is a public wrapper for emitSessionEvent to allow API layer to trigger events
+func (self *SessionsMgr) EmitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice) error {
+	return self.emitSessionEvent(event, session, device)
+}
+
+func (self *SessionsMgr) emitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
+	if callbacksVal, exists := self.clientEventCallbacks.Load(event); exists {
+		callbacks := callbacksVal.([]func(clnt sdkapi.IClientDevice) error)
 		for _, callback := range callbacks {
-			callback(clnt)
+			if err := callback(clnt); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
@@ -170,6 +193,11 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 		return errors.New(self.coreAPI.Translate("error", "Device is blocked"))
 	}
 
+	// Emit before hook and check for errors
+	if err := self.emitClientEvent(sdkapi.EventClientBeforeConnected, clnt); err != nil {
+		return err
+	}
+
 	go func() {
 		if _, ok := self.CurrSession(clnt); ok {
 			errReturnCh <- errors.New(self.coreAPI.Translate("error", "Device is already connected"))
@@ -180,6 +208,14 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 		if err != nil {
 			errReturnCh <- errors.New(self.coreAPI.Translate("error", "Device has no more available sessions"))
 			return
+		}
+
+		// Emit session before connected hook
+		if session, ok := self.CurrSession(clnt); ok {
+			if err := self.emitSessionEvent(sdkapi.EventSessionBeforeConnected, session, clnt); err != nil {
+				errReturnCh <- err
+				return
+			}
 		}
 
 		if !nftables.IsConnected(clnt.MacAddr()) {
@@ -213,6 +249,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 	err := <-errReturnCh
 	if err == nil {
 		err = clnt.Update(ctx, sdkapi.UpdateDeviceParams{
+			UUID:     clnt.UUID(),
 			Mac:      clnt.MacAddr(),
 			Ip:       clnt.IpAddr(),
 			Hostname: clnt.Hostname(),
@@ -226,18 +263,36 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 }
 
 func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
+	// Emit before hook and check for errors
+	if err := self.emitClientEvent(sdkapi.EventClientBeforeDisconnected, clnt); err != nil {
+		return err
+	}
+
+	// Emit session before disconnected hook
+	if session, ok := self.CurrSession(clnt); ok {
+		if err := self.emitSessionEvent(sdkapi.EventSessionBeforeDisconnected, session, clnt); err != nil {
+			return err
+		}
+	}
+
+	// Capture session BEFORE endSession deletes it from memory
+	// This ensures EventSessionDisconnected receives the updated session with correct consumption
+	sessionBeforeEnd, hasSession := self.CurrSession(clnt)
+
 	err := self.endSession(ctx, clnt)
 	if err != nil {
 		return err
 	}
 
 	clnt.Emit(string(sdkapi.EventSessionDisconnected), []byte(notify))
-	if session, ok := self.CurrSession(clnt); ok {
-		self.emitSessionEvent(sdkapi.EventSessionDisconnected, session, clnt)
+	// Use captured session instead of trying to get it after deletion
+	if hasSession && sessionBeforeEnd != nil {
+		self.emitSessionEvent(sdkapi.EventSessionDisconnected, sessionBeforeEnd, clnt)
 	}
 	self.emitClientEvent(sdkapi.EventClientDisconnected, clnt)
 
 	return clnt.Update(ctx, sdkapi.UpdateDeviceParams{
+		UUID:     clnt.UUID(),
 		Mac:      clnt.MacAddr(),
 		Ip:       clnt.IpAddr(),
 		Hostname: clnt.Hostname(),
@@ -318,7 +373,14 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 		}
 
 		if err != nil {
-			self.Disconnect(ctx, clnt, err.Error())
+			// Check if session expired - if so, disconnect with appropriate message
+			var disconnectMsg string
+			if errors.Is(err, ErrSessionExpired) {
+				disconnectMsg = self.coreAPI.Translate("info", "Your session has expired")
+			} else {
+				disconnectMsg = err.Error()
+			}
+			self.Disconnect(ctx, clnt, disconnectMsg)
 			return
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 
 	"core/internal/utils/ifbutil"
 	jobque "tools/job-que"
@@ -25,21 +26,26 @@ type TcFilter struct {
 	dev        string
 	ipsegmt    *ipsegmt
 	filterList map[string]string
+	mu         sync.RWMutex
 }
 
 func NewTcFilter(dev string, ip string, netmask int) (*TcFilter, error) {
+	if netmask < 17 {
+		return nil, errors.New("Minimum network mask is 17")
+	}
+
 	seg, err := newIpsegmt(ip, netmask)
 	if err != nil {
 		log.Println("tc error: " + err.Error())
 		return nil, err
 	}
 
-	if netmask < 17 {
-		return nil, errors.New("Minimum network mask is 17")
-	}
-
 	flist := map[string]string{}
-	return &TcFilter{dev, seg, flist}, nil
+	return &TcFilter{
+		dev:        dev,
+		ipsegmt:    seg,
+		filterList: flist,
+	}, nil
 }
 
 func (self *TcFilter) devs() []string {
@@ -86,10 +92,14 @@ func (self *TcFilter) hashBktFor(clientIp string) (hex string, err error) {
 }
 
 func (self *TcFilter) addFilterList(ip string, classid string) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	self.filterList[ip] = classid
 }
 
 func (self *TcFilter) removeFilterList(ip string) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	delete(self.filterList, ip)
 }
 
@@ -128,9 +138,9 @@ func (self *TcFilter) Setup() error {
 			count := len(self.ipsegmt.segments)
 			ht := 1
 
-			// clean up old filters
-			cmd.Exec(fmt.Sprintf("tc filter add dev %s parent 1:0 prio 10 protocol ip u32", dev), nil)
-			cmd.Exec(fmt.Sprintf("tc filter add dev %s parent 1:0 prio 100 protocol ip u32", dev), nil)
+			// clean up old filters (ignore errors - filters may not exist on first setup)
+			cmd.Exec(fmt.Sprintf("tc filter del dev %s parent 1:0 prio 10 protocol ip u32", dev), nil)
+			cmd.Exec(fmt.Sprintf("tc filter del dev %s parent 1:0 prio 100 protocol ip u32", dev), nil)
 
 			for segIndex := 0; segIndex < count; segIndex++ {
 				if self.ipsegmt.hostMasked(segIndex) {
@@ -188,7 +198,14 @@ func (self *TcFilter) Reset() (err error) {
 	}
 
 	_, err = filterQue.Exec(func() (any, error) {
+		self.mu.RLock()
+		filterListCopy := make(map[string]string, len(self.filterList))
 		for ip, classid := range self.filterList {
+			filterListCopy[ip] = classid
+		}
+		self.mu.RUnlock()
+
+		for ip, classid := range filterListCopy {
 			if err := self.create(ip, classid); err != nil {
 				return nil, err
 			}
@@ -227,17 +244,12 @@ func (self *TcFilter) DeleteFilter(clientIp string) error {
 
 func (self *TcFilter) CleanUp() error {
 	_, err := filterQue.Exec(func() (any, error) {
-		err := cmd.Exec(fmt.Sprintf("tc filter add dev %s parent 1:0 prio 10 protocol ip u32", self.dev), nil)
-		if err != nil {
-			return nil, err
-		}
+		// Ignore errors during cleanup - filters may not exist yet
+		cmd.Exec(fmt.Sprintf("tc filter del dev %s parent 1:0 prio 10 protocol ip u32", self.dev), nil)
 
 		if ifbutil.IsIfbSupported() {
 			ifb := ifbName(self.dev)
-			err = cmd.Exec(fmt.Sprintf("tc filter add dev %s parent 1:0 prio 10 protocol ip u32", ifb), nil)
-			if err != nil {
-				return nil, err
-			}
+			cmd.Exec(fmt.Sprintf("tc filter del dev %s parent 1:0 prio 10 protocol ip u32", ifb), nil)
 		}
 
 		return nil, nil

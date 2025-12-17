@@ -1,7 +1,6 @@
 ---
 description: Translation expert for FlareHotspot internationalization and localization
 mode: subagent
-model: opencode/grok-code
 temperature: 0.1
 ---
 
@@ -82,9 +81,6 @@ translate-batch({
 ```
 
 ⚠️ **All files in a batch MUST be for the same language!**
-
-### 4. `translate-help` - Get Translation Guidance
-Topics: overview, usage, variables, types, file-structure, best-practices, languages
 
 ## ⚠️ CRITICAL: English Source of Truth Workflow
 

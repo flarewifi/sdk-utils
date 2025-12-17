@@ -3,6 +3,7 @@
 package shell
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -49,6 +50,32 @@ func Exec(command string, opts *ExecOpts) error {
 
 func ExecOutput(command string, out io.Writer) error {
 	// log.Println(command)
+
+	// Handle nftables firewall commands
+	if strings.Contains(command, "nft -j list table inet internet") {
+		out.Write([]byte(getFakeNFTTableJSON()))
+		return nil
+	}
+
+	if strings.Contains(command, "nft -a list chain inet internet open_ip_prerouting") {
+		out.Write([]byte(getFakeOpenIpPrerouting()))
+		return nil
+	}
+
+	if strings.Contains(command, "nft -a list chain inet internet open_ip_forward") {
+		out.Write([]byte(getFakeOpenIpForward()))
+		return nil
+	}
+
+	if strings.Contains(command, "nft -a list chain inet internet prerouting") {
+		out.Write([]byte(getFakePreroutingChain()))
+		return nil
+	}
+
+	if strings.Contains(command, "nft -a list chain inet internet forward") {
+		out.Write([]byte(getFakeForwardChain()))
+		return nil
+	}
 
 	if command == "ubus list network.interface.*" {
 		out.Write([]byte(`
@@ -155,4 +182,114 @@ func execShell(command string, opts *ExecOpts) (err error) {
 	}
 
 	return err
+}
+
+// ExecWithContext executes shell command with context cancellation support (dev version)
+func ExecWithContext(ctx context.Context, command string, opts *ExecOpts) error {
+	log.Println("Executing with context:", command)
+
+	// don't execute some commands in dev mode
+	for _, ignoreCmd := range ignoreCmdsStart {
+		if strings.HasPrefix(command, ignoreCmd) {
+			return nil
+		}
+	}
+
+	shells := []string{"/bin/bash", "/bin/zsh", "/bin/sh"}
+	var shell string
+	for _, s := range shells {
+		if _, err := exec.LookPath(s); err == nil {
+			shell = s
+			break
+		}
+	}
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+
+	cmd := exec.CommandContext(ctx, shell, "-c", command)
+
+	if opts != nil {
+		if opts.Stdout != nil {
+			cmd.Stdout = opts.Stdout
+		}
+		if opts.Stderr != nil {
+			cmd.Stderr = opts.Stderr
+		}
+		if opts.Dir != "" {
+			cmd.Dir = opts.Dir
+		}
+		if len(opts.Env) > 0 {
+			cmd.Env = opts.Env
+		}
+	}
+
+	var stderr strings.Builder
+	if opts == nil || opts.Stderr == nil {
+		cmd.Stderr = &stderr
+	}
+
+	log.Printf("Executing '%s' with context: %s\n", shell, command)
+
+	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("command timed out: %w", err)
+		}
+		if stderr.String() != "" {
+			err = errors.New(stderr.String())
+		}
+		return err
+	}
+
+	return nil
+}
+
+// getFakeNFTTableJSON returns a fake JSON response for nft table listing
+func getFakeNFTTableJSON() string {
+	return `{
+  "nftables": [
+    {"metainfo": {"version": "1.0.0", "release_name": "Fearless Fosdick #3", "json_schema_version": 1}},
+    {"table": {"family": "inet", "name": "internet", "handle": 1}},
+    {"chain": {"family": "inet", "table": "internet", "name": "prerouting", "handle": 1, "type": "nat", "hook": "prerouting", "prio": -100, "policy": "accept"}},
+    {"chain": {"family": "inet", "table": "internet", "name": "forward", "handle": 2, "type": "filter", "hook": "forward", "prio": 0, "policy": "accept"}},
+    {"chain": {"family": "inet", "table": "internet", "name": "open_ip_prerouting", "handle": 10}},
+    {"chain": {"family": "inet", "table": "internet", "name": "open_ip_forward", "handle": 11}}
+  ]
+}`
+}
+
+// getFakeOpenIpPrerouting returns a fake response for open_ip_prerouting chain listing
+func getFakeOpenIpPrerouting() string {
+	return `table inet internet {
+	chain open_ip_prerouting {
+	}
+}`
+}
+
+// getFakeOpenIpForward returns a fake response for open_ip_forward chain listing
+func getFakeOpenIpForward() string {
+	return `table inet internet {
+	chain open_ip_forward {
+	}
+}`
+}
+
+// getFakePreroutingChain returns a fake response for prerouting chain listing
+func getFakePreroutingChain() string {
+	return `table inet internet {
+	chain prerouting {
+		type nat hook prerouting priority -100; policy accept;
+		counter packets 0 bytes 0 jump open_ip_prerouting # handle 100
+	}
+}`
+}
+
+// getFakeForwardChain returns a fake response for forward chain listing
+func getFakeForwardChain() string {
+	return `table inet internet {
+	chain forward {
+		type filter hook forward priority 0; policy accept;
+		counter packets 0 bytes 0 jump open_ip_forward # handle 200
+	}
+}`
 }

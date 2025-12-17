@@ -2,6 +2,8 @@ package connmgr
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -14,12 +16,13 @@ import (
 )
 
 var (
-	sessionQue = jobque.NewJobQue[any]()
+	sessionQue        = jobque.NewJobQue[any]()
+	ErrSessionExpired = errors.New("session expired")
 )
 
 // SessionEventEmitter interface for emitting session events
 type SessionEventEmitter interface {
-	emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice)
+	emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice) error
 }
 
 func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitter SessionEventEmitter) (*RunningSession, error) {
@@ -105,137 +108,157 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 	log.Printf("[Running Session] UpdateNetworkDetails - DeviceID=%d, OldMAC=%s, NewMAC=%s, OldIP=%s, NewIP=%s",
 		self.clntId, self.mac, newMac, self.ip, newIP)
 
-	_, err := sessionQue.Exec(func() (any, error) {
-		self.mu.Lock()
-		defer self.mu.Unlock()
+	contextInfo := fmt.Sprintf("DeviceID=%d, OldMAC=%s, NewMAC=%s, OldIP=%s, NewIP=%s",
+		self.clntId, self.mac, newMac, self.ip, newIP)
 
-		oldIP := self.ip
-		oldMac := self.mac
+	_, err := sessionQue.ExecWithTimeout(
+		7*time.Second,
+		"Update Network Details",
+		contextInfo,
+		func() (any, error) {
+			self.mu.Lock()
+			defer self.mu.Unlock()
 
-		// Check if network details actually changed
-		if oldIP == newIP && oldMac == newMac {
-			log.Printf("[Running Session] No network changes detected for device %d", self.clntId)
-			return nil, nil
-		}
+			oldIP := self.ip
+			oldMac := self.mac
 
-		// Update stored values
-		self.ip = newIP
-		self.mac = newMac
-
-		// Check if LAN changed (IP might be on different network)
-		if oldIP != newIP {
-			log.Printf("[Running Session] IP changed, checking if LAN changed...")
-			newLan, err := network.FindByIp(newIP)
-			if err != nil {
-				log.Printf("[Running Session] ERROR - Failed to find LAN for new IP %s: %v", newIP, err)
-				return nil, err
+			// Check if network details actually changed
+			if oldIP == newIP && oldMac == newMac {
+				log.Printf("[Running Session] No network changes detected for device %d", self.clntId)
+				return nil, nil
 			}
 
-			// If LAN changed, we need to recreate TC rules on the new interface
-			if newLan.Name() != self.lan.Name() {
-				log.Printf("[Running Session] LAN changed from %s to %s, recreating TC rules...",
-					self.lan.Name(), newLan.Name())
+			// Update stored values
+			self.ip = newIP
+			self.mac = newMac
 
-				// Clean up old TC rules
-				if self.tcClassId != nil {
-					classid := self.tcClassId.Uint()
-					log.Printf("[Running Session] Removing old TC filter for IP %s", oldIP)
-					if err := self.lan.DelFilter(oldIP, classid); err != nil {
-						log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
-					}
-
-					log.Printf("[Running Session] Removing old TC class %d", classid)
-					if err := self.lan.DelClass(classid); err != nil {
-						log.Printf("[Running Session] WARNING - Failed to delete old class: %v", err)
-					}
-					self.tcClassId = nil
-				}
-
-				// Update LAN reference
-				self.lan = newLan
-
-				// Recreate TC rules on new interface
-				log.Printf("[Running Session] Creating new TC rules on interface %s", newLan.Name())
-				if err := self.initTc(); err != nil {
-					log.Printf("[Running Session] ERROR - Failed to create TC rules: %v", err)
+			// Check if LAN changed (IP might be on different network)
+			if oldIP != newIP {
+				log.Printf("[Running Session] IP changed, checking if LAN changed...")
+				newLan, err := network.FindByIp(newIP)
+				if err != nil {
+					log.Printf("[Running Session] ERROR - Failed to find LAN for new IP %s: %v", newIP, err)
 					return nil, err
 				}
-				log.Printf("[Running Session] TC rules recreated successfully")
-			} else {
-				// Same LAN, just update the filter
-				log.Printf("[Running Session] Same LAN, updating TC filter from IP %s to %s", oldIP, newIP)
-				if self.tcClassId != nil {
-					classid := self.tcClassId.Uint()
 
-					// Remove old filter
-					if err := self.lan.DelFilter(oldIP, classid); err != nil {
-						log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
+				// If LAN changed, we need to recreate TC rules on the new interface
+				if newLan.Name() != self.lan.Name() {
+					log.Printf("[Running Session] LAN changed from %s to %s, recreating TC rules...",
+						self.lan.Name(), newLan.Name())
+
+					// Clean up old TC rules
+					if self.tcClassId != nil {
+						classid := self.tcClassId.Uint()
+						log.Printf("[Running Session] Removing old TC filter for IP %s", oldIP)
+						if err := self.lan.DelFilter(oldIP, classid); err != nil {
+							log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
+						}
+
+						log.Printf("[Running Session] Removing old TC class %d", classid)
+						if err := self.lan.DelClass(classid); err != nil {
+							log.Printf("[Running Session] WARNING - Failed to delete old class: %v", err)
+						}
+						self.tcClassId = nil
 					}
 
-					// Create new filter with new IP
-					if err := self.lan.CreateFilter(newIP, classid); err != nil {
-						log.Printf("[Running Session] ERROR - Failed to create new filter: %v", err)
+					// Update LAN reference
+					self.lan = newLan
+
+					// Recreate TC rules on new interface
+					log.Printf("[Running Session] Creating new TC rules on interface %s", newLan.Name())
+					if err := self.initTc(); err != nil {
+						log.Printf("[Running Session] ERROR - Failed to create TC rules: %v", err)
 						return nil, err
 					}
-					log.Printf("[Running Session] TC filter updated successfully")
+					log.Printf("[Running Session] TC rules recreated successfully")
+				} else {
+					// Same LAN, just update the filter
+					log.Printf("[Running Session] Same LAN, updating TC filter from IP %s to %s", oldIP, newIP)
+					if self.tcClassId != nil {
+						classid := self.tcClassId.Uint()
+
+						// Remove old filter
+						if err := self.lan.DelFilter(oldIP, classid); err != nil {
+							log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
+						}
+
+						// Create new filter with new IP
+						if err := self.lan.CreateFilter(newIP, classid); err != nil {
+							log.Printf("[Running Session] ERROR - Failed to create new filter: %v", err)
+							return nil, err
+						}
+						log.Printf("[Running Session] TC filter updated successfully")
+					}
 				}
 			}
-		}
 
-		log.Printf("[Running Session] Network details updated successfully - DeviceID=%d, NewMAC=%s, NewIP=%s",
-			self.clntId, self.mac, self.ip)
-		return nil, nil
-	})
+			log.Printf("[Running Session] Network details updated successfully - DeviceID=%d, NewMAC=%s, NewIP=%s",
+				self.clntId, self.mac, self.ip)
+			return nil, nil
+		},
+	)
 
 	return err
 }
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
-	_, err := sessionQue.Exec(func() (any, error) {
-		self.mu.Lock()
-		defer self.mu.Unlock()
+	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, MAC=%s, IP=%s",
+		self.clntId, s.ID(), self.mac, self.ip)
 
-		// Reload session from database to get latest consumption values
-		// This is critical when resuming a paused session to avoid using stale data
-		if err := s.Reload(ctx); err != nil {
-			return nil, err
-		}
+	_, err := sessionQue.ExecWithTimeout(
+		6*time.Second,
+		"Session Start",
+		contextInfo,
+		func() (any, error) {
+			self.mu.Lock()
+			defer self.mu.Unlock()
 
-		self.session = s
+			// Create context with remaining time for DB operations
+			execCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
 
-		// Set first start time if this is the first time session is starting
-		if s.StartedAt() == nil {
-			started := time.Now().UTC()
-			s.SetStartedAt(&started)
-		}
-
-		// Set resumed time to track current running period
-		if s.ResumedAt() == nil {
-			resumed := time.Now().UTC()
-			s.SetResumedAt(&resumed)
-
-			if err := s.Save(ctx); err != nil {
-				return nil, err
+			// Reload session from database to get latest consumption values
+			// This is critical when resuming a paused session to avoid using stale data
+			if err := s.Reload(execCtx); err != nil {
+				return nil, fmt.Errorf("failed to reload session: %w", err)
 			}
-		}
 
-		if self.tcClassId == nil {
-			if err := self.initTc(); err != nil {
-				return nil, err
+			self.session = s
+
+			// Set first start time if this is the first time session is starting
+			if s.StartedAt() == nil {
+				started := time.Now().UTC()
+				s.SetStartedAt(&started)
 			}
-		} else {
-			if err := self.updateTc(); err != nil {
-				return nil, err
+
+			// Set resumed time to track current running period
+			if s.ResumedAt() == nil {
+				resumed := time.Now().UTC()
+				s.SetResumedAt(&resumed)
+
+				if err := s.Save(execCtx); err != nil {
+					return nil, fmt.Errorf("failed to save session: %w", err)
+				}
 			}
-		}
 
-		if self.timeTimer == nil {
-			self.initTimeTimer(s)
-			log.Println("Session timer has started...")
-		}
+			if self.tcClassId == nil {
+				if err := self.initTc(); err != nil {
+					return nil, fmt.Errorf("failed to init TC: %w", err)
+				}
+			} else {
+				if err := self.updateTc(); err != nil {
+					return nil, fmt.Errorf("failed to update TC: %w", err)
+				}
+			}
 
-		return nil, nil
-	})
+			if self.timeTimer == nil {
+				self.initTimeTimer(s)
+				log.Println("Session timer has started...")
+			}
+
+			return nil, nil
+		},
+	)
 
 	return err
 }
@@ -245,47 +268,70 @@ func (self *RunningSession) Stop(ctx context.Context) error {
 }
 
 func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) error {
-	_, err := sessionQue.Exec(func() (any, error) {
-		self.mu.Lock()
+	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Expired=%v",
+		self.clntId, self.session.ID(), expired)
 
-		// Calculate and record elapsed time since resumed_at
-		if self.session != nil && self.session.ResumedAt() != nil {
-			elapsed := int(time.Since(*self.session.ResumedAt()).Seconds())
+	_, err := sessionQue.ExecWithTimeout(
+		5*time.Second,
+		"Session Stop",
+		contextInfo,
+		func() (any, error) {
+			self.mu.Lock()
 
-			// Add elapsed time to existing consumption
-			currentCons := self.session.TimeConsumption()
-			self.session.SetTimeCons(currentCons + elapsed)
+			// Calculate and record elapsed time since resumed_at
+			if self.session != nil && self.session.ResumedAt() != nil {
+				elapsed := int(time.Since(*self.session.ResumedAt()).Seconds())
 
-			log.Printf("Recording elapsed time: %d seconds (total consumption: %d)\n",
-				elapsed, currentCons+elapsed)
+				// Add elapsed time to existing consumption
+				currentCons := self.session.TimeConsumption()
+				self.session.SetTimeCons(currentCons + elapsed)
 
-			// Reset resumed_at to nil since session is stopping
-			self.session.SetResumedAt(nil)
-		}
+				log.Printf("Recording elapsed time: %d seconds (total consumption: %d)\n",
+					elapsed, currentCons+elapsed)
 
-		err := self.save(ctx)
-		self.cleanUpTimer()
+				// Reset resumed_at to nil since session is stopping
+				self.session.SetResumedAt(nil)
+			}
 
-		// Emit session:expired event if session expired (time/data consumed or date passed)
-		if expired && self.emitter != nil && self.clnt != nil {
-			self.emitter.emitSessionEvent(sdkapi.EventSessionExpired, self.session, self.clnt)
-		}
+			// Create context for DB save
+			execCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
 
-		// Collect callbacks while holding lock
-		callbacks := self.callbacks
-		self.callbacks = []chan error{}
+			saveErr := self.save(execCtx)
+			self.cleanUpTimer()
 
-		// Release lock before sending to channels
-		self.mu.Unlock()
+			// Emit session:expired event if session expired (time/data consumed or date passed)
+			if expired && self.emitter != nil && self.clnt != nil {
+				// Emit before expired hook (ignore error since session already stopped)
+				self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeExpired, self.session, self.clnt)
+				self.emitter.emitSessionEvent(sdkapi.EventSessionExpired, self.session, self.clnt)
+			}
 
-		// Send to callbacks without holding lock
-		for _, cb := range callbacks {
-			cb <- err
-		}
-		log.Println("Done running callbacks.")
+			// Collect callbacks while holding lock
+			callbacks := self.callbacks
+			self.callbacks = []chan error{}
 
-		return nil, err
-	})
+			// Release lock before sending to channels
+			self.mu.Unlock()
+
+			// Determine the error to return to callbacks
+			// If session expired, return ErrSessionExpired to trigger disconnect
+			var callbackErr error
+			if expired {
+				callbackErr = ErrSessionExpired
+			} else {
+				callbackErr = saveErr
+			}
+
+			// Send to callbacks without holding lock
+			for _, cb := range callbacks {
+				cb <- callbackErr
+			}
+			log.Println("Done running callbacks.")
+
+			return nil, callbackErr
+		},
+	)
 
 	return err
 }
@@ -390,11 +436,12 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 				return
 
 			case <-saveTicker.C:
-				// Periodic save
+				// Periodic save with timeout - stops session on failure (Option B)
 				self.mu.RLock()
 				currentSession := self.session
 				currentClnt := self.clnt
 				currentEmitter := self.emitter
+				deviceID := self.clntId
 				self.mu.RUnlock()
 
 				// Calculate elapsed time since resumed_at
@@ -404,10 +451,32 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 						elapsed, currentSession.RemainingTime())
 				}
 
-				// Save current state (data consumption changes)
-				err := self.save(context.Background())
-				if err != nil {
-					log.Println("Error saving session:", err)
+				// Emit before updated hook
+				if currentEmitter != nil && currentClnt != nil {
+					if err := currentEmitter.emitSessionEvent(sdkapi.EventSessionBeforeUpdated, currentSession, currentClnt); err != nil {
+						log.Println("Before update hook failed:", err)
+						go self.Stop(context.Background())
+						return
+					}
+				}
+
+				// Save with timeout
+				contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Elapsed=%ds",
+					deviceID, currentSession.ID(), int(time.Since(*currentSession.ResumedAt()).Seconds()))
+
+				_, saveErr := sessionQue.ExecWithTimeout(
+					4*time.Second,
+					"Periodic Save",
+					contextInfo,
+					func() (any, error) {
+						execCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+						defer cancel()
+						return nil, self.save(execCtx)
+					},
+				)
+
+				if saveErr != nil {
+					log.Printf("[ERROR] Periodic save failed: %v - STOPPING SESSION", saveErr)
 					go self.Stop(context.Background())
 					return
 				}
