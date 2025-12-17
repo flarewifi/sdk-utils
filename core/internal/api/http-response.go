@@ -2,10 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
+
 	sdkapi "sdk/api"
 
-	"core/resources/views"
+	adminview "core/resources/views/admin/error"
 	portalview "core/resources/views/portal"
 	"core/resources/views/themes"
 
@@ -173,14 +176,50 @@ func (self *HttpResponse) RedirectSuccess(w http.ResponseWriter, r *http.Request
 }
 
 func (self *HttpResponse) Error(w http.ResponseWriter, r *http.Request, err error, status int) {
-	// w.WriteHeader(status)
-	page := views.ErrorPage(err)
-	page.Render(r.Context(), w)
-	// v := sdkhttp.ViewPage{PageContent: page}
-	// _, autherr := self.api.HttpAPI.auth.CurrentAcct(r)
-	// if autherr != nil {
-	// 	self.api.HttpAPI.HttpResponse().PortalView(w, r, v)
-	// } else {
-	// 	self.api.HttpAPI.HttpResponse().AdminView(w, r, v)
-	// }
+	// Add panic recovery for template rendering failures
+	defer func() {
+		if r := recover(); r != nil {
+			self.api.LoggerAPI.Error(fmt.Sprintf("Error page rendering failed: %v", r))
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "An error occurred. Please try again later.")
+		}
+	}()
+
+	// Log internal error with full details
+	self.api.LoggerAPI.Error(fmt.Sprintf("HTTP Error: %s - Status: %d - Path: %s", err.Error(), status, r.URL.Path))
+
+	// Sanitize error message for users (SECURITY)
+	userMsg, sanitizedStatus := SanitizeError(self.api, err)
+
+	// Detect if admin or portal based on URL path
+	isAdmin := strings.HasPrefix(r.URL.Path, "/admin")
+
+	if isAdmin {
+		// Admin error page (Bootstrap 5)
+		page := adminview.AdminErrorPage(self.api, userMsg)
+		v := sdkapi.ViewPage{
+			Assets: sdkapi.ViewAssets{
+				JsFile: "admin-error.js",
+				// NO CSS FILE - admin uses only Bootstrap 5
+			},
+			PageContent: page,
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(sanitizedStatus)
+		self.AdminView(w, r, v)
+	} else {
+		// Portal error page (Bootstrap 3)
+		page := portalview.PortalErrorPage(self.api, userMsg)
+		v := sdkapi.ViewPage{
+			Assets: sdkapi.ViewAssets{
+				JsFile:  "portal-error.js",
+				CssFile: "portal-error.css",
+			},
+			PageContent: page,
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(sanitizedStatus)
+		self.PortalView(w, r, v)
+	}
 }

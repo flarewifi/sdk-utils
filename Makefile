@@ -25,7 +25,7 @@ help:
 	@echo ""
 
 mono: create-network
-	docker compose -f docker-compose.yml -f docker-compose.mono.yml up \
+	docker compose -f docker-compose.yml -f docker-compose.mono.yml up app docs \
 		--build --remove-orphans --force-recreate
 
 postgres:
@@ -65,3 +65,18 @@ deploy-arm64:
 		./plugins/installed && \
 		GO_ARCH=arm64 go run -tags="prod mono sqlite" ./tools/cmd/create-mono-bin/main.go && \
 		rsync -avz --delete --exclude='data' output/mono-bin-files/ root@10.0.0.1:/opt/flarehotspot/app/
+
+translate-help:
+	@go run tools/translation-helper/main.go
+
+translate-check:
+	@go run -tags="dev" ./tools/translator \
+		--validate \
+		--markdown-report=.tmp/reports/translation_validation_report.md
+
+# Language-specific translation checks
+translate-check-%:
+	@go run -tags="dev" ./tools/translator \
+		--language=$* \
+		--validate \
+		--markdown-report=.tmp/reports/translation_validation_$*_report.md

@@ -15,6 +15,9 @@
   "portal-success-redirect.js": [
     "./portal/js/portal-success-redirect.js"
   ],
+  "portal-error.js": [
+    "./portal/js/portal-error.js"
+  ],
   "global.css": [
     "./portal/css/globals.css"
   ],
@@ -23,6 +26,9 @@
   ],
   "portal-success-redirect.css": [
     "./portal/css/portal-success-redirect.css"
+  ],
+  "portal-error.css": [
+    "./portal/css/portal-error.css"
   ],
   "payment-options.css": [
     "./portal/payments/payment-options.css"

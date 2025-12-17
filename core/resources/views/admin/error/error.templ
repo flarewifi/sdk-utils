@@ -1,0 +1,30 @@
+package adminview
+
+import sdkapi "sdk/api"
+
+templ AdminErrorPage(api sdkapi.IPluginApi, errorMsg string) {
+	<div class="container mt-5">
+		<div class="row justify-content-center">
+			<div class="col-md-8 col-lg-6">
+				<div class="card border-danger" role="alert">
+					<div class="card-header bg-danger text-white">
+						<h4 class="mb-0">
+							<i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+							{ api.Translate("label", "Error") }
+						</h4>
+					</div>
+					<div class="card-body text-center py-5">
+						<div class="mb-4">
+							<i class="bi bi-x-circle text-danger" style="font-size: 5rem;" aria-hidden="true"></i>
+						</div>
+						if errorMsg != "" {
+							<p class="lead text-muted mb-0">{ errorMsg }</p>
+						} else {
+							<p class="lead text-muted mb-0">{ api.Translate("error", "An unexpected error occurred") }</p>
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}

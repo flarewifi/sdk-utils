@@ -38,6 +38,81 @@ middleware := func (next http.Handler) http.Handler {
 api.Http().Router().Use(middleware)
 ```
 
+### UseForPortal {#use-for-portal}
+
+This method is used to register middlewares that will wrap the captive portal index page handler (`/portal/index`). This is useful for plugins that need to track portal page views, add custom authentication, implement rate limiting, or perform other operations before the portal page is rendered.
+
+**Important Notes:**
+
+- Middlewares registered with `UseForPortal` must be registered during plugin initialization (in the `Init()` function)
+- These middlewares only apply to the `/portal/index` route, not other portal routes
+- Multiple plugins can register middlewares, and they will all be executed in the order they were registered
+- Plugin middlewares execute **before** core middlewares (HTTPRedirect, PendingPurchase)
+
+**Middleware Execution Order:**
+
+1. Plugin-registered middlewares (via `UseForPortal`) - **FIRST**
+2. HTTPRedirect middleware (redirects HTTPS to HTTP)
+3. PendingPurchase middleware (checks for pending purchases)
+4. Portal index page handler - **LAST**
+
+**Example - Analytics Tracking:**
+
+```go
+package main
+
+import (
+    "net/http"
+    sdkapi "github.com/flarehotspot/sdk-api"
+)
+
+var Api sdkapi.IPluginApi
+
+func Init(api sdkapi.IPluginApi) error {
+    Api = api
+    
+    // Register middleware for portal index page
+    api.Http().Router().UseForPortal(analyticsMiddleware)
+    
+    return nil
+}
+
+func analyticsMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Track portal page view
+        Api.Logger().Info("Portal index page accessed from: " + r.RemoteAddr)
+        
+        // Continue to next middleware/handler
+        next.ServeHTTP(w, r)
+    })
+}
+```
+
+**Example - Custom Rate Limiting:**
+
+```go
+func Init(api sdkapi.IPluginApi) error {
+    Api = api
+    
+    // Register rate limiting middleware
+    api.Http().Router().UseForPortal(rateLimitMiddleware)
+    
+    return nil
+}
+
+func rateLimitMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Check rate limit
+        if isRateLimited(r.RemoteAddr) {
+            http.Error(w, "Too many requests", http.StatusTooManyRequests)
+            return
+        }
+        
+        next.ServeHTTP(w, r)
+    })
+}
+```
+
 ### UrlForRoute
 
 This method is used to generate the url for the given plugin route name. This method accepts two arguments, the first argument is the route name and the second argument is a map of route parameters. The route parameters are key-value pairs. The example below generates a URL for the route name `portal.welcome` with a route path `/welcome/{name}`:

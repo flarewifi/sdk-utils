@@ -2,7 +2,9 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"core/db"
@@ -80,6 +82,20 @@ func (self *Device) Status() sdkapi.DeviceStatus {
 	return self.status
 }
 
+// validateDeviceUpdateFields checks that required device fields are not blank
+func validateDeviceUpdateFields(uuid, ip, mac string) error {
+	if strings.TrimSpace(uuid) == "" {
+		return fmt.Errorf("uuid cannot be blank")
+	}
+	if strings.TrimSpace(ip) == "" {
+		return fmt.Errorf("ip address cannot be blank")
+	}
+	if strings.TrimSpace(mac) == "" {
+		return fmt.Errorf("mac address cannot be blank")
+	}
+	return nil
+}
+
 func (self *Device) Reload(ctx context.Context) error {
 	dRow, err := self.db.Queries.FindDevice(ctx, self.id)
 	if err != nil {
@@ -95,6 +111,12 @@ func (self *Device) Reload(ctx context.Context) error {
 }
 
 func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams) error {
+	// Validate required fields
+	if err := validateDeviceUpdateFields(params.UUID, params.Ip, params.Mac); err != nil {
+		log.Printf("device validation failed: %v", err)
+		return err
+	}
+
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
 		Hostname:   params.Hostname,
 		IpAddress:  params.Ip,

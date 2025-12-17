@@ -1,0 +1,23 @@
+package portalview
+
+import sdkapi "sdk/api"
+
+templ PortalErrorPage(api sdkapi.IPluginApi, errorMsg string) {
+	<div class="error-container" role="alert" aria-live="assertive">
+		<div class="error-container-inner">
+			<div class="error-card">
+				<div class="error-content">
+					<div class="error-icon" aria-hidden="true">
+						<div class="x-mark">✕</div>
+					</div>
+					<h2 class="error-title">{ api.Translate("label", "Error") }</h2>
+					if errorMsg != "" {
+						<p class="error-message">{ errorMsg }</p>
+					} else {
+						<p class="error-message">{ api.Translate("error", "An unexpected error occurred") }</p>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}

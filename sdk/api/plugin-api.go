@@ -48,6 +48,9 @@ type IPluginApi interface {
 	// Returns the logger API
 	Logger() ILoggerApi
 
+	// Returns the firewall API
+	Firewall() IFirewallAPI
+
 	// Returns an instance of network API.
 	Network() INetworkApi
 

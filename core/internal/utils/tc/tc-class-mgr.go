@@ -34,15 +34,14 @@ func (self *TcClassMgr) Bandwidth() (download Kbit, upload Kbit) {
 
 func (self *TcClassMgr) Setup() error {
 	_, err := tcClassQue.Exec(func() (any, error) {
+		var err error
 		dev := self.dev
 		ifb := ifbName(dev)
 		rootId := TcClassIdRoot.String()
 		defid := TcClassIdDefault
 
-		err := self.CleanUp()
-		if err != nil {
-			return nil, err
-		}
+		// Clean up old TC rules (ignore errors - may not exist on first setup)
+		self.CleanUp()
 
 		calls := []string{}
 		if ifbutil.IsIfbSupported() {

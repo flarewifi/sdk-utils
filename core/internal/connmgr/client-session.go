@@ -150,13 +150,25 @@ func (self *ClientSession) DataMb() (mbytes float64) {
 }
 
 // TimeConsumption returns the session's time consumption in seconds.
+// If session is currently running (resumed_at != nil), includes elapsed time since resumed_at.
 func (self *ClientSession) TimeConsumption() (sec int) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
-	return self.timeCons
+
+	consumption := self.timeCons
+
+	// If session is running, add elapsed time since resumed_at
+	if self.resumedAt != nil {
+		elapsed := int(time.Since(*self.resumedAt).Seconds())
+		consumption += elapsed
+	}
+
+	return consumption
 }
 
 // DataConsumption returns the session's data consumption in megabytes.
+// Note: Data consumption is tracked in real-time via traffic monitoring,
+// so this returns the saved value without additional elapsed time calculation.
 func (self *ClientSession) DataConsumption() (mbytes float64) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
