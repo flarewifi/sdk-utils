@@ -48,7 +48,7 @@ docs-serve:
 
 sync-version:
 	docker compose run --rm app sh -c \
-		'go run -tags="prod mono sqlite" ./core/tools/cmd/sync-versions/main.go'
+		'go run -tags="prod mono sqlite" ./core/cmd/sync-versions/main.go'
 
 devkit:
 	docker compose -f ./docker-compose.yml \
@@ -63,7 +63,7 @@ deploy-arm64:
 		./core/plugin.so \
 		./output/mono-bin-files \
 		./plugins/installed && \
-		GO_ARCH=arm64 go run -tags="prod mono sqlite" ./core/tools/cmd/create-mono-bin/main.go && \
+		GO_ARCH=arm64 go run -tags="prod mono sqlite" ./core/cmd/create-mono-bin/main.go && \
 		rsync -avz --delete --exclude='data' output/mono-bin-files/ root@10.0.0.1:/opt/flarehotspot/app/
 
 translate-help:

@@ -23,6 +23,6 @@ cp go.work.default go.work && \
     -s -- sh -c "$START_SH" -v &
 
 touch "/tmp/.flare-up" && \
-    go run -tags="dev" ./core/tools/cmd/livereload/main.go &
+    go run -tags="dev" ./core/cmd/livereload/main.go &
 
 wait
