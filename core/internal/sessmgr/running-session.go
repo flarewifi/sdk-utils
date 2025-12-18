@@ -581,14 +581,23 @@ func (self *RunningSession) isConsumed() bool {
 	s := self.session
 	t := s.Type()
 
-	if t == sdkapi.SessionTypeTime || t == sdkapi.SessionTypeTimeOrData {
-		isTimeConsumed := s.RemainingTime() <= 0
-		return isTimeConsumed || self.expired()
+	// Check expiration date first (applies to all types)
+	if self.expired() {
+		return true
 	}
 
+	// For time-based or time-or-data sessions, check time consumption
+	if t == sdkapi.SessionTypeTime || t == sdkapi.SessionTypeTimeOrData {
+		if s.RemainingTime() <= 0 {
+			return true
+		}
+	}
+
+	// For data-based or time-or-data sessions, check data consumption
 	if t == sdkapi.SessionTypeData || t == sdkapi.SessionTypeTimeOrData {
-		isDataConsumed := s.DataConsumption() >= s.DataMb()
-		return isDataConsumed || self.expired()
+		if s.DataConsumption() >= s.DataMb() {
+			return true
+		}
 	}
 
 	return false

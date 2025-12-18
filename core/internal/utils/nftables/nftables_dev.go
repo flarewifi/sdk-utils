@@ -22,13 +22,20 @@ const (
 	connMacSet      string = "connected_macs_set"
 )
 
+type connectedClient struct {
+	ip  string
+	mac string
+}
+
 var nftQue = jobque.NewJobQue[bool]()
 var nftMu sync.RWMutex
 var initCallbacks []func() error = []func() error{}
 var connTable map[string]bool
+var connClients map[string]*connectedClient // mac -> client info
 
 func init() {
 	connTable = map[string]bool{}
+	connClients = make(map[string]*connectedClient)
 }
 
 func runInitCallbacks() {
@@ -45,14 +52,18 @@ func isConnected(mac string) bool {
 	return ok
 }
 
-func doConnect(_ string, mac string) error {
+func doConnect(ip string, mac string) error {
 	connected := isConnected(mac)
 
 	if !connected {
 		connTable[mac] = true
+		connClients[mac] = &connectedClient{
+			ip:  ip,
+			mac: mac,
+		}
 	}
 
-	log.Println("nftables connected: " + mac)
+	log.Println("nftables connected: " + mac + " (" + ip + ")")
 	return nil
 }
 
@@ -60,6 +71,7 @@ func doDisconnect(_ string, mac string) error {
 	connected := isConnected(mac)
 	if connected {
 		delete(connTable, mac)
+		delete(connClients, mac)
 	}
 	log.Println("nftables disconnected: " + mac)
 	return nil
