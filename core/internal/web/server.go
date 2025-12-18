@@ -3,6 +3,7 @@ package web
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"core/internal/api"
 	"core/internal/web/controllers"
@@ -37,9 +38,15 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 	router.RootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Warning: unknown route requested: ", r.URL.Path)
 
+		// Determine redirect destination based on route prefix
+		redirectTo := "/"
+		if strings.HasPrefix(r.URL.Path, "/admin") {
+			redirectTo = "/admin"
+		}
+
 		// Redirect to LAN IP
 		h := redirectToLanIpMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/", http.StatusFound)
+			http.Redirect(w, r, redirectTo, http.StatusFound)
 		}))
 
 		h.ServeHTTP(w, r)
