@@ -250,9 +250,85 @@ translate-scan({ operation: "list-untranslated", language: "es", limit: 20 })
 // 3. Update translations
 translate-batch({ language: "es", updates: [...] })
 
-// 4. Verify
+// 4. Verify translations
 translate-scan({ operation: "validate", language: "es" })
+
+// 5. Re-scan for remaining untranslated
+translate-scan({ operation: "list-untranslated", language: "es", limit: 20 })
+
+// 6. If issues found, fix and repeat steps 3-5 until all translations are complete
 ```
+
+## Verification & Iteration
+
+**CRITICAL: Always verify and iterate until all translations are properly translated**
+
+### Workflow Loop
+1. **Translate** - Apply translations using `translate-batch` or `translate-update`
+2. **Verify** - Scan for untranslated files: `translate-scan({ operation: "list-untranslated", language: "XX" })`
+3. **Check** - Review validation: `translate-scan({ operation: "validate", language: "XX" })`
+4. **Fix** - If issues found, update problematic translations
+5. **Repeat** - Continue steps 2-4 until clean
+
+### What to Translate
+- ✅ All user-facing text
+- ✅ UI labels, messages, errors
+- ✅ Form placeholders and help text
+- ✅ Navigation and menu items
+- ❌ **Technical terms** (leave in English):
+  - Technology names: "PostgreSQL", "SQLite", "API", "HTTP", "JSON"
+  - Technical identifiers: "MAC address", "IP address", "DHCP", "DNS"
+  - Brand names: Product names, software names
+  - Code-related terms: "plugin", "module" (when referring to code components)
+  - File formats: "CSV", "PDF", "ZIP"
+
+### Example: Technical Terms in Context
+```go
+// English
+"Failed to connect to PostgreSQL database"
+"Invalid MAC address format"
+"API request timed out"
+
+// Spanish (technical terms preserved)
+"Error al conectar a la base de datos PostgreSQL"
+"Formato de dirección MAC inválido"
+"Tiempo de espera agotado para la solicitud API"
+```
+
+### Iteration Example
+```typescript
+// First pass
+translate-batch({ language: "es", updates: [
+  { filePath: "core/.../es/error/Connection failed.txt", content: "Falló la conexión" }
+]})
+
+// Verify
+translate-scan({ operation: "list-untranslated", language: "es", limit: 20 })
+// Result: 5 files still untranslated
+
+// Second pass - fix remaining
+translate-batch({ language: "es", updates: [
+  { filePath: "core/.../es/label/Settings.txt", content: "Configuración" },
+  { filePath: "core/.../es/error/Invalid input.txt", content: "Entrada inválida" }
+]})
+
+// Verify again
+translate-scan({ operation: "list-untranslated", language: "es", limit: 20 })
+// Result: 0 files untranslated ✅
+
+// Final validation
+translate-scan({ operation: "validate", language: "es" })
+// Result: All valid ✅
+```
+
+### Quality Checks
+- [ ] No English text in translated files (except technical terms)
+- [ ] Variables preserved: `<% .variableName %>`
+- [ ] Grammar and punctuation correct for target language
+- [ ] Professional tone maintained
+- [ ] Technical terms left in English
+- [ ] All files have content (no empty files)
+- [ ] Character encoding correct (UTF-8)
 
 ## Checklist
 

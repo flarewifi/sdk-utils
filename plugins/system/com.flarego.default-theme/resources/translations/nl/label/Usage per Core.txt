@@ -1,1 +1,1 @@
-Usage per Core
+Gebruik per kern
