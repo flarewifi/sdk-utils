@@ -1,1 +1,0 @@
-The device will be flashed with new firmware and will reboot. Do not power off the device during this process.

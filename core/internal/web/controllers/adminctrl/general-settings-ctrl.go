@@ -6,12 +6,12 @@ import (
 
 	"core/internal/api"
 	"core/internal/utils/activation"
-	"core/tools/flaretmpl"
 	machineuid "core/internal/utils/machine-uid"
-	"core/tools/sysinfo"
 	generalview "core/resources/views/admin/general"
 	"core/tools/config"
 	"core/tools/env"
+	"core/tools/flaretmpl"
+	"core/tools/sysinfo"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -145,16 +145,18 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Handle language switching if language changed (skip in dev mode)
-		if languageChanged && env.GO_ENV != env.ENV_DEV {
-			if err := sdkutils.SwitchAllLanguages(currentCfg.Lang, language); err != nil {
-				g.CoreAPI.LoggerAPI.Error("Failed to switch language: " + err.Error())
-				// Don't fail the save operation, just log the error
-			} else {
-				// Clear template cache to ensure new language translations are loaded
-				flaretmpl.ClearCache()
-				g.CoreAPI.LoggerAPI.Info("Language switched and template cache cleared")
+		// Handle language switching if language changed
+		if languageChanged {
+			if env.GO_ENV != env.ENV_DEV {
+				// In production, physically switch language files
+				if err := sdkutils.SwitchAllLanguages(currentCfg.Lang, language); err != nil {
+					g.CoreAPI.LoggerAPI.Error("Failed to switch language: " + err.Error())
+					// Don't fail the save operation, just log the error
+				}
 			}
+			// Clear template cache in both dev and production to ensure new language translations are loaded
+			flaretmpl.ClearCache()
+			g.CoreAPI.LoggerAPI.Info("Language changed to " + language + ", template cache cleared")
 		}
 
 		successfulSavedMsg := g.CoreAPI.Translate("info", "Settings Successfully Saved")

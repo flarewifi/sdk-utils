@@ -1,0 +1,1 @@
+Ongeldige bestandsextensie voor <% .label %>. Toegestane extensies: <% .extensions %>

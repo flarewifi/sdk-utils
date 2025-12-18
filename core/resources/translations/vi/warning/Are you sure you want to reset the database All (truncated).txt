@@ -1,0 +1,1 @@
+Bạn có chắc chắn muốn đặt lại cơ sở dữ liệu không? Tất cả dữ liệu sẽ bị mất.

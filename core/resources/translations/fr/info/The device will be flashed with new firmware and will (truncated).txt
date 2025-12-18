@@ -1,1 +1,1 @@
-The device will be flashed with new firmware and will reboot. Do not power off the device during this process.
+L'appareil sera flashé avec le nouveau firmware et redémarrera. Ne pas éteindre l'appareil pendant ce processus.

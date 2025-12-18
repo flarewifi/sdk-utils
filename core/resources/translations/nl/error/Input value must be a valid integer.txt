@@ -1,0 +1,1 @@
+<% .label %> moet een geldig geheel getal zijn.

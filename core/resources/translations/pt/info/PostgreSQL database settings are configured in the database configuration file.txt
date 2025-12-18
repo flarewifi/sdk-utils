@@ -1,0 +1,1 @@
+As configurações do banco de dados PostgreSQL são configuradas no arquivo de configuração do banco de dados.

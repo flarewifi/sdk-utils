@@ -1,1 +1,1 @@
-Are you sure you want to perform the firmware upgrade? The device will be flashed and rebooted.
+Apakah Anda yakin ingin melakukan upgrade firmware? Perangkat akan di-flash dan di-reboot.

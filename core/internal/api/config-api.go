@@ -1,9 +1,8 @@
 package api
 
 import (
-	sdkapi "sdk/api"
 	"core/tools/config"
-	cfgapi "core/tools/config/api"
+	sdkapi "sdk/api"
 )
 
 func NewConfigApi(api *PluginApi) {
@@ -16,11 +15,11 @@ type ConfigApi struct {
 }
 
 func (self *ConfigApi) Application() sdkapi.IAppCfgApi {
-	return cfgapi.NewAppCfgApi()
+	return NewAppCfgApi()
 }
 
 func (self *ConfigApi) Bandwidth() sdkapi.IBandwidthCfgApi {
-	return cfgapi.NewBandwdCfgApi()
+	return NewBandwdCfgApi()
 }
 
 func (self *ConfigApi) Plugin() sdkapi.IPluginCfgApi {

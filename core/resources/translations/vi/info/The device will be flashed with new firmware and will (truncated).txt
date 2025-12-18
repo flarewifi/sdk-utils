@@ -1,0 +1,1 @@
+Thiết bị sẽ được cập nhật với firmware mới và sẽ khởi động lại. Không tắt nguồn thiết bị trong quá trình này.

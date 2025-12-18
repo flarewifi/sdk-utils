@@ -1,1 +1,1 @@
-This update includes a full firmware upgrade. The device will be flashed and rebooted automatically.
+Esta actualización incluye una actualización completa de firmware. El dispositivo se actualizará y reiniciará automáticamente.

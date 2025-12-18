@@ -1,1 +1,1 @@
-Unable to Remove <% .file %> File.
+Tidak dapat menghapus file <% .file %>.

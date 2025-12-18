@@ -1,1 +1,1 @@
-Failed to reset database
+Failed to reset database.

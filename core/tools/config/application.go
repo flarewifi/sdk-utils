@@ -14,14 +14,14 @@ var SupportedLanguages = []sdkapi.SupportedLanguage{
 	{Code: "en", Name: "English"},
 	{Code: "am", Name: "Amharic"},
 	{Code: "ar", Name: "Arabic (Sudan)"},
-	{Code: "es", Name: "Spanish"},
+	{Code: "nl", Name: "Dutch"},
 	{Code: "fr", Name: "French"},
+	{Code: "hi", Name: "Hindi"},
 	{Code: "id", Name: "Indonesian"},
-	{Code: "in", Name: "Hindi"},
-	{Code: "prs", Name: "Dari"},
-	{Code: "ps", Name: "Pashto"},
+	{Code: "pt", Name: "Portuguese"},
 	{Code: "ru", Name: "Russian"},
-	{Code: "sw", Name: "Swahili"},
+	{Code: "es", Name: "Spanish"},
+	{Code: "vi", Name: "Vietnamese"},
 }
 
 var SupportedCurrencies = sdkutils.SupportedCurrencies

@@ -1,1 +1,1 @@
-Please confirm database reset
+Please confirm database reset.

@@ -1,1 +1,1 @@
-<% .label %> must be a valid integer
+<% .label %> must be a valid integer.

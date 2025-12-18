@@ -1,0 +1,1 @@
+Dit zal het systeem opnieuw opstarten. Alle actieve sessies worden beëindigd.

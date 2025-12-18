@@ -1,1 +1,0 @@
-This update includes a full firmware upgrade. The device will be flashed and rebooted automatically.

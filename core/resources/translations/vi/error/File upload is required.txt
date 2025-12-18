@@ -1,0 +1,1 @@
+<% .label %> là bắt buộc.

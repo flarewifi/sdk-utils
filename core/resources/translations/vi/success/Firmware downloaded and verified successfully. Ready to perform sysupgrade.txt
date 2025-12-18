@@ -1,0 +1,1 @@
+Firmware đã được tải xuống và xác minh thành công. Sẵn sàng thực hiện sysupgrade

@@ -1,1 +1,1 @@
-Failed to cancel purchase
+Failed to cancel purchase.

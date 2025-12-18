@@ -1,1 +1,1 @@
-Données du formulaire invalides
+Données de formulaire non valides
