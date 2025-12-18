@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"core/internal/accounts"
-	"core/internal/utils/jsonwebtoken"
+	"core/tools/jsonwebtoken"
 	sdkapi "sdk/api"
-	"tools/config"
+	"core/tools/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )

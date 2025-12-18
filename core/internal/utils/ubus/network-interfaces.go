@@ -9,7 +9,7 @@ import (
 
 	"github.com/goccy/go-json"
 
-	cmd "tools/shell"
+	cmd "core/tools/shell"
 )
 
 type IpV4Addr struct {

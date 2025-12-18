@@ -3,8 +3,8 @@ package api
 import (
 	"core/db"
 	"core/db/models"
-	"core/internal/connmgr"
 	"core/internal/network"
+	"core/internal/sessmgr"
 	"sync/atomic"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -19,8 +19,8 @@ type CoreGlobals struct {
 	Database       *db.Database
 	State          *AppState
 	CoreAPI        *PluginApi
-	ClientRegister *connmgr.ClientRegister
-	ClientMgr      *connmgr.SessionsMgr
+	ClientRegister *sessmgr.ClientRegister
+	ClientMgr      *sessmgr.SessionsMgr
 	TrafficMgr     *network.TrafficMgr
 	Models         *models.Models
 	PluginMgr      *PluginsMgr
@@ -38,8 +38,8 @@ func NewGlobals() *CoreGlobals {
 	assets := &GlobalAssets{}
 	db := db.NewDatabase()
 	mdls := models.New(db)
-	clntReg := connmgr.NewClientRegister(db, mdls)
-	sessionMgr := connmgr.NewSessionsMgr(db, mdls)
+	clntReg := sessmgr.NewClientRegister(db, mdls)
+	sessionMgr := sessmgr.NewSessionsMgr(db, mdls)
 	trfcMgr := network.NewTrafficMgr()
 	pmtMgr := NewPaymentMgr()
 

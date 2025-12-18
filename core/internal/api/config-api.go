@@ -2,8 +2,8 @@ package api
 
 import (
 	sdkapi "sdk/api"
-	"tools/config"
-	cfgapi "tools/config/api"
+	"core/tools/config"
+	cfgapi "core/tools/config/api"
 )
 
 func NewConfigApi(api *PluginApi) {

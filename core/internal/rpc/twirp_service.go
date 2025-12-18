@@ -6,7 +6,7 @@ import (
 	rpcutil "core/internal/utils/rpc"
 	"log"
 	"net/http"
-	"tools/env"
+	"core/tools/env"
 
 	"github.com/twitchtv/twirp"
 )

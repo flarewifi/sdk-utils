@@ -6,9 +6,9 @@ import (
 	"log"
 	"sync"
 
-	"core/internal/utils/ifbutil"
-	jobque "tools/job-que"
-	cmd "tools/shell"
+	ifbutil "core/internal/utils/network"
+	jobque "core/tools/job-que"
+	cmd "core/tools/shell"
 )
 
 var (

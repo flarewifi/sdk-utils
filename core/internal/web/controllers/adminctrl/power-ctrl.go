@@ -8,7 +8,7 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 	"time"
-	cmd "tools/shell"
+	cmd "core/tools/shell"
 )
 
 func RebootPageCtrl(g *api.CoreGlobals) http.HandlerFunc {

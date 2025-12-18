@@ -6,10 +6,10 @@ import (
 
 	"core/db"
 	"core/db/models"
-	"core/internal/connmgr"
 	"core/internal/network"
+	"core/internal/sessmgr"
+	"core/tools/plugins"
 	sdkapi "sdk/api"
-	"tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -64,8 +64,8 @@ type PluginApi struct {
 	AdsAPI           *AdsApi
 	InAppPurchaseAPI *InAppPurchaseApi
 	PluginsMgrApi    *PluginsMgr
-	ClientRegister   *connmgr.ClientRegister
-	SessionMgr       *connmgr.SessionsMgr
+	ClientRegister   *sessmgr.ClientRegister
+	SessionMgr       *sessmgr.SessionsMgr
 	SessionsMgrAPI   *SessionsMgrApi
 	UciAPI           *UciApi
 	Utl              *PluginUtils

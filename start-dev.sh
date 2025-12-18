@@ -3,10 +3,10 @@
 DB_DRIVER="postgres"
 GO_TAGS="dev $DB_DRIVER"
 OS_CONFIG="wan-lan"
-BUILD_CORE_MAIN="./tools/cmd/build-core"
-BUILD_CLI_MAIN="./tools/cmd/build-cli"
-BUILD_ASSETS_MAIN="./tools/cmd/build-assets"
-SYNC_VERSION="./tools/cmd/sync-versions/main.go"
+BUILD_CORE_MAIN="./core/cmd/build-core"
+BUILD_CLI_MAIN="./core/cmd/build-cli"
+BUILD_ASSETS_MAIN="./core/cmd/build-assets"
+SYNC_VERSION="./core/cmd/sync-versions/main.go"
 FLARE_CLI_MAIN="./core/internal/cli"
 FLARE_BIN="./bin/flare"
 
@@ -21,7 +21,7 @@ cp go.work.default go.work && \
     echo "Generating sqlc queires..." && \
     sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
     echo "Scanning translations..." && \
-    go run -tags="${GO_TAGS}" ./tools/translator --silent && \
+    go run -tags="${GO_TAGS}" ./core/tools/translator --silent && \
     go run -tags="${GO_TAGS}" $SYNC_VERSION && \
     go run -tags="${GO_TAGS}" $BUILD_ASSETS_MAIN && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
@@ -46,7 +46,6 @@ for f in \
     "plugins" \
     "sdk" \
     "scripts" \
-    "tools" \
     "go.work" \
     "go.sum" \
     "hosts.json" \

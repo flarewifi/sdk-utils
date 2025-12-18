@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"tools/env"
+	"core/tools/env"
 )
 
 // HTTPSRedirect redirects admin routes from HTTP to HTTPS

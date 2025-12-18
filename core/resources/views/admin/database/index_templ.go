@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"core/tools/config"
 	"sdk/api"
-	"tools/config"
 )
 
 type AdminDatabaseSettingsIndexParams struct {

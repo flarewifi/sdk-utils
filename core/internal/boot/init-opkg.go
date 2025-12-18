@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	cmd "tools/shell"
+	cmd "core/tools/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"core/db/models"
-	"core/internal/connmgr"
+	"core/internal/sessmgr"
 	sdkapi "sdk/api"
 )
 
@@ -28,7 +28,7 @@ func (self *SessionsMgrApi) FindClientById(ctx context.Context, devId int64) (sd
 	if err != nil {
 		return nil, err
 	}
-	clnt := connmgr.NewClientDevice(self.pluginApi.db, self.pluginApi.models, device)
+	clnt := sessmgr.NewClientDevice(self.pluginApi.db, self.pluginApi.models, device)
 	return clnt, nil
 }
 
@@ -38,7 +38,7 @@ func (self *SessionsMgrApi) FindDeviceByUUID(ctx context.Context, uuid string) (
 	if err != nil {
 		return nil, err
 	}
-	clnt := connmgr.NewClientDevice(self.pluginApi.db, self.pluginApi.models, device)
+	clnt := sessmgr.NewClientDevice(self.pluginApi.db, self.pluginApi.models, device)
 	return clnt, nil
 }
 
@@ -48,7 +48,7 @@ func (self *SessionsMgrApi) FindSessionByUUID(ctx context.Context, uuid string) 
 	if err != nil {
 		return nil, err
 	}
-	cs := connmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), session)
+	cs := sessmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), session)
 	return cs, nil
 }
 
@@ -108,7 +108,7 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	})
-	previewCS := connmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), previewSession)
+	previewCS := sessmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), previewSession)
 
 	// Emit EventSessionBeforeCreated - plugins can return error to prevent creation
 	if err := self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionBeforeCreated, previewCS, device); err != nil {
@@ -133,7 +133,7 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 	}
 
 	// Wrap session in IClientSession interface
-	cs := connmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), session)
+	cs := sessmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), session)
 
 	// Set consumption values if provided (for cloud sync)
 	if params.ConsumptionSecs > 0 || params.ConsumptionMb > 0 {

@@ -4,11 +4,11 @@ export CGO_ENABLED=0
 DB_DRIVER="sqlite"
 OS_CONFIG="wan-lan-mono"
 GO_TAGS="prod mono $DB_DRIVER"
-SYNC_VERSION="./tools/cmd/sync-versions/main.go"
-BUILD_ASSETS_MAIN="./tools/cmd/build-assets/main.go"
-MONO_BIN_PREPARE="./tools/cmd/mono-bin-prepare/main.go"
-MONO_BIN_COMPILE="./tools/cmd/mono-bin-compile/main.go"
-MONO_BIN_COPY_OUTPUT="./tools/cmd/mono-bin-copy-output/main.go"
+SYNC_VERSION="./core/cmd/sync-versions/main.go"
+BUILD_ASSETS_MAIN="./core/cmd/build-assets/main.go"
+MONO_BIN_PREPARE="./core/cmd/mono-bin-prepare/main.go"
+MONO_BIN_COMPILE="./core/cmd/mono-bin-compile/main.go"
+MONO_BIN_COPY_OUTPUT="./core/cmd/mono-bin-copy-output/main.go"
 MONO_BIN_OUTDIR=".tmp/mono-bin"
 FLARE_CLI_MAIN="./core/internal/cli/main.go"
 PATH="$PATH:$HOME/go/bin"
@@ -49,7 +49,6 @@ for f in \
     "plugins" \
     "sdk" \
     "scripts" \
-    "tools" \
     "go.work" \
     "go.sum" \
     "start.sh" \

@@ -6,8 +6,8 @@ import (
 
 	"github.com/goccy/go-json"
 
-	jobque "tools/job-que"
-	cmd "tools/shell"
+	jobque "core/tools/job-que"
+	cmd "core/tools/shell"
 )
 
 var (

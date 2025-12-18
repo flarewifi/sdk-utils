@@ -9,4 +9,4 @@ cp go.work.default go.work && \
     sh -c "cd core && templ generate" && \
     echo "Generating sqlc queires..." && \
     sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
-		go run --tags="$GO_TAGS" ./tools/cmd/create-devkit/main.go
+		go run --tags="$GO_TAGS" ./core/cmd/create-devkit/main.go

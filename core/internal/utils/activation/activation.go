@@ -2,7 +2,7 @@ package activation
 
 import (
 	rpc_flarewifi_v1 "core/internal/rpc"
-	"core/internal/utils/crypt"
+	"core/tools/crypt"
 	machineuid "core/internal/utils/machine-uid"
 	"errors"
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"tools/config"
-	"tools/tags"
+	"core/tools/config"
+	"core/tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/golang-jwt/jwt/v5"

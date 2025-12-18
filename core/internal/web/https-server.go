@@ -19,7 +19,7 @@ import (
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/gorilla/mux"
-	"tools/env"
+	"core/tools/env"
 )
 
 var (

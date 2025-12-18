@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"core/internal/cli/server"
-	tools "tools"
-	"tools/env"
-	"tools/plugins"
+	"core/tools"
+	"core/tools/env"
+	"core/tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

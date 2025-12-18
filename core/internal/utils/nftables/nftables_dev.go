@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	jobque "tools/job-que"
+	jobque "core/tools/job-que"
 )
 
 const (
