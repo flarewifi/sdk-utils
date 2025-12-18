@@ -1,0 +1,1 @@
+Tem certeza de que deseja desligar o sistema? Isso desconectará todos os usuários e desligará o dispositivo.

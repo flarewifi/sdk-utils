@@ -1,0 +1,1 @@
+Kan apparaattoken niet genereren.

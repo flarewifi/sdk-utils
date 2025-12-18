@@ -1,1 +1,1 @@
-Input value must be a valid email
+Input value must be a valid email.

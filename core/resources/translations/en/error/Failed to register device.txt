@@ -1,1 +1,1 @@
-Failed to register device
+Failed to register device.

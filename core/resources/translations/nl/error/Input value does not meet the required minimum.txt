@@ -1,0 +1,1 @@
+<% .label %> moet minimaal <% .min %> zijn.

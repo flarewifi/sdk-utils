@@ -1,1 +1,1 @@
-This update includes a full firmware upgrade. The device will be flashed and rebooted automatically.
+ይህ ማዘመኛ ሙሉ የፈርምዌር ማሻሻያ ያካትታል። መሣሪያው ይዘመናል እና በራስ-ሰር እንደገና ይጀምራል።

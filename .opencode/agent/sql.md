@@ -29,6 +29,8 @@ Your role is to:
 ## Project Database Architecture
 
 ### Directory Structure
+
+**Core:**
 ```
 core/
 ├── resources/
@@ -40,6 +42,20 @@ core/
 │   └── queries/            # Generated Go code from sqlc
 ├── sqlc.postgres.yml       # PostgreSQL sqlc configuration
 └── sqlc.sqlite.yml         # SQLite sqlc configuration
+```
+
+**Plugin:**
+```
+data/plugins/local/{plugin-name}/
+├── sqlc.sqlite.yml         # SQLite sqlc configuration
+├── sqlc.postgres.yml       # PostgreSQL sqlc configuration
+├── db/
+│   └── queries/            # Generated Go code from sqlc
+└── resources/
+    ├── migrations/         # Plugin-specific migrations ONLY
+    └── queries/            # Plugin SQL query definitions
+        ├── sqlite/         # SQLite-specific queries (optional)
+        └── postgres/       # PostgreSQL-specific queries (optional)
 ```
 
 ### Database Support

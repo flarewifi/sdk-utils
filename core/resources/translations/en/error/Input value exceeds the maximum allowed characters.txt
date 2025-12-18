@@ -1,1 +1,1 @@
-<% .label %> must not exceed <% .max %> characters
+<% .label %> must not exceed <% .max %> characters.

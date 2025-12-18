@@ -1,1 +1,1 @@
-Are you sure you want to perform the firmware upgrade? The device will be flashed and rebooted.
+هل أنت متأكد من أنك تريد إجراء ترقية البرنامج الثابت؟ سيتم تحديث الجهاز وإعادة تشغيله.

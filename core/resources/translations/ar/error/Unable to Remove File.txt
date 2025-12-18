@@ -1,1 +1,1 @@
-Unable to Remove <% .file %> File.
+غير قادر على إزالة ملف <% .file %>.

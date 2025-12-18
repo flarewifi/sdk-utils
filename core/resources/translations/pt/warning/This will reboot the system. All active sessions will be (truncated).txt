@@ -1,0 +1,1 @@
+Isso reiniciará o sistema. Todas as sessões ativas serão encerradas.

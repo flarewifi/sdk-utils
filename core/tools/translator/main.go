@@ -729,7 +729,7 @@ func scanFile(filePath string, usedTranslations map[string]*TranslationRef, stat
 
 	// Pattern to match Translate("type", "key")
 	// Handles both .Translate and Translate
-	pattern := regexp.MustCompile(`\.?Translate\(\s*"([^"]+)"\s*,\s*"([^"]+)"`)
+	pattern := regexp.MustCompile(`\.?Translate\(\s*"([^"]+?)"\s*,\s*"([^"]+?)"`)
 	matches := pattern.FindAllStringSubmatch(string(content), -1)
 
 	for _, match := range matches {
@@ -763,7 +763,7 @@ func scanFile(filePath string, usedTranslations map[string]*TranslationRef, stat
 	}
 
 	// Check for concatenated translation keys
-	badPattern := regexp.MustCompile(`\.?Translate\(\s*"([^"]+)"\s*,\s*([^"]+)\)`)
+	badPattern := regexp.MustCompile(`\.?Translate\(\s*"([^"]+?)"\s*,\s*([^"]*)\)`)
 	badMatches := badPattern.FindAllStringSubmatch(string(content), -1)
 
 	for _, match := range badMatches {

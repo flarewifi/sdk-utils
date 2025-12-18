@@ -1,1 +1,1 @@
-<% .label %> must be a valid decimal number
+<% .label %> must be a valid decimal number.

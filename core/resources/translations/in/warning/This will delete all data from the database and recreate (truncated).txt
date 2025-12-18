@@ -1,1 +1,0 @@
-This will delete all data from the database and recreate the schema This action cannot be undone

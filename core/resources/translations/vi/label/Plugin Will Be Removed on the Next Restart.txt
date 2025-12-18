@@ -1,0 +1,1 @@
+Plugin sẽ được xóa khi khởi động lại lần sau

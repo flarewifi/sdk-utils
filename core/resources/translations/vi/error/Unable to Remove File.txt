@@ -1,0 +1,1 @@
+Không thể xóa tệp <% .file %>.

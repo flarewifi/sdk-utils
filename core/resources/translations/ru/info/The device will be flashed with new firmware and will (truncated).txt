@@ -1,1 +1,1 @@
-The device will be flashed with new firmware and will reboot. Do not power off the device during this process.
+Устройство будет прошито новой прошивкой и перезагрузится. Не выключайте устройство во время этого процесса.

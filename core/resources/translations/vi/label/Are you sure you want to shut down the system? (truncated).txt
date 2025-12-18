@@ -1,0 +1,1 @@
+Bạn có chắc chắn muốn tắt hệ thống không? Điều này sẽ ngắt kết nối tất cả người dùng và tắt nguồn thiết bị.

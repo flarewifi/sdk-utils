@@ -1,1 +1,1 @@
-Are you sure you want to perform the firmware upgrade? The device will be flashed and rebooted.
+Êtes-vous sûr de vouloir effectuer la mise à niveau du firmware? L'appareil sera flashé et redémarré.

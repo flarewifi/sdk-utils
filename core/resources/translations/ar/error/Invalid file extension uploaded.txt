@@ -1,1 +1,1 @@
-Invalid file extension for <% .label %>. Allowed extensions: <% .extensions %>
+امتداد ملف غير صالح لـ <% .label %>. الامتدادات المسموح بها: <% .extensions %>

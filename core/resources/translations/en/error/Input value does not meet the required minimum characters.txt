@@ -1,1 +1,1 @@
-<% .label %> must be at least <% .min %> characters
+<% .label %> must be at least <% .min %> characters.

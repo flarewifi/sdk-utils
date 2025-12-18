@@ -1,0 +1,1 @@
+Firmware succesvol gedownload en geverifieerd. Klaar om sysupgrade uit te voeren
