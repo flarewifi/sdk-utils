@@ -3,7 +3,7 @@ package ifbutil
 import (
 	"sync/atomic"
 
-	cmd "tools/shell"
+	cmd "core/tools/shell"
 )
 
 var (

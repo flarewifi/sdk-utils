@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 
 	"core/internal/api"
-	"tools/config"
-	"tools/env"
-	"tools/migrate"
-	"tools/plugins"
+	"core/tools/config"
+	"core/tools/env"
+	"core/tools/migrate"
+	"core/tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

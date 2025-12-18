@@ -10,7 +10,7 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 	"sync/atomic"
-	"tools/config"
+	"core/tools/config"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/a-h/templ"

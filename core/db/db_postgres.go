@@ -13,7 +13,7 @@ import (
 
 	queries "core/db/queries"
 	"core/internal/utils/pg"
-	"tools/config"
+	"core/tools/config"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 

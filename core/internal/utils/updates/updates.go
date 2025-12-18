@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
-	"tools/config"
-	"tools/tags"
+	"core/tools/config"
+	"core/tools/tags"
 
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"

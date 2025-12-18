@@ -48,7 +48,7 @@ docs-serve:
 
 sync-version:
 	docker compose run --rm app sh -c \
-		'go run -tags="prod mono sqlite" ./tools/cmd/sync-versions/main.go'
+		'go run -tags="prod mono sqlite" ./core/tools/cmd/sync-versions/main.go'
 
 devkit:
 	docker compose -f ./docker-compose.yml \
@@ -63,20 +63,20 @@ deploy-arm64:
 		./core/plugin.so \
 		./output/mono-bin-files \
 		./plugins/installed && \
-		GO_ARCH=arm64 go run -tags="prod mono sqlite" ./tools/cmd/create-mono-bin/main.go && \
+		GO_ARCH=arm64 go run -tags="prod mono sqlite" ./core/tools/cmd/create-mono-bin/main.go && \
 		rsync -avz --delete --exclude='data' output/mono-bin-files/ root@10.0.0.1:/opt/flarehotspot/app/
 
 translate-help:
-	@go run tools/translation-helper/main.go
+	@go run core/tools/translator/main.go --help
 
 translate-check:
-	@go run -tags="dev" ./tools/translator \
+	@go run -tags="dev" ./core/tools/translator \
 		--validate \
 		--markdown-report=.tmp/reports/translation_validation_report.md
 
 # Language-specific translation checks
 translate-check-%:
-	@go run -tags="dev" ./tools/translator \
+	@go run -tags="dev" ./core/tools/translator \
 		--language=$* \
 		--validate \
 		--markdown-report=.tmp/reports/translation_validation_$*_report.md

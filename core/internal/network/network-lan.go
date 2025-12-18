@@ -8,8 +8,8 @@ import (
 	"core/internal/utils/nftables"
 	"core/internal/utils/tc"
 	"core/internal/utils/ubus"
-	"tools/config"
-	jobque "tools/job-que"
+	"core/tools/config"
+	jobque "core/tools/job-que"
 )
 
 var (

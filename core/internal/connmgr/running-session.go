@@ -12,7 +12,7 @@ import (
 	"core/internal/network"
 	"core/internal/utils/tc"
 	sdkapi "sdk/api"
-	jobque "tools/job-que"
+	jobque "core/tools/job-que"
 )
 
 var (

@@ -4,5 +4,4 @@ use (
     ./core
     ./sdk/api
     ./sdk/utils
-    ./tools
 )

@@ -10,8 +10,8 @@ import (
 	machineuid "core/internal/utils/machine-uid"
 	"core/internal/utils/sysinfo"
 	generalview "core/resources/views/admin/general"
-	"tools/config"
-	"tools/env"
+	"core/tools/config"
+	"core/tools/env"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

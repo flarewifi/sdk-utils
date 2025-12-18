@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"core/internal/utils/ubus"
-	"tools/config"
-	jobque "tools/job-que"
+	"core/tools/config"
+	jobque "core/tools/job-que"
 )
 
 const defaultSpeed int = 100 //mbits download/upload per inteface

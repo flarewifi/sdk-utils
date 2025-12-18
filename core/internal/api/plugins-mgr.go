@@ -11,8 +11,8 @@ import (
 	"core/db/models"
 	"core/internal/connmgr"
 	"core/internal/network"
-	"tools/config"
-	"tools/migrate"
+	"core/tools/config"
+	"core/tools/migrate"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

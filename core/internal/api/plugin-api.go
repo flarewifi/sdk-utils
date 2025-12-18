@@ -9,7 +9,7 @@ import (
 	"core/internal/connmgr"
 	"core/internal/network"
 	sdkapi "sdk/api"
-	"tools/plugins"
+	"core/tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

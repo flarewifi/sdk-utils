@@ -11,7 +11,7 @@ import (
 	"time"
 
 	sdkapi "sdk/api"
-	"tools/shell"
+	"core/tools/shell"
 )
 
 func NewFirewallApi(api *PluginApi) {

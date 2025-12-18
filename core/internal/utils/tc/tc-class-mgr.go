@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"core/internal/utils/ifbutil"
-	jobque "tools/job-que"
-	cmd "tools/shell"
+	jobque "core/tools/job-que"
+	cmd "core/tools/shell"
 )
 
 var tcClassQue = jobque.NewJobQue[any]()

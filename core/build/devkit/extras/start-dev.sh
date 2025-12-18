@@ -20,7 +20,6 @@ for f in \
     "plugins" \
     "sdk" \
     "scripts" \
-    "tools" \
     "go.work" \
     "go.sum" \
     "start.sh" \

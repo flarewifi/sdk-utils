@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"tools/env"
+	"core/tools/env"
 )
 
 // HTTPRedirect redirects requests from HTTPS to HTTP

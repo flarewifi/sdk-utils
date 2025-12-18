@@ -7,7 +7,7 @@ import (
 
 	"core/internal/utils/flaretmpl"
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	"tools/config"
+	"core/tools/config"
 )
 
 // truncateTranslationKey truncates translation keys that exceed 10 words

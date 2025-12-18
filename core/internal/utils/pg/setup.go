@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"tools/config"
-	cmd "tools/shell"
+	"core/tools/config"
+	cmd "core/tools/shell"
 
 	gouci "github.com/digineo/go-uci"
 	sdkutils "github.com/flarehotspot/sdk-utils"

@@ -6,7 +6,7 @@ import (
 	"sync"
 	texttemplate "text/template"
 
-	"tools/env"
+	"core/tools/env"
 )
 
 var (

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"tools/config"
-	"tools/tags"
+	"core/tools/config"
+	"core/tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/golang-jwt/jwt/v5"

@@ -10,7 +10,7 @@ import (
 	"net"
 	"strings"
 	"time"
-	"tools/config"
+	"core/tools/config"
 
 	"github.com/jackc/pgx/v5"
 )

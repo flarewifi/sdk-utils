@@ -8,17 +8,20 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/a-h/templ v0.2.793
 	github.com/digineo/go-uci v0.0.0-20210918132103-37c7b10c14fa
+	github.com/evanw/esbuild v0.24.0
 	github.com/flarehotspot/sdk-utils v0.1.11
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-json v0.10.3
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.7.1
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/stretchr/testify v1.10.0
 	github.com/twitchtv/twirp v8.1.3+incompatible
-	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/yuin/goldmark v1.4.13
 	google.golang.org/protobuf v1.34.2
 	modernc.org/sqlite v1.28.0

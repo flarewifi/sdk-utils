@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"core/internal/api"
-	"tools/migrate"
+	"core/tools/migrate"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
