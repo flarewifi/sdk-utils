@@ -2,7 +2,7 @@ package activation
 
 import (
 	rpc_flarewifi_v1 "core/internal/rpc"
-	"core/internal/utils/crypt"
+	"core/tools/crypt"
 	machineuid "core/internal/utils/machine-uid"
 	"errors"
 	"fmt"

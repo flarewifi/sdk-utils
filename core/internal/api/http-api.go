@@ -9,14 +9,14 @@ import (
 
 	"core/db"
 	"core/db/models"
-	"core/internal/connmgr"
+	"core/internal/sessmgr"
 	devicetoken "core/internal/utils/device-token"
 	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
 )
 
-func NewHttpApi(api *PluginApi, db *db.Database, assets *GlobalAssets, clnt *connmgr.ClientRegister, mdls *models.Models, dmgr *connmgr.ClientRegister, pmgr *PaymentsMgr) {
+func NewHttpApi(api *PluginApi, db *db.Database, assets *GlobalAssets, clnt *sessmgr.ClientRegister, mdls *models.Models, dmgr *sessmgr.ClientRegister, pmgr *PaymentsMgr) {
 	navs := NewNavsApi(api)
 	auth := NewHttpAuth(api)
 	httpResp := NewHttpResponse(api, assets)
@@ -46,7 +46,7 @@ type HttpApi struct {
 	formsApi       *HttpFormApi
 	httpResp       *HttpResponse
 	httpCookie     *HttpCookie
-	clientRegister *connmgr.ClientRegister
+	clientRegister *sessmgr.ClientRegister
 }
 
 func (self *HttpApi) Initialize() {

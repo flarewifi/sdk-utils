@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"core/internal/accounts"
-	"core/internal/utils/jsonwebtoken"
+	"core/tools/jsonwebtoken"
 	sdkapi "sdk/api"
 	"core/tools/config"
 

@@ -9,15 +9,15 @@ import (
 
 	"core/db"
 	"core/db/models"
-	"core/internal/connmgr"
 	"core/internal/network"
+	"core/internal/sessmgr"
 	"core/tools/config"
 	"core/tools/migrate"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *connmgr.ClientRegister, clntMgr *connmgr.SessionsMgr, trfkMgr *network.TrafficMgr) *PluginsMgr {
+func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr) *PluginsMgr {
 	pmgr := &PluginsMgr{
 		db:      d,
 		models:  m,
@@ -34,8 +34,8 @@ type PluginsMgr struct {
 	db      *db.Database
 	models  *models.Models
 	paymgr  *PaymentsMgr
-	clntReg *connmgr.ClientRegister
-	clntMgr *connmgr.SessionsMgr
+	clntReg *sessmgr.ClientRegister
+	clntMgr *sessmgr.SessionsMgr
 	trfkMgr *network.TrafficMgr
 	plugins []*PluginApi
 }

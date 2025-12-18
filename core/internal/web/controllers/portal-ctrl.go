@@ -7,12 +7,12 @@ import (
 	"net/http"
 
 	"core/internal/api"
-	"core/internal/connmgr"
+	"core/internal/sessmgr"
 	devicetoken "core/internal/utils/device-token"
-	"core/internal/utils/hostfinder"
 	machineuid "core/internal/utils/machine-uid"
-	sse "core/internal/utils/sse"
 	portalview "core/resources/views/portal"
+	"core/tools/hostfinder"
+	sse "core/tools/sse"
 	sdkapi "sdk/api"
 )
 
@@ -70,7 +70,7 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterCtrl: Identified device - MAC: %s, IP: %s, Hostname: %s", h.MacAddr, h.IpAddr, h.Hostname))
 
 		// Register/identify device with cookie validation and MAC randomization support
-		clnt, shouldSetCookie, err := clntMgr.Register(r.Context(), connmgr.ClientRegisterParams{
+		clnt, shouldSetCookie, err := clntMgr.Register(r.Context(), sessmgr.ClientRegisterParams{
 			CookieDeviceID: cookieDeviceID,
 			MacAddr:        h.MacAddr,
 			IpAddr:         h.IpAddr,
@@ -199,7 +199,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// - Update IP/hostname if changed
 		// - Disconnect/reconnect sessions if device was active
 		// - Create new device if not found
-		clnt, shouldSetCookie, err := clntMgr.Register(ctx, connmgr.ClientRegisterParams{
+		clnt, shouldSetCookie, err := clntMgr.Register(ctx, sessmgr.ClientRegisterParams{
 			CookieDeviceID: cookieDeviceID,
 			MacAddr:        h.MacAddr,
 			IpAddr:         h.IpAddr,

@@ -1,4 +1,4 @@
-package connmgr
+package sessmgr
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 
 	"core/internal/network"
 	"core/internal/utils/tc"
-	sdkapi "sdk/api"
 	jobque "core/tools/job-que"
+	sdkapi "sdk/api"
 )
 
 var (

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"core/internal/utils/arp"
+	"core/tools/arp"
 )
 
 func GetHostFromRequest(r *http.Request) (*HostData, error) {

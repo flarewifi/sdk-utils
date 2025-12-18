@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"core/internal/utils/flaretmpl"
+	"core/tools/flaretmpl"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"core/tools/config"
 )

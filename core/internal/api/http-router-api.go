@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"core/db"
-	"core/internal/connmgr"
+	"core/internal/sessmgr"
 	"core/internal/web/middlewares"
 	"core/internal/web/router"
 	sdkapi "sdk/api"
@@ -26,7 +26,7 @@ type HttpRouterApi struct {
 	portalMiddlewares []func(http.Handler) http.Handler
 }
 
-func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *connmgr.ClientRegister) *HttpRouterApi {
+func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegister) *HttpRouterApi {
 	prefix := fmt.Sprintf("/%s/%s", api.info.Package, api.info.Version)
 	pluginMux := router.PluginRouter.PathPrefix(prefix).Subrouter()
 	adminMux := router.AdminRouter.PathPrefix(prefix).Subrouter()

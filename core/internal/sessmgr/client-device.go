@@ -1,4 +1,4 @@
-package connmgr
+package sessmgr
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"core/db"
 	"core/db/models"
 	"core/internal/utils/events"
-	"core/internal/utils/sse"
+	"core/tools/sse"
 
 	sdkapi "sdk/api"
 )

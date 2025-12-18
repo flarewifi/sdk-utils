@@ -6,9 +6,9 @@ import (
 
 	"core/internal/api"
 	"core/internal/utils/activation"
-	"core/internal/utils/flaretmpl"
+	"core/tools/flaretmpl"
 	machineuid "core/internal/utils/machine-uid"
-	"core/internal/utils/sysinfo"
+	"core/tools/sysinfo"
 	generalview "core/resources/views/admin/general"
 	"core/tools/config"
 	"core/tools/env"
