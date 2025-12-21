@@ -42,8 +42,9 @@ type AdminNavItemOpt struct {
 	Label       string
 	RouteName   string
 	RouteParams map[string]string
-	ExtraAttrs  map[string]any
-	Keywords    []string // Used for admin nav search indexing
+	ExtraAttrs  map[string]any // HTML attributes for the menu item element (e.g., {"class": "custom-class", "data-id": "123"})
+	Keywords    []string       // Used for admin nav search indexing
+	Order       int            // Sort order within category (lower numbers appear first, default: 5000)
 }
 
 type PortalNavItemOpt struct {
@@ -51,8 +52,8 @@ type PortalNavItemOpt struct {
 	IconFile    string
 	RouteName   string
 	RouteParams map[string]string
-	ExtraAttrs  map[string]any
-	Metadata    any
+	ExtraAttrs  map[string]any // HTML attributes for the menu item element (e.g., {"class": "custom-class", "target": "_blank"})
+	Metadata    any            // Custom metadata for theme plugins to use
 }
 
 type AdminNavList struct {
@@ -62,10 +63,12 @@ type AdminNavList struct {
 }
 
 type AdminNavItem struct {
-	Label     string
-	RouteUrl  string
-	IsCurrent bool     // true if current active route
-	Keywords  []string // Used for admin nav search indexing
+	Label      string
+	RouteUrl   string
+	IsCurrent  bool           // true if current active route
+	Keywords   []string       // Used for admin nav search indexing
+	ExtraAttrs map[string]any // HTML attributes for the menu item element (passed from AdminNavItemOpt)
+	Order      int            // Sort order within category
 }
 
 type PortalNavItem struct {
@@ -73,5 +76,5 @@ type PortalNavItem struct {
 	Label      string
 	IconUrl    string
 	RouteUrl   string
-	ExtraAttrs map[string]any
+	ExtraAttrs map[string]any // HTML attributes for the menu item element (passed from PortalNavItemOpt)
 }

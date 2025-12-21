@@ -6,6 +6,13 @@ import (
 	sdkapi "sdk/api"
 )
 
+// SetAdminNavs registers the core system's admin navigation items.
+// Navigation items are sorted by the Order field within each category.
+// Order guidelines:
+//   - 1000-3000: Core system items (General, Updates, Database)
+//   - 4000-5000: Plugin settings and features (default: 5000)
+//   - 6000-8000: Less frequently used items
+//   - 9000+: Items that should appear last (Reboot, Shutdown)
 func SetAdminNavs(g *api.CoreGlobals) {
 	coreNavs := g.CoreAPI.HttpAPI.Navs()
 
@@ -23,12 +30,14 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Software Version"),
 					g.CoreAPI.Translate("label", "Machine ID"),
 				},
+				Order: 1000, // First item in System category
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Updates"),
 				RouteName: "admin:updates:index",
 				Keywords:  []string{"update", "updates", "upgrade", "upgrades", "software"},
+				Order:     2000, // Second item in System category
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
@@ -40,34 +49,19 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Reset Database"),
 					"sqlite", "postgresql", "postgres",
 				},
+				Order: 3000, // Third item in System category
 			},
-		}
-
-		// Append plugin navs
-		systemNavs = append(systemNavs, GetAdminPluginNavs(g)...)
-
-		powerNavs := []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Logs"),
 				RouteName: "admin:logs:index",
 				Keywords:  []string{"log", "logs", "audit", "audits"},
-			},
-			{
-				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "Reboot"),
-				RouteName: "admin:power:reboot",
-				Keywords:  []string{"power", "reboot", "restart"},
-			},
-			{
-				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "Shutdown"),
-				RouteName: "admin:power:shutdown",
-				Keywords:  []string{"power", "shutdown", "off"},
+				Order:     5000, // Default position (after plugin items with Order < 5000)
 			},
 		}
 
-		systemNavs = append(systemNavs, powerNavs...)
+		// Append plugin navs
+		systemNavs = append(systemNavs, GetAdminPluginNavs(g)...)
 
 		themesNavs := []sdkapi.AdminNavItemOpt{
 			{
@@ -78,7 +72,27 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			},
 		}
 
+		// Power controls should appear last in System category to prevent accidental clicks.
+		// Using very high Order values (9998, 9999) ensures they appear after all other items.
+		powerNavs := []sdkapi.AdminNavItemOpt{
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "Reboot"),
+				RouteName: "admin:power:reboot",
+				Keywords:  []string{"power", "reboot", "restart"},
+				Order:     9998, // Second to last in System category
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "Shutdown"),
+				RouteName: "admin:power:shutdown",
+				Keywords:  []string{"power", "shutdown", "off"},
+				Order:     9999, // Last item in System category
+			},
+		}
+
 		adminNavs := append(systemNavs, themesNavs...)
+		adminNavs = append(adminNavs, powerNavs...)
 		return adminNavs
 	})
 

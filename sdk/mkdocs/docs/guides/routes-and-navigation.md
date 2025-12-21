@@ -134,12 +134,75 @@ navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
             Category:  sdkapi.NavCategorySystem,    // Category of the menu item
             Label:     "Welcome",                   // Menu display text
             RouteName: "admin:welcome",             // Link to the route
+            Keywords:  []string{"welcome", "home"}, // Search keywords
+            Order:     5000,                        // Sort order (optional, default: 5000)
         },
     }
 })
 ```
 
 Now, visit [localhost:3000/admin](http://localhost:3000/admin) to see if the admin menu item is present.
+
+#### Controlling Menu Item Order
+
+You can control where your menu item appears within its category using the `Order` field:
+
+```go
+navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
+    return []sdkapi.AdminNavItemOpt{
+        {
+            Category:  sdkapi.NavCategorySystem,
+            Label:     "My Settings",
+            RouteName: "admin:mysettings",
+            Order:     4000, // Appears before items with Order: 5000
+        },
+        {
+            Category:  sdkapi.NavCategorySystem,
+            Label:     "Advanced Options",
+            RouteName: "admin:advanced",
+            Order:     6000, // Appears after items with Order: 5000
+        },
+    }
+})
+```
+
+**Order Guidelines:**
+- **1000-3000**: Core system items (General, Updates, Database)
+- **4000-5000**: Plugin settings and features
+- **6000-8000**: Less frequently used items
+- **9000+**: Items that should appear last (e.g., Reboot, Shutdown)
+- **Default**: 5000 (if Order is not specified or is 0)
+
+#### Adding Custom HTML Attributes
+
+You can add custom HTML attributes to navigation items using the `ExtraAttrs` field. This is useful for adding CSS classes, data attributes, or other HTML attributes that theme plugins can use:
+
+```go
+navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
+    return []sdkapi.AdminNavItemOpt{
+        {
+            Category:  sdkapi.NavCategorySystem,
+            Label:     "Important Settings",
+            RouteName: "admin:important",
+            ExtraAttrs: map[string]any{
+                "class":    "nav-highlight",      // Add custom CSS class
+                "data-id":  "important-settings", // Add data attribute
+            },
+        },
+        {
+            Category:  sdkapi.NavCategoryTools,
+            Label:     "External Tool",
+            RouteName: "admin:external",
+            ExtraAttrs: map[string]any{
+                "target":      "_blank",           // Open in new tab
+                "aria-label":  "External tool",    // Accessibility
+            },
+        },
+    }
+})
+```
+
+**Note:** The actual rendering of `ExtraAttrs` depends on the theme plugin being used. Not all themes may support all attributes.
 
 ## Generating URLs {#generating-urls}
 

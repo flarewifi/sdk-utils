@@ -100,17 +100,111 @@ type AdminNavItemOpt struct {
 	RouteParams map[string]string
 	ExtraAttrs  map[string]any
 	Keywords    []string // Used for admin nav search indexing
+	Order       int      // Sort order within category (lower numbers appear first, default: 5000)
 }
 ```
 
+### Fields
+
+- **Category** - The navigation category where this item will appear
+- **Label** - The display text for the menu item
+- **RouteName** - The named route this menu item links to
+- **RouteParams** - Optional route parameters as key-value pairs
+- **ExtraAttrs** - Optional HTML attributes for the menu item element
+  - Used to add custom CSS classes, data attributes, or other HTML attributes
+  - Example: `map[string]any{"class": "highlight", "data-id": "123"}`
+  - Theme plugins can use these attributes for custom styling or behavior
+- **Keywords** - Search keywords for the admin navigation search feature
+- **Order** - Sort order within the category (default: 5000 if not specified)
+  - Lower numbers appear first (e.g., 1000 appears before 5000)
+  - Higher numbers appear last (e.g., 9999 appears at the end)
+  - Use this to control the position of your menu items
+
+### Navigation Categories
+
 The available `INavCategory` options are:
 
-- `sdkapi.NavCategoryQuickAccess`
-- `sdkapi.NavCategorySystem`
-- `sdkapi.NavCategoryPayments`
-- `sdkapi.NavCategoryThemes`
-- `sdkapi.NavCategoryNetwork`
-- `sdkapi.NavCategoryTools`
+- `sdkapi.NavCategoryQuickAccess` - Quick access items (top 5 most visited)
+- `sdkapi.NavCategorySystem` - System settings and configuration
+- `sdkapi.NavCategoryPayments` - Payment and billing related items
+- `sdkapi.NavCategoryThemes` - Theme selection and customization
+- `sdkapi.NavCategoryNetwork` - Network configuration
+- `sdkapi.NavCategoryTools` - Utility tools and features
+
+### Ordering Examples
+
+```go
+// Item appears first in System category
+{
+    Category:  sdkapi.NavCategorySystem,
+    Label:     "General Settings",
+    RouteName: "admin:general",
+    Order:     1000,
+}
+
+// Item appears in middle (default position)
+{
+    Category:  sdkapi.NavCategorySystem,
+    Label:     "Bandwidth Settings",
+    RouteName: "admin:bandwidth:settings",
+    Order:     4000,
+}
+
+// Item appears last in System category
+{
+    Category:  sdkapi.NavCategorySystem,
+    Label:     "Shutdown",
+    RouteName: "admin:power:shutdown",
+    Order:     9999,
+}
+```
+
+### ExtraAttrs Examples
+
+The `ExtraAttrs` field allows you to add custom HTML attributes to navigation menu items. This is useful for:
+
+- Adding custom CSS classes for styling
+- Adding data attributes for JavaScript interactions
+- Adding accessibility attributes
+- Any other HTML attributes supported by the theme
+
+```go
+// Add custom CSS class
+{
+    Category:   sdkapi.NavCategorySystem,
+    Label:      "Important Settings",
+    RouteName:  "admin:important",
+    ExtraAttrs: map[string]any{
+        "class": "nav-highlight",
+    },
+}
+
+// Add multiple attributes
+{
+    Category:   sdkapi.NavCategoryTools,
+    Label:      "External Tool",
+    RouteName:  "admin:external-tool",
+    ExtraAttrs: map[string]any{
+        "class":       "external-link",
+        "target":      "_blank",
+        "data-id":     "tool-123",
+        "data-source": "plugin",
+    },
+}
+
+// Add accessibility attributes
+{
+    Category:   sdkapi.NavCategorySystem,
+    Label:      "Advanced",
+    RouteName:  "admin:advanced",
+    ExtraAttrs: map[string]any{
+        "aria-label": "Advanced system settings",
+        "role":       "menuitem",
+    },
+}
+```
+
+**Note:** The actual rendering of `ExtraAttrs` depends on the theme plugin. Not all themes may support all attributes.
 
 ## PortalNavItemOpt {#portal-nav-item-opt}
 
@@ -122,9 +216,42 @@ type PortalNavItemOpt struct {
 	IconFile    string
 	RouteName   string
 	RouteParams map[string]string
-	ExtraAttrs  map[string]any
-	Metadata    any
+	ExtraAttrs  map[string]any // HTML attributes for the menu item element
+	Metadata    any            // Custom metadata for theme plugins
 }
+```
+
+### Fields
+
+- **Label** - The display text for the menu item
+- **IconFile** - Path to the icon file (relative to `resources/assets/images/`)
+- **RouteName** - The named route this menu item links to
+- **RouteParams** - Optional route parameters as key-value pairs
+- **ExtraAttrs** - Optional HTML attributes for the menu item element
+  - Used to add custom CSS classes, data attributes, or other HTML attributes
+  - Example: `map[string]any{"class": "featured", "target": "_blank"}`
+- **Metadata** - Custom metadata that theme plugins can use for additional functionality
+
+### Example
+
+```go
+navsAPI.PortalNavsFactory(func(r *http.Request) []PortalNavItemOpt {
+    return []sdkapi.PortalNavItemOpt{
+        {
+            Label:     "WiFi Access",
+            IconFile:  "wifi-icon.png",
+            RouteName: "portal:wifi",
+            ExtraAttrs: map[string]any{
+                "class":    "featured-item",
+                "data-id":  "wifi-access",
+            },
+            Metadata: map[string]any{
+                "priority": "high",
+                "category": "network",
+            },
+        },
+    }
+})
 ```
 
 ## AdminNavList {#admin-nav-list}
@@ -145,12 +272,26 @@ The `AdminNavItem` is a Go struct that represents an individual admin menu item 
 
 ```go
 type AdminNavItem struct {
-	Label     string
-	RouteUrl  string
-	IsCurrent bool     // true if current active route
-	Keywords  []string // Used for admin nav search indexing
+	Label      string
+	RouteUrl   string
+	IsCurrent  bool               // true if current active route
+	Keywords   []string           // Used for admin nav search indexing
+	ExtraAttrs map[string]any     // HTML attributes (passed from AdminNavItemOpt)
+	Order      int                // Sort order within category
 }
 ```
+
+### Fields
+
+- **Label** - The display text for the menu item
+- **RouteUrl** - The full URL for the menu item (generated from RouteName)
+- **IsCurrent** - `true` if this is the currently active route
+- **Keywords** - Search keywords for the admin navigation search feature
+- **ExtraAttrs** - HTML attributes passed from `AdminNavItemOpt.ExtraAttrs`
+  - Theme plugins use these to render custom attributes on menu elements
+- **Order** - Sort order value (used for sorting, already applied)
+
+**Note:** Items returned by `GetAdminNavs()` are already sorted by the `Order` field within each category.
 
 ## PortalNavItem {#portal-nav-item}
 
@@ -162,6 +303,15 @@ type PortalNavItem struct {
 	Label      string
 	IconUrl    string
 	RouteUrl   string
-	ExtraAttrs map[string]any
+	ExtraAttrs map[string]any // HTML attributes (passed from PortalNavItemOpt)
 }
 ```
+
+### Fields
+
+- **ID** - Unique identifier for the menu item
+- **Label** - The display text for the menu item
+- **IconUrl** - The full URL to the icon image
+- **RouteUrl** - The full URL for the menu item (generated from RouteName)
+- **ExtraAttrs** - HTML attributes passed from `PortalNavItemOpt.ExtraAttrs`
+  - Theme plugins use these to render custom attributes on menu elements

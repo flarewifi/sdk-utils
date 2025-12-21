@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	sdkapi "sdk/api"
+	"sort"
 	"strings"
 )
 
@@ -34,6 +35,9 @@ func (self *HttpNavsApi) PortalNavsFactory(fn func(r *http.Request) []sdkapi.Por
 	self.portalNavsFn = fn
 }
 
+// GetAdminNavs returns the consolidated navigation list from all plugins for the admin dashboard.
+// Navigation items are automatically sorted by the Order field within each category.
+// Items without an Order value (or Order = 0) default to 5000.
 func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 	categories := []sdkapi.INavCategory{
 		sdkapi.NavCategoryQuickAccess,
@@ -83,16 +87,29 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 							isCurrent = strings.HasPrefix(r.URL.Path, parsed.Path) && !strings.Contains(routeURL, "not found")
 						}
 
+						// Set default order if not specified
+						order := nav.Order
+						if order == 0 {
+							order = 5000 // Default middle priority
+						}
+
 						navItems = append(navItems, sdkapi.AdminNavItem{
-							Label:     nav.Label,
-							RouteUrl:  routeURL,
-							IsCurrent: isCurrent,
-							Keywords:  nav.Keywords,
+							Label:      nav.Label,
+							RouteUrl:   routeURL,
+							IsCurrent:  isCurrent,
+							Keywords:   nav.Keywords,
+							ExtraAttrs: nav.ExtraAttrs, // Pass through HTML attributes for theme plugins
+							Order:      order,
 						})
 					}
 				}
 			}
 		}
+
+		// Sort nav items by Order field (ascending - lower numbers appear first)
+		sort.Slice(navItems, func(i, j int) bool {
+			return navItems[i].Order < navItems[j].Order
+		})
 
 		navs = append(navs, sdkapi.AdminNavList{
 			Category: category,
@@ -142,11 +159,18 @@ func (self *HttpNavsApi) getQuickAccessNavItems(r *http.Request) []sdkapi.AdminN
 						isCurrent = strings.HasPrefix(r.URL.Path, parsed.Path) && !strings.Contains(routeURL, "not found")
 					}
 
+					order := nav.Order
+					if order == 0 {
+						order = 5000 // Default middle priority
+					}
+
 					navItems = append(navItems, sdkapi.AdminNavItem{
-						Label:     nav.Label,
-						RouteUrl:  routeURL,
-						IsCurrent: isCurrent,
-						Keywords:  nav.Keywords,
+						Label:      nav.Label,
+						RouteUrl:   routeURL,
+						IsCurrent:  isCurrent,
+						Keywords:   nav.Keywords,
+						ExtraAttrs: nav.ExtraAttrs, // Pass through HTML attributes for theme plugins
+						Order:      order,
 					})
 					break
 				}
@@ -157,6 +181,8 @@ func (self *HttpNavsApi) getQuickAccessNavItems(r *http.Request) []sdkapi.AdminN
 	return navItems
 }
 
+// GetPortalItems returns the consolidated navigation list from all plugins for the portal.
+// ExtraAttrs from PortalNavItemOpt are passed through to allow theme customization.
 func (self *HttpNavsApi) GetPortalItems(r *http.Request) []sdkapi.PortalNavItem {
 	items := []sdkapi.PortalNavItem{}
 	for _, p := range self.api.PluginsMgrApi.All() {
@@ -182,7 +208,7 @@ func (self *HttpNavsApi) GetPortalItems(r *http.Request) []sdkapi.PortalNavItem 
 				Label:      item.Label,
 				IconUrl:    iconURL,
 				RouteUrl:   url,
-				ExtraAttrs: item.ExtraAttrs,
+				ExtraAttrs: item.ExtraAttrs, // Pass through HTML attributes for theme plugins
 			})
 		}
 	}
