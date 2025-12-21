@@ -20,10 +20,18 @@ func SetupBootRoutes(g *api.CoreGlobals) {
 }
 
 func SetupAppRoutes(g *api.CoreGlobals) {
+	// Apply global activation check middleware FIRST (before any routes)
+	// This only runs after booting completes (when RootRouter is active)
+	activationCheckMw := middlewares.ActivationCheck()
+	router.RootRouter.Use(activationCheckMw)
+
 	// GET "/boot/status" 200 OK
 	router.RootRouter.HandleFunc(controllers.BootStatusURL, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+
+	// Register activation route
+	routes.ActivationRoutes(g)
 
 	routes.PluginAssets(g)
 	routes.GlobalAssets(g)
