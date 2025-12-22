@@ -107,6 +107,27 @@ templ ActivationPage(data *ActivationPageData) {
 					0% { transform: rotate(0deg); }
 					100% { transform: rotate(360deg); }
 				}
+				.reboot-message {
+					display: none;
+					margin-top: 20px;
+					padding: 20px;
+					background: #f0f9ff;
+					border: 2px solid #0ea5e9;
+					border-radius: 8px;
+					color: #0c4a6e;
+				}
+				.reboot-message.show {
+					display: block;
+				}
+				.reboot-message h2 {
+					margin: 0 0 10px 0;
+					font-size: 20px;
+					color: #0c4a6e;
+				}
+				.reboot-message p {
+					margin: 0;
+					line-height: 1.6;
+				}
 			</style>
 		</head>
 		<body>
@@ -125,19 +146,23 @@ templ ActivationPage(data *ActivationPageData) {
 					<span class="btn-spinner"></span>
 					<span class="btn-text">{ data.API.Translate("label", "Check Activation Status") }</span>
 				</button>
+				<div class="reboot-message" id="reboot-message">
+					<h2>{ data.API.Translate("label", "System Rebooting") }</h2>
+					<p>{ data.API.Translate("info", "Activation successful The system is rebooting to complete the setup Please wait a few minutes The page will automatically reload when the system is ready") }</p>
+				</div>
 			</div>
 			<script>
 				function checkActivation() {
 					var btn = document.getElementById('check-btn');
-					
+
 					if (btn.disabled) {
 						return;
 					}
-					
+
 					// Show loading state
 					btn.className = btn.className + ' loading';
 					btn.disabled = true;
-					
+
 					// Trigger validation on the server (blocking - waits for RPC response)
 					fetch('/activation/check', {
 						method: 'POST',
@@ -150,8 +175,9 @@ templ ActivationPage(data *ActivationPageData) {
 					})
 					.then(function(data) {
 						if (data.activated) {
-							// Activation successful - redirect to home
-							window.location.href = '/';
+							// Activation successful - show reboot message and wait for system
+							showRebootMessage();
+							waitForSystemReboot();
 						} else {
 							// Not activated - reset UI and show error if available
 							resetUI();
@@ -165,7 +191,43 @@ templ ActivationPage(data *ActivationPageData) {
 						resetUI();
 					});
 				}
-				
+
+				function showRebootMessage() {
+					var btn = document.getElementById('check-btn');
+					var rebootMsg = document.getElementById('reboot-message');
+
+					// Hide button and show reboot message
+					btn.style.display = 'none';
+					rebootMsg.className = 'reboot-message show';
+				}
+
+				function waitForSystemReboot() {
+					// Wait 10 seconds for reboot to start
+					setTimeout(function() {
+						checkSystemAvailability();
+					}, 10000);
+				}
+
+				function checkSystemAvailability() {
+					// Try to ping the server every 5 seconds
+					var checkInterval = setInterval(function() {
+						fetch('/ok', { method: 'GET', redirect: 'manual' })
+							.then(function(response) {
+								// Check if response status indicates system is ready
+								// 200 = OK, 301/302/303 = Redirect (system is responding)
+								if (response.status === 200 || response.status === 301 || response.status === 302 || response.status === 303) {
+									// System is back online - redirect to home
+									clearInterval(checkInterval);
+									window.location.href = '/';
+								}
+							})
+							.catch(function() {
+								// System still rebooting - keep checking
+								console.log('System still rebooting...');
+							});
+					}, 5000);
+				}
+
 				function resetUI() {
 					var btn = document.getElementById('check-btn');
 					btn.className = 'btn';
