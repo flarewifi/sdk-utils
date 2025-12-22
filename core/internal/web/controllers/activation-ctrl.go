@@ -2,12 +2,15 @@ package controllers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"time"
 
 	"core/internal/api"
 	"core/internal/utils/activation"
 	machineuid "core/internal/utils/machine-uid"
 	activationview "core/resources/views/activation"
+	cmd "core/tools/shell"
 )
 
 const (
@@ -39,6 +42,18 @@ func (ctrl *ActivationCtrl) ActivationPage(w http.ResponseWriter, r *http.Reques
 func (ctrl *ActivationCtrl) CheckActivationStatus(w http.ResponseWriter, r *http.Request) {
 	// Trigger validation synchronously (blocking) to wait for RPC response
 	activation.Validate()
+
+	// If activation succeeded, trigger system reboot to ensure proper initialization
+	if activation.IsActivated.Load() {
+		log.Println("Activation successful - scheduling system reboot")
+
+		// Schedule reboot in a goroutine to allow response to be sent first
+		go func() {
+			time.Sleep(2 * time.Second) // Give time for response to reach client
+			log.Println("Rebooting system after activation")
+			cmd.Exec("reboot", nil)
+		}()
+	}
 
 	// Return the actual validation result
 	response := map[string]interface{}{

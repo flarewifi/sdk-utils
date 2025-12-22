@@ -25,6 +25,10 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 	activationCheckMw := middlewares.ActivationCheck()
 	router.RootRouter.Use(activationCheckMw)
 
+	router.RootRouter.HandleFunc("/ok", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	// GET "/boot/status" 200 OK
 	router.RootRouter.HandleFunc(controllers.BootStatusURL, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
