@@ -3,7 +3,7 @@
 package main
 
 import (
-	"core/tools/cmd/livereload/dev"
+	"core/cmd/livereload/dev"
 
 	"log"
 	"net/http"
