@@ -27,7 +27,7 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		// Get machine ID
-		machineID := machineuid.GetMachineUID()
+		_, machineID := machineuid.GetMachineUID()
 
 		// Get software version
 		pluginInfo, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)

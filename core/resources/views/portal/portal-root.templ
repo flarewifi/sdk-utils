@@ -1,0 +1,40 @@
+package portalview
+
+import sdkapi "sdk/api"
+
+templ PortalRootPage(api sdkapi.IPluginApi, lanIP string, redirectPath string) {
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ api.Translate("label", "Redirecting") }</title>
+	</head>
+	<body>
+		<div id="portal-root-container" 
+			 data-lan-ip={ lanIP }
+			 data-redirect-path={ redirectPath }>
+			<p>{ api.Translate("label", "Redirecting") }...</p>
+		</div>
+		
+		<script>
+		(function() {
+			var container = document.getElementById('portal-root-container');
+			var lanIP = container.getAttribute('data-lan-ip');
+			var redirectPath = container.getAttribute('data-redirect-path');
+			
+			if (lanIP && redirectPath) {
+				var redirectUrl = 'http://' + lanIP + redirectPath;
+				window.location.href = redirectUrl;
+			} else if (redirectPath) {
+				// Fallback: redirect to path on current host
+				window.location.href = redirectPath;
+			} else {
+				// Last resort fallback
+				window.location.href = '/portal/redirect';
+			}
+		})();
+		</script>
+	</body>
+	</html>
+}

@@ -19,14 +19,23 @@ const (
 func ActivationCheck() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			isActivationRoute := r.URL.Path == activationURL || strings.HasPrefix(r.URL.Path, activationURL+"/")
+			isActivated := activation.IsActivated.Load()
+
+			// If already activated, redirect away from activation page
+			if isActivationRoute && isActivated {
+				http.Redirect(w, r, "/", http.StatusSeeOther)
+				return
+			}
+
 			// Check if device is activated
-			if activation.IsActivated.Load() {
+			if isActivated {
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			// Allow activation page and check endpoint
-			if r.URL.Path == activationURL || strings.HasPrefix(r.URL.Path, activationURL+"/") {
+			if isActivationRoute {
 				next.ServeHTTP(w, r)
 				return
 			}

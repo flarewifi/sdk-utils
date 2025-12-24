@@ -86,7 +86,7 @@ func VerifyDeviceToken(tokenString string, machineID string) (int64, error) {
 
 // SetDeviceCookie sets the JWT device cookie
 func SetDeviceCookie(w http.ResponseWriter, deviceID int64) error {
-	machineID := machineuid.GetMachineUID()
+	_, machineID := machineuid.GetMachineUID()
 	token, err := GenerateDeviceToken(deviceID, machineID)
 	if err != nil {
 		return fmt.Errorf("failed to generate device token: %w", err)
@@ -111,7 +111,7 @@ func GetDeviceCookie(r *http.Request) (int64, error) {
 		return 0, err
 	}
 
-	machineID := machineuid.GetMachineUID()
+	_, machineID := machineuid.GetMachineUID()
 	deviceID, err := VerifyDeviceToken(cookie.Value, machineID)
 	if err != nil {
 		return 0, err
@@ -128,7 +128,7 @@ func GetDeviceFromHeader(r *http.Request) (int64, error) {
 		return 0, fmt.Errorf("no device token in header")
 	}
 
-	machineID := machineuid.GetMachineUID()
+	_, machineID := machineuid.GetMachineUID()
 	deviceID, err := VerifyDeviceToken(tokenString, machineID)
 	if err != nil {
 		return 0, fmt.Errorf("invalid device token: %w", err)

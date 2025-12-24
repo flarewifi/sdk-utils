@@ -2,16 +2,16 @@ package activation
 
 import (
 	rpc_flarewifi_v1 "core/internal/rpc"
-	"core/tools/crypt"
 	machineuid "core/internal/utils/machine-uid"
+	"core/tools/config"
+	"core/tools/crypt"
+	"core/tools/tags"
 	"errors"
 	"fmt"
 	"log"
 	"strings"
 	"sync/atomic"
 	"time"
-	"core/tools/config"
-	"core/tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/golang-jwt/jwt/v5"
@@ -31,9 +31,77 @@ var (
 	ActivationError atomic.Value
 )
 
+// buildMachineInfo builds a MachineInfo struct from system information
+func buildMachineInfo(machineID string) (*rpc_flarewifi_v1.MachineInfo, error) {
+	release, err := sdkutils.ReadOsRelease(osReleaseFile)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := config.ReadApplicationConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return &rpc_flarewifi_v1.MachineInfo{
+		DeviceModel:    release.DeviceModel,
+		DeviceConfig:   release.DeviceConfig,
+		MachineId:      machineID,
+		CurrentVersion: info.Version,
+		BrandId:        release.BrandId,
+		Os:             strings.ToLower(release.Os),
+		OsVersion:      release.OsVersion,
+		OsTarget:       release.OsTarget,
+		OsArch:         release.OsArch,
+		OsProfile:      release.OsProfile,
+		GoVersion:      sdkutils.GO_VERSION,
+		GoArch:         sdkutils.GOARCH,
+		Monolythic:     tags.HasGoTag("mono"),
+		Channel:        strings.ToLower(cfg.Channel),
+	}, nil
+}
+
+// OnMachineIDChanged is called when the machine ID changes
+// It updates the server with the new machine ID
+func OnMachineIDChanged(oldID, newID string) {
+	log.Printf("Machine ID changed: %s -> %s. Updating server...", oldID, newID)
+
+	srv, ctx := rpc_flarewifi_v1.GetTwirpServiceAndCtx()
+
+	machineInfo, err := buildMachineInfo(newID)
+	if err != nil {
+		log.Printf("Failed to build machine info: %v", err)
+		return
+	}
+
+	req := &rpc_flarewifi_v1.UpdateMachineInfoRequest{
+		MachineId:   oldID,
+		MachineInfo: machineInfo,
+	}
+
+	_, err = srv.UpdateMachineInfo(ctx, req)
+	if err != nil {
+		log.Printf("Failed to update machine info on server: %v", err)
+		return
+	}
+
+	log.Printf("Successfully updated machine info on server")
+}
+
 func Validate() {
 	IsValidating.Store(true)
 	defer IsValidating.Store(false)
+
+	// Check if machine ID changed and update server if needed
+	oldID, newID := machineuid.GetMachineUID()
+	if oldID != "" && newID != "" && oldID != newID {
+		OnMachineIDChanged(oldID, newID)
+	}
 
 	ok, _ := offlineActivation()
 	if ok {
@@ -72,7 +140,7 @@ func offlineActivation() (ok bool, err error) {
 		return false, err
 	}
 
-	machineID := machineuid.GetMachineUID()
+	_, machineID := machineuid.GetMachineUID()
 
 	token, err := jwt.Parse(decryptedToken, func(token *jwt.Token) (any, error) {
 		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
@@ -122,22 +190,24 @@ func checkActivationOnline() (ok bool, err error) {
 		return false, ErrProcessFail
 	}
 
-	machineID := machineuid.GetMachineUID()
+	_, machineID := machineuid.GetMachineUID()
 	params := rpc_flarewifi_v1.MachineActivationRequest{
-		DeviceModel:    release.DeviceModel,
-		DeviceConfig:   release.DeviceConfig,
-		MachineId:      machineID,
-		CurrentVersion: info.Version,
-		BrandId:        release.BrandId,
-		Os:             strings.ToLower(release.Os),
-		OsVersion:      release.OsVersion,
-		OsTarget:       release.OsTarget,
-		OsArch:         release.OsArch,
-		OsProfile:      release.OsProfile,
-		GoVersion:      sdkutils.GO_VERSION,
-		GoArch:         sdkutils.GOARCH,
-		Monolythic:     tags.HasGoTag("mono"),
-		Channel:        strings.ToLower(cfg.Channel),
+		MachineInfo: &rpc_flarewifi_v1.MachineInfo{
+			DeviceModel:    release.DeviceModel,
+			DeviceConfig:   release.DeviceConfig,
+			MachineId:      machineID,
+			CurrentVersion: info.Version,
+			BrandId:        release.BrandId,
+			Os:             strings.ToLower(release.Os),
+			OsVersion:      release.OsVersion,
+			OsTarget:       release.OsTarget,
+			OsArch:         release.OsArch,
+			OsProfile:      release.OsProfile,
+			GoVersion:      sdkutils.GO_VERSION,
+			GoArch:         sdkutils.GOARCH,
+			Monolythic:     tags.HasGoTag("mono"),
+			Channel:        strings.ToLower(cfg.Channel),
+		},
 	}
 
 	var act *rpc_flarewifi_v1.MachineActivationResponse
