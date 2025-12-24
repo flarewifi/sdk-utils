@@ -14,5 +14,6 @@ func NewMachineApi(api *PluginApi) {
 }
 
 func (m *MachineApi) GetID() string {
-	return machineuid.GetMachineUID()
+	_, machineID := machineuid.GetMachineUID()
+	return machineID
 }

@@ -19,4 +19,5 @@ type IDhcpApi interface {
 	GetSection(ifname string) (section string, ok bool)
 	GetConfig(section string) (dhcp *DhcpCfg, ok bool)
 	SetConfig(ifname string, cfg *DhcpCfg) error
+	GetDnsmasqLeasesFiles() ([]string, error)
 }

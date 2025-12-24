@@ -106,3 +106,17 @@ func (self *UciDhcpApi) SetConfig(ifname string, cfg *sdkapi.DhcpCfg) error {
 
 	return nil
 }
+
+// GetDnsmasqLeasesFiles retrieves the DHCPv4 lease file paths from UCI configuration.
+// Reads from dhcp.dnsmasq.leasefile option.
+// Returns slice with default /tmp/dhcp.leases if not configured.
+// Currently returns single file, but designed to support multiple files in future.
+func (self *UciDhcpApi) GetDnsmasqLeasesFiles() ([]string, error) {
+	leasefiles, ok := UciTree.Get("dhcp", "dnsmasq", "leasefile")
+	if !ok || len(leasefiles) == 0 {
+		// Default to standard OpenWRT dnsmasq leases path
+		return []string{"/tmp/dhcp.leases"}, nil
+	}
+	// UCI returns slice, but typically only one leasefile is configured
+	return leasefiles, nil
+}

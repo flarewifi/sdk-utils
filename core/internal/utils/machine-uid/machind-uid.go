@@ -9,8 +9,15 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
+)
+
+const (
+	machineIDCacheFile = "/etc/.mid"
+	maxRetries         = 10
+	retryDelay         = 3 * time.Second
 )
 
 var (
@@ -19,19 +26,25 @@ var (
 	verified   bool
 )
 
-// GetMachineUID returns a unique identifier for the OpenWRT device.
-// It uses:
-// 1. CPU serial from /proc/cpuinfo (if available)
-// 2. MAC addresses from all physical network interfaces (excludes virtual interfaces)
-// 3. The combined identifiers are hashed using SHA-1
-func GetMachineUID() string {
-	mu.Lock()
-	defer mu.Unlock()
-
-	if machineUID != "" && verified {
-		return machineUID
+// readCachedMachineID reads the cached machine ID from /etc/.mid
+func readCachedMachineID() string {
+	data, err := os.ReadFile(machineIDCacheFile)
+	if err != nil {
+		return ""
 	}
+	return strings.TrimSpace(string(data))
+}
 
+// writeCachedMachineID writes the machine ID to /etc/.mid
+func writeCachedMachineID(uid string) {
+	err := os.WriteFile(machineIDCacheFile, []byte(uid), 0644)
+	if err != nil {
+		log.Printf("Warning: Failed to write machine ID cache to %s: %v", machineIDCacheFile, err)
+	}
+}
+
+// calculateMachineUID calculates the machine UID from system identifiers
+func calculateMachineUID() string {
 	var identifiers []string
 
 	// Get CPU serial if available
@@ -50,22 +63,78 @@ func GetMachineUID() string {
 	}
 
 	// Hash the combined identifiers
-	uid := strings.ToUpper(sdkutils.Sha1Hash(identifiers...))
+	return strings.ToUpper(sdkutils.Sha1Hash(identifiers...))
+}
 
-	if machineUID != "" && machineUID != uid {
-		// Machine UID has changed
-		log.Println("Warning: Machine UID has changed from", machineUID, "to", uid)
+// GetMachineUID returns a unique identifier for the OpenWRT device.
+// It uses:
+// 1. CPU serial from /proc/cpuinfo (if available)
+// 2. MAC addresses from accepted physical network interfaces (wan, lan, lan1-9, eth0-9, eth*, lan*)
+// 3. The combined identifiers are hashed using SHA-1
+// 4. Caches the result to /etc/.mid for consistency
+//
+// Returns (oldMachineID, newMachineID):
+// - If machine ID hasn't changed: returns ("", currentID)
+// - If machine ID changed: returns (cachedID, newID)
+func GetMachineUID() (string, string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if machineUID != "" && verified {
+		return "", machineUID
 	}
 
-	// Verify if cached UID matches
-	if machineUID != "" && machineUID == uid {
+	// Read cached machine ID
+	cachedID := readCachedMachineID()
+
+	// Calculate current machine ID
+	currentID := calculateMachineUID()
+	if currentID == "" {
+		return "", ""
+	}
+
+	// If no cached ID exists, this is first run
+	if cachedID == "" {
+		machineUID = currentID
 		verified = true
+		writeCachedMachineID(currentID)
+		return "", currentID
 	}
 
-	// Cache the result
-	machineUID = uid
+	// If cached ID matches current ID, we're done
+	if cachedID == currentID {
+		machineUID = currentID
+		verified = true
+		return "", currentID
+	}
 
-	return uid
+	// Machine ID mismatch - retry with delays
+	log.Printf("Machine ID mismatch: cached=%s, current=%s. Retrying...", cachedID, currentID)
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		time.Sleep(retryDelay)
+
+		retryID := calculateMachineUID()
+		if retryID == cachedID {
+			log.Printf("Machine ID matched cached value after %d attempts", attempt)
+			machineUID = cachedID
+			verified = true
+			return "", cachedID
+		}
+
+		log.Printf("Retry %d/%d: Machine ID still %s (expected %s)", attempt, maxRetries, retryID, cachedID)
+		currentID = retryID
+	}
+
+	// After all retries, machine ID has changed
+	log.Printf("Machine ID changed after %d retries: %s -> %s", maxRetries, cachedID, currentID)
+
+	// Update cache with new ID
+	machineUID = currentID
+	verified = true
+	writeCachedMachineID(currentID)
+
+	return cachedID, currentID
 }
 
 // readInterfaceMAC reads the MAC address of a specific network interface
@@ -110,6 +179,43 @@ func readCPUSerial() string {
 	return ""
 }
 
+// isAcceptedInterface checks if an interface matches accepted patterns
+// Accepts: wan, lan, lan1-9, eth0-9, eth*, lan*
+func isAcceptedInterface(ifaceName string) bool {
+	// Exact matches
+	if ifaceName == "wan" || ifaceName == "lan" {
+		return true
+	}
+
+	// lan1-9 (exactly 4 characters: lan + single digit 1-9)
+	if strings.HasPrefix(ifaceName, "lan") && len(ifaceName) == 4 {
+		digit := ifaceName[3]
+		if digit >= '1' && digit <= '9' {
+			return true
+		}
+	}
+
+	// eth0-9 (exactly 4 characters: eth + single digit 0-9)
+	if strings.HasPrefix(ifaceName, "eth") && len(ifaceName) == 4 {
+		digit := ifaceName[3]
+		if digit >= '0' && digit <= '9' {
+			return true
+		}
+	}
+
+	// eth* (any interface starting with eth)
+	if strings.HasPrefix(ifaceName, "eth") {
+		return true
+	}
+
+	// lan* (any interface starting with lan)
+	if strings.HasPrefix(ifaceName, "lan") {
+		return true
+	}
+
+	return false
+}
+
 // readAllNetworkMACs reads MAC addresses from all available network interfaces
 func readAllNetworkMACs() []string {
 	netPath := "/sys/class/net"
@@ -127,16 +233,21 @@ func readAllNetworkMACs() []string {
 			continue
 		}
 
+		// Only accept specific interface patterns
+		if !isAcceptedInterface(ifaceName) {
+			continue
+		}
+
 		mac := readInterfaceMAC(ifaceName)
 		if mac != "" {
 			macs = append(macs, mac)
 		}
 	}
 
-	// Sort for consistency
-	sdkutils.TrimRedundantWords(strings.Join(macs, " "), " ")
+	// Sort for consistency and group duplicates
 	sort.Strings(macs)
-	return macs
+	uniqueMACs := sdkutils.TrimRedundantWords(strings.Join(macs, " "), " ")
+	return strings.Fields(uniqueMACs)
 }
 
 // isVirtualInterface checks if an interface is virtual (should be excluded)

@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 
 	"core/internal/api"
+	"core/internal/network"
 	"core/internal/sessmgr"
 	devicetoken "core/internal/utils/device-token"
 	machineuid "core/internal/utils/machine-uid"
@@ -16,24 +18,61 @@ import (
 	sdkapi "sdk/api"
 )
 
+// PortalRootCtrl handles the root path "/"
+// Renders a simple HTML page with inline JavaScript that redirects to http://<lan-ip>/portal/redirect
+func PortalRootCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var lanIP string
+
+		// Get client IP from request
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			// Fallback: use request host
+			lanIP = r.Host
+		} else {
+			// Find LAN interface by client IP
+			lan, err := network.FindByIp(ip)
+			if err != nil {
+				// Fallback: use request host
+				lanIP = r.Host
+			} else {
+				// Get LAN IP address
+				lanIPAddr, err := lan.GetInterface().IpV4Addr()
+				if err != nil {
+					// Fallback: use request host
+					lanIP = r.Host
+				} else {
+					lanIP = lanIPAddr.Addr
+				}
+			}
+		}
+
+		// Get redirect path using UrlForRoute
+		redirectPath := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:redirector")
+
+		// Render portal root page with inline JavaScript
+		page := portalview.PortalRootPage(g.CoreAPI, lanIP, redirectPath)
+
+		// Render directly without ViewPage wrapper (no assets needed)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		page.Render(r.Context(), w)
+	}
+}
+
 // PortalRedirectCtrl handles the /portal route
 // Uses AJAX-based registration with localStorage token management
 // Falls back to cookie-based registration on any error
+// ALWAYS triggers registration flow to handle MAC/IP changes (MAC randomization support)
 func PortalRedirectCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// If device already registered, redirect to portal index
-		clnt, err := g.CoreAPI.HttpAPI.GetClientDevice(r)
-		if err == nil && clnt != nil {
-			g.CoreAPI.HttpAPI.Response().Redirect(w, r, "portal:index")
-			return
-		}
-
 		// Get URLs for AJAX registration flow
 		redirectUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:index")
 		registerUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:register:ajax")
 		fallbackUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:register")
 
-		// Render AJAX registration page
+		// Always render AJAX registration page to trigger device validation/update
+		// This ensures MAC/IP changes are detected (e.g., MAC randomization)
+		// The AJAX endpoint will validate existing tokens or register new devices
 		page := portalview.PortalRedirectPage(g.CoreAPI, redirectUrl, registerUrl, fallbackUrl)
 		v := sdkapi.ViewPage{
 			Assets: sdkapi.ViewAssets{
@@ -48,6 +87,7 @@ func PortalRedirectCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterCtrl: Request received - RemoteAddr: %s", r.RemoteAddr))
 		clntMgr := g.CoreAPI.ClientRegister
 
 		// Get device ID from JWT cookie (if exists)
@@ -62,10 +102,18 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		h, err := hostfinder.GetHostFromRequest(r)
 		if err != nil {
-			userMsg := g.CoreAPI.Translate("error", "Unable to identify your device from the network")
-			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterCtrl: Failed to identify device - RemoteAddr: %s, Error: %v", r.RemoteAddr, err))
-			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(userMsg), http.StatusBadRequest)
-			return
+			// Check if error is DHCP-related (we still have MAC/IP) or ARP failure (critical)
+			if h != nil && h.MacAddr != "" {
+				// Got MAC/IP but DHCP lease read failed - log warning but continue
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterCtrl: DHCP lease lookup failed (continuing with empty hostname) - RemoteAddr: %s, MAC: %s, IP: %s, Error: %v",
+					r.RemoteAddr, h.MacAddr, h.IpAddr, err))
+			} else {
+				// Critical error - couldn't identify device at all
+				userMsg := g.CoreAPI.Translate("error", "Unable to identify your device from the network")
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterCtrl: Failed to identify device - RemoteAddr: %s, Error: %v", r.RemoteAddr, err))
+				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(userMsg), http.StatusBadRequest)
+				return
+			}
 		}
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterCtrl: Identified device - MAC: %s, IP: %s, Hostname: %s", h.MacAddr, h.IpAddr, h.Hostname))
 
@@ -102,6 +150,9 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterCtrl: Successfully registered device - ID: %d, MAC: %s, IP: %s",
 			clnt.ID(), clnt.MacAddr(), clnt.IpAddr()))
+
+		// Set "register" cookie to allow access to /portal/index
+		g.CoreAPI.HttpAPI.Cookie().SetPlainCookie(w, "register", "1", nil)
 		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "portal:index")
 	}
 }
@@ -117,6 +168,7 @@ type PortalRegisterAjaxRequest struct {
 // 2. No token: Registers new device and returns new token
 func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Request received - RemoteAddr: %s", r.RemoteAddr))
 		clntMgr := g.CoreAPI.ClientRegister
 		ctx := r.Context()
 
@@ -134,20 +186,31 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		hasToken := reqBody.DeviceToken != ""
+		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Request parsed - HasToken: %v", hasToken))
+
 		// Get device MAC/IP/hostname from request
 		h, err := hostfinder.GetHostFromRequest(r)
 		if err != nil {
-			errMsg := g.CoreAPI.Translate("error", "Unable to identify device")
-			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Failed to get host from request - RemoteAddr: %s, Error: %v", r.RemoteAddr, err))
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success": false,
-				"error":   errMsg,
-			})
-			return
+			// Check if error is DHCP-related (we still have MAC/IP) or ARP failure (critical)
+			if h != nil && h.MacAddr != "" {
+				// Got MAC/IP but DHCP lease read failed - log warning but continue
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: DHCP lease lookup failed (continuing with empty hostname) - RemoteAddr: %s, MAC: %s, IP: %s, Error: %v",
+					r.RemoteAddr, h.MacAddr, h.IpAddr, err))
+			} else {
+				// Critical error - couldn't identify device at all
+				errMsg := g.CoreAPI.Translate("error", "Unable to identify device")
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Failed to get host from request - RemoteAddr: %s, Error: %v", r.RemoteAddr, err))
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"error":   errMsg,
+				})
+				return
+			}
 		}
-		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Identified device - MAC: %s, IP: %s", h.MacAddr, h.IpAddr))
+		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Identified device - MAC: %s, IP: %s, Hostname: %s", h.MacAddr, h.IpAddr, h.Hostname))
 
 		// Determine device ID from token or cookie
 		var cookieDeviceID *int64
@@ -157,7 +220,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			g.CoreAPI.LoggerAPI.Info("PortalRegisterAjax: Token provided, validating...")
 
 			// Verify token signature
-			machineID := machineuid.GetMachineUID()
+			_, machineID := machineuid.GetMachineUID()
 			deviceID, err := devicetoken.VerifyDeviceToken(reqBody.DeviceToken, machineID)
 			if err != nil {
 				// Check if it's an expired token error
@@ -229,7 +292,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		updated := false
 
 		// Generate JWT device token for localStorage
-		machineID := machineuid.GetMachineUID()
+		_, machineID := machineuid.GetMachineUID()
 		deviceToken, err := devicetoken.GenerateDeviceToken(clnt.ID(), machineID)
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "Failed to generate device token")
@@ -257,6 +320,9 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get redirect URL
 		redirectUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:index")
 
+		// Set "register" cookie to allow access to /portal/index
+		g.CoreAPI.HttpAPI.Cookie().SetPlainCookie(w, "register", "1", nil)
+
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Success - DeviceID: %d, MAC: %s, IP: %s, Updated: %v",
 			clnt.ID(), clnt.MacAddr(), clnt.IpAddr(), updated))
 
@@ -275,6 +341,19 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 func PortalIndexPage(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check for "register" cookie
+		_, err := g.CoreAPI.HttpAPI.Cookie().GetPlainCookie(r, "register")
+		if err != nil {
+			// Cookie not present, redirect to portal root
+			g.CoreAPI.LoggerAPI.Info("PortalIndexPage: No register cookie found, redirecting to portal root")
+			g.CoreAPI.HttpAPI.Response().RedirectToPortal(w, r)
+			return
+		}
+
+		// Cookie present, remove it and render the page
+		g.CoreAPI.HttpAPI.Cookie().DeleteCookie(w, "register")
+		g.CoreAPI.LoggerAPI.Info("PortalIndexPage: Register cookie found and removed, rendering index page")
+
 		p, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "Unable to Get Portal Theme")

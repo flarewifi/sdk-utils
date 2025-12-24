@@ -71,6 +71,33 @@ func (self *HttpCookie) SetCookie(w http.ResponseWriter, name string, value stri
 	http.SetCookie(w, cookie)
 }
 
+// SetPlainCookie sets a plain cookie value without JWT signing
+func (self *HttpCookie) SetPlainCookie(w http.ResponseWriter, name string, value string, opts *sdkapi.HttpCookieOpts) {
+	cookie := &http.Cookie{
+		Name:  name,
+		Value: strings.TrimSpace(value),
+	}
+	if opts != nil {
+		cookie.Path = opts.Path
+		cookie.Expires = opts.Expires
+		cookie.SameSite = opts.SameSite
+	} else {
+		cookie.Path = "/"
+		cookie.Expires = time.Now().Add(24 * time.Hour)
+		cookie.SameSite = http.SameSiteLaxMode
+	}
+	http.SetCookie(w, cookie)
+}
+
+// GetPlainCookie returns the plain cookie value without JWT verification
+func (self *HttpCookie) GetPlainCookie(r *http.Request, name string) (value string, err error) {
+	cookie, err := r.Cookie(name)
+	if err != nil {
+		return "", err
+	}
+	return cookie.Value, nil
+}
+
 // DeleteCookie deletes the cookie value for a given cookie name
 func (self *HttpCookie) DeleteCookie(w http.ResponseWriter, name string) {
 	expires := time.Now().AddDate(0, 0, -1)

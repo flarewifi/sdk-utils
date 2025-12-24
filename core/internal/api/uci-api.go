@@ -14,7 +14,11 @@ type UciApi struct {
 }
 
 func NewUciApi(pluginApi *PluginApi) {
-	uciApi := &UciApi{}
+	uciApi := &UciApi{
+		networkApi:  uci.NewUciNetworkApi(),
+		dhcpApi:     uci.NewUciDhcpApi(),
+		wirelessApi: uci.NewUciWirelessApi(),
+	}
 	pluginApi.UciAPI = uciApi
 }
 

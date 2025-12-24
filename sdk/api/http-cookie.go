@@ -21,8 +21,14 @@ type IHttpCookie interface {
 	// SetCookie sets the cookie value for a given cookie name
 	SetCookie(w http.ResponseWriter, name string, value string, opts *HttpCookieOpts)
 
+	// SetPlainCookie sets a plain cookie value for a given cookie name
+	SetPlainCookie(w http.ResponseWriter, name string, value string, opts *HttpCookieOpts)
+
 	// GetCookie returns the cookie value defined by the cookie name
 	GetCookie(r *http.Request, name string) (value string, err error)
+
+	// GetPlainCookie returns the plain cookie value defined by the cookie name
+	GetPlainCookie(r *http.Request, name string) (value string, err error)
 
 	// DeleteCookie deletes the cookie value for a given cookie name
 	DeleteCookie(w http.ResponseWriter, name string)

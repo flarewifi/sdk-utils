@@ -8,12 +8,14 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func GetMachineUID() string {
+// GetMachineUID returns a unique identifier for the dev environment.
+// In dev mode, machine ID never changes, so always returns ("", machineID)
+func GetMachineUID() (string, string) {
 	f := filepath.Join(sdkutils.PathAppDir, "MACHINE_UID")
 	uid, err := sdkutils.FsReadFile(f)
 	if err != nil {
-		return "machine_001"
+		return "", "machine_001"
 	}
 
-	return uid
+	return "", uid
 }

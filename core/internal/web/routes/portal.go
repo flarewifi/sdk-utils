@@ -12,7 +12,6 @@ import (
 
 func PortalRoutes(g *api.CoreGlobals) {
 
-	coreAPI := g.CoreAPI
 	rootR := router.RootRouter
 	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
 
@@ -22,20 +21,15 @@ func PortalRoutes(g *api.CoreGlobals) {
 	ensureDeviceMw := middlewares.EnsureDeviceRegistered(g.CoreAPI)
 
 	portalSseCtrl := controllers.PortalSseHandler(g)
+	portalRootCtrl := controllers.PortalRootCtrl(g)
 	portalRedirectCtrl := controllers.PortalRedirectCtrl(g)
 	portalRegisterCtrl := controllers.PortalRegisterCtrl(g)
 	portalRegisterAjaxCtrl := controllers.PortalRegisterAjaxCtrl(g)
 	portalIndexPageCtrl := controllers.PortalIndexPage(g)
 
-	// Root route redirects to /portal
-	// Applies HTTPRedirect middleware to redirect HTTPS to HTTP
-	rootR.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		h := redirectToLanIpMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			coreAPI.HttpAPI.Response().Redirect(w, r, "portal:redirector")
-		}))
-		h = httpRedirectMw(h)
-		h.ServeHTTP(w, r)
-	}).Methods("GET").Name("portal:root")
+	// Root route renders a simple HTML page with inline JavaScript
+	// that redirects to http://<lan-ip>/portal/redirect
+	rootR.HandleFunc("/", portalRootCtrl).Methods("GET").Name("portal:root")
 
 	portalR.Group("/register", func(regR sdkapi.IHttpRouterInstance) {
 		regR.Use(redirectToLanIpMw)

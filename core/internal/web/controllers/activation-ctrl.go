@@ -26,7 +26,7 @@ type ActivationCtrl struct {
 }
 
 func (ctrl *ActivationCtrl) ActivationPage(w http.ResponseWriter, r *http.Request) {
-	machineID := machineuid.GetMachineUID()
+	_, machineID := machineuid.GetMachineUID()
 
 	page := activationview.ActivationPage(&activationview.ActivationPageData{
 		API:       ctrl.g.CoreAPI,

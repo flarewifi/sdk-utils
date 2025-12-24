@@ -4,9 +4,9 @@ import (
 	"context"
 	machineuid "core/internal/utils/machine-uid"
 	rpcutil "core/internal/utils/rpc"
+	"core/tools/env"
 	"log"
 	"net/http"
-	"core/tools/env"
 
 	"github.com/twitchtv/twirp"
 )
@@ -15,7 +15,7 @@ func GetTwirpServiceAndCtx() (FlarehotspotService, context.Context) {
 	url := env.RPC_PROXY_URL + "/flarewifi/" + env.RPC_API_VERSION
 
 	// Create HTTP client with custom RoundTripper for Cloudflare Worker validation
-	machineID := machineuid.GetMachineUID()
+	_, machineID := machineuid.GetMachineUID()
 	httpClient := rpcutil.NewCloudflareClient(machineID)
 	srv := NewFlarehotspotServiceProtobufClient(url, httpClient)
 	header := make(http.Header)
