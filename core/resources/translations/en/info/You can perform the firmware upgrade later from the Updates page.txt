@@ -1,0 +1,1 @@
+You can perform the firmware upgrade later from the Updates page.

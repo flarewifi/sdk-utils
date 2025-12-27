@@ -1,1 +1,1 @@
-Realizando Sysupgrade
+Realizando actualización del sistema

@@ -32,6 +32,8 @@ var (
 		"opkg",
 		"shutdown",
 		"reboot",
+		"halt",
+		"sysupgrade",
 	}
 )
 

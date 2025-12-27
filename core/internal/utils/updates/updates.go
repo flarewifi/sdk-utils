@@ -2,6 +2,8 @@ package updates
 
 import (
 	rpc "core/internal/rpc"
+	"core/tools/config"
+	"core/tools/tags"
 	"crypto/md5"
 	"encoding/base64"
 	"errors"
@@ -13,8 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
-	"core/tools/config"
-	"core/tools/tags"
 
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -281,7 +281,7 @@ func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 // GetUpdateOutputPath returns the appropriate output path based on update type
 func GetUpdateOutputPath(fileUrl string, isSysupgrade bool) string {
 	if isSysupgrade {
-		return SysupgradePath
+		return GetSysupgradePath()
 	}
 	return filepath.Join(sdkutils.PathSystemUpdateDir, filepath.Base(fileUrl))
 }

@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// SysupgradePath is the OpenWRT standard path for sysupgrade files
-	SysupgradePath = "/tmp/sysupgrade.bin"
+	// SysupgradeFilename is the filename for sysupgrade files
+	SysupgradeFilename = "sysupgrade.bin"
 
 	// MaxSysupgradeFileSize is the maximum allowed file size (100 MB)
 	MaxSysupgradeFileSize = 100 << 20
@@ -32,6 +32,12 @@ var (
 	ErrIncompatibleFirmware     = errors.New("firmware is not compatible with this device")
 	ErrFirmwareValidationFailed = errors.New("firmware validation failed")
 )
+
+// GetSysupgradePath returns the path where sysupgrade file is saved
+// Stored at: data/storage/system/sysupgrade.bin
+func GetSysupgradePath() string {
+	return filepath.Join(sdkutils.PathSysupgradeDir, SysupgradeFilename)
+}
 
 // ValidateSysupgradeFile validates the uploaded sysupgrade file
 // Returns nil if valid, error otherwise
@@ -51,11 +57,23 @@ func ValidateSysupgradeFile(filename string, fileSize int64) error {
 	return nil
 }
 
-// SaveSysupgradeFile saves the uploaded sysupgrade file to /tmp/sysupgrade.bin
-// (OpenWRT standard path) and creates the completion marker file
+// SaveSysupgradeFile saves the uploaded sysupgrade file to data/storage/system/sysupgrade.bin
+// and creates the completion marker file
 func SaveSysupgradeFile(src io.Reader, filename string) error {
-	// Create the destination file at OpenWRT standard sysupgrade path
-	destFile, err := os.Create(SysupgradePath)
+	// Ensure the sysupgrade directory exists
+	if err := sdkutils.FsEnsureDir(sdkutils.PathSysupgradeDir); err != nil {
+		return ErrSaveFile
+	}
+
+	// Ensure the updates directory exists for marker file
+	if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
+		return ErrSaveFile
+	}
+
+	sysupgradePath := GetSysupgradePath()
+
+	// Create the destination file
+	destFile, err := os.Create(sysupgradePath)
 	if err != nil {
 		return ErrSaveFile
 	}
@@ -63,19 +81,14 @@ func SaveSysupgradeFile(src io.Reader, filename string) error {
 
 	// Copy the file contents
 	if _, err := io.Copy(destFile, src); err != nil {
-		os.Remove(SysupgradePath)
-		return ErrSaveFile
-	}
-
-	// Ensure the marker directory exists
-	if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
+		os.Remove(sysupgradePath)
 		return ErrSaveFile
 	}
 
 	// Create completion marker file for UI state tracking
 	markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
 	if err := os.WriteFile(markerPath, []byte("sysupgrade"), 0644); err != nil {
-		os.Remove(SysupgradePath)
+		os.Remove(sysupgradePath)
 		return ErrSaveFile
 	}
 
@@ -92,14 +105,9 @@ func GetMaxFileSizeMB() int {
 	return MaxSysupgradeFileSize >> 20
 }
 
-// GetSysupgradePath returns the path where sysupgrade file is saved
-func GetSysupgradePath() string {
-	return SysupgradePath
-}
-
-// IsSysupgradeReady checks if a sysupgrade file is ready at /tmp/sysupgrade.bin
+// IsSysupgradeReady checks if a sysupgrade file is ready
 func IsSysupgradeReady() bool {
-	return sdkutils.FsExists(SysupgradePath)
+	return sdkutils.FsExists(GetSysupgradePath())
 }
 
 // ValidateSysupgradeCompatibility runs sysupgrade -T to check if the firmware
@@ -111,7 +119,7 @@ func ValidateSysupgradeCompatibility() error {
 
 	// Run sysupgrade -T to test firmware compatibility
 	// Exit code 0 = compatible, non-zero = incompatible
-	err := cmd.Exec("sysupgrade -T "+SysupgradePath, nil)
+	err := cmd.Exec("sysupgrade -T "+GetSysupgradePath(), nil)
 	if err != nil {
 		return ErrIncompatibleFirmware
 	}
@@ -121,7 +129,18 @@ func ValidateSysupgradeCompatibility() error {
 
 // RemoveSysupgradeFile removes the sysupgrade file and marker
 func RemoveSysupgradeFile() {
-	os.Remove(SysupgradePath)
+	os.Remove(GetSysupgradePath())
 	markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
 	os.Remove(markerPath)
+}
+
+// GetSysupgradeCommand returns the full sysupgrade command with appropriate flags
+// noPreserve=true means use -n flag (do not preserve data)
+func GetSysupgradeCommand(noPreserve bool) string {
+	cmd := "sysupgrade"
+	if noPreserve {
+		cmd += " -n"
+	}
+	cmd += " " + GetSysupgradePath()
+	return cmd
 }

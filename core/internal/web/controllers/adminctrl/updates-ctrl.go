@@ -2,15 +2,15 @@ package adminctrl
 
 import (
 	"core/internal/api"
-	"core/tools/markdown"
 	"core/internal/utils/updates"
 	updatesview "core/resources/views/admin/updates"
+	"core/tools/config"
+	"core/tools/markdown"
 	"errors"
 	"log"
 	"net/http"
 	sdkapi "sdk/api"
 	"sync/atomic"
-	"core/tools/config"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/a-h/templ"
@@ -47,7 +47,8 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		newUpdate.Store(&updates.SoftwareReleaseUpdate{HasUpdate: false})
-		page := updatesview.SoftwareUpdatesPage(api, channel, nil)
+		sysupgradeReady := updates.IsSysupgradeReady()
+		page := updatesview.SoftwareUpdatesPage(api, channel, nil, sysupgradeReady)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
@@ -70,6 +71,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		coreInfo := api.Info()
 
 		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "Unable to Check Updates"))
+		sysupgradeReady := updates.IsSysupgradeReady()
 		currentVersion, err := semver.NewVersion(coreInfo.Version)
 		if err != nil {
 			log.Println("Error:", err)
@@ -78,7 +80,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			if cfgFallback.Channel != "" {
 				channelFallback2 = cfgFallback.Channel
 			}
-			page := updatesview.SoftwareUpdatesPage(api, channelFallback2, checkUpdateErr)
+			page := updatesview.SoftwareUpdatesPage(api, channelFallback2, checkUpdateErr, sysupgradeReady)
 			page.Render(r.Context(), w)
 			return
 		}
@@ -91,7 +93,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			if cfg3.Channel != "" {
 				channelFallback = cfg3.Channel
 			}
-			page := updatesview.SoftwareUpdatesPage(api, channelFallback, checkUpdateErr)
+			page := updatesview.SoftwareUpdatesPage(api, channelFallback, checkUpdateErr, sysupgradeReady)
 			page.Render(r.Context(), w)
 			return
 		}
@@ -201,7 +203,16 @@ func DownloadDoneCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Check if this is a sysupgrade by looking for the sysupgrade file
 		isSysupgrade := updates.IsSysupgradeReady()
 
-		page := updatesview.DownloadDonePage(api, isSysupgrade)
+		// If it's a sysupgrade, redirect to the unified success page
+		if isSysupgrade {
+			successMsg := api.Translate("success", "Firmware downloaded and verified successfully")
+			res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
+			res.Redirect(w, r, "admin:updates:sysupgrade-success")
+			return
+		}
+
+		// For regular updates, show the download done page
+		page := updatesview.DownloadDonePage(api)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
@@ -240,8 +251,8 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		if err := r.ParseMultipartForm(updates.MaxSysupgradeFileSize); err != nil {
 			log.Println("Error parsing multipart form:", err)
 			errMsg := api.Translate("error", "Failed to parse upload form")
-			page := updatesview.SysupgradeUploadError(api, errMsg)
-			page.Render(r.Context(), w)
+			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin:updates:sysupgrade")
 			return
 		}
 
@@ -250,8 +261,8 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		if err != nil {
 			log.Println("Error getting form file:", err)
 			errMsg := api.Translate("error", "No file uploaded")
-			page := updatesview.SysupgradeUploadError(api, errMsg)
-			page.Render(r.Context(), w)
+			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin:updates:sysupgrade")
 			return
 		}
 		defer file.Close()
@@ -268,8 +279,8 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			default:
 				errMsg = api.Translate("error", "File validation failed")
 			}
-			page := updatesview.SysupgradeUploadError(api, errMsg)
-			page.Render(r.Context(), w)
+			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin:updates:sysupgrade")
 			return
 		}
 
@@ -277,8 +288,8 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		if err := updates.SaveSysupgradeFile(file, header.Filename); err != nil {
 			log.Println("Error saving sysupgrade file:", err)
 			errMsg := api.Translate("error", "Failed to save firmware file")
-			page := updatesview.SysupgradeUploadError(api, errMsg)
-			page.Render(r.Context(), w)
+			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin:updates:sysupgrade")
 			return
 		}
 
@@ -294,13 +305,66 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			default:
 				errMsg = api.Translate("error", "Firmware validation failed")
 			}
-			page := updatesview.SysupgradeUploadError(api, errMsg)
-			page.Render(r.Context(), w)
+			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin:updates:sysupgrade")
 			return
 		}
 
-		// Success - redirect to download-done page
-		res.FlashMsg(w, r, api.Translate("success", "Firmware uploaded and validated successfully"), sdkapi.FlashMsgSuccess)
-		res.Redirect(w, r, "admin:updates:download-done")
+		// Success - redirect to success page with options
+		successMsg := api.Translate("success", "Firmware uploaded and validated successfully")
+		res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
+		res.Redirect(w, r, "admin:updates:sysupgrade-success")
+	}
+}
+
+func SysupgradeSuccessPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.HttpAPI.Response()
+
+		// If sysupgrade is in progress, redirect to progress page
+		if IsSysupgradeInProgress() {
+			res.Redirect(w, r, "admin:updates:sysupgrade-progress")
+			return
+		}
+
+		// Check if sysupgrade file exists, if not redirect to upload page
+		if !updates.IsSysupgradeReady() {
+			res.Redirect(w, r, "admin:updates:sysupgrade")
+			return
+		}
+
+		csrfHTML := api.HttpAPI.Helpers().CsrfHtmlTag(r)
+		page := updatesview.SysupgradeSuccessPage(api, csrfHTML)
+		res.AdminView(w, r, sdkapi.ViewPage{
+			PageContent: page,
+		})
+	}
+}
+
+func SysupgradeProgressPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.HttpAPI.Response()
+
+		page := updatesview.SysupgradeProgressPage(api)
+		res.AdminView(w, r, sdkapi.ViewPage{
+			PageContent: page,
+		})
+	}
+}
+
+func SysupgradeDeleteCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.HttpAPI.Response()
+
+		// Remove the sysupgrade file and all related markers
+		updates.RemoveSysupgradeFile()
+
+		// Show success message and redirect to check for updates page
+		successMsg := api.Translate("success", "Firmware file deleted successfully")
+		res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
+		res.Redirect(w, r, "admin:updates:index")
 	}
 }

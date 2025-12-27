@@ -1,1 +1,1 @@
-Executando sysupgrade
+Executando atualização do sistema
