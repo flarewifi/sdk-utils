@@ -10,7 +10,7 @@
     if (redirectURL) {
       setTimeout(function() {
         window.location.href = redirectURL;
-      }, 3000);
+      }, 1500);
     }
   }
 })();
