@@ -8,7 +8,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/goccy/go-json"
 
-	"core/internal/utils/events"
+	"core/internal/modules/events"
 	sse "core/tools/sse"
 	"slices"
 )

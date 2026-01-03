@@ -2,8 +2,8 @@ package rpc_flarewifi_v1
 
 import (
 	"context"
-	machineuid "core/internal/utils/machine-uid"
-	rpcutil "core/internal/utils/rpc"
+	machineuid "core/internal/modules/machine-uid"
+	rpcutil "core/internal/modules/rpc"
 	"core/tools/env"
 	"log"
 	"net/http"

@@ -8,10 +8,10 @@ import (
 	"net/http"
 
 	"core/internal/api"
+	devicetoken "core/internal/modules/device-token"
+	machineuid "core/internal/modules/machine-uid"
 	"core/internal/network"
 	"core/internal/sessmgr"
-	devicetoken "core/internal/utils/device-token"
-	machineuid "core/internal/utils/machine-uid"
 	portalview "core/resources/views/portal"
 	"core/tools/hostfinder"
 	sse "core/tools/sse"

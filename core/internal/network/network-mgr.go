@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"core/internal/utils/ubus"
+	"core/internal/modules/ubus"
 	"core/tools/config"
 	jobque "core/tools/job-que"
 )

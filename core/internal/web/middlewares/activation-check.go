@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"core/internal/utils/activation"
+	"core/internal/modules/activation"
 	"core/internal/web/helpers"
 )
 

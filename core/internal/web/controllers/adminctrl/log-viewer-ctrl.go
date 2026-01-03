@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"core/internal/api"
-	"core/internal/utils/logger"
+	"core/internal/modules/logger"
 )
 
 type LogViewerData struct {

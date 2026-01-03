@@ -2,15 +2,15 @@ package adminctrl
 
 import (
 	"core/internal/api"
-	"core/tools/markdown"
-	"core/internal/utils/updates"
+	"core/internal/modules/updates"
 	updatesview "core/resources/views/admin/updates"
+	"core/tools/config"
+	"core/tools/markdown"
 	"errors"
 	"log"
 	"net/http"
 	sdkapi "sdk/api"
 	"sync/atomic"
-	"core/tools/config"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/a-h/templ"

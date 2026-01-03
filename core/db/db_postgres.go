@@ -12,7 +12,7 @@ import (
 	"time"
 
 	queries "core/db/queries"
-	"core/internal/utils/pg"
+	"core/internal/modules/pg"
 	"core/tools/config"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"

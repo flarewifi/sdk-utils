@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	machineuid "core/internal/utils/machine-uid"
+	machineuid "core/internal/modules/machine-uid"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 

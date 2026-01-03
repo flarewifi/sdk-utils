@@ -3,8 +3,8 @@ package boot
 import (
 	"context"
 	"core/internal/api"
-	"core/internal/utils/activation"
-	"core/internal/utils/updates"
+	"core/internal/modules/activation"
+	"core/internal/modules/updates"
 	"log"
 	"os"
 	"time"

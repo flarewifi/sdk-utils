@@ -2,13 +2,13 @@ package adminctrl
 
 import (
 	"core/internal/api"
-	"core/internal/utils/updates"
+	"core/internal/modules/updates"
 	powerview "core/resources/views/admin/power"
+	cmd "core/tools/shell"
 	"fmt"
 	"net/http"
 	sdkapi "sdk/api"
 	"time"
-	cmd "core/tools/shell"
 )
 
 func RebootPageCtrl(g *api.CoreGlobals) http.HandlerFunc {

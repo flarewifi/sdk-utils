@@ -1,7 +1,7 @@
 package network
 
 import (
-	"core/internal/utils/ubus"
+	"core/internal/modules/ubus"
 	sdkapi "sdk/api"
 )
 

@@ -1,7 +1,7 @@
 package api
 
 import (
-	machineuid "core/internal/utils/machine-uid"
+	machineuid "core/internal/modules/machine-uid"
 )
 
 type MachineApi struct {

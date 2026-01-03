@@ -5,7 +5,7 @@ import (
 	sdkapi "sdk/api"
 
 	"core/internal/api"
-	"core/internal/utils/database"
+	"core/internal/modules/database"
 	databaseview "core/resources/views/admin/database"
 	"core/tools/config"
 )

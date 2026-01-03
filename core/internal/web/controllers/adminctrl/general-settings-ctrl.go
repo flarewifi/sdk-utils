@@ -5,8 +5,8 @@ import (
 	sdkapi "sdk/api"
 
 	"core/internal/api"
-	"core/internal/utils/activation"
-	machineuid "core/internal/utils/machine-uid"
+	"core/internal/modules/activation"
+	machineuid "core/internal/modules/machine-uid"
 	generalview "core/resources/views/admin/general"
 	"core/tools/config"
 	"core/tools/env"

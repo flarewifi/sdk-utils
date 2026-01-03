@@ -11,8 +11,8 @@ import (
 
 	"core/db"
 	"core/db/models"
+	"core/internal/modules/nftables"
 	"core/internal/network"
-	"core/internal/utils/nftables"
 	sdkapi "sdk/api"
 )
 

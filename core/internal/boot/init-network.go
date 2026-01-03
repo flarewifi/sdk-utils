@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 
+	"core/internal/modules/nftables"
+	"core/internal/modules/ubus"
 	"core/internal/network"
-	"core/internal/utils/nftables"
-	"core/internal/utils/ubus"
 )
 
 func InitNetwork() (err error) {

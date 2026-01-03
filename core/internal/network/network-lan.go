@@ -5,9 +5,9 @@ import (
 	"log"
 	"sync"
 
-	"core/internal/utils/nftables"
-	"core/internal/utils/tc"
-	"core/internal/utils/ubus"
+	"core/internal/modules/nftables"
+	"core/internal/modules/tc"
+	"core/internal/modules/ubus"
 	"core/tools/config"
 	jobque "core/tools/job-que"
 )

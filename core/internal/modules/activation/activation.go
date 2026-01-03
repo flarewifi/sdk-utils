@@ -1,8 +1,8 @@
 package activation
 
 import (
+	machineuid "core/internal/modules/machine-uid"
 	rpc_flarewifi_v1 "core/internal/rpc"
-	machineuid "core/internal/utils/machine-uid"
 	"core/tools/config"
 	"core/tools/crypt"
 	"core/tools/tags"

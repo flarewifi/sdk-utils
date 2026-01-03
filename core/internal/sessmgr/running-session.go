@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"core/internal/modules/tc"
 	"core/internal/network"
-	"core/internal/utils/tc"
 	jobque "core/tools/job-que"
 	sdkapi "sdk/api"
 )

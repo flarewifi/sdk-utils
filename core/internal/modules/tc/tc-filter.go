@@ -6,7 +6,7 @@ import (
 	"log"
 	"sync"
 
-	ifbutil "core/internal/utils/network"
+	ifbutil "core/internal/modules/network"
 	jobque "core/tools/job-que"
 	cmd "core/tools/shell"
 )
