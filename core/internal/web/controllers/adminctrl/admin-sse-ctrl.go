@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"core/internal/api"
-	sse "core/tools/sse"
+	sse "core/utils/sse"
 )
 
 func AdminSseHandler(g *api.CoreGlobals) http.HandlerFunc {

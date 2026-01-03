@@ -9,9 +9,10 @@ import (
 	"os"
 
 	"core/db"
+	"core/utils/config"
+	"core/utils/migrate"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	"core/tools/config"
-	"core/tools/migrate"
 )
 
 // ResetDatabase drops all tables and re-runs migrations

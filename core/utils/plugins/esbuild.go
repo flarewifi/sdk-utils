@@ -1,10 +1,10 @@
 package plugins
 
 import (
+	"core/utils/env"
+	"core/utils/tags"
 	"path/filepath"
 	"strings"
-	"core/tools/env"
-	"core/tools/tags"
 
 	"github.com/evanw/esbuild/pkg/api"
 	sdkutils "github.com/flarehotspot/sdk-utils"

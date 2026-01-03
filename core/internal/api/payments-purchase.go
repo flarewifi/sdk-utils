@@ -12,9 +12,9 @@ import (
 
 	"core/db/models"
 	"core/internal/web/helpers"
+	"core/utils/config"
+	"core/utils/env"
 	sdkapi "sdk/api"
-	"core/tools/config"
-	"core/tools/env"
 
 	"github.com/golang-jwt/jwt/v5"
 )

@@ -2,8 +2,8 @@ package plugins
 
 import (
 	"core/db"
+	cmd "core/utils/shell"
 	"fmt"
-	cmd "core/tools/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

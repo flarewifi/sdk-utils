@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	jobque "core/tools/job-que"
+	jobque "core/utils/job-que"
 )
 
 const (

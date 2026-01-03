@@ -2,12 +2,12 @@ package migrate
 
 import (
 	"core/db"
+	cmd "core/utils/shell"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-	cmd "core/tools/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

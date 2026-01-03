@@ -2,6 +2,10 @@ package plugins
 
 import (
 	"bytes"
+	"core/utils/download"
+	"core/utils/encdisk"
+	"core/utils/migrate"
+	cmd "core/utils/shell"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -10,10 +14,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"core/tools/download"
-	"core/tools/encdisk"
-	"core/tools/migrate"
-	cmd "core/tools/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

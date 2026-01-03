@@ -1,9 +1,9 @@
 package main
 
 import (
-	"core/tools"
-	"core/tools/config"
-	"core/tools/plugins"
+	tools "core/utils"
+	"core/utils/config"
+	"core/utils/plugins"
 	"fmt"
 	"path/filepath"
 

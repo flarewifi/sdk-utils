@@ -1,10 +1,10 @@
 package main
 
 import (
+	toolsenv "core/utils/env"
 	"flag"
 	"fmt"
 	"path/filepath"
-	toolsenv "core/tools/env"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

@@ -1,13 +1,13 @@
 package tools
 
 import (
+	"core/utils/plugins"
 	"path/filepath"
-	"core/tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func BuildQueries() {
+func BuildTemplates() {
 	pluginDirs := []string{}
 
 	defs := plugins.AllPluginSrcDefs()
@@ -21,6 +21,6 @@ func BuildQueries() {
 	pluginDirs = append(pluginDirs, corePath)
 
 	for _, p := range pluginDirs {
-		plugins.BuildQueries(p)
+		plugins.BuildTemplates(p)
 	}
 }

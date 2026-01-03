@@ -8,7 +8,7 @@ import (
 	"core/db/models"
 	"core/internal/network"
 	"core/internal/sessmgr"
-	"core/tools/plugins"
+	"core/utils/plugins"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"

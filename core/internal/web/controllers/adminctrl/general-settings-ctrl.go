@@ -8,10 +8,10 @@ import (
 	"core/internal/modules/activation"
 	machineuid "core/internal/modules/machine-uid"
 	generalview "core/resources/views/admin/general"
-	"core/tools/config"
-	"core/tools/env"
-	"core/tools/flaretmpl"
-	"core/tools/sysinfo"
+	"core/utils/config"
+	"core/utils/env"
+	"core/utils/flaretmpl"
+	"core/utils/sysinfo"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

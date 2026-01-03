@@ -10,7 +10,7 @@ import (
 	"core/internal/modules/activation"
 	machineuid "core/internal/modules/machine-uid"
 	activationview "core/resources/views/activation"
-	cmd "core/tools/shell"
+	cmd "core/utils/shell"
 )
 
 const (

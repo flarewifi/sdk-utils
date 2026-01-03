@@ -1,9 +1,9 @@
 package plugins
 
 import (
-	"core/tools/encdisk"
-	"core/tools/env"
-	"core/tools/tags"
+	"core/utils/encdisk"
+	"core/utils/env"
+	"core/utils/tags"
 	"database/sql"
 	"errors"
 	"fmt"

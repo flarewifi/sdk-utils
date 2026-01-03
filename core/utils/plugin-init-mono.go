@@ -1,12 +1,12 @@
 package tools
 
 import (
+	"core/utils/plugins"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"core/tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -118,9 +118,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"core/tools/config"
-	"core/tools/env"
-	"core/tools/migrate"
+	"core/utils/config"
+	"core/utils/env"
+	"core/utils/migrate"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 
     %s

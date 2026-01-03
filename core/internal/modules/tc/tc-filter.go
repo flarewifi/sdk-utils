@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	ifbutil "core/internal/modules/network"
-	jobque "core/tools/job-que"
-	cmd "core/tools/shell"
+	jobque "core/utils/job-que"
+	cmd "core/utils/shell"
 )
 
 var (

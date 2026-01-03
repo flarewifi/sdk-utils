@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"core/tools/config"
+	"core/utils/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )

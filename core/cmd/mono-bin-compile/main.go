@@ -1,9 +1,9 @@
 package main
 
 import (
+	"core/utils/tags"
 	"fmt"
 	"path/filepath"
-	"core/tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

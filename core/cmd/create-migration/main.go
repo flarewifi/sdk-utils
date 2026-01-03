@@ -1,6 +1,6 @@
 package main
 
-import "core/tools"
+import tools "core/utils"
 
 func main() {
 	name, err := tools.AskCmdInput("Enter migration name, e.g. create_users_table")

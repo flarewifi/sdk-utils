@@ -1,8 +1,8 @@
 package plugins
 
 import (
+	"core/utils/config"
 	"path/filepath"
-	"core/tools/config"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

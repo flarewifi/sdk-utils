@@ -1,7 +1,7 @@
 package main
 
 import (
-	"core/tools/plugins"
+	"core/utils/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -24,7 +24,7 @@ func main() {
 			"core/package-lock.json",
 			"core/plugin.json",
 			"core/resources",
-			"core/tools",
+			"core/utils",
 			"sdk",
 			"scripts",
 			"plugins/system",

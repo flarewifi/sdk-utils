@@ -9,7 +9,7 @@ import (
 	"github.com/goccy/go-json"
 
 	"core/internal/modules/events"
-	sse "core/tools/sse"
+	sse "core/utils/sse"
 	"slices"
 )
 

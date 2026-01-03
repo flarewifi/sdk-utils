@@ -9,7 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"core/tools/sysinfo"
+	"core/utils/sysinfo"
 	"fmt"
 	"sdk/api"
 )

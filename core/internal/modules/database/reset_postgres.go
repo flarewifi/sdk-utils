@@ -9,9 +9,10 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	"core/utils/config"
+	"core/utils/migrate"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
-	"core/tools/config"
-	"core/tools/migrate"
 )
 
 // ResetDatabase drops the database and recreates it with migrations

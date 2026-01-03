@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"core/tools/plugins"
+	"core/utils/plugins"
 	"fmt"
 	"os"
 	"path/filepath"

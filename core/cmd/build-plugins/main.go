@@ -1,6 +1,6 @@
 package main
 
-import "core/tools/plugins"
+import "core/utils/plugins"
 
 func main() {
 	plugins.BuildLocalPlugins()

@@ -3,10 +3,10 @@
 package encdisk
 
 import (
+	cmd "core/utils/shell"
 	"fmt"
 	"os"
 	"path/filepath"
-	cmd "core/tools/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

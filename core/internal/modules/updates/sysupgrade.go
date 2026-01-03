@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	cmd "core/tools/shell"
+	cmd "core/utils/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
