@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"core/internal/utils/uci"
+	"core/internal/modules/uci"
 	"core/utils/arp"
 )
 
