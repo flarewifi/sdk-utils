@@ -1,1 +1,0 @@
-Êtes-vous sûr de vouloir effectuer la mise à niveau du firmware? L'appareil sera flashé et redémarré.

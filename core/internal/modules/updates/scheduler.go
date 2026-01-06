@@ -5,7 +5,6 @@ import (
 	"time"
 
 	cmd "core/utils/shell"
-
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -77,9 +76,13 @@ func waitForDownloadAndReboot() {
 					return
 				}
 				log.Println("Sysupgrade compatibility check passed - flashing firmware now")
-				cmd.Exec("sysupgrade "+GetSysupgradePath(), nil)
+				// Note: Automatic updates always preserve data (noPreserve = false)
+				// Only manual uploads can choose to not preserve data
+				// In dev mode, shell.Exec will automatically ignore sysupgrade commands
+				cmd.Exec(GetSysupgradeCommand(false), nil)
 			} else {
 				log.Println("Rebooting to apply software update")
+				// In dev mode, shell.Exec will automatically ignore reboot commands
 				cmd.Exec("reboot", nil)
 			}
 			return

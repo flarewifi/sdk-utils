@@ -1,0 +1,1 @@
+Isso apagará todas as configurações e pacotes instalados

@@ -16,3 +16,13 @@ func GetBuildTags() string {
 	}
 	return strings.Join(tags, " ")
 }
+
+// IsDev returns true if running in development mode
+func IsDev() bool {
+	return env() == "dev"
+}
+
+// IsProd returns true if running in production mode
+func IsProd() bool {
+	return env() == "prod"
+}

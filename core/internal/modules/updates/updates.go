@@ -133,16 +133,20 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 		defer downloadPercent.Store(0)
 		defer prevPercent.Store(0)
 
-		// Clean up before starting new download
-		if params.IsSysupgrade {
-			RemoveSysupgradeFile()
-		} else {
-			markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
-			os.Remove(markerPath)
-			if err := sdkutils.FsEmptyDir(sdkutils.PathPluginUpdatesDir); err != nil {
-				downloadError.Store(&err)
-				return
-			}
+		// Clean up before starting new download to free up space
+		// Always remove sysupgrade file and clean all update directories
+		RemoveSysupgradeFile()
+
+		// Clean up system updates directory
+		if err := sdkutils.FsEmptyDir(sdkutils.PathSystemUpdateDir); err != nil {
+			downloadError.Store(&err)
+			return
+		}
+
+		// Clean up plugin updates directory
+		if err := sdkutils.FsEmptyDir(sdkutils.PathPluginUpdatesDir); err != nil {
+			downloadError.Store(&err)
+			return
 		}
 
 		ch := downloadFile(params)
@@ -281,7 +285,7 @@ func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 // GetUpdateOutputPath returns the appropriate output path based on update type
 func GetUpdateOutputPath(fileUrl string, isSysupgrade bool) string {
 	if isSysupgrade {
-		return SysupgradePath
+		return GetSysupgradePath()
 	}
 	return filepath.Join(sdkutils.PathSystemUpdateDir, filepath.Base(fileUrl))
 }

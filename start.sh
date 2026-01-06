@@ -5,7 +5,7 @@ export APP_DIR="$FLARE_DIR/app"
 export APP_TMP="$FLARE_DIR/tmp"
 export DATA_DIR="$FLARE_DIR/data"
 export STORAGE_DIR="$DATA_DIR/storage"
-export SOFTWARE_UPDATE_DIR="$STORAGE_DIR/system/update"
+export SOFTWARE_UPDATE_DIR="$STORAGE_DIR/system/updates"
 export BACKUP_DIR="$STORAGE_DIR/system/backup"
 export PATH="$APP_DIR/bin:$PATH"
 
@@ -86,7 +86,7 @@ start() {
 }
 
 
-if [ -e "$SOFTWARE_UPDATE_DIR" ]; then
+if [ -e "$SOFTWARE_UPDATE_DIR" ] && ls $SOFTWARE_UPDATE_DIR/*.tar.gz 1> /dev/null 2>&1; then
     (apply_updates && $APP_DIR/start.sh) || (echo "\n\nFailed to apply updates!" && \
         revert_updates && $APP_DIR/start.sh)
 else

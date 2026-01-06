@@ -1,3 +1,5 @@
+//go:build !dev
+
 package web
 
 import (
@@ -18,7 +20,6 @@ import (
 	"time"
 
 	"core/utils/env"
-
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/gorilla/mux"
 )

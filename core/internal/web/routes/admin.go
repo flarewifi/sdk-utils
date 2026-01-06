@@ -47,6 +47,9 @@ func AdminRoutes(g *api.CoreGlobals) {
 			subrouter.Get("/download/done", adminctrl.DownloadDoneCtrl(g)).Name("admin:updates:download-done")
 			subrouter.Get("/sysupgrade", adminctrl.SysupgradePageCtrl(g)).Name("admin:updates:sysupgrade")
 			subrouter.Post("/sysupgrade/upload", adminctrl.SysupgradeUploadCtrl(g)).Name("admin:updates:sysupgrade-upload")
+			subrouter.Get("/sysupgrade/success", adminctrl.SysupgradeSuccessPageCtrl(g)).Name("admin:updates:sysupgrade-success")
+			subrouter.Get("/sysupgrade/progress", adminctrl.SysupgradeProgressPageCtrl(g)).Name("admin:updates:sysupgrade-progress")
+			subrouter.Post("/sysupgrade/delete", adminctrl.SysupgradeDeleteCtrl(g)).Name("admin:updates:sysupgrade-delete")
 		})
 		subrouter.Group("/database", func(subrouter sdkapi.IHttpRouterInstance) {
 			subrouter.Get("/index", adminctrl.DatabaseSettingsIndexCtrl(g)).Name("admin:database:index")

@@ -1,1 +1,0 @@
-Firmware downloaded and verified successfully. Ready to perform sysupgrade

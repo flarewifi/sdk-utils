@@ -14,37 +14,33 @@ templ SysupgradePage(api sdkapi.IPluginApi, uploadUrl string, csrfHTML string, m
 			</h3>
 			
 			<form 
-				hx-post={ uploadUrl }
-				hx-encoding="multipart/form-data"
-				hx-target="#upload-result"
-				hx-swap="innerHTML">
+				action={ templ.SafeURL(uploadUrl) }
+				method="POST"
+				enctype="multipart/form-data">
 				
 				@templ.Raw(csrfHTML)
 				
-				<div class="mb-4">
-					<label for="sysupgrade_file" class="form-label">
-						{ api.Translate("label", "Sysupgrade File") }
-					</label>
-					<input 
-						type="file" 
-						class="form-control" 
-						id="sysupgrade_file" 
-						name="sysupgrade_file"
-						accept=".bin,.img"
-						required />
-					<div class="form-text">
-						{ api.Translate("info", "Accepted formats") }: { formatExtensions(allowedExts) }. 
-						{ api.Translate("info", "Maximum file size") }: { fmt.Sprintf("%d MB", maxSizeMB) }
-					</div>
+			<div class="mb-4">
+				<label for="sysupgrade_file" class="form-label">
+					{ api.Translate("label", "Sysupgrade File") }
+				</label>
+				<input 
+					type="file" 
+					class="form-control" 
+					id="sysupgrade_file" 
+					name="sysupgrade_file"
+					accept=".bin,.img"
+					required />
+				<div class="form-text">
+					{ api.Translate("info", "Accepted formats") }: { formatExtensions(allowedExts) }. 
+					{ api.Translate("info", "Maximum file size") }: { fmt.Sprintf("%d MB", maxSizeMB) }
 				</div>
-				
-				<div id="upload-result" class="mb-3"></div>
+			</div>
 				
 				<div class="d-flex gap-2">
-					<button type="submit" class="btn btn-primary" data-loading-disable>
-						<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" data-loading></span>
-						<span data-loading-class="d-none">{ api.Translate("label", "Upload Firmware") }</span>
-						<span data-loading>{ api.Translate("label", "Uploading") }...</span>
+					<button type="submit" class="btn btn-primary">
+						<i class="bi bi-upload me-2"></i>
+						{ api.Translate("label", "Upload Firmware") }
 					</button>
 					<a href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:index")) } class="btn btn-outline-secondary">
 						<i class="bi bi-arrow-left me-2"></i>
@@ -56,17 +52,121 @@ templ SysupgradePage(api sdkapi.IPluginApi, uploadUrl string, csrfHTML string, m
 	</div>
 }
 
-templ SysupgradeUploadSuccess(api sdkapi.IPluginApi) {
-	<div class="alert alert-success" role="alert">
-		<i class="bi bi-check-circle me-2"></i>
-		{ api.Translate("success", "Firmware uploaded successfully") }.
+templ SysupgradeSuccessPage(api sdkapi.IPluginApi, csrfHTML string) {
+	<div class="card shadow-sm">
+		<div class="card-body">
+			<h3 class="card-title mb-4">
+				<i class="bi bi-check-circle-fill text-success me-2"></i>
+				{ api.Translate("label", "Firmware Ready to Install") }
+			</h3>
+			
+			<div class="alert alert-info mb-4" role="alert">
+				<i class="bi bi-info-circle me-2"></i>
+				{ api.Translate("info", "The device will be flashed with new firmware and will reboot. Do not power off the device during this process") }.
+			</div>
+			
+			<form 
+				action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:power:reboot-action")) }
+				method="POST">
+				
+				@templ.Raw(csrfHTML)
+				
+				<div class="mb-4">
+					<div class="form-check">
+						<input 
+							type="checkbox" 
+							class="form-check-input" 
+							id="no_preserve_data" 
+							name="no_preserve_data"
+							value="true"
+							onchange="document.getElementById('no-preserve-warning').style.display = this.checked ? 'block' : 'none';" />
+						<label class="form-check-label" for="no_preserve_data">
+							{ api.Translate("label", "Do not preserve data") }
+						</label>
+					</div>
+					<div id="no-preserve-warning" class="alert alert-warning mt-2" style="display: none;" role="alert">
+						<i class="bi bi-exclamation-triangle me-1"></i>
+						<small>{ api.Translate("info", "This will erase all settings and installed packages") }.</small>
+					</div>
+				</div>
+				
+				<div class="d-flex gap-2 mb-3">
+					<button 
+						type="submit"
+						class="btn btn-warning">
+						<i class="bi bi-lightning-charge me-2"></i>
+						{ api.Translate("label", "Perform Sysupgrade Now") }
+					</button>
+				</div>
+			</form>
+			
+			<form 
+				action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:sysupgrade-delete")) }
+				method="POST"
+				class="d-inline"
+				onsubmit="return confirm('Are you sure you want to delete the uploaded firmware?')">
+				
+				@templ.Raw(csrfHTML)
+				
+				<button 
+					type="submit"
+					class="btn btn-outline-danger">
+					<i class="bi bi-trash me-2"></i>
+					{ api.Translate("label", "Delete Firmware") }
+				</button>
+			</form>
+			
+			<a href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:index")) } class="btn btn-outline-secondary ms-2">
+				<i class="bi bi-arrow-left me-2"></i>
+				{ api.Translate("label", "Back to Updates") }
+			</a>
+			
+			<div class="alert alert-light border mt-4" role="alert">
+				<small class="text-muted">
+					<i class="bi bi-info-circle me-1"></i>
+					{ api.Translate("info", "You can perform the firmware upgrade later from the Updates page") }.
+				</small>
+			</div>
+		</div>
 	</div>
 }
 
-templ SysupgradeUploadError(api sdkapi.IPluginApi, errMsg string) {
-	<div class="alert alert-danger" role="alert">
-		<i class="bi bi-exclamation-triangle me-2"></i>
-		<strong>{ api.Translate("label", "Error") }:</strong> { errMsg }
+templ SysupgradeProgressPage(api sdkapi.IPluginApi) {
+	<div class="card shadow-sm">
+		<div class="card-body text-center py-5">
+			<div class="mb-4">
+				<div class="spinner-border text-warning" style="width: 4rem; height: 4rem;" role="status">
+					<span class="visually-hidden">{ api.Translate("label", "Loading") }...</span>
+				</div>
+			</div>
+			
+			<h3 class="mb-4">
+				<i class="bi bi-lightning-charge-fill text-warning me-2"></i>
+				{ api.Translate("label", "Firmware Upgrade in Progress") }
+			</h3>
+			
+			<div class="alert alert-warning d-inline-block text-start" role="alert">
+				<i class="bi bi-exclamation-triangle me-2"></i>
+				<strong>{ api.Translate("label", "Warning") }:</strong> { api.Translate("info", "Firmware upgrade in progress. Do not power off the device") }.
+			</div>
+			
+			<div class="mt-4">
+				<p class="text-body-secondary">
+					{ api.Translate("info", "The device will be flashed with new firmware and will reboot. Do not power off the device during this process") }.
+				</p>
+				<p class="text-body-secondary">
+					{ api.Translate("info", "Please wait a few minutes before reconnecting") }.
+				</p>
+			</div>
+			
+			<div class="mt-4">
+				<div class="progress" style="height: 30px;">
+					<div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 100%">
+						{ api.Translate("label", "Processing") }...
+					</div>
+				</div>
+			</div>
+		</div>
 	</div>
 }
 

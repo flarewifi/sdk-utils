@@ -11,8 +11,12 @@ type SoftwareUpdate struct {
 	IsSysupgrade     bool
 }
 
-templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error) {
+templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysupgradeReady bool) {
 	<div id="page">
+		if sysupgradeReady {
+			@SysupgradeReadyAlert(api)
+		}
+		
 		<div class="card shadow-sm">
 			<div class="card-body">
 				<h3 class="card-title mb-4">{ api.Translate("label", "Software Updates") }</h3>
@@ -153,6 +157,36 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 					<i class="bi bi-download me-2"></i>
 					{ api.Translate("label", "Download and Install Update") }
 				</a>
+			</div>
+		</div>
+	</div>
+}
+
+templ SysupgradeReadyAlert(api sdkapi.IPluginApi) {
+	<div class="card shadow-sm border-warning mb-4">
+		<div class="card-body">
+			<div class="d-flex align-items-start">
+				<div class="flex-shrink-0">
+					<i class="bi bi-lightning-charge-fill text-warning fs-2"></i>
+				</div>
+				<div class="flex-grow-1 ms-3">
+					<h5 class="card-title text-warning mb-3">
+						<i class="bi bi-exclamation-triangle me-2"></i>
+						{ api.Translate("label", "Firmware Ready to Install") }
+					</h5>
+					<p class="card-text mb-3">
+						{ api.Translate("info", "A firmware file has been uploaded and is ready to be installed. The device will be flashed and rebooted") }.
+					</p>
+					
+					<div class="d-flex gap-2">
+						<a 
+							href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:sysupgrade-success")) }
+							class="btn btn-warning">
+							<i class="bi bi-lightning-charge me-2"></i>
+							{ api.Translate("label", "View Firmware Options") }
+						</a>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
