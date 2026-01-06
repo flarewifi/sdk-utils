@@ -5,8 +5,8 @@ import (
 
 	"github.com/goccy/go-json"
 
-	jobque "core/tools/job-que"
-	cmd "core/tools/shell"
+	jobque "core/utils/job-que"
+	cmd "core/utils/shell"
 )
 
 var que = jobque.NewJobQue[any]()

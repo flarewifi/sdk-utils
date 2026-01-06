@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	sse "core/tools/sse"
+	sse "core/utils/sse"
 )
 
 type BootProgData struct {

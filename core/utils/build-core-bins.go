@@ -1,9 +1,9 @@
 package tools
 
 import (
+	"core/utils/plugins"
 	"os"
 	"path/filepath"
-	"core/tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

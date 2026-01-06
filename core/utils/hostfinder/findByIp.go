@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	"core/internal/utils/uci"
-	"core/tools/arp"
+	"core/internal/modules/uci"
+	"core/utils/arp"
 )
 
 func GetHostFromRequest(r *http.Request) (*HostData, error) {

@@ -1,6 +1,6 @@
 package main
 
-import "core/tools"
+import tools "core/utils"
 
 func main() {
 	tools.CreateDevkit()

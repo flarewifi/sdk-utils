@@ -1,14 +1,14 @@
 package plugins
 
 import (
+	"core/utils/config"
+	"core/utils/env"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"core/tools/config"
-	"core/tools/env"
 
 	"slices"
 

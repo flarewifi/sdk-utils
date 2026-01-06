@@ -13,8 +13,8 @@ import (
 	"core/internal/network"
 	"core/internal/sessmgr"
 	portalview "core/resources/views/portal"
-	"core/tools/hostfinder"
-	sse "core/tools/sse"
+	"core/utils/hostfinder"
+	sse "core/utils/sse"
 	sdkapi "sdk/api"
 )
 

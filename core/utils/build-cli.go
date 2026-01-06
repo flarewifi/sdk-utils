@@ -1,10 +1,10 @@
 package tools
 
 import (
+	"core/utils/plugins"
+	"core/utils/tags"
 	"fmt"
 	"os"
-	"core/tools/plugins"
-	"core/tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

@@ -3,7 +3,7 @@ package networkutil
 import (
 	"sync/atomic"
 
-	cmd "core/tools/shell"
+	cmd "core/utils/shell"
 )
 
 var (

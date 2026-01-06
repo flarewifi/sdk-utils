@@ -9,7 +9,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	"core/tools/env"
+	"core/utils/env"
 
 	"github.com/gorilla/mux"
 )

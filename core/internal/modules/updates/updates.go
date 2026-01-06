@@ -2,6 +2,8 @@ package updates
 
 import (
 	rpc "core/internal/rpc"
+	"core/utils/config"
+	"core/utils/tags"
 	"crypto/md5"
 	"encoding/base64"
 	"errors"
@@ -13,8 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
-	"core/tools/config"
-	"core/tools/tags"
 
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"

@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
+	"core/utils/plugins"
+	"core/utils/tags"
 	sdkapi "sdk/api"
-	"core/tools/plugins"
-	"core/tools/tags"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 
@@ -35,8 +35,8 @@ var (
 		"plugins/system",
 		"scripts",
 		"sdk",
-		"core/tools/go.mod",
-		"core/tools/cmd/livereload",
+		"core/utils/go.mod",
+		"core/utils/cmd/livereload",
 		"go.work.default",
 		".go-version",
 	}

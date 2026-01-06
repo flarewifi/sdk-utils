@@ -1,8 +1,8 @@
 package main
 
 import (
+	"core/utils/plugins"
 	"path/filepath"
-	"core/tools/plugins"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

@@ -7,7 +7,7 @@ import (
 	"core/internal/api"
 	"core/internal/modules/database"
 	databaseview "core/resources/views/admin/database"
-	"core/tools/config"
+	"core/utils/config"
 )
 
 func DatabaseSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {

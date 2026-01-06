@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"core/internal/api"
-	"core/tools/plugins"
+	"core/utils/plugins"
 
 	views "core/resources/views/admin/plugins"
 	sdkapi "sdk/api"

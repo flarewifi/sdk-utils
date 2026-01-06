@@ -17,9 +17,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"core/utils/env"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/gorilla/mux"
-	"core/tools/env"
 )
 
 var (

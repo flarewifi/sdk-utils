@@ -4,13 +4,13 @@ package pg
 
 import (
 	"context"
+	"core/utils/config"
 	"database/sql"
 	"fmt"
 	"log"
 	"net"
 	"strings"
 	"time"
-	"core/tools/config"
 
 	"github.com/jackc/pgx/v5"
 )

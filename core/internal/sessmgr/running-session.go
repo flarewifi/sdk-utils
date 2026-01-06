@@ -11,7 +11,7 @@ import (
 
 	"core/internal/modules/tc"
 	"core/internal/network"
-	jobque "core/tools/job-que"
+	jobque "core/utils/job-que"
 	sdkapi "sdk/api"
 )
 

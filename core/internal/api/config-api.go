@@ -1,7 +1,7 @@
 package api
 
 import (
-	"core/tools/config"
+	"core/utils/config"
 	sdkapi "sdk/api"
 )
 

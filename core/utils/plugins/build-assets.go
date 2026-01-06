@@ -1,12 +1,12 @@
 package plugins
 
 import (
+	cmd "core/utils/shell"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	cmd "core/tools/shell"
 
 	"github.com/evanw/esbuild/pkg/api"
 	sdkutils "github.com/flarehotspot/sdk-utils"
