@@ -1,8 +1,8 @@
 package api
 
 import (
+	"core/internal/modules/ubus"
 	cnet "core/internal/network"
-	"core/internal/utils/ubus"
 	sdkapi "sdk/api"
 )
 

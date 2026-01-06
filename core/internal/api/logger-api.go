@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"core/db/models"
-	"core/internal/utils/logger"
+	"core/internal/modules/logger"
 )
 
 const (

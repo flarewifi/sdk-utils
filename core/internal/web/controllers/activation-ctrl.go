@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"core/internal/api"
-	"core/internal/utils/activation"
-	machineuid "core/internal/utils/machine-uid"
+	"core/internal/modules/activation"
+	machineuid "core/internal/modules/machine-uid"
 	activationview "core/resources/views/activation"
-	cmd "core/tools/shell"
+	cmd "core/utils/shell"
 )
 
 const (

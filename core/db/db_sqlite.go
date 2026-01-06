@@ -4,13 +4,13 @@ package db
 
 import (
 	"context"
+	"core/utils/config"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
-	"core/tools/config"
 
 	queries "core/db/queries"
 

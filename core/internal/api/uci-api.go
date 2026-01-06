@@ -1,7 +1,7 @@
 package api
 
 import (
-	"core/internal/utils/uci"
+	"core/internal/modules/uci"
 	sdkapi "sdk/api"
 
 	gouci "github.com/digineo/go-uci"

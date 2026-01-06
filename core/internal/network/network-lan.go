@@ -5,11 +5,11 @@ import (
 	"log"
 	"sync"
 
-	"core/internal/utils/nftables"
-	"core/internal/utils/tc"
-	"core/internal/utils/ubus"
-	"core/tools/config"
-	jobque "core/tools/job-que"
+	"core/internal/modules/nftables"
+	"core/internal/modules/tc"
+	"core/internal/modules/ubus"
+	"core/utils/config"
+	jobque "core/utils/job-que"
 )
 
 var (

@@ -9,8 +9,8 @@ import (
 
 	"core/db"
 	"core/db/models"
+	devicetoken "core/internal/modules/device-token"
 	"core/internal/sessmgr"
-	devicetoken "core/internal/utils/device-token"
 	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"

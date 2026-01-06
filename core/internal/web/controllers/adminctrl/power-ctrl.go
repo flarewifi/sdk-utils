@@ -2,9 +2,9 @@ package adminctrl
 
 import (
 	"core/internal/api"
-	"core/internal/utils/updates"
+	"core/internal/modules/updates"
 	powerview "core/resources/views/admin/power"
-	cmd "core/tools/shell"
+	cmd "core/utils/shell"
 	"fmt"
 	"net/http"
 	sdkapi "sdk/api"

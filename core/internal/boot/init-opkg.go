@@ -1,11 +1,11 @@
 package boot
 
 import (
+	cmd "core/utils/shell"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	cmd "core/tools/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )

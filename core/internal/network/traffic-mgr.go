@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"core/internal/utils/nftables"
+	"core/internal/modules/nftables"
 	sdkapi "sdk/api"
 )
 

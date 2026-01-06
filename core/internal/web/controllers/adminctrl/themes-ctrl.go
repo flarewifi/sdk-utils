@@ -6,7 +6,7 @@ import (
 
 	"core/internal/api"
 	"core/resources/views/admin/themes"
-	"core/tools/config"
+	"core/utils/config"
 )
 
 func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {

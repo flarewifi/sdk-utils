@@ -6,7 +6,7 @@ import (
 	"log"
 	"net"
 
-	"core/internal/utils/ubus"
+	"core/internal/modules/ubus"
 	sdkapi "sdk/api"
 )
 

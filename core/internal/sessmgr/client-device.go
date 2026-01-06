@@ -7,8 +7,8 @@ import (
 
 	"core/db"
 	"core/db/models"
-	"core/internal/utils/events"
-	"core/tools/sse"
+	"core/internal/modules/events"
+	"core/utils/sse"
 
 	sdkapi "sdk/api"
 )

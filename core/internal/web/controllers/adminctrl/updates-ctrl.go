@@ -2,10 +2,10 @@ package adminctrl
 
 import (
 	"core/internal/api"
-	"core/internal/utils/updates"
+	"core/internal/modules/updates"
 	updatesview "core/resources/views/admin/updates"
-	"core/tools/config"
-	"core/tools/markdown"
+	"core/utils/config"
+	"core/utils/markdown"
 	"errors"
 	"log"
 	"net/http"
