@@ -99,8 +99,11 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 			Type:    flashType,
 			Message: flashMsg,
 		}
-		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_type")
-		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
+		// Only delete flash cookies if PreserveFlash is false
+		if !v.PreserveFlash {
+			self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_type")
+			self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
+		}
 	}
 
 	sseURL := coreAPI.HttpAPI.Helpers().UrlForRoute("portal:sse")

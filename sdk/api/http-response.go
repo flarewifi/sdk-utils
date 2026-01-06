@@ -26,8 +26,9 @@ type ViewAssets struct {
 }
 
 type ViewPage struct {
-	Assets      ViewAssets
-	PageContent templ.Component
+	Assets        ViewAssets
+	PageContent   templ.Component
+	PreserveFlash bool // If true, flash cookies are not consumed (for intermediate redirect pages)
 }
 
 // IHttpResponse is used to respond to http requests.
