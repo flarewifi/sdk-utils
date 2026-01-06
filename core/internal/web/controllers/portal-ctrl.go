@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 
 	"core/internal/api"
 	devicetoken "core/internal/modules/device-token"
 	machineuid "core/internal/modules/machine-uid"
-	"core/internal/network"
 	"core/internal/sessmgr"
+	"core/internal/web/helpers"
 	portalview "core/resources/views/portal"
 	"core/utils/hostfinder"
 	sse "core/utils/sse"
@@ -22,30 +21,7 @@ import (
 // Renders a simple HTML page with inline JavaScript that redirects to http://<lan-ip>/portal/redirect
 func PortalRootCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var lanIP string
-
-		// Get client IP from request
-		ip, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			// Fallback: use request host
-			lanIP = r.Host
-		} else {
-			// Find LAN interface by client IP
-			lan, err := network.FindByIp(ip)
-			if err != nil {
-				// Fallback: use request host
-				lanIP = r.Host
-			} else {
-				// Get LAN IP address
-				lanIPAddr, err := lan.GetInterface().IpV4Addr()
-				if err != nil {
-					// Fallback: use request host
-					lanIP = r.Host
-				} else {
-					lanIP = lanIPAddr.Addr
-				}
-			}
-		}
+		lanIP := helpers.GetLanIP(r)
 
 		// Get redirect path using UrlForRoute
 		redirectPath := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:redirector")
@@ -79,7 +55,8 @@ func PortalRedirectCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				JsFile:  "portal-register.js",
 				CssFile: "portal-redirect.css",
 			},
-			PageContent: page,
+			PageContent:   page,
+			PreserveFlash: true, // Preserve flash for the next page (portal:index)
 		}
 		g.CoreAPI.HttpAPI.Response().PortalView(w, r, v)
 	}
