@@ -94,12 +94,16 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterCtrl: Identified device - MAC: %s, IP: %s, Hostname: %s", h.MacAddr, h.IpAddr, h.Hostname))
 
+		// Get User-Agent from request headers
+		userAgent := r.Header.Get("User-Agent")
+
 		// Register/identify device with cookie validation and MAC randomization support
 		clnt, shouldSetCookie, err := clntMgr.Register(r.Context(), sessmgr.ClientRegisterParams{
 			CookieDeviceID: cookieDeviceID,
 			MacAddr:        h.MacAddr,
 			IpAddr:         h.IpAddr,
 			Hostname:       h.Hostname,
+			UserAgent:      userAgent,
 		})
 		if err != nil {
 			userMsg := g.CoreAPI.Translate("error", "Failed to register your device")
@@ -137,6 +141,11 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 // PortalRegisterAjaxRequest represents the JSON request body for AJAX registration
 type PortalRegisterAjaxRequest struct {
 	DeviceToken string `json:"device_token"`
+	// Fingerprint fields
+	UserAgent string `json:"user_agent"`
+	ScreenRes string `json:"screen_res"`
+	Language  string `json:"language"`
+	Timezone  string `json:"timezone"`
 }
 
 // PortalRegisterAjaxCtrl handles AJAX-based device registration and token validation
@@ -244,6 +253,10 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			MacAddr:        h.MacAddr,
 			IpAddr:         h.IpAddr,
 			Hostname:       h.Hostname,
+			UserAgent:      reqBody.UserAgent,
+			ScreenRes:      reqBody.ScreenRes,
+			Language:       reqBody.Language,
+			Timezone:       reqBody.Timezone,
 		})
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "Failed to register device")

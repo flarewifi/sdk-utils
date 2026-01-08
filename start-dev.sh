@@ -21,7 +21,7 @@ cp go.work.default go.work && \
     echo "Generating sqlc queires..." && \
     sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
     echo "Scanning translations..." && \
-    go run -tags="${GO_TAGS}" ./core/tools/translator --silent && \
+    go run -tags="${GO_TAGS}" ./core/utils/translator --silent && \
     go run -tags="${GO_TAGS}" $SYNC_VERSION && \
     go run -tags="${GO_TAGS}" $BUILD_ASSETS_MAIN && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN fix-workspace && \

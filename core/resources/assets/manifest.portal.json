@@ -10,6 +10,7 @@
   ],
   "portal-register.js": [
     "./portal/js/device-token.js",
+    "./portal/js/device-fingerprint.js",
     "./portal/js/portal-register-ajax.js"
   ],
   "portal-success-redirect.js": [

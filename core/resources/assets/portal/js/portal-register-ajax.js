@@ -74,6 +74,23 @@
         // Continue without token
       }
 
+      // Collect fingerprint data
+      try {
+        if (window.$flare && typeof window.$flare.collectFingerprint === 'function') {
+          var fpData = window.$flare.collectFingerprint();
+          if (fpData) {
+            requestData.user_agent = fpData.user_agent;
+            requestData.screen_res = fpData.screen_res;
+            requestData.language = fpData.language;
+            requestData.timezone = fpData.timezone;
+            console.log('[PortalRegister] Including fingerprint data');
+          }
+        }
+      } catch (e) {
+        console.warn('[PortalRegister] Fingerprint collection failed, continuing without:', e);
+        // Continue without fingerprint - graceful degradation
+      }
+
       $.ajax({
         url: registerUrl,
         type: 'POST',

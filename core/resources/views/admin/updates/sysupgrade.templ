@@ -104,7 +104,8 @@ templ SysupgradeSuccessPage(api sdkapi.IPluginApi, csrfHTML string) {
 				action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:sysupgrade-delete")) }
 				method="POST"
 				class="d-inline"
-				onsubmit="return confirm('Are you sure you want to delete the uploaded firmware?')">
+				onsubmit="return confirm(this.getAttribute('data-confirm'));"
+				data-confirm={ api.Translate("label", "Are you sure you want to delete the uploaded firmware?") }>
 				
 				@templ.Raw(csrfHTML)
 				

@@ -1010,6 +1010,29 @@ func removeUnusedTranslations(translationsDir string, usedTranslations map[strin
 			// Create key as "msgtype/filename.txt"
 			translationKey := relPath
 
+			// Also check with truncated key for files with long names
+			// Parse msgType and key from the path
+			parts := strings.Split(relPath, string(filepath.Separator))
+			if len(parts) >= 2 {
+				msgType := parts[0]
+				filename := parts[len(parts)-1]
+				key := strings.TrimSuffix(filename, ".txt")
+
+				// Apply same truncation logic as validateTranslationKey
+				fields := strings.Fields(key)
+				if len(fields) > 10 {
+					truncatedKey := strings.Join(fields[:10], " ") + " (truncated)"
+					truncatedFilename := truncatedKey + ".txt"
+					truncatedPath := filepath.Join(msgType, truncatedFilename)
+
+					// Check both original and truncated keys
+					if usedTranslations[translationKey] != nil || usedTranslations[truncatedPath] != nil {
+						// File is used (either with original or truncated key)
+						return nil
+					}
+				}
+			}
+
 			// Check if this translation is used
 			if usedTranslations[translationKey] == nil {
 				if scanConfig.DryRun {
