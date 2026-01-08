@@ -52,6 +52,7 @@ Only modify core files when:
 - NEVER modify core migrations when building plugin features - each plugin must have its own migrations
 - NEVER hardcode user-facing text - always use the translations API (`api.Translate()`)
 - NEVER modify `go.work` or `go.mod` files without explicit permission - these control critical dependencies
+- NEVER create any `SOME_RANDOM_SUMMARY.md` files after performing file modifications
 
 ### ALWAYS
 

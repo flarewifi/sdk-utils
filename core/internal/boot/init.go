@@ -3,8 +3,8 @@ package boot
 import (
 	"context"
 	"core/internal/api"
+	"core/internal/jobs"
 	"core/internal/modules/activation"
-	"core/internal/modules/updates"
 	"log"
 	"os"
 	"time"
@@ -45,8 +45,8 @@ func Init(g *api.CoreGlobals) {
 		// Initialize activation after everything else is ready
 		go activation.Validate()
 
-		// Start scheduled update checker (runs at 2AM daily)
-		updates.StartScheduledUpdateChecker()
+		// Start jobs
+		jobs.Init(g)
 
 		bootCh <- struct{}{}
 	}()

@@ -9,6 +9,9 @@ import (
 
 	"core/db"
 	"core/db/models"
+	"core/db/queries"
+	browserdetect "core/internal/modules/browser-detect"
+	"core/internal/modules/fingerprint"
 	sdkapi "sdk/api"
 )
 
@@ -127,11 +130,36 @@ type ClientRegisterParams struct {
 	MacAddr        string
 	IpAddr         string
 	Hostname       string
+	// Fingerprint data
+	UserAgent string
+	ScreenRes string
+	Language  string
+	Timezone  string
 }
 
 func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterParams) (sdkapi.IClientDevice, bool, error) {
 	log.Printf("[ClientRegister] DEBUG: Register called - CookieDeviceID=%v, MAC=%s, IP=%s, Hostname=%s",
 		params.CookieDeviceID, params.MacAddr, params.IpAddr, params.Hostname)
+
+	// Parse browser info and generate fingerprint hash
+	browserInfo := browserdetect.DetectBrowser(params.UserAgent)
+	fpHash := ""
+	hasFingerprintData := params.UserAgent != "" && params.ScreenRes != "" && params.Language != ""
+
+	if hasFingerprintData {
+		fpData := fingerprint.FingerprintData{
+			UserAgent: params.UserAgent,
+			ScreenRes: params.ScreenRes,
+			Language:  params.Language,
+			Timezone:  params.Timezone,
+		}
+		fpHash = fingerprint.GenerateHash(fpData)
+		log.Printf("[ClientRegister] DEBUG: Fingerprint generated - Hash=%s, Browser=%s, OS=%s, IsCNA=%v",
+			fpHash[:16]+"...", browserInfo.BrowserName, browserInfo.OSFamily, browserInfo.IsCNA)
+	} else {
+		log.Printf("[ClientRegister] WARN: Incomplete fingerprint data - UserAgent=%v, ScreenRes=%v, Language=%v (possible JavaScript disabled or old browser)",
+			params.UserAgent != "", params.ScreenRes != "", params.Language != "")
+	}
 
 	var clnt sdkapi.IClientDevice
 
@@ -143,100 +171,138 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 			log.Printf("[ClientRegister] DEBUG: Found device by cookie - DeviceID=%d, CurrentMAC=%s, CurrentIP=%s",
 				clnt.ID(), clnt.MacAddr(), clnt.IpAddr())
 
-			// Check if MAC address changed
-			if clnt.MacAddr() != params.MacAddr {
-				log.Printf("[ClientRegister] WARN: MAC address changed - Old=%s, New=%s", clnt.MacAddr(), params.MacAddr)
+			// Validate fingerprint if we have it
+			if hasFingerprintData {
+				isValid, matchedFP, err := reg.validateDeviceFingerprint(ctx, clnt.ID(), fpHash, params.ScreenRes, browserInfo.OSFamily, params.Language, params.Timezone)
 
-				// MAC changed - check if new MAC already belongs to another device
-				existingDev, macErr := reg.mdls.Device().FindByMac(ctx, params.MacAddr)
-				if macErr == nil && existingDev != nil && existingDev.ID() != clnt.ID() {
-					// MAC conflict: New MAC already belongs to another device
-					// This prevents cookie sharing across devices
-					log.Printf("[ClientRegister] WARN: MAC conflict detected - New MAC %s belongs to DeviceID=%d, keeping cookie device ID=%d",
-						params.MacAddr, existingDev.ID(), clnt.ID())
+				if err != nil {
+					log.Printf("[ClientRegister] ERROR: Fingerprint validation error for DeviceID=%d: %v", clnt.ID(), err)
+					goto STEP_2_MAC_MATCH
+				}
 
-					ipChanged := params.IpAddr != clnt.IpAddr()
-					hostnameChanged := params.Hostname != clnt.Hostname()
+				if !isValid {
+					log.Printf("[ClientRegister] WARN: Fingerprint validation FAILED for cookie DeviceID=%d - possible cookie sharing detected!", clnt.ID())
+					log.Printf("[ClientRegister] DEBUG: Rejecting cookie, falling through to MAC match")
+					goto STEP_2_MAC_MATCH
+				}
 
-					if ipChanged || hostnameChanged {
-						log.Printf("[ClientRegister] DEBUG: Updating IP/Hostname only (MAC conflict) - IP changed=%v, Hostname changed=%v",
-							ipChanged, hostnameChanged)
-						err := reg.UpdateDevice(ctx, clnt, clnt.MacAddr(), params.IpAddr, params.Hostname)
-						if err != nil {
-							log.Printf("[ClientRegister] ERROR: Failed to update device: %v", err)
-							return nil, false, err
-						}
+				log.Printf("[ClientRegister] DEBUG: Fingerprint validation PASSED for DeviceID=%d", clnt.ID())
+
+				// Valid fingerprint - update or add it
+				if matchedFP != nil {
+					// Exact match found, update last_seen
+					err := reg.mdls.DeviceFingerprint().UpdateLastSeen(ctx, matchedFP.ID)
+					if err != nil {
+						log.Printf("[ClientRegister] ERROR: Failed to update fingerprint last_seen for FingerprintID=%d: %v", matchedFP.ID, err)
 					}
-					log.Printf("[ClientRegister] SUCCESS: Returned existing device (MAC conflict handled) - DeviceID=%d", clnt.ID())
-					return clnt, true, nil
+				} else {
+					// Smart match or first time - add new fingerprint variant
+					if err := reg.addFingerprint(ctx, clnt.ID(), params, browserInfo, fpHash); err != nil {
+						log.Printf("[ClientRegister] ERROR: Failed to add fingerprint for DeviceID=%d: %v", clnt.ID(), err)
+					}
 				}
-
-				// No conflict - legitimate MAC change (randomization, new adapter, etc.)
-				log.Printf("[ClientRegister] DEBUG: No MAC conflict, updating device with new MAC")
-				err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
-				if err != nil {
-					log.Printf("[ClientRegister] ERROR: Failed to update device with new MAC: %v", err)
-					return nil, false, err
-				}
-				log.Printf("[ClientRegister] SUCCESS: Updated device with new MAC - DeviceID=%d", clnt.ID())
-				return clnt, true, nil
-			}
-
-			// MAC hasn't changed, check if IP or hostname changed
-			ipChanged := params.IpAddr != clnt.IpAddr()
-			hostnameChanged := params.Hostname != clnt.Hostname()
-
-			if ipChanged || hostnameChanged {
-				log.Printf("[ClientRegister] DEBUG: Network details changed - IP changed=%v, Hostname changed=%v",
-					ipChanged, hostnameChanged)
-				err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
-				if err != nil {
-					log.Printf("[ClientRegister] ERROR: Failed to update network details: %v", err)
-					return nil, false, err
-				}
-				log.Printf("[ClientRegister] SUCCESS: Updated network details - DeviceID=%d", clnt.ID())
 			} else {
-				log.Printf("[ClientRegister] DEBUG: No changes detected, returning existing device - DeviceID=%d", clnt.ID())
+				// No fingerprint data provided - check if device has stored fingerprints
+				storedFingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, clnt.ID())
+				if err != nil {
+					log.Printf("[ClientRegister] ERROR: Failed to check stored fingerprints for DeviceID=%d: %v", clnt.ID(), err)
+					// Continue anyway - don't block registration on fingerprint errors
+				} else if len(storedFingerprints) > 0 {
+					// Device has fingerprints but current request doesn't - SUSPICIOUS!
+					log.Printf("[ClientRegister] WARN: Device %d has %d stored fingerprint(s) but current request has no fingerprint data - rejecting cookie (possible cookie theft or JavaScript disabled)", clnt.ID(), len(storedFingerprints))
+					goto STEP_2_MAC_MATCH
+				} else {
+					log.Printf("[ClientRegister] DEBUG: Device %d has no stored fingerprints and current request has none - accepting (backward compatibility)", clnt.ID())
+				}
 			}
 
+			// Update network details if changed
+			if clnt.MacAddr() != params.MacAddr || clnt.IpAddr() != params.IpAddr || clnt.Hostname() != params.Hostname {
+				log.Printf("[ClientRegister] DEBUG: Network details changed, updating device")
+				err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
+				if err != nil {
+					log.Printf("[ClientRegister] ERROR: Failed to update device: %v", err)
+					return nil, false, err
+				}
+			}
+
+			log.Printf("[ClientRegister] SUCCESS: Returned device from cookie - DeviceID=%d", clnt.ID())
 			return clnt, true, nil
 		} else if err != nil {
 			log.Printf("[ClientRegister] WARN: Failed to find device by cookie ID=%d: %v", *params.CookieDeviceID, err)
 		}
 	}
 
+STEP_2_MAC_MATCH:
 	// Step 2: No valid cookie - try to find device by MAC
-	log.Printf("[ClientRegister] DEBUG: Step 2 - No valid cookie, searching by MAC=%s", params.MacAddr)
+	log.Printf("[ClientRegister] DEBUG: Step 2 - Searching by MAC=%s", params.MacAddr)
 	dev, err := reg.mdls.Device().FindByMac(ctx, params.MacAddr)
 	if err == nil && dev != nil {
 		log.Printf("[ClientRegister] DEBUG: Found device by MAC - DeviceID=%d, IP=%s, Hostname=%s",
 			dev.ID(), dev.IpAddr(), dev.Hostname())
 		clnt = NewClientDevice(reg.db, reg.mdls, dev)
 
-		// Check if IP or hostname changed
-		ipChanged := params.IpAddr != dev.IpAddr()
-		hostnameChanged := params.Hostname != dev.Hostname()
+		// Validate fingerprint if we have it
+		if hasFingerprintData {
+			isValid, matchedFP, err := reg.validateDeviceFingerprint(ctx, dev.ID(), fpHash, params.ScreenRes, browserInfo.OSFamily, params.Language, params.Timezone)
 
-		if ipChanged || hostnameChanged {
-			log.Printf("[ClientRegister] DEBUG: Network details changed - IP changed=%v, Hostname changed=%v",
-				ipChanged, hostnameChanged)
+			if err != nil {
+				log.Printf("[ClientRegister] ERROR: Fingerprint validation error for DeviceID=%d: %v", dev.ID(), err)
+				goto STEP_3_CREATE_NEW
+			}
+
+			if !isValid {
+				log.Printf("[ClientRegister] WARN: Fingerprint validation FAILED for MAC-matched DeviceID=%d - possible MAC collision!", dev.ID())
+				log.Printf("[ClientRegister] DEBUG: Rejecting MAC match, creating new device")
+				goto STEP_3_CREATE_NEW
+			}
+
+			log.Printf("[ClientRegister] DEBUG: Fingerprint validation PASSED for DeviceID=%d", dev.ID())
+
+			// Valid fingerprint - update or add it
+			if matchedFP != nil {
+				err := reg.mdls.DeviceFingerprint().UpdateLastSeen(ctx, matchedFP.ID)
+				if err != nil {
+					log.Printf("[ClientRegister] ERROR: Failed to update fingerprint last_seen for FingerprintID=%d: %v", matchedFP.ID, err)
+				}
+			} else {
+				if err := reg.addFingerprint(ctx, dev.ID(), params, browserInfo, fpHash); err != nil {
+					log.Printf("[ClientRegister] ERROR: Failed to add fingerprint for DeviceID=%d: %v", dev.ID(), err)
+				}
+			}
+		} else {
+			// No fingerprint data - check if device has stored fingerprints
+			storedFingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, dev.ID())
+			if err != nil {
+				log.Printf("[ClientRegister] ERROR: Failed to check stored fingerprints for DeviceID=%d: %v", dev.ID(), err)
+			} else if len(storedFingerprints) > 0 {
+				// Device has fingerprints but current request doesn't - SUSPICIOUS for MAC match too!
+				log.Printf("[ClientRegister] WARN: Device %d (MAC-matched) has %d stored fingerprint(s) but current request has no fingerprint data - creating new device (possible MAC spoof or JavaScript disabled)", dev.ID(), len(storedFingerprints))
+				goto STEP_3_CREATE_NEW
+			} else {
+				log.Printf("[ClientRegister] DEBUG: Device %d has no stored fingerprints and current request has none - accepting (backward compatibility)", dev.ID())
+			}
+		}
+
+		// Update network details if changed
+		if dev.IpAddr() != params.IpAddr || dev.Hostname() != params.Hostname {
+			log.Printf("[ClientRegister] DEBUG: Network details changed, updating device")
 			err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
 			if err != nil {
 				log.Printf("[ClientRegister] ERROR: Failed to update device: %v", err)
 				return nil, false, err
 			}
-			log.Printf("[ClientRegister] SUCCESS: Updated device found by MAC - DeviceID=%d", dev.ID())
-		} else {
-			log.Printf("[ClientRegister] DEBUG: No changes, returning existing device - DeviceID=%d", dev.ID())
 		}
 
+		log.Printf("[ClientRegister] SUCCESS: Returned device from MAC match - DeviceID=%d", dev.ID())
 		return clnt, true, nil
 	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Printf("[ClientRegister] ERROR: Database error searching by MAC=%s: %v", params.MacAddr, err)
 	}
 
+STEP_3_CREATE_NEW:
 	// Step 3: Not found by cookie or MAC - create new device
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) || dev == nil {
 		log.Printf("[ClientRegister] DEBUG: Step 3 - Device not found, creating new device - MAC=%s, IP=%s, Hostname=%s",
 			params.MacAddr, params.IpAddr, params.Hostname)
 		dev, err = reg.mdls.Device().Create(ctx, models.CreateDeviceParams{
@@ -262,9 +328,141 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
 		log.Printf("[ClientRegister] DEBUG: Emitted EventClientCreated for DeviceID=%d", dev.ID())
 
+		// Add first fingerprint for new device (only if we have complete data)
+		if hasFingerprintData && fpHash != "" {
+			log.Printf("[ClientRegister] DEBUG: Adding first fingerprint for new DeviceID=%d", dev.ID())
+			if err := reg.addFingerprint(ctx, dev.ID(), params, browserInfo, fpHash); err != nil {
+				log.Printf("[ClientRegister] ERROR: Failed to add first fingerprint for DeviceID=%d: %v", dev.ID(), err)
+				// Don't fail registration if fingerprint creation fails
+			}
+		} else if !hasFingerprintData {
+			log.Printf("[ClientRegister] DEBUG: Skipping fingerprint for new DeviceID=%d - incomplete data", dev.ID())
+		}
+
 		return clnt, true, nil
 	}
 
 	log.Printf("[ClientRegister] ERROR: Unexpected error: %v", err)
 	return nil, false, err
+}
+
+// validateDeviceFingerprint checks if current fingerprint matches any stored fingerprints
+// Returns (isValid, matchedFingerprint, error)
+func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, deviceID int64, currentHash string, currentScreen string, currentOS string, currentLang string, currentTZ string) (bool, *queries.DeviceFingerprint, error) {
+	log.Printf("[Fingerprint] Validating fingerprint for DeviceID=%d, Hash=%s, OS=%s, Screen=%s, Lang=%s, TZ=%s",
+		deviceID, currentHash[:16]+"...", currentOS, currentScreen, currentLang, currentTZ)
+
+	// Get all fingerprints for device (within 6 months)
+	fingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, deviceID)
+	if err != nil {
+		log.Printf("[Fingerprint] ERROR: Failed to fetch fingerprints for DeviceID=%d: %v", deviceID, err)
+		return false, nil, err
+	}
+
+	if len(fingerprints) == 0 {
+		log.Printf("[Fingerprint] No fingerprints stored for DeviceID=%d - first time registration, accepting", deviceID)
+		return true, nil, nil
+	}
+
+	log.Printf("[Fingerprint] Found %d stored fingerprint(s) for DeviceID=%d, checking matches...", len(fingerprints), deviceID)
+
+	// Check against all stored fingerprints
+	for i := range fingerprints {
+		fp := &fingerprints[i]
+		log.Printf("[Fingerprint] Checking against fingerprint #%d: Hash=%s, OS=%s, Screen=%s, Lang=%s, Browser=%s, IsCNA=%v",
+			i+1, fp.FingerprintHash[:16]+"...", fp.OsFamily, fp.ScreenResolution, fp.Language, fp.BrowserName, fp.IsCna)
+
+		result := fingerprint.ValidateFingerprint(
+			fingerprint.StoredFingerprint{
+				FingerprintHash:  fp.FingerprintHash,
+				OSFamily:         fp.OsFamily,
+				ScreenResolution: fp.ScreenResolution,
+				Language:         fp.Language,
+				Timezone:         "", // Not stored separately in old schema, will be in hash
+			},
+			currentHash,
+			currentOS,
+			currentScreen,
+			currentLang,
+			currentTZ,
+		)
+
+		if result == fingerprint.ExactMatch {
+			log.Printf("[Fingerprint] ✓ EXACT MATCH found! FingerprintID=%d, DeviceID=%d", fp.ID, deviceID)
+			return true, fp, nil
+		}
+
+		if result == fingerprint.SmartMatch {
+			log.Printf("[Fingerprint] ✓ SMART MATCH found! Same OS+Screen+Lang+TZ but different hash (browser switch detected). FingerprintID=%d, DeviceID=%d", fp.ID, deviceID)
+			return true, nil, nil
+		}
+
+		log.Printf("[Fingerprint] ✗ No match for fingerprint #%d", i+1)
+	}
+
+	// No match found - different device
+	log.Printf("[Fingerprint] ✗ VALIDATION FAILED! No matching fingerprint found for DeviceID=%d", deviceID)
+	log.Printf("[Fingerprint] Current: OS=%s, Screen=%s, Lang=%s, TZ=%s | Stored fingerprints had different combinations", currentOS, currentScreen, currentLang, currentTZ)
+	return false, nil, nil
+}
+
+// addFingerprint creates a new fingerprint record for device
+func (reg *ClientRegister) addFingerprint(ctx context.Context, deviceID int64, params ClientRegisterParams, browserInfo browserdetect.BrowserInfo, fpHash string) error {
+	// Don't store empty fingerprint hashes
+	if fpHash == "" {
+		log.Printf("[Fingerprint] WARN: Attempted to add empty fingerprint hash for DeviceID=%d - skipping", deviceID)
+		return fmt.Errorf("fingerprint hash is empty")
+	}
+
+	log.Printf("[Fingerprint] Adding fingerprint for DeviceID=%d, Hash=%s, Browser=%s, OS=%s, Screen=%s, IsCNA=%v",
+		deviceID, fpHash[:16]+"...", browserInfo.BrowserName, browserInfo.OSFamily, params.ScreenRes, browserInfo.IsCNA)
+
+	// Check if exact fingerprint already exists
+	existing, err := reg.mdls.DeviceFingerprint().CheckExactMatch(ctx, deviceID, fpHash)
+	if err != nil {
+		log.Printf("[Fingerprint] ERROR: Failed to check for existing fingerprint: %v", err)
+	}
+
+	if existing != nil {
+		log.Printf("[Fingerprint] Fingerprint already exists (FingerprintID=%d), updating last_seen timestamp", existing.ID)
+		err := reg.mdls.DeviceFingerprint().UpdateLastSeen(ctx, existing.ID)
+		if err != nil {
+			log.Printf("[Fingerprint] ERROR: Failed to update last_seen for FingerprintID=%d: %v", existing.ID, err)
+			return err
+		}
+		log.Printf("[Fingerprint] ✓ Successfully updated last_seen for FingerprintID=%d", existing.ID)
+		return nil
+	}
+
+	// Check fingerprint limit (max 10 per device to prevent flooding)
+	fingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, deviceID)
+	if err != nil {
+		log.Printf("[Fingerprint] ERROR: Failed to count fingerprints for DeviceID=%d: %v", deviceID, err)
+		// Continue anyway - don't block on this check
+	} else if len(fingerprints) >= 10 {
+		log.Printf("[Fingerprint] WARN: Device %d already has %d fingerprints (limit reached) - rejecting new fingerprint to prevent flooding", deviceID, len(fingerprints))
+		return fmt.Errorf("fingerprint limit reached (max 10 per device)")
+	}
+
+	// Create new fingerprint record
+	log.Printf("[Fingerprint] Creating new fingerprint record for DeviceID=%d (current count: %d)", deviceID, len(fingerprints))
+	fpID, err := reg.mdls.DeviceFingerprint().Create(ctx, queries.CreateDeviceFingerprintParams{
+		DeviceID:         deviceID,
+		FingerprintHash:  fpHash,
+		UserAgent:        params.UserAgent,
+		BrowserName:      browserInfo.BrowserName,
+		OsFamily:         browserInfo.OSFamily,
+		ScreenResolution: params.ScreenRes,
+		Language:         params.Language,
+		IsCna:            browserInfo.IsCNA,
+	})
+
+	if err != nil {
+		log.Printf("[Fingerprint] ERROR: Failed to create fingerprint for DeviceID=%d: %v", deviceID, err)
+		return err
+	}
+
+	log.Printf("[Fingerprint] ✓ Successfully created new fingerprint! FingerprintID=%d, DeviceID=%d, Browser=%s, OS=%s, IsCNA=%v",
+		fpID, deviceID, browserInfo.BrowserName, browserInfo.OSFamily, browserInfo.IsCNA)
+	return nil
 }

@@ -5,21 +5,23 @@ import (
 )
 
 type Models struct {
-	deviceModel         *DeviceModel
-	sessionModel        *SessionModel
-	purchaseModel       *PurchaseModel
-	paymentModel        *PaymentModel
-	walletModel         *WalletModel
-	walletTrnsModel     *WalletTrnsModel
-	logModel            *LogModel
-	notificationModel   *NotificationModel
-	quickAccessNavModel *QuickAccessNavModel
+	deviceModel            *DeviceModel
+	deviceFingerprintModel *DeviceFingerprintModel
+	sessionModel           *SessionModel
+	purchaseModel          *PurchaseModel
+	paymentModel           *PaymentModel
+	walletModel            *WalletModel
+	walletTrnsModel        *WalletTrnsModel
+	logModel               *LogModel
+	notificationModel      *NotificationModel
+	quickAccessNavModel    *QuickAccessNavModel
 }
 
 func New(dtb *db.Database) *Models {
 	var models Models
 
 	deviceModel := NewDeviceModel(dtb, &models)
+	deviceFingerprintModel := NewDeviceFingerprintModel(dtb, &models)
 	sessionModel := NewSessionModel(dtb, &models)
 	purchaseModel := NewPurchaseModel(dtb, &models)
 	paymentModel := NewPaymentModel(dtb, &models)
@@ -28,6 +30,7 @@ func New(dtb *db.Database) *Models {
 	logModel := NewLogModel(dtb, &models)
 
 	models.deviceModel = deviceModel
+	models.deviceFingerprintModel = deviceFingerprintModel
 	models.sessionModel = sessionModel
 	models.purchaseModel = purchaseModel
 	models.paymentModel = paymentModel
@@ -42,6 +45,10 @@ func New(dtb *db.Database) *Models {
 
 func (self *Models) Device() *DeviceModel {
 	return self.deviceModel
+}
+
+func (self *Models) DeviceFingerprint() *DeviceFingerprintModel {
+	return self.deviceFingerprintModel
 }
 
 func (self *Models) Session() *SessionModel {
