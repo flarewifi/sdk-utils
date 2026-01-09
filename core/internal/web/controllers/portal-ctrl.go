@@ -116,6 +116,17 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(userMsg), http.StatusBadRequest)
 			return
 		}
+		if clnt == nil {
+			userMsg := g.CoreAPI.Translate("error", "Failed to register your device")
+			cookieIDStr := "none"
+			if cookieDeviceID != nil {
+				cookieIDStr = fmt.Sprintf("%d", *cookieDeviceID)
+			}
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterCtrl: Register returned nil client - MAC: %s, IP: %s, CookieID: %s",
+				h.MacAddr, h.IpAddr, cookieIDStr))
+			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(userMsg), http.StatusInternalServerError)
+			return
+		}
 
 		// Only set cookie if validation passed
 		if shouldSetCookie {
@@ -268,6 +279,22 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				h.MacAddr, h.IpAddr, cookieIDStr, err))
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   errMsg,
+			})
+			return
+		}
+		if clnt == nil {
+			errMsg := g.CoreAPI.Translate("error", "Failed to register device")
+			cookieIDStr := "none"
+			if cookieDeviceID != nil {
+				cookieIDStr = fmt.Sprintf("%d", *cookieDeviceID)
+			}
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Register returned nil client - MAC: %s, IP: %s, CookieID: %s",
+				h.MacAddr, h.IpAddr, cookieIDStr))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": false,
 				"error":   errMsg,
