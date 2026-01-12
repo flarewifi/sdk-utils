@@ -43,6 +43,23 @@ func performScheduledUpdateCheck() {
 		return
 	}
 
+	// Force updates must be installed automatically - users cannot opt-out
+	if result.ForceUpdate {
+		log.Println("Force update detected - will be installed automatically")
+		if !IsDownloading() && !IsDownloaded() {
+			DownloadSoftwareUpdate(DownloadParams{
+				FileURL:      result.ReleseFileURL,
+				Checksum:     result.ReleaseFileChecksum,
+				OutputPath:   GetUpdateOutputPath(result.ReleseFileURL, result.IsSysupgrade),
+				IsSysupgrade: result.IsSysupgrade,
+			})
+			waitForDownloadAndReboot()
+		}
+		return
+	}
+
+	// Optional updates - download but don't auto-install
+	log.Println("Optional update available - downloading only (requires manual installation)")
 	if !IsDownloading() && !IsDownloaded() {
 		DownloadSoftwareUpdate(DownloadParams{
 			FileURL:      result.ReleseFileURL,
@@ -50,7 +67,7 @@ func performScheduledUpdateCheck() {
 			OutputPath:   GetUpdateOutputPath(result.ReleseFileURL, result.IsSysupgrade),
 			IsSysupgrade: result.IsSysupgrade,
 		})
-		waitForDownloadAndReboot()
+		// Don't waitForDownloadAndReboot() for optional updates
 	}
 }
 
