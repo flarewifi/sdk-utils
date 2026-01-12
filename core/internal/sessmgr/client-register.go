@@ -248,12 +248,14 @@ STEP_2_MAC_MATCH:
 
 			if err != nil {
 				log.Printf("[ClientRegister] ERROR: Fingerprint validation error for DeviceID=%d: %v", dev.ID(), err)
+				dev = nil // Reset dev so STEP_3_CREATE_NEW creates a new device
 				goto STEP_3_CREATE_NEW
 			}
 
 			if !isValid {
 				log.Printf("[ClientRegister] WARN: Fingerprint validation FAILED for MAC-matched DeviceID=%d - possible MAC collision!", dev.ID())
 				log.Printf("[ClientRegister] DEBUG: Rejecting MAC match, creating new device")
+				dev = nil // Reset dev so STEP_3_CREATE_NEW creates a new device
 				goto STEP_3_CREATE_NEW
 			}
 
@@ -278,6 +280,7 @@ STEP_2_MAC_MATCH:
 			} else if len(storedFingerprints) > 0 {
 				// Device has fingerprints but current request doesn't - SUSPICIOUS for MAC match too!
 				log.Printf("[ClientRegister] WARN: Device %d (MAC-matched) has %d stored fingerprint(s) but current request has no fingerprint data - creating new device (possible MAC spoof or JavaScript disabled)", dev.ID(), len(storedFingerprints))
+				dev = nil // Reset dev so STEP_3_CREATE_NEW creates a new device
 				goto STEP_3_CREATE_NEW
 			} else {
 				log.Printf("[ClientRegister] DEBUG: Device %d has no stored fingerprints and current request has none - accepting (backward compatibility)", dev.ID())
