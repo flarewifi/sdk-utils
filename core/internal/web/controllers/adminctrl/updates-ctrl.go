@@ -7,6 +7,7 @@ import (
 	"core/utils/config"
 	"core/utils/markdown"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	sdkapi "sdk/api"
@@ -23,6 +24,27 @@ const (
 var (
 	newUpdate atomic.Value
 )
+
+// formatBytes converts bytes to human-readable format (B, KB, MB, GB)
+func formatBytes(bytes int64) string {
+	const (
+		KB = 1024
+		MB = 1024 * KB
+		GB = 1024 * MB
+	)
+
+	if bytes < KB {
+		return fmt.Sprintf("%d B", bytes)
+	} else if bytes < MB {
+		return fmt.Sprintf("%d KB", bytes/KB)
+	} else if bytes < 100*MB {
+		return fmt.Sprintf("%.1f MB", float64(bytes)/float64(MB))
+	} else if bytes < GB {
+		return fmt.Sprintf("%d MB", bytes/MB)
+	} else {
+		return fmt.Sprintf("%.1f GB", float64(bytes)/float64(GB))
+	}
+}
 
 func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -184,7 +206,13 @@ func DownloadStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		percent := updates.DownloadPercent()
 		err := updates.DownloadError()
-		page := updatesview.DownloadStatusPartial(api, int(percent), err)
+		downloaded := updates.DownloadedBytes()
+		totalSize := updates.TotalSizeBytes()
+
+		downloadedStr := formatBytes(downloaded)
+		totalSizeStr := formatBytes(totalSize)
+
+		page := updatesview.DownloadStatusPartial(api, int(percent), downloadedStr, totalSizeStr, err)
 		if err := page.Render(r.Context(), w); err != nil {
 			api.LoggerAPI.Error(err.Error())
 		}

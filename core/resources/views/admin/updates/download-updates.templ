@@ -7,11 +7,11 @@ import (
 
 templ DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, err error) {
     <div id="page" hx-post={ api.Http().Router().UrlForRoute("admin:updates:download-status") } hx-trigger="every 1s">
-		@DownloadStatusPartial(api, percent, err)
+		@DownloadStatusPartial(api, percent, "0 B", "0 B", err)
 	</div>
 }
 
-templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) {
+templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize string, totalSize string, err error) {
 	if err != nil {
 		<div class="alert alert-danger alert-dismissible fade show" role="alert">
 			<i class="bi bi-exclamation-triangle me-2"></i>
@@ -20,7 +20,7 @@ templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) {
 		{{ return }}
 	}
 	
-	<div class="card shadow-sm" x-data={ fmt.Sprintf("{percent: %d}", percent) }>
+	<div class="card shadow-sm" x-data={ fmt.Sprintf("{percent: %d, downloadedSize: '%s', totalSize: '%s'}", percent, downloadedSize, totalSize) }>
 		<div class="card-body">
 			<h4 class="card-title mb-4">
 				<i class="bi bi-download me-2"></i>
@@ -41,7 +41,7 @@ templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) {
 						:aria-valuenow="percent"
 						aria-valuemin="0" 
 						aria-valuemax="100"
-						x-text="`${percent}%`">
+						x-text="`${downloadedSize}/${totalSize}`">
 					</div>
 				</div>
 			</div>

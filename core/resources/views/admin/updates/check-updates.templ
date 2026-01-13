@@ -62,9 +62,9 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 					hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:query") } 
 					hx-include="[name='channel']"
 					data-loading-disable>
-					<span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" data-loading></span>
+					<span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" data-loading-class-remove="d-none"></span>
 					<span data-loading-class="d-none">{ api.Translate("label", "Check for updates") }</span>
-					<span class="d-none" data-loading>{ api.Translate("label", "Checking for updates") }...</span>
+					<span class="d-none" data-loading-class-remove="d-none">{ api.Translate("label", "Checking for updates") }...</span>
 				</button>
 			</form>
 		</div>

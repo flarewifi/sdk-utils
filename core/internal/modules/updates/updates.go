@@ -33,6 +33,8 @@ var (
 	downloadPercent      atomic.Int32
 	prevPercent          atomic.Int32
 	downloadError        atomic.Pointer[error]
+	downloadedBytes      atomic.Int64
+	totalSizeBytes       atomic.Int64
 )
 
 type SoftwareReleaseUpdate struct {
@@ -106,8 +108,10 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 }
 
 type DownloadResult struct {
-	Percent int
-	Error   error
+	Percent    int
+	Downloaded int64 // bytes downloaded so far
+	TotalSize  int64 // total file size in bytes
+	Error      error
 }
 
 // DownloadParams contains parameters for downloading a software update
@@ -127,11 +131,15 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 	downloading.Store(true)
 	downloadPercent.Store(0)
 	prevPercent.Store(0)
+	downloadedBytes.Store(0)
+	totalSizeBytes.Store(0)
 
 	go func() {
 		defer downloading.Store(false)
 		defer downloadPercent.Store(0)
 		defer prevPercent.Store(0)
+		defer downloadedBytes.Store(0)
+		defer totalSizeBytes.Store(0)
 
 		// Clean up before starting new download to free up space
 		// Always remove sysupgrade file and clean all update directories
@@ -159,6 +167,8 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 			}
 
 			downloadPercent.Store(int32(result.Percent))
+			downloadedBytes.Store(result.Downloaded)
+			totalSizeBytes.Store(result.TotalSize)
 			prev := prevPercent.Load()
 
 			if prev < int32(result.Percent) {
@@ -233,7 +243,11 @@ func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 				downloaded += int64(n)
 				currentPercent := int((downloaded * 100) / totalSize)
 				if currentPercent != lastPercent {
-					resultCh <- DownloadResult{Percent: currentPercent}
+					resultCh <- DownloadResult{
+						Percent:    currentPercent,
+						Downloaded: downloaded,
+						TotalSize:  totalSize,
+					}
 					lastPercent = currentPercent
 				}
 			}
@@ -276,7 +290,11 @@ func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 			log.Println("Warning: failed to create download completion marker:", err)
 		}
 
-		resultCh <- DownloadResult{Percent: 100}
+		resultCh <- DownloadResult{
+			Percent:    100,
+			Downloaded: totalSize,
+			TotalSize:  totalSize,
+		}
 	}()
 
 	return resultCh
@@ -310,4 +328,12 @@ func DownloadError() error {
 func IsDownloaded() bool {
 	markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
 	return sdkutils.FsExists(markerPath)
+}
+
+func DownloadedBytes() int64 {
+	return downloadedBytes.Load()
+}
+
+func TotalSizeBytes() int64 {
+	return totalSizeBytes.Load()
 }

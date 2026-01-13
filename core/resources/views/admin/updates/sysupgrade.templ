@@ -13,41 +13,42 @@ templ SysupgradePage(api sdkapi.IPluginApi, uploadUrl string, csrfHTML string, m
 				{ api.Translate("label", "Manual Sysupgrade") }
 			</h3>
 			
-			<form 
-				action={ templ.SafeURL(uploadUrl) }
-				method="POST"
-				enctype="multipart/form-data">
-				
-				@templ.Raw(csrfHTML)
-				
-			<div class="mb-4">
-				<label for="sysupgrade_file" class="form-label">
-					{ api.Translate("label", "Sysupgrade File") }
-				</label>
-				<input 
-					type="file" 
-					class="form-control" 
-					id="sysupgrade_file" 
-					name="sysupgrade_file"
-					accept=".bin,.img"
-					required />
-				<div class="form-text">
-					{ api.Translate("info", "Accepted formats") }: { formatExtensions(allowedExts) }. 
-					{ api.Translate("info", "Maximum file size") }: { fmt.Sprintf("%d MB", maxSizeMB) }
-				</div>
+		<form 
+			hx-post={ uploadUrl }
+			hx-encoding="multipart/form-data">
+			
+			@templ.Raw(csrfHTML)
+			
+		<div class="mb-4">
+			<label for="sysupgrade_file" class="form-label">
+				{ api.Translate("label", "Sysupgrade File") }
+			</label>
+			<input 
+				type="file" 
+				class="form-control" 
+				id="sysupgrade_file" 
+				name="sysupgrade_file"
+				accept=".bin,.img"
+				required />
+			<div class="form-text">
+				{ api.Translate("info", "Accepted formats") }: { formatExtensions(allowedExts) }. 
+				{ api.Translate("info", "Maximum file size") }: { fmt.Sprintf("%d MB", maxSizeMB) }
 			</div>
-				
-				<div class="d-flex gap-2">
-					<button type="submit" class="btn btn-primary">
-						<i class="bi bi-upload me-2"></i>
-						{ api.Translate("label", "Upload Firmware") }
-					</button>
-					<a href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:index")) } class="btn btn-outline-secondary">
-						<i class="bi bi-arrow-left me-2"></i>
-						{ api.Translate("label", "Back to Updates") }
-					</a>
-				</div>
-			</form>
+		</div>
+			
+		<div class="d-flex gap-2">
+			<button type="submit" class="btn btn-primary" data-loading-disable>
+				<span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" data-loading-class-remove="d-none"></span>
+				<i class="bi bi-upload me-2" data-loading-class="d-none"></i>
+				<span data-loading-class="d-none">{ api.Translate("label", "Upload Firmware") }</span>
+				<span class="d-none" data-loading-class-remove="d-none">{ api.Translate("label", "Uploading") }...</span>
+			</button>
+			<a href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:index")) } class="btn btn-outline-secondary">
+				<i class="bi bi-arrow-left me-2"></i>
+				{ api.Translate("label", "Back to Updates") }
+			</a>
+		</div>
+		</form>
 		</div>
 	</div>
 }
