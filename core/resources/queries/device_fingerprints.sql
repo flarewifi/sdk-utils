@@ -7,6 +7,7 @@ INSERT INTO device_fingerprints (
     os_family,
     screen_resolution,
     language,
+    timezone,
     is_cna
 ) VALUES (
     @device_id,
@@ -16,6 +17,7 @@ INSERT INTO device_fingerprints (
     @os_family,
     @screen_resolution,
     @language,
+    @timezone,
     @is_cna
 ) RETURNING id;
 
@@ -29,6 +31,7 @@ SELECT
     os_family,
     screen_resolution,
     language,
+    timezone,
     is_cna,
     created_at,
     last_seen_at
@@ -47,6 +50,7 @@ SELECT
     os_family,
     screen_resolution,
     language,
+    timezone,
     is_cna,
     created_at,
     last_seen_at

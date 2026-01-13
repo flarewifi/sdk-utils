@@ -31,26 +31,21 @@ func PortalRoutes(g *api.CoreGlobals) {
 	// that redirects to http://<lan-ip>/portal/redirect
 	rootR.HandleFunc("/", portalRootCtrl).Methods("GET").Name("portal:root")
 
-	portalR.Group("/register", func(regR sdkapi.IHttpRouterInstance) {
+	portalR.Group("/", func(regR sdkapi.IHttpRouterInstance) {
 		regR.Use(redirectToLanIpMw)
 		regR.Use(httpRedirectMw)
-		regR.Group("/", func(subrouter sdkapi.IHttpRouterInstance) {
 
-			subrouter.Get("/redirect", portalRedirectCtrl).
-				Name("portal:redirector")
+		// /register/redirect
+		regR.Get("/register/redirect", portalRedirectCtrl).
+			Name("portal:redirector")
 
-			// /portal/register - applies HTTPRedirect middleware
-			subrouter.Get("/register", func(w http.ResponseWriter, r *http.Request) {
-				h := http.HandlerFunc(portalRegisterCtrl)
-				h.ServeHTTP(w, r)
-			}).Name("portal:register")
+		// /register - applies HTTPRedirect middleware
+		regR.Get("/register", portalRegisterCtrl).
+			Name("portal:register")
 
-			// /portal/register/ajax - applies HTTPRedirect middleware
-			subrouter.Post("/register/ajax", func(w http.ResponseWriter, r *http.Request) {
-				h := http.HandlerFunc(portalRegisterAjaxCtrl)
-				h.ServeHTTP(w, r)
-			}).Name("portal:register:ajax")
-		})
+		// /register/ajax - applies HTTPRedirect middleware
+		regR.Post("/register/ajax", portalRegisterAjaxCtrl).
+			Name("portal:register:ajax")
 	})
 
 	portalR.Group("/portal", func(subrouter sdkapi.IHttpRouterInstance) {

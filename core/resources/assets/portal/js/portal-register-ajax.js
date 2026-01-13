@@ -214,6 +214,14 @@
         return;
       }
 
+      // Check if storage key is available (injected by backend)
+      var storageKeyAttr = getDataAttribute('data-storage-key');
+      if (!storageKeyAttr) {
+        console.error('[PortalRegister] Storage key not found in container, falling back to non-AJAX registration');
+        safeRedirect(fallbackUrl);
+        return;
+      }
+
       // Always perform AJAX registration (validates existing token or registers new device)
       console.log('[PortalRegister] Starting registration flow');
       performRegistration(registerUrl, redirectUrl, fallbackUrl, false);

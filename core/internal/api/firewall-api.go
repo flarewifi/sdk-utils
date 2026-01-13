@@ -116,14 +116,14 @@ func (self *FirewallApi) OpenIpForClientDevice(params sdkapi.OpenIpForClientDevi
 		clientIpVersion = "ip6"
 	}
 
+	// Check if IP versions are compatible for return traffic rules
+	// nftables doesn't allow mixing ip and ip6 protocol matchers in the same rule
+	ipVersionsMatch := destIpVersion == clientIpVersion
+
 	// Build nftables rules for bidirectional traffic
 	// Outgoing: Client MAC → Destination IP (all ports)
 	preroutingOutgoingCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting ether saddr %s %s daddr %s counter accept", params.MacAddr, destIpVersion, params.DestinationIp)
 	forwardOutgoingCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward ether saddr %s %s daddr %s counter accept", params.MacAddr, destIpVersion, params.DestinationIp)
-
-	// Return: Destination IP → Client IP (all ports)
-	preroutingReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting %s saddr %s %s daddr %s counter accept", destIpVersion, params.DestinationIp, clientIpVersion, params.IpAddr)
-	forwardReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward %s saddr %s %s daddr %s counter accept", destIpVersion, params.DestinationIp, clientIpVersion, params.IpAddr)
 
 	// Add prerouting rule for outgoing traffic (client → destination)
 	if err := shell.Exec(preroutingOutgoingCmd, nil); err != nil {
@@ -135,15 +135,27 @@ func (self *FirewallApi) OpenIpForClientDevice(params sdkapi.OpenIpForClientDevi
 		return fmt.Errorf("failed to add forward outgoing rule for %s → %s: %v", params.MacAddr, params.DestinationIp, err)
 	}
 
-	// Add prerouting rule for return traffic (destination → client)
-	if err := shell.Exec(preroutingReturnCmd, nil); err != nil {
-		return fmt.Errorf("failed to add prerouting return rule for %s → %s: %v", params.DestinationIp, params.IpAddr, err)
-	}
+	// Only add return traffic rules if IP versions match
+	// Mixed protocol scenarios (IPv4 client → IPv6 destination or vice versa) cannot be
+	// expressed in a single nftables rule. In these cases, return traffic is handled by
+	// connection tracking and NAT mechanisms, so explicit return rules are not needed.
+	if ipVersionsMatch {
+		// Return: Destination IP → Client IP (all ports)
+		preroutingReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting %s saddr %s %s daddr %s counter accept", destIpVersion, params.DestinationIp, clientIpVersion, params.IpAddr)
+		forwardReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward %s saddr %s %s daddr %s counter accept", destIpVersion, params.DestinationIp, clientIpVersion, params.IpAddr)
 
-	// Add forwarding rule for return traffic (destination → client)
-	if err := shell.Exec(forwardReturnCmd, nil); err != nil {
-		return fmt.Errorf("failed to add forward return rule for %s → %s: %v", params.DestinationIp, params.IpAddr, err)
+		// Add prerouting rule for return traffic (destination → client)
+		if err := shell.Exec(preroutingReturnCmd, nil); err != nil {
+			return fmt.Errorf("failed to add prerouting return rule for %s → %s: %v", params.DestinationIp, params.IpAddr, err)
+		}
+
+		// Add forwarding rule for return traffic (destination → client)
+		if err := shell.Exec(forwardReturnCmd, nil); err != nil {
+			return fmt.Errorf("failed to add forward return rule for %s → %s: %v", params.DestinationIp, params.IpAddr, err)
+		}
 	}
+	// else: Skip return traffic rules for mixed IP protocols (e.g., IPv4 client → IPv6 destination)
+	// Outgoing rules are sufficient, return traffic relies on connection tracking/NAT
 
 	// Schedule automatic removal if timeout is specified
 	if params.TimeoutSecs > 0 {
