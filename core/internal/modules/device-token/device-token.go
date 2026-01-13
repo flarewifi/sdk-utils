@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	machineuid "core/internal/modules/machine-uid"
@@ -16,9 +17,6 @@ const (
 	// This ensures consistency between frontend (localStorage) and backend (cookies/headers)
 	DeviceTokenKey = "flare_device_token"
 
-	// CookieName is the name of the HTTP cookie that stores the device JWT token
-	CookieName = DeviceTokenKey
-
 	// HeaderName is the name of the HTTP header that carries the device JWT token
 	HeaderName = "X-Device-Token"
 
@@ -26,6 +24,39 @@ const (
 	// JavaScript should use: localStorage.getItem('flare_device_token')
 	LocalStorageKey = DeviceTokenKey
 )
+
+// getCookieName returns the dynamic cookie name based on machine ID
+// Format: flare_device_token_{last4chars_lowercase}
+func getCookieName() string {
+	suffix := GetCookieNameSuffix()
+	if suffix == "" {
+		return DeviceTokenKey
+	}
+	return DeviceTokenKey + "_" + suffix
+}
+
+// GetCookieNameSuffix returns the last 4 chars of machine ID (lowercase)
+// Used by templates to sync localStorage key with cookie name
+// Returns empty string if machine ID is not available
+func GetCookieNameSuffix() string {
+	_, machineID := machineuid.GetMachineUID()
+	if machineID == "" {
+		return ""
+	}
+
+	// Get last 4 characters and convert to lowercase
+	if len(machineID) >= 4 {
+		return strings.ToLower(machineID[len(machineID)-4:])
+	}
+	return strings.ToLower(machineID)
+}
+
+// GetDeviceTokenKey returns the complete device token key for use in both cookies and localStorage
+// Format: flare_device_token_{last4chars_lowercase}
+// Returns base key if machine ID is not available
+func GetDeviceTokenKey() string {
+	return getCookieName()
+}
 
 // GenerateDeviceToken creates a JWT token containing the device ID
 // The token is signed with the machine ID and expires in 10 years
@@ -94,7 +125,7 @@ func SetDeviceCookie(w http.ResponseWriter, deviceID int64) error {
 	}
 
 	cookie := &http.Cookie{
-		Name:     CookieName,
+		Name:     getCookieName(),
 		Value:    token,
 		Path:     "/",
 		MaxAge:   315360000,                                 // 10 years in seconds
@@ -107,7 +138,7 @@ func SetDeviceCookie(w http.ResponseWriter, deviceID int64) error {
 
 // GetDeviceCookie retrieves and verifies the device cookie, returning the device ID
 func GetDeviceCookie(r *http.Request) (int64, error) {
-	cookie, err := r.Cookie(CookieName)
+	cookie, err := r.Cookie(getCookieName())
 	if err != nil {
 		return 0, err
 	}

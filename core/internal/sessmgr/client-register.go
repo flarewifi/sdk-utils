@@ -144,7 +144,12 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 	// Parse browser info and generate fingerprint hash
 	browserInfo := browserdetect.DetectBrowser(params.UserAgent)
 	fpHash := ""
-	hasFingerprintData := params.UserAgent != "" && params.ScreenRes != "" && params.Language != ""
+	// Accept fingerprint data even if partial (for CNA support)
+	// Full fingerprint: UserAgent + ScreenRes + Language + Timezone
+	// Partial fingerprint (CNA): UserAgent only (ScreenRes/Language/Timezone empty)
+	hasFullFingerprintData := params.UserAgent != "" && params.ScreenRes != "" && params.Language != ""
+	hasPartialFingerprintData := params.UserAgent != "" && browserInfo.IsCNA
+	hasFingerprintData := hasFullFingerprintData || hasPartialFingerprintData
 
 	if hasFingerprintData {
 		fpData := fingerprint.FingerprintData{
@@ -154,11 +159,17 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 			Timezone:  params.Timezone,
 		}
 		fpHash = fingerprint.GenerateHash(fpData)
-		log.Printf("[ClientRegister] DEBUG: Fingerprint generated - Hash=%s, Browser=%s, OS=%s, IsCNA=%v",
-			fpHash[:16]+"...", browserInfo.BrowserName, browserInfo.OSFamily, browserInfo.IsCNA)
+
+		if hasPartialFingerprintData && !hasFullFingerprintData {
+			log.Printf("[ClientRegister] DEBUG: Partial fingerprint generated (CNA) - Hash=%s, Browser=%s, OS=%s, IsCNA=%v",
+				fpHash[:16]+"...", browserInfo.BrowserName, browserInfo.OSFamily, browserInfo.IsCNA)
+		} else {
+			log.Printf("[ClientRegister] DEBUG: Full fingerprint generated - Hash=%s, Browser=%s, OS=%s, IsCNA=%v",
+				fpHash[:16]+"...", browserInfo.BrowserName, browserInfo.OSFamily, browserInfo.IsCNA)
+		}
 	} else {
-		log.Printf("[ClientRegister] WARN: Incomplete fingerprint data - UserAgent=%v, ScreenRes=%v, Language=%v (possible JavaScript disabled or old browser)",
-			params.UserAgent != "", params.ScreenRes != "", params.Language != "")
+		log.Printf("[ClientRegister] WARN: No fingerprint data - UserAgent=%v, ScreenRes=%v, Language=%v, IsCNA=%v",
+			params.UserAgent != "", params.ScreenRes != "", params.Language != "", browserInfo.IsCNA)
 	}
 
 	var clnt sdkapi.IClientDevice
@@ -173,7 +184,7 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 
 			// Validate fingerprint if we have it
 			if hasFingerprintData {
-				isValid, matchedFP, err := reg.validateDeviceFingerprint(ctx, clnt.ID(), fpHash, params.ScreenRes, browserInfo.OSFamily, params.Language, params.Timezone)
+				isValid, matchedFP, err := reg.validateDeviceFingerprint(ctx, clnt.ID(), fpHash, params.ScreenRes, browserInfo.OSFamily, params.Language, params.Timezone, browserInfo.IsCNA)
 
 				if err != nil {
 					log.Printf("[ClientRegister] ERROR: Fingerprint validation error for DeviceID=%d: %v", clnt.ID(), err)
@@ -244,7 +255,7 @@ STEP_2_MAC_MATCH:
 
 		// Validate fingerprint if we have it
 		if hasFingerprintData {
-			isValid, matchedFP, err := reg.validateDeviceFingerprint(ctx, dev.ID(), fpHash, params.ScreenRes, browserInfo.OSFamily, params.Language, params.Timezone)
+			isValid, matchedFP, err := reg.validateDeviceFingerprint(ctx, dev.ID(), fpHash, params.ScreenRes, browserInfo.OSFamily, params.Language, params.Timezone, browserInfo.IsCNA)
 
 			if err != nil {
 				log.Printf("[ClientRegister] ERROR: Fingerprint validation error for DeviceID=%d: %v", dev.ID(), err)
@@ -331,15 +342,19 @@ STEP_3_CREATE_NEW:
 		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
 		log.Printf("[ClientRegister] DEBUG: Emitted EventClientCreated for DeviceID=%d", dev.ID())
 
-		// Add first fingerprint for new device (only if we have complete data)
+		// Add first fingerprint for new device (full or partial/CNA)
 		if hasFingerprintData && fpHash != "" {
-			log.Printf("[ClientRegister] DEBUG: Adding first fingerprint for new DeviceID=%d", dev.ID())
+			if browserInfo.IsCNA && hasPartialFingerprintData {
+				log.Printf("[ClientRegister] DEBUG: Adding first PARTIAL fingerprint (CNA) for new DeviceID=%d", dev.ID())
+			} else {
+				log.Printf("[ClientRegister] DEBUG: Adding first FULL fingerprint for new DeviceID=%d", dev.ID())
+			}
 			if err := reg.addFingerprint(ctx, dev.ID(), params, browserInfo, fpHash); err != nil {
 				log.Printf("[ClientRegister] ERROR: Failed to add first fingerprint for DeviceID=%d: %v", dev.ID(), err)
 				// Don't fail registration if fingerprint creation fails
 			}
 		} else if !hasFingerprintData {
-			log.Printf("[ClientRegister] DEBUG: Skipping fingerprint for new DeviceID=%d - incomplete data", dev.ID())
+			log.Printf("[ClientRegister] DEBUG: Skipping fingerprint for new DeviceID=%d - no fingerprint data provided", dev.ID())
 		}
 
 		return clnt, true, nil
@@ -351,9 +366,9 @@ STEP_3_CREATE_NEW:
 
 // validateDeviceFingerprint checks if current fingerprint matches any stored fingerprints
 // Returns (isValid, matchedFingerprint, error)
-func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, deviceID int64, currentHash string, currentScreen string, currentOS string, currentLang string, currentTZ string) (bool, *queries.DeviceFingerprint, error) {
-	log.Printf("[Fingerprint] Validating fingerprint for DeviceID=%d, Hash=%s, OS=%s, Screen=%s, Lang=%s, TZ=%s",
-		deviceID, currentHash[:16]+"...", currentOS, currentScreen, currentLang, currentTZ)
+func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, deviceID int64, currentHash string, currentScreen string, currentOS string, currentLang string, currentTZ string, currentIsCNA bool) (bool, *queries.DeviceFingerprint, error) {
+	log.Printf("[Fingerprint] Validating fingerprint for DeviceID=%d, Hash=%s, OS=%s, Screen=%s, Lang=%s, TZ=%s, IsCNA=%v",
+		deviceID, currentHash[:16]+"...", currentOS, currentScreen, currentLang, currentTZ, currentIsCNA)
 
 	// Get all fingerprints for device (within 6 months)
 	fingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, deviceID)
@@ -381,13 +396,15 @@ func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, device
 				OSFamily:         fp.OsFamily,
 				ScreenResolution: fp.ScreenResolution,
 				Language:         fp.Language,
-				Timezone:         "", // Not stored separately in old schema, will be in hash
+				Timezone:         fp.Timezone, // Now stored in database
+				IsCna:            fp.IsCna,
 			},
 			currentHash,
 			currentOS,
 			currentScreen,
 			currentLang,
 			currentTZ,
+			currentIsCNA,
 		)
 
 		if result == fingerprint.ExactMatch {
@@ -396,11 +413,20 @@ func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, device
 		}
 
 		if result == fingerprint.SmartMatch {
-			log.Printf("[Fingerprint] ✓ SMART MATCH found! Same OS+Screen+Lang+TZ but different hash (browser switch detected). FingerprintID=%d, DeviceID=%d", fp.ID, deviceID)
+			// Log different match scenarios
+			if fp.IsCna && currentIsCNA {
+				log.Printf("[Fingerprint] ✓ SMART MATCH found! CNA-to-CNA match (same OS). FingerprintID=%d, DeviceID=%d", fp.ID, deviceID)
+			} else if fp.IsCna && !currentIsCNA {
+				log.Printf("[Fingerprint] ✓ SMART MATCH found! CNA fingerprint accepting browser (same OS). FingerprintID=%d, DeviceID=%d", fp.ID, deviceID)
+			} else if !fp.IsCna && currentIsCNA {
+				log.Printf("[Fingerprint] ✓ SMART MATCH found! Browser fingerprint accepting CNA (same OS). FingerprintID=%d, DeviceID=%d", fp.ID, deviceID)
+			} else {
+				log.Printf("[Fingerprint] ✓ SMART MATCH found! Same OS+Screen+Lang+TZ but different hash (browser switch detected). FingerprintID=%d, DeviceID=%d", fp.ID, deviceID)
+			}
 			return true, nil, nil
 		}
 
-		log.Printf("[Fingerprint] ✗ No match for fingerprint #%d", i+1)
+		log.Printf("[Fingerprint] ✗ No match for fingerprint (%d/%d)", i+1, len(fingerprints))
 	}
 
 	// No match found - different device
@@ -457,6 +483,7 @@ func (reg *ClientRegister) addFingerprint(ctx context.Context, deviceID int64, p
 		OsFamily:         browserInfo.OSFamily,
 		ScreenResolution: params.ScreenRes,
 		Language:         params.Language,
+		Timezone:         params.Timezone,
 		IsCna:            browserInfo.IsCNA,
 	})
 

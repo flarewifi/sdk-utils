@@ -39,24 +39,49 @@ type StoredFingerprint struct {
 	ScreenResolution string
 	Language         string
 	Timezone         string
+	IsCna            bool // Indicates if this is a CNA fingerprint
 }
 
 // ValidateFingerprint checks if current fingerprint matches stored fingerprint
 // Returns ExactMatch, SmartMatch, or NoMatch
-// Smart match now requires: Same OS + Screen + Language + Timezone (4 data points for security)
-func ValidateFingerprint(stored StoredFingerprint, currentHash string, currentOS string, currentScreen string, currentLang string, currentTZ string) ValidationResult {
+// Handles CNA (partial fingerprints) and regular browser (full fingerprints)
+func ValidateFingerprint(stored StoredFingerprint, currentHash string, currentOS string, currentScreen string, currentLang string, currentTZ string, currentIsCNA bool) ValidationResult {
 	// Exact hash match
 	if stored.FingerprintHash == currentHash {
 		return ExactMatch
 	}
 
-	// Smart match: Same OS + Screen + Language + Timezone (handles browser switches)
-	// Requires all 4 fields to match for better security against cookie theft
-	if stored.OSFamily != "" && stored.OSFamily == currentOS &&
-		stored.ScreenResolution != "" && stored.ScreenResolution == currentScreen &&
-		stored.Language != "" && stored.Language == currentLang &&
-		stored.Timezone != "" && stored.Timezone == currentTZ {
-		return SmartMatch
+	// CNA fingerprint handling
+	// CNA fingerprints have empty Screen/Lang/TZ, so we match on OS only
+	if stored.IsCna || currentIsCNA {
+		if stored.OSFamily != "" && stored.OSFamily == currentOS {
+			// Accept if same OS family
+			// Covers: CNA->CNA, CNA->Browser, Browser->CNA
+			return SmartMatch
+		}
+	}
+
+	// Regular browser-to-browser smart match
+	// Smart match: Same OS + Screen + Language (+ Timezone if both available)
+	// This allows multiple browsers per device while maintaining security
+	if !stored.IsCna && !currentIsCNA {
+		// Base validation: OS + Screen + Language must match
+		if stored.OSFamily != "" && stored.OSFamily == currentOS &&
+			stored.ScreenResolution != "" && stored.ScreenResolution == currentScreen &&
+			stored.Language != "" && stored.Language == currentLang {
+
+			// Timezone validation (optional - only if both sides have it)
+			// This provides backward compatibility for existing fingerprints without timezone
+			if stored.Timezone != "" && currentTZ != "" {
+				// Both have timezone - must match for security
+				if stored.Timezone != currentTZ {
+					return NoMatch // Different timezones - possible cookie theft
+				}
+			}
+			// If either timezone is empty, skip TZ check (backward compatibility)
+
+			return SmartMatch
+		}
 	}
 
 	return NoMatch

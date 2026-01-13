@@ -46,10 +46,13 @@ func PortalRedirectCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		registerUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:register:ajax")
 		fallbackUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:register")
 
+		// Get device token key for synchronization between cookie and localStorage
+		localStorageKey := devicetoken.GetDeviceTokenKey()
+
 		// Always render AJAX registration page to trigger device validation/update
 		// This ensures MAC/IP changes are detected (e.g., MAC randomization)
 		// The AJAX endpoint will validate existing tokens or register new devices
-		page := portalview.PortalRedirectPage(g.CoreAPI, redirectUrl, registerUrl, fallbackUrl)
+		page := portalview.PortalRedirectPage(g.CoreAPI, redirectUrl, registerUrl, fallbackUrl, localStorageKey)
 		v := sdkapi.ViewPage{
 			Assets: sdkapi.ViewAssets{
 				JsFile:  "portal-register.js",

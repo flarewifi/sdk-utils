@@ -9,9 +9,24 @@
 (function() {
   window.$flare = window.$flare || {};
 
-  // IMPORTANT: This key must match DeviceTokenKey in core/internal/utils/device-token/device-token.go
-  // The backend uses the same key for cookies: "flare_device_token"
-  var STORAGE_KEY = 'flare_device_token';
+  // Get storage key from loading container data attribute (injected by backend)
+  // This key is synchronized with the cookie name (e.g., "flare_device_token_e5f6")
+  // Falls back to base key if not found
+  var STORAGE_KEY = (function() {
+    try {
+      var container = document.getElementById('loading-container');
+      if (container) {
+        var key = container.getAttribute('data-storage-key');
+        if (key) {
+          return key;
+        }
+      }
+    } catch (e) {
+      console.warn('[DeviceToken] Could not read storage key from container:', e);
+    }
+    // Fallback to base key
+    return 'flare_device_token';
+  })();
 
   /**
    * Check if localStorage is available
