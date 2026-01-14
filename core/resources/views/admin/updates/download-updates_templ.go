@@ -51,7 +51,7 @@ func DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, err erro
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = DownloadStatusPartial(api, percent, err).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = DownloadStatusPartial(api, percent, "0 B", "0 B", err).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -63,7 +63,7 @@ func DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, err erro
 	})
 }
 
-func DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) templ.Component {
+func DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize string, totalSize string, err error) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -122,9 +122,9 @@ func DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) templ.
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{percent: %d}", percent))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{percent: %d, downloadedSize: '%s', totalSize: '%s'}", percent, downloadedSize, totalSize))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 23, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/download-updates.templ`, Line: 23, Col: 141}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -156,7 +156,7 @@ func DownloadStatusPartial(api sdkapi.IPluginApi, percent int, err error) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span> <span class=\"badge bg-primary\" x-text=\"`${percent}%`\"></span></div><div class=\"progress\" style=\"height: 30px\"><div class=\"progress-bar progress-bar-striped progress-bar-animated bg-primary\" role=\"progressbar\" :style=\"`width: ${percent}%`\" :aria-valuenow=\"percent\" aria-valuemin=\"0\" aria-valuemax=\"100\" x-text=\"`${percent}%`\"></div></div></div><div class=\"alert alert-info mb-0\" role=\"alert\"><i class=\"bi bi-info-circle me-2\"></i> ")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span> <span class=\"badge bg-primary\" x-text=\"`${percent}%`\"></span></div><div class=\"progress\" style=\"height: 30px\"><div class=\"progress-bar progress-bar-striped progress-bar-animated bg-primary\" role=\"progressbar\" :style=\"`width: ${percent}%`\" :aria-valuenow=\"percent\" aria-valuemin=\"0\" aria-valuemax=\"100\" x-text=\"`${downloadedSize}/${totalSize}`\"></div></div></div><div class=\"alert alert-info mb-0\" role=\"alert\"><i class=\"bi bi-info-circle me-2\"></i> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
