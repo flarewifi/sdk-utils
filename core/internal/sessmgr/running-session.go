@@ -226,19 +226,19 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 			self.session = s
 
 			// Set first start time if this is the first time session is starting
+			timeNow := time.Now().UTC()
 			if s.StartedAt() == nil {
-				started := time.Now().UTC()
-				s.SetStartedAt(&started)
+				s.SetStartedAt(&timeNow)
+				s.SetResumedAt(&timeNow)
 			}
 
 			// Set resumed time to track current running period
 			if s.ResumedAt() == nil {
-				resumed := time.Now().UTC()
-				s.SetResumedAt(&resumed)
+				s.SetResumedAt(&timeNow)
+			}
 
-				if err := s.Save(execCtx); err != nil {
-					return nil, fmt.Errorf("failed to save session: %w", err)
-				}
+			if err := s.Save(execCtx); err != nil {
+				return nil, fmt.Errorf("failed to save session: %w", err)
 			}
 
 			if self.tcClassId == nil {
