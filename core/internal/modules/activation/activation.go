@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -103,20 +104,37 @@ func Validate() {
 		OnMachineIDChanged(oldID, newID)
 	}
 
+	// 1. Try online activation first
+	okOnline, errOnline := checkActivationOnline()
+
+	// 2. If server is reachable (no network error)
+	if errOnline == nil || errors.Is(errOnline, ErrNotActivated) {
+		if okOnline {
+			// Server says activated
+			IsActivated.Store(true)
+			return
+		}
+
+		// Server says NOT activated
+		// If previously activated (token file exists), remove it
+		if _, err := os.Stat(activationFile); err == nil {
+			_ = os.Remove(activationFile)
+		}
+		ActivationError.Store(ErrNotActivated)
+		IsActivated.Store(false)
+		return
+	}
+
+	// 3. Server unreachable - fall back to offline validation
 	ok, _ := offlineActivation()
 	if ok {
 		IsActivated.Store(true)
 		return
 	}
 
-	okOnline, errOnline := checkActivationOnline()
-	if !okOnline || errOnline != nil {
-		ActivationError.Store(errOnline)
-		IsActivated.Store(false)
-		return
-	}
-
-	IsActivated.Store(true)
+	// Offline validation failed
+	ActivationError.Store(errOnline)
+	IsActivated.Store(false)
 }
 
 func offlineActivation() (ok bool, err error) {
@@ -228,10 +246,8 @@ func checkActivationOnline() (ok bool, err error) {
 			return false, ErrNetworkIssue
 		}
 
-		if err != nil {
-			logMsg := fmt.Sprintf("Activation attempt %d failed: %v", attempt+1, err)
-			log.Println(logMsg)
-		}
+		logMsg := fmt.Sprintf("Activation attempt %d failed: %v", attempt+1, err)
+		log.Println(logMsg)
 	}
 
 	if err != nil {
