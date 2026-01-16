@@ -175,6 +175,23 @@ func (self *ClientSession) DataConsumption() (mbytes float64) {
 	return self.dataCons
 }
 
+// ConsumedTimeSecs returns the raw stored time consumption in seconds.
+// Does NOT include elapsed time since resumed_at.
+// Use this for syncing/persistence.
+func (self *ClientSession) ConsumedTimeSecs() (sec int) {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.timeCons
+}
+
+// ConsumedDataMb returns the raw stored data consumption in megabytes.
+// Use this for syncing/persistence.
+func (self *ClientSession) ConsumedDataMb() (mbytes float64) {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.dataCons
+}
+
 // RemainingTime returns the session's remaining time in seconds.
 func (self *ClientSession) RemainingTime() (sec int) {
 	self.mu.RLock()
