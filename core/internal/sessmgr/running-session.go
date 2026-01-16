@@ -280,14 +280,15 @@ func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) er
 
 			// Calculate and record elapsed time since resumed_at
 			if self.session != nil && self.session.ResumedAt() != nil {
-				elapsed := int(time.Since(*self.session.ResumedAt()).Seconds())
-
-				// Add elapsed time to existing consumption
+				// TimeConsumption() already includes elapsed time since resumed_at
+				// So we just save it directly without adding elapsed again
 				currentCons := self.session.TimeConsumption()
-				self.session.SetTimeCons(currentCons + elapsed)
+				self.session.SetTimeCons(currentCons)
 
+				// Calculate elapsed for logging only
+				elapsed := int(time.Since(*self.session.ResumedAt()).Seconds())
 				log.Printf("Recording elapsed time: %d seconds (total consumption: %d)\n",
-					elapsed, currentCons+elapsed)
+					elapsed, currentCons)
 
 				// Reset resumed_at to nil since session is stopping
 				self.session.SetResumedAt(nil)
