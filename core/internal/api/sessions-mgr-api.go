@@ -105,8 +105,8 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 		DownMbits:   params.DownMbits,
 		UpMbits:     params.UpMbits,
 		UseGlobal:   params.UseGlobal,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	})
 	previewCS := sessmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), previewSession)
 

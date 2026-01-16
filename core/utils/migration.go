@@ -11,7 +11,7 @@ import (
 )
 
 func MigrationCreate(pluginDir string, name string) {
-	currentTime := time.Now()
+	currentTime := time.Now().UTC()
 	timestamp := currentTime.Format("20060102150405.000000")
 	timestamp = strings.Replace(timestamp, ".", "", 1)
 	migrationsDir := filepath.Join(pluginDir, "resources/migrations")
