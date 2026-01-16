@@ -40,6 +40,14 @@ type IClientSession interface {
 	// Returns the session's data consumption in megabytes.
 	DataConsumption() (mbytes float64)
 
+	// Returns the raw stored time consumption in seconds (without elapsed calculation).
+	// Use this for syncing/persistence where you need the base value.
+	ConsumedTimeSecs() (sec int)
+
+	// Returns the raw stored data consumption in megabytes.
+	// Use this for syncing/persistence where you need the base value.
+	ConsumedDataMb() (mbytes float64)
+
 	// Returns the session's remaining time in seconds.
 	RemainingTime() (sec int)
 

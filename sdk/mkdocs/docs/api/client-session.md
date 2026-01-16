@@ -96,6 +96,22 @@ Returns the consumed session data in Megabytes. The return type is a `float64` v
 consumedMb := session.DataConsumption()
 ```
 
+### ConsumedTimeSecs
+
+Returns the raw stored time consumption in seconds (without elapsed time calculation). Use this for syncing/persistence where you need the base value without the elapsed time since `resumed_at`.
+
+```go
+rawSecs := session.ConsumedTimeSecs()
+```
+
+### ConsumedDataMb
+
+Returns the raw stored data consumption in megabytes. Use this for syncing/persistence where you need the base value.
+
+```go
+rawMb := session.ConsumedDataMb()
+```
+
 ### RemainingTime
 
 Returns the remaining session time in seconds. The return type is a `uint` value and is calculated by subtracting the time consumption from the allocated time. This is only applicable for `time` and `time_or_data` sessions.
