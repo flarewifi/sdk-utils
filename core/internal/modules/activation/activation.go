@@ -94,6 +94,19 @@ func OnMachineIDChanged(oldID, newID string) {
 	log.Printf("Successfully updated machine info on server")
 }
 
+// CheckActivationFileExists performs an optimistic check for activation file presence
+// If the file exists, it assumes the machine is activated without validating the token
+// This provides immediate activation state on boot, while Validate() runs in background
+func CheckActivationFileExists() bool {
+	if _, err := os.Stat(activationFile); err == nil {
+		// File exists, optimistically assume activated
+		IsActivated.Store(true)
+		log.Printf("Activation file exists, optimistically setting activated=true")
+		return true
+	}
+	return false
+}
+
 func Validate() {
 	IsValidating.Store(true)
 	defer IsValidating.Store(false)
@@ -102,6 +115,15 @@ func Validate() {
 	oldID, newID := machineuid.GetMachineUID()
 	if oldID != "" && newID != "" && oldID != newID {
 		OnMachineIDChanged(oldID, newID)
+		// Machine ID changed - token is no longer valid
+		// Remove activation file and update state
+		if _, err := os.Stat(activationFile); err == nil {
+			_ = os.Remove(activationFile)
+			log.Printf("Machine ID changed, removing activation file")
+		}
+		IsActivated.Store(false)
+		ActivationError.Store(fmt.Errorf("machine ID changed from %s to %s", oldID, newID))
+		return
 	}
 
 	// 1. Try online activation first
@@ -119,6 +141,7 @@ func Validate() {
 		// If previously activated (token file exists), remove it
 		if _, err := os.Stat(activationFile); err == nil {
 			_ = os.Remove(activationFile)
+			log.Printf("Server validation failed, removing activation file and correcting optimistic assumption")
 		}
 		ActivationError.Store(ErrNotActivated)
 		IsActivated.Store(false)
@@ -126,13 +149,19 @@ func Validate() {
 	}
 
 	// 3. Server unreachable - fall back to offline validation
-	ok, _ := offlineActivation()
+	ok, errOffline := offlineActivation()
 	if ok {
 		IsActivated.Store(true)
+		log.Printf("Offline activation validation succeeded")
 		return
 	}
 
-	// Offline validation failed
+	// Offline validation failed - token is invalid
+	// Remove the activation file and update state
+	if _, err := os.Stat(activationFile); err == nil {
+		_ = os.Remove(activationFile)
+		log.Printf("Offline activation validation failed, removing activation file: %v", errOffline)
+	}
 	ActivationError.Store(errOnline)
 	IsActivated.Store(false)
 }
