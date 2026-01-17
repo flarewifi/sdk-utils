@@ -76,9 +76,9 @@ func SetupLanInterfaces() (err error) {
 		if ok {
 			lan := NewNetworkLan(ifname)
 
-			err = lan.SetupHFSC()
+			err = lan.SetupTrafficControl()
 			if err != nil {
-				log.Printf("ERROR: Failed to setup HFSC for interface %s: %v", ifname, err)
+				log.Printf("ERROR: Failed to setup traffic control for interface %s: %v", ifname, err)
 				return err
 			}
 			go listenLanEvents(lan)

@@ -3,8 +3,9 @@ package tc
 import (
 	"errors"
 	"fmt"
-	"math"
 	"net/netip"
+	"strconv"
+	"strings"
 )
 
 type ipsegmt struct {
@@ -29,16 +30,11 @@ func (ipsg *ipsegmt) segVal(segIndex int) int {
 // If segment has no host bits, it returns 0
 func (ipsg *ipsegmt) segMaxVal(segIndex int) int {
 	if ipsg.hostMasked(segIndex) {
-		hostbits := int(ipsg.segMask(segIndex))
-		subnetDenom := 2
-		i := 1
-		for i < hostbits {
-			subnetDenom += int(math.Pow(float64(2), float64(i)))
-			i++
-		}
+		hostbits := ipsg.segMask(segIndex)
+		subnetDenom := 1 << hostbits // 2^hostbits
 
 		segval := ipsg.segVal(segIndex)
-		subnetIndex := int(math.Floor(float64(segval) / float64(subnetDenom)))
+		subnetIndex := segval / subnetDenom // Integer division already floors
 		start := subnetIndex * subnetDenom
 
 		return start + subnetDenom - 1
@@ -51,15 +47,10 @@ func (ipsg *ipsegmt) segMaxVal(segIndex int) int {
 func (ipsg *ipsegmt) segMinVal(segIndex int) int {
 	if ipsg.hostMasked(segIndex) {
 		hostbits := ipsg.segMask(segIndex)
-		subnetDenom := 2
-		i := 1
-		for i < int(hostbits) {
-			subnetDenom += int(math.Pow(float64(2), float64(i)))
-			i++
-		}
+		subnetDenom := 1 << hostbits // 2^hostbits
 
 		segval := ipsg.segVal(segIndex)
-		subnetIndex := int(math.Floor(float64(segval) / float64(subnetDenom)))
+		subnetIndex := segval / subnetDenom // Integer division already floors
 		start := subnetIndex * subnetDenom
 		return start
 	}
@@ -70,7 +61,7 @@ func (ipsg *ipsegmt) segMinVal(segIndex int) int {
 // Get the host bit mask in a given ip segment.
 // If segment is not host-masked, it returns 0
 func (ipsg *ipsegmt) segMask(segIndex int) int {
-	startSegIndex := int(math.Ceil(float64(ipsg.netmask+1)/8)) - 1
+	startSegIndex := ipsg.netmask / 8 // Equivalent: ceil((n+1)/8) - 1 = n/8
 	if segIndex > startSegIndex {
 		return 8
 	}
@@ -84,39 +75,35 @@ func (ipsg *ipsegmt) segMask(segIndex int) int {
 }
 
 // Get the hex host mask for a given segment index
-func (ipsg *ipsegmt) segMaskHex(segIndex int) (hex string) {
-	hex = "0x"
-	i := 0
-	for i < len(ipsg.segments) {
+func (ipsg *ipsegmt) segMaskHex(segIndex int) string {
+	var b strings.Builder
+	b.WriteString("0x")
+	for i := range ipsg.segments {
 		if i != segIndex {
-			hex += "00"
+			b.WriteString("00")
 		} else {
-			mask := int(math.Pow(float64(2), float64(ipsg.segMask(i)))) - 1
-			hex = fmt.Sprintf("%s%02x", hex, mask)
+			mask := (1 << ipsg.segMask(i)) - 1
+			fmt.Fprintf(&b, "%02x", mask)
 		}
-		i++
 	}
-	return hex
+	return b.String()
 }
 
 // Returns the network ip for the given ip and netmask.
 // TODO: Return different format for ipv6
-func (ipsg *ipsegmt) baseIp() (ip string) {
-	segIndex := 0
-	count := len(ipsg.segments)
-	for segIndex < count {
-		if ipsg.hostMasked(segIndex) {
-			ip += fmt.Sprintf("%d", ipsg.segMinVal(segIndex))
+func (ipsg *ipsegmt) baseIp() string {
+	var b strings.Builder
+	for i, seg := range ipsg.segments {
+		if i > 0 {
+			b.WriteByte('.')
+		}
+		if ipsg.hostMasked(i) {
+			b.WriteString(strconv.Itoa(ipsg.segMinVal(i)))
 		} else {
-			ip += fmt.Sprintf("%d", ipsg.segVal(segIndex))
+			b.WriteString(strconv.Itoa(int(seg)))
 		}
-		if segIndex < count-1 {
-			ip += "."
-		}
-		segIndex++
 	}
-
-	return ip
+	return b.String()
 }
 
 func newIpsegmt(ip string, netmask int) (*ipsegmt, error) {
