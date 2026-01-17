@@ -43,6 +43,9 @@ func Init(g *api.CoreGlobals) {
 		}
 
 		// Initialize activation after everything else is ready
+		// First perform optimistic check (synchronous) for immediate activation state
+		activation.CheckActivationFileExists()
+		// Then run full validation in background
 		go activation.Validate()
 
 		// Start jobs
