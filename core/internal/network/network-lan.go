@@ -205,7 +205,7 @@ func (self *NetworkLan) SetupCaptivePortal() (err error) {
 	return err
 }
 
-func (self *NetworkLan) SetupHFSC() (err error) {
+func (self *NetworkLan) SetupTrafficControl() (err error) {
 	_, err = networkQue.Exec(func() (interface{}, error) {
 		cfg, err := config.ReadBandwidthConfig()
 		if err != nil {
