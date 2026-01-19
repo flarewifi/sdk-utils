@@ -11,6 +11,7 @@ import (
 
 	jobque "core/utils/job-que"
 	cmd "core/utils/shell"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
@@ -162,22 +163,40 @@ func runInitCallbacks() {
 }
 
 func isConnected(mac string) bool {
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		log.Printf("[ERROR] isConnected: invalid MAC address '%s': %v", mac, err)
+		return false
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
-	err := cmd.ExecWithContext(ctx, fmt.Sprintf("nft get element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, mac), nil)
+	err = cmd.ExecWithContext(ctx, fmt.Sprintf("nft get element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, normalizedMAC), nil)
 	return err == nil
 }
 
 func doConnect(ip string, mac string) error {
+	// Validate IP address
+	if _, err := sdkutils.ValidateIPAddress(ip); err != nil {
+		return fmt.Errorf("invalid IP address: %v", err)
+	}
+
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		return fmt.Errorf("invalid MAC address: %v", err)
+	}
+
 	cmds := []string{}
-	connected := isConnected(mac)
+	connected := isConnected(normalizedMAC)
 
 	if !connected {
 		cmds = []string{
 			fmt.Sprintf("nft add element %s %s %s '{ %s : accept }'", tableFamily, internetTable, connIpMap, ip),
-			fmt.Sprintf("nft add element %s %s %s '{ %s : accept }'", tableFamily, internetTable, connMacMap, mac),
-			fmt.Sprintf("nft add element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, mac),
+			fmt.Sprintf("nft add element %s %s %s '{ %s : accept }'", tableFamily, internetTable, connMacMap, normalizedMAC),
+			fmt.Sprintf("nft add element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, normalizedMAC),
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -190,12 +209,23 @@ func doConnect(ip string, mac string) error {
 }
 
 func doDisconnect(ip string, mac string) error {
-	connected := isConnected(mac)
+	// Validate IP address
+	if _, err := sdkutils.ValidateIPAddress(ip); err != nil {
+		return fmt.Errorf("invalid IP address: %v", err)
+	}
+
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		return fmt.Errorf("invalid MAC address: %v", err)
+	}
+
+	connected := isConnected(normalizedMAC)
 	if connected {
 		cmds := []string{
 			fmt.Sprintf("nft delete element %s %s %s '{ %s : accept }'", tableFamily, internetTable, connIpMap, ip),
-			fmt.Sprintf("nft delete element %s %s %s { %s : accept }", tableFamily, internetTable, connMacMap, mac),
-			fmt.Sprintf("nft delete element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, mac),
+			fmt.Sprintf("nft delete element %s %s %s { %s : accept }", tableFamily, internetTable, connMacMap, normalizedMAC),
+			fmt.Sprintf("nft delete element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, normalizedMAC),
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

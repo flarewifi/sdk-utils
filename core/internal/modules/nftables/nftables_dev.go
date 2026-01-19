@@ -9,6 +9,7 @@ import (
 	"time"
 
 	jobque "core/utils/job-que"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
@@ -48,32 +49,61 @@ func runInitCallbacks() {
 }
 
 func isConnected(mac string) bool {
-	_, ok := connTable[mac]
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		log.Printf("[ERROR] isConnected: invalid MAC address '%s': %v", mac, err)
+		return false
+	}
+
+	_, ok := connTable[normalizedMAC]
 	return ok
 }
 
 func doConnect(ip string, mac string) error {
-	connected := isConnected(mac)
+	// Validate IP address
+	if _, err := sdkutils.ValidateIPAddress(ip); err != nil {
+		return fmt.Errorf("invalid IP address: %v", err)
+	}
+
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		return fmt.Errorf("invalid MAC address: %v", err)
+	}
+
+	connected := isConnected(normalizedMAC)
 
 	if !connected {
-		connTable[mac] = true
-		connClients[mac] = &connectedClient{
+		connTable[normalizedMAC] = true
+		connClients[normalizedMAC] = &connectedClient{
 			ip:  ip,
-			mac: mac,
+			mac: normalizedMAC,
 		}
 	}
 
-	log.Println("nftables connected: " + mac + " (" + ip + ")")
+	log.Println("nftables connected: " + normalizedMAC + " (" + ip + ")")
 	return nil
 }
 
-func doDisconnect(_ string, mac string) error {
-	connected := isConnected(mac)
-	if connected {
-		delete(connTable, mac)
-		delete(connClients, mac)
+func doDisconnect(ip string, mac string) error {
+	// Validate IP address (even though not used in dev mode)
+	if _, err := sdkutils.ValidateIPAddress(ip); err != nil {
+		return fmt.Errorf("invalid IP address: %v", err)
 	}
-	log.Println("nftables disconnected: " + mac)
+
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		return fmt.Errorf("invalid MAC address: %v", err)
+	}
+
+	connected := isConnected(normalizedMAC)
+	if connected {
+		delete(connTable, normalizedMAC)
+		delete(connClients, normalizedMAC)
+	}
+	log.Println("nftables disconnected: " + normalizedMAC)
 	return nil
 }
 
