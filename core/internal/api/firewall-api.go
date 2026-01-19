@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net"
+	"log"
 	"strings"
 	"sync"
 	"time"
 
+	jobque "core/utils/job-que"
 	"core/utils/shell"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	sdkapi "sdk/api"
 )
 
@@ -17,6 +19,7 @@ func NewFirewallApi(api *PluginApi) {
 	firewallApi := &FirewallApi{
 		activeTimers: make(map[string]*time.Timer),
 		timersMutex:  &sync.Mutex{},
+		firewallQue:  jobque.NewJobQue[any](),
 	}
 	api.FirewallAPI = firewallApi
 }
@@ -24,6 +27,7 @@ func NewFirewallApi(api *PluginApi) {
 type FirewallApi struct {
 	activeTimers map[string]*time.Timer // Track active removal timers by "destIP:mac" key
 	timersMutex  *sync.Mutex            // Protect concurrent access to activeTimers
+	firewallQue  *jobque.JobQue[any]    // Serialize firewall operations to prevent race conditions
 }
 
 // NFTables JSON structure definitions
@@ -60,7 +64,42 @@ type nftPayload struct {
 // with different behavior for dev and production builds
 
 // OpenIpForClientDevice opens firewall access for a specific client device to a destination IP
+// This method is serialized through a job queue to prevent race conditions
 func (self *FirewallApi) OpenIpForClientDevice(params sdkapi.OpenIpForClientDeviceParams) error {
+	contextInfo := fmt.Sprintf("DestIP=%s, ClientMAC=%s, ClientIP=%s",
+		params.DestinationIp, params.MacAddr, params.IpAddr)
+
+	_, err := self.firewallQue.ExecWithTimeout(
+		5*time.Second,
+		"Open IP for Client Device",
+		contextInfo,
+		func() (any, error) {
+			err := self.doOpenIpForClientDevice(params)
+			return nil, err
+		},
+	)
+	return err
+}
+
+// doOpenIpForClientDevice is the internal implementation of OpenIpForClientDevice
+func (self *FirewallApi) doOpenIpForClientDevice(params sdkapi.OpenIpForClientDeviceParams) error {
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(params.MacAddr)
+	if err != nil {
+		return fmt.Errorf("MAC validation failed: %v", err)
+	}
+	params.MacAddr = normalizedMAC
+
+	// Validate destination IP address
+	if _, err := sdkutils.ValidateIPAddress(params.DestinationIp); err != nil {
+		return fmt.Errorf("destination IP validation failed: %v", err)
+	}
+
+	// Validate client IP address
+	if _, err := sdkutils.ValidateIPAddress(params.IpAddr); err != nil {
+		return fmt.Errorf("client IP validation failed: %v", err)
+	}
+
 	// Ensure open_ip chains exist
 	if err := self.ensureChains(); err != nil {
 		return err
@@ -97,28 +136,26 @@ func (self *FirewallApi) OpenIpForClientDevice(params sdkapi.OpenIpForClientDevi
 	}
 
 	// Determine IP version for destination
-	destIpVersion := "ip"
-	parsedDestIP := net.ParseIP(params.DestinationIp)
-	if parsedDestIP == nil {
-		return fmt.Errorf("invalid destination IP address: %s", params.DestinationIp)
-	}
-	if parsedDestIP.To4() == nil {
-		destIpVersion = "ip6"
+	destIpVersion, err := sdkutils.GetIPVersion(params.DestinationIp)
+	if err != nil {
+		return fmt.Errorf("failed to determine destination IP version: %v", err)
 	}
 
 	// Determine IP version for client
-	clientIpVersion := "ip"
-	parsedClientIP := net.ParseIP(params.IpAddr)
-	if parsedClientIP == nil {
-		return fmt.Errorf("invalid client IP address: %s", params.IpAddr)
-	}
-	if parsedClientIP.To4() == nil {
-		clientIpVersion = "ip6"
+	clientIpVersion, err := sdkutils.GetIPVersion(params.IpAddr)
+	if err != nil {
+		return fmt.Errorf("failed to determine client IP version: %v", err)
 	}
 
 	// Check if IP versions are compatible for return traffic rules
 	// nftables doesn't allow mixing ip and ip6 protocol matchers in the same rule
 	ipVersionsMatch := destIpVersion == clientIpVersion
+
+	// Log IP version mismatch for debugging
+	if !ipVersionsMatch {
+		log.Printf("[Firewall] IP version mismatch: client=%s (%s), destination=%s (%s) - return traffic rules will be skipped (relying on connection tracking)",
+			params.IpAddr, clientIpVersion, params.DestinationIp, destIpVersion)
+	}
 
 	// Build nftables rules for bidirectional traffic
 	// Outgoing: Client MAC → Destination IP (all ports)
@@ -193,7 +230,32 @@ func (self *FirewallApi) scheduleRuleRemoval(destinationIp string, macAddr strin
 }
 
 // CloseIpForClientDevice removes firewall access for a specific client device to a destination IP
+// This method is serialized through a job queue to prevent race conditions
 func (self *FirewallApi) CloseIpForClientDevice(params sdkapi.CloseIpForClientDeviceParams) error {
+	contextInfo := fmt.Sprintf("DestIP=%s, ClientMAC=%s",
+		params.DestinationIp, params.MacAddr)
+
+	_, err := self.firewallQue.ExecWithTimeout(
+		5*time.Second,
+		"Close IP for Client Device",
+		contextInfo,
+		func() (any, error) {
+			err := self.doCloseIpForClientDevice(params)
+			return nil, err
+		},
+	)
+	return err
+}
+
+// doCloseIpForClientDevice is the internal implementation of CloseIpForClientDevice
+func (self *FirewallApi) doCloseIpForClientDevice(params sdkapi.CloseIpForClientDeviceParams) error {
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(params.MacAddr)
+	if err != nil {
+		return fmt.Errorf("MAC validation failed: %v", err)
+	}
+	params.MacAddr = normalizedMAC
+
 	// Cancel any active timer for this rule
 	cacheKey := fmt.Sprintf("%s:%s", params.DestinationIp, params.MacAddr)
 	self.timersMutex.Lock()
@@ -204,7 +266,7 @@ func (self *FirewallApi) CloseIpForClientDevice(params sdkapi.CloseIpForClientDe
 	self.timersMutex.Unlock()
 
 	// Remove the firewall rules for this destination IP
-	err := self.removeRulesForDestIP(params.DestinationIp, params.MacAddr)
+	err = self.removeRulesForDestIP(params.DestinationIp, params.MacAddr)
 
 	return err
 }
@@ -212,18 +274,14 @@ func (self *FirewallApi) CloseIpForClientDevice(params sdkapi.CloseIpForClientDe
 // removeRulesForDestIP removes firewall rules for a specific destination IP and MAC address
 func (self *FirewallApi) removeRulesForDestIP(destinationIp string, macAddr string) error {
 	// Determine IP version for destination
-	destIpVersion := "ip"
-	parsedDestIP := net.ParseIP(destinationIp)
-	if parsedDestIP == nil {
-		return fmt.Errorf("invalid destination IP address: %s", destinationIp)
-	}
-	if parsedDestIP.To4() == nil {
-		destIpVersion = "ip6"
+	destIpVersion, err := sdkutils.GetIPVersion(destinationIp)
+	if err != nil {
+		return fmt.Errorf("failed to determine destination IP version: %v", err)
 	}
 
 	// Get all rules and find matching ones to delete
 	var out bytes.Buffer
-	err := shell.ExecOutput("nft -j list table inet internet", &out)
+	err = shell.ExecOutput("nft -j list table inet internet", &out)
 	if err != nil {
 		return fmt.Errorf("failed to list nftables: %v", err)
 	}
@@ -387,10 +445,9 @@ func (self *FirewallApi) ruleExists(destinationIp string, macAddr string) (bool,
 	}
 
 	// Determine IP version
-	ipVersion := "ip"
-	parsedIP := net.ParseIP(destinationIp)
-	if parsedIP != nil && parsedIP.To4() == nil {
-		ipVersion = "ip6"
+	ipVersion, err := sdkutils.GetIPVersion(destinationIp)
+	if err != nil {
+		return false, fmt.Errorf("failed to determine IP version: %v", err)
 	}
 
 	// We need to find at least one outgoing rule (MAC + dest IP as daddr)
