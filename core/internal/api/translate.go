@@ -40,7 +40,7 @@ func TranslateMessage(translationsDir string, msgtype string, msgk string, pairs
 
 	// Convert translation key to filesystem-safe filename
 	filename := sdkutils.FilenameFromTranslationKey(truncatedKey)
-	f := filepath.Join(translationsDir, appcfg.Lang, msgtype, filename+".txt")
+	f := filepath.Join(translationsDir, appcfg.Lang, msgtype, filename)
 
 	tmpl, err := flaretmpl.GetTextTemplate(f)
 	if err != nil {

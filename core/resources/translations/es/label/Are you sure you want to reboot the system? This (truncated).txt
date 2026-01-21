@@ -1,1 +1,0 @@
-¿Está seguro de que desea reiniciar el sistema? Esto reiniciará todos los servicios.

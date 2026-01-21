@@ -11,6 +11,7 @@ help:
 	@echo "  make                    - Start monolithic build (default)"
 	@echo "  make mono               - Start monolithic build with SQLite"
 	@echo "  make postgres           - Start plugin-based build with PostgreSQL"
+	@echo "  make restart            - Call stop on all containers, then restart mono"
 	@echo "  make openwrt            - Start OpenWRT development environment"
 	@echo "  make down               - Stop all containers"
 	@echo ""
@@ -54,6 +55,8 @@ devkit:
 	docker compose -f ./docker-compose.yml \
 		-f ./core/build/devkit/extras/docker-compose.override.yml \
 		run -it --rm --build app sh -c ./make-devkit.sh
+
+restart: down mono
 
 down:
 	docker compose down

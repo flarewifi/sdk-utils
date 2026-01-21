@@ -23,19 +23,15 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 							<td class="summary-label">{ api.Translate("label", "Item") }</td>
 							<td class="summary-value">{ purchase.Name() }</td>
 						</tr>
-						if purchase.Description() != "" {
-							<tr class="summary-item product-description">
-								<td class="summary-label">{ api.Translate("label", "Description") }</td>
-								<td class="summary-value">{ purchase.Description() }</td>
-							</tr>
-						}
-						<tr class="summary-item product-sku">
-							<td class="summary-label">{ api.Translate("label", "SKU") }</td>
-							<td class="summary-value">{ purchase.Sku() }</td>
+					if purchase.Description() != "" {
+						<tr class="summary-item product-description">
+							<td class="summary-label">{ api.Translate("label", "Description") }</td>
+							<td class="summary-value">{ purchase.Description() }</td>
 						</tr>
-						<tr class="summary-divider">
-							<td colspan="2"><hr class="divider-line"/></td>
-						</tr>
+					}
+					<tr class="summary-divider">
+						<td colspan="2"><hr class="divider-line"/></td>
+					</tr>
 						<tr class="summary-item summary-price">
 							<td class="summary-label price-label">{ api.Translate("label", "Total Price") }</td>
 							<td class="summary-value price-amount">
@@ -73,30 +69,24 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 		</div>
 		<!-- Cancel Section -->
 		<div class="cancel-purchase-section">
-			<p class="cancel-text">
-				{ api.Translate("label", "Changed your mind") }
-			</p>
-			<form 
-				method="POST" 
+			<form
+				method="POST"
 				action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("portal:payments:cancel")) }
 				onsubmit="return handleCancelSubmit(this);"
 				data-confirm={ api.Translate("warning", "Are you sure you want to cancel this purchase") }
 				class="cancel-form"
 			>
-				<button type="submit" class="btn btn-default btn-cancel">
-					<span class="glyphicon glyphicon-remove cancel-icon"></span>
-					<span class="cancel-label">{ api.Translate("label", "Cancel Purchase") }</span>
-					<span class="cancel-spinner" style="display: none;">
-						<span class="spinner-icon-small"></span>
-					</span>
+				<button type="submit" class="btn btn-default">
+					<span class="glyphicon glyphicon-remove"></span>
+					{ api.Translate("label", "Cancel Purchase") }
 				</button>
 			</form>
 		</div>
 		<div class="checkout-footer">
-			<p class="secure-text">
-				<span class="glyphicon glyphicon-lock"></span>
-				{ api.Translate("label", "Secure Payment") }
-			</p>
+			<div class="secure-payment-badge">
+				<img src={ api.Http().Helpers().PublicPath("images/secure-payment.png") } alt={ api.Translate("label", "Secure Payment") } class="secure-payment-icon"/>
+				<span class="secure-payment-text">{ api.Translate("label", "Secure Payment") }</span>
+			</div>
 		</div>
 	</div>
 }

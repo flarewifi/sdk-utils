@@ -1,1 +1,0 @@
-Tem certeza de que deseja redefinir o banco de dados? Todos os dados serão perdidos.

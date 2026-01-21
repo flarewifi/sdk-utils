@@ -1,1 +1,0 @@
-Activation réussie. Le système redémarre pour terminer la configuration. Veuillez patienter quelques minutes. La page se rechargera automatiquement lorsque le système sera prêt.

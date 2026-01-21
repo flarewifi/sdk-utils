@@ -1,1 +1,0 @@
-Archivo <% .file %> eliminado correctamente.

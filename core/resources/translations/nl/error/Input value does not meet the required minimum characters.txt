@@ -1,1 +1,0 @@
-<% .label %> moet minimaal <% .min %> tekens bevatten.

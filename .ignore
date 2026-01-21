@@ -1,6 +1,7 @@
 data/config
 data/storage
 !data/plugins/local/*
+!data/config
 .tmp/
 .bin/
 plugins/installed

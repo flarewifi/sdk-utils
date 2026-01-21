@@ -1,1 +1,0 @@
-Cela arrêtera le système. Toutes les sessions actives seront terminées.

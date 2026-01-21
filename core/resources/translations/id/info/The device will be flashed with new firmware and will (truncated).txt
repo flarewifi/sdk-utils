@@ -1,1 +1,0 @@
-Perangkat akan di-flash dengan firmware baru dan akan reboot. Jangan matikan perangkat selama proses ini.

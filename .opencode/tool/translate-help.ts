@@ -18,11 +18,11 @@ FlareHotspot Translation System Overview
 ========================================
 
 The translation system uses file-based translations with:
-- Location: resources/translations/{lang}/{type}/{key}.txt
+- Location: resources/translations/{lang}/{type}/{key}
 - API: api.Translate(type, key, ...variables)
 - Source of Truth: English (/en) directory - all other languages sync from it
 - Auto-sync: Files in /en are automatically synced to other languages
-- Variables: Use <% .variableName %> syntax in .txt files
+- Variables: Use <% .variableName %> syntax in translation files
 
 ⚠️ CRITICAL: Per-Language Operations
 - ALL translation tools require a language parameter
@@ -98,7 +98,7 @@ Template syntax: <% .variableName %>
 Go code:
   api.Translate("label", "paid_amount", "currency", "USD", "amount", 100)
 
-Translation file (resources/translations/en/label/paid_amount.txt):
+Translation file (resources/translations/en/label/paid_amount):
   You paid <% .currency %> <% .amount %>
 
 Result: "You paid USD 100"
@@ -134,21 +134,21 @@ Translation File Structure
 ==========================
 
 Core translations:
-  core/resources/translations/{lang}/{type}/{key}.txt
+  core/resources/translations/{lang}/{type}/{key}
 
 Plugin translations:
-  data/plugins/local/{plugin}/resources/translations/{lang}/{type}/{key}.txt
-  plugins/system/{plugin}/resources/translations/{lang}/{type}/{key}.txt
+  data/plugins/local/{plugin}/resources/translations/{lang}/{type}/{key}
+  plugins/system/{plugin}/resources/translations/{lang}/{type}/{key}
 
 Example:
   core/resources/translations/
     ├── en/
     │   ├── label/
-    │   │   └── Sessions.txt
+    │   │   └── Sessions
     │   ├── error/
-    │   │   └── Failed to create session.txt
+    │   │   └── Failed to create session
     │   └── success/
-    │       └── Session created successfully.txt
+    │       └── Session created successfully
     ├── es/
     │   ├── label/
     │   ├── error/
@@ -232,20 +232,20 @@ Per-Language Workflow:
    translate-scan({ operation: "list-untranslated", language: "es" })
 
 3. Update single file (REQUIRES language):
-   translate-update({ 
-     language: "es",
-     filePath: "core/resources/translations/es/label/Welcome.txt",
-     content: "Bienvenido"
-   })
+    translate-update({ 
+      language: "es",
+      filePath: "core/resources/translations/es/label/Welcome",
+      content: "Bienvenido"
+    })
 
 4. Batch update (REQUIRES language, all files must match):
-   translate-batch({
-     language: "es",
-     updates: [
-       { filePath: "core/.../es/label/Welcome.txt", content: "Bienvenido" },
-       { filePath: "core/.../es/error/Failed.txt", content: "Falló" }
-     ]
-   })
+    translate-batch({
+      language: "es",
+      updates: [
+        { filePath: "core/.../es/label/Welcome", content: "Bienvenido" },
+        { filePath: "core/.../es/error/Failed", content: "Falló" }
+      ]
+    })
 
 5. Validate (REQUIRES language):
    translate-scan({ operation: "validate", language: "es" })

@@ -1,1 +1,0 @@
-This will reboot the system. All active sessions will be terminated.

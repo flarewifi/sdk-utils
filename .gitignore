@@ -9,7 +9,7 @@
 /node_modules
 /go
 /data/config
-/data/plugins/local/*
+/data/plugins/
 /data/storage
 /data/system
 /data/db

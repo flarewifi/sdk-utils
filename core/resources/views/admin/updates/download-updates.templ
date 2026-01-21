@@ -66,11 +66,11 @@ templ DownloadDonePage(api sdkapi.IPluginApi) {
 				<button 
 					type="button"
 					class="btn btn-primary" 
-					hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") } 
-					hx-target="#notification-area"
-					hx-swap="outerHTML"
-					hx-confirm={ api.Translate("label", "Are you sure?") }
-					data-loading-disable>
+				hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") } 
+				hx-target="#notification-area"
+				hx-swap="outerHTML"
+				hx-confirm={ api.Translate("label", "Are you sure") }
+				data-loading-disable>
 					<span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" data-loading></span>
 					<span data-loading-class="d-none">{ api.Translate("label", "Reboot Now") }</span>
 					<span class="d-none" data-loading>{ api.Translate("label", "Rebooting") }...</span>

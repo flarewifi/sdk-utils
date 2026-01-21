@@ -1,1 +1,0 @@
-Cela redémarrera le système. Toutes les sessions actives seront interrompues.

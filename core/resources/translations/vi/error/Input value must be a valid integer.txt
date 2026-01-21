@@ -1,1 +1,0 @@
-<% .label %> phải là một số nguyên hợp lệ.

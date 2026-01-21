@@ -82,13 +82,23 @@ func TrimRedundantWords(input string, separator string) string {
 }
 
 // FilenameFromTranslationKey converts a translation key to a filesystem-safe filename
-// Uses URL escaping only for forward slash (/) which is forbidden on Linux ext4
+// Escapes characters forbidden on Linux (/) and Windows (< > : " | * ? \) filesystems
+// for cross-platform safety
 func FilenameFromTranslationKey(key string) string {
-	// Check if key contains forward slash (directory separator on Linux)
+	// Characters forbidden on Windows: < > : " | ? * \
+	// Characters forbidden on Linux: / (and null byte)
+	// We escape these for cross-platform safety
+	needsEscaping := false
 	for _, ch := range key {
-		if ch == '/' || ch == 0 {
-			return url.PathEscape(key)
+		if ch == '/' || ch == 0 || ch == '<' || ch == '>' || ch == ':' ||
+			ch == '"' || ch == '|' || ch == '?' || ch == '*' || ch == '\\' {
+			needsEscaping = true
+			break
 		}
+	}
+
+	if needsEscaping {
+		return url.PathEscape(key)
 	}
 	return key
 }

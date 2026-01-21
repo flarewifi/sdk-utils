@@ -10,7 +10,7 @@ export default tool({
       .describe("REQUIRED: Language code (en, es, fr, am, ar, id, in, prs, ps, ru, sw)"),
     filePath: tool.schema
       .string()
-      .describe("Relative path from project root to translation file (e.g., core/resources/translations/es/label/Welcome.txt)"),
+      .describe("Relative path from project root to translation file (e.g., core/resources/translations/es/label/Welcome)"),
     content: tool.schema
       .string()
       .describe("The translated content to write to the file"),
@@ -58,8 +58,8 @@ Supported languages: ${supportedLanguages.join(", ")}
       const fullPath = path.join(cwd, filePath)
 
       // Validate that this is a translation file
-      if (!filePath.includes('/translations/') || !filePath.endsWith('.txt')) {
-        return `❌ ERROR: Invalid translation file path. Must be in /translations/ directory and end with .txt
+      if (!filePath.includes('/translations/')) {
+        return `❌ ERROR: Invalid translation file path. Must be in /translations/ directory
 
 Provided path: ${filePath}`
       }
@@ -106,19 +106,67 @@ Use createMissing: true to create it.`
         oldContent = fs.readFileSync(fullPath, "utf-8")
       }
       
+      // Validate content encoding (check for common issues)
+      if (content.includes('\0')) {
+        return `❌ ERROR: Content contains null bytes (invalid UTF-8)
+
+Translation content must be valid UTF-8 text.`
+      }
+      
+      // Warn about potential issues
+      const warnings: string[] = []
+      
+      if (content.length === 0) {
+        warnings.push("⚠️  WARNING: Empty translation content")
+      }
+      
+      if (content !== content.trim()) {
+        warnings.push("⚠️  WARNING: Translation has leading/trailing whitespace (will be preserved)")
+      }
+      
+      if (content.includes('  ')) {
+        warnings.push("⚠️  WARNING: Translation contains double spaces")
+      }
+      
+      // Check for snake_case in content
+      if (content.match(/\w+_\w+/)) {
+        warnings.push("⚠️  WARNING: Translation contains underscores (snake_case) - acceptable in content, but not in keys")
+      }
+      
       // Write new content
-      fs.writeFileSync(fullPath, content, "utf-8")
+      try {
+        fs.writeFileSync(fullPath, content, "utf-8")
+      } catch (writeError: any) {
+        return `❌ ERROR: Failed to write file: ${filePath}
+
+${writeError.message}
+
+Possible causes:
+- Insufficient permissions
+- Disk full
+- File locked by another process
+
+💡 TIP: Check file permissions and disk space`
+      }
 
       const action = fileExists ? "Updated" : "Created"
-      return `✅ ${action} ${language.toUpperCase()} translation: ${filePath}
+      let output = `✅ ${action} ${language.toUpperCase()} translation: ${filePath}
 
 Old content:
 ${oldContent || "(new file)"}
 
 New content:
 ${content}
-
-💡 TIP: Use translate-batch to update multiple ${language.toUpperCase()} files at once`
+`
+      
+      // Add warnings if any
+      if (warnings.length > 0) {
+        output += `\n${warnings.join('\n')}\n`
+      }
+      
+      output += `\n💡 TIP: Use translate-batch to update multiple ${language.toUpperCase()} files at once`
+      
+      return output
     } catch (error) {
       return `❌ ERROR updating translation: ${error}`
     }

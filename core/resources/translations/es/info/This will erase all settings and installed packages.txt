@@ -1,1 +1,0 @@
-Esto borrará todas las configuraciones y paquetes instalados

@@ -1,1 +1,0 @@
-Isso desligará o sistema. Todas as sessões ativas serão encerradas.

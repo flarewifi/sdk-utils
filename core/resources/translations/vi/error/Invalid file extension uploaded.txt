@@ -1,1 +1,0 @@
-Phần mở rộng tệp không hợp lệ cho <% .label %>. Phần mở rộng được phép: <% .extensions %>

@@ -23,7 +23,7 @@ type TranslationRef struct {
 	MsgType     string // label, error, info, etc.
 	MsgKey      string // the translation key (original)
 	ModifiedKey string // the modified key (truncated if too long)
-	FilePath    string // msgtype/filename.txt
+	FilePath    string // msgtype/filename (no extension)
 }
 
 // UntranslatedEntry represents an untranslated translation entry
@@ -430,7 +430,7 @@ func collectExistingTranslations(translationsDir string, supportedLanguages []st
 	}
 
 	filepath.Walk(enDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".txt") {
+		if err != nil || info.IsDir() {
 			return err
 		}
 
@@ -443,7 +443,7 @@ func collectExistingTranslations(translationsDir string, supportedLanguages []st
 		if err == nil {
 			existingTranslations[relPath] = string(content)
 		} else {
-			existingTranslations[relPath] = strings.TrimSuffix(filepath.Base(path), ".txt")
+			existingTranslations[relPath] = filepath.Base(path)
 		}
 		return nil
 	})
@@ -740,9 +740,14 @@ func scanFile(filePath string, usedTranslations map[string]*TranslationRef, stat
 			// Validate translation key
 			modifiedKey := validateTranslationKey(msgKey, filePath)
 
+			// Skip if validation failed (empty string returned)
+			if modifiedKey == "" {
+				continue
+			}
+
 			// Create the translation file path key
 			filename := sdkutils.FilenameFromTranslationKey(modifiedKey)
-			translationKey := filepath.Join(msgType, filename+".txt")
+			translationKey := filepath.Join(msgType, filename)
 
 			// Store the translation reference with original and modified keys
 			usedTranslations[translationKey] = &TranslationRef{
@@ -784,7 +789,10 @@ func scanFile(filePath string, usedTranslations map[string]*TranslationRef, stat
 func validateTranslationKey(key, filePath string) string {
 	// Check for snake_case (underscores)
 	if strings.Contains(key, "_") {
-		log.Panicf("Snake_case translation key detected in %s: %q. Use Title Case instead (e.g., 'Used Voucher')", filePath, key)
+		log.Printf("❌ ERROR: Snake_case translation key detected in %s: %q\n"+
+			"   Use Title Case instead (e.g., 'Invalid form values')\n"+
+			"   This key will be skipped. Please fix it in the source code.", filePath, key)
+		return "" // Return empty to signal invalid key
 	}
 
 	// Check word count, limit to 10 words
@@ -797,7 +805,7 @@ func validateTranslationKey(key, filePath string) string {
 		log.Printf("⚠️  WARNING: Translation key exceeds 10 word limit (%d words) in %s\n"+
 			"   Original key: %q\n"+
 			"   Will be truncated to: %q\n"+
-			"   Filename will be: '%s.txt'\n"+
+			"   Filename will be: '%s'\n"+
 			"   Consider shortening the key for better readability. Example: 'Update downloaded. Reboot to apply.'",
 			wordCount, filePath, key, modifiedKey, modifiedKey)
 		return modifiedKey
@@ -996,18 +1004,13 @@ func removeUnusedTranslations(translationsDir string, usedTranslations map[strin
 				return nil
 			}
 
-			// Only process .txt files
-			if !strings.HasSuffix(path, ".txt") {
-				return nil
-			}
-
 			// Get relative path from language directory
 			relPath, err := filepath.Rel(langDir, path)
 			if err != nil {
 				return err
 			}
 
-			// Create key as "msgtype/filename.txt"
+			// Create key as "msgtype/filename"
 			translationKey := relPath
 
 			// Also check with truncated key for files with long names
@@ -1016,13 +1019,13 @@ func removeUnusedTranslations(translationsDir string, usedTranslations map[strin
 			if len(parts) >= 2 {
 				msgType := parts[0]
 				filename := parts[len(parts)-1]
-				key := strings.TrimSuffix(filename, ".txt")
+				key := filename
 
 				// Apply same truncation logic as validateTranslationKey
 				fields := strings.Fields(key)
 				if len(fields) > 10 {
 					truncatedKey := strings.Join(fields[:10], " ") + " (truncated)"
-					truncatedFilename := truncatedKey + ".txt"
+					truncatedFilename := truncatedKey
 					truncatedPath := filepath.Join(msgType, truncatedFilename)
 
 					// Check both original and truncated keys
@@ -1109,7 +1112,7 @@ func collectUntranslatedFromDir(translationsDir string, supportedLanguages []str
 		}
 
 		filepath.Walk(langDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() || !strings.HasSuffix(path, ".txt") {
+			if err != nil || info.IsDir() {
 				return err
 			}
 
@@ -1134,7 +1137,7 @@ func collectUntranslatedFromDir(translationsDir string, supportedLanguages []str
 
 			msgType := parts[0]
 			filename := parts[1]
-			key := strings.TrimSuffix(filename, ".txt")
+			key := filename
 
 			// Check if this appears to be untranslated
 			// We consider it untranslated if the content equals the key
@@ -1210,7 +1213,7 @@ func validateComponent(translationsDir, componentName string, supportedLanguages
 	// Count English files
 	enCount := 0
 	filepath.Walk(enDir, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() && strings.HasSuffix(path, ".txt") {
+		if err == nil && !info.IsDir() {
 			enCount++
 		}
 		return nil
@@ -1272,7 +1275,7 @@ func validateLanguage(translationsDir, lang string, enCount int, scanConfig *Sca
 
 	// Check each English file
 	filepath.Walk(enDir, func(enPath string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(enPath, ".txt") {
+		if err != nil || info.IsDir() {
 			return nil
 		}
 

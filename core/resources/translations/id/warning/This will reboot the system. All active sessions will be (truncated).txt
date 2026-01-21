@@ -1,1 +1,0 @@
-Ini akan memulai ulang sistem. Semua sesi aktif akan dihentikan.

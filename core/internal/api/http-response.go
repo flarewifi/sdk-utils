@@ -119,7 +119,8 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	scripts := themes.PortalScripts(data.Assets, flash)
 	htmlAttrs := templ.Attributes{}
 	bodyAttrs := templ.Attributes{
-		"hx-sse": "connect:" + sseURL,
+		"hx-ext":      "sse",
+		"sse-connect": sseURL,
 	}
 
 	layoutBuilder := &ThemesLayoutBuilder{
