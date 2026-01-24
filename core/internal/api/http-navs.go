@@ -111,6 +111,11 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 			return navItems[i].Order < navItems[j].Order
 		})
 
+		// Skip categories with no items
+		if len(navItems) == 0 {
+			continue
+		}
+
 		navs = append(navs, sdkapi.AdminNavList{
 			Category: category,
 			Label:    categoryLabels[category],
