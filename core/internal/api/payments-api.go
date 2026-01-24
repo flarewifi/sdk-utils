@@ -167,3 +167,30 @@ func (self *PaymentsApi) ExtractPurchaseData(r *http.Request) (sdkapi.IPurchaseR
 	// Find the purchase by UUID
 	return self.FindPurchaseRequestByUUID(claims.PurchaseUID)
 }
+
+func (self *PaymentsApi) FindPurchasesByPaymentOptionUUID(paymentOptionUUID string, confirmedOnly bool) ([]sdkapi.IPurchaseRequest, error) {
+	ctx := context.Background()
+	mdls := self.api.models
+
+	var dbPurchases []*models.Purchase
+	var err error
+
+	if confirmedOnly {
+		dbPurchases, err = mdls.Purchase().FindCompletedByPaymentOptionUUID(ctx, paymentOptionUUID)
+	} else {
+		dbPurchases, err = mdls.Purchase().FindByPaymentOptionUUID(ctx, paymentOptionUUID)
+	}
+
+	if err != nil {
+		log.Printf("FindPurchasesByPaymentOptionUUID: Error querying purchases: %v", err)
+		return nil, err
+	}
+
+	// Convert database purchases to IPurchaseRequest interface
+	purchases := make([]sdkapi.IPurchaseRequest, len(dbPurchases))
+	for i, p := range dbPurchases {
+		purchases[i] = NewPurchase(self.api, ctx, p.DeviceID(), p)
+	}
+
+	return purchases, nil
+}

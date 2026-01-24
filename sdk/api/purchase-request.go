@@ -43,8 +43,8 @@ type PurchaseRequest struct {
 
 // CreatePaymentParams holds parameters for creating a payment for a purchase.
 type CreatePaymentParams struct {
-	Amount  float64
-	Optname string
+	Amount            float64
+	PaymentOptionUUID string
 }
 
 // IPurchaseRequest represents a record in purchases table in the database.
