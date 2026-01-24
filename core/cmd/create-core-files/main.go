@@ -18,8 +18,6 @@ func main() {
 			"core/go.mod",
 			"core/go.sum",
 			"core/sqlc.yml",
-			"core/sqlc.postgres.yml",
-			"core/sqlc.sqlite.yml",
 			"core/package.json",
 			"core/package-lock.json",
 			"core/plugin.json",

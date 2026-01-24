@@ -1,14 +1,13 @@
 #!/bin/sh
 set -eu
 
-# Usage: ./generate-sqlc.sh <plugin_directory> [driver]
-# Example: ./generate-sqlc.sh /home/user/myplugin postgres
+# Usage: ./generate-sqlc.sh <plugin_directory>
+# Example: ./generate-sqlc.sh /home/user/myplugin
 
 PLUGIN_DIR="${1:-}"
-DRIVER="${2:-}"
 
 if [ -z "$PLUGIN_DIR" ]; then
-    echo "Usage: $0 <plugin_directory> [driver]"
+    echo "Usage: $0 <plugin_directory>"
     exit 1
 fi
 
@@ -34,12 +33,12 @@ fi
     if [ $CORE_DIR = $PLUGIN_DIR ]; then
         echo "Core and plugin directories are the same. Skipping copy of core files."
     else
-        ./scripts/copy-sql.sh "core" "$TMP_DIR" "$DRIVER"
+        ./scripts/copy-sql.sh "core" "$TMP_DIR"
         # Remove core queries
         rm -rf "$TMP_DIR/resources/queries"
     fi
 
-    ./scripts/copy-sql.sh "$PLUGIN_DIR" "$TMP_DIR" "$DRIVER"
+    ./scripts/copy-sql.sh "$PLUGIN_DIR" "$TMP_DIR"
 )
 
 # Run sqlc generate

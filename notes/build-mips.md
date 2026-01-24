@@ -55,7 +55,7 @@ cd "$PROJECT_DIR"
 # Step 1: Run the build tool on the HOST machine (no cross-compilation)
 # This prepares assets, templates, queries, and plugin files
 echo "Step 1: Preparing assets and plugins (host build)..."
-go run -tags="prod mono sqlite cgo" ./tools/cmd/create-mono-bin/main.go --prepare-only 2>/dev/null || true
+go run -tags="prod mono cgo" ./tools/cmd/create-mono-bin/main.go --prepare-only 2>/dev/null || true
 
 # Since --prepare-only might not exist, we need a different approach
 # Let's build the binary separately after running the prep steps
@@ -63,10 +63,10 @@ go run -tags="prod mono sqlite cgo" ./tools/cmd/create-mono-bin/main.go --prepar
 echo "Step 1: Building assets and preparing plugins..."
 
 # Create go workspace
-go run -tags="prod mono sqlite" ./tools/cmd/build-assets/main.go 2>/dev/null || true
+go run -tags="prod mono" ./tools/cmd/build-assets/main.go 2>/dev/null || true
 
 # Build templates
-go run -tags="prod mono sqlite" ./tools/cmd/build-templates/main.go 2>/dev/null || true
+go run -tags="prod mono" ./tools/cmd/build-templates/main.go 2>/dev/null || true
 
 # For now, let's just directly cross-compile the final binary
 echo ""
@@ -81,7 +81,7 @@ export GOARCH=mipsle
 export GOMIPS=softfloat
 
 # Build the final binary directly
-go build -tags="prod mono sqlite cgo" \
+go build -tags="prod mono cgo" \
     -ldflags="-s -w" \
     -trimpath \
     -o bin/flare \

@@ -3,9 +3,7 @@
 ## About this project
 
 - This is a Go application that runs in OpenWRT routers
-- It has two types of build:
-  - With go plugins - it can install/uninstall plugins using native go "plugin" package
-  - Monolithic build - all plugins are compiled as a single binary
+- Uses SQLite as the database (lightweight, embedded, perfect for edge devices)
 - Plugin-based architecture allows third-party developers to extend functionality
 - Core should remain minimal and stable - new features should be plugins when possible
 
@@ -57,7 +55,7 @@ Only modify core files when:
 ### ALWAYS
 
 - Use translations API for ALL user-facing text
-- Support both PostgreSQL and SQLite in queries
+- Use SQLite-compatible SQL syntax in all queries
 - Use `int64` for database IDs
 - Use ES5 JavaScript syntax (no ES6+)
 - Check docker logs to verify builds (`Listening on port :3000` = success)
@@ -67,15 +65,14 @@ Only modify core files when:
 
 ## Build/Dev/Test
 
-- `make postgres` Runs the app with plugin install/uninstall capabilities, uses Go build tags "dev postgres"
-- `make` Runs the monolithic app with Go build tags "dev mono sqlite"
+- `make` Runs the development app with Go build tags "dev"
 - We only use `ES5` syntax in our javascript assets for maximum browser compatibility
 - We don't implement or create test files and unit tests
 - The `go`, `templ`, and `sqlc` files are being watched and built by the running docker container
 - We don't build go, templ and sqlc files. Instead, we watch for the docker logs to see if the build succeeds
 - Watch docker logs but don't run them. When it prints `Listening on port :3000 ` it means the build is successful
-- When building the source, we use build tags either "dev mono sqlite" or "dev postgres"
-- Sample Go build command: `go build -tags="dev mono sqlite" -o flare ./core/internal/cli/main.go`
+- When building the source, we use build tags "dev" for development or "prod" for production
+- Sample Go build command: `go build -tags="dev" -o flare ./core/internal/cli/main.go`
 
 ## Project Structure
 
@@ -113,11 +110,10 @@ Only modify core files when:
 ## Database
 
 - Database queries are generated using `sqlc` in `./scripts/sqlc-gen.sh`
+- We use SQLite as our database (embedded, lightweight, perfect for edge devices)
 - We use `sqlc` named params in our sql queries. For example: `select * from devices where mac_address = @mac_address`
-- Our queries must be compatible with both `postgres` and `sqlite`
-- For queries that can't work on both database, we create a separate sql files under `resources/queries/sqlite` and `resources/queries/postgres`
-- Similar queries for `postgres` and `sqlite` must produce similar Go code
-- Column overrides are configured in `core/sqlc.postgres.yml` and `core/sqlc.sqlite.yml`
+- All queries must use SQLite-compatible syntax
+- Column overrides are configured in `core/sqlc.yml`
 - For IDs, we use `int64` type
 
 ### Plugin-Specific Migrations
@@ -178,14 +174,21 @@ label := api.Translate("label", "Username")
 - `"warning"` - Warning messages
 - Custom types as needed for your plugin
 
-### Translation Key Length Limit
+### Translation Key Rules
 
-**Keys with >10 words are automatically truncated to 10 words + " (truncated)"**
+**1. No Snake_case**
+- ❌ `api.Translate("error", "invalid_form_values")`
+- ✅ `api.Translate("error", "Invalid form values")`
 
-- Truncation is **VALID** behavior - system handles it automatically
-- Files created: `First ten words of the key (truncated).txt`
-- Shorter keys preferred for readability, but truncated keys work fine
-- Build warnings are informational (8-10 words: INFO, 11+ words: WARNING)
+**2. Key Length Limit: 10 Words**
+- Keys with >10 words are automatically truncated to 10 words + " (truncated)"
+- Build warnings: 8-10 words = INFO, 11+ words = WARNING
+- Shorter keys preferred for readability
+
+**3. Punctuation Allowed in Keys**
+- ✅ `api.Translate("info", "You are connected.")` - Punctuation is fine
+- ✅ `api.Translate("error", "Are you sure?")` - Question marks are fine
+- Translation filenames will match the key exactly (no `.txt` extension)
 
 ### Exception: Debug Logs
 - Internal debug logs and development console output can remain in English

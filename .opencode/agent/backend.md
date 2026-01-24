@@ -279,20 +279,13 @@ err := models.Session().Update(ctx, id, params)
 err := models.Session().Delete(ctx, id)
 ```
 
-### Database-Specific Implementations
+### Database Model Methods
 ```go
-// core/db/models/session-model_sqlite.go
-//go:build sqlite
+// core/db/models/session-model.go
 func (m *SessionModel) FindExpiringSoon(ctx context.Context, days int) ([]*queries.Session, error) {
-    // SQLite-specific date handling
+    // SQLite date handling
     query := `SELECT * FROM sessions WHERE datetime('now') > datetime(started_at, '+' || (exp_days - ?) || ' days')`
-}
-
-// core/db/models/session-model_postgres.go
-//go:build postgres
-func (m *SessionModel) FindExpiringSoon(ctx context.Context, days int) ([]*queries.Session, error) {
-    // PostgreSQL-specific date handling
-    query := `SELECT * FROM sessions WHERE NOW() > started_at + ((exp_days - $1) * interval '1 day')`
+    // Implementation details...
 }
 ```
 

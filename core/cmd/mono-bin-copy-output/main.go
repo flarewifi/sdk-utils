@@ -29,8 +29,6 @@ func main() {
 		"core/go.mod",
 		"core/plugin.json",
 		"core/sqlc.yml",
-		"core/sqlc.postgres.yml",
-		"core/sqlc.sqlite.yml",
 		"core/resources/assets/dist",
 		"core/resources/assets/public",
 		"core/resources/migrations",

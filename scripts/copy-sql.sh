@@ -1,15 +1,14 @@
 #!/bin/sh
 set -eu
 
-# Usage: ./copy-sql.sh <plugin_directory> <tmp_dir> [driver]
-# Example: ./copy-sql.sh /home/user/myplugin /tmp/sqlc-build postgres
+# Usage: ./copy-sql.sh <plugin_directory> <tmp_dir>
+# Example: ./copy-sql.sh /home/user/myplugin /tmp/sqlc-build
 
 PLUGIN_DIR="${1:-}"
 TMP_DIR="${2:-}"
-DRIVER="${3:-}"
 
 if [ ! -d "$PLUGIN_DIR" ]; then
-    echo "Usage: $0 <plugin_directory> <temporary_directory> [driver]"
+    echo "Usage: $0 <plugin_directory> <temporary_directory>"
     exit 1
 fi
 
@@ -29,22 +28,9 @@ if [ ! -d "$PLUGIN_DIR" ]; then
     exit 1
 fi
 
-# Determine which sqlc.yml to use based on driver
-if [ -n "$DRIVER" ]; then
-    if [ "$DRIVER" = "postgres" ]; then
-        CORE_SQLC_FILE="$CORE_DIR/sqlc.postgres.yml"
-        PLUGIN_SQLC_FILE="$PLUGIN_DIR/sqlc.postgres.yml"
-    elif [ "$DRIVER" = "sqlite" ]; then
-        CORE_SQLC_FILE="$CORE_DIR/sqlc.sqlite.yml"
-        PLUGIN_SQLC_FILE="$PLUGIN_DIR/sqlc.sqlite.yml"
-    else
-        CORE_SQLC_FILE="$CORE_DIR/sqlc.yml"
-        PLUGIN_SQLC_FILE="$PLUGIN_DIR/sqlc.yml"
-    fi
-else
-    CORE_SQLC_FILE="$CORE_DIR/sqlc.yml"
-    PLUGIN_SQLC_FILE="$PLUGIN_DIR/sqlc.yml"
-fi
+# Use sqlc.yml (SQLite only)
+CORE_SQLC_FILE="$CORE_DIR/sqlc.yml"
+PLUGIN_SQLC_FILE="$PLUGIN_DIR/sqlc.yml"
 
 # Check if core sqlc file exists
 if [ ! -f "$CORE_SQLC_FILE" ]; then
@@ -128,36 +114,6 @@ if [ -d "$PLUGIN_DIR/resources/queries" ]; then
     echo "Copied base queries/"
 fi
 
-# Copy driver-specific directories if provided
-if [ -n "$DRIVER" ]; then
-    echo "Checking driver-specific directories for '$DRIVER'..."
-
-    if [ -d "$TMP_DIR/resources/migrations/$DRIVER" ]; then
-        rm -rf "$TMP_DIR/resources/migrations/$DRIVER"
-    fi
-
-    if [ -d "$PLUGIN_DIR/resources/migrations/$DRIVER" ]; then
-        mkdir -p "$TMP_DIR/resources/migrations"
-        cp -r "$PLUGIN_DIR/resources/migrations/$DRIVER/." "$TMP_DIR/resources/migrations/"
-        echo "Copied migrations/$DRIVER/"
-    fi
-
-    if [ -d "$TMP_DIR/resources/queries/$DRIVER" ]; then
-        rm -rf "$TMP_DIR/resources/queries/$DRIVER"
-    fi
-
-    if [ -d "$PLUGIN_DIR/resources/queries/$DRIVER" ]; then
-        mkdir -p "$TMP_DIR/resources/queries"
-        # Copy database-specific queries (will overwrite base files with same name)
-        cp -r "$PLUGIN_DIR/resources/queries/$DRIVER/." "$TMP_DIR/resources/queries/"
-        echo "Copied queries/$DRIVER/"
-    fi
-
-    # Remove database-specific subdirectories to prevent sqlc from processing them
-    rm -rf "$TMP_DIR/resources/queries/postgres" 2>/dev/null || true
-    rm -rf "$TMP_DIR/resources/queries/sqlite" 2>/dev/null || true
-    rm -rf "$TMP_DIR/resources/migrations/postgres" 2>/dev/null || true
-    rm -rf "$TMP_DIR/resources/migrations/sqlite" 2>/dev/null || true
-fi
+# No driver-specific directories needed (SQLite only)
 
 echo "All relevant SQL resources have been copied to: $TMP_DIR"

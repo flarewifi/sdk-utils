@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	DriverPostgres = "postgres"
-	DriverSqlite   = "sqlite"
+	DriverSqlite = "sqlite"
 )
 
 type Database struct {
