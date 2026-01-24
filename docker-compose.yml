@@ -29,6 +29,15 @@ services:
     ports:
       - 3002:8000
 
+  sqliteweb:
+    image: coleifer/sqlite-web
+    platform: linux/amd64
+    volumes:
+      - ./data/db:/data
+    ports:
+      - 3001:8080
+    command: sqlite_web -H 0.0.0.0 -x /data/database.sqlite
+
 volumes:
   gocache:
 

@@ -2,7 +2,7 @@
 .PHONY: translations-check check-translations translation-report find-missing create-templates help
 
 default: create-network
-	docker compose -f docker-compose.yml -f docker-compose.mono.yml up app docs \
+	docker compose -f docker-compose.yml -f docker-compose.mono.yml up app docs sqliteweb \
 		--build --remove-orphans --force-recreate
 
 help:
