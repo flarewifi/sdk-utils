@@ -93,19 +93,35 @@ formatted := api.Payments().FormatCurrency(amount)
 fmt.Println(formatted) // e.g., "₱29.99" or "$29.99"
 ```
 
-### WebhookAuth
+### ExtractPurchaseData
 
-Authenticates internal webhook requests using JWT tokens. Verifies the JWT token signed with the application secret. Returns `nil` if authentication is successful, or an error if it fails.
+Extracts and validates purchase data from the request using the `token` query parameter. This method handles both callback requests (GET) and webhook requests (POST).
+
+The token is a JWT signed with the application secret containing the device ID and purchase UUID. It verifies the token and returns the purchase request. Tokens expire after 5 minutes for security.
 
 ```go
-func handleInternalWebhook(w http.ResponseWriter, r *http.Request) {
-    err := api.Payments().WebhookAuth(r)
+func handleCallback(w http.ResponseWriter, r *http.Request) {
+    // Token is passed as ?token=<jwt> query parameter
+    purchaseReq, err := api.Payments().ExtractPurchaseData(r)
     if err != nil {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
         return
     }
 
-    // Process authenticated webhook
+    if purchaseReq.IsConfirmed() {
+        // Show success page
+    }
+}
+
+func handleWebhook(w http.ResponseWriter, r *http.Request) {
+    // Same method works for webhooks (POST with ?token=<jwt>)
+    purchaseReq, err := api.Payments().ExtractPurchaseData(r)
+    if err != nil {
+        w.WriteHeader(http.StatusUnauthorized)
+        return
+    }
+
+    // Process webhook...
 }
 ```
 

@@ -13,11 +13,8 @@ import (
 
 	"core/db/models"
 	"core/internal/web/helpers"
-	"core/utils/config"
 	"core/utils/env"
 	sdkapi "sdk/api"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func NewPurchase(api *PluginApi, ctx context.Context, deviceId int64, p *models.Purchase) *Purchase {
@@ -192,36 +189,21 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 
 	webhookURL := callbackPkg.Http().Helpers().UrlForRoute(webhookRoute)
 
-	// Create POST request to local server using env.LocalBaseURL
+	// Create JWT token with device ID and purchase UUID
+	token, err := helpers.CreatePurchaseToken(self.deviceId, self.purchase.UUID())
+	if err != nil {
+		return fmt.Errorf("failed to create purchase token: %w", err)
+	}
+
+	// Append token as query parameter to webhook URL
 	fullURL := env.LocalBaseURL + webhookURL
+	if strings.Contains(fullURL, "?") {
+		fullURL = fullURL + "&token=" + token
+	} else {
+		fullURL = fullURL + "?token=" + token
+	}
 
 	fmt.Println("Webhook URL:", fullURL)
-
-	// Get application secret for JWT signing
-	appCfg, err := config.ReadApplicationConfig()
-	if err != nil {
-		return fmt.Errorf("failed to read application config: %w", err)
-	}
-
-	// Create JWT token with 1-minute expiration
-	now := time.Now()
-	claims := helpers.WebhookClaims{
-		DeviceID:    self.deviceId,
-		PurchaseUID: self.purchase.UUID(),
-		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(1 * time.Minute)),
-			Issuer:    "flarehotspot-core",
-			Subject:   "webhook-auth",
-		},
-	}
-
-	// Create and sign the token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(appCfg.Secret))
-	if err != nil {
-		return fmt.Errorf("failed to sign JWT token: %w", err)
-	}
 
 	// Marshal params to JSON
 	jsonData, err := json.Marshal(params)
@@ -235,12 +217,10 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 		return fmt.Errorf("failed to create webhook request: %w", err)
 	}
 
-	// Add JWT token in Authorization header
-	req.Header.Set("Authorization", "Bearer "+tokenString)
+	// Set Content-Type header
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Purchase-Webhook", "true")
 
-	fmt.Println("Webhook request created with JWT token")
+	fmt.Println("Webhook request created with purchase token")
 
 	// Make the request
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -271,20 +251,20 @@ func (self *Purchase) RedirectToCallback(w http.ResponseWriter, r *http.Request)
 	callbackRoute := self.purchase.CallbackRoute()
 	fmt.Println("Redirecting to callback route:", callbackRoute)
 
-	// Create JWT token containing purchase UUID for secure callback
-	token, err := helpers.CreateCallbackToken(self.purchase.UUID())
+	// Create JWT token containing device ID and purchase UUID
+	token, err := helpers.CreatePurchaseToken(self.deviceId, self.purchase.UUID())
 	if err != nil {
-		fmt.Println("RedirectToCallback: Failed to create callback token:", err)
-		self.ErrorPage(w, errors.New("failed to create callback token"))
+		fmt.Println("RedirectToCallback: Failed to create purchase token:", err)
+		self.ErrorPage(w, errors.New("failed to create purchase token"))
 		return
 	}
 
-	// Build callback URL and append purchase_token as query parameter
+	// Build callback URL and append token as query parameter
 	callbackURL := callbackPkg.Http().Helpers().UrlForRoute(callbackRoute)
 	if strings.Contains(callbackURL, "?") {
-		callbackURL = callbackURL + "&purchase_token=" + token
+		callbackURL = callbackURL + "&token=" + token
 	} else {
-		callbackURL = callbackURL + "?purchase_token=" + token
+		callbackURL = callbackURL + "?token=" + token
 	}
 
 	fmt.Println("Redirecting to callback URL:", callbackURL)

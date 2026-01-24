@@ -41,23 +41,12 @@ type IPaymentsApi interface {
 	// Formats a float64 amount as currency string using the current application currency.
 	FormatCurrency(amount float64) string
 
-	// WebhookAuth authenticates internal webhook requests using JWT tokens.
-	// Verifies the JWT token signed with application secret.
-	// Returns nil if authentication is successful, or an error if it fails.
-	WebhookAuth(r *http.Request) error
-
-	// ExtractPurchaseData extracts and validates purchase data from a callback request.
-	// The callback token is passed as a query parameter "purchase_token".
-	// It verifies the JWT token signed with machine_id + application secret,
-	// extracts the purchase UUID from claims, and returns the purchase request.
-	// Returns the purchase request if successful, or an error if validation fails.
-	ExtractPurchaseData(r *http.Request) (IPurchaseRequest, error)
-
-	// ExtractWebhookData extracts and validates purchase data from a webhook request.
-	// The JWT token is passed in the Authorization header as "Bearer <token>".
+	// ExtractPurchaseData extracts and validates purchase data from the request.
+	// The purchase token is passed as a query parameter "token" (?token=<jwt>).
 	// It verifies the JWT token signed with application secret,
 	// extracts the purchase UUID and device ID from claims, and returns the purchase request.
-	// This should be called after WebhookAuth has validated the request.
+	// This method handles both callback requests (GET) and webhook requests (POST).
+	// Token expires after 5 minutes for security.
 	// Returns the purchase request if successful, or an error if validation fails.
-	ExtractWebhookData(r *http.Request) (IPurchaseRequest, error)
+	ExtractPurchaseData(r *http.Request) (IPurchaseRequest, error)
 }
