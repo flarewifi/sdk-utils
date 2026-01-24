@@ -87,27 +87,19 @@ import (
 
 func PurchaseWebhook(api sdkapi.IPluginApi) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        // STEP 1: Verify JWT authentication (required!)
-        if err := api.Payments().WebhookAuth(r); err != nil {
-            api.Logger().Error(fmt.Sprintf("Webhook auth failed: %v", err))
-            w.Header().Set("Content-Type", "application/json")
+        ctx := r.Context()
+
+        // STEP 1: Extract and authenticate purchase from token query parameter
+        // This single call verifies the JWT and returns the purchase
+        purchase, err := api.Payments().ExtractPurchaseData(r)
+        if err != nil {
+            api.Logger().Error(fmt.Sprintf("Authentication failed: %v", err))
             w.WriteHeader(http.StatusUnauthorized)
             w.Write([]byte(`{"error": "Unauthorized"}`))
             return
         }
 
-        ctx := r.Context()
-
-        // STEP 2: Extract purchase from JWT claims
-        purchase, err := api.Payments().ExtractWebhookData(r)
-        if err != nil {
-            api.Logger().Error(fmt.Sprintf("ExtractWebhookData failed: %v", err))
-            w.WriteHeader(http.StatusNotFound)
-            w.Write([]byte("Purchase not found"))
-            return
-        }
-
-        // STEP 3: Parse execute params from request body
+        // STEP 2: Parse execute params from request body
         var executeParams sdkapi.ExecuteParams
         if err := json.NewDecoder(r.Body).Decode(&executeParams); err != nil {
             api.Logger().Error(fmt.Sprintf("Failed to parse params: %v", err))
@@ -124,7 +116,7 @@ func PurchaseWebhook(api sdkapi.IPluginApi) http.HandlerFunc {
         api.Logger().Info(fmt.Sprintf("Webhook: device=%d, purchase=%s, amount=%.2f", 
             deviceID, purchaseUUID, amount))
 
-        // STEP 4: Handle payment failure
+        // STEP 3: Handle payment failure
         if !executeParams.Success {
             api.Logger().Error(fmt.Sprintf("Payment failed: %s", executeParams.Message))
             
@@ -138,7 +130,7 @@ func PurchaseWebhook(api sdkapi.IPluginApi) http.HandlerFunc {
             return
         }
 
-        // STEP 5: Get client by device ID
+        // STEP 4: Get client by device ID
         clnt, err := api.SessionsMgr().FindClientById(ctx, deviceID)
         if err != nil {
             api.Logger().Error(fmt.Sprintf("Client not found: %v", err))
@@ -147,7 +139,7 @@ func PurchaseWebhook(api sdkapi.IPluginApi) http.HandlerFunc {
             return
         }
 
-        // STEP 6: Confirm purchase FIRST (critical!)
+        // STEP 5: Confirm purchase FIRST (critical!)
         if err = purchase.Confirm(ctx); err != nil {
             api.Logger().Error(fmt.Sprintf("Failed to confirm: %v", err))
             w.WriteHeader(http.StatusInternalServerError)
@@ -157,7 +149,7 @@ func PurchaseWebhook(api sdkapi.IPluginApi) http.HandlerFunc {
 
         api.Logger().Info("Purchase confirmed")
 
-        // STEP 7: Create session/product for user
+        // STEP 6: Create session/product for user
         session, err := api.SessionsMgr().CreateSession(ctx, sdkapi.CreateSessionParams{
             UUID:        uuid.New().String(), // Required - generate unique session UUID
             DevId:       clnt.ID(),
@@ -357,7 +349,7 @@ func init(api sdkapi.IPluginApi) {
 |--------|--------------|--------------|
 | **Purpose** | Browser redirect after payment | Server-to-server notification |
 | **Method** | GET | POST |
-| **Authentication** | Session cookie | JWT token |
+| **Authentication** | JWT token in query param `?token=<jwt>` | JWT token in query param `?token=<jwt>` |
 | **Triggers** | User clicks "back to site" | Payment provider calls Execute() |
 | **Use case** | Show success page, redirect | Confirm purchase, create session |
 | **Required** | Optional | **Required** |
@@ -377,19 +369,7 @@ func init(api sdkapi.IPluginApi) {
 
 ### Critical Implementation Details
 
-#### 1. Always Verify JWT Authentication
-
-```go
-if err := api.Payments().WebhookAuth(r); err != nil {
-    // Reject the request
-    w.WriteHeader(http.StatusUnauthorized)
-    return
-}
-```
-
-Without this check, anyone could call your webhook and create fraudulent sessions.
-
-#### 2. Confirm Purchase BEFORE Creating Session
+#### 1. Confirm Purchase BEFORE Creating Session
 
 ```go
 // CORRECT ORDER
@@ -407,7 +387,7 @@ if err = purchase.Confirm(ctx); err != nil {
 
 If you create the session first and then Confirm() fails, the user gets a session but the purchase remains incomplete.
 
-#### 3. Handle Payment Failures
+#### 2. Handle Payment Failures
 
 ```go
 if !executeParams.Success {
@@ -422,7 +402,7 @@ if !executeParams.Success {
 }
 ```
 
-#### 4. Check Execute() Return Value
+#### 3. Check Execute() Return Value
 
 ```go
 // CORRECT - check for errors
@@ -438,7 +418,7 @@ purchase.Execute(ctx, params)
 // No error checking - webhook might have failed!
 ```
 
-#### 5. Use Context Properly
+#### 4. Use Context Properly
 
 ```go
 // Get context from request
@@ -452,7 +432,7 @@ api.SessionsMgr().Connect(ctx, clnt, msg)
 
 Context ensures proper timeout handling and cancellation propagation.
 
-#### 6. Always Generate Session UUID
+#### 5. Always Generate Session UUID
 
 ```go
 import "github.com/google/uuid"
@@ -480,7 +460,7 @@ session, err := api.SessionsMgr().CreateSession(ctx, sdkapi.CreateSessionParams{
 
 Without a UUID, CreateSession will return an error: "session UUID is required".
 
-#### 7. Use purchase.UUID() Not purchase.ID()
+#### 6. Use purchase.UUID() Not purchase.ID()
 
 ```go
 // CORRECT - passes UUID string like "b1ec7c05-3d51-4a7c-af92-f88ff13bdd38"
@@ -647,19 +627,6 @@ p := sdkapi.PurchaseRequest{
 }
 ```
 
-### Webhook Returns 401 Unauthorized
-
-**Cause:** Missing or invalid JWT authentication check
-
-**Fix:** Add authentication at start of webhook handler:
-
-```go
-if err := api.Payments().WebhookAuth(r); err != nil {
-    w.WriteHeader(http.StatusUnauthorized)
-    return
-}
-```
-
 ### Execute() Returns Error
 
 **Cause:** Multiple possible issues:
@@ -809,7 +776,7 @@ Processing() bool
 ## Best Practices
 
 1. **Always separate CallbackRoute and WebHookRoute** - Don't use the same route for both
-2. **Verify JWT authentication** in webhook handlers - Security is critical
+2. **Use ExtractPurchaseData for authentication** - Single method handles JWT verification for both callbacks and webhooks
 3. **Confirm purchases before creating sessions** - Ensures data consistency
 4. **Handle payment failures gracefully** - Cancel purchases, show user-friendly errors
 5. **Log everything** - Makes debugging much easier
@@ -832,7 +799,7 @@ Payment processing in FlareHotspot uses a webhook pattern:
 5. **Browser** optionally redirects to CallbackRoute
 
 The key to success is implementing a proper webhook handler that:
-- Verifies JWT authentication
+- Extracts and authenticates purchase using ExtractPurchaseData()
 - Confirms the purchase
 - Creates the session/product
 - Auto-connects the user
