@@ -11,7 +11,6 @@ import (
 	"core/db"
 	"core/db/queries"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/google/uuid"
 )
 
@@ -71,7 +70,7 @@ func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchasePara
 		CallbackPlugin: params.CallbackPlugin,
 		CallbackRoute:  params.CallbackRoute,
 		WebhookRoute:   params.WebHookRoute,
-		Metadata:       b,
+		Metadata:       string(b),
 		Processing:     params.Processing,
 		PaymentUrl:     params.PaymentUrl,
 	}
@@ -137,11 +136,21 @@ func (self *PurchaseModel) Update(ctx context.Context, params UpdatePurchasePara
 		walletTxID = sql.NullInt64{Int64: *params.WalletTxID, Valid: true}
 	}
 
+	// Convert *time.Time to interface{} for nullable timestamps
+	var cancelledAt interface{}
+	if params.CancelledAt != nil {
+		cancelledAt = *params.CancelledAt
+	}
+	var confirmedAt interface{}
+	if params.ConfirmedAt != nil {
+		confirmedAt = *params.ConfirmedAt
+	}
+
 	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
 		WalletDebit:     params.WalletDebit,
 		WalletTxID:      walletTxID,
-		CancelledAt:     sdkutils.TimeToNullTime(params.CancelledAt),
-		ConfirmedAt:     sdkutils.TimeToNullTime(params.ConfirmedAt),
+		CancelledAt:     cancelledAt,
+		ConfirmedAt:     confirmedAt,
 		CancelledReason: cancellReason,
 		Processing:      params.Processing,
 		PaymentUrl:      params.PaymentUrl,
@@ -165,7 +174,7 @@ func (self *PurchaseModel) UpdateMetadata(ctx context.Context, purchaseID int64,
 
 	err = self.db.Queries.UpdatePurchaseMetadata(ctx, queries.UpdatePurchaseMetadataParams{
 		ID:       purchaseID,
-		Metadata: b,
+		Metadata: string(b),
 	})
 	if err != nil {
 		log.Printf("error updating purchase metadata %v: %v", purchaseID, err)

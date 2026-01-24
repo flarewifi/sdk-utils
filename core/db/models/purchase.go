@@ -35,7 +35,7 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 
 		metadata := make(map[string]string)
 		if len(p.Metadata) > 0 {
-			if err := json.Unmarshal(p.Metadata, &metadata); err != nil {
+			if err := json.Unmarshal([]byte(p.Metadata), &metadata); err != nil {
 				return nil, err
 			}
 		}
@@ -48,13 +48,16 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 			purchase.walletTxId = &p.WalletTxID.Int64
 		}
 
-		if p.ConfirmedAt.Valid {
-			confirmedAt := p.ConfirmedAt.Time
-			purchase.confirmedAt = &confirmedAt
+		// Handle interface{} for nullable timestamps
+		if p.ConfirmedAt != nil {
+			if confirmedAt, ok := p.ConfirmedAt.(time.Time); ok {
+				purchase.confirmedAt = &confirmedAt
+			}
 		}
-		if p.CancelledAt.Valid {
-			cancelledAt := p.CancelledAt.Time
-			purchase.cancelledAt = &cancelledAt
+		if p.CancelledAt != nil {
+			if cancelledAt, ok := p.CancelledAt.(time.Time); ok {
+				purchase.cancelledAt = &cancelledAt
+			}
 		}
 
 		purchase.createdAt = p.CreatedAt

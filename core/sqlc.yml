@@ -10,19 +10,3 @@ sql:
         package: queries
         out: db/queries
         sql_package: "database/sql"
-        overrides:
-          - column: "purchases.metadata"
-            go_type:
-              type: "[]byte"
-          - column: "purchases.confirmed_at"
-            go_type:
-              type: "sql.NullTime"
-          - column: "purchases.cancelled_at"
-            go_type:
-              type: "sql.NullTime"
-          - column: "sessions.data_mbytes"
-            go_type:
-              type: "sql.NullFloat64"
-          - column: "session_summary.remaining_time_secs"
-            go_type:
-              type: "int64"
