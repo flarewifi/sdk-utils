@@ -6,19 +6,19 @@ templ LiveReloadScript() {
 <!-- LiveReload script for development environment -->
 <script type="text/javascript">
 (function connect() {
-  const ws = new WebSocket("ws://localhost:8000/livereload");
-    ws.onconnect = () => {
-        console.log("✅ LiveReload connected");
-    };
+  var ws = new WebSocket("ws://localhost:8000/livereload");
+  ws.onopen = function() {
+    console.log("✅ LiveReload connected");
+  };
 
-  ws.onmessage = (event) => {
+  ws.onmessage = function(event) {
     if (event.data === "reload") {
       console.log("🔁 Reload triggered");
       location.reload();
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = function() {
     console.log("⚠️ LiveReload disconnected. Reconnecting...");
     setTimeout(connect, 1000);
   };

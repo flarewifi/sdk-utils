@@ -2,8 +2,11 @@
 
 START_SH=$1
 
-cp go.work.default go.work && \
-    reflex \
+# Setup go.work first (needed by both reflex and livereload)
+cp go.work.default go.work
+
+# Start file watcher for rebuilds
+reflex \
     -r '\.(go|templ|sql|js|css|json|sh)$' \
     -R '(plugin|package|package\-lock).json$' \
     -R '_templ\.go$' \
@@ -22,6 +25,7 @@ cp go.work.default go.work && \
     -R 'plugin\-init_mono\.(go|default)$' \
     -s -- sh -c "$START_SH" -v &
 
+# Start livereload server (go.work is now available)
 touch "/tmp/.flare-up" && \
     go run -tags="dev" ./core/cmd/livereload/main.go &
 

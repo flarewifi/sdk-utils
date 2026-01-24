@@ -1,1 +1,0 @@
-PostgreSQL database settings are configured in the database configuration file.

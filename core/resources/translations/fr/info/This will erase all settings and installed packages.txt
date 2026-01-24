@@ -1,1 +1,0 @@
-Cela effacera tous les paramètres et paquets installés

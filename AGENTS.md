@@ -178,14 +178,21 @@ label := api.Translate("label", "Username")
 - `"warning"` - Warning messages
 - Custom types as needed for your plugin
 
-### Translation Key Length Limit
+### Translation Key Rules
 
-**Keys with >10 words are automatically truncated to 10 words + " (truncated)"**
+**1. No Snake_case**
+- ❌ `api.Translate("error", "invalid_form_values")`
+- ✅ `api.Translate("error", "Invalid form values")`
 
-- Truncation is **VALID** behavior - system handles it automatically
-- Files created: `First ten words of the key (truncated).txt`
-- Shorter keys preferred for readability, but truncated keys work fine
-- Build warnings are informational (8-10 words: INFO, 11+ words: WARNING)
+**2. Key Length Limit: 10 Words**
+- Keys with >10 words are automatically truncated to 10 words + " (truncated)"
+- Build warnings: 8-10 words = INFO, 11+ words = WARNING
+- Shorter keys preferred for readability
+
+**3. Punctuation Allowed in Keys**
+- ✅ `api.Translate("info", "You are connected.")` - Punctuation is fine
+- ✅ `api.Translate("error", "Are you sure?")` - Question marks are fine
+- Translation filenames will match the key exactly (no `.txt` extension)
 
 ### Exception: Debug Logs
 - Internal debug logs and development console output can remain in English

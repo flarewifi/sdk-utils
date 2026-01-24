@@ -68,6 +68,16 @@ Supported languages: ${supportedLanguages.join(", ")}
 💡 TIP: Use operation="list-languages" to see all supported languages with their full names.`
     }
 
+    // Verify Go is available
+    try {
+      await Bun.$`which go`.quiet()
+    } catch {
+      return `❌ ERROR: Go is not installed or not in PATH
+      
+Please install Go to use the translation scanner.
+Visit: https://golang.org/doc/install`
+    }
+
     try {
       // Use portable command that works from any directory
       let flags = ""
@@ -107,8 +117,38 @@ Supported languages: ${supportedLanguages.join(", ")}
       }
 
       // Use the renamed Go tool with proper tags
-      const command = `go run -tags="dev" $(pwd)/core/tools/translator${flags}`
-      const result = await Bun.$`sh -c ${command}`.text()
+      const command = `go run -tags="dev" $(pwd)/core/utils/translator${flags}`
+      let result: string
+      
+      try {
+        result = await Bun.$`sh -c ${command}`.text()
+      } catch (error: any) {
+        // Check for common errors
+        if (error.stderr && error.stderr.includes('no required module')) {
+          return `❌ ERROR: Go module dependencies not initialized
+
+Run this command first:
+  cd core/utils/translator && go mod tidy
+
+Then try again.`
+        } else if (error.stderr && error.stderr.includes('build constraints')) {
+          return `❌ ERROR: Build constraints exclude files
+
+Make sure you're running from the project root directory.
+Current directory: $(pwd)`
+        } else if (error.exitCode) {
+          return `❌ ERROR: Translation scanner failed (exit code ${error.exitCode})
+
+Output:
+${error.stderr || error.stdout || 'No output'}
+
+💡 TIP: Try running the scanner directly to see full error:
+  go run -tags="dev" ./core/utils/translator${flags}`
+        }
+        
+        // Re-throw unexpected errors
+        throw error
+      }
 
       // Parse and format the output based on operation
       if (operation === "summary") {
@@ -256,10 +296,10 @@ async function listSupportedLanguages(): Promise<string> {
   try {
     // Read the Go config file to get supported languages
     const cwd = process.cwd()
-    const configPath = path.join(cwd, "core/tools/config/application.go")
+    const configPath = path.join(cwd, "core/utils/config/application.go")
 
     if (!fs.existsSync(configPath)) {
-      return "❌ ERROR: Could not find core/tools/config/application.go"
+      return "❌ ERROR: Could not find core/utils/config/application.go"
     }
 
     const content = fs.readFileSync(configPath, "utf-8")
@@ -269,7 +309,7 @@ async function listSupportedLanguages(): Promise<string> {
     const match = content.match(langPattern)
 
     if (!match) {
-      return "❌ ERROR: Could not parse SupportedLanguages from core/tools/config/application.go"
+      return "❌ ERROR: Could not parse SupportedLanguages from core/utils/config/application.go"
     }
 
     // Extract language entries - handle tabs and spaces
@@ -286,7 +326,7 @@ async function listSupportedLanguages(): Promise<string> {
     }
 
     if (languages.length === 0) {
-      return "❌ ERROR: No languages found in core/tools/config/application.go"
+      return "❌ ERROR: No languages found in core/utils/config/application.go"
     }
 
     // Format output

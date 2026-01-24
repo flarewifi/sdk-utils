@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"core/db/models"
@@ -222,9 +223,6 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 		return fmt.Errorf("failed to sign JWT token: %w", err)
 	}
 
-	// Set device ID in params
-	params.DeviceID = self.deviceId
-
 	// Marshal params to JSON
 	jsonData, err := json.Marshal(params)
 	if err != nil {
@@ -272,7 +270,32 @@ func (self *Purchase) RedirectToCallback(w http.ResponseWriter, r *http.Request)
 
 	callbackRoute := self.purchase.CallbackRoute()
 	fmt.Println("Redirecting to callback route:", callbackRoute)
-	callbackPkg.Http().Response().Redirect(w, r, callbackRoute)
+
+	// Create JWT token containing purchase UUID for secure callback
+	token, err := helpers.CreateCallbackToken(self.purchase.UUID())
+	if err != nil {
+		fmt.Println("RedirectToCallback: Failed to create callback token:", err)
+		self.ErrorPage(w, errors.New("failed to create callback token"))
+		return
+	}
+
+	// Build callback URL and append purchase_token as query parameter
+	callbackURL := callbackPkg.Http().Helpers().UrlForRoute(callbackRoute)
+	if strings.Contains(callbackURL, "?") {
+		callbackURL = callbackURL + "&purchase_token=" + token
+	} else {
+		callbackURL = callbackURL + "?purchase_token=" + token
+	}
+
+	fmt.Println("Redirecting to callback URL:", callbackURL)
+
+	// Redirect to callback URL with token as query param
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", callbackURL)
+		w.WriteHeader(http.StatusOK)
+	} else {
+		http.Redirect(w, r, callbackURL, http.StatusSeeOther)
+	}
 }
 
 func (self *Purchase) Confirm(ctx context.Context) error {

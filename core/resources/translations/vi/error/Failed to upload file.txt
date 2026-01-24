@@ -1,1 +1,0 @@
-Không thể tải lên <% .label %>.

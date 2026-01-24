@@ -1,1 +1,0 @@
-Điều này sẽ tắt hệ thống. Tất cả các phiên hoạt động sẽ bị chấm dứt.

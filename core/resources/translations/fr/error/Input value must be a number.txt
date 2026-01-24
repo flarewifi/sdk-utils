@@ -1,1 +1,0 @@
-La valeur saisie doit être un nombre

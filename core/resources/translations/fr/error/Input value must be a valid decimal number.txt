@@ -1,1 +1,0 @@
-<% .label %> doit être un nombre décimal valide

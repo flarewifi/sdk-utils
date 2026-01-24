@@ -1,1 +1,0 @@
-Êtes-vous sûr de vouloir redémarrer le système ? Cela interrompra toutes les connexions actives.

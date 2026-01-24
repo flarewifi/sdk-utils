@@ -34,7 +34,7 @@ type IHttpHelpers interface {
 	// msgtype is the message type, e.g. "error", "success", "info", "warning".
 	// For example, if the current language is "en", then the following code in your template:
 	//  <% .Helpers.Translate "error" "some-key" %>
-	// will look for the file "/resources/translations/en/error/some-key.txt" under the plugin root directory
+	// will look for the file "/resources/translations/en/error/some-key" under the plugin root directory
 	// and displays the text inside that file.
 	Translate(msgtype string, msgk string, pairs ...any) string
 

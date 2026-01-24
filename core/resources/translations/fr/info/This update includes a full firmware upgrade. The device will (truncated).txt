@@ -1,1 +1,0 @@
-Cette mise à jour inclut une mise à niveau complète du firmware. L'appareil sera flashé et redémarré automatiquement.

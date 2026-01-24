@@ -37,9 +37,9 @@ func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
 
 	var status string
 	if isUpdating {
-		status = ctrl.g.CoreAPI.Translate("info", "The software is updating. This will take a few minutes, please wait.")
+		status = ctrl.g.CoreAPI.Translate("info", "The software is updating. This will take a few minutes, please wait")
 	} else {
-		status = ctrl.g.CoreAPI.Translate("info", "The software is booting, please wait.")
+		status = ctrl.g.CoreAPI.Translate("info", "The software is booting, please wait")
 	}
 
 	page := boot.BootPage(&boot.BootPageData{

@@ -22,11 +22,9 @@ type PurchaseState struct {
 
 // ExecuteParams holds parameters for executing a purchase webhook.
 type ExecuteParams struct {
-	DeviceID    int64   `json:"device_id"`
-	PurchaseUID string  `json:"purchase_uid"`
-	Amount      float64 `json:"amount"`
-	Success     bool    `json:"success"`
-	Message     string  `json:"message"`
+	Amount  float64 `json:"amount"`
+	Success bool    `json:"success"`
+	Message string  `json:"message"`
 }
 
 // PurchaseRequest represents a purchase to be made by the customer.

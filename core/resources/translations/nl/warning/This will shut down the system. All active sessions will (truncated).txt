@@ -1,1 +1,0 @@
-Dit zal het systeem afsluiten. Alle actieve sessies worden beëindigd.

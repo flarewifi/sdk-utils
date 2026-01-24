@@ -1,1 +1,0 @@
-Extensão de arquivo inválida para <% .label %>. Extensões permitidas: <% .extensions %>

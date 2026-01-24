@@ -146,10 +146,10 @@ templ ActivationPage(data *ActivationPageData) {
 					<span class="btn-spinner"></span>
 					<span class="btn-text">{ data.API.Translate("label", "Check Activation Status") }</span>
 				</button>
-				<div class="reboot-message" id="reboot-message">
-					<h2>{ data.API.Translate("label", "System Rebooting") }</h2>
-					<p>{ data.API.Translate("info", "Activation successful. The system is rebooting to complete the setup. Please wait a few minutes. The page will automatically reload when the system is ready.") }</p>
-				</div>
+			<div class="reboot-message" id="reboot-message">
+				<h2>{ data.API.Translate("label", "System Rebooting") }</h2>
+				<p>{ data.API.Translate("info", "Activation successful. The system is rebooting to complete the setup. Please wait a few minutes. The page will automatically reload when the system is ready") }</p>
+			</div>
 			</div>
 			<script>
 				function checkActivation() {

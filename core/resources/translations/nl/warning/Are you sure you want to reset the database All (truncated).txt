@@ -1,1 +1,0 @@
-Weet u zeker dat u de database wilt resetten? Alle gegevens gaan verloren.

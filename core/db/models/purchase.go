@@ -250,6 +250,11 @@ func (self *Purchase) Cancel(ctx context.Context) error {
 	dbt := self.walletDebit
 	cancelledAt := time.Now().UTC()
 
+	// Clear processing state when purchase is cancelled
+	// Must be set before Update() so it gets persisted to database
+	self.processing = false
+	self.paymentUrl = ""
+
 	if pmtTotal > 0 {
 		wallet, err := dev.Wallet(ctx)
 		if err != nil {
@@ -285,10 +290,6 @@ func (self *Purchase) Cancel(ctx context.Context) error {
 			return err
 		}
 	}
-
-	// Clear processing state when purchase is cancelled
-	self.processing = false
-	self.paymentUrl = ""
 
 	return nil
 }

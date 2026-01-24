@@ -59,8 +59,8 @@ func CancelPurchaseCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Show success message and redirect to portal
-		res.FlashMsg(w, r, g.CoreAPI.Translate("success", "Purchase cancelled successfully"), sdkapi.FlashMsgSuccess)
+		// Show warning message and redirect to portal
+		res.FlashMsg(w, r, g.CoreAPI.Translate("warning", "The purchase has been cancelled"), sdkapi.FlashMsgWarning)
 		res.RedirectToPortal(w, r)
 	}
 }

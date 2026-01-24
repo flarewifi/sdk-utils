@@ -153,3 +153,33 @@ func (self *PaymentsApi) ErrorPage(w http.ResponseWriter, err error) {
 func (self *PaymentsApi) WebhookAuth(r *http.Request) error {
 	return helpers.WebhookAuth(r)
 }
+
+func (self *PaymentsApi) ExtractPurchaseData(r *http.Request) (sdkapi.IPurchaseRequest, error) {
+	// Get the purchase token from query parameter
+	token := r.URL.Query().Get("purchase_token")
+	if token == "" {
+		return nil, errors.New("missing purchase_token query parameter")
+	}
+
+	// Verify the token and extract purchase UUID
+	purchaseUUID, err := helpers.VerifyCallbackToken(token)
+	if err != nil {
+		log.Printf("ExtractPurchaseData: Token verification failed: %v", err)
+		return nil, err
+	}
+
+	// Find the purchase by UUID
+	return self.FindPurchaseRequestByUUID(purchaseUUID)
+}
+
+func (self *PaymentsApi) ExtractWebhookData(r *http.Request) (sdkapi.IPurchaseRequest, error) {
+	// Extract claims from the JWT token in Authorization header
+	claims, err := helpers.ExtractWebhookClaims(r)
+	if err != nil {
+		log.Printf("ExtractWebhookData: Failed to extract claims: %v", err)
+		return nil, err
+	}
+
+	// Find the purchase by UUID from claims
+	return self.FindPurchaseRequestByUUID(claims.PurchaseUID)
+}

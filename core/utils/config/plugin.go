@@ -32,7 +32,14 @@ func (p *PluginCfgApi) Write(key string, data []byte) error {
 }
 
 func (p *PluginCfgApi) List(path string) ([]*sdkapi.ConfigEntry, error) {
-	entries, err := os.ReadDir(filepath.Join(p.PluginCfgPath, path))
+	dirPath := filepath.Join(p.PluginCfgPath, path)
+
+	// Ensure directory exists before attempting to list
+	if err := sdkutils.FsEnsureDir(dirPath); err != nil {
+		return nil, err
+	}
+
+	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
 	}

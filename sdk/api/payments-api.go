@@ -45,4 +45,19 @@ type IPaymentsApi interface {
 	// Verifies the JWT token signed with application secret.
 	// Returns nil if authentication is successful, or an error if it fails.
 	WebhookAuth(r *http.Request) error
+
+	// ExtractPurchaseData extracts and validates purchase data from a callback request.
+	// The callback token is passed as a query parameter "purchase_token".
+	// It verifies the JWT token signed with machine_id + application secret,
+	// extracts the purchase UUID from claims, and returns the purchase request.
+	// Returns the purchase request if successful, or an error if validation fails.
+	ExtractPurchaseData(r *http.Request) (IPurchaseRequest, error)
+
+	// ExtractWebhookData extracts and validates purchase data from a webhook request.
+	// The JWT token is passed in the Authorization header as "Bearer <token>".
+	// It verifies the JWT token signed with application secret,
+	// extracts the purchase UUID and device ID from claims, and returns the purchase request.
+	// This should be called after WebhookAuth has validated the request.
+	// Returns the purchase request if successful, or an error if validation fails.
+	ExtractWebhookData(r *http.Request) (IPurchaseRequest, error)
 }

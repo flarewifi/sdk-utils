@@ -70,7 +70,7 @@ func RebootCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}()
 
 		w.Header().Set("Content-Type", "text/html")
-		msg := api.Translate("info", "System is rebooting. Please wait a few minutes before reconnecting.")
+		msg := api.Translate("info", "System is rebooting. Please wait a few minutes before reconnecting")
 		w.Write([]byte(fmt.Sprintf(`<div id="notification-area" class="alert alert-info mb-4">
 	<i class="bi bi-info-circle me-2"></i>
 	%s
@@ -97,10 +97,10 @@ func ShutdownCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}()
 
 		w.Header().Set("Content-Type", "text/html")
-		msg := g.CoreAPI.Translate("info", "System is shutting down. The device will power off shortly.")
+		msg := g.CoreAPI.Translate("info", "System is shutting down. The device will power off shortly")
 		w.Write([]byte(fmt.Sprintf(`<div class="alert alert-success">
-		<i class="bi bi-check-circle me-2"></i>
-		%s
-	</div>`, msg)))
+	<i class="bi bi-check-circle me-2"></i>
+	%s
+</div>`, msg)))
 	}
 }

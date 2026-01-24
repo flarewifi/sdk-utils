@@ -1,1 +1,0 @@
-Ini akan mematikan sistem. Semua sesi aktif akan dihentikan.

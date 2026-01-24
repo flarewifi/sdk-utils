@@ -1,1 +1,0 @@
-Pembaruan ini mencakup upgrade firmware lengkap. Perangkat akan di-flash dan di-reboot secara otomatis.
