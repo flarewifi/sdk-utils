@@ -1,5 +1,5 @@
 .PHONY: default create-network openwrt docs-build docs-serve sync-version devkit down deploy-arm64 build-mips deploy-mips
-.PHONY: translations-check check-translations translation-report find-missing create-templates help
+.PHONY: translations-check check-translations translation-report find-missing create-templates help status
 
 default: create-network
 	docker compose -f docker-compose.yml -f docker-compose.mono.yml up app docs sqliteweb \
@@ -14,6 +14,7 @@ help:
 	@echo "  make restart            - Stop all containers, then restart"
 	@echo "  make openwrt            - Start OpenWRT development environment"
 	@echo "  make down               - Stop all containers"
+	@echo "  make status             - Show git status for core and plugins"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs-build         - Build documentation"
@@ -76,3 +77,6 @@ translate-check-%:
 		--language=$* \
 		--validate \
 		--markdown-report=.tmp/reports/translation_validation_$*_report.md
+
+status:
+	@./scripts/status.sh
