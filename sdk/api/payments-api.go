@@ -49,9 +49,4 @@ type IPaymentsApi interface {
 	// Token expires after 5 minutes for security.
 	// Returns the purchase request if successful, or an error if validation fails.
 	ExtractPurchaseData(r *http.Request) (IPurchaseRequest, error)
-
-	// FindPurchasesByPaymentOptionUUID returns all purchases made using the specified payment option UUID.
-	// The confirmedOnly parameter determines whether to return all purchases or only confirmed ones.
-	// Returns an empty slice if no purchases are found.
-	FindPurchasesByPaymentOptionUUID(paymentOptionUUID string, confirmedOnly bool) ([]IPurchaseRequest, error)
 }
