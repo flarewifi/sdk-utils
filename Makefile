@@ -1,17 +1,17 @@
-.PHONY: default mono postgres create-network openwrt docs-build docs-serve sync-version devkit down deploy-arm64 build-mips deploy-mips
+.PHONY: default create-network openwrt docs-build docs-serve sync-version devkit down deploy-arm64 build-mips deploy-mips
 .PHONY: translations-check check-translations translation-report find-missing create-templates help
 
-default: create-network mono
+default: create-network
+	docker compose -f docker-compose.yml -f docker-compose.mono.yml up app docs \
+		--build --remove-orphans --force-recreate
 
 help:
 	@echo "FlareHotspot Makefile Commands"
 	@echo "==============================="
 	@echo ""
 	@echo "Development:"
-	@echo "  make                    - Start monolithic build (default)"
-	@echo "  make mono               - Start monolithic build with SQLite"
-	@echo "  make postgres           - Start plugin-based build with PostgreSQL"
-	@echo "  make restart            - Call stop on all containers, then restart mono"
+	@echo "  make                    - Start development build (default)"
+	@echo "  make restart            - Stop all containers, then restart"
 	@echo "  make openwrt            - Start OpenWRT development environment"
 	@echo "  make down               - Stop all containers"
 	@echo ""
@@ -24,13 +24,6 @@ help:
 	@echo "  make devkit             - Build development kit"
 	@echo "  make deploy-arm64       - Deploy to ARM64 device"
 	@echo ""
-
-mono: create-network
-	docker compose -f docker-compose.yml -f docker-compose.mono.yml up app docs \
-		--build --remove-orphans --force-recreate
-
-postgres:
-	docker compose up --build --remove-orphans --force-recreate
 
 create-network:
 	# create docker network if not exists
@@ -49,14 +42,14 @@ docs-serve:
 
 sync-version:
 	docker compose run --rm app sh -c \
-		'go run -tags="prod mono sqlite" ./core/cmd/sync-versions/main.go'
+		'go run -tags="prod" ./core/cmd/sync-versions/main.go'
 
 devkit:
 	docker compose -f ./docker-compose.yml \
 		-f ./core/build/devkit/extras/docker-compose.override.yml \
 		run -it --rm --build app sh -c ./make-devkit.sh
 
-restart: down mono
+restart: down default
 
 down:
 	docker compose down
@@ -66,7 +59,7 @@ deploy-arm64:
 		./core/plugin.so \
 		./output/mono-bin-files \
 		./plugins/installed && \
-		GO_ARCH=arm64 go run -tags="prod mono sqlite" ./core/cmd/create-mono-bin/main.go && \
+		GO_ARCH=arm64 go run -tags="prod" ./core/cmd/create-mono-bin/main.go && \
 		rsync -avz --delete --exclude='data' output/mono-bin-files/ root@10.0.0.1:/opt/flarehotspot/app/
 
 translate-help:

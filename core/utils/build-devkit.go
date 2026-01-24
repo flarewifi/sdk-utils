@@ -23,8 +23,6 @@ var (
 		"core/go.mod",
 		"core/go.sum",
 		"core/sqlc.yml",
-		"core/sqlc.postgres.yml",
-		"core/sqlc.sqlite.yml",
 		"core/plugin.so",
 		"core/plugin.json",
 		"core/resources",

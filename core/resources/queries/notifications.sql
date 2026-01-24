@@ -16,7 +16,7 @@ UPDATE
   notifications
 SET
   status = @status,
-  updated_at = CURRENT_TIMESTAMP
+  updated_at = datetime('now')
 WHERE
   id = @id;
 

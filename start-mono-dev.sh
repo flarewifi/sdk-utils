@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
 CGO_ENABLED=1
-DB_DRIVER="sqlite"
 OS_CONFIG="wan-lan-mono"
-GO_TAGS="dev mono $DB_DRIVER cgo"
+GO_TAGS="dev mono"
 SYNC_VERSION="./core/cmd/sync-versions/main.go"
 BUILD_ASSETS_MAIN="./core/cmd/build-assets/main.go"
 MONO_BIN_PREPARE="./core/cmd/mono-bin-prepare/main.go"
@@ -17,7 +16,7 @@ cp go.work.default go.work && \
     rm -rf **/*_templ.go && \
     sh -c "cd core && templ generate" && \
     echo "Generating sqlc queires..." && \
-    sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
+    sh -c "./scripts/sqlc-gen.sh ./core" && \
     cp ./core/internal/api/plugin-init_mono.default \
     ./core/internal/api/plugin-init_mono.go && \
     go run -tags="${GO_TAGS}" $SYNC_VERSION && \

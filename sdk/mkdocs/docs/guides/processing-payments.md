@@ -265,14 +265,23 @@ func (self *MyPaymentProvider) Name() string {
 // OptionsFactory returns available payment options
 func (self *MyPaymentProvider) OptionsFactory(r *http.Request) []sdkapi.PaymentOption {
     // Return list of payment options (e.g., different coinslots, bank accounts, etc.)
+    // IMPORTANT: UUID should be a stable, reproducible identifier based on device MAC address
     return []sdkapi.PaymentOption{
         {
-            Label:       "Pay with Coinslot 1",
-            Name:        "Coinslot 1",
+            UUID:        generatePaymentOptionUUID("AA:BB:CC:DD:EE:FF"), // 16-char hash of MAC
+            Name:        "Main Entrance Coinslot",
             RouteName:   "payments.coinslot",
             RouteParams: map[string]string{"id": "coinslot-1"},
         },
     }
+}
+
+// generatePaymentOptionUUID creates a stable UUID based on MAC address
+func generatePaymentOptionUUID(macAddress string) string {
+    normalized := strings.ToUpper(strings.ReplaceAll(macAddress, ":", ""))
+    seed := "your-plugin-name:" + normalized
+    fullHash := sdkutils.Sha1Hash(seed)
+    return fullHash[:16] // Truncate to 16 characters
 }
 ```
 

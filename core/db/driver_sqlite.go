@@ -1,4 +1,4 @@
-//go:build sqlite && !cgo
+//go:build !cgo
 
 package db
 

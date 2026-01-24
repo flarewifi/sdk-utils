@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-GO_TAGS="dev sqlite"
+GO_TAGS="dev"
 
 (cp go.work.default go.work && \
         rm -rf **/*_templ.go && \

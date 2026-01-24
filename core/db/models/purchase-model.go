@@ -174,3 +174,43 @@ func (self *PurchaseModel) UpdateMetadata(ctx context.Context, purchaseID int64,
 
 	return nil
 }
+
+// FindByPaymentOptionUUID finds all purchases made with a specific payment option UUID
+func (self *PurchaseModel) FindByPaymentOptionUUID(ctx context.Context, paymentOptionUUID string) ([]*Purchase, error) {
+	rows, err := self.db.Queries.FindPurchasesByPaymentOptionUUID(ctx, paymentOptionUUID)
+	if err != nil {
+		log.Printf("error finding purchases by payment option uuid %v: %v", paymentOptionUUID, err)
+		return nil, err
+	}
+
+	purchases := make([]*Purchase, len(rows))
+	for i, row := range rows {
+		purchases[i], err = NewPurchase(self.db, self.models, &row)
+		if err != nil {
+			log.Printf("error creating purchase from row: %v", err)
+			return nil, err
+		}
+	}
+
+	return purchases, nil
+}
+
+// FindCompletedByPaymentOptionUUID finds all confirmed purchases made with a specific payment option UUID
+func (self *PurchaseModel) FindCompletedByPaymentOptionUUID(ctx context.Context, paymentOptionUUID string) ([]*Purchase, error) {
+	rows, err := self.db.Queries.FindCompletedPurchasesByPaymentOptionUUID(ctx, paymentOptionUUID)
+	if err != nil {
+		log.Printf("error finding completed purchases by payment option uuid %v: %v", paymentOptionUUID, err)
+		return nil, err
+	}
+
+	purchases := make([]*Purchase, len(rows))
+	for i, row := range rows {
+		purchases[i], err = NewPurchase(self.db, self.models, &row)
+		if err != nil {
+			log.Printf("error creating purchase from row: %v", err)
+			return nil, err
+		}
+	}
+
+	return purchases, nil
+}

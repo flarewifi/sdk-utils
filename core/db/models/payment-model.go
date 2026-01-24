@@ -6,6 +6,8 @@ import (
 
 	"core/db"
 	"core/db/queries"
+
+	"github.com/google/uuid"
 )
 
 type PaymentModel struct {
@@ -15,9 +17,9 @@ type PaymentModel struct {
 
 // CreatePaymentParams holds parameters for creating a new payment
 type CreatePaymentParams struct {
-	PurchaseID    int64
-	Amount        float64
-	PaymentMethod string
+	PurchaseID        int64
+	Amount            float64
+	PaymentOptionUUID string
 }
 
 // UpdatePaymentParams holds parameters for updating a payment
@@ -31,10 +33,14 @@ func NewPaymentModel(dtb *db.Database, mdls *Models) *PaymentModel {
 }
 
 func (self *PaymentModel) Create(ctx context.Context, params CreatePaymentParams) (*Payment, error) {
+	// Generate UUID for the payment
+	paymentUUID := uuid.New()
+
 	pId, err := self.db.Queries.CreatePayment(ctx, queries.CreatePaymentParams{
-		PurchaseID:    params.PurchaseID,
-		Amount:        params.Amount,
-		PaymentMethod: params.PaymentMethod,
+		Uuid:              paymentUUID.String(),
+		PurchaseID:        params.PurchaseID,
+		Amount:            params.Amount,
+		PaymentOptionUuid: params.PaymentOptionUUID,
 	})
 	if err != nil {
 		log.Println("error creating payment:", err)
@@ -49,9 +55,10 @@ func (self *PaymentModel) Create(ctx context.Context, params CreatePaymentParams
 
 	payment := NewPayment(self.db, self.models)
 	payment.id = p.ID
+	payment.uuid = p.Uuid
 	payment.purchaseId = p.PurchaseID
 	payment.amount = p.Amount
-	payment.optname = p.PaymentMethod
+	payment.paymentOptionUUID = p.PaymentOptionUuid
 	payment.createdAt = p.CreatedAt
 
 	return payment, nil
@@ -66,9 +73,10 @@ func (self *PaymentModel) Find(ctx context.Context, id int64) (*Payment, error) 
 
 	payment := NewPayment(self.db, self.models)
 	payment.id = p.ID
+	payment.uuid = p.Uuid
 	payment.purchaseId = p.PurchaseID
 	payment.amount = p.Amount
-	payment.optname = p.PaymentMethod
+	payment.paymentOptionUUID = p.PaymentOptionUuid
 	payment.createdAt = p.CreatedAt
 
 	return payment, nil
@@ -86,9 +94,10 @@ func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId int64) ([
 	for _, p := range pRows {
 		nP := NewPayment(self.db, self.models)
 		nP.id = p.ID
+		nP.uuid = p.Uuid
 		nP.purchaseId = p.PurchaseID
 		nP.amount = p.Amount
-		nP.optname = p.PaymentMethod
+		nP.paymentOptionUUID = p.PaymentOptionUuid
 		nP.createdAt = p.CreatedAt
 		payments = append(payments, nP)
 	}

@@ -8,12 +8,12 @@ VALUES
     @route_name,
     @route_params,
     1,
-    CURRENT_TIMESTAMP
+    datetime('now')
   )
 ON CONFLICT(plugin_pkg, route_name, route_params)
 DO UPDATE SET
   visit_count = quick_access_navs.visit_count + 1,
-  updated_at = CURRENT_TIMESTAMP;
+  updated_at = datetime('now');
 
 
 -- name: GetTop5QuickAccessNavs :many
