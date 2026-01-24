@@ -62,7 +62,7 @@ LIMIT 1;
 
 -- name: UpdateFingerprintLastSeen :exec
 UPDATE device_fingerprints
-SET last_seen_at = CURRENT_TIMESTAMP
+SET last_seen_at = datetime('now')
 WHERE id = @id;
 
 -- name: DeleteOldFingerprints :exec
