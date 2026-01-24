@@ -145,6 +145,12 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				ReleaseNotesHTML: releaseNotesHTML,
 				IsSysupgrade:     result.IsSysupgrade,
 			}
+		} else {
+			// Software is up to date - set current version for display
+			update = updatesview.SoftwareUpdate{
+				HasUpdate:      false,
+				CurrentVersion: currentVersion.String(),
+			}
 		}
 
 		page := updatesview.CheckForUpdatesPartial(api, update, nil)
