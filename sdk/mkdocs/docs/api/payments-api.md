@@ -190,14 +190,14 @@ func (p *MyPaymentProvider) Name() string {
 func (p *MyPaymentProvider) OptionsFactory(r *http.Request) []sdkapi.PaymentOption {
     return []sdkapi.PaymentOption{
         {
-            Name:      "credit_card",
-            Label:     "Credit Card",
+            UUID:      sdkutils.Sha1Hash("myplugin:credit_card")[:16],
+            Name:      "Credit Card",
             RouteName: "myplugin:payment:credit_card",
             RouteParams: map[string]string{},
         },
         {
-            Name:      "gcash",
-            Label:     "GCash",
+            UUID:      sdkutils.Sha1Hash("myplugin:gcash")[:16],
+            Name:      "GCash",
             RouteName: "myplugin:payment:gcash",
             RouteParams: map[string]string{},
         },
@@ -218,10 +218,28 @@ The `PaymentOption` struct represents a single payment method offered by a provi
 
 ```go
 type PaymentOption struct {
-    Name        string            // Internal identifier
-    Label       string            // Display label for the user
+    UUID        string            // Unique, stable identifier (16-char hash, e.g., based on MAC address)
+    Name        string            // Display label for the user
     RouteName   string            // Route to handle this payment option
     RouteParams map[string]string // Additional route parameters
+}
+```
+
+**UUID Best Practices:**
+- Generate based on stable device properties (MAC address, serial number, device ID)
+- Use consistent hashing (SHA1 truncated to 16 chars) for reproducibility
+- Include plugin namespace prefix to prevent collisions (e.g., `"wireless-coinslot:{MAC}"`)
+- Never change once assigned to a device - UUID must remain stable even if display name changes
+
+**Example:**
+```go
+import "github.com/flarehotspot/sdk-utils"
+
+func generatePaymentOptionUUID(macAddress string) string {
+    normalized := strings.ToUpper(strings.ReplaceAll(macAddress, ":", ""))
+    seed := "wireless-coinslot:" + normalized
+    fullHash := sdkutils.Sha1Hash(seed)
+    return fullHash[:16] // Truncate to 16 characters
 }
 ```
 

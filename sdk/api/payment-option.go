@@ -7,8 +7,8 @@
 package sdkapi
 
 type PaymentOption struct {
-	Name        string
-	Label       string
+	UUID        string // Unique, stable identifier (16-char hash based on device property like MAC address)
+	Name        string // Display label for the user
 	RouteName   string
 	RouteParams map[string]string
 }

@@ -2,24 +2,20 @@ package api
 
 import (
 	sdkapi "sdk/api"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewPaymentOpt(api sdkapi.IPluginApi, opt sdkapi.PaymentOption) *PaymentOption {
-	seed := api.Info().Package + "::" + opt.Name
-	uuid := sdkutils.Sha1Hash(seed)
-	return &PaymentOption{api, opt, uuid}
+	// No more UUID generation - use plugin-provided UUID
+	return &PaymentOption{api, opt}
 }
 
 type PaymentOption struct {
 	api        sdkapi.IPluginApi
 	paymentOpt sdkapi.PaymentOption
-	uuid       string
 }
 
 func (self *PaymentOption) UUID() string {
-	return self.uuid
+	return self.paymentOpt.UUID
 }
 
 func (self *PaymentOption) Name() string {
@@ -27,7 +23,7 @@ func (self *PaymentOption) Name() string {
 }
 
 func (self *PaymentOption) Label() string {
-	return self.paymentOpt.Label
+	return self.paymentOpt.Name
 }
 
 func (self *PaymentOption) URL() string {
