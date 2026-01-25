@@ -98,7 +98,7 @@ func ShutdownCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html")
 		msg := g.CoreAPI.Translate("info", "System is shutting down. The device will power off shortly")
-		w.Write([]byte(fmt.Sprintf(`<div class="alert alert-success">
+		w.Write([]byte(fmt.Sprintf(`<div id="shutdown-alert" class="alert alert-success">
 	<i class="bi bi-check-circle me-2"></i>
 	%s
 </div>`, msg)))
