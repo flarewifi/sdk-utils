@@ -12,6 +12,9 @@ type PortalIndexData struct {
 }
 
 templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
+	<div class="banner-container" style="margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto;">
+		<img src={ api.Http().Helpers().PublicPath("images/banner.png") } alt="Banner" style="max-width: 100%; height: auto; border-radius: 8px;"/>
+	</div>
 	<div
 		hx-get={ api.Http().Helpers().UrlForRoute("portal:navs") }
 		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s",
@@ -32,18 +35,20 @@ templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
 }
 
 templ NavItems(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem) {
-	<ul>
-		for _, nav := range navs {
-			<li>
-				<a class="btn btn-primary" id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) }>
-					if nav.IconUrl != "" {
-						<img src={ nav.IconUrl } style="max-width: 50px;"/>
-					}
-					{ nav.Label }
-				</a>
-			</li>
-		}
-	</ul>
+	<div class="portal-items-container text-center">
+		<ul class="list-unstyled">
+			for _, nav := range navs {
+				<li class="portal-item" style="margin-bottom: 12px;">
+					<a class="btn btn-primary btn-lg" id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) } style="display: inline-block; min-width: 250px;">
+						if nav.IconUrl != "" {
+							<img src={ nav.IconUrl } style="max-width: 50px; margin-right: 10px; vertical-align: middle;"/>
+						}
+						<span style="vertical-align: middle;">{ nav.Label }</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</div>
 }
 
 type SessionSummaryData struct {
@@ -52,17 +57,31 @@ type SessionSummaryData struct {
 }
 
 templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
-	<h3>
-		Session Summary
-	</h3>
-	<p>
-		Remaining Time:
-		<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
-			{
-        fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }
-		</span>s
-	</p>
-	<p>Remaining Data: { fmt.Sprintf("%.2f", data.SessionSummary.RemainingDataMbytes) }MB</p>
+	<div class="session-summary-container" style="margin-top: 30px;">
+		<div class="panel panel-primary" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 4px;">
+			<div class="panel-heading" style="background-color: #337ab7; color: white; padding: 15px; border-radius: 4px 4px 0 0;">
+				<h4 class="panel-title" style="margin: 0; font-size: 16px; font-weight: 600;">
+					Session Summary
+				</h4>
+			</div>
+			<div class="panel-body" style="padding: 20px;">
+				<div class="summary-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee;">
+					<span class="summary-label" style="color: #666; font-weight: 500;">Remaining Time:</span>
+					<span class="summary-value" style="color: #333; font-weight: 600; font-size: 16px;">
+						<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
+							{ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }
+						</span>s
+					</span>
+				</div>
+				<div class="summary-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+					<span class="summary-label" style="color: #666; font-weight: 500;">Remaining Data:</span>
+					<span class="summary-value" style="color: #333; font-weight: 600; font-size: 16px;">
+						{ fmt.Sprintf("%.2f", data.SessionSummary.RemainingDataMbytes) } MB
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
 	{{
 data := map[string]interface{}{
 	"session_running":   data.IsSessionRunning,
