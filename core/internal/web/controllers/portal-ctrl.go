@@ -253,6 +253,14 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
+		// Fallback to HTTP header for User-Agent if JavaScript collection failed
+		// This ensures we always have User-Agent even if JS fingerprinting fails silently
+		userAgent := reqBody.UserAgent
+		if userAgent == "" {
+			userAgent = r.Header.Get("User-Agent")
+			g.CoreAPI.LoggerAPI.Info("PortalRegisterAjax: Using User-Agent from HTTP header (JS collection failed)")
+		}
+
 		// Use ClientRegister.Register() for all scenarios
 		// This handles: new device registration, MAC changes, IP changes, hostname changes
 		// The Register() function will:
@@ -267,7 +275,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			MacAddr:        h.MacAddr,
 			IpAddr:         h.IpAddr,
 			Hostname:       h.Hostname,
-			UserAgent:      reqBody.UserAgent,
+			UserAgent:      userAgent,
 			ScreenRes:      reqBody.ScreenRes,
 			Language:       reqBody.Language,
 			Timezone:       reqBody.Timezone,

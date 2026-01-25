@@ -3,6 +3,15 @@ package portalview
 import sdkapi "sdk/api"
 
 templ PortalRedirectPage(api sdkapi.IPluginApi, redirectUrl string, registerUrl string, fallbackUrl string, localStorageKey string) {
+    // Fallback for no-JS environments (CNAs with JavaScript disabled)
+    // Meta refresh immediately redirects to cookie-based registration
+    <noscript>
+        <meta http-equiv="refresh" content={ "0;url=" + fallbackUrl }/>
+        <div class="loading-container">
+            <div class="loading-text">{ api.Translate("label", "Redirecting") }...</div>
+        </div>
+    </noscript>
+    
     <div id="loading-container" class="loading-container" 
          data-redirect-url={ redirectUrl }
          data-register-url={ registerUrl }
