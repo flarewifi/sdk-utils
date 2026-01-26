@@ -144,12 +144,14 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 	// Parse browser info and generate fingerprint hash
 	browserInfo := browserdetect.DetectBrowser(params.UserAgent)
 	fpHash := ""
-	// Accept fingerprint data even if partial (for CNA support)
+	// Accept fingerprint data even if partial (for CNA support) or minimal (JS disabled)
 	// Full fingerprint: UserAgent + ScreenRes + Language + Timezone
-	// Partial fingerprint (CNA): UserAgent only (ScreenRes/Language/Timezone empty)
+	// Partial fingerprint (CNA): UserAgent only (ScreenRes/Language/Timezone empty), IsCNA=true
+	// Minimal fingerprint (JS disabled): UserAgent only, IsCNA=false
 	hasFullFingerprintData := params.UserAgent != "" && params.ScreenRes != "" && params.Language != ""
-	hasPartialFingerprintData := params.UserAgent != "" && browserInfo.IsCNA
-	hasFingerprintData := hasFullFingerprintData || hasPartialFingerprintData
+	hasCNAFingerprintData := params.UserAgent != "" && browserInfo.IsCNA
+	hasMinimalFingerprintData := params.UserAgent != "" && !hasFullFingerprintData && !hasCNAFingerprintData
+	hasFingerprintData := hasFullFingerprintData || hasCNAFingerprintData || hasMinimalFingerprintData
 
 	if hasFingerprintData {
 		fpData := fingerprint.FingerprintData{
@@ -160,7 +162,10 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 		}
 		fpHash = fingerprint.GenerateHash(fpData)
 
-		if hasPartialFingerprintData && !hasFullFingerprintData {
+		if hasMinimalFingerprintData {
+			log.Printf("[ClientRegister] DEBUG: Minimal fingerprint generated (JS disabled) - Hash=%s, Browser=%s, OS=%s",
+				fpHash[:16]+"...", browserInfo.BrowserName, browserInfo.OSFamily)
+		} else if hasCNAFingerprintData && !hasFullFingerprintData {
 			log.Printf("[ClientRegister] DEBUG: Partial fingerprint generated (CNA) - Hash=%s, Browser=%s, OS=%s, IsCNA=%v",
 				fpHash[:16]+"...", browserInfo.BrowserName, browserInfo.OSFamily, browserInfo.IsCNA)
 		} else {
@@ -342,9 +347,11 @@ STEP_3_CREATE_NEW:
 		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
 		log.Printf("[ClientRegister] DEBUG: Emitted EventClientCreated for DeviceID=%d", dev.ID())
 
-		// Add first fingerprint for new device (full or partial/CNA)
+		// Add first fingerprint for new device (full, partial/CNA, or minimal/JS-disabled)
 		if hasFingerprintData && fpHash != "" {
-			if browserInfo.IsCNA && hasPartialFingerprintData {
+			if hasMinimalFingerprintData {
+				log.Printf("[ClientRegister] DEBUG: Adding first MINIMAL fingerprint (JS disabled) for new DeviceID=%d", dev.ID())
+			} else if browserInfo.IsCNA && hasCNAFingerprintData {
 				log.Printf("[ClientRegister] DEBUG: Adding first PARTIAL fingerprint (CNA) for new DeviceID=%d", dev.ID())
 			} else {
 				log.Printf("[ClientRegister] DEBUG: Adding first FULL fingerprint for new DeviceID=%d", dev.ID())

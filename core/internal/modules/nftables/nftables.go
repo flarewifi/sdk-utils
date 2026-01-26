@@ -152,9 +152,15 @@ func IsConnected(mac string) bool {
 }
 
 func runInitCallbacks() {
+	// Copy the callbacks slice while holding the lock, then release
+	// before executing. This prevents deadlock if a callback tries
+	// to call AddInitCallback.
 	nftMu.RLock()
-	defer nftMu.RUnlock()
-	for _, cb := range initCallbacks {
+	callbacks := make([]func() error, len(initCallbacks))
+	copy(callbacks, initCallbacks)
+	nftMu.RUnlock()
+
+	for _, cb := range callbacks {
 		err := cb()
 		if err != nil {
 			log.Println(err)

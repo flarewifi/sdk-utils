@@ -110,9 +110,19 @@ func (self *TrafficMgr) MakeTrafficData() {
 		}
 	}
 
+	// Use non-blocking send to prevent deadlock if a listener is not consuming.
+	// Listeners that fail to receive are closed and removed.
+	activeListeners := []chan sdkapi.TrafficData{}
 	for _, ch := range self.listners {
-		ch <- trfc
+		select {
+		case ch <- trfc:
+			activeListeners = append(activeListeners, ch)
+		default:
+			// Listener not consuming, close and remove
+			close(ch)
+		}
 	}
+	self.listners = activeListeners
 
 	self.prevStats = &stats
 }

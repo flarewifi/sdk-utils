@@ -5,15 +5,11 @@ package nftables
 import (
 	"math/rand"
 	"strings"
-	"sync"
 	"time"
-
-	jobque "core/utils/job-que"
 )
 
 var (
-	nftStatsQue      = jobque.NewJobQue[StatResult]()
-	mockStatsMu      sync.RWMutex
+	// mockStatsTracker is protected by nftQue serialization (same queue as Connect/Disconnect)
 	mockStatsTracker = make(map[string]*mockClientStats)
 	mockRand         = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
@@ -37,32 +33,22 @@ type StatResult struct {
 
 // GetStats generates mock traffic statistics for connected clients in dev mode.
 // It simulates realistic data consumption by generating random traffic between 50KB-500KB per 5-second interval.
+// Uses nftQue for serialization (same queue as Connect/Disconnect/IsConnected).
 func GetStats() (stat StatResult, err error) {
-	result, err := nftStatsQue.Exec(func() (result StatResult, err error) {
-		mockStatsMu.Lock()
-		defer mockStatsMu.Unlock()
-
+	result, err := nftQue.Exec(func() (any, error) {
 		now := time.Now()
 		macStats := make(map[string]StatData)
 		ipStats := make(map[string]StatData)
 
-		// Get list of currently connected clients
-		nftMu.RLock()
-		connectedClients := make(map[string]*connectedClient)
-		for mac, client := range connClients {
-			connectedClients[mac] = client
-		}
-		nftMu.RUnlock()
-
 		// Clean up disconnected clients from tracker
 		for mac := range mockStatsTracker {
-			if _, exists := connectedClients[mac]; !exists {
+			if _, exists := connClients[mac]; !exists {
 				delete(mockStatsTracker, mac)
 			}
 		}
 
 		// Generate mock stats for each connected client
-		for mac, client := range connectedClients {
+		for mac, client := range connClients {
 			// Initialize tracker if new client
 			if _, exists := mockStatsTracker[mac]; !exists {
 				mockStatsTracker[mac] = &mockClientStats{
@@ -105,17 +91,15 @@ func GetStats() (stat StatResult, err error) {
 			}
 		}
 
-		result = StatResult{
+		return StatResult{
 			MacStats: macStats,
 			IpStats:  ipStats,
-		}
-
-		return result, nil
+		}, nil
 	})
 
 	if err != nil {
 		return StatResult{}, err
 	}
 
-	return result, nil
+	return result.(StatResult), nil
 }
