@@ -3,46 +3,61 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"regexp"
 	"strings"
 
 	sdkapi "sdk/api"
 )
 
-// SanitizeError converts internal errors to user-safe messages
-// This prevents database schema leakage and other security issues
+// File path pattern to detect and sanitize
+var filePathPattern = regexp.MustCompile(`(?i)(/[a-z0-9_\-\.]+)+\.[a-z]+|([a-z]:\\[^:*?"<>|\r\n]+)`)
+
+// SanitizeError converts sensitive errors to user-safe messages
+// Only RPC errors and file paths are sanitized - other errors pass through
 func SanitizeError(api sdkapi.IPluginApi, err error) (userMsg string, status int) {
 	// Check for known error types
 	if errors.Is(err, sql.ErrNoRows) {
 		return api.Translate("error", "Resource not found"), 404
 	}
 
-	// Check for database errors (don't expose schema)
-	if isDatabaseError(err) {
-		return api.Translate("error", "A database error occurred"), 500
+	errStr := err.Error()
+
+	// Sanitize RPC/Twirp errors (may contain internal service details)
+	if isRPCError(errStr) {
+		return api.Translate("error", "Service temporarily unavailable"), 503
 	}
 
-	// Check for network/connectivity errors
-	if isNetworkError(err) {
-		return api.Translate("error", "Network error occurred"), 500
+	// Sanitize file path errors (may expose server structure)
+	if containsFilePath(errStr) {
+		return api.Translate("error", "A system error occurred"), 500
 	}
 
-	// Default: hide all internal details
-	return api.Translate("error", "An unexpected error occurred"), 500
+	// All other errors pass through as-is (including database errors)
+	return errStr, 500
 }
 
-func isDatabaseError(err error) bool {
-	errStr := strings.ToLower(err.Error())
-	return strings.Contains(errStr, "pq:") ||
-		strings.Contains(errStr, "sqlite") ||
-		strings.Contains(errStr, "database") ||
-		strings.Contains(errStr, "sql") ||
-		strings.Contains(errStr, "constraint") ||
-		strings.Contains(errStr, "duplicate key")
+// isRPCError checks if the error is from RPC/Twirp calls
+func isRPCError(errStr string) bool {
+	errLower := strings.ToLower(errStr)
+	return strings.Contains(errLower, "twirp") ||
+		strings.Contains(errLower, "rpc error") ||
+		strings.Contains(errLower, "protobuf") ||
+		strings.Contains(errLower, "grpc")
 }
 
-func isNetworkError(err error) bool {
-	errStr := strings.ToLower(err.Error())
-	return strings.Contains(errStr, "connection refused") ||
-		strings.Contains(errStr, "timeout") ||
-		strings.Contains(errStr, "network")
+// containsFilePath checks if the error contains file system paths
+func containsFilePath(errStr string) bool {
+	// Check for common path patterns
+	if filePathPattern.MatchString(errStr) {
+		return true
+	}
+
+	// Check for common path-related error messages
+	errLower := strings.ToLower(errStr)
+	return strings.Contains(errLower, "no such file") ||
+		strings.Contains(errLower, "permission denied") ||
+		strings.Contains(errLower, "open /") ||
+		strings.Contains(errLower, "stat /") ||
+		strings.Contains(errLower, "read /") ||
+		strings.Contains(errLower, "write /")
 }
