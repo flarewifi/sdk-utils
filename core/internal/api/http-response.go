@@ -201,7 +201,8 @@ func (self *HttpResponse) Error(w http.ResponseWriter, r *http.Request, err erro
 
 	if isAdmin {
 		// Admin error page (Bootstrap 5)
-		page := adminview.AdminErrorPage(self.api, userMsg)
+		// Use CoreAPI to ensure error page assets are loaded from core, not the calling plugin
+		page := adminview.AdminErrorPage(self.api.CoreAPI, userMsg)
 		v := sdkapi.ViewPage{
 			Assets: sdkapi.ViewAssets{
 				JsFile: "admin-error.js",
@@ -211,10 +212,11 @@ func (self *HttpResponse) Error(w http.ResponseWriter, r *http.Request, err erro
 		}
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(sanitizedStatus)
-		self.AdminView(w, r, v)
+		self.api.CoreAPI.HttpAPI.Response().AdminView(w, r, v)
 	} else {
 		// Portal error page (Bootstrap 3)
-		page := portalview.PortalErrorPage(self.api, userMsg)
+		// Use CoreAPI to ensure error page assets are loaded from core, not the calling plugin
+		page := portalview.PortalErrorPage(self.api.CoreAPI, userMsg)
 		v := sdkapi.ViewPage{
 			Assets: sdkapi.ViewAssets{
 				JsFile:  "portal-error.js",
@@ -224,6 +226,6 @@ func (self *HttpResponse) Error(w http.ResponseWriter, r *http.Request, err erro
 		}
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(sanitizedStatus)
-		self.PortalView(w, r, v)
+		self.api.CoreAPI.HttpAPI.Response().PortalView(w, r, v)
 	}
 }
