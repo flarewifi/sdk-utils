@@ -16,6 +16,11 @@ templ PortalErrorPage(api sdkapi.IPluginApi, errorMsg string) {
 					} else {
 						<p class="error-message">{ api.Translate("error", "An unexpected error occurred") }</p>
 					}
+					<div class="error-actions">
+						<a href="/" class="btn btn-primary btn-lg">
+							{ api.Translate("label", "Go Back") }
+						</a>
+					</div>
 				</div>
 			</div>
 		</div>
