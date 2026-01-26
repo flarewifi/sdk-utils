@@ -7,7 +7,7 @@ import (
 	"core/db"
 	"core/db/queries"
 
-	"github.com/google/uuid"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type PaymentModel struct {
@@ -34,10 +34,10 @@ func NewPaymentModel(dtb *db.Database, mdls *Models) *PaymentModel {
 
 func (self *PaymentModel) Create(ctx context.Context, params CreatePaymentParams) (*Payment, error) {
 	// Generate UUID for the payment
-	paymentUUID := uuid.New()
+	paymentUUID := sdkutils.NewUUID()
 
 	pId, err := self.db.Queries.CreatePayment(ctx, queries.CreatePaymentParams{
-		Uuid:              paymentUUID.String(),
+		Uuid:              paymentUUID,
 		PurchaseID:        params.PurchaseID,
 		Amount:            params.Amount,
 		PaymentOptionUuid: params.PaymentOptionUUID,
