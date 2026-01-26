@@ -11,7 +11,7 @@ import (
 	"core/db"
 	"core/db/queries"
 
-	"github.com/google/uuid"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type PurchaseModel struct {
@@ -57,10 +57,10 @@ func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchasePara
 		return nil, err
 	}
 
-	uid := uuid.New()
+	uid := sdkutils.NewUUID()
 
 	queryParams := queries.CreatePurchaseParams{
-		Uuid:           uid.String(),
+		Uuid:           uid,
 		DeviceID:       params.DeviceID,
 		Sku:            params.SKU,
 		Name:           params.Name,

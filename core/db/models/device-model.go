@@ -9,7 +9,7 @@ import (
 	"core/db"
 	"core/db/queries"
 
-	"github.com/google/uuid"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 	sdkapi "sdk/api"
 )
 
@@ -54,10 +54,10 @@ func validateDeviceFields(uuid, ip, mac string) error {
 }
 
 func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) (*Device, error) {
-	uid := uuid.New()
+	uid := sdkutils.NewUUID()
 
 	// Validate required fields
-	if err := validateDeviceFields(uid.String(), params.IpAddress, params.MacAddress); err != nil {
+	if err := validateDeviceFields(uid, params.IpAddress, params.MacAddress); err != nil {
 		log.Printf("device validation failed: %v", err)
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		MacAddress: params.MacAddress,
 		IpAddress:  params.IpAddress,
 		Hostname:   params.Hostname,
-		Uuid:       uid.String(),
+		Uuid:       uid,
 	})
 	if err != nil {
 		log.Println("error creating new device:", err)
@@ -193,16 +193,16 @@ func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 	}
 
 	for _, d := range devices {
-		uid := uuid.New()
+		uid := sdkutils.NewUUID()
 		err := self.db.Queries.UpdateDeviceUUID(ctx, queries.UpdateDeviceUUIDParams{
 			ID:   d.ID,
-			Uuid: uid.String(),
+			Uuid: uid,
 		})
 		if err != nil {
 			log.Printf("error updating UUID for device %v: %v", d.ID, err)
 			return err
 		}
-		log.Printf("Generated UUID %s for device %v", uid.String(), d.ID)
+		log.Printf("Generated UUID %s for device %v", uid, d.ID)
 	}
 
 	if len(devices) > 0 {
