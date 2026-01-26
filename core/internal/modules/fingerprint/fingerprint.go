@@ -61,6 +61,16 @@ func ValidateFingerprint(stored StoredFingerprint, currentHash string, currentOS
 		}
 	}
 
+	// Minimal fingerprint handling (JS disabled - User-Agent only, not CNA)
+	// If current request has no Screen/Lang data but is not a CNA, match on OS only
+	// This allows devices with JS disabled to be recognized
+	if currentScreen == "" && currentLang == "" && !currentIsCNA {
+		if stored.OSFamily != "" && stored.OSFamily == currentOS {
+			// Accept if same OS family - JS disabled scenario
+			return SmartMatch
+		}
+	}
+
 	// Regular browser-to-browser smart match
 	// Smart match: Same OS + Screen + Language (+ Timezone if both available)
 	// This allows multiple browsers per device while maintaining security

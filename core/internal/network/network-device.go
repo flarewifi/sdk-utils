@@ -26,7 +26,7 @@ func (self *NetworkDevice) Up() bool {
 }
 
 func (self *NetworkDevice) Speed() string {
-	return self.Speed()
+	return self.netdev.Speed
 }
 
 func (self *NetworkDevice) BridgeMembers() []string {

@@ -18,7 +18,6 @@ var (
 
 type NetworkLan struct {
 	mu          sync.RWMutex
-	queID       sync.Mutex
 	name        string
 	up          bool
 	tcClassMgr  *tc.TcClassMgr
@@ -79,7 +78,10 @@ func (self *NetworkLan) ReinitializeTc() (err error) {
 	_, err = networkQue.Exec(func() (any, error) {
 		log.Printf("Reinitializing TC for LAN '%s'...", self.name)
 
-		// Get reference to existing TC managers to preserve session data
+		// Get reference to existing TC managers to preserve session data.
+		// NOTE: The lock is released before subsequent operations, but this is safe
+		// because all TC operations are serialized through networkQue. No concurrent
+		// modifications to tcClassMgr/tcFilterMgr can occur while this function runs.
 		self.mu.RLock()
 		oldClassMgr := self.tcClassMgr
 		oldFilterMgr := self.tcFilterMgr
