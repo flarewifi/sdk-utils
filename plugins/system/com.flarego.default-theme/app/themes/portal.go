@@ -53,6 +53,8 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				Navs:             navs,
 				SessionSummary:   summary,
 				IsSessionRunning: ok,
+				DeviceMac:        clnt.MacAddr(),
+				DeviceIP:         clnt.IpAddr(),
 			})
 
 			return sdkapi.ViewPage{

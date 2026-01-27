@@ -230,7 +230,7 @@ func doDisconnect(ip string, mac string) error {
 	if connected {
 		cmds := []string{
 			fmt.Sprintf("nft delete element %s %s %s '{ %s : accept }'", tableFamily, internetTable, connIpMap, ip),
-			fmt.Sprintf("nft delete element %s %s %s { %s : accept }", tableFamily, internetTable, connMacMap, normalizedMAC),
+			fmt.Sprintf("nft delete element %s %s %s '{ %s : accept }'", tableFamily, internetTable, connMacMap, normalizedMAC),
 			fmt.Sprintf("nft delete element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, normalizedMAC),
 		}
 

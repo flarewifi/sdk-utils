@@ -7,6 +7,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"core/internal/modules/tc"
@@ -14,11 +15,17 @@ import (
 	sdkapi "sdk/api"
 )
 
+const (
+	// bytesPerMiB is the number of bytes in a mebibyte (1024^2)
+	bytesPerMiB = 1024 * 1024
+)
+
 var (
 	// tcNftMu serializes all TC and NFT commands globally.
 	// TC/NFT subsystem can only handle one command at a time.
 	tcNftMu           sync.Mutex
 	ErrSessionExpired = errors.New("session expired")
+	ErrSessionStopped = errors.New("session already stopped")
 )
 
 // logSlowOperation logs a warning if an operation exceeds the threshold duration.
@@ -52,6 +59,14 @@ type SessionEventEmitter interface {
 	emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice) error
 }
 
+// networkState holds network-related fields that rarely change.
+// Uses atomic pointer for lock-free reads.
+type networkState struct {
+	ip  string
+	mac string
+	lan *network.NetworkLan
+}
+
 func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitter SessionEventEmitter) (*RunningSession, error) {
 	log.Printf("[Running Session] Creating new running session - DeviceID=%d, MAC=%s, IP=%s",
 		clnt.ID(), clnt.MacAddr(), clnt.IpAddr())
@@ -62,116 +77,162 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitt
 		return nil, err
 	}
 
-	rs := RunningSession{
+	rs := &RunningSession{
+		// Immutable fields - set once, never change
+		clnt:    clnt,
+		clntId:  clnt.ID(),
+		emitter: emitter,
+
+		// Mutable state initialized
 		session:   s,
-		clnt:      clnt,
-		clntId:    clnt.ID(),
-		ip:        clnt.IpAddr(),
-		mac:       clnt.MacAddr(),
-		lan:       lan,
-		emitter:   emitter,
 		callbacks: []chan error{},
 	}
 
-	log.Printf("[Running Session] Running session created successfully - DeviceID=%d, MAC=%s, IP=%s, LAN=%s",
-		rs.clntId, rs.mac, rs.ip, lan.Name())
+	// Initialize network state atomically
+	rs.network.Store(&networkState{
+		ip:  clnt.IpAddr(),
+		mac: clnt.MacAddr(),
+		lan: lan,
+	})
 
-	return &rs, nil
+	log.Printf("[Running Session] Running session created successfully - DeviceID=%d, MAC=%s, IP=%s, LAN=%s",
+		rs.clntId, clnt.MacAddr(), clnt.IpAddr(), lan.Name())
+
+	return rs, nil
 }
 
+// RunningSession manages an active client session with bandwidth control.
+//
+// Field categories:
+//   - IMMUTABLE: clnt, clntId, emitter - set at creation, never change, no lock needed
+//   - ATOMIC: network - rarely changes, uses atomic.Pointer for lock-free reads
+//   - MUTABLE: everything else - protected by mu
 type RunningSession struct {
-	mu          sync.RWMutex
-	clnt        sdkapi.IClientDevice
-	clntId      int64
-	ip          string
-	mac         string
-	lan         *network.NetworkLan
+	// === IMMUTABLE after creation (no lock needed) ===
+	clnt    sdkapi.IClientDevice
+	clntId  int64
+	emitter SessionEventEmitter
+
+	// === RARELY CHANGES (atomic pointer for lock-free reads) ===
+	network atomic.Pointer[networkState]
+
+	// === MUTABLE STATE (protected by mu) ===
+	mu          sync.Mutex // Changed from RWMutex - simpler, less error-prone
 	tcClassId   *tc.TcClassId
-	tcFilter    *tc.TcFilter
 	timeTimer   *time.Timer
 	timerCancel context.CancelFunc
 	timerCtx    context.Context
 	session     sdkapi.IClientSession
-	emitter     SessionEventEmitter
 	diffMb      float64
 	callbacks   []chan error
+	stopped     bool // Prevents operations after Stop()
 }
 
+// ============================================================================
+// LOCK-FREE ACCESSORS - Immutable fields, no synchronization needed
+// ============================================================================
+
+// ClientId returns the device ID (immutable, no lock needed).
 func (self *RunningSession) ClientId() int64 {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
 	return self.clntId
 }
 
+// ============================================================================
+// ATOMIC ACCESSORS - Network state uses atomic pointer
+// ============================================================================
+
+// IpAddr returns the current IP address (atomic read, no lock needed).
+func (self *RunningSession) IpAddr() string {
+	return self.network.Load().ip
+}
+
+// MacAddr returns the current MAC address (atomic read, no lock needed).
+func (self *RunningSession) MacAddr() string {
+	return self.network.Load().mac
+}
+
+// Lan returns the current LAN interface (atomic read, no lock needed).
+func (self *RunningSession) Lan() *network.NetworkLan {
+	return self.network.Load().lan
+}
+
+// ============================================================================
+// MUTEX-PROTECTED ACCESSORS - Mutable state
+// ============================================================================
+
+// GetSession returns the current session (requires lock).
 func (self *RunningSession) GetSession() sdkapi.IClientSession {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	return self.session
 }
 
-func (self *RunningSession) Lan() *network.NetworkLan {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.lan
-}
-
+// Done returns a channel that receives when the session ends.
+// Safe to call multiple times - each caller gets their own channel.
 func (self *RunningSession) Done() <-chan error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	ch := make(chan error)
+	// Use buffered channel to prevent StopWithReason() from blocking
+	ch := make(chan error, 1)
+
+	// If already stopped, return immediately with appropriate error
+	if self.stopped {
+		ch <- ErrSessionStopped
+		return ch
+	}
+
 	self.callbacks = append(self.callbacks, ch)
 	return ch
 }
 
+// DiffMb returns the unsaved data consumption difference.
 func (self *RunningSession) DiffMb() (mb float64) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
+	self.mu.Lock()
+	defer self.mu.Unlock()
 	return self.diffMb
 }
 
-// UpdateNetworkDetails updates the MAC and IP address when device network details change
+// ============================================================================
+// NETWORK UPDATE - Atomic swap with TC operations
+// ============================================================================
+
+// UpdateNetworkDetails updates the MAC and IP address when device network details change.
 func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, newIP string) error {
-	self.mu.RLock()
+	oldNet := self.network.Load()
 	contextInfo := fmt.Sprintf("DeviceID=%d, OldMAC=%s, NewMAC=%s, OldIP=%s, NewIP=%s",
-		self.clntId, self.mac, newMac, self.ip, newIP)
-	oldIP := self.ip
-	oldMac := self.mac
-	self.mu.RUnlock()
+		self.clntId, oldNet.mac, newMac, oldNet.ip, newIP)
 
 	log.Printf("[Running Session] UpdateNetworkDetails - %s", contextInfo)
 
 	// Check if network details actually changed
-	if oldIP == newIP && oldMac == newMac {
+	if oldNet.ip == newIP && oldNet.mac == newMac {
 		log.Printf("[Running Session] No network changes detected for device %d", self.clntId)
 		return nil
 	}
 
-	// Update stored values (use self.mu)
-	self.mu.Lock()
-	self.ip = newIP
-	self.mac = newMac
-	self.mu.Unlock()
-
-	// Check if LAN changed (IP might be on different network)
-	if oldIP != newIP {
+	// Determine new LAN (might be different network)
+	newLan := oldNet.lan
+	if oldNet.ip != newIP {
 		log.Printf("[Running Session] IP changed, checking if LAN changed...")
-		newLan, err := network.FindByIp(newIP)
+		var err error
+		newLan, err = network.FindByIp(newIP)
 		if err != nil {
 			log.Printf("[Running Session] ERROR - Failed to find LAN for new IP %s: %v", newIP, err)
 			return err
 		}
+	}
 
-		self.mu.RLock()
-		currentLanName := self.lan.Name()
-		self.mu.RUnlock()
-
-		// If LAN changed, we need to recreate TC rules on the new interface
-		if newLan.Name() != currentLanName {
+	// Handle TC rule updates if IP changed
+	// NOTE: Network state is updated INSIDE the TC lock to ensure readers never see
+	// a network state without matching TC rules (prevents race condition where
+	// UpdateDataConsumption could use new IP before TC filter exists)
+	if oldNet.ip != newIP {
+		if newLan.Name() != oldNet.lan.Name() {
+			// LAN changed - need to recreate TC rules on new interface
 			log.Printf("[Running Session] LAN changed from %s to %s, recreating TC rules...",
-				currentLanName, newLan.Name())
+				oldNet.lan.Name(), newLan.Name())
 
-			// TC operations - use global tcNftMu lock
 			err := withTcNftLock("TC Network Update (LAN changed)", contextInfo, func() error {
 				self.mu.Lock()
 				defer self.mu.Unlock()
@@ -179,20 +240,17 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 				// Clean up old TC rules
 				if self.tcClassId != nil {
 					classid := self.tcClassId.Uint()
-					log.Printf("[Running Session] Removing old TC filter for IP %s", oldIP)
-					if err := self.lan.DelFilter(oldIP, classid); err != nil {
+					log.Printf("[Running Session] Removing old TC filter for IP %s", oldNet.ip)
+					if err := oldNet.lan.DelFilter(oldNet.ip, classid); err != nil {
 						log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
 					}
 
 					log.Printf("[Running Session] Removing old TC class %d", classid)
-					if err := self.lan.DelClass(classid); err != nil {
+					if err := oldNet.lan.DelClass(classid); err != nil {
 						log.Printf("[Running Session] WARNING - Failed to delete old class: %v", err)
 					}
 					self.tcClassId = nil
 				}
-
-				// Update LAN reference
-				self.lan = newLan
 
 				// Recreate TC rules on new interface
 				log.Printf("[Running Session] Creating new TC rules on interface %s", newLan.Name())
@@ -201,6 +259,15 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 					return err
 				}
 				log.Printf("[Running Session] TC rules recreated successfully")
+
+				// Update network state AFTER TC rules are ready
+				// Readers will now see the new state with TC rules already in place
+				self.network.Store(&networkState{
+					ip:  newIP,
+					mac: newMac,
+					lan: newLan,
+				})
+
 				return nil
 			})
 			if err != nil {
@@ -208,7 +275,7 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 			}
 		} else {
 			// Same LAN, just update the filter
-			log.Printf("[Running Session] Same LAN, updating TC filter from IP %s to %s", oldIP, newIP)
+			log.Printf("[Running Session] Same LAN, updating TC filter from IP %s to %s", oldNet.ip, newIP)
 
 			err := withTcNftLock("TC Network Update (same LAN)", contextInfo, func() error {
 				self.mu.Lock()
@@ -218,23 +285,39 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 					classid := self.tcClassId.Uint()
 
 					// Remove old filter
-					if err := self.lan.DelFilter(oldIP, classid); err != nil {
+					if err := oldNet.lan.DelFilter(oldNet.ip, classid); err != nil {
 						log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
 					}
 
 					// Create new filter with new IP
-					if err := self.lan.CreateFilter(newIP, classid); err != nil {
+					if err := newLan.CreateFilter(newIP, classid); err != nil {
 						log.Printf("[Running Session] ERROR - Failed to create new filter: %v", err)
 						return err
 					}
 					log.Printf("[Running Session] TC filter updated successfully")
 				}
+
+				// Update network state AFTER TC filter is ready
+				// Readers will now see the new state with TC rules already in place
+				self.network.Store(&networkState{
+					ip:  newIP,
+					mac: newMac,
+					lan: newLan,
+				})
+
 				return nil
 			})
 			if err != nil {
 				return err
 			}
 		}
+	} else if oldNet.mac != newMac {
+		// Only MAC changed (IP same) - no TC rules to update, just update network state
+		self.network.Store(&networkState{
+			ip:  newIP,
+			mac: newMac,
+			lan: newLan,
+		})
 	}
 
 	log.Printf("[Running Session] Network details updated successfully - DeviceID=%d, NewMAC=%s, NewIP=%s",
@@ -242,11 +325,24 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 	return nil
 }
 
+// ============================================================================
+// SESSION LIFECYCLE
+// ============================================================================
+
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
+	net := self.network.Load()
 	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, MAC=%s, IP=%s",
-		self.clntId, s.ID(), self.mac, self.ip)
+		self.clntId, s.ID(), net.mac, net.ip)
 
 	log.Printf("[Running Session] Start - %s", contextInfo)
+
+	// Check if already stopped
+	self.mu.Lock()
+	if self.stopped {
+		self.mu.Unlock()
+		return ErrSessionStopped
+	}
+	self.mu.Unlock()
 
 	// 1. DB operations - no TC/NFT lock needed
 	dbStart := time.Now()
@@ -255,7 +351,7 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	}
 	logSlowOperation("DB Reload", dbStart, 2*time.Second, contextInfo)
 
-	// 2. Update session state (use self.mu for in-memory state)
+	// 2. Update session state
 	self.mu.Lock()
 	self.session = s
 
@@ -280,9 +376,9 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	logSlowOperation("DB Save", dbStart, 2*time.Second, contextInfo)
 
 	// 4. TC operations - use global tcNftMu lock
-	self.mu.RLock()
+	self.mu.Lock()
 	hasTcClass := self.tcClassId != nil
-	self.mu.RUnlock()
+	self.mu.Unlock()
 
 	if !hasTcClass {
 		err := withTcNftLock("TC Init", contextInfo, func() error {
@@ -321,18 +417,34 @@ func (self *RunningSession) Stop(ctx context.Context) error {
 }
 
 func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) error {
-	self.mu.RLock()
+	// First, mark as stopped and collect state atomically
+	self.mu.Lock()
+	if self.stopped {
+		self.mu.Unlock()
+		log.Printf("[Running Session] StopWithReason - already stopped, DeviceID=%d", self.clntId)
+		return nil
+	}
+	self.stopped = true
+
+	session := self.session
+	callbacks := self.callbacks
+	self.callbacks = nil // Clear callbacks
+
+	// Clean up timer while holding lock
+	self.cleanUpTimer()
+	self.mu.Unlock()
+
+	// Build context info for logging (after releasing lock)
+	var sessionID int64
+	if session != nil {
+		sessionID = session.ID()
+	}
 	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Expired=%v",
-		self.clntId, self.session.ID(), expired)
-	self.mu.RUnlock()
+		self.clntId, sessionID, expired)
 
 	log.Printf("[Running Session] StopWithReason - %s", contextInfo)
 
-	// 1. Calculate and record elapsed time (use session's own mutex)
-	self.mu.RLock()
-	session := self.session
-	self.mu.RUnlock()
-
+	// Calculate and record elapsed time
 	if session != nil && session.ResumedAt() != nil {
 		// TimeConsumption() already includes elapsed time since resumed_at
 		currentCons := session.TimeConsumption()
@@ -347,31 +459,18 @@ func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) er
 		session.SetResumedAt(nil)
 	}
 
-	// 2. DB save - no TC/NFT lock needed
+	// DB save - no lock needed (session has its own synchronization)
 	dbStart := time.Now()
-	saveErr := self.save(ctx)
+	saveErr := self.saveSession(ctx, session)
 	logSlowOperation("DB Save (Stop)", dbStart, 2*time.Second, contextInfo)
 
-	// 3. Clean up timer (use self.mu)
-	self.mu.Lock()
-	self.cleanUpTimer()
-
-	// Collect callbacks while holding lock
-	callbacks := self.callbacks
-	self.callbacks = []chan error{}
-
-	// Get references for event emission
-	emitter := self.emitter
-	clnt := self.clnt
-	self.mu.Unlock()
-
-	// 4. Emit events - no lock needed
-	if expired && emitter != nil && clnt != nil {
-		emitter.emitSessionEvent(sdkapi.EventSessionBeforeExpired, session, clnt)
-		emitter.emitSessionEvent(sdkapi.EventSessionExpired, session, clnt)
+	// Emit events (emitter is immutable, no lock needed)
+	if expired && self.emitter != nil && self.clnt != nil {
+		self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeExpired, session, self.clnt)
+		self.emitter.emitSessionEvent(sdkapi.EventSessionExpired, session, self.clnt)
 	}
 
-	// 5. Determine the error to return to callbacks
+	// Determine the error to return to callbacks
 	var callbackErr error
 	if expired {
 		callbackErr = ErrSessionExpired
@@ -379,9 +478,13 @@ func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) er
 		callbackErr = saveErr
 	}
 
-	// 6. Send to callbacks - no lock needed
+	// Send to callbacks - no lock needed (we own the slice)
 	for _, cb := range callbacks {
-		cb <- callbackErr
+		select {
+		case cb <- callbackErr:
+		default:
+			// Channel full or closed, skip
+		}
 	}
 	log.Println("Done running callbacks.")
 
@@ -390,80 +493,83 @@ func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) er
 }
 
 func (self *RunningSession) CleanupTc() error {
-	self.mu.RLock()
-	contextInfo := fmt.Sprintf("DeviceID=%d, IP=%s", self.clntId, self.ip)
-	self.mu.RUnlock()
+	net := self.network.Load()
+	contextInfo := fmt.Sprintf("DeviceID=%d, IP=%s", self.clntId, net.ip)
 
-	errCh := make(chan error)
+	return withTcNftLock("CleanupTc", contextInfo, func() error {
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-	go func() {
-		err := withTcNftLock("CleanupTc", contextInfo, func() error {
-			self.mu.Lock()
-			defer self.mu.Unlock()
+		if self.tcClassId != nil {
+			log.Println("Clean up TC...")
+			classid := *self.tcClassId
 
-			if self.tcClassId != nil {
-				log.Println("Clean up TC...")
-				classid := self.tcClassId.Uint()
-
-				if err := self.lan.DelFilter(self.ip, classid); err != nil {
-					return err
-				}
-
-				if err := self.lan.DelClass(classid); err != nil {
-					self.tcClassId = nil
-					return err
-				}
-				self.tcClassId = nil
+			if err := net.lan.DelFilter(net.ip, classid.Uint()); err != nil {
+				return err
 			}
 
-			log.Println("Done cleaning TC.")
-			return nil
-		})
-		errCh <- err
-	}()
+			if err := net.lan.DelClass(classid.Uint()); err != nil {
+				return err
+			}
 
-	return <-errCh
+			self.tcClassId = nil
+		}
+
+		log.Println("Done cleaning TC.")
+		return nil
+	})
 }
 
+// ============================================================================
+// DATA CONSUMPTION
+// ============================================================================
+
 func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
-	// Read IP and MAC with RLock (read-only access)
-	self.mu.RLock()
-	ip := self.ip
-	mac := self.mac
-	session := self.session
-	self.mu.RUnlock()
-
-	// Look up traffic stats (no lock needed)
-	download, dlOK := stats.Download[ip]
-	upload, upOK := stats.Upload[strings.ToUpper(mac)]
-
-	var shouldStop bool
-	if dlOK && upOK {
-		dataconMb := float64(download.Bytes+upload.Bytes) / (1 * 1000 * 1000)
-		log.Println("CONSUMPTION MB: ", dataconMb)
-
-		// IncDataCons uses session's internal RWMutex
-		session.IncDataCons(dataconMb)
-
-		// Update diffMb with write lock
-		self.mu.Lock()
-		self.diffMb += dataconMb
+	// Check if stopped first
+	self.mu.Lock()
+	if self.stopped {
 		self.mu.Unlock()
+		return
+	}
+	session := self.session
+	self.mu.Unlock()
 
-		// Check if consumed (uses RLock internally)
-		self.mu.RLock()
-		if self.isConsumed() {
-			log.Println("Session data is consumed!!!")
-			shouldStop = true
-		}
-		self.mu.RUnlock()
+	if session == nil {
+		return
 	}
 
-	// Call StopWithReason() after releasing the lock to avoid deadlock
+	// Get network state atomically (no lock needed)
+	net := self.network.Load()
+
+	// Look up traffic stats
+	download, dlOK := stats.Download[net.ip]
+	upload, upOK := stats.Upload[strings.ToUpper(net.mac)]
+
+	if !dlOK || !upOK {
+		return
+	}
+
+	dataconMb := float64(download.Bytes+upload.Bytes) / bytesPerMiB
+	log.Println("CONSUMPTION MiB: ", dataconMb)
+
+	// Update session data consumption (session has its own synchronization)
+	session.IncDataCons(dataconMb)
+
+	// Update diffMb and check if consumed
+	self.mu.Lock()
+	self.diffMb += dataconMb
+	shouldStop := self.isConsumed()
+	self.mu.Unlock()
+
 	if shouldStop {
+		log.Println("Session data is consumed!!!")
 		go self.StopWithReason(context.Background(), true)
 	}
 }
+
+// ============================================================================
+// INTERNAL HELPERS - Must be called with appropriate locks held
+// ============================================================================
 
 func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 	// Calculate remaining time
@@ -507,37 +613,56 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 				return
 
 			case <-saveTicker.C:
-				// Periodic save - no queue, direct call
-				self.mu.RLock()
+				// Check if stopped
+				self.mu.Lock()
+				if self.stopped {
+					self.mu.Unlock()
+					return
+				}
 				currentSession := self.session
-				currentClnt := self.clnt
-				currentEmitter := self.emitter
-				deviceID := self.clntId
-				self.mu.RUnlock()
+				self.mu.Unlock()
 
-				// Calculate elapsed time since resumed_at
-				var elapsed int
-				if resumedAt := currentSession.ResumedAt(); resumedAt != nil {
-					elapsed = int(time.Since(*resumedAt).Seconds())
-					log.Printf("Periodic save: %d seconds elapsed, %d remaining\n",
-						elapsed, currentSession.RemainingTime())
+				if currentSession == nil {
+					continue
 				}
 
-				// Emit before updated hook
-				if currentEmitter != nil && currentClnt != nil {
-					if err := currentEmitter.emitSessionEvent(sdkapi.EventSessionBeforeUpdated, currentSession, currentClnt); err != nil {
+				// Persist time consumption to protect against crashes
+				// This ensures at most 15 seconds of time tracking is lost on crash
+				// instead of all time since session start
+				var elapsed int
+				if resumedAt := currentSession.ResumedAt(); resumedAt != nil {
+					// Get current total consumption (includes elapsed since resumed_at)
+					currentCons := currentSession.TimeConsumption()
+					elapsed = int(time.Since(*resumedAt).Seconds())
+
+					// Update timeCons with the accumulated time
+					currentSession.SetTimeCons(currentCons)
+
+					// Reset resumed_at to NOW so next calculation starts fresh
+					// This prevents double-counting: timeCons now includes elapsed,
+					// and RemainingTime() will calculate new elapsed from this point
+					now := time.Now().UTC()
+					currentSession.SetResumedAt(&now)
+
+					log.Printf("Periodic save: persisting %d seconds consumed, %d remaining\n",
+						currentCons, currentSession.RemainingTime())
+				}
+
+				// Emit before updated hook (emitter is immutable)
+				if self.emitter != nil && self.clnt != nil {
+					if err := self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeUpdated, currentSession, self.clnt); err != nil {
 						log.Println("Before update hook failed:", err)
 						go self.Stop(context.Background())
 						return
 					}
 				}
 
-				// Direct save - no lock needed (DB handles concurrency)
+				// Direct save
 				contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Elapsed=%ds",
-					deviceID, currentSession.ID(), elapsed)
+					self.clntId, currentSession.ID(), elapsed)
 
 				dbStart := time.Now()
-				saveErr := self.save(context.Background())
+				saveErr := self.saveSession(context.Background(), currentSession)
 				logSlowOperation("Periodic Save", dbStart, 2*time.Second, contextInfo)
 
 				if saveErr != nil {
@@ -547,8 +672,8 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 				}
 
 				// Emit session:updated event after successful save
-				if currentEmitter != nil && currentClnt != nil {
-					currentEmitter.emitSessionEvent(sdkapi.EventSessionUpdated, currentSession, currentClnt)
+				if self.emitter != nil && self.clnt != nil {
+					self.emitter.emitSessionEvent(sdkapi.EventSessionUpdated, currentSession, self.clnt)
 				}
 
 				// Reset diff counter for data
@@ -560,21 +685,22 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 	}()
 }
 
+// initTc initializes TC class and filter. Must be called with mu AND tcNftMu held.
 func (self *RunningSession) initTc() error {
 	classid := tc.GetAvailableId()
 	defer classid.Cancel()
 
-	lan := self.lan
+	net := self.network.Load()
 	s := self.session
 
-	err := lan.CreateClass(classid.Uint(), s.DownMbits(), s.UpMbits())
+	err := net.lan.CreateClass(classid.Uint(), s.DownMbits(), s.UpMbits())
 	if err != nil {
 		return err
 	}
 
-	err = lan.CreateFilter(self.ip, classid.Uint())
+	err = net.lan.CreateFilter(net.ip, classid.Uint())
 	if err != nil {
-		lan.DelClass(classid.Uint())
+		net.lan.DelClass(classid.Uint())
 		return err
 	}
 
@@ -584,15 +710,17 @@ func (self *RunningSession) initTc() error {
 	return nil
 }
 
+// updateTc updates TC class settings. Must be called with mu AND tcNftMu held.
 func (self *RunningSession) updateTc() error {
-	var (
-		downMbits = self.session.DownMbits()
-		upMbits   = self.session.UpMbits()
-		useGlobal = self.session.UseGlobalSpeed()
-	)
+	net := self.network.Load()
+	s := self.session
+
+	downMbits := s.DownMbits()
+	upMbits := s.UpMbits()
+	useGlobal := s.UseGlobalSpeed()
 
 	if useGlobal {
-		lan, err := network.FindByIp(self.ip)
+		lan, err := network.FindByIp(net.ip)
 		if err != nil {
 			return err
 		}
@@ -601,9 +729,10 @@ func (self *RunningSession) updateTc() error {
 		downMbits, upMbits = int(d), int(u)
 	}
 
-	return self.lan.ChangeClass(self.tcClassId.Uint(), downMbits, upMbits)
+	return net.lan.ChangeClass(self.tcClassId.Uint(), downMbits, upMbits)
 }
 
+// cleanUpTimer cleans up the timer. Must be called with mu held.
 func (self *RunningSession) cleanUpTimer() {
 	log.Println("Cleaning up session timer...")
 
@@ -621,20 +750,28 @@ func (self *RunningSession) cleanUpTimer() {
 	log.Println("Done cleaning session timer.")
 }
 
-func (self *RunningSession) save(ctx context.Context) error {
-	if self.session != nil {
-		if err := self.session.Save(ctx); err != nil {
-			return err
-		}
-
-		if err := self.session.Reload(ctx); err != nil {
-			return err
-		}
+// saveSession saves and reloads a session.
+func (self *RunningSession) saveSession(ctx context.Context, session sdkapi.IClientSession) error {
+	if session == nil {
+		return nil
 	}
+
+	if err := session.Save(ctx); err != nil {
+		return err
+	}
+
+	if err := session.Reload(ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (self *RunningSession) expired() (ok bool) {
+// expired checks if the session has expired. Must be called with mu held.
+func (self *RunningSession) expired() bool {
+	if self.session == nil {
+		return false
+	}
 	expiresAt := self.session.ExpiresAt()
 	if expiresAt != nil {
 		return !time.Now().Before(*expiresAt)
@@ -642,8 +779,13 @@ func (self *RunningSession) expired() (ok bool) {
 	return false
 }
 
+// isConsumed checks if the session resources are consumed. Must be called with mu held.
 func (self *RunningSession) isConsumed() bool {
 	s := self.session
+	if s == nil {
+		return false
+	}
+
 	t := s.Type()
 
 	// Check expiration date first (applies to all types)

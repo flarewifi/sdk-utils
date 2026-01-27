@@ -3,6 +3,7 @@ package sessmgr
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"core/db"
@@ -10,17 +11,9 @@ import (
 	sdkapi "sdk/api"
 )
 
-func NewClientSession(dtb *db.Database, mdls *models.Models, pluginsMgr sdkapi.IPluginsMgrApi, s *models.Session) *ClientSession {
-	cs := &ClientSession{db: dtb, mdls: mdls, pluginsMgr: pluginsMgr}
-	cs.load(s)
-	return cs
-}
-
-type ClientSession struct {
-	mu          sync.RWMutex
-	db          *db.Database
-	mdls        *models.Models
-	pluginsMgr  sdkapi.IPluginsMgrApi
+// sessionData holds all session fields as an immutable snapshot.
+// This enables lock-free reads via atomic.Pointer.
+type sessionData struct {
 	id          int64
 	uuid        string
 	providerPkg string
@@ -40,89 +33,152 @@ type ClientSession struct {
 	updatedAt   time.Time
 }
 
+// copyTimePtr creates a deep copy of a time pointer to avoid shared state
+func copyTimePtr(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	copied := *t
+	return &copied
+}
+
+// copyIntPtr creates a deep copy of an int pointer to avoid shared state
+func copyIntPtr(i *int) *int {
+	if i == nil {
+		return nil
+	}
+	copied := *i
+	return &copied
+}
+
+// copy creates a deep copy of sessionData for modification
+func (d *sessionData) copy() sessionData {
+	return sessionData{
+		id:          d.id,
+		uuid:        d.uuid,
+		providerPkg: d.providerPkg,
+		devId:       d.devId,
+		sessionType: d.sessionType,
+		timeSecs:    d.timeSecs,
+		dataMb:      d.dataMb,
+		timeCons:    d.timeCons,
+		dataCons:    d.dataCons,
+		startedAt:   copyTimePtr(d.startedAt),
+		resumedAt:   copyTimePtr(d.resumedAt),
+		expDays:     copyIntPtr(d.expDays),
+		downMbits:   d.downMbits,
+		upMbits:     d.upMbits,
+		useGlobal:   d.useGlobal,
+		createdAt:   d.createdAt,
+		updatedAt:   d.updatedAt,
+	}
+}
+
+func NewClientSession(dtb *db.Database, mdls *models.Models, pluginsMgr sdkapi.IPluginsMgrApi, s *models.Session) *ClientSession {
+	cs := &ClientSession{db: dtb, mdls: mdls, pluginsMgr: pluginsMgr}
+	cs.loadFromModel(s)
+	return cs
+}
+
+// ClientSession wraps session data with lock-free reads and synchronized writes.
+// Reads use atomic.Pointer for zero-lock access.
+// Writes use copy-modify-swap pattern protected by writeMu.
+type ClientSession struct {
+	// Dependencies - immutable after creation, no lock needed
+	db         *db.Database
+	mdls       *models.Models
+	pluginsMgr sdkapi.IPluginsMgrApi
+
+	// Session data - atomic pointer for lock-free reads
+	data atomic.Pointer[sessionData]
+
+	// Write mutex - only needed for modifications (copy-modify-swap)
+	writeMu sync.Mutex
+}
+
 func (self *ClientSession) Save(ctx context.Context) error {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
+	d := self.data.Load()
 
 	return self.mdls.Session().Update(ctx, models.UpdateSessionParams{
-		ID:          self.id,
-		UUID:        self.uuid,
-		ProviderPkg: self.providerPkg,
-		DeviceID:    self.devId,
-		SessionType: sdkapi.SessionType(self.sessionType),
-		TimeSecs:    self.timeSecs,
-		DataMbytes:  self.dataMb,
-		TimeCons:    self.timeCons,
-		DataCons:    self.dataCons,
-		StartedAt:   self.startedAt,
-		ResumedAt:   self.resumedAt,
-		ExpDays:     self.expDays,
-		DownMbits:   self.downMbits,
-		UpMbits:     self.upMbits,
-		UseGlobal:   self.useGlobal,
+		ID:          d.id,
+		UUID:        d.uuid,
+		ProviderPkg: d.providerPkg,
+		DeviceID:    d.devId,
+		SessionType: sdkapi.SessionType(d.sessionType),
+		TimeSecs:    d.timeSecs,
+		DataMbytes:  d.dataMb,
+		TimeCons:    d.timeCons,
+		DataCons:    d.dataCons,
+		StartedAt:   d.startedAt,
+		ResumedAt:   d.resumedAt,
+		ExpDays:     d.expDays,
+		DownMbits:   d.downMbits,
+		UpMbits:     d.upMbits,
+		UseGlobal:   d.useGlobal,
 	})
 }
 
 func (self *ClientSession) Reload(ctx context.Context) (err error) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
 
-	s, err := self.mdls.Session().Find(ctx, self.id)
-
+	d := self.data.Load()
+	s, err := self.mdls.Session().Find(ctx, d.id)
 	if err != nil {
 		return err
 	}
 
-	self.load(s)
+	self.loadFromModel(s)
 	return nil
 }
 
-func (self *ClientSession) load(s *models.Session) {
-	self.id = s.ID()
-	self.uuid = s.UUID()
-	self.providerPkg = s.ProviderPkg()
-	self.devId = s.DeviceID()
-	self.sessionType = s.SessionType()
-	self.timeSecs = s.TimeSecs()
-	self.dataMb = s.DataMbyte()
-	self.timeCons = s.TimeConsumed()
-	self.dataCons = s.DataConsumed()
-	self.downMbits = s.DownMbits()
-	self.upMbits = s.UpMbits()
-	self.useGlobal = s.UseGlobal()
-	self.expDays = s.ExpDays()
-	self.startedAt = s.StartedAt()
-	self.resumedAt = s.ResumedAt()
-	self.createdAt = s.CreatedAt()
-	self.updatedAt = s.UpdatedAt()
+// loadFromModel creates a new sessionData snapshot from a models.Session
+func (self *ClientSession) loadFromModel(s *models.Session) {
+	newData := &sessionData{
+		id:          s.ID(),
+		uuid:        s.UUID(),
+		providerPkg: s.ProviderPkg(),
+		devId:       s.DeviceID(),
+		sessionType: s.SessionType(),
+		timeSecs:    s.TimeSecs(),
+		dataMb:      s.DataMbyte(),
+		timeCons:    s.TimeConsumed(),
+		dataCons:    s.DataConsumed(),
+		downMbits:   s.DownMbits(),
+		upMbits:     s.UpMbits(),
+		useGlobal:   s.UseGlobal(),
+		expDays:     copyIntPtr(s.ExpDays()),
+		startedAt:   copyTimePtr(s.StartedAt()),
+		resumedAt:   copyTimePtr(s.ResumedAt()),
+		createdAt:   s.CreatedAt(),
+		updatedAt:   s.UpdatedAt(),
+	}
+	self.data.Store(newData)
 }
+
+// ============================================================================
+// LOCK-FREE GETTERS - All reads use atomic.Load(), no locks needed
+// ============================================================================
 
 // ID returns the session's ID.
 func (self *ClientSession) ID() int64 {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.id
+	return self.data.Load().id
 }
 
 // UUID returns the session's UUID.
 func (self *ClientSession) UUID() string {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.uuid
+	return self.data.Load().uuid
 }
 
 // DeviceID returns the device ID that owns this session.
 func (self *ClientSession) DeviceID() int64 {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.devId
+	return self.data.Load().devId
 }
 
 // Plugin returns the provider plugin of the session record.
 func (self *ClientSession) Plugin() sdkapi.IPluginApi {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	if plugin, found := self.pluginsMgr.FindByPkg(self.providerPkg); found {
+	providerPkg := self.data.Load().providerPkg
+	if plugin, found := self.pluginsMgr.FindByPkg(providerPkg); found {
 		return plugin
 	}
 	return nil
@@ -130,36 +186,28 @@ func (self *ClientSession) Plugin() sdkapi.IPluginApi {
 
 // Type returns the session type.
 func (self *ClientSession) Type() sdkapi.SessionType {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return sdkapi.SessionType(self.sessionType)
+	return sdkapi.SessionType(self.data.Load().sessionType)
 }
 
 // TimeSecs returns the session's available time in seconds.
 func (self *ClientSession) TimeSecs() (sec int) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.timeSecs
+	return self.data.Load().timeSecs
 }
 
 // DataMb returns the session's available data in megabytes.
 func (self *ClientSession) DataMb() (mbytes float64) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.dataMb
+	return self.data.Load().dataMb
 }
 
 // TimeConsumption returns the session's time consumption in seconds.
 // If session is currently running (resumed_at != nil), includes elapsed time since resumed_at.
 func (self *ClientSession) TimeConsumption() (sec int) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-
-	consumption := self.timeCons
+	d := self.data.Load()
+	consumption := d.timeCons
 
 	// If session is running, add elapsed time since resumed_at
-	if self.resumedAt != nil {
-		elapsed := int(time.Since(*self.resumedAt).Seconds())
+	if d.resumedAt != nil {
+		elapsed := int(time.Since(*d.resumedAt).Seconds())
 		consumption += elapsed
 	}
 
@@ -170,38 +218,30 @@ func (self *ClientSession) TimeConsumption() (sec int) {
 // Note: Data consumption is tracked in real-time via traffic monitoring,
 // so this returns the saved value without additional elapsed time calculation.
 func (self *ClientSession) DataConsumption() (mbytes float64) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.dataCons
+	return self.data.Load().dataCons
 }
 
 // ConsumedTimeSecs returns the raw stored time consumption in seconds.
 // Does NOT include elapsed time since resumed_at.
 // Use this for syncing/persistence.
 func (self *ClientSession) ConsumedTimeSecs() (sec int) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.timeCons
+	return self.data.Load().timeCons
 }
 
 // ConsumedDataMb returns the raw stored data consumption in megabytes.
 // Use this for syncing/persistence.
 func (self *ClientSession) ConsumedDataMb() (mbytes float64) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.dataCons
+	return self.data.Load().dataCons
 }
 
 // RemainingTime returns the session's remaining time in seconds.
 func (self *ClientSession) RemainingTime() (sec int) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-
-	remaining := self.timeSecs - self.timeCons
+	d := self.data.Load()
+	remaining := d.timeSecs - d.timeCons
 
 	// If session is running, subtract elapsed time since resumed_at
-	if self.resumedAt != nil {
-		elapsed := int(time.Since(*self.resumedAt).Seconds())
+	if d.resumedAt != nil {
+		elapsed := int(time.Since(*d.resumedAt).Seconds())
 		remaining -= elapsed
 	}
 
@@ -214,55 +254,43 @@ func (self *ClientSession) RemainingTime() (sec int) {
 
 // RemainingData returns the session's remaining data in megabytes.
 func (self *ClientSession) RemainingData() (mbytes float64) {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.dataMb - self.dataCons
+	d := self.data.Load()
+	return d.dataMb - d.dataCons
 }
 
 // StartedAt returns the time when session was first started.
 func (self *ClientSession) StartedAt() *time.Time {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.startedAt
+	return self.data.Load().startedAt
 }
 
 // ResumedAt returns the time when session was last resumed.
 func (self *ClientSession) ResumedAt() *time.Time {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.resumedAt
+	return self.data.Load().resumedAt
 }
 
 // CreatedAt returns the created at time.
 func (self *ClientSession) CreatedAt() time.Time {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.createdAt
+	return self.data.Load().createdAt
 }
 
 // UpdatedAt returns the updated at time.
 func (self *ClientSession) UpdatedAt() time.Time {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.updatedAt
+	return self.data.Load().updatedAt
 }
 
 // ExpDays returns the session's expiration time in days.
 // If session has no expiration, it returns nil.
 func (self *ClientSession) ExpDays() *int {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.expDays
+	return self.data.Load().expDays
 }
 
 // ExpiresAt returns the time when session will expire.
 // If session has no expiration, it returns nil.
 // Expiration time is calculated from the time when session was started.
 func (self *ClientSession) ExpiresAt() *time.Time {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	if self.startedAt != nil && self.expDays != nil {
-		exp := self.startedAt.Add(time.Hour * 24 * time.Duration(*self.expDays))
+	d := self.data.Load()
+	if d.startedAt != nil && d.expDays != nil {
+		exp := d.startedAt.Add(time.Hour * 24 * time.Duration(*d.expDays))
 		return &exp
 	}
 	return nil
@@ -270,117 +298,163 @@ func (self *ClientSession) ExpiresAt() *time.Time {
 
 // DownMbits returns the session's download speed limit in megabits per second.
 func (self *ClientSession) DownMbits() int {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.downMbits
+	return self.data.Load().downMbits
 }
 
 // UpMbits returns the session's upload speed limit in megabits per second.
 func (self *ClientSession) UpMbits() int {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.upMbits
+	return self.data.Load().upMbits
 }
 
 // UseGlobalSpeed returns whether session uses global speed limits.
 func (self *ClientSession) UseGlobalSpeed() bool {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-	return self.useGlobal
+	return self.data.Load().useGlobal
 }
+
+// ============================================================================
+// SETTERS - Use copy-modify-swap pattern with mutex protection
+// ============================================================================
 
 // IncTimeCons increases the session's time consumption in seconds.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) IncTimeCons(sec int) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.timeCons += sec
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.timeCons += sec
+	self.data.Store(&newData)
 }
 
 // IncDataCons increases the session's data consumption in megabytes.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) IncDataCons(mbytes float64) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.dataCons += mbytes
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.dataCons += mbytes
+	self.data.Store(&newData)
 }
 
 // SetTimeSecs sets the session's available time in seconds.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetTimeSecs(sec int) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.timeSecs = sec
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.timeSecs = sec
+	self.data.Store(&newData)
 }
 
 // SetDataMb sets the session's available data in megabytes.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetDataMb(mbytes float64) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.dataMb = mbytes
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.dataMb = mbytes
+	self.data.Store(&newData)
 }
 
 // SetTimeCons sets the session's time consumption in seconds.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetTimeCons(sec int) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.timeCons = sec
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.timeCons = sec
+	self.data.Store(&newData)
 }
 
 // SetDataCons sets the session's data consumption in megabytes.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetDataCons(mbytes float64) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.dataCons = mbytes
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.dataCons = mbytes
+	self.data.Store(&newData)
 }
 
 // SetStartedAt sets the time when session was first started.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetStartedAt(started *time.Time) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.startedAt = started
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.startedAt = copyTimePtr(started)
+	self.data.Store(&newData)
 }
 
 // SetResumedAt sets the time when session was last resumed.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetResumedAt(resumed *time.Time) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.resumedAt = resumed
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.resumedAt = copyTimePtr(resumed)
+	self.data.Store(&newData)
 }
 
 // SetExpDays sets the session's expiration time in days.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetExpDays(exp *int) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.expDays = exp
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.expDays = copyIntPtr(exp)
+	self.data.Store(&newData)
 }
 
 // SetDownMbits sets the session's download speed limit in megabits per second.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetDownMbits(mbits int) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.downMbits = mbits
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.downMbits = mbits
+	self.data.Store(&newData)
 }
 
 // SetUpMbits sets the session's upload speed limit in megabits per second.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetUpMbits(mbits int) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.upMbits = mbits
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.upMbits = mbits
+	self.data.Store(&newData)
 }
 
 // SetUseGlobalSpeed sets whether session uses global speed limits.
 // This value is not saved until Save() method is called.
 func (self *ClientSession) SetUseGlobalSpeed(useGlobal bool) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	self.useGlobal = useGlobal
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	old := self.data.Load()
+	newData := old.copy()
+	newData.useGlobal = useGlobal
+	self.data.Store(&newData)
 }
