@@ -95,3 +95,31 @@ func GetIPVersion(ip string) (string, error) {
 	}
 	return "ip6", nil
 }
+
+// SeparatedIPs holds IPv4 and IPv6 addresses separated by version.
+type SeparatedIPs struct {
+	IPv4 []string
+	IPv6 []string
+}
+
+// SeparateIPsByVersion takes a list of IP addresses and separates them into IPv4 and IPv6 slices.
+// Returns an error if any IP address is invalid (fails the entire operation).
+func SeparateIPsByVersion(ips []string) (SeparatedIPs, error) {
+	result := SeparatedIPs{
+		IPv4: []string{},
+		IPv6: []string{},
+	}
+
+	for _, ip := range ips {
+		version, err := GetIPVersion(ip)
+		if err != nil {
+			return SeparatedIPs{}, fmt.Errorf("invalid IP address in list: %v", err)
+		}
+		if version == "ip" {
+			result.IPv4 = append(result.IPv4, ip)
+		} else {
+			result.IPv6 = append(result.IPv6, ip)
+		}
+	}
+	return result, nil
+}

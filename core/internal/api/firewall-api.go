@@ -17,17 +17,19 @@ import (
 
 func NewFirewallApi(api *PluginApi) {
 	firewallApi := &FirewallApi{
-		activeTimers: make(map[string]*time.Timer),
-		timersMutex:  &sync.Mutex{},
-		firewallQue:  jobque.NewJobQue[any](),
+		activeTimers:  make(map[string]*time.Timer),
+		timersMutex:   &sync.RWMutex{},
+		firewallQue:   jobque.NewJobQue[any](),
+		createdGroups: make(map[string]bool),
 	}
 	api.FirewallAPI = firewallApi
 }
 
 type FirewallApi struct {
-	activeTimers map[string]*time.Timer // Track active removal timers by "destIP:mac" key
-	timersMutex  *sync.Mutex            // Protect concurrent access to activeTimers
-	firewallQue  *jobque.JobQue[any]    // Serialize firewall operations to prevent race conditions
+	activeTimers  map[string]*time.Timer // Track active removal timers by "destIP:mac" key
+	timersMutex   *sync.RWMutex          // Protect concurrent access to activeTimers and createdGroups
+	firewallQue   *jobque.JobQue[any]    // Serialize firewall operations to prevent race conditions
+	createdGroups map[string]bool        // Track created destination IP groups by slugified name
 }
 
 // NFTables JSON structure definitions
@@ -67,7 +69,7 @@ type nftPayload struct {
 // This method is serialized through a job queue to prevent race conditions
 func (self *FirewallApi) OpenIpForClientDevice(params sdkapi.OpenIpForClientDeviceParams) error {
 	contextInfo := fmt.Sprintf("DestIP=%s, ClientMAC=%s, ClientIP=%s",
-		params.DestinationIp, params.MacAddr, params.IpAddr)
+		params.DstIp, params.MacAddr, params.IpAddr)
 
 	_, err := self.firewallQue.ExecWithTimeout(
 		5*time.Second,
@@ -91,7 +93,7 @@ func (self *FirewallApi) doOpenIpForClientDevice(params sdkapi.OpenIpForClientDe
 	params.MacAddr = normalizedMAC
 
 	// Validate destination IP address
-	if _, err := sdkutils.ValidateIPAddress(params.DestinationIp); err != nil {
+	if _, err := sdkutils.ValidateIPAddress(params.DstIp); err != nil {
 		return fmt.Errorf("destination IP validation failed: %v", err)
 	}
 
@@ -111,13 +113,13 @@ func (self *FirewallApi) doOpenIpForClientDevice(params sdkapi.OpenIpForClientDe
 	}
 
 	// Check if rule already exists
-	exists, err := self.ruleExists(params.DestinationIp, params.MacAddr)
+	exists, err := self.ruleExists(params.DstIp, params.MacAddr)
 	if err != nil {
 		return fmt.Errorf("failed to check if rule exists: %v", err)
 	}
 
 	// Create cache key for tracking
-	cacheKey := fmt.Sprintf("%s:%s", params.DestinationIp, params.MacAddr)
+	cacheKey := fmt.Sprintf("%s:%s", params.DstIp, params.MacAddr)
 
 	if exists {
 		// Rule already exists - cancel any existing timer and reschedule if needed
@@ -130,13 +132,13 @@ func (self *FirewallApi) doOpenIpForClientDevice(params sdkapi.OpenIpForClientDe
 
 		// Schedule new removal timer if timeout is specified
 		if params.TimeoutSecs > 0 {
-			self.scheduleRuleRemoval(params.DestinationIp, params.MacAddr, params.TimeoutSecs)
+			self.scheduleRuleRemoval(params.DstIp, params.MacAddr, params.TimeoutSecs)
 		}
 		return nil
 	}
 
 	// Determine IP version for destination
-	destIpVersion, err := sdkutils.GetIPVersion(params.DestinationIp)
+	destIpVersion, err := sdkutils.GetIPVersion(params.DstIp)
 	if err != nil {
 		return fmt.Errorf("failed to determine destination IP version: %v", err)
 	}
@@ -154,22 +156,22 @@ func (self *FirewallApi) doOpenIpForClientDevice(params sdkapi.OpenIpForClientDe
 	// Log IP version mismatch for debugging
 	if !ipVersionsMatch {
 		log.Printf("[Firewall] IP version mismatch: client=%s (%s), destination=%s (%s) - return traffic rules will be skipped (relying on connection tracking)",
-			params.IpAddr, clientIpVersion, params.DestinationIp, destIpVersion)
+			params.IpAddr, clientIpVersion, params.DstIp, destIpVersion)
 	}
 
 	// Build nftables rules for bidirectional traffic
 	// Outgoing: Client MAC → Destination IP (all ports)
-	preroutingOutgoingCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting ether saddr %s %s daddr %s counter accept", params.MacAddr, destIpVersion, params.DestinationIp)
-	forwardOutgoingCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward ether saddr %s %s daddr %s counter accept", params.MacAddr, destIpVersion, params.DestinationIp)
+	preroutingOutgoingCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting ether saddr %s %s daddr %s counter accept", params.MacAddr, destIpVersion, params.DstIp)
+	forwardOutgoingCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward ether saddr %s %s daddr %s counter accept", params.MacAddr, destIpVersion, params.DstIp)
 
 	// Add prerouting rule for outgoing traffic (client → destination)
 	if err := shell.Exec(preroutingOutgoingCmd, nil); err != nil {
-		return fmt.Errorf("failed to add prerouting outgoing rule for %s → %s: %v", params.MacAddr, params.DestinationIp, err)
+		return fmt.Errorf("failed to add prerouting outgoing rule for %s → %s: %v", params.MacAddr, params.DstIp, err)
 	}
 
 	// Add forwarding rule for outgoing traffic (client → destination)
 	if err := shell.Exec(forwardOutgoingCmd, nil); err != nil {
-		return fmt.Errorf("failed to add forward outgoing rule for %s → %s: %v", params.MacAddr, params.DestinationIp, err)
+		return fmt.Errorf("failed to add forward outgoing rule for %s → %s: %v", params.MacAddr, params.DstIp, err)
 	}
 
 	// Only add return traffic rules if IP versions match
@@ -178,17 +180,17 @@ func (self *FirewallApi) doOpenIpForClientDevice(params sdkapi.OpenIpForClientDe
 	// connection tracking and NAT mechanisms, so explicit return rules are not needed.
 	if ipVersionsMatch {
 		// Return: Destination IP → Client IP (all ports)
-		preroutingReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting %s saddr %s %s daddr %s counter accept", destIpVersion, params.DestinationIp, clientIpVersion, params.IpAddr)
-		forwardReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward %s saddr %s %s daddr %s counter accept", destIpVersion, params.DestinationIp, clientIpVersion, params.IpAddr)
+		preroutingReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting %s saddr %s %s daddr %s counter accept", destIpVersion, params.DstIp, clientIpVersion, params.IpAddr)
+		forwardReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward %s saddr %s %s daddr %s counter accept", destIpVersion, params.DstIp, clientIpVersion, params.IpAddr)
 
 		// Add prerouting rule for return traffic (destination → client)
 		if err := shell.Exec(preroutingReturnCmd, nil); err != nil {
-			return fmt.Errorf("failed to add prerouting return rule for %s → %s: %v", params.DestinationIp, params.IpAddr, err)
+			return fmt.Errorf("failed to add prerouting return rule for %s → %s: %v", params.DstIp, params.IpAddr, err)
 		}
 
 		// Add forwarding rule for return traffic (destination → client)
 		if err := shell.Exec(forwardReturnCmd, nil); err != nil {
-			return fmt.Errorf("failed to add forward return rule for %s → %s: %v", params.DestinationIp, params.IpAddr, err)
+			return fmt.Errorf("failed to add forward return rule for %s → %s: %v", params.DstIp, params.IpAddr, err)
 		}
 	}
 	// else: Skip return traffic rules for mixed IP protocols (e.g., IPv4 client → IPv6 destination)
@@ -196,7 +198,7 @@ func (self *FirewallApi) doOpenIpForClientDevice(params sdkapi.OpenIpForClientDe
 
 	// Schedule automatic removal if timeout is specified
 	if params.TimeoutSecs > 0 {
-		self.scheduleRuleRemoval(params.DestinationIp, params.MacAddr, params.TimeoutSecs)
+		self.scheduleRuleRemoval(params.DstIp, params.MacAddr, params.TimeoutSecs)
 	}
 
 	return nil
@@ -214,8 +216,8 @@ func (self *FirewallApi) scheduleRuleRemoval(destinationIp string, macAddr strin
 
 		// Remove the firewall rule
 		err := self.CloseIpForClientDevice(sdkapi.CloseIpForClientDeviceParams{
-			DestinationIp: destinationIp,
-			MacAddr:       macAddr,
+			DstIp:   destinationIp,
+			MacAddr: macAddr,
 		})
 		if err != nil {
 			// Log error but don't panic - this is a background operation
@@ -233,7 +235,7 @@ func (self *FirewallApi) scheduleRuleRemoval(destinationIp string, macAddr strin
 // This method is serialized through a job queue to prevent race conditions
 func (self *FirewallApi) CloseIpForClientDevice(params sdkapi.CloseIpForClientDeviceParams) error {
 	contextInfo := fmt.Sprintf("DestIP=%s, ClientMAC=%s",
-		params.DestinationIp, params.MacAddr)
+		params.DstIp, params.MacAddr)
 
 	_, err := self.firewallQue.ExecWithTimeout(
 		5*time.Second,
@@ -257,7 +259,7 @@ func (self *FirewallApi) doCloseIpForClientDevice(params sdkapi.CloseIpForClient
 	params.MacAddr = normalizedMAC
 
 	// Cancel any active timer for this rule
-	cacheKey := fmt.Sprintf("%s:%s", params.DestinationIp, params.MacAddr)
+	cacheKey := fmt.Sprintf("%s:%s", params.DstIp, params.MacAddr)
 	self.timersMutex.Lock()
 	if timer, ok := self.activeTimers[cacheKey]; ok {
 		timer.Stop()
@@ -266,7 +268,7 @@ func (self *FirewallApi) doCloseIpForClientDevice(params sdkapi.CloseIpForClient
 	self.timersMutex.Unlock()
 
 	// Remove the firewall rules for this destination IP
-	err = self.removeRulesForDestIP(params.DestinationIp, params.MacAddr)
+	err = self.removeRulesForDestIP(params.DstIp, params.MacAddr)
 
 	return err
 }
@@ -540,6 +542,461 @@ func (self *FirewallApi) RemoveJumpRulesAndChains() error {
 			// Log warning but don't fail
 			fmt.Printf("Warning: Failed to execute cleanup command '%s': %v (%s)\n", cmd, err, out.String())
 		}
+	}
+
+	return nil
+}
+
+// CreateDstIpGroup creates a named group of destination IP addresses with dedicated nftables infrastructure.
+// The group name is slugified for safe use in nftables identifiers.
+// Returns error if group already exists or if any IP address is invalid.
+func (self *FirewallApi) CreateDstIpGroup(name string, ips ...string) error {
+	// Slugify the group name for safe nftables identifiers
+	slugName := sdkutils.Slugify(name, "_")
+	if slugName == "" {
+		return fmt.Errorf("invalid group name: %s (must contain alphanumeric characters)", name)
+	}
+
+	// Separate IPs by version (validates all IPs)
+	separated, err := sdkutils.SeparateIPsByVersion(ips)
+	if err != nil {
+		return err
+	}
+
+	contextInfo := fmt.Sprintf("GroupName=%s (slug=%s)", name, slugName)
+
+	_, err = self.firewallQue.ExecWithTimeout(
+		10*time.Second,
+		"Create Destination IP Group",
+		contextInfo,
+		func() (any, error) {
+			return nil, self.doCreateDstIpGroup(slugName, separated)
+		},
+	)
+	return err
+}
+
+// doCreateDstIpGroup is the internal implementation of CreateDstIpGroup
+func (self *FirewallApi) doCreateDstIpGroup(slugName string, ips sdkutils.SeparatedIPs) error {
+	// Check if group already exists
+	self.timersMutex.RLock()
+	if self.createdGroups[slugName] {
+		self.timersMutex.RUnlock()
+		return fmt.Errorf("destination IP group already exists: %s", slugName)
+	}
+	self.timersMutex.RUnlock()
+
+	// Define nftables resource names
+	setV4 := fmt.Sprintf("dst_grp_%s_v4", slugName)
+	setV6 := fmt.Sprintf("dst_grp_%s_v6", slugName)
+	setMacs := fmt.Sprintf("dst_grp_%s_macs", slugName)
+	setClientIpsV4 := fmt.Sprintf("dst_grp_%s_client_ips_v4", slugName)
+	setClientIpsV6 := fmt.Sprintf("dst_grp_%s_client_ips_v6", slugName)
+	chainPrerouting := fmt.Sprintf("dst_grp_%s_prerouting", slugName)
+	chainForward := fmt.Sprintf("dst_grp_%s_forward", slugName)
+
+	// Build nft batch script for atomic execution
+	var batch strings.Builder
+	batch.WriteString("table inet internet {\n")
+
+	// Create sets for destination IPs
+	batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ipv4_addr\n\t}\n", setV4))
+	batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ipv6_addr\n\t}\n", setV6))
+
+	// Create sets for client MACs and IPs (for return traffic)
+	batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ether_addr\n\t}\n", setMacs))
+	batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ipv4_addr\n\t}\n", setClientIpsV4))
+	batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ipv6_addr\n\t}\n", setClientIpsV6))
+
+	// Create chains with rules
+	// Prerouting chain
+	batch.WriteString(fmt.Sprintf("\tchain %s {\n", chainPrerouting))
+	batch.WriteString(fmt.Sprintf("\t\tether saddr @%s ip daddr @%s counter accept\n", setMacs, setV4))
+	batch.WriteString(fmt.Sprintf("\t\tether saddr @%s ip6 daddr @%s counter accept\n", setMacs, setV6))
+	batch.WriteString(fmt.Sprintf("\t\tip saddr @%s ip daddr @%s counter accept\n", setV4, setClientIpsV4))
+	batch.WriteString(fmt.Sprintf("\t\tip6 saddr @%s ip6 daddr @%s counter accept\n", setV6, setClientIpsV6))
+	batch.WriteString("\t}\n")
+
+	// Forward chain
+	batch.WriteString(fmt.Sprintf("\tchain %s {\n", chainForward))
+	batch.WriteString(fmt.Sprintf("\t\tether saddr @%s ip daddr @%s counter accept\n", setMacs, setV4))
+	batch.WriteString(fmt.Sprintf("\t\tether saddr @%s ip6 daddr @%s counter accept\n", setMacs, setV6))
+	batch.WriteString(fmt.Sprintf("\t\tip saddr @%s ip daddr @%s counter accept\n", setV4, setClientIpsV4))
+	batch.WriteString(fmt.Sprintf("\t\tip6 saddr @%s ip6 daddr @%s counter accept\n", setV6, setClientIpsV6))
+	batch.WriteString("\t}\n")
+
+	batch.WriteString("}\n")
+
+	// Add destination IPs to sets if provided
+	if len(ips.IPv4) > 0 {
+		ipList := strings.Join(ips.IPv4, ", ")
+		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV4, ipList))
+	}
+	if len(ips.IPv6) > 0 {
+		ipList := strings.Join(ips.IPv6, ", ")
+		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV6, ipList))
+	}
+
+	// Add jump rules from main chains to group chains
+	batch.WriteString(fmt.Sprintf("insert rule inet internet prerouting counter jump %s\n", chainPrerouting))
+	batch.WriteString(fmt.Sprintf("insert rule inet internet forward counter jump %s\n", chainForward))
+
+	// Execute batch command using nft -f - with heredoc for safe shell escaping
+	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
+	if err := shell.Exec(cmd, nil); err != nil {
+		return fmt.Errorf("failed to create destination IP group: %v", err)
+	}
+
+	// Mark group as created
+	self.timersMutex.Lock()
+	self.createdGroups[slugName] = true
+	self.timersMutex.Unlock()
+
+	return nil
+}
+
+// AllowClientDeviceToDstIpGroup allows a specific client device to access all IPs in a named destination IP group.
+// The client's MAC and IP are added to the group's client sets, enabling access through the group's firewall rules.
+// If timeoutSecs > 0, the client is automatically removed after the specified duration.
+func (self *FirewallApi) AllowClientDeviceToDstIpGroup(clnt sdkapi.DstIpGroupClient, groupName string, timeoutSecs int) error {
+	// Slugify the group name to match how it was created
+	slugName := sdkutils.Slugify(groupName, "_")
+	if slugName == "" {
+		return fmt.Errorf("invalid group name: %s (must contain alphanumeric characters)", groupName)
+	}
+
+	contextInfo := fmt.Sprintf("GroupName=%s, ClientMAC=%s, ClientIP=%s", groupName, clnt.MacAddr, clnt.IpAddr)
+
+	_, err := self.firewallQue.ExecWithTimeout(
+		5*time.Second,
+		"Allow Client Device to Destination IP Group",
+		contextInfo,
+		func() (any, error) {
+			return nil, self.doAllowClientDeviceToDstIpGroup(clnt, slugName, timeoutSecs)
+		},
+	)
+	return err
+}
+
+// doAllowClientDeviceToDstIpGroup is the internal implementation of AllowClientDeviceToDstIpGroup
+func (self *FirewallApi) doAllowClientDeviceToDstIpGroup(clnt sdkapi.DstIpGroupClient, slugName string, timeoutSecs int) error {
+	// Check if group exists
+	self.timersMutex.RLock()
+	if !self.createdGroups[slugName] {
+		self.timersMutex.RUnlock()
+		return fmt.Errorf("destination IP group does not exist: %s", slugName)
+	}
+	self.timersMutex.RUnlock()
+
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(clnt.MacAddr)
+	if err != nil {
+		return fmt.Errorf("MAC validation failed: %v", err)
+	}
+	clnt.MacAddr = normalizedMAC
+
+	// Validate client IP address
+	if _, err := sdkutils.ValidateIPAddress(clnt.IpAddr); err != nil {
+		return fmt.Errorf("client IP validation failed: %v", err)
+	}
+
+	// Determine IP version for client
+	clientIpVersion, err := sdkutils.GetIPVersion(clnt.IpAddr)
+	if err != nil {
+		return fmt.Errorf("failed to determine client IP version: %v", err)
+	}
+
+	// Define nftables set names
+	setMacs := fmt.Sprintf("dst_grp_%s_macs", slugName)
+	var setClientIps string
+	if clientIpVersion == "ip" {
+		setClientIps = fmt.Sprintf("dst_grp_%s_client_ips_v4", slugName)
+	} else {
+		setClientIps = fmt.Sprintf("dst_grp_%s_client_ips_v6", slugName)
+	}
+
+	// Create cache key for tracking timers
+	cacheKey := fmt.Sprintf("grp:%s:%s", slugName, clnt.MacAddr)
+
+	// Cancel any existing timer for this client in this group
+	self.timersMutex.Lock()
+	if existingTimer, ok := self.activeTimers[cacheKey]; ok {
+		existingTimer.Stop()
+		delete(self.activeTimers, cacheKey)
+	}
+	self.timersMutex.Unlock()
+
+	// Build nft batch script to add client to sets
+	var batch strings.Builder
+	batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setMacs, clnt.MacAddr))
+	batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setClientIps, clnt.IpAddr))
+
+	// Execute batch command using heredoc for safe shell escaping
+	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
+	if err := shell.Exec(cmd, nil); err != nil {
+		return fmt.Errorf("failed to add client to destination IP group: %v", err)
+	}
+
+	// Schedule automatic removal if timeout is specified
+	if timeoutSecs > 0 {
+		self.scheduleGroupClientRemoval(slugName, clnt, timeoutSecs)
+	}
+
+	return nil
+}
+
+// scheduleGroupClientRemoval schedules automatic removal of a client from a destination IP group
+func (self *FirewallApi) scheduleGroupClientRemoval(slugName string, clnt sdkapi.DstIpGroupClient, timeoutSecs int) {
+	cacheKey := fmt.Sprintf("grp:%s:%s", slugName, clnt.MacAddr)
+
+	timer := time.AfterFunc(time.Duration(timeoutSecs)*time.Second, func() {
+		// Remove timer from tracking map
+		self.timersMutex.Lock()
+		delete(self.activeTimers, cacheKey)
+		self.timersMutex.Unlock()
+
+		// Remove the client from the group
+		err := self.RemoveClientDeviceFromDstIpGroup(clnt, slugName)
+		if err != nil {
+			// Log error but don't panic - this is a background operation
+			fmt.Printf("Warning: Failed to auto-remove client %s from group %s: %v\n", clnt.MacAddr, slugName, err)
+		}
+	})
+
+	// Store timer in tracking map
+	self.timersMutex.Lock()
+	self.activeTimers[cacheKey] = timer
+	self.timersMutex.Unlock()
+}
+
+// RemoveClientDeviceFromDstIpGroup removes access for a specific client device from a named destination IP group.
+// The client's MAC and IP are removed from the group's client sets.
+func (self *FirewallApi) RemoveClientDeviceFromDstIpGroup(clnt sdkapi.DstIpGroupClient, groupName string) error {
+	// Slugify the group name to match how it was created
+	slugName := sdkutils.Slugify(groupName, "_")
+	if slugName == "" {
+		return fmt.Errorf("invalid group name: %s (must contain alphanumeric characters)", groupName)
+	}
+
+	contextInfo := fmt.Sprintf("GroupName=%s, ClientMAC=%s, ClientIP=%s", groupName, clnt.MacAddr, clnt.IpAddr)
+
+	_, err := self.firewallQue.ExecWithTimeout(
+		5*time.Second,
+		"Remove Client Device from Destination IP Group",
+		contextInfo,
+		func() (any, error) {
+			return nil, self.doRemoveClientDeviceFromDstIpGroup(clnt, slugName)
+		},
+	)
+	return err
+}
+
+// doRemoveClientDeviceFromDstIpGroup is the internal implementation of RemoveClientDeviceFromDstIpGroup
+func (self *FirewallApi) doRemoveClientDeviceFromDstIpGroup(clnt sdkapi.DstIpGroupClient, slugName string) error {
+	// Check if group exists
+	self.timersMutex.RLock()
+	if !self.createdGroups[slugName] {
+		self.timersMutex.RUnlock()
+		return fmt.Errorf("destination IP group does not exist: %s", slugName)
+	}
+	self.timersMutex.RUnlock()
+
+	// Validate and normalize MAC address
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(clnt.MacAddr)
+	if err != nil {
+		return fmt.Errorf("MAC validation failed: %v", err)
+	}
+	clnt.MacAddr = normalizedMAC
+
+	// Validate client IP address
+	if _, err := sdkutils.ValidateIPAddress(clnt.IpAddr); err != nil {
+		return fmt.Errorf("client IP validation failed: %v", err)
+	}
+
+	// Determine IP version for client
+	clientIpVersion, err := sdkutils.GetIPVersion(clnt.IpAddr)
+	if err != nil {
+		return fmt.Errorf("failed to determine client IP version: %v", err)
+	}
+
+	// Define nftables set names
+	setMacs := fmt.Sprintf("dst_grp_%s_macs", slugName)
+	var setClientIps string
+	if clientIpVersion == "ip" {
+		setClientIps = fmt.Sprintf("dst_grp_%s_client_ips_v4", slugName)
+	} else {
+		setClientIps = fmt.Sprintf("dst_grp_%s_client_ips_v6", slugName)
+	}
+
+	// Cancel any active timer for this client in this group
+	cacheKey := fmt.Sprintf("grp:%s:%s", slugName, clnt.MacAddr)
+	self.timersMutex.Lock()
+	if timer, ok := self.activeTimers[cacheKey]; ok {
+		timer.Stop()
+		delete(self.activeTimers, cacheKey)
+	}
+	self.timersMutex.Unlock()
+
+	// Build nft batch script to remove client from sets
+	var batch strings.Builder
+	batch.WriteString(fmt.Sprintf("delete element inet internet %s { %s }\n", setMacs, clnt.MacAddr))
+	batch.WriteString(fmt.Sprintf("delete element inet internet %s { %s }\n", setClientIps, clnt.IpAddr))
+
+	// Execute batch command using heredoc for safe shell escaping
+	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
+	if err := shell.Exec(cmd, nil); err != nil {
+		// Log warning but don't fail - element may have already been removed
+		log.Printf("Warning: Failed to remove client %s from group %s (may already be removed): %v", clnt.MacAddr, slugName, err)
+	}
+
+	return nil
+}
+
+// AddIpsToDstIpGroup adds IP addresses to an existing named destination IP group.
+// The new IPs are merged with existing IPs in the group.
+// Returns an error if the group does not exist or if any IP address is invalid.
+func (self *FirewallApi) AddIpsToDstIpGroup(name string, ips ...string) error {
+	// Slugify the group name to match how it was created
+	slugName := sdkutils.Slugify(name, "_")
+	if slugName == "" {
+		return fmt.Errorf("invalid group name: %s (must contain alphanumeric characters)", name)
+	}
+
+	// Separate IPs by version (validates all IPs)
+	separated, err := sdkutils.SeparateIPsByVersion(ips)
+	if err != nil {
+		return err
+	}
+
+	contextInfo := fmt.Sprintf("GroupName=%s (slug=%s)", name, slugName)
+
+	_, err = self.firewallQue.ExecWithTimeout(
+		5*time.Second,
+		"Add IPs to Destination IP Group",
+		contextInfo,
+		func() (any, error) {
+			return nil, self.doAddIpsToDstIpGroup(slugName, separated)
+		},
+	)
+	return err
+}
+
+// doAddIpsToDstIpGroup is the internal implementation of AddIpsToDstIpGroup
+func (self *FirewallApi) doAddIpsToDstIpGroup(slugName string, ips sdkutils.SeparatedIPs) error {
+	// Check if group exists
+	self.timersMutex.RLock()
+	if !self.createdGroups[slugName] {
+		self.timersMutex.RUnlock()
+		return fmt.Errorf("destination IP group does not exist: %s", slugName)
+	}
+	self.timersMutex.RUnlock()
+
+	// Nothing to add
+	if len(ips.IPv4) == 0 && len(ips.IPv6) == 0 {
+		return nil
+	}
+
+	// Define nftables set names
+	setV4 := fmt.Sprintf("dst_grp_%s_v4", slugName)
+	setV6 := fmt.Sprintf("dst_grp_%s_v6", slugName)
+
+	// Build nft batch script to add elements
+	var batch strings.Builder
+	if len(ips.IPv4) > 0 {
+		ipList := strings.Join(ips.IPv4, ", ")
+		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV4, ipList))
+	}
+	if len(ips.IPv6) > 0 {
+		ipList := strings.Join(ips.IPv6, ", ")
+		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV6, ipList))
+	}
+
+	// Execute batch command using heredoc for safe shell escaping
+	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
+	if err := shell.Exec(cmd, nil); err != nil {
+		return fmt.Errorf("failed to add IPs to destination IP group: %v", err)
+	}
+
+	return nil
+}
+
+// ChangeDstIpGroup replaces all IP addresses in an existing named destination IP group.
+// All existing IPs are removed and replaced with the new set.
+// Returns an error if the group does not exist or if any IP address is invalid.
+func (self *FirewallApi) ChangeDstIpGroup(name string, ips ...string) error {
+	// Slugify the group name to match how it was created
+	slugName := sdkutils.Slugify(name, "_")
+	if slugName == "" {
+		return fmt.Errorf("invalid group name: %s (must contain alphanumeric characters)", name)
+	}
+
+	// Separate IPs by version (validates all IPs)
+	separated, err := sdkutils.SeparateIPsByVersion(ips)
+	if err != nil {
+		return err
+	}
+
+	contextInfo := fmt.Sprintf("GroupName=%s (slug=%s)", name, slugName)
+
+	_, err = self.firewallQue.ExecWithTimeout(
+		5*time.Second,
+		"Change Destination IP Group",
+		contextInfo,
+		func() (any, error) {
+			return nil, self.doChangeDstIpGroup(slugName, separated)
+		},
+	)
+	return err
+}
+
+// DstIpGroupExists checks if a named destination IP group exists.
+// Returns true if the group was created and is tracked, false otherwise.
+func (self *FirewallApi) DstIpGroupExists(name string) (bool, error) {
+	// Slugify the group name to match how it was created
+	slugName := sdkutils.Slugify(name, "_")
+	if slugName == "" {
+		return false, fmt.Errorf("invalid group name: %s (must contain alphanumeric characters)", name)
+	}
+
+	self.timersMutex.RLock()
+	exists := self.createdGroups[slugName]
+	self.timersMutex.RUnlock()
+
+	return exists, nil
+}
+
+// doChangeDstIpGroup is the internal implementation of ChangeDstIpGroup
+func (self *FirewallApi) doChangeDstIpGroup(slugName string, ips sdkutils.SeparatedIPs) error {
+	// Check if group exists
+	self.timersMutex.RLock()
+	if !self.createdGroups[slugName] {
+		self.timersMutex.RUnlock()
+		return fmt.Errorf("destination IP group does not exist: %s", slugName)
+	}
+	self.timersMutex.RUnlock()
+
+	// Define nftables set names
+	setV4 := fmt.Sprintf("dst_grp_%s_v4", slugName)
+	setV6 := fmt.Sprintf("dst_grp_%s_v6", slugName)
+
+	// Build nft batch script: flush sets, then add new elements
+	var batch strings.Builder
+	batch.WriteString(fmt.Sprintf("flush set inet internet %s\n", setV4))
+	batch.WriteString(fmt.Sprintf("flush set inet internet %s\n", setV6))
+
+	if len(ips.IPv4) > 0 {
+		ipList := strings.Join(ips.IPv4, ", ")
+		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV4, ipList))
+	}
+	if len(ips.IPv6) > 0 {
+		ipList := strings.Join(ips.IPv6, ", ")
+		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV6, ipList))
+	}
+
+	// Execute batch command using heredoc for safe shell escaping
+	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
+	if err := shell.Exec(cmd, nil); err != nil {
+		return fmt.Errorf("failed to change destination IP group: %v", err)
 	}
 
 	return nil
