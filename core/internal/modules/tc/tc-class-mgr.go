@@ -3,6 +3,7 @@ package tc
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	ifbutil "core/internal/modules/network"
 	jobque "core/utils/job-que"
@@ -12,6 +13,7 @@ import (
 var tcClassQue = jobque.NewJobQue[any]()
 
 type TcClassMgr struct {
+	mu        sync.RWMutex
 	dev       string
 	download  Kbit
 	upload    Kbit
@@ -28,9 +30,9 @@ func NewTcClassMgr(dev string, download Kbit, upload Kbit) *TcClassMgr {
 }
 
 func (self *TcClassMgr) Bandwidth() (download Kbit, upload Kbit) {
-	d := self.download
-	u := self.upload
-	return d, u
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.download, self.upload
 }
 
 func (self *TcClassMgr) Setup() error {
@@ -114,8 +116,11 @@ func (self *TcClassMgr) Reset() (err error) {
 
 func (self *TcClassMgr) UpdateBandwidth(down Kbit, up Kbit) error {
 	_, err := tcClassQue.Exec(func() (any, error) {
+		self.mu.Lock()
 		self.download = down
 		self.upload = up
+		self.mu.Unlock()
+
 		err := self.tcAddOrChange(tcActionChange, TcClassIdRoot, self.DefaultTcClass())
 		if err != nil {
 			return nil, err
@@ -228,26 +233,45 @@ func (self *TcClassMgr) tcDel(klass *TcClass) error {
 	return nil
 }
 
-func (self *TcClassMgr) RootTcClass() *TcClass {
+// rootTcClassLocked returns RootTcClass without acquiring lock (caller must hold lock)
+func (self *TcClassMgr) rootTcClassLocked(download, upload Kbit) *TcClass {
 	return &TcClass{
 		ClassId:  TcClassIdRoot,
-		MinDown:  self.download,
-		MinUp:    self.upload,
-		CeilDown: self.download,
-		CeilUp:   self.upload,
+		MinDown:  download,
+		MinUp:    upload,
+		CeilDown: download,
+		CeilUp:   upload,
 	}
 }
 
+func (self *TcClassMgr) RootTcClass() *TcClass {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.rootTcClassLocked(self.download, self.upload)
+}
+
 func (self *TcClassMgr) DefaultTcClass() *TcClass {
-	minDown := self.download / 2
-	minUp := self.upload / 2
-	return NewTcClass(self.RootTcClass(), TcClassIdDefault, minDown, minUp, self.download, self.upload)
+	self.mu.RLock()
+	download := self.download
+	upload := self.upload
+	root := self.rootTcClassLocked(download, upload)
+	self.mu.RUnlock()
+
+	minDown := download / 2
+	minUp := upload / 2
+	return NewTcClass(root, TcClassIdDefault, minDown, minUp, download, upload)
 }
 
 func (self *TcClassMgr) UserTcClass() *TcClass {
-	minDown := self.download / 2
-	minUp := self.upload / 2
-	return NewTcClass(self.RootTcClass(), TcClassIdUser, minDown, minUp, self.download, self.upload)
+	self.mu.RLock()
+	download := self.download
+	upload := self.upload
+	root := self.rootTcClassLocked(download, upload)
+	self.mu.RUnlock()
+
+	minDown := download / 2
+	minUp := upload / 2
+	return NewTcClass(root, TcClassIdUser, minDown, minUp, download, upload)
 }
 
 func (self *TcClassMgr) CleanUp() error {

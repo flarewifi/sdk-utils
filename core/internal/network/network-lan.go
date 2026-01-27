@@ -342,7 +342,13 @@ func (self *NetworkLan) DelFilter(ip string, classid uint) error {
 }
 
 func (self *NetworkLan) UpdateBandwidth(downMbits int, upMbits int) error {
-	downKbit := tc.Mbit(downMbits).ToKbit()
-	upKbit := tc.Mbit(upMbits).ToKbit()
-	return self.tcClassMgr.UpdateBandwidth(downKbit, upKbit)
+	_, err := networkQue.Exec(func() (any, error) {
+		self.mu.RLock()
+		defer self.mu.RUnlock()
+
+		downKbit := tc.Mbit(downMbits).ToKbit()
+		upKbit := tc.Mbit(upMbits).ToKbit()
+		return nil, self.tcClassMgr.UpdateBandwidth(downKbit, upKbit)
+	})
+	return err
 }

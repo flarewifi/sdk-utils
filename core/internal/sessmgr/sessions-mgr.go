@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -170,16 +171,34 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason string) {
 	self.sessions.Range(func(key, value any) bool {
 		rs := value.(*RunningSession)
-		err := nftables.Disconnect(rs.mac, reason)
-		if err != nil {
-		}
 
-		lan, err := network.FindByIp(rs.ip)
+		// Get values under lock to avoid data race
+		ip := rs.IpAddr()
+		mac := rs.MacAddr()
+
+		lan, err := network.FindByIp(ip)
 		if err != nil {
+			log.Printf("[SessionsMgr] StopSessions: failed to find LAN for IP %s: %v", ip, err)
+			return true
 		}
 
 		if lan.Name() == iface {
-			rs.Stop(ctx)
+			err := nftables.Disconnect(ip, mac)
+			if err != nil {
+				log.Printf("[SessionsMgr] StopSessions: failed to disconnect device IP=%s MAC=%s: %v", ip, mac, err)
+			}
+
+			if err := rs.Stop(ctx); err != nil {
+				log.Printf("[SessionsMgr] StopSessions: failed to stop session for device IP=%s: %v", ip, err)
+			}
+
+			// Clean up TC classes/filters and restore class ID to pool
+			if err := rs.CleanupTc(); err != nil {
+				log.Printf("[SessionsMgr] StopSessions: failed to cleanup TC for device IP=%s: %v", ip, err)
+			}
+
+			// Remove from sessions map
+			self.sessions.Delete(key)
 		}
 
 		return true
@@ -187,8 +206,6 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 }
 
 func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
-	errReturnCh := make(chan error)
-
 	if clnt.Status() == sdkapi.Blocked {
 		return errors.New(self.coreAPI.Translate("error", "Device is blocked"))
 	}
@@ -198,55 +215,20 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 		return err
 	}
 
-	go func() {
-		if _, ok := self.CurrSession(clnt); ok {
-			errReturnCh <- errors.New(self.coreAPI.Translate("error", "Device is already connected"))
-			return
-		}
+	// Launch session loop - handles nftables, session start, events, and chaining
+	resultCh := make(chan error, 1)
+	go self.loopSessions(resultCh, clnt, notify)
 
-		_, err := self.GetSession(ctx, clnt)
-		if err != nil {
-			errReturnCh <- errors.New(self.coreAPI.Translate("error", "Device has no more available sessions"))
-			return
-		}
+	// Wait for result with context cancellation support
+	var err error
+	select {
+	case err = <-resultCh:
+		// Normal case - received result from loopSessions
+	case <-ctx.Done():
+		// Context cancelled (e.g., HTTP timeout) - loopSessions continues in background
+		return ctx.Err()
+	}
 
-		// Emit session before connected hook
-		if session, ok := self.CurrSession(clnt); ok {
-			if err := self.emitSessionEvent(sdkapi.EventSessionBeforeConnected, session, clnt); err != nil {
-				errReturnCh <- err
-				return
-			}
-		}
-
-		if !nftables.IsConnected(clnt.MacAddr()) {
-			if err := nftables.Connect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
-				errReturnCh <- err
-				return
-			}
-		} else {
-		}
-
-		startCh := make(chan error)
-		go self.loopSessions(startCh, clnt)
-
-		err = <-startCh
-		close(startCh)
-
-		if err != nil {
-			errReturnCh <- err
-			return
-		}
-
-		clnt.Emit(string(sdkapi.EventSessionConnected), []byte(notify))
-		if session, ok := self.CurrSession(clnt); ok {
-			self.emitSessionEvent(sdkapi.EventSessionConnected, session, clnt)
-		}
-		self.emitClientEvent(sdkapi.EventClientConnected, clnt)
-		errReturnCh <- nil
-	}()
-
-	// Handle error from goroutine
-	err := <-errReturnCh
 	if err == nil {
 		err = clnt.Update(ctx, sdkapi.UpdateDeviceParams{
 			UUID:     clnt.UUID(),
@@ -315,75 +297,105 @@ func (self *SessionsMgr) CurrSession(clnt sdkapi.IClientDevice) (cs sdkapi.IClie
 		return nil, false
 	}
 
-	return rs.session, true
+	return rs.GetSession(), true
 }
 
-func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClientDevice) {
+func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClientDevice, notify string) {
 	var callbackDone atomic.Bool
 	ctx := context.Background()
 
-	for nftables.IsConnected(clnt.MacAddr()) {
-		errCh := make(chan error)
+	// Loop condition: continue while connected OR until first session starts
+	// This allows the first iteration to run before nftables rules are added
+	for nftables.IsConnected(clnt.MacAddr()) || !callbackDone.Load() {
+		// Get next available session
+		cs, err := self.GetSession(ctx, clnt)
+		if err != nil {
+			if !callbackDone.Load() {
+				// First attempt failed - user sees error immediately
+				resultCh <- err
+				callbackDone.Store(true)
+			} else {
+				// Session chaining failed - no more sessions available
+				self.Disconnect(ctx, clnt, self.coreAPI.Translate("info", "No more sessions available"))
+			}
+			return
+		}
 
-		go func() {
-			cs, err := self.GetSession(ctx, clnt)
+		// Get or create running session
+		rs, ok := self.getRunningSession(clnt)
+		if !ok {
+			rs, err = NewRunningSession(clnt, cs, self)
 			if err != nil {
-				errCh <- err
+				if !callbackDone.Load() {
+					resultCh <- err
+					callbackDone.Store(true)
+				} else {
+					self.Disconnect(ctx, clnt, err.Error())
+				}
+				return
+			}
+			self.sessions.Store(clnt.ID(), rs)
+		}
+
+		// Start the session (this also sets up TC classes/filters)
+		err = rs.Start(ctx, cs)
+		if err != nil {
+			if !callbackDone.Load() {
+				// First session start failed - user sees error immediately
+				resultCh <- err
+				callbackDone.Store(true)
+			} else {
+				// Chained session start failed - disconnect
+				self.Disconnect(ctx, clnt, err.Error())
+			}
+			return
+		}
+
+		// First successful start - add firewall rules and emit events
+		if !callbackDone.Load() {
+			// Add firewall rules to allow internet access
+			if err := nftables.Connect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
+				// nftables failed - stop the session, cleanup TC, and return error
+				rs.Stop(ctx)
+				rs.CleanupTc()
+				self.sessions.Delete(clnt.ID())
+				resultCh <- err
+				callbackDone.Store(true)
 				return
 			}
 
-			rs, ok := self.getRunningSession(clnt)
-			if !ok {
-				rs, err = NewRunningSession(clnt, cs, self)
-				if err != nil {
-					errCh <- err
-					return
-				}
-
-				err = rs.Start(ctx, cs)
-				if err != nil {
-					errCh <- err
-					return
-				}
-
-				self.sessions.Store(clnt.ID(), rs)
-			} else {
-				err = rs.Start(ctx, cs)
-				if err != nil {
-					errCh <- err
-					return
-				}
+			// Emit connection events
+			clnt.Emit(string(sdkapi.EventSessionConnected), []byte(notify))
+			if session, ok := self.CurrSession(clnt); ok {
+				self.emitSessionEvent(sdkapi.EventSessionConnected, session, clnt)
 			}
+			self.emitClientEvent(sdkapi.EventClientConnected, clnt)
 
-			// Start was successful
-			if !callbackDone.Load() {
-				resultCh <- nil
-				callbackDone.Store(true)
-			}
-
-			err = <-rs.Done()
-			errCh <- err
-		}()
-
-		err := <-errCh
-
-		if !callbackDone.Load() {
-			resultCh <- err
+			// Signal success to Connect()
+			resultCh <- nil
 			callbackDone.Store(true)
 		}
 
+		// Wait for session to end
+		err = <-rs.Done()
+
+		// Handle session end
 		if err != nil {
-			// Check if session expired - if so, disconnect with appropriate message
-			var disconnectMsg string
 			if errors.Is(err, ErrSessionExpired) {
-				disconnectMsg = self.coreAPI.Translate("info", "Your session has expired")
-			} else {
-				disconnectMsg = err.Error()
+				// Session expired normally - continue loop to try next session
+				log.Printf("Session expired for device %s, checking for next available session...", clnt.MacAddr())
+				continue
 			}
-			self.Disconnect(ctx, clnt, disconnectMsg)
+			// Other error - disconnect
+			self.Disconnect(ctx, clnt, err.Error())
 			return
 		}
+
+		// Session ended without error - continue loop to check for next session
 	}
+
+	// Loop exited because nftables.IsConnected returned false
+	// Device was disconnected externally
 }
 
 func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *RunningSession, ok bool) {
@@ -406,39 +418,25 @@ func (self *SessionsMgr) GetRunningSession(clnt sdkapi.IClientDevice) (rs *Runni
 }
 
 func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevice) error {
-	errCh := make(chan error)
+	if nftables.IsConnected(clnt.MacAddr()) {
+		if err := nftables.Disconnect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
+			return err
+		}
+	}
 
-	go func() {
-		if nftables.IsConnected(clnt.MacAddr()) {
-			err := nftables.Disconnect(clnt.IpAddr(), clnt.MacAddr())
-			if err != nil {
-				errCh <- err
-				return
-			}
+	rs, ok := self.getRunningSession(clnt)
+	if ok {
+		if err := rs.Stop(ctx); err != nil {
+			return err
 		}
 
-		rs, ok := self.getRunningSession(clnt)
-
-		if ok {
-			err := rs.Stop(ctx)
-			if err != nil {
-				errCh <- err
-				return
-			}
-
-			err = rs.CleanupTc()
-			if err != nil {
-				errCh <- err
-				return
-			}
+		if err := rs.CleanupTc(); err != nil {
+			return err
 		}
+	}
 
-		self.sessions.Delete(clnt.ID())
-
-		errCh <- nil
-	}()
-
-	return <-errCh
+	self.sessions.Delete(clnt.ID())
+	return nil
 }
 
 func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevice) (sdkapi.IClientSession, error) {
