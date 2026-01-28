@@ -359,7 +359,6 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	timeNow := time.Now().UTC()
 	if s.StartedAt() == nil {
 		s.SetStartedAt(&timeNow)
-		s.SetResumedAt(&timeNow)
 	}
 
 	// Set resumed time to track current running period
