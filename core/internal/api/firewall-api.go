@@ -1,8 +1,6 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -32,520 +30,8 @@ type FirewallApi struct {
 	createdGroups map[string]bool        // Track created destination IP groups by slugified name
 }
 
-// NFTables JSON structure definitions
-type nftablesOutput struct {
-	Nftables []json.RawMessage `json:"nftables"`
-}
-
-type nftRule struct {
-	Rule struct {
-		Family string            `json:"family"`
-		Table  string            `json:"table"`
-		Chain  string            `json:"chain"`
-		Handle int               `json:"handle"`
-		Expr   []json.RawMessage `json:"expr"`
-	} `json:"rule"`
-}
-
-type nftMatch struct {
-	Match struct {
-		Op    string          `json:"op"`
-		Left  json.RawMessage `json:"left"`
-		Right interface{}     `json:"right"`
-	} `json:"match"`
-}
-
-type nftPayload struct {
-	Payload struct {
-		Protocol string `json:"protocol"`
-		Field    string `json:"field"`
-	} `json:"payload"`
-}
-
 // ResolveHostnameToIps is implemented in firewall-api-resolve.go and firewall-api-resolve_dev.go
 // with different behavior for dev and production builds
-
-// OpenIpForClientDevice opens firewall access for a specific client device to a destination IP
-// This method is serialized through a job queue to prevent race conditions
-func (self *FirewallApi) OpenIpForClientDevice(params sdkapi.OpenIpForClientDeviceParams) error {
-	contextInfo := fmt.Sprintf("DestIP=%s, ClientMAC=%s, ClientIP=%s",
-		params.DstIp, params.MacAddr, params.IpAddr)
-
-	_, err := self.firewallQue.ExecWithTimeout(
-		5*time.Second,
-		"Open IP for Client Device",
-		contextInfo,
-		func() (any, error) {
-			err := self.doOpenIpForClientDevice(params)
-			return nil, err
-		},
-	)
-	return err
-}
-
-// doOpenIpForClientDevice is the internal implementation of OpenIpForClientDevice
-func (self *FirewallApi) doOpenIpForClientDevice(params sdkapi.OpenIpForClientDeviceParams) error {
-	// Validate and normalize MAC address
-	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(params.MacAddr)
-	if err != nil {
-		return fmt.Errorf("MAC validation failed: %v", err)
-	}
-	params.MacAddr = normalizedMAC
-
-	// Validate destination IP address
-	if _, err := sdkutils.ValidateIPAddress(params.DstIp); err != nil {
-		return fmt.Errorf("destination IP validation failed: %v", err)
-	}
-
-	// Validate client IP address
-	if _, err := sdkutils.ValidateIPAddress(params.IpAddr); err != nil {
-		return fmt.Errorf("client IP validation failed: %v", err)
-	}
-
-	// Ensure open_ip chains exist
-	if err := self.ensureChains(); err != nil {
-		return err
-	}
-
-	// Add jump rules at the top of internet table chains
-	if err := self.addJumpRules(); err != nil {
-		return err
-	}
-
-	// Check if rule already exists
-	exists, err := self.ruleExists(params.DstIp, params.MacAddr)
-	if err != nil {
-		return fmt.Errorf("failed to check if rule exists: %v", err)
-	}
-
-	// Create cache key for tracking
-	cacheKey := fmt.Sprintf("%s:%s", params.DstIp, params.MacAddr)
-
-	if exists {
-		// Rule already exists - cancel any existing timer and reschedule if needed
-		self.timersMutex.Lock()
-		if existingTimer, ok := self.activeTimers[cacheKey]; ok {
-			existingTimer.Stop()
-			delete(self.activeTimers, cacheKey)
-		}
-		self.timersMutex.Unlock()
-
-		// Schedule new removal timer if timeout is specified
-		if params.TimeoutSecs > 0 {
-			self.scheduleRuleRemoval(params.DstIp, params.MacAddr, params.TimeoutSecs)
-		}
-		return nil
-	}
-
-	// Determine IP version for destination
-	destIpVersion, err := sdkutils.GetIPVersion(params.DstIp)
-	if err != nil {
-		return fmt.Errorf("failed to determine destination IP version: %v", err)
-	}
-
-	// Determine IP version for client
-	clientIpVersion, err := sdkutils.GetIPVersion(params.IpAddr)
-	if err != nil {
-		return fmt.Errorf("failed to determine client IP version: %v", err)
-	}
-
-	// Check if IP versions are compatible for return traffic rules
-	// nftables doesn't allow mixing ip and ip6 protocol matchers in the same rule
-	ipVersionsMatch := destIpVersion == clientIpVersion
-
-	// Log IP version mismatch for debugging
-	if !ipVersionsMatch {
-		log.Printf("[Firewall] IP version mismatch: client=%s (%s), destination=%s (%s) - return traffic rules will be skipped (relying on connection tracking)",
-			params.IpAddr, clientIpVersion, params.DstIp, destIpVersion)
-	}
-
-	// Build nftables rules for bidirectional traffic
-	// Outgoing: Client MAC → Destination IP (all ports)
-	preroutingOutgoingCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting ether saddr %s %s daddr %s counter accept", params.MacAddr, destIpVersion, params.DstIp)
-	forwardOutgoingCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward ether saddr %s %s daddr %s counter accept", params.MacAddr, destIpVersion, params.DstIp)
-
-	// Add prerouting rule for outgoing traffic (client → destination)
-	if err := shell.Exec(preroutingOutgoingCmd, nil); err != nil {
-		return fmt.Errorf("failed to add prerouting outgoing rule for %s → %s: %v", params.MacAddr, params.DstIp, err)
-	}
-
-	// Add forwarding rule for outgoing traffic (client → destination)
-	if err := shell.Exec(forwardOutgoingCmd, nil); err != nil {
-		return fmt.Errorf("failed to add forward outgoing rule for %s → %s: %v", params.MacAddr, params.DstIp, err)
-	}
-
-	// Only add return traffic rules if IP versions match
-	// Mixed protocol scenarios (IPv4 client → IPv6 destination or vice versa) cannot be
-	// expressed in a single nftables rule. In these cases, return traffic is handled by
-	// connection tracking and NAT mechanisms, so explicit return rules are not needed.
-	if ipVersionsMatch {
-		// Return: Destination IP → Client IP (all ports)
-		preroutingReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_prerouting %s saddr %s %s daddr %s counter accept", destIpVersion, params.DstIp, clientIpVersion, params.IpAddr)
-		forwardReturnCmd := fmt.Sprintf("nft add rule inet internet open_ip_forward %s saddr %s %s daddr %s counter accept", destIpVersion, params.DstIp, clientIpVersion, params.IpAddr)
-
-		// Add prerouting rule for return traffic (destination → client)
-		if err := shell.Exec(preroutingReturnCmd, nil); err != nil {
-			return fmt.Errorf("failed to add prerouting return rule for %s → %s: %v", params.DstIp, params.IpAddr, err)
-		}
-
-		// Add forwarding rule for return traffic (destination → client)
-		if err := shell.Exec(forwardReturnCmd, nil); err != nil {
-			return fmt.Errorf("failed to add forward return rule for %s → %s: %v", params.DstIp, params.IpAddr, err)
-		}
-	}
-	// else: Skip return traffic rules for mixed IP protocols (e.g., IPv4 client → IPv6 destination)
-	// Outgoing rules are sufficient, return traffic relies on connection tracking/NAT
-
-	// Schedule automatic removal if timeout is specified
-	if params.TimeoutSecs > 0 {
-		self.scheduleRuleRemoval(params.DstIp, params.MacAddr, params.TimeoutSecs)
-	}
-
-	return nil
-}
-
-// scheduleRuleRemoval schedules automatic removal of a firewall rule after the specified timeout
-func (self *FirewallApi) scheduleRuleRemoval(destinationIp string, macAddr string, timeoutSecs int) {
-	timerKey := fmt.Sprintf("%s:%s", destinationIp, macAddr)
-
-	timer := time.AfterFunc(time.Duration(timeoutSecs)*time.Second, func() {
-		// Remove timer from tracking map
-		self.timersMutex.Lock()
-		delete(self.activeTimers, timerKey)
-		self.timersMutex.Unlock()
-
-		// Remove the firewall rule
-		err := self.CloseIpForClientDevice(sdkapi.CloseIpForClientDeviceParams{
-			DstIp:   destinationIp,
-			MacAddr: macAddr,
-		})
-		if err != nil {
-			// Log error but don't panic - this is a background operation
-			fmt.Printf("Warning: Failed to auto-remove firewall rule for %s (MAC: %s): %v\n", destinationIp, macAddr, err)
-		}
-	})
-
-	// Store timer in tracking map
-	self.timersMutex.Lock()
-	self.activeTimers[timerKey] = timer
-	self.timersMutex.Unlock()
-}
-
-// CloseIpForClientDevice removes firewall access for a specific client device to a destination IP
-// This method is serialized through a job queue to prevent race conditions
-func (self *FirewallApi) CloseIpForClientDevice(params sdkapi.CloseIpForClientDeviceParams) error {
-	contextInfo := fmt.Sprintf("DestIP=%s, ClientMAC=%s",
-		params.DstIp, params.MacAddr)
-
-	_, err := self.firewallQue.ExecWithTimeout(
-		5*time.Second,
-		"Close IP for Client Device",
-		contextInfo,
-		func() (any, error) {
-			err := self.doCloseIpForClientDevice(params)
-			return nil, err
-		},
-	)
-	return err
-}
-
-// doCloseIpForClientDevice is the internal implementation of CloseIpForClientDevice
-func (self *FirewallApi) doCloseIpForClientDevice(params sdkapi.CloseIpForClientDeviceParams) error {
-	// Validate and normalize MAC address
-	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(params.MacAddr)
-	if err != nil {
-		return fmt.Errorf("MAC validation failed: %v", err)
-	}
-	params.MacAddr = normalizedMAC
-
-	// Cancel any active timer for this rule
-	cacheKey := fmt.Sprintf("%s:%s", params.DstIp, params.MacAddr)
-	self.timersMutex.Lock()
-	if timer, ok := self.activeTimers[cacheKey]; ok {
-		timer.Stop()
-		delete(self.activeTimers, cacheKey)
-	}
-	self.timersMutex.Unlock()
-
-	// Remove the firewall rules for this destination IP
-	err = self.removeRulesForDestIP(params.DstIp, params.MacAddr)
-
-	return err
-}
-
-// removeRulesForDestIP removes firewall rules for a specific destination IP and MAC address
-func (self *FirewallApi) removeRulesForDestIP(destinationIp string, macAddr string) error {
-	// Determine IP version for destination
-	destIpVersion, err := sdkutils.GetIPVersion(destinationIp)
-	if err != nil {
-		return fmt.Errorf("failed to determine destination IP version: %v", err)
-	}
-
-	// Get all rules and find matching ones to delete
-	var out bytes.Buffer
-	err = shell.ExecOutput("nft -j list table inet internet", &out)
-	if err != nil {
-		return fmt.Errorf("failed to list nftables: %v", err)
-	}
-
-	var nftOutput nftablesOutput
-	if err := json.Unmarshal(out.Bytes(), &nftOutput); err != nil {
-		return fmt.Errorf("failed to parse nftables JSON: %v", err)
-	}
-
-	// Track if we found and deleted any rules
-	deletedAny := false
-
-	// Process each item in the nftables array
-	for _, item := range nftOutput.Nftables {
-		var rule nftRule
-		if err := json.Unmarshal(item, &rule); err != nil {
-			continue // Skip non-rule items
-		}
-
-		// Only process rules from open_ip chains
-		if rule.Rule.Chain != "open_ip_prerouting" && rule.Rule.Chain != "open_ip_forward" {
-			continue
-		}
-
-		// Check if this rule matches our destination IP and MAC address
-		hasDestIPMatch := false
-		hasMacMatch := false
-
-		for _, exprRaw := range rule.Rule.Expr {
-			var match nftMatch
-			if err := json.Unmarshal(exprRaw, &match); err != nil {
-				continue
-			}
-
-			if match.Match.Op == "" {
-				continue
-			}
-
-			var payload nftPayload
-			if err := json.Unmarshal(match.Match.Left, &payload); err != nil {
-				continue
-			}
-
-			// Check for destination IP match (daddr or saddr)
-			if payload.Payload.Protocol == destIpVersion && (payload.Payload.Field == "daddr" || payload.Payload.Field == "saddr") {
-				if ipStr, ok := match.Match.Right.(string); ok && ipStr == destinationIp {
-					hasDestIPMatch = true
-				}
-			}
-
-			// Check for MAC address match (ether saddr)
-			if payload.Payload.Protocol == "ether" && payload.Payload.Field == "saddr" {
-				if macStr, ok := match.Match.Right.(string); ok && macStr == macAddr {
-					hasMacMatch = true
-				}
-			}
-		}
-
-		// Delete rule if it matches destination IP (for return traffic) or MAC + destination IP (for outgoing)
-		// We match rules that have either:
-		// 1. MAC address match AND dest IP match (outgoing traffic rules)
-		// 2. Destination IP as source (return traffic rules - no MAC)
-		shouldDelete := hasDestIPMatch && (hasMacMatch || !hasMacMatch)
-
-		if shouldDelete {
-			cmd := fmt.Sprintf("nft delete rule inet internet %s handle %d", rule.Rule.Chain, rule.Rule.Handle)
-			if err := shell.Exec(cmd, nil); err != nil {
-				return fmt.Errorf("failed to delete rule for %s (MAC: %s): %v", destinationIp, macAddr, err)
-			}
-			deletedAny = true
-		}
-	}
-
-	if !deletedAny {
-		// Not an error - rule might have already been removed
-		return nil
-	}
-
-	return nil
-}
-
-// ensureChains creates open_ip chains within the internet table if they don't exist
-func (self *FirewallApi) ensureChains() error {
-	// Check if open_ip_prerouting chain exists
-	var out bytes.Buffer
-	err := shell.ExecOutput("nft -a list chain inet internet open_ip_prerouting 2>&1", &out)
-	chainExists := err == nil && !strings.Contains(out.String(), "No such file or directory")
-
-	if !chainExists {
-		if err := shell.Exec("nft add chain inet internet open_ip_prerouting", nil); err != nil {
-			return fmt.Errorf("failed to create open_ip_prerouting chain: %v", err)
-		}
-	}
-
-	// Check if open_ip_forward chain exists
-	out.Reset()
-	err = shell.ExecOutput("nft -a list chain inet internet open_ip_forward 2>&1", &out)
-	chainExists = err == nil && !strings.Contains(out.String(), "No such file or directory")
-
-	if !chainExists {
-		if err := shell.Exec("nft add chain inet internet open_ip_forward", nil); err != nil {
-			return fmt.Errorf("failed to create open_ip_forward chain: %v", err)
-		}
-	}
-
-	return nil
-}
-
-// addJumpRules adds jump rules at the top of internet table chains
-func (self *FirewallApi) addJumpRules() error {
-	// Check if jump rule already exists in prerouting
-	var out bytes.Buffer
-	err := shell.ExecOutput("nft -a list chain inet internet prerouting", &out)
-	if err != nil {
-		// If chain doesn't exist, try to add the jump rule
-		if strings.Contains(out.String(), "No such file or directory") {
-			if err := shell.Exec("nft insert rule inet internet prerouting counter jump open_ip_prerouting", nil); err != nil {
-				return fmt.Errorf("failed to add prerouting jump rule: %v", err)
-			}
-		} else {
-			return fmt.Errorf("failed to list prerouting chain: %v", err)
-		}
-	} else if !strings.Contains(out.String(), "jump open_ip_prerouting") {
-		if err := shell.Exec("nft insert rule inet internet prerouting counter jump open_ip_prerouting", nil); err != nil {
-			return fmt.Errorf("failed to add prerouting jump rule: %v", err)
-		}
-	}
-
-	// Check if jump rule already exists in forward
-	out.Reset()
-	err = shell.ExecOutput("nft -a list chain inet internet forward", &out)
-	if err != nil {
-		// If chain doesn't exist, try to add the jump rule
-		if strings.Contains(out.String(), "No such file or directory") {
-			if err := shell.Exec("nft insert rule inet internet forward counter jump open_ip_forward", nil); err != nil {
-				return fmt.Errorf("failed to add forward jump rule: %v", err)
-			}
-		} else {
-			return fmt.Errorf("failed to list forward chain: %v", err)
-		}
-	} else if !strings.Contains(out.String(), "jump open_ip_forward") {
-		if err := shell.Exec("nft insert rule inet internet forward counter jump open_ip_forward", nil); err != nil {
-			return fmt.Errorf("failed to add forward jump rule: %v", err)
-		}
-	}
-
-	return nil
-}
-
-// ruleExists checks if a rule for the given destination IP and MAC address already exists
-func (self *FirewallApi) ruleExists(destinationIp string, macAddr string) (bool, error) {
-	var out bytes.Buffer
-	err := shell.ExecOutput("nft -j list table inet internet", &out)
-	if err != nil {
-		return false, fmt.Errorf("failed to list nftables: %v", err)
-	}
-
-	var nftOutput nftablesOutput
-	if err := json.Unmarshal(out.Bytes(), &nftOutput); err != nil {
-		return false, fmt.Errorf("failed to parse nftables JSON: %v", err)
-	}
-
-	// Determine IP version
-	ipVersion, err := sdkutils.GetIPVersion(destinationIp)
-	if err != nil {
-		return false, fmt.Errorf("failed to determine IP version: %v", err)
-	}
-
-	// We need to find at least one outgoing rule (MAC + dest IP as daddr)
-	// The presence of outgoing rules indicates the full rule set exists
-	// because OpenIpForClientDevice() adds all 4 rules atomically
-	for _, item := range nftOutput.Nftables {
-		var rule nftRule
-		if err := json.Unmarshal(item, &rule); err != nil {
-			continue // Skip non-rule items
-		}
-
-		// Only process rules from open_ip chains
-		if rule.Rule.Chain != "open_ip_prerouting" && rule.Rule.Chain != "open_ip_forward" {
-			continue
-		}
-
-		// Check if this is an outgoing rule (MAC + dest IP as daddr)
-		hasDestIPAsDaddr := false
-		hasMacMatch := false
-
-		for _, exprRaw := range rule.Rule.Expr {
-			var match nftMatch
-			if err := json.Unmarshal(exprRaw, &match); err != nil {
-				continue
-			}
-
-			if match.Match.Op == "" {
-				continue
-			}
-
-			var payload nftPayload
-			if err := json.Unmarshal(match.Match.Left, &payload); err != nil {
-				continue
-			}
-
-			// Check for destination IP as daddr (outgoing traffic)
-			if payload.Payload.Protocol == ipVersion && payload.Payload.Field == "daddr" {
-				if ipStr, ok := match.Match.Right.(string); ok && ipStr == destinationIp {
-					hasDestIPAsDaddr = true
-				}
-			}
-
-			// Check for MAC address match (ether saddr)
-			if payload.Payload.Protocol == "ether" && payload.Payload.Field == "saddr" {
-				if macStr, ok := match.Match.Right.(string); ok && macStr == macAddr {
-					hasMacMatch = true
-				}
-			}
-		}
-
-		// If we find an outgoing rule (MAC + dest IP as daddr), the rule set exists
-		if hasDestIPAsDaddr && hasMacMatch {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-// RemoveJumpRulesAndChains removes jump rules and cleans up open_ip chains
-func (self *FirewallApi) RemoveJumpRulesAndChains() error {
-	// Remove jump rule from prerouting
-	deleteCmd := "nft delete rule inet internet prerouting handle $(nft -a list chain inet internet prerouting | grep 'jump open_ip_prerouting' | awk '{print $NF}')"
-	var out bytes.Buffer
-	err := shell.ExecOutput(deleteCmd, &out)
-	if err != nil && !strings.Contains(out.String(), "No such file or directory") {
-		return fmt.Errorf("failed to remove prerouting jump rule: %v (%s)", err, out.String())
-	}
-
-	// Remove jump rule from forward
-	deleteCmd = "nft delete rule inet internet forward handle $(nft -a list chain inet internet forward | grep 'jump open_ip_forward' | awk '{print $NF}')"
-	out.Reset()
-	err = shell.ExecOutput(deleteCmd, &out)
-	if err != nil && !strings.Contains(out.String(), "No such file or directory") {
-		return fmt.Errorf("failed to remove forward jump rule: %v (%s)", err, out.String())
-	}
-
-	// Flush and delete open_ip chains
-	cmds := []string{
-		"nft flush chain inet internet open_ip_prerouting",
-		"nft flush chain inet internet open_ip_forward",
-		"nft delete chain inet internet open_ip_prerouting",
-		"nft delete chain inet internet open_ip_forward",
-	}
-
-	for _, cmd := range cmds {
-		out.Reset()
-		err := shell.ExecOutput(cmd, &out)
-		if err != nil && !strings.Contains(out.String(), "No such file or directory") {
-			// Log warning but don't fail
-			fmt.Printf("Warning: Failed to execute cleanup command '%s': %v (%s)\n", cmd, err, out.String())
-		}
-	}
-
-	return nil
-}
 
 // CreateDstIpGroup creates a named group of destination IP addresses with dedicated nftables infrastructure.
 // The group name is slugified for safe use in nftables identifiers.
@@ -655,10 +141,10 @@ func (self *FirewallApi) doCreateDstIpGroup(slugName string, ips sdkutils.Separa
 	return nil
 }
 
-// AllowClientDeviceToDstIpGroup allows a specific client device to access all IPs in a named destination IP group.
+// AllowClientToDstIpGroup allows a specific client device to access all IPs in a named destination IP group.
 // The client's MAC and IP are added to the group's client sets, enabling access through the group's firewall rules.
 // If timeoutSecs > 0, the client is automatically removed after the specified duration.
-func (self *FirewallApi) AllowClientDeviceToDstIpGroup(clnt sdkapi.DstIpGroupClient, groupName string, timeoutSecs int) error {
+func (self *FirewallApi) AllowClientToDstIpGroup(clnt sdkapi.DstIpGroupClient, groupName string, timeoutSecs int) error {
 	// Slugify the group name to match how it was created
 	slugName := sdkutils.Slugify(groupName, "_")
 	if slugName == "" {
@@ -669,17 +155,17 @@ func (self *FirewallApi) AllowClientDeviceToDstIpGroup(clnt sdkapi.DstIpGroupCli
 
 	_, err := self.firewallQue.ExecWithTimeout(
 		5*time.Second,
-		"Allow Client Device to Destination IP Group",
+		"Allow Client to Destination IP Group",
 		contextInfo,
 		func() (any, error) {
-			return nil, self.doAllowClientDeviceToDstIpGroup(clnt, slugName, timeoutSecs)
+			return nil, self.doAllowClientToDstIpGroup(clnt, slugName, timeoutSecs)
 		},
 	)
 	return err
 }
 
-// doAllowClientDeviceToDstIpGroup is the internal implementation of AllowClientDeviceToDstIpGroup
-func (self *FirewallApi) doAllowClientDeviceToDstIpGroup(clnt sdkapi.DstIpGroupClient, slugName string, timeoutSecs int) error {
+// doAllowClientToDstIpGroup is the internal implementation of AllowClientToDstIpGroup
+func (self *FirewallApi) doAllowClientToDstIpGroup(clnt sdkapi.DstIpGroupClient, slugName string, timeoutSecs int) error {
 	// Check if group exists
 	self.timersMutex.RLock()
 	if !self.createdGroups[slugName] {
@@ -756,7 +242,7 @@ func (self *FirewallApi) scheduleGroupClientRemoval(slugName string, clnt sdkapi
 		self.timersMutex.Unlock()
 
 		// Remove the client from the group
-		err := self.RemoveClientDeviceFromDstIpGroup(clnt, slugName)
+		err := self.RemoveClientFromDstIpGroup(clnt, slugName)
 		if err != nil {
 			// Log error but don't panic - this is a background operation
 			fmt.Printf("Warning: Failed to auto-remove client %s from group %s: %v\n", clnt.MacAddr, slugName, err)
@@ -769,9 +255,9 @@ func (self *FirewallApi) scheduleGroupClientRemoval(slugName string, clnt sdkapi
 	self.timersMutex.Unlock()
 }
 
-// RemoveClientDeviceFromDstIpGroup removes access for a specific client device from a named destination IP group.
+// RemoveClientFromDstIpGroup removes access for a specific client device from a named destination IP group.
 // The client's MAC and IP are removed from the group's client sets.
-func (self *FirewallApi) RemoveClientDeviceFromDstIpGroup(clnt sdkapi.DstIpGroupClient, groupName string) error {
+func (self *FirewallApi) RemoveClientFromDstIpGroup(clnt sdkapi.DstIpGroupClient, groupName string) error {
 	// Slugify the group name to match how it was created
 	slugName := sdkutils.Slugify(groupName, "_")
 	if slugName == "" {
@@ -782,17 +268,17 @@ func (self *FirewallApi) RemoveClientDeviceFromDstIpGroup(clnt sdkapi.DstIpGroup
 
 	_, err := self.firewallQue.ExecWithTimeout(
 		5*time.Second,
-		"Remove Client Device from Destination IP Group",
+		"Remove Client from Destination IP Group",
 		contextInfo,
 		func() (any, error) {
-			return nil, self.doRemoveClientDeviceFromDstIpGroup(clnt, slugName)
+			return nil, self.doRemoveClientFromDstIpGroup(clnt, slugName)
 		},
 	)
 	return err
 }
 
-// doRemoveClientDeviceFromDstIpGroup is the internal implementation of RemoveClientDeviceFromDstIpGroup
-func (self *FirewallApi) doRemoveClientDeviceFromDstIpGroup(clnt sdkapi.DstIpGroupClient, slugName string) error {
+// doRemoveClientFromDstIpGroup is the internal implementation of RemoveClientFromDstIpGroup
+func (self *FirewallApi) doRemoveClientFromDstIpGroup(clnt sdkapi.DstIpGroupClient, slugName string) error {
 	// Check if group exists
 	self.timersMutex.RLock()
 	if !self.createdGroups[slugName] {

@@ -102,13 +102,17 @@ type SeparatedIPs struct {
 	IPv6 []string
 }
 
-// SeparateIPsByVersion takes a list of IP addresses and separates them into IPv4 and IPv6 slices.
+// SeparateIPsByVersion takes a list of IP addresses, removes duplicates, and separates them into IPv4 and IPv6 slices.
+// Duplicate IPs are automatically removed (first occurrence is kept).
 // Returns an error if any IP address is invalid (fails the entire operation).
 func SeparateIPsByVersion(ips []string) (SeparatedIPs, error) {
 	result := SeparatedIPs{
 		IPv4: []string{},
 		IPv6: []string{},
 	}
+
+	// Deduplicate IPs first
+	ips = SliceDedup(ips)
 
 	for _, ip := range ips {
 		version, err := GetIPVersion(ip)
