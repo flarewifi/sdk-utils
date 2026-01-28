@@ -595,8 +595,8 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 
 	// Start timer goroutine
 	go func() {
-		// Periodic save ticker (every 15 seconds)
-		saveTicker := time.NewTicker(15 * time.Second)
+		// Periodic save ticker (every 1 minute)
+		saveTicker := time.NewTicker(1 * time.Minute)
 		defer saveTicker.Stop()
 
 		for {
