@@ -54,6 +54,20 @@ type IClientSession interface {
 	// Returns the session's remaining data in megabytes.
 	RemainingData() (mbytes float64)
 
+	// Returns true if the session resources are fully consumed.
+	// A session is consumed when:
+	// - For time-based sessions: remaining time <= 0
+	// - For data-based sessions: data consumption >= data allowance
+	// - For time-or-data sessions: either time or data is exhausted
+	// - For any session type: expiration date has passed
+	IsConsumed() bool
+
+	// Returns true if the session has passed its expiration date.
+	// This only checks the expiration date (ExpDays from StartedAt),
+	// not whether time/data resources are exhausted.
+	// Returns false if the session has no expiration date set.
+	IsExpired() bool
+
 	// Returns the time when session was first started.
 	StartedAt() *time.Time
 

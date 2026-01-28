@@ -237,6 +237,32 @@ func (self *ClientSession) ConsumedDataMb() (mbytes float64) {
 // RemainingTime returns the session's remaining time in seconds.
 func (self *ClientSession) RemainingTime() (sec int) {
 	d := self.data.Load()
+	return self.remainingTimeWithData(d)
+}
+
+// RemainingData returns the session's remaining data in megabytes.
+func (self *ClientSession) RemainingData() (mbytes float64) {
+	d := self.data.Load()
+	return self.remainingDataWithData(d)
+}
+
+// ============================================================================
+// INTERNAL HELPERS - Use provided data snapshot for consistent calculations
+// ============================================================================
+
+// isExpiredWithData checks expiration using provided data snapshot.
+// This avoids multiple atomic loads when called from IsConsumed().
+func (self *ClientSession) isExpiredWithData(d *sessionData) bool {
+	if d.startedAt != nil && d.expDays != nil {
+		exp := d.startedAt.Add(time.Hour * 24 * time.Duration(*d.expDays))
+		return !time.Now().Before(exp)
+	}
+	return false
+}
+
+// remainingTimeWithData calculates remaining time using provided data snapshot.
+// This avoids multiple atomic loads when called from IsConsumed().
+func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
 	remaining := d.timeSecs - d.timeCons
 
 	// If session is running, subtract elapsed time since resumed_at
@@ -252,10 +278,52 @@ func (self *ClientSession) RemainingTime() (sec int) {
 	return remaining
 }
 
-// RemainingData returns the session's remaining data in megabytes.
-func (self *ClientSession) RemainingData() (mbytes float64) {
-	d := self.data.Load()
+// remainingDataWithData calculates remaining data using provided data snapshot.
+// This avoids multiple atomic loads when called from IsConsumed().
+func (self *ClientSession) remainingDataWithData(d *sessionData) float64 {
 	return d.dataMb - d.dataCons
+}
+
+// IsConsumed returns true if the session resources are fully consumed.
+// A session is consumed when:
+// - For time-based sessions: remaining time <= 0
+// - For data-based sessions: remaining data <= 0
+// - For time-or-data sessions: either time or data is exhausted
+// - For any session type: expiration date has passed
+//
+// Uses a single atomic load for consistent snapshot across all checks.
+func (self *ClientSession) IsConsumed() bool {
+	d := self.data.Load() // Single atomic load for consistency
+	sessionType := sdkapi.SessionType(d.sessionType)
+
+	// Check expiration date first (applies to all types)
+	if self.isExpiredWithData(d) {
+		return true
+	}
+
+	// For time-based or time-or-data sessions, check time consumption
+	if sessionType == sdkapi.SessionTypeTime || sessionType == sdkapi.SessionTypeTimeOrData {
+		if self.remainingTimeWithData(d) <= 0 {
+			return true
+		}
+	}
+
+	// For data-based or time-or-data sessions, check data consumption
+	if sessionType == sdkapi.SessionTypeData || sessionType == sdkapi.SessionTypeTimeOrData {
+		if self.remainingDataWithData(d) <= 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsExpired returns true if the session has passed its expiration date.
+// This only checks the expiration date (ExpDays from StartedAt),
+// not whether time/data resources are exhausted.
+// Returns false if the session has no expiration date set.
+func (self *ClientSession) IsExpired() bool {
+	return self.isExpiredWithData(self.data.Load())
 }
 
 // StartedAt returns the time when session was first started.

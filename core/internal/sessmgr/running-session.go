@@ -336,23 +336,19 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 
 	log.Printf("[Running Session] Start - %s", contextInfo)
 
-	// Check if already stopped
-	self.mu.Lock()
-	if self.stopped {
-		self.mu.Unlock()
-		return ErrSessionStopped
-	}
-	self.mu.Unlock()
-
-	// 1. DB operations - no TC/NFT lock needed
+	// 1. DB reload - no lock needed (session has its own synchronization)
 	dbStart := time.Now()
 	if err := s.Reload(ctx); err != nil {
 		return fmt.Errorf("failed to reload session: %w", err)
 	}
 	logSlowOperation("DB Reload", dbStart, 2*time.Second, contextInfo)
 
-	// 2. Update session state
+	// 2. Check if stopped and update session state atomically
 	self.mu.Lock()
+	if self.stopped {
+		self.mu.Unlock()
+		return ErrSessionStopped
+	}
 	self.session = s
 
 	// Set first start time if this is the first time session is starting
@@ -367,36 +363,25 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	}
 	self.mu.Unlock()
 
-	// 3. Save to DB - no TC/NFT lock needed
+	// 3. Save to DB - no lock needed
 	dbStart = time.Now()
 	if err := s.Save(ctx); err != nil {
 		return fmt.Errorf("failed to save session: %w", err)
 	}
 	logSlowOperation("DB Save", dbStart, 2*time.Second, contextInfo)
 
-	// 4. TC operations - use global tcNftMu lock
-	self.mu.Lock()
-	hasTcClass := self.tcClassId != nil
-	self.mu.Unlock()
+	// 4. TC operations - check and init/update inside single lock acquisition
+	err := withTcNftLock("TC Init/Update", contextInfo, func() error {
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-	if !hasTcClass {
-		err := withTcNftLock("TC Init", contextInfo, func() error {
-			self.mu.Lock()
-			defer self.mu.Unlock()
+		if self.tcClassId == nil {
 			return self.initTc()
-		})
-		if err != nil {
-			return fmt.Errorf("failed to init TC: %w", err)
 		}
-	} else {
-		err := withTcNftLock("TC Update", contextInfo, func() error {
-			self.mu.Lock()
-			defer self.mu.Unlock()
-			return self.updateTc()
-		})
-		if err != nil {
-			return fmt.Errorf("failed to update TC: %w", err)
-		}
+		return self.updateTc()
+	})
+	if err != nil {
+		return fmt.Errorf("failed to setup TC: %w", err)
 	}
 
 	// 5. Start timer if not already running
@@ -415,7 +400,7 @@ func (self *RunningSession) Stop(ctx context.Context) error {
 	return self.StopWithReason(ctx, false)
 }
 
-func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) error {
+func (self *RunningSession) StopWithReason(ctx context.Context, consumed bool) error {
 	// First, mark as stopped and collect state atomically
 	self.mu.Lock()
 	if self.stopped {
@@ -439,23 +424,15 @@ func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) er
 		sessionID = session.ID()
 	}
 	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Expired=%v",
-		self.clntId, sessionID, expired)
+		self.clntId, sessionID, consumed)
 
 	log.Printf("[Running Session] StopWithReason - %s", contextInfo)
 
 	// Calculate and record elapsed time
-	if session != nil && session.ResumedAt() != nil {
-		// TimeConsumption() already includes elapsed time since resumed_at
-		currentCons := session.TimeConsumption()
-		session.SetTimeCons(currentCons)
-
-		// Calculate elapsed for logging only
-		elapsed := int(time.Since(*session.ResumedAt()).Seconds())
+	elapsed := self.persistTimeConsumption(session, true)
+	if elapsed > 0 {
 		log.Printf("Recording elapsed time: %d seconds (total consumption: %d)\n",
-			elapsed, currentCons)
-
-		// Reset resumed_at to nil since session is stopping
-		session.SetResumedAt(nil)
+			elapsed, session.TimeConsumption())
 	}
 
 	// DB save - no lock needed (session has its own synchronization)
@@ -464,14 +441,20 @@ func (self *RunningSession) StopWithReason(ctx context.Context, expired bool) er
 	logSlowOperation("DB Save (Stop)", dbStart, 2*time.Second, contextInfo)
 
 	// Emit events (emitter is immutable, no lock needed)
-	if expired && self.emitter != nil && self.clnt != nil {
-		self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeExpired, session, self.clnt)
-		self.emitter.emitSessionEvent(sdkapi.EventSessionExpired, session, self.clnt)
+	if self.emitter != nil && self.clnt != nil {
+		if consumed {
+			// Session was consumed (time/data exhausted) - emit both expired and disconnected
+			self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeConsumed, session, self.clnt)
+			self.emitter.emitSessionEvent(sdkapi.EventSessionConsumed, session, self.clnt)
+		}
+		// Always emit disconnected event when session stops
+		self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeDisconnected, session, self.clnt)
+		self.emitter.emitSessionEvent(sdkapi.EventSessionDisconnected, session, self.clnt)
 	}
 
 	// Determine the error to return to callbacks
 	var callbackErr error
-	if expired {
+	if consumed {
 		callbackErr = ErrSessionExpired
 	} else {
 		callbackErr = saveErr
@@ -557,10 +540,9 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	// Update diffMb and check if consumed
 	self.mu.Lock()
 	self.diffMb += dataconMb
-	shouldStop := self.isConsumed()
 	self.mu.Unlock()
 
-	if shouldStop {
+	if session.IsConsumed() {
 		log.Println("Session data is consumed!!!")
 		go self.StopWithReason(context.Background(), true)
 	}
@@ -571,14 +553,15 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 // ============================================================================
 
 func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
-	// Calculate remaining time
-	remainingSecs := s.RemainingTime()
-
-	if remainingSecs <= 0 {
-		log.Println("Session time already consumed, stopping immediately")
+	// Check if session is already consumed or expired
+	if s.IsConsumed() {
+		log.Println("Session already consumed or expired, stopping immediately")
 		go self.StopWithReason(context.Background(), true)
 		return
 	}
+
+	// Calculate remaining time
+	remainingSecs := s.RemainingTime()
 
 	// Create cancellable context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -626,26 +609,11 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 				}
 
 				// Persist time consumption to protect against crashes
-				// This ensures at most 15 seconds of time tracking is lost on crash
+				// This ensures at most 1 minute of time tracking is lost on crash
 				// instead of all time since session start
-				var elapsed int
-				if resumedAt := currentSession.ResumedAt(); resumedAt != nil {
-					// Get current total consumption (includes elapsed since resumed_at)
-					currentCons := currentSession.TimeConsumption()
-					elapsed = int(time.Since(*resumedAt).Seconds())
-
-					// Update timeCons with the accumulated time
-					currentSession.SetTimeCons(currentCons)
-
-					// Reset resumed_at to NOW so next calculation starts fresh
-					// This prevents double-counting: timeCons now includes elapsed,
-					// and RemainingTime() will calculate new elapsed from this point
-					now := time.Now().UTC()
-					currentSession.SetResumedAt(&now)
-
-					log.Printf("Periodic save: persisting %d seconds consumed, %d remaining\n",
-						currentCons, currentSession.RemainingTime())
-				}
+				elapsed := self.persistTimeConsumption(currentSession, false)
+				log.Printf("Periodic save: persisting %d seconds consumed, %d remaining\n",
+					currentSession.ConsumedTimeSecs(), currentSession.RemainingTime())
 
 				// Emit before updated hook (emitter is immutable)
 				if self.emitter != nil && self.clnt != nil {
@@ -679,6 +647,13 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 				self.mu.Lock()
 				self.diffMb = 0
 				self.mu.Unlock()
+
+				// Check if session is now consumed or expired (e.g., expiration date passed)
+				if currentSession.IsConsumed() {
+					log.Println("Session consumed or expired during periodic check")
+					go self.StopWithReason(context.Background(), true)
+					return
+				}
 			}
 		}
 	}()
@@ -716,15 +691,9 @@ func (self *RunningSession) updateTc() error {
 
 	downMbits := s.DownMbits()
 	upMbits := s.UpMbits()
-	useGlobal := s.UseGlobalSpeed()
 
-	if useGlobal {
-		lan, err := network.FindByIp(net.ip)
-		if err != nil {
-			return err
-		}
-
-		d, u := lan.Bandwidth()
+	if s.UseGlobalSpeed() {
+		d, u := net.lan.Bandwidth()
 		downMbits, upMbits = int(d), int(u)
 	}
 
@@ -749,6 +718,34 @@ func (self *RunningSession) cleanUpTimer() {
 	log.Println("Done cleaning session timer.")
 }
 
+// persistTimeConsumption persists current time consumption to the session.
+// If clearResumed is true, sets ResumedAt to nil (session stopping).
+// If clearResumed is false, resets ResumedAt to now (checkpoint for continued tracking).
+// Returns elapsed seconds for logging purposes.
+func (self *RunningSession) persistTimeConsumption(session sdkapi.IClientSession, clearResumed bool) int {
+	if session == nil {
+		return 0
+	}
+
+	resumedAt := session.ResumedAt()
+	if resumedAt == nil {
+		return 0
+	}
+
+	currentCons := session.TimeConsumption()
+	elapsed := int(time.Since(*resumedAt).Seconds())
+	session.SetTimeCons(currentCons)
+
+	if clearResumed {
+		session.SetResumedAt(nil)
+	} else {
+		now := time.Now().UTC()
+		session.SetResumedAt(&now)
+	}
+
+	return elapsed
+}
+
 // saveSession saves and reloads a session.
 func (self *RunningSession) saveSession(ctx context.Context, session sdkapi.IClientSession) error {
 	if session == nil {
@@ -764,47 +761,4 @@ func (self *RunningSession) saveSession(ctx context.Context, session sdkapi.ICli
 	}
 
 	return nil
-}
-
-// expired checks if the session has expired. Must be called with mu held.
-func (self *RunningSession) expired() bool {
-	if self.session == nil {
-		return false
-	}
-	expiresAt := self.session.ExpiresAt()
-	if expiresAt != nil {
-		return !time.Now().Before(*expiresAt)
-	}
-	return false
-}
-
-// isConsumed checks if the session resources are consumed. Must be called with mu held.
-func (self *RunningSession) isConsumed() bool {
-	s := self.session
-	if s == nil {
-		return false
-	}
-
-	t := s.Type()
-
-	// Check expiration date first (applies to all types)
-	if self.expired() {
-		return true
-	}
-
-	// For time-based or time-or-data sessions, check time consumption
-	if t == sdkapi.SessionTypeTime || t == sdkapi.SessionTypeTimeOrData {
-		if s.RemainingTime() <= 0 {
-			return true
-		}
-	}
-
-	// For data-based or time-or-data sessions, check data consumption
-	if t == sdkapi.SessionTypeData || t == sdkapi.SessionTypeTimeOrData {
-		if s.DataConsumption() >= s.DataMb() {
-			return true
-		}
-	}
-
-	return false
 }
