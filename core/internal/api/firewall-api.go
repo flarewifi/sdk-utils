@@ -13,21 +13,28 @@ import (
 	sdkapi "sdk/api"
 )
 
+const (
+	// DstIpGroupMaxAge is the maximum age for IPs in a destination group before they're flushed
+	DstIpGroupMaxAge = 12 * time.Hour
+)
+
 func NewFirewallApi(api *PluginApi) {
 	firewallApi := &FirewallApi{
 		activeTimers:  make(map[string]*time.Timer),
-		timersMutex:   &sync.RWMutex{},
+		firewallMutex: &sync.RWMutex{},
 		firewallQue:   jobque.NewJobQue[any](),
 		createdGroups: make(map[string]bool),
+		groupIPs:      make(map[string]map[string]time.Time),
 	}
 	api.FirewallAPI = firewallApi
 }
 
 type FirewallApi struct {
-	activeTimers  map[string]*time.Timer // Track active removal timers by "destIP:mac" key
-	timersMutex   *sync.RWMutex          // Protect concurrent access to activeTimers and createdGroups
-	firewallQue   *jobque.JobQue[any]    // Serialize firewall operations to prevent race conditions
-	createdGroups map[string]bool        // Track created destination IP groups by slugified name
+	activeTimers  map[string]*time.Timer          // Track active removal timers by "destIP:mac" key
+	firewallMutex *sync.RWMutex                   // Protect concurrent access to activeTimers, createdGroups, and groupIPs
+	firewallQue   *jobque.JobQue[any]             // Serialize firewall operations to prevent race conditions
+	createdGroups map[string]bool                 // Track created destination IP groups by slugified name
+	groupIPs      map[string]map[string]time.Time // Track IPs per group with timestamp when added (slugName -> IP -> addedAt)
 }
 
 // ResolveHostnameToIps is implemented in firewall-api-resolve.go and firewall-api-resolve_dev.go
@@ -65,12 +72,12 @@ func (self *FirewallApi) CreateDstIpGroup(name string, ips ...string) error {
 // doCreateDstIpGroup is the internal implementation of CreateDstIpGroup
 func (self *FirewallApi) doCreateDstIpGroup(slugName string, ips sdkutils.SeparatedIPs) error {
 	// Check if group already exists
-	self.timersMutex.RLock()
+	self.firewallMutex.RLock()
 	if self.createdGroups[slugName] {
-		self.timersMutex.RUnlock()
+		self.firewallMutex.RUnlock()
 		return fmt.Errorf("destination IP group already exists: %s", slugName)
 	}
-	self.timersMutex.RUnlock()
+	self.firewallMutex.RUnlock()
 
 	// Define nftables resource names
 	setV4 := fmt.Sprintf("dst_grp_%s_v4", slugName)
@@ -127,16 +134,27 @@ func (self *FirewallApi) doCreateDstIpGroup(slugName string, ips sdkutils.Separa
 	batch.WriteString(fmt.Sprintf("insert rule inet internet prerouting counter jump %s\n", chainPrerouting))
 	batch.WriteString(fmt.Sprintf("insert rule inet internet forward counter jump %s\n", chainForward))
 
+	// Prepare new IP map with current timestamps (before executing nftables)
+	now := time.Now()
+	newIPMap := make(map[string]time.Time)
+	for _, ip := range ips.IPv4 {
+		newIPMap[ip] = now
+	}
+	for _, ip := range ips.IPv6 {
+		newIPMap[ip] = now
+	}
+
 	// Execute batch command using nft -f - with heredoc for safe shell escaping
 	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
 	if err := shell.Exec(cmd, nil); err != nil {
 		return fmt.Errorf("failed to create destination IP group: %v", err)
 	}
 
-	// Mark group as created
-	self.timersMutex.Lock()
+	// Mark group as created and track IPs (only after nftables success)
+	self.firewallMutex.Lock()
 	self.createdGroups[slugName] = true
-	self.timersMutex.Unlock()
+	self.groupIPs[slugName] = newIPMap
+	self.firewallMutex.Unlock()
 
 	return nil
 }
@@ -167,12 +185,12 @@ func (self *FirewallApi) AllowClientToDstIpGroup(clnt sdkapi.DstIpGroupClient, g
 // doAllowClientToDstIpGroup is the internal implementation of AllowClientToDstIpGroup
 func (self *FirewallApi) doAllowClientToDstIpGroup(clnt sdkapi.DstIpGroupClient, slugName string, timeoutSecs int) error {
 	// Check if group exists
-	self.timersMutex.RLock()
+	self.firewallMutex.RLock()
 	if !self.createdGroups[slugName] {
-		self.timersMutex.RUnlock()
+		self.firewallMutex.RUnlock()
 		return fmt.Errorf("destination IP group does not exist: %s", slugName)
 	}
-	self.timersMutex.RUnlock()
+	self.firewallMutex.RUnlock()
 
 	// Validate and normalize MAC address
 	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(clnt.MacAddr)
@@ -205,12 +223,12 @@ func (self *FirewallApi) doAllowClientToDstIpGroup(clnt sdkapi.DstIpGroupClient,
 	cacheKey := fmt.Sprintf("grp:%s:%s", slugName, clnt.MacAddr)
 
 	// Cancel any existing timer for this client in this group
-	self.timersMutex.Lock()
+	self.firewallMutex.Lock()
 	if existingTimer, ok := self.activeTimers[cacheKey]; ok {
 		existingTimer.Stop()
 		delete(self.activeTimers, cacheKey)
 	}
-	self.timersMutex.Unlock()
+	self.firewallMutex.Unlock()
 
 	// Build nft batch script to add client to sets
 	var batch strings.Builder
@@ -237,9 +255,9 @@ func (self *FirewallApi) scheduleGroupClientRemoval(slugName string, clnt sdkapi
 
 	timer := time.AfterFunc(time.Duration(timeoutSecs)*time.Second, func() {
 		// Remove timer from tracking map
-		self.timersMutex.Lock()
+		self.firewallMutex.Lock()
 		delete(self.activeTimers, cacheKey)
-		self.timersMutex.Unlock()
+		self.firewallMutex.Unlock()
 
 		// Remove the client from the group
 		err := self.RemoveClientFromDstIpGroup(clnt, slugName)
@@ -250,9 +268,9 @@ func (self *FirewallApi) scheduleGroupClientRemoval(slugName string, clnt sdkapi
 	})
 
 	// Store timer in tracking map
-	self.timersMutex.Lock()
+	self.firewallMutex.Lock()
 	self.activeTimers[cacheKey] = timer
-	self.timersMutex.Unlock()
+	self.firewallMutex.Unlock()
 }
 
 // RemoveClientFromDstIpGroup removes access for a specific client device from a named destination IP group.
@@ -280,12 +298,12 @@ func (self *FirewallApi) RemoveClientFromDstIpGroup(clnt sdkapi.DstIpGroupClient
 // doRemoveClientFromDstIpGroup is the internal implementation of RemoveClientFromDstIpGroup
 func (self *FirewallApi) doRemoveClientFromDstIpGroup(clnt sdkapi.DstIpGroupClient, slugName string) error {
 	// Check if group exists
-	self.timersMutex.RLock()
+	self.firewallMutex.RLock()
 	if !self.createdGroups[slugName] {
-		self.timersMutex.RUnlock()
+		self.firewallMutex.RUnlock()
 		return fmt.Errorf("destination IP group does not exist: %s", slugName)
 	}
-	self.timersMutex.RUnlock()
+	self.firewallMutex.RUnlock()
 
 	// Validate and normalize MAC address
 	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(clnt.MacAddr)
@@ -316,12 +334,12 @@ func (self *FirewallApi) doRemoveClientFromDstIpGroup(clnt sdkapi.DstIpGroupClie
 
 	// Cancel any active timer for this client in this group
 	cacheKey := fmt.Sprintf("grp:%s:%s", slugName, clnt.MacAddr)
-	self.timersMutex.Lock()
+	self.firewallMutex.Lock()
 	if timer, ok := self.activeTimers[cacheKey]; ok {
 		timer.Stop()
 		delete(self.activeTimers, cacheKey)
 	}
-	self.timersMutex.Unlock()
+	self.firewallMutex.Unlock()
 
 	// Build nft batch script to remove client from sets
 	var batch strings.Builder
@@ -369,32 +387,100 @@ func (self *FirewallApi) AddIpsToDstIpGroup(name string, ips ...string) error {
 
 // doAddIpsToDstIpGroup is the internal implementation of AddIpsToDstIpGroup
 func (self *FirewallApi) doAddIpsToDstIpGroup(slugName string, ips sdkutils.SeparatedIPs) error {
-	// Check if group exists
-	self.timersMutex.RLock()
+	now := time.Now()
+	cutoff := now.Add(-DstIpGroupMaxAge)
+
+	// Check if group exists and get existing IPs
+	self.firewallMutex.RLock()
 	if !self.createdGroups[slugName] {
-		self.timersMutex.RUnlock()
+		self.firewallMutex.RUnlock()
 		return fmt.Errorf("destination IP group does not exist: %s", slugName)
 	}
-	self.timersMutex.RUnlock()
+	existingIPs := self.groupIPs[slugName]
+	self.firewallMutex.RUnlock()
 
 	// Nothing to add
 	if len(ips.IPv4) == 0 && len(ips.IPv6) == 0 {
 		return nil
 	}
 
+	// Check if any existing IPs are stale (older than 12 hours)
+	hasStaleIPs := false
+	for _, addedAt := range existingIPs {
+		if addedAt.Before(cutoff) {
+			hasStaleIPs = true
+			break
+		}
+	}
+
 	// Define nftables set names
 	setV4 := fmt.Sprintf("dst_grp_%s_v4", slugName)
 	setV6 := fmt.Sprintf("dst_grp_%s_v6", slugName)
 
-	// Build nft batch script to add elements
 	var batch strings.Builder
-	if len(ips.IPv4) > 0 {
-		ipList := strings.Join(ips.IPv4, ", ")
-		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV4, ipList))
-	}
-	if len(ips.IPv6) > 0 {
-		ipList := strings.Join(ips.IPv6, ", ")
-		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV6, ipList))
+	var newIPMap map[string]time.Time
+
+	if hasStaleIPs {
+		// FLUSH mode: flush sets, add all current IPs, reset tracking
+		batch.WriteString(fmt.Sprintf("flush set inet internet %s\n", setV4))
+		batch.WriteString(fmt.Sprintf("flush set inet internet %s\n", setV6))
+
+		if len(ips.IPv4) > 0 {
+			ipList := strings.Join(ips.IPv4, ", ")
+			batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV4, ipList))
+		}
+		if len(ips.IPv6) > 0 {
+			ipList := strings.Join(ips.IPv6, ", ")
+			batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV6, ipList))
+		}
+
+		// Prepare new map with all IPs at current timestamp
+		newIPMap = make(map[string]time.Time)
+		for _, ip := range ips.IPv4 {
+			newIPMap[ip] = now
+		}
+		for _, ip := range ips.IPv6 {
+			newIPMap[ip] = now
+		}
+	} else {
+		// ADD mode: filter existing, add only new IPs
+		var newIPv4, newIPv6 []string
+		for _, ip := range ips.IPv4 {
+			if _, exists := existingIPs[ip]; !exists {
+				newIPv4 = append(newIPv4, ip)
+			}
+		}
+		for _, ip := range ips.IPv6 {
+			if _, exists := existingIPs[ip]; !exists {
+				newIPv6 = append(newIPv6, ip)
+			}
+		}
+
+		// Nothing new to add
+		if len(newIPv4) == 0 && len(newIPv6) == 0 {
+			return nil
+		}
+
+		if len(newIPv4) > 0 {
+			ipList := strings.Join(newIPv4, ", ")
+			batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV4, ipList))
+		}
+		if len(newIPv6) > 0 {
+			ipList := strings.Join(newIPv6, ", ")
+			batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV6, ipList))
+		}
+
+		// Prepare updated map: copy existing + add new
+		newIPMap = make(map[string]time.Time, len(existingIPs)+len(newIPv4)+len(newIPv6))
+		for ip, ts := range existingIPs {
+			newIPMap[ip] = ts
+		}
+		for _, ip := range newIPv4 {
+			newIPMap[ip] = now
+		}
+		for _, ip := range newIPv6 {
+			newIPMap[ip] = now
+		}
 	}
 
 	// Execute batch command using heredoc for safe shell escaping
@@ -402,6 +488,11 @@ func (self *FirewallApi) doAddIpsToDstIpGroup(slugName string, ips sdkutils.Sepa
 	if err := shell.Exec(cmd, nil); err != nil {
 		return fmt.Errorf("failed to add IPs to destination IP group: %v", err)
 	}
+
+	// Update in-memory map only after nftables success
+	self.firewallMutex.Lock()
+	self.groupIPs[slugName] = newIPMap
+	self.firewallMutex.Unlock()
 
 	return nil
 }
@@ -444,9 +535,9 @@ func (self *FirewallApi) DstIpGroupExists(name string) (bool, error) {
 		return false, fmt.Errorf("invalid group name: %s (must contain alphanumeric characters)", name)
 	}
 
-	self.timersMutex.RLock()
+	self.firewallMutex.RLock()
 	exists := self.createdGroups[slugName]
-	self.timersMutex.RUnlock()
+	self.firewallMutex.RUnlock()
 
 	return exists, nil
 }
@@ -454,12 +545,12 @@ func (self *FirewallApi) DstIpGroupExists(name string) (bool, error) {
 // doChangeDstIpGroup is the internal implementation of ChangeDstIpGroup
 func (self *FirewallApi) doChangeDstIpGroup(slugName string, ips sdkutils.SeparatedIPs) error {
 	// Check if group exists
-	self.timersMutex.RLock()
+	self.firewallMutex.RLock()
 	if !self.createdGroups[slugName] {
-		self.timersMutex.RUnlock()
+		self.firewallMutex.RUnlock()
 		return fmt.Errorf("destination IP group does not exist: %s", slugName)
 	}
-	self.timersMutex.RUnlock()
+	self.firewallMutex.RUnlock()
 
 	// Define nftables set names
 	setV4 := fmt.Sprintf("dst_grp_%s_v4", slugName)
@@ -479,11 +570,26 @@ func (self *FirewallApi) doChangeDstIpGroup(slugName string, ips sdkutils.Separa
 		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV6, ipList))
 	}
 
+	// Prepare new IP map with current timestamps (before executing nftables)
+	now := time.Now()
+	newIPMap := make(map[string]time.Time)
+	for _, ip := range ips.IPv4 {
+		newIPMap[ip] = now
+	}
+	for _, ip := range ips.IPv6 {
+		newIPMap[ip] = now
+	}
+
 	// Execute batch command using heredoc for safe shell escaping
 	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
 	if err := shell.Exec(cmd, nil); err != nil {
 		return fmt.Errorf("failed to change destination IP group: %v", err)
 	}
+
+	// Reset IP tracking with new timestamps (only after nftables success)
+	self.firewallMutex.Lock()
+	self.groupIPs[slugName] = newIPMap
+	self.firewallMutex.Unlock()
 
 	return nil
 }

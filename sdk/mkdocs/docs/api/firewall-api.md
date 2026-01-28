@@ -141,8 +141,9 @@ if err != nil {
 
 **Notes:**
 - Does not remove existing IPs - only adds new ones
-- Duplicate IPs in the input are automatically removed before processing
-- Use `ChangeDstIpGroup` if you want to replace all IPs
+- Duplicate IPs are automatically filtered using in-memory tracking
+- IPs older than 12 hours are automatically flushed when new IPs are added
+- Use `ChangeDstIpGroup` if you want to immediately replace all IPs
 
 ### ChangeDstIpGroup
 
