@@ -98,6 +98,7 @@ WHERE
             AND datetime('now') < datetime(started_at, '+' || exp_days || ' days')
         )
     )
+ORDER BY created_at DESC
 LIMIT
   1;
 
