@@ -447,6 +447,8 @@ type ExecuteParams struct {
                     └─────────────┘     └─────────────┘
 ```
 
+For a detailed payment flow diagram and implementation guide, see [Accept Payments](../tutorials/accepting-payments.md).
+
 ---
 
 ## Usage Examples
