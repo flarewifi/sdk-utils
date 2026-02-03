@@ -6,17 +6,9 @@ import (
 	"core/internal/jobs"
 	"core/internal/modules/activation"
 	"log"
-	"os"
-	"time"
 )
 
 func Init(g *api.CoreGlobals) {
-	// Force UTC timezone for the entire application
-	// This ensures all time.Now() calls return UTC time
-	os.Setenv("TZ", "UTC")
-	time.Local = time.UTC
-	log.Println("Application timezone set to UTC")
-
 	bootCh := make(chan struct{})
 
 	InitDirs()
