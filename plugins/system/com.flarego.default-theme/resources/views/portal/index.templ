@@ -3,12 +3,14 @@ package portal
 import (
 	"fmt"
 	sdkapi "sdk/api"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type PortalIndexData struct {
 	Navs             []sdkapi.PortalNavItem
 	SessionSummary   *sdkapi.ClientSessionSummary
 	IsSessionRunning bool
+	SessionType      sdkapi.SessionType
 	DeviceMac        string
 	DeviceIP         string
 }
@@ -36,6 +38,7 @@ templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
 		@SessionSummary(api, SessionSummaryData{
 			SessionSummary:   data.SessionSummary,
 			IsSessionRunning: data.IsSessionRunning,
+			SessionType:      data.SessionType,
 		})
 	</div>
 }
@@ -60,6 +63,7 @@ templ NavItems(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem) {
 type SessionSummaryData struct {
 	SessionSummary   *sdkapi.ClientSessionSummary
 	IsSessionRunning bool
+	SessionType      sdkapi.SessionType
 }
 
 templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
@@ -67,24 +71,35 @@ templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
 		<div class="panel panel-primary" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 4px;">
 			<div class="panel-heading" style="background-color: #337ab7; color: white; padding: 15px; border-radius: 4px 4px 0 0;">
 				<h4 class="panel-title" style="margin: 0; font-size: 16px; font-weight: 600;">
-					Session Summary
+					{ api.Translate("label", "Session Summary") }
 				</h4>
 			</div>
 			<div class="panel-body" style="padding: 20px;">
+			if data.SessionType != sdkapi.SessionTypeTime {
 				<div class="summary-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee;">
-					<span class="summary-label" style="color: #666; font-weight: 500;">Remaining Time:</span>
+					<span class="summary-label" style="color: #666; font-weight: 500;">{ api.Translate("label", "Remaining Time") }:</span>
 					<span class="summary-value" style="color: #333; font-weight: 600; font-size: 16px;">
 						<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
-							{ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }
-						</span>s
+							{ sdkutils.FormatTimeSecs(int(data.SessionSummary.RemainingTimeSecs)) }
+						</span>
 					</span>
 				</div>
 				<div class="summary-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
-					<span class="summary-label" style="color: #666; font-weight: 500;">Remaining Data:</span>
+					<span class="summary-label" style="color: #666; font-weight: 500;">{ api.Translate("label", "Remaining Data") }:</span>
 					<span class="summary-value" style="color: #333; font-weight: 600; font-size: 16px;">
-						{ fmt.Sprintf("%.2f", data.SessionSummary.RemainingDataMbytes) } MB
+						{ sdkutils.FormatByteData(data.SessionSummary.RemainingDataMbytes) }
 					</span>
 				</div>
+			} else {
+				<div class="summary-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+					<span class="summary-label" style="color: #666; font-weight: 500;">{ api.Translate("label", "Remaining Time") }:</span>
+					<span class="summary-value" style="color: #333; font-weight: 600; font-size: 16px;">
+						<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
+							{ sdkutils.FormatTimeSecs(int(data.SessionSummary.RemainingTimeSecs)) }
+						</span>
+					</span>
+				</div>
+			}
 			</div>
 		</div>
 	</div>
