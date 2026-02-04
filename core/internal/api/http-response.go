@@ -164,7 +164,9 @@ func (self *HttpResponse) Redirect(w http.ResponseWriter, r *http.Request, route
 }
 
 func (self *HttpResponse) RedirectToPortal(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	url := self.api.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:index")
+	w.Header().Add("Hx-Redirect", url)
+	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 
 func (self *HttpResponse) RedirectSuccess(w http.ResponseWriter, r *http.Request, redirectURL string) {

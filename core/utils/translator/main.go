@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"core/utils/config"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 // TranslationRef represents a reference to a translation
@@ -746,8 +744,9 @@ func scanFile(filePath string, usedTranslations map[string]*TranslationRef, stat
 			}
 
 			// Create the translation file path key
-			filename := sdkutils.FilenameFromTranslationKey(modifiedKey)
-			translationKey := filepath.Join(msgType, filename)
+			// Use the key directly as filename (no URL encoding)
+			// Translation files are stored with actual characters for readability
+			translationKey := filepath.Join(msgType, modifiedKey)
 
 			// Store the translation reference with original and modified keys
 			usedTranslations[translationKey] = &TranslationRef{
@@ -795,27 +794,37 @@ func validateTranslationKey(key, filePath string) string {
 		return "" // Return empty to signal invalid key
 	}
 
-	// Check word count, limit to 10 words
-	fields := strings.Fields(key)
-	wordCount := len(fields)
+	// Check character count, limit to 120 characters
+	const maxLength = 120
+	const warnThreshold = 100
+	const suffix = " (truncated)"
+	charCount := len(key)
 
-	// WARNING if exceeds 10 words - key will be truncated
-	if wordCount > 10 {
-		modifiedKey := strings.Join(fields[:10], " ") + " (truncated)"
-		log.Printf("⚠️  WARNING: Translation key exceeds 10 word limit (%d words) in %s\n"+
+	// WARNING if exceeds 120 characters - key will be truncated
+	if charCount > maxLength {
+		// Find last space before limit to avoid cutting mid-word
+		truncateAt := maxLength
+		for i := maxLength - 1; i > 0; i-- {
+			if key[i] == ' ' {
+				truncateAt = i
+				break
+			}
+		}
+		modifiedKey := strings.TrimSpace(key[:truncateAt]) + suffix
+		log.Printf("⚠️  WARNING: Translation key exceeds 120 character limit (%d chars) in %s\n"+
 			"   Original key: %q\n"+
 			"   Will be truncated to: %q\n"+
 			"   Filename will be: '%s'\n"+
-			"   Consider shortening the key for better readability. Example: 'Update downloaded. Reboot to apply.'",
-			wordCount, filePath, key, modifiedKey, modifiedKey)
+			"   Consider shortening the key for better readability.",
+			charCount, filePath, key, modifiedKey, modifiedKey)
 		return modifiedKey
 	}
 
-	// INFO if close to limit (8-10 words) - helps developers be aware
-	if wordCount >= 8 && wordCount <= 10 {
-		log.Printf("ℹ️  INFO: Translation key is close to 10 word limit (%d words) in %s: %q\n"+
+	// INFO if close to limit (100-120 chars) - helps developers be aware
+	if charCount >= warnThreshold && charCount <= maxLength {
+		log.Printf("ℹ️  INFO: Translation key is close to 120 character limit (%d chars) in %s: %q\n"+
 			"   Consider shortening if possible for better readability.",
-			wordCount, filePath, key)
+			charCount, filePath, key)
 	}
 
 	return key

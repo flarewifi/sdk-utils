@@ -40,3 +40,28 @@ WHERE
 LIMIT 
   1;
 
+
+-- name: AddToWalletBalance :exec
+UPDATE
+  wallets
+SET
+  balance = balance + @amount
+WHERE
+  device_id = @device_id;
+
+
+-- name: TransferWalletTransactions :exec
+UPDATE
+  wallet_transactions
+SET
+  wallet_id = @target_wallet_id
+WHERE
+  wallet_id = @source_wallet_id;
+
+
+-- name: DeleteWalletByDeviceId :exec
+DELETE FROM
+  wallets
+WHERE
+  device_id = @device_id;
+

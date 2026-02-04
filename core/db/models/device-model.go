@@ -211,3 +211,115 @@ func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 
 	return nil
 }
+
+// MergeDevices merges sourceDeviceID into targetDeviceID.
+// This transfers all sessions, purchases, fingerprints, and wallet balance from source to target,
+// then deletes the source device. Used when MAC randomization creates duplicate device records
+// for the same physical device (validated by fingerprint matching).
+func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourceDeviceID int64) error {
+	log.Printf("[DeviceModel.MergeDevices] Starting merge: source=%d -> target=%d", sourceDeviceID, targetDeviceID)
+
+	// Start a transaction
+	tx, err := self.db.DB.BeginTx(ctx, nil)
+	if err != nil {
+		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to begin transaction: %v", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	qtx := self.db.Queries.WithTx(tx)
+
+	// 1. Transfer sessions from source to target
+	log.Printf("[DeviceModel.MergeDevices] Transferring sessions...")
+	err = qtx.TransferSessionsToDevice(ctx, queries.TransferSessionsToDeviceParams{
+		TargetDeviceID: targetDeviceID,
+		SourceDeviceID: sourceDeviceID,
+	})
+	if err != nil {
+		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer sessions: %v", err)
+		return fmt.Errorf("failed to transfer sessions: %w", err)
+	}
+
+	// 2. Transfer purchases from source to target
+	log.Printf("[DeviceModel.MergeDevices] Transferring purchases...")
+	err = qtx.TransferPurchasesToDevice(ctx, queries.TransferPurchasesToDeviceParams{
+		TargetDeviceID: targetDeviceID,
+		SourceDeviceID: sourceDeviceID,
+	})
+	if err != nil {
+		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer purchases: %v", err)
+		return fmt.Errorf("failed to transfer purchases: %w", err)
+	}
+
+	// 3. Transfer fingerprints from source to target
+	log.Printf("[DeviceModel.MergeDevices] Transferring fingerprints...")
+	err = qtx.TransferFingerprintsToDevice(ctx, queries.TransferFingerprintsToDeviceParams{
+		TargetDeviceID: targetDeviceID,
+		SourceDeviceID: sourceDeviceID,
+	})
+	if err != nil {
+		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer fingerprints: %v", err)
+		return fmt.Errorf("failed to transfer fingerprints: %w", err)
+	}
+
+	// 4. Merge wallets - transfer balance and transactions
+	log.Printf("[DeviceModel.MergeDevices] Merging wallets...")
+	sourceWallet, err := qtx.FindWalletByDeviceId(ctx, sourceDeviceID)
+	if err != nil {
+		log.Printf("[DeviceModel.MergeDevices] WARN: Source wallet not found (may not exist): %v", err)
+		// Continue - source device might not have a wallet
+	} else {
+		targetWallet, err := qtx.FindWalletByDeviceId(ctx, targetDeviceID)
+		if err != nil {
+			log.Printf("[DeviceModel.MergeDevices] ERROR: Target wallet not found: %v", err)
+			return fmt.Errorf("failed to find target wallet: %w", err)
+		}
+
+		// Transfer wallet transactions from source to target wallet
+		err = qtx.TransferWalletTransactions(ctx, queries.TransferWalletTransactionsParams{
+			TargetWalletID: targetWallet.ID,
+			SourceWalletID: sourceWallet.ID,
+		})
+		if err != nil {
+			log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer wallet transactions: %v", err)
+			return fmt.Errorf("failed to transfer wallet transactions: %w", err)
+		}
+
+		// Add source wallet balance to target wallet
+		if sourceWallet.Balance > 0 {
+			log.Printf("[DeviceModel.MergeDevices] Adding balance %.2f from source wallet to target", sourceWallet.Balance)
+			err = qtx.AddToWalletBalance(ctx, queries.AddToWalletBalanceParams{
+				Amount:   sourceWallet.Balance,
+				DeviceID: targetDeviceID,
+			})
+			if err != nil {
+				log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to add wallet balance: %v", err)
+				return fmt.Errorf("failed to add wallet balance: %w", err)
+			}
+		}
+
+		// Delete source wallet (transactions already transferred)
+		err = qtx.DeleteWalletByDeviceId(ctx, sourceDeviceID)
+		if err != nil {
+			log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to delete source wallet: %v", err)
+			return fmt.Errorf("failed to delete source wallet: %w", err)
+		}
+	}
+
+	// 5. Delete the source device
+	log.Printf("[DeviceModel.MergeDevices] Deleting source device %d...", sourceDeviceID)
+	err = qtx.DeleteDevice(ctx, sourceDeviceID)
+	if err != nil {
+		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to delete source device: %v", err)
+		return fmt.Errorf("failed to delete source device: %w", err)
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to commit transaction: %v", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Printf("[DeviceModel.MergeDevices] SUCCESS: Merged device %d into device %d", sourceDeviceID, targetDeviceID)
+	return nil
+}

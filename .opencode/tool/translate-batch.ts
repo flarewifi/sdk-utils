@@ -106,27 +106,19 @@ ${validationErrors.map(err => `  ❌ ${err}`).join('\n')}
 💡 TIP: Different AI agents can work on different languages in parallel.`
     }
 
-    // Second pass: apply updates with progress tracking
-    console.error(`\n📝 Processing ${updates.length} translation file(s) for ${languageUpper}...\n`)
-    
+    // Process updates and track results
     for (let i = 0; i < updates.length; i++) {
       const update = updates[i]
-      const progress = `[${i + 1}/${updates.length}]`
-      
-      // Show progress
-      process.stderr.write(`${progress} Processing ${update.filePath}...`)
-      
-      
+
       try {
         const fullPath = path.join(cwd, update.filePath)
 
         // Check if file exists
         const fileExists = fs.existsSync(fullPath)
-        
+
         if (!fileExists && !createMissing) {
           results.push(`❌ SKIPPED: ${update.filePath} - File does not exist (use createMissing: true)`)
           errorCount++
-          process.stderr.write(`\r${progress} ❌ SKIPPED\n`)
           continue
         }
 
@@ -134,10 +126,9 @@ ${validationErrors.map(err => `  ❌ ${err}`).join('\n')}
         if (update.content.includes('\0')) {
           results.push(`❌ SKIPPED: ${update.filePath} - Invalid UTF-8 (contains null bytes)`)
           errorCount++
-          process.stderr.write(`\r${progress} ❌ INVALID UTF-8\n`)
           continue
         }
-        
+
         // Create directory if needed
         const dir = path.dirname(fullPath)
         if (!fs.existsSync(dir)) {
@@ -154,7 +145,7 @@ ${validationErrors.map(err => `  ❌ ${err}`).join('\n')}
         let retries = 3
         let written = false
         let lastError: any = null
-        
+
         while (retries > 0 && !written) {
           try {
             fs.writeFileSync(fullPath, update.content, "utf-8")
@@ -168,7 +159,7 @@ ${validationErrors.map(err => `  ❌ ${err}`).join('\n')}
             }
           }
         }
-        
+
         if (!written) {
           results.push(`❌ ERROR: ${update.filePath} - Failed after 3 retries: ${lastError?.message || 'Unknown error'}`)
           errorCount++
@@ -178,22 +169,16 @@ ${validationErrors.map(err => `  ❌ ${err}`).join('\n')}
         const action = fileExists ? "✅ UPDATED" : "✅ CREATED"
         results.push(`${action}: ${update.filePath}`)
         successCount++
-        
-        // Clear progress line and show result
-        process.stderr.write(`\r${progress} ${action}\n`)
       } catch (error: any) {
         results.push(`❌ ERROR: ${update.filePath} - ${error.message || error}`)
         errorCount++
-        process.stderr.write(`\r${progress} ❌ ERROR\n`)
       }
     }
-    
-    console.error(`\n✅ Processing complete!\n`)
 
     // Prepare summary with status indicator
     const statusIcon = errorCount === 0 ? '✅' : errorCount < updates.length ? '⚠️' : '❌'
     const statusText = errorCount === 0 ? 'Complete' : errorCount < updates.length ? 'Partial Success' : 'Failed'
-    
+
     const summary = `
 ${statusIcon} Batch ${languageUpper} Translation Update ${statusText}
 ${'='.repeat(50)}

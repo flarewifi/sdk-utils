@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"core/internal/api"
 	devicetoken "core/internal/modules/device-token"
@@ -146,8 +147,14 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterCtrl: Successfully registered device - ID: %d, MAC: %s, IP: %s",
 			clnt.ID(), clnt.MacAddr(), clnt.IpAddr()))
 
-		// Set "register" cookie to allow access to /portal/index
-		g.CoreAPI.HttpAPI.Cookie().SetPlainCookie(w, "register", "1", nil)
+		// Set "register" cookie with 12-hour expiration to allow access to /portal/index (only if not already set)
+		if _, err := g.CoreAPI.HttpAPI.Cookie().GetPlainCookie(r, "register"); err != nil {
+			cookieOpts := &sdkapi.HttpCookieOpts{
+				Path:    "/",
+				Expires: time.Now().Add(12 * time.Hour),
+			}
+			g.CoreAPI.HttpAPI.Cookie().SetPlainCookie(w, "register", "1", cookieOpts)
+		}
 		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "portal:index")
 	}
 }
@@ -348,8 +355,14 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get redirect URL
 		redirectUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:index")
 
-		// Set "register" cookie to allow access to /portal/index
-		g.CoreAPI.HttpAPI.Cookie().SetPlainCookie(w, "register", "1", nil)
+		// Set "register" cookie with 12-hour expiration to allow access to /portal/index (only if not already set)
+		if _, err := g.CoreAPI.HttpAPI.Cookie().GetPlainCookie(r, "register"); err != nil {
+			cookieOpts := &sdkapi.HttpCookieOpts{
+				Path:    "/",
+				Expires: time.Now().Add(12 * time.Hour),
+			}
+			g.CoreAPI.HttpAPI.Cookie().SetPlainCookie(w, "register", "1", cookieOpts)
+		}
 
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Success - DeviceID: %d, MAC: %s, IP: %s, Updated: %v",
 			clnt.ID(), clnt.MacAddr(), clnt.IpAddr(), updated))
@@ -372,15 +385,14 @@ func PortalIndexPage(g *api.CoreGlobals) http.HandlerFunc {
 		// Check for "register" cookie
 		_, err := g.CoreAPI.HttpAPI.Cookie().GetPlainCookie(r, "register")
 		if err != nil {
-			// Cookie not present, redirect to portal root
-			g.CoreAPI.LoggerAPI.Info("PortalIndexPage: No register cookie found, redirecting to portal root")
-			g.CoreAPI.HttpAPI.Response().RedirectToPortal(w, r)
+			// Cookie not present, redirect to root to trigger registration flow
+			g.CoreAPI.LoggerAPI.Info("PortalIndexPage: No register cookie found, redirecting to root for registration")
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
-		// Cookie present, remove it and render the page
-		g.CoreAPI.HttpAPI.Cookie().DeleteCookie(w, "register")
-		g.CoreAPI.LoggerAPI.Info("PortalIndexPage: Register cookie found and removed, rendering index page")
+		// Cookie present, render the page
+		g.CoreAPI.LoggerAPI.Info("PortalIndexPage: Register cookie found, rendering index page")
 
 		p, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {

@@ -11,18 +11,26 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-// truncateTranslationKey truncates translation keys that exceed 10 words
+// truncateTranslationKey truncates translation keys that exceed 120 characters
 // This matches the logic used by the translation scanner
 func truncateTranslationKey(key string) string {
-	fields := strings.Fields(key)
-	wordCount := len(fields)
+	const maxLength = 120
+	const suffix = " (truncated)"
 
-	// Truncate to 10 words if exceeds limit
-	if wordCount > 10 {
-		return strings.Join(fields[:10], " ") + " (truncated)"
+	if len(key) <= maxLength {
+		return key
 	}
 
-	return key
+	// Find last space before limit to avoid cutting mid-word
+	truncateAt := maxLength
+	for i := maxLength - 1; i > 0; i-- {
+		if key[i] == ' ' {
+			truncateAt = i
+			break
+		}
+	}
+
+	return strings.TrimSpace(key[:truncateAt]) + suffix
 }
 
 // TranslateMessage is the unified translation function used by all APIs
@@ -38,9 +46,10 @@ func TranslateMessage(translationsDir string, msgtype string, msgk string, pairs
 	// Apply the same truncation logic as the translation scanner
 	truncatedKey := truncateTranslationKey(msgk)
 
-	// Convert translation key to filesystem-safe filename
-	filename := sdkutils.FilenameFromTranslationKey(truncatedKey)
-	f := filepath.Join(translationsDir, appcfg.Lang, msgtype, filename)
+	// Use the truncated key directly as filename
+	// Translation files are stored with actual characters (spaces, punctuation)
+	// rather than URL-encoded versions for better readability and maintainability
+	f := filepath.Join(translationsDir, appcfg.Lang, msgtype, truncatedKey)
 
 	tmpl, err := flaretmpl.GetTextTemplate(f)
 	if err != nil {

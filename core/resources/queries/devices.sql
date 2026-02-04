@@ -106,3 +106,37 @@ SET
   status = 2
 WHERE
   status != 2;
+
+
+-- name: TransferSessionsToDevice :exec
+UPDATE
+  sessions
+SET
+  device_id = @target_device_id
+WHERE
+  device_id = @source_device_id;
+
+
+-- name: TransferPurchasesToDevice :exec
+UPDATE
+  purchases
+SET
+  device_id = @target_device_id
+WHERE
+  device_id = @source_device_id;
+
+
+-- name: TransferFingerprintsToDevice :exec
+UPDATE
+  device_fingerprints
+SET
+  device_id = @target_device_id
+WHERE
+  device_id = @source_device_id;
+
+
+-- name: DeleteDevice :exec
+DELETE FROM
+  devices
+WHERE
+  id = @id;

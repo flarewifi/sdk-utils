@@ -134,7 +134,7 @@ templ ActivationPage(data *ActivationPageData) {
 			<div class="container" id="activation-container">
 				<h1>{ data.API.Translate("label", "Activation Required") }</h1>
 				<p class="info-text">
-					{ data.API.Translate("info", "This device needs to be activated before you can use it Please provide the Machine ID below to your administrator or support team") }
+					{ data.API.Translate("info", "This device needs to be activated before you can use it. Please provide the Machine ID to your administrator") }
 				</p>
 				<div class="machine-id-label">
 					{ data.API.Translate("label", "Machine ID") }
@@ -148,7 +148,7 @@ templ ActivationPage(data *ActivationPageData) {
 				</button>
 			<div class="reboot-message" id="reboot-message">
 				<h2>{ data.API.Translate("label", "System Rebooting") }</h2>
-				<p>{ data.API.Translate("info", "Activation successful. The system is rebooting to complete the setup. Please wait a few minutes. The page will automatically reload when the system is ready") }</p>
+				<p>{ data.API.Translate("info", "Activation successful. The system is rebooting to complete setup. The page will reload automatically") }</p>
 			</div>
 			</div>
 			<script>

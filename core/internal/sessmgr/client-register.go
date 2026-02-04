@@ -43,10 +43,43 @@ func (reg *ClientRegister) FindByID(ctx context.Context, deviceID int64) (sdkapi
 	return clnt, nil
 }
 
-// UpdateDevice updates device network details and handles reconnection if needed
+// UpdateDevice updates device network details and handles reconnection if needed.
+// If the new MAC address belongs to another device, this function will merge the devices
+// (transferring sessions, purchases, fingerprints, and wallet balance) since fingerprint
+// validation has already passed before this function is called.
 func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClientDevice, newMac, newIP, newHostname string) error {
 	log.Printf("[ClientRegister.UpdateDevice] DEBUG: Updating device - DeviceID=%d, OldMAC=%s, NewMAC=%s, OldIP=%s, NewIP=%s, OldHostname=%s, NewHostname=%s",
 		clnt.ID(), clnt.MacAddr(), newMac, clnt.IpAddr(), newIP, clnt.Hostname(), newHostname)
+
+	// Check for MAC collision - if new MAC belongs to another device, we need to merge
+	// This happens when MAC randomization creates a new device record, but fingerprint
+	// validation proves it's the same physical device
+	if clnt.MacAddr() != newMac {
+		existingDev, err := reg.mdls.Device().FindByMac(ctx, newMac)
+		if err == nil && existingDev != nil && existingDev.ID() != clnt.ID() {
+			log.Printf("[ClientRegister.UpdateDevice] MAC collision detected - DeviceID=%d wants MAC=%s but DeviceID=%d already has it",
+				clnt.ID(), newMac, existingDev.ID())
+
+			// Check if the conflicting device has an active session
+			conflictingClnt := NewClientDevice(reg.db, reg.mdls, existingDev)
+			if _, hasSession := reg.sessionsMgr.GetRunningSession(conflictingClnt); hasSession {
+				log.Printf("[ClientRegister.UpdateDevice] Disconnecting active session on conflicting device %d before merge", existingDev.ID())
+				if err := reg.sessionsMgr.Disconnect(ctx, conflictingClnt, ""); err != nil {
+					log.Printf("[ClientRegister.UpdateDevice] WARN: Failed to disconnect conflicting device session: %v", err)
+					// Continue with merge anyway
+				}
+			}
+
+			// Merge the conflicting device into the current device
+			// This transfers all sessions, purchases, fingerprints, and wallet balance
+			log.Printf("[ClientRegister.UpdateDevice] Merging device %d into device %d...", existingDev.ID(), clnt.ID())
+			if err := reg.mdls.Device().MergeDevices(ctx, clnt.ID(), existingDev.ID()); err != nil {
+				log.Printf("[ClientRegister.UpdateDevice] ERROR: Failed to merge devices: %v", err)
+				return fmt.Errorf("could not merge devices: %w", err)
+			}
+			log.Printf("[ClientRegister.UpdateDevice] SUCCESS: Merged device %d into device %d", existingDev.ID(), clnt.ID())
+		}
+	}
 
 	// Check if device has a running session (before updating)
 	rs, hasRunningSession := reg.sessionsMgr.GetRunningSession(clnt)

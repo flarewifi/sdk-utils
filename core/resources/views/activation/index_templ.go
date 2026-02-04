@@ -67,9 +67,9 @@ func ActivationPage(data *ActivationPageData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("info", "This device needs to be activated before you can use it Please provide the Machine ID below to your administrator or support team"))
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("info", "This device needs to be activated before you can use it. Please provide the Machine ID to your administrator"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 137, Col: 166}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 137, Col: 145}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -132,9 +132,9 @@ func ActivationPage(data *ActivationPageData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("info", "Activation successful. The system is rebooting to complete the setup. Please wait a few minutes. The page will automatically reload when the system is ready"))
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("info", "Activation successful. The system is rebooting to complete setup. The page will reload automatically"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 151, Col: 195}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 151, Col: 139}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
