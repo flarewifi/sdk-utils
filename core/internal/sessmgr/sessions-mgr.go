@@ -382,8 +382,10 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 		// Handle session end
 		if err != nil {
 			if errors.Is(err, ErrSessionExpired) {
-				// Session expired normally - continue loop to try next session
+				// Session expired normally - reset state and continue to try next session
+				// TC class/filter are preserved for reuse with the next session
 				log.Printf("Session expired for device %s, checking for next available session...", clnt.MacAddr())
+				rs.Reset()
 				continue
 			}
 			// Other error - disconnect

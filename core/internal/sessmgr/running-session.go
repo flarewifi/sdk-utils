@@ -193,6 +193,21 @@ func (self *RunningSession) DiffMb() (mb float64) {
 	return self.diffMb
 }
 
+// Reset prepares the RunningSession for reuse with a new session.
+// Preserves TC class/filter to avoid teardown/recreation overhead.
+// Must be called after StopWithReason() and before Start() with new session.
+func (self *RunningSession) Reset() {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
+	self.stopped = false
+	self.callbacks = []chan error{}
+	self.diffMb = 0
+	self.session = nil
+	// Note: tcClassId is intentionally preserved for reuse
+	// Note: network state is intentionally preserved
+}
+
 // ============================================================================
 // NETWORK UPDATE - Atomic swap with TC operations
 // ============================================================================
@@ -400,7 +415,7 @@ func (self *RunningSession) Stop(ctx context.Context) error {
 	return self.StopWithReason(ctx, false)
 }
 
-func (self *RunningSession) StopWithReason(ctx context.Context, consumed bool) error {
+func (self *RunningSession) StopWithReason(ctx context.Context, isConsumed bool) error {
 	// First, mark as stopped and collect state atomically
 	self.mu.Lock()
 	if self.stopped {
@@ -424,7 +439,7 @@ func (self *RunningSession) StopWithReason(ctx context.Context, consumed bool) e
 		sessionID = session.ID()
 	}
 	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Expired=%v",
-		self.clntId, sessionID, consumed)
+		self.clntId, sessionID, isConsumed)
 
 	log.Printf("[Running Session] StopWithReason - %s", contextInfo)
 
@@ -442,7 +457,7 @@ func (self *RunningSession) StopWithReason(ctx context.Context, consumed bool) e
 
 	// Emit events (emitter is immutable, no lock needed)
 	if self.emitter != nil && self.clnt != nil {
-		if consumed {
+		if isConsumed {
 			// Session was consumed (time/data exhausted) - emit both expired and disconnected
 			self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeConsumed, session, self.clnt)
 			self.emitter.emitSessionEvent(sdkapi.EventSessionConsumed, session, self.clnt)
@@ -454,7 +469,7 @@ func (self *RunningSession) StopWithReason(ctx context.Context, consumed bool) e
 
 	// Determine the error to return to callbacks
 	var callbackErr error
-	if consumed {
+	if isConsumed {
 		callbackErr = ErrSessionExpired
 	} else {
 		callbackErr = saveErr
