@@ -9,8 +9,6 @@ import (
 )
 
 func Init(g *api.CoreGlobals) {
-	g.CoreAPI.Logger().Info("[Boot Init] System is booting")
-
 	bootCh := make(chan struct{})
 
 	InitDirs()
@@ -44,6 +42,8 @@ func Init(g *api.CoreGlobals) {
 
 		// Start jobs
 		jobs.Init(g)
+
+		g.CoreAPI.Logger().Info("[Boot Init] System boot complete.")
 
 		bootCh <- struct{}{}
 	}()
