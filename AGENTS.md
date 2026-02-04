@@ -180,9 +180,9 @@ label := api.Translate("label", "Username")
 - ❌ `api.Translate("error", "invalid_form_values")`
 - ✅ `api.Translate("error", "Invalid form values")`
 
-**2. Key Length Limit: 10 Words**
-- Keys with >10 words are automatically truncated to 10 words + " (truncated)"
-- Build warnings: 8-10 words = INFO, 11+ words = WARNING
+**2. Key Length Limit: 120 Characters**
+- Keys with >120 characters are automatically truncated to 120 chars + " (truncated)"
+- Build warnings: 100-120 chars = INFO, 121+ chars = WARNING
 - Shorter keys preferred for readability
 
 **3. Punctuation Allowed in Keys**

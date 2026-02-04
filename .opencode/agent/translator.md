@@ -31,8 +31,9 @@ translate-scan({ operation: "validate", language: "es" })
 **Critical Rules:**
 - ✅ ALL user-facing text must use `api.Translate()`
 - ❌ NO snake_case keys (use "Title Case")
-- ✅ Punctuation allowed in keys (filenames have no .txt extension)
-- ⚠️ Keys > 10 words are auto-truncated
+- ✅ Punctuation allowed in keys (spaces, ?, !, ., etc.)
+- ⚠️ Keys > 120 characters are auto-truncated with " (truncated)" suffix
+- 💡 Translation files use actual characters, NOT URL-encoded versions
 - 💡 English (`/en`) is source of truth
 
 ## Workflow
@@ -89,7 +90,7 @@ translate-scan({ operation: "stats", language: "es" })
 ```typescript
 translate-update({
   language: "es",
-  filePath: "core/resources/translations/es/label/Welcome.txt",
+  filePath: "core/resources/translations/es/label/Welcome",
   content: "Bienvenido"
 })
 ```
@@ -99,8 +100,8 @@ translate-update({
 translate-batch({
   language: "es",
   updates: [
-    { filePath: "core/.../es/label/Welcome.txt", content: "Bienvenido" },
-    { filePath: "core/.../es/error/Failed.txt", content: "Falló" }
+    { filePath: "core/resources/translations/es/label/Welcome", content: "Bienvenido" },
+    { filePath: "core/resources/translations/es/error/Failed", content: "Falló" }
   ]
 })
 ```
@@ -170,12 +171,12 @@ api.Http().Response().FlashMsg(w, r, "Session created", sdkapi.FlashMsgSuccess)
 api.Http().Response().FlashMsg(w, r, api.Translate("success", "Session created"), sdkapi.FlashMsgSuccess)
 ```
 
-### 2. Key Length Limit: 10 Words
+### 2. Key Length Limit: 120 Characters
 
-Keys >10 words → truncated to "first 10 words (truncated)"
-- ⚠️ **8-10 words:** Warning (getting close to limit)
-- ❌ **11+ words:** Automatic truncation (file becomes "...truncated.txt")
-- ✅ **Best practice:** Keep keys under 8 words
+Keys >120 characters → truncated to "first words... (truncated)"
+- ⚠️ **100-120 chars:** Warning (getting close to limit)
+- ❌ **121+ chars:** Automatic truncation with " (truncated)" suffix
+- ✅ **Best practice:** Keep keys under 100 characters
 - 💡 Prefer shorter keys for readability and maintainability
 
 **Key Shortening Workflow:**
@@ -198,22 +199,24 @@ api.Translate("error", "Invalid form values")
 
 **Critical:** Snake_case keys are not allowed and will be skipped during validation.
 
-### 4. Punctuation Allowed in Keys
+### 4. Punctuation and Special Characters in Keys
 
-**Translation files have no `.txt` extension** - the filename matches the translation key exactly.
+**Translation files use actual characters** - the filename matches the translation key exactly (spaces, punctuation, etc.).
 
 ```go
 // ✅ CORRECT - Punctuation is fine in keys
 api.Translate("success", "Firmware uploaded successfully.")
 api.Translate("error", "Are you sure?")
 api.Translate("info", "You are connected.")
+api.Translate("label", "Branch and Commit Hash")
 ```
 
 **Filename examples:**
 - Key: `"You are connected."` → Filename: `You are connected.`
-- Key: `"Are you sure?"` → Filename: `Are%20you%20sure%3F` (URL-escaped for cross-platform safety)
+- Key: `"Are you sure?"` → Filename: `Are you sure?`
+- Key: `"Branch and Commit Hash"` → Filename: `Branch and Commit Hash`
 
-**Note:** Special characters forbidden on Windows/Linux filesystems (`< > : " | ? * / \`) are automatically URL-escaped using `FilenameFromTranslationKey()`.
+**How it works:** Translation keys use spaces and punctuation directly. The `FilenameFromTranslationKey()` function in the SDK handles cross-platform filesystem compatibility without URL-encoding, ensuring translation files are readable and maintainable.
 
 ### 5. Exception: Debug Logs
 
@@ -239,7 +242,7 @@ Translate(type string, key string, pairs ...any) string
 **Variables:** Use `<% .variableName %>` in translation files
 
 ```go
-// File: resources/translations/en/label/paid_amount.txt
+// File: resources/translations/en/label/paid_amount
 // Content: You paid <% .currency %> <% .amount %>
 
 txt := api.Translate("label", "paid_amount", "currency", "PHP", "amount", 100)
@@ -422,7 +425,7 @@ translate-scan({ operation: "validate", language: "es" })
 ```bash
 # 1. Add Translate() in code
 # 2. Create English file
-echo "Dashboard" > core/resources/translations/en/label/Dashboard.txt
+echo "Dashboard" > core/resources/translations/en/label/Dashboard
 
 # 3. Sync to all languages
 go run -tags="dev" ./core/tools/translator
@@ -491,7 +494,7 @@ translate-scan({ operation: "list-untranslated", language: "es", limit: 20 })
 ```typescript
 // First pass
 translate-batch({ language: "es", updates: [
-  { filePath: "core/.../es/error/Connection failed.txt", content: "Falló la conexión" }
+  { filePath: "core/.../es/error/Connection failed", content: "Falló la conexión" }
 ]})
 
 // Verify
@@ -500,8 +503,8 @@ translate-scan({ operation: "list-untranslated", language: "es", limit: 20 })
 
 // Second pass - fix remaining
 translate-batch({ language: "es", updates: [
-  { filePath: "core/.../es/label/Settings.txt", content: "Configuración" },
-  { filePath: "core/.../es/error/Invalid input.txt", content: "Entrada inválida" }
+  { filePath: "core/.../es/label/Settings", content: "Configuración" },
+  { filePath: "core/.../es/error/Invalid input", content: "Entrada inválida" }
 ]})
 
 // Verify again
@@ -556,14 +559,15 @@ translate-scan({ operation: "validate", language: "es" })
 - **Fix:** Ensure file path contains correct language code
 - **Example:** `language: "es"` → file must be in `/es/` directory
 
-**⚠️ "Translation key exceeds 10 word limit"**
-- **Cause:** Translation key too long (11+ words)
+**⚠️ "Translation key exceeds 120 character limit"**
+- **Cause:** Translation key too long (121+ characters)
 - **Fix:** Shorten the key using `translate-suggest-shorter-keys` tool
-- **Result:** Key will be auto-truncated to "first 10 words (truncated)"
+- **Result:** Key will be auto-truncated with " (truncated)" suffix
 
 **⚠️ "Truncated filename warnings"**
 - **Status:** Normal behavior, not an error
-- **Info:** Files with long keys are truncated but content preserves full text
+- **Info:** Files with long keys (120+ chars) are truncated to preserve filesystem compatibility
+- **Content:** Full original key is preserved in the translation file for context
 
 **❌ "Plugin translations not found"**
 - **Cause:** Wrong directory path
@@ -635,7 +639,7 @@ go run -tags="dev" ./core/utils/translator --verbose
 
 **Check translation file encoding:**
 ```bash
-file core/resources/translations/es/label/Welcome.txt
+file core/resources/translations/es/label/Welcome
 # Should show: UTF-8 Unicode text
 ```
 
