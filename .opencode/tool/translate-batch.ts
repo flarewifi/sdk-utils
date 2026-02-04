@@ -30,37 +30,43 @@ export default tool({
   async execute(args, context) {
     const { language, updates, createMissing = false } = args
     
-    // Validate language parameter
-    if (!language) {
-      return `❌ ERROR: The 'language' parameter is REQUIRED.
-
-Usage: translate-batch({ 
-  language: "xx", 
-  updates: [{ filePath: "...", content: "..." }]
-})
-
-Supported languages: en, es, fr, am, ar, id, in, prs, ps, ru, sw
-
-💡 TIP: Use translate-scan with operation="list-languages" to see all supported languages.`
-    }
-    
-    // Validate language code format
-    if (!/^[a-z]{2,3}$/.test(language)) {
-      return `❌ ERROR: Invalid language code format: "${language}"
-Language codes must be 2-3 lowercase letters.
-
-Supported languages: en, es, fr, am, ar, id, in, prs, ps, ru, sw`
-    }
-    
-    // Validate language is supported
-    const supportedLanguages = ["en", "es", "fr", "am", "ar", "id", "in", "prs", "ps", "ru", "sw"]
-    if (!supportedLanguages.includes(language)) {
-      return `❌ ERROR: Unsupported language: "${language}"
-
-Supported languages: ${supportedLanguages.join(", ")}
-
-💡 TIP: Use translate-scan with operation="list-languages" to see all supported languages.`
-    }
+     // Validate language parameter
+     if (!language) {
+       const supportedLanguages = await getSupportedLanguages()
+       const langCodes = supportedLanguages.map(l => l.code).join(", ")
+       return `❌ ERROR: The 'language' parameter is REQUIRED.
+ 
+ Usage: translate-batch({ 
+   language: "xx", 
+   updates: [{ filePath: "...", content: "..." }]
+ })
+ 
+ Supported languages: ${langCodes}
+ 
+ 💡 TIP: Use translate-scan with operation="list-languages" to see all supported languages.`
+     }
+     
+     // Validate language code format
+     if (!/^[a-z]{2,3}$/.test(language)) {
+       const supportedLanguages = await getSupportedLanguages()
+       const langCodes = supportedLanguages.map(l => l.code).join(", ")
+       return `❌ ERROR: Invalid language code format: "${language}"
+ Language codes must be 2-3 lowercase letters.
+ 
+ Supported languages: ${langCodes}`
+     }
+     
+     // Validate language is supported
+     const supportedLanguages = await getSupportedLanguages()
+     const supportedCodes = supportedLanguages.map(l => l.code)
+     if (!supportedCodes.includes(language)) {
+       const langCodes = supportedCodes.join(", ")
+       return `❌ ERROR: Unsupported language: "${language}"
+ 
+ Supported languages: ${langCodes}
+ 
+ 💡 TIP: Use translate-scan with operation="list-languages" to see all supported languages.`
+     }
     
     // Get current working directory (should be project root)
     const cwd = process.cwd()
@@ -197,6 +203,49 @@ ${errorCount > 0 ? `\n⚠️  Some updates failed. Review errors above and retry
 ${errorCount > 0 ? `💡 TIP: You can retry just the failed files by running translate-batch again with only those files\n` : ''}
 `
 
-    return summary
-  },
+     return summary
+   },
 })
+
+// Helper function to read supported languages from Go config
+async function getSupportedLanguages(): Promise<Array<{ code: string; name: string }>> {
+  try {
+    const cwd = process.cwd()
+    const configPath = path.join(cwd, "core/utils/config/application.go")
+
+    if (!fs.existsSync(configPath)) {
+      throw new Error("Could not find core/utils/config/application.go")
+    }
+
+    const content = fs.readFileSync(configPath, "utf-8")
+
+    // Parse SupportedLanguages array
+    const langPattern = /var SupportedLanguages = \[\]sdkapi\.SupportedLanguage\{([\s\S]*?)\n\}/
+    const match = content.match(langPattern)
+
+    if (!match) {
+      throw new Error("Could not parse SupportedLanguages from core/utils/config/application.go")
+    }
+
+    // Extract language entries
+    const languagesBlock = match[1]
+    const entryPattern = /\{Code:\s*"([^"]+)",\s*Name:\s*"([^"]+)"\}/g
+    const languages: Array<{ code: string; name: string }> = []
+
+    let entryMatch
+    while ((entryMatch = entryPattern.exec(languagesBlock)) !== null) {
+      languages.push({
+        code: entryMatch[1],
+        name: entryMatch[2]
+      })
+    }
+
+    if (languages.length === 0) {
+      throw new Error("No languages found in core/utils/config/application.go")
+    }
+
+    return languages
+  } catch (error) {
+    throw new Error(`Failed to read supported languages: ${error}`)
+  }
+}

@@ -199,28 +199,18 @@ Tool usage examples:
   translate-batch({ updates: [...] }) // ❌ ERROR
 `,
 
-      languages: `
-Supported Languages
-===================
-
-To see the current list of supported languages with full names:
-  translate-scan({ operation: "list-languages" })
-
-The list of supported languages is defined in:
-  tools/config/application.go (SupportedLanguages variable)
-
-Currently supported language codes:
-  en  - English (default, source of truth)
-  es  - Spanish
-  fr  - French
-  am  - Amharic
-  ar  - Arabic (Sudan)
-  id  - Indonesian
-  in  - Hindi
-  prs - Dari
-  ps  - Pashto
-  ru  - Russian
-  sw  - Swahili
+       languages: `
+ Supported Languages
+ ===================
+ 
+ To see the current list of supported languages with full names:
+   translate-scan({ operation: "list-languages" })
+ 
+ The list of supported languages is defined in:
+   core/utils/config/application.go (SupportedLanguages variable)
+ 
+ Currently supported language codes are dynamically loaded from the config file.
+ Use translate-scan({ operation: "list-languages" }) to see the current list.`
 
 Per-Language Workflow:
 ======================

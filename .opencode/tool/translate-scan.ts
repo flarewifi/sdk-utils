@@ -37,36 +37,42 @@ export default tool({
       return await listSupportedLanguages()
     }
 
-    // All other operations REQUIRE language parameter
-    if (!language) {
-      return `❌ ERROR: The 'language' parameter is REQUIRED for operation '${operation}'.
-
-Usage: translate-scan({ operation: "${operation}", language: "xx" })
-
-Supported languages: en, es, fr, am, ar, id, in, prs, ps, ru, sw
-
-💡 TIP: Use operation="list-languages" to see all supported languages with their names.`
-    }
-
-    // Validate language code format
-    if (!/^[a-z]{2,3}$/.test(language)) {
-      return `❌ ERROR: Invalid language code format: "${language}"
-Language codes must be 2-3 lowercase letters.
-
-Supported languages: en, es, fr, am, ar, id, in, prs, ps, ru, sw
-
-💡 TIP: Use operation="list-languages" to see all supported languages.`
-    }
-
-    // Validate language is supported
-    const supportedLanguages = ["en", "es", "fr", "am", "ar", "id", "in", "prs", "ps", "ru", "sw"]
-    if (!supportedLanguages.includes(language)) {
-      return `❌ ERROR: Unsupported language: "${language}"
-
-Supported languages: ${supportedLanguages.join(", ")}
-
-💡 TIP: Use operation="list-languages" to see all supported languages with their full names.`
-    }
+     // All other operations REQUIRE language parameter
+     if (!language) {
+       const supportedLanguages = await getSupportedLanguages()
+       const langCodes = supportedLanguages.map(l => l.code).join(", ")
+       return `❌ ERROR: The 'language' parameter is REQUIRED for operation '${operation}'.
+ 
+ Usage: translate-scan({ operation: "${operation}", language: "xx" })
+ 
+ Supported languages: ${langCodes}
+ 
+ 💡 TIP: Use operation="list-languages" to see all supported languages with their names.`
+     }
+ 
+     // Validate language code format
+     if (!/^[a-z]{2,3}$/.test(language)) {
+       const supportedLanguages = await getSupportedLanguages()
+       const langCodes = supportedLanguages.map(l => l.code).join(", ")
+       return `❌ ERROR: Invalid language code format: "${language}"
+ Language codes must be 2-3 lowercase letters.
+ 
+ Supported languages: ${langCodes}
+ 
+ 💡 TIP: Use operation="list-languages" to see all supported languages.`
+     }
+ 
+     // Validate language is supported
+     const supportedLanguages = await getSupportedLanguages()
+     const supportedCodes = supportedLanguages.map(l => l.code)
+     if (!supportedCodes.includes(language)) {
+       const langCodes = supportedCodes.join(", ")
+       return `❌ ERROR: Unsupported language: "${language}"
+ 
+ Supported languages: ${langCodes}
+ 
+ 💡 TIP: Use operation="list-languages" to see all supported languages with their full names.`
+     }
 
     // Verify Go is available
     try {
@@ -291,15 +297,14 @@ ${error.stderr || error.stdout || 'No output'}
   },
 })
 
-// Helper function to list supported languages from Go config
-async function listSupportedLanguages(): Promise<string> {
+// Helper function to read supported languages from Go config
+async function getSupportedLanguages(): Promise<Array<{ code: string; name: string }>> {
   try {
-    // Read the Go config file to get supported languages
     const cwd = process.cwd()
     const configPath = path.join(cwd, "core/utils/config/application.go")
 
     if (!fs.existsSync(configPath)) {
-      return "❌ ERROR: Could not find core/utils/config/application.go"
+      throw new Error("Could not find core/utils/config/application.go")
     }
 
     const content = fs.readFileSync(configPath, "utf-8")
@@ -309,7 +314,7 @@ async function listSupportedLanguages(): Promise<string> {
     const match = content.match(langPattern)
 
     if (!match) {
-      return "❌ ERROR: Could not parse SupportedLanguages from core/utils/config/application.go"
+      throw new Error("Could not parse SupportedLanguages from core/utils/config/application.go")
     }
 
     // Extract language entries - handle tabs and spaces
@@ -326,31 +331,42 @@ async function listSupportedLanguages(): Promise<string> {
     }
 
     if (languages.length === 0) {
-      return "❌ ERROR: No languages found in core/utils/config/application.go"
+      throw new Error("No languages found in core/utils/config/application.go")
     }
 
-    // Format output
-    let output = "📋 Supported Languages\n"
-    output += "=====================\n\n"
-
-    const defaultLang = languages.find(l => l.code === "en")
-    if (defaultLang) {
-      output += `${defaultLang.code.toUpperCase()} - ${defaultLang.name} (default)\n`
-    }
-
-    languages.forEach(lang => {
-      if (lang.code !== "en") {
-        output += `${lang.code.toUpperCase()} - ${lang.name}\n`
-      }
-    })
-
-    output += `\nTotal: ${languages.length} languages\n`
-    output += "\n💡 TIP: Use the language code (lowercase) in other translation operations"
-    output += "\n💡 EXAMPLE: translate-scan({ operation: \"summary\", language: \"es\" })"
-    output += "\n💡 NOTE: All operations except 'list-languages' require the language parameter"
-
-    return output
+    return languages
   } catch (error) {
-    return `❌ ERROR reading supported languages: ${error}`
+    throw new Error(`Failed to read supported languages: ${error}`)
   }
 }
+
+// Helper function to list supported languages from Go config
+async function listSupportedLanguages(): Promise<string> {
+   try {
+     const languages = await getSupportedLanguages()
+
+     // Format output
+     let output = "📋 Supported Languages\n"
+     output += "=====================\n\n"
+
+     const defaultLang = languages.find(l => l.code === "en")
+     if (defaultLang) {
+       output += `${defaultLang.code.toUpperCase()} - ${defaultLang.name} (default)\n`
+     }
+
+     languages.forEach(lang => {
+       if (lang.code !== "en") {
+         output += `${lang.code.toUpperCase()} - ${lang.name}\n`
+       }
+     })
+
+     output += `\nTotal: ${languages.length} languages\n`
+     output += "\n💡 TIP: Use the language code (lowercase) in other translation operations"
+     output += "\n💡 EXAMPLE: translate-scan({ operation: \"summary\", language: \"es\" })"
+     output += "\n💡 NOTE: All operations except 'list-languages' require the language parameter"
+
+     return output
+   } catch (error) {
+     return `❌ ERROR reading supported languages: ${error}`
+   }
+ }
