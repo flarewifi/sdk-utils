@@ -200,17 +200,17 @@ Tool usage examples:
 `,
 
        languages: `
- Supported Languages
- ===================
- 
- To see the current list of supported languages with full names:
-   translate-scan({ operation: "list-languages" })
- 
- The list of supported languages is defined in:
-   core/utils/config/application.go (SupportedLanguages variable)
- 
- Currently supported language codes are dynamically loaded from the config file.
- Use translate-scan({ operation: "list-languages" }) to see the current list.`
+Supported Languages
+===================
+
+To see the current list of supported languages with full names:
+  translate-scan({ operation: "list-languages" })
+
+The list of supported languages is defined in:
+  core/utils/config/application.go (SupportedLanguages variable)
+
+Currently supported language codes are dynamically loaded from the config file.
+Use translate-scan({ operation: "list-languages" }) to see the current list.
 
 Per-Language Workflow:
 ======================
@@ -222,7 +222,7 @@ Per-Language Workflow:
    translate-scan({ operation: "list-untranslated", language: "es" })
 
 3. Update single file (REQUIRES language):
-    translate-update({ 
+    translate-update({
       language: "es",
       filePath: "core/resources/translations/es/label/Welcome",
       content: "Bienvenido"
@@ -249,7 +249,7 @@ Agent 1: Spanish
   translate-scan({ operation: "summary", language: "es" })
   translate-batch({ language: "es", updates: [...] })
 
-Agent 2: French  
+Agent 2: French
   translate-scan({ operation: "summary", language: "fr" })
   translate-batch({ language: "fr", updates: [...] })
 
