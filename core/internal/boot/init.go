@@ -9,6 +9,8 @@ import (
 )
 
 func Init(g *api.CoreGlobals) {
+	g.CoreAPI.Logger().Info("[Boot Init] System is booting")
+
 	bootCh := make(chan struct{})
 
 	InitDirs()
