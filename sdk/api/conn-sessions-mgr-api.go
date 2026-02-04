@@ -35,8 +35,8 @@ const (
 	EventSessionBeforeDisconnected SessionEvent = "session:before:disconnected"
 	EventSessionDisconnected       SessionEvent = "session:disconnected"
 
-	EventSessionBeforeExpired SessionEvent = "session:before:expired"
-	EventSessionExpired       SessionEvent = "session:expired"
+	EventSessionBeforeConsumed SessionEvent = "session:before:expired"
+	EventSessionConsumed       SessionEvent = "session:expired"
 
 	EventSessionBeforeUpdated SessionEvent = "session:before:updated"
 	EventSessionUpdated       SessionEvent = "session:updated"

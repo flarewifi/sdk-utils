@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <defs>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#d97706"/>
+    </marker>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1e40af"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="900" height="600" fill="#f8fafc"/>
+  
+  <!-- Title -->
+  <rect x="0" y="0" width="900" height="45" fill="url(#headerGrad)"/>
+  <text x="450" y="28" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white">Payment Flow: wifi-hotspot (Requester) and Payment Provider</text>
+  
+  <!-- Swimlane headers (centered at 150, 450, 750) -->
+  <rect x="70" y="60" width="160" height="45" rx="8" fill="#1e40af"/>
+  <text x="150" y="82" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">wifi-hotspot</text>
+  <text x="150" y="97" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#93c5fd">(Requester Plugin)</text>
+  
+  <rect x="370" y="60" width="160" height="45" rx="8" fill="#7c3aed"/>
+  <text x="450" y="82" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">SDK/Core</text>
+  <text x="450" y="97" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#c4b5fd">(Payments API)</text>
+  
+  <rect x="670" y="60" width="160" height="45" rx="8" fill="#059669"/>
+  <text x="750" y="82" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">Payment Provider</text>
+  <text x="750" y="97" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#a7f3d0">(e.g., wireless-coinslot)</text>
+  
+  <!-- Vertical lines for swimlanes -->
+  <line x1="150" y1="115" x2="150" y2="580" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+  <line x1="450" y1="115" x2="450" y2="580" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+  <line x1="750" y1="115" x2="750" y2="580" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+  
+  <!-- Step 1: Checkout -->
+  <rect x="80" y="130" width="140" height="45" rx="5" fill="white" stroke="#2563eb" stroke-width="2"/>
+  <text x="150" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#1e40af">1. Checkout()</text>
+  <text x="150" y="165" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">PurchaseRequest</text>
+  
+  <!-- Arrow 1->2 -->
+  <line x1="220" y1="152" x2="380" y2="152" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
+  
+  <!-- Step 2: Save Purchase -->
+  <rect x="380" y="130" width="140" height="45" rx="5" fill="white" stroke="#7c3aed" stroke-width="2"/>
+  <text x="450" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#7c3aed">2. Save Purchase</text>
+  <text x="450" y="165" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Show Payment Options</text>
+  
+  <!-- Arrow 2->3 -->
+  <line x1="520" y1="152" x2="680" y2="152" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
+  
+  <!-- Step 3: SetProcessing -->
+  <rect x="680" y="130" width="140" height="45" rx="5" fill="white" stroke="#059669" stroke-width="2"/>
+  <text x="750" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#059669">3. SetProcessing()</text>
+  <text x="750" y="165" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Payment Selected</text>
+  
+  <!-- Arrow 3->4 (down) -->
+  <line x1="750" y1="175" x2="750" y2="210" stroke="#d97706" stroke-width="2" marker-end="url(#arrowhead-orange)"/>
+  
+  <!-- Step 4: CreatePayment -->
+  <rect x="680" y="215" width="140" height="45" rx="5" fill="white" stroke="#d97706" stroke-width="2"/>
+  <text x="750" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#d97706">4. CreatePayment()</text>
+  <text x="750" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Record payments</text>
+  
+  <!-- Arrow 4->5 -->
+  <line x1="680" y1="237" x2="520" y2="237" stroke="#d97706" stroke-width="2" marker-end="url(#arrowhead-orange)"/>
+  
+  <!-- Step 5: Store Payment -->
+  <rect x="380" y="215" width="140" height="45" rx="5" fill="white" stroke="#7c3aed" stroke-width="2"/>
+  <text x="450" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#7c3aed">5. Store Payment</text>
+  <text x="450" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Update totals</text>
+  
+  <!-- Arrow 5->6 (down on provider side) -->
+  <line x1="750" y1="260" x2="750" y2="295" stroke="#d97706" stroke-width="2" marker-end="url(#arrowhead-orange)"/>
+  
+  <!-- Step 6: Execute -->
+  <rect x="680" y="300" width="140" height="45" rx="5" fill="white" stroke="#d97706" stroke-width="2"/>
+  <text x="750" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#d97706">6. Execute()</text>
+  <text x="750" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">ExecuteParams</text>
+  
+  <!-- Arrow 6->7 -->
+  <line x1="680" y1="322" x2="520" y2="322" stroke="#d97706" stroke-width="2" marker-end="url(#arrowhead-orange)"/>
+  
+  <!-- Step 7: Trigger Webhook -->
+  <rect x="380" y="300" width="140" height="45" rx="5" fill="white" stroke="#7c3aed" stroke-width="2"/>
+  <text x="450" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#7c3aed">7. Trigger Webhook</text>
+  <text x="450" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">POST to handler</text>
+  
+  <!-- Arrow 7->8 -->
+  <line x1="380" y1="322" x2="220" y2="322" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+  
+  <!-- Step 8: WebhookHandler -->
+  <rect x="80" y="300" width="140" height="45" rx="5" fill="white" stroke="#16a34a" stroke-width="2"/>
+  <text x="150" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#166534">8. WebhookHandler</text>
+  <text x="150" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Process result</text>
+  
+  <!-- Arrow 8->9 (down) -->
+  <line x1="150" y1="345" x2="150" y2="380" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+  
+  <!-- Step 9: Confirm -->
+  <rect x="80" y="385" width="140" height="45" rx="5" fill="white" stroke="#16a34a" stroke-width="2"/>
+  <text x="150" y="405" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#166534">9. Confirm()</text>
+  <text x="150" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Mark confirmed</text>
+  
+  <!-- Arrow 9->10 -->
+  <line x1="220" y1="407" x2="380" y2="407" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+  
+  <!-- Step 10: Update Status -->
+  <rect x="380" y="385" width="140" height="45" rx="5" fill="white" stroke="#7c3aed" stroke-width="2"/>
+  <text x="450" y="405" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#7c3aed">10. Update Status</text>
+  <text x="450" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Purchase confirmed</text>
+  
+  <!-- Arrow 10->11 (down on wifi-hotspot side) -->
+  <line x1="150" y1="430" x2="150" y2="465" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+  
+  <!-- Step 11: CreateSession -->
+  <rect x="80" y="470" width="140" height="45" rx="5" fill="white" stroke="#16a34a" stroke-width="2"/>
+  <text x="150" y="490" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#166534">11. CreateSession()</text>
+  <text x="150" y="505" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Grant WiFi access</text>
+  
+  <!-- Arrow 11->12 (down) -->
+  <line x1="150" y1="515" x2="150" y2="540" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+  
+  <!-- Step 12: User Connected -->
+  <rect x="80" y="545" width="140" height="30" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="150" y="565" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#166534">12. User Connected</text>
+</svg>

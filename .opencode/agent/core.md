@@ -140,6 +140,7 @@ make            # Development build - tags: "dev"
 8. **Hardcode user-facing text** - use `api.Translate()` for ALL user-facing text
 9. **Hardcode URLs** - use `api.Http().Router().UrlForRoute()`
 10. **Modify core migrations for plugins** - each plugin has own migrations
+11. **Import any core module into the plugins
 
 ### ALWAYS
 1. **Use named SQL parameters** - `@parameter_name` syntax

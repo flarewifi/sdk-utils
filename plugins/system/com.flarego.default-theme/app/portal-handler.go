@@ -23,10 +23,15 @@ func PortalSessionSyncHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 			return
 		}
 
-		_, ok := api.SessionsMgr().RunningSession(clnt)
+		var sessionType sdkapi.SessionType
+		runningSession, ok := api.SessionsMgr().RunningSession(clnt)
+		if ok {
+			sessionType = runningSession.Type()
+		}
 		summaryView := portal.SessionSummary(api, portal.SessionSummaryData{
 			SessionSummary:   summary,
 			IsSessionRunning: ok,
+			SessionType:      sessionType,
 		})
 
 		if err := summaryView.Render(r.Context(), w); err != nil {

@@ -1,6 +1,6 @@
 # IFirewallAPI
 
-The `IFirewallAPI` provides methods to manage firewall rules for client devices in the Flare Hotspot system. It allows you to control network access by opening or closing firewall access to specific destination IPs for individual client devices, as well as resolve hostnames to IP addresses.
+The `IFirewallAPI` provides methods to manage firewall rules for client devices in the Flare Hotspot system. It allows you to control network access using Destination IP Groups, which provide efficient firewall management for services with multiple IPs.
 
 To get an instance of `IFirewallAPI`:
 
@@ -41,140 +41,201 @@ for _, ip := range ips {
 **Use Case:**
 This is particularly useful when integrating with external services that may use multiple IPs or CDN networks. Instead of hardcoding IPs, you can resolve them dynamically.
 
-### OpenIpForClientDevice
+## Destination IP Groups
 
-Opens bidirectional firewall access for a specific client device to a destination IP address. All ports are opened for both outgoing (client → destination) and return (destination → client) traffic.
+Destination IP Groups provide an efficient way to manage firewall access for multiple destination IPs as a single unit. Instead of creating individual rules for each IP, you create a group once and add/remove clients from the group.
 
-**Important:** If `TimeoutSecs` is `0`, the firewall rule is **permanent** and will not be automatically removed. If `TimeoutSecs > 0`, the rule is automatically removed after the specified duration.
+### Data Types
+
+#### DstIpGroupClient
+
+Represents a client device for group operations.
+
+```go
+type DstIpGroupClient struct {
+    MacAddr string // Client device MAC address
+    IpAddr  string // Client device IP address (for return traffic filtering)
+}
+```
+
+### CreateDstIpGroup
+
+Creates a named group of destination IP addresses with dedicated nftables infrastructure. The group must be created before clients can be added to it.
 
 **Parameters:**
-- `params` ([OpenIpForClientDeviceParams](#openipforclientdeviceparams)) - Configuration for the firewall rule
+- `name` (string) - Unique name for the group (will be slugified for nftables compatibility)
+- `ips` (...string) - Initial set of destination IP addresses (variadic)
 
 **Returns:**
-- `error` - Error if firewall rule creation fails
-
-#### OpenIpForClientDeviceParams
+- `error` - Error if group already exists or creation fails
 
 ```go
-type OpenIpForClientDeviceParams struct {
-    DestinationIp string // Destination IP address to allow access to
-    IpAddr        string // Client device IP address (for return traffic filtering)
-    MacAddr       string // Client device MAC address (for source traffic filtering)
-    TimeoutSecs   int    // Timeout in seconds (0 = permanent, >0 = auto-remove after timeout)
+// Create a group for cloud-sync service
+err := api.Firewall().CreateDstIpGroup("cloud-sync", 
+    "104.21.45.123", 
+    "172.67.132.45",
+    "2606:4700:3030::6815:2d7b",
+)
+if err != nil {
+    // Handle error - group may already exist
 }
 ```
 
-#### Example: Temporary Access (5 minutes)
+**Notes:**
+- Group names are slugified (e.g., "cloud-sync" becomes "cloud_sync" in nftables)
+- Returns error if group with same name already exists
+- Creates nftables sets and chains for the group atomically
+- IPv4 and IPv6 addresses are automatically separated
+
+### DstIpGroupExists
+
+Checks if a named destination IP group exists. Useful for conditionally creating groups or verifying group availability before operations.
+
+**Parameters:**
+- `name` (string) - Name of the group to check
+
+**Returns:**
+- `bool` - True if group exists, false otherwise
+- `error` - Error only if group name is invalid
 
 ```go
-clnt, _ := api.Http().GetClientDevice(r)
-
-// Open firewall for 5 minutes to allow portal registration
-err := api.Firewall().OpenIpForClientDevice(sdkapi.OpenIpForClientDeviceParams{
-    DestinationIp: "104.21.45.123",
-    IpAddr:        clnt.IpAddr(),
-    MacAddr:       clnt.MacAddr(),
-    TimeoutSecs:   300, // 5 minutes - auto-removed after timeout
-})
+// Check if group exists before creating
+exists, err := api.Firewall().DstIpGroupExists("cloud-sync")
 if err != nil {
-    // handle error - firewall rule creation failed
+    api.Logger().Error("Invalid group name: " + err.Error())
+    return
 }
 
-// Client can now access 104.21.45.123 for 5 minutes
-// Rule automatically removed after timeout
-```
-
-#### Example: Permanent Access
-
-```go
-clnt, _ := api.Http().GetClientDevice(r)
-
-// Open permanent firewall access (no timeout)
-err := api.Firewall().OpenIpForClientDevice(sdkapi.OpenIpForClientDeviceParams{
-    DestinationIp: "8.8.8.8",
-    IpAddr:        clnt.IpAddr(),
-    MacAddr:       clnt.MacAddr(),
-    TimeoutSecs:   0, // 0 = permanent rule, never auto-removed
-})
-if err != nil {
-    // handle error
-}
-
-// Client can now access 8.8.8.8 permanently
-// Rule persists until manually closed with CloseIpForClientDevice
-```
-
-#### Example: Opening Access to Multiple IPs
-
-```go
-clnt, _ := api.Http().GetClientDevice(r)
-
-// Resolve domain to IPs
-ips, err := api.Firewall().ResolveHostnameToIps("cloud-sync.flarewifi.com")
-if err != nil {
-    // handle error
-}
-
-// Open firewall for each resolved IP
-for _, ip := range ips {
-    err := api.Firewall().OpenIpForClientDevice(sdkapi.OpenIpForClientDeviceParams{
-        DestinationIp: ip,
-        IpAddr:        clnt.IpAddr(),
-        MacAddr:       clnt.MacAddr(),
-        TimeoutSecs:   300, // 5 minutes
-    })
+if !exists {
+    // Create the group
+    err := api.Firewall().CreateDstIpGroup("cloud-sync", "104.21.45.123")
     if err != nil {
-        logger.Error("Failed to open firewall for IP: " + ip)
+        api.Logger().Error("Failed to create group: " + err.Error())
     }
 }
 ```
 
 **Notes:**
-- If a rule already exists, the timeout is reset (existing timer cancelled and new one started)
-- Rules are bidirectional - both outgoing and return traffic are allowed
-- IPv4 and IPv6 are both supported
-- Uses nftables under the hood for firewall management
+- Only validates the group name - does not query nftables
+- Uses in-memory tracking, so very fast (no shell commands)
+- Returns false for groups that were never created through `CreateDstIpGroup`
 
-### CloseIpForClientDevice
+### AddIpsToDstIpGroup
 
-Removes firewall access for a specific client device to a destination IP address. This manually closes a firewall rule that was previously opened.
+Adds IP addresses to an existing destination IP group. The new IPs are merged with existing IPs in the group.
 
 **Parameters:**
-- `params` ([CloseIpForClientDeviceParams](#closeipforclientdeviceparams)) - Configuration for closing the firewall rule
+- `name` (string) - Name of the existing group
+- `ips` (...string) - IP addresses to add (variadic)
 
 **Returns:**
-- `error` - Error if firewall rule removal fails
-
-#### CloseIpForClientDeviceParams
+- `error` - Error if group doesn't exist or operation fails
 
 ```go
-type CloseIpForClientDeviceParams struct {
-    DestinationIp string // Destination IP address to close access to
-    MacAddr       string // Client device MAC address
+// Add more IPs to existing group (e.g., after DNS re-resolution)
+err := api.Firewall().AddIpsToDstIpGroup("cloud-sync", "104.21.45.124")
+if err != nil {
+    api.Logger().Error("Failed to add IPs: " + err.Error())
 }
 ```
 
-#### Example: Manually Closing Firewall Access
+**Notes:**
+- Does not remove existing IPs - only adds new ones
+- Duplicate IPs are automatically filtered using in-memory tracking
+- IPs older than 12 hours are automatically flushed when new IPs are added
+- Use `ChangeDstIpGroup` if you want to immediately replace all IPs
+
+### ChangeDstIpGroup
+
+Replaces all IP addresses in an existing destination IP group with a new set. All existing IPs are removed first.
+
+**Parameters:**
+- `name` (string) - Name of the existing group
+- `ips` (...string) - New set of IP addresses (replaces all existing)
+
+**Returns:**
+- `error` - Error if group doesn't exist or operation fails
+
+```go
+// Replace all IPs in group (e.g., after DNS refresh)
+newIPs, _ := api.Firewall().ResolveHostnameToIps("cloud-sync.example.com")
+
+err := api.Firewall().ChangeDstIpGroup("cloud-sync", newIPs...)
+if err != nil {
+    api.Logger().Error("Failed to update IPs: " + err.Error())
+}
+```
+
+**Notes:**
+- Atomic operation - flushes existing IPs and adds new ones in single batch
+- Safe to call even if IPs haven't changed
+- Clients already in the group retain access to new IPs automatically
+
+### AllowClientToDstIpGroup
+
+Allows a specific client device to access all IPs in a named destination IP group. The client's MAC and IP are added to the group's client sets.
+
+**Parameters:**
+- `clnt` (DstIpGroupClient) - Client device information
+- `groupName` (string) - Name of the destination IP group
+- `timeoutSecs` (int) - Timeout in seconds (0 = permanent, >0 = auto-remove)
+
+**Returns:**
+- `error` - Error if group doesn't exist or operation fails
 
 ```go
 clnt, _ := api.Http().GetClientDevice(r)
 
-// Close firewall access to specific IP
-err := api.Firewall().CloseIpForClientDevice(sdkapi.CloseIpForClientDeviceParams{
-    DestinationIp: "104.21.45.123",
-    MacAddr:       clnt.MacAddr(),
-})
+// Allow client to access all IPs in the cloud-sync group for 5 minutes
+err := api.Firewall().AllowClientToDstIpGroup(
+    sdkapi.DstIpGroupClient{
+        MacAddr: clnt.MacAddr(),
+        IpAddr:  clnt.IpAddr(),
+    },
+    "cloud-sync",
+    300, // 5 minutes
+)
 if err != nil {
-    // handle error - firewall rule removal failed
+    api.Logger().Error("Failed to allow client: " + err.Error())
 }
-
-// Client can no longer access 104.21.45.123
 ```
 
 **Notes:**
-- If a timeout timer is active for this rule, it will be cancelled
-- If the rule doesn't exist, the method returns successfully (no error)
-- Both outgoing and return traffic rules are removed
+- If client is already in the group, the timeout is reset
+- Client automatically has access to all current and future IPs in the group
+- Single operation grants access to all IPs in the group
+
+### RemoveClientFromDstIpGroup
+
+Removes access for a specific client device from a named destination IP group. The client's MAC and IP are removed from the group's client sets.
+
+**Parameters:**
+- `clnt` (DstIpGroupClient) - Client device information
+- `groupName` (string) - Name of the destination IP group
+
+**Returns:**
+- `error` - Error if group doesn't exist or operation fails
+
+```go
+clnt, _ := api.Http().GetClientDevice(r)
+
+// Remove client from cloud-sync group
+err := api.Firewall().RemoveClientFromDstIpGroup(
+    sdkapi.DstIpGroupClient{
+        MacAddr: clnt.MacAddr(),
+        IpAddr:  clnt.IpAddr(),
+    },
+    "cloud-sync",
+)
+if err != nil {
+    api.Logger().Error("Failed to remove client: " + err.Error())
+}
+```
+
+**Notes:**
+- Cancels any active timeout timer for this client
+- Safe to call even if client is not in the group (no error)
+- Client immediately loses access to all IPs in the group
 
 ## Common Use Cases
 
@@ -183,25 +244,34 @@ if err != nil {
 When redirecting users to an external portal for registration, you need to temporarily open firewall access:
 
 ```go
+const portalGroupName = "portal-service"
+
+// At plugin init - create the IP group
+func Init(api sdkapi.IPluginApi) error {
+    ips, err := api.Firewall().ResolveHostnameToIps("portal.example.com")
+    if err != nil {
+        return err
+    }
+    
+    return api.Firewall().CreateDstIpGroup(portalGroupName, ips...)
+}
+
+// Portal redirect handler
 func PortalRedirectHandler(api sdkapi.IPluginApi) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         clnt, _ := api.Http().GetClientDevice(r)
         
-        // Resolve portal domain to IPs
-        ips, err := api.Firewall().ResolveHostnameToIps("portal.example.com")
+        // Allow client to access portal for 5 minutes
+        err := api.Firewall().AllowClientToDstIpGroup(
+            sdkapi.DstIpGroupClient{
+                MacAddr: clnt.MacAddr(),
+                IpAddr:  clnt.IpAddr(),
+            },
+            portalGroupName,
+            300, // 5 minutes
+        )
         if err != nil {
-            // handle error
-            return
-        }
-        
-        // Open firewall for 5 minutes to allow registration
-        for _, ip := range ips {
-            api.Firewall().OpenIpForClientDevice(sdkapi.OpenIpForClientDeviceParams{
-                DestinationIp: ip,
-                IpAddr:        clnt.IpAddr(),
-                MacAddr:       clnt.MacAddr(),
-                TimeoutSecs:   300, // 5 minutes
-            })
+            api.Logger().Error("Failed to open firewall: " + err.Error())
         }
         
         // Redirect to external portal
@@ -210,96 +280,130 @@ func PortalRedirectHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 }
 ```
 
-### Whitelisting Specific Services
+### Complete Example: Cloud Sync Plugin Pattern
 
-Allow clients to access specific services (DNS, NTP, etc.) even when disconnected:
+This example shows the recommended pattern for plugins that need to open firewall access to a cloud service:
 
 ```go
-func AllowEssentialServices(api sdkapi.IPluginApi, clnt sdkapi.IClientDevice) {
-    essentialIPs := []string{
-        "8.8.8.8",       // Google DNS
-        "1.1.1.1",       // Cloudflare DNS
-        "time.google.com", // NTP server
+package myplugin
+
+import (
+    sdkapi "sdk/api"
+)
+
+const cloudSyncGroupName = "my-cloud-service"
+
+// Init creates the IP group at plugin startup
+func Init(api sdkapi.IPluginApi) error {
+    // Resolve the cloud service domain
+    ips, err := api.Firewall().ResolveHostnameToIps("api.myservice.com")
+    if err != nil {
+        return err
     }
-    
-    for _, destination := range essentialIPs {
-        // Check if it's a hostname or IP
-        ips := []string{destination}
-        if net.ParseIP(destination) == nil {
-            // It's a hostname, resolve it
-            resolvedIPs, err := api.Firewall().ResolveHostnameToIps(destination)
-            if err == nil {
-                ips = resolvedIPs
+
+    // Create the destination IP group
+    if err := api.Firewall().CreateDstIpGroup(cloudSyncGroupName, ips...); err != nil {
+        api.Logger().Error("Failed to create IP group: " + err.Error())
+        // Continue anyway - may already exist from previous run
+    }
+
+    // Start background DNS refresh (optional but recommended)
+    go refreshIPsInBackground(api)
+
+    return nil
+}
+
+// refreshIPsInBackground periodically updates the IP group
+func refreshIPsInBackground(api sdkapi.IPluginApi) {
+    ticker := time.NewTicker(30 * time.Minute)
+    for range ticker.C {
+        ips, err := api.Firewall().ResolveHostnameToIps("api.myservice.com")
+        if err != nil {
+            api.Logger().Error("DNS refresh failed: " + err.Error())
+            continue
+        }
+        api.Firewall().ChangeDstIpGroup(cloudSyncGroupName, ips...)
+    }
+}
+
+// PortalMiddleware opens firewall for client to access cloud service
+func PortalMiddleware(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            clnt, _ := api.Http().GetClientDevice(r)
+
+            // Single call to allow client to access all service IPs
+            err := api.Firewall().AllowClientToDstIpGroup(
+                sdkapi.DstIpGroupClient{
+                    MacAddr: clnt.MacAddr(),
+                    IpAddr:  clnt.IpAddr(),
+                },
+                cloudSyncGroupName,
+                300, // 5 minute timeout
+            )
+            if err != nil {
+                api.Logger().Error("Failed to open firewall: " + err.Error())
             }
-        }
-        
-        // Open permanent access to essential services
-        for _, ip := range ips {
-            api.Firewall().OpenIpForClientDevice(sdkapi.OpenIpForClientDeviceParams{
-                DestinationIp: ip,
-                IpAddr:        clnt.IpAddr(),
-                MacAddr:       clnt.MacAddr(),
-                TimeoutSecs:   0, // Permanent
-            })
-        }
+
+            next.ServeHTTP(w, r)
+        })
     }
 }
-```
 
-### Time-Limited VIP Access
+// CallbackHandler closes firewall after cloud interaction completes
+func CallbackHandler(api sdkapi.IPluginApi) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        clnt, _ := api.Http().GetClientDevice(r)
 
-Grant premium users temporary access to specific IPs:
+        // Single call to remove client from all service IPs
+        api.Firewall().RemoveClientFromDstIpGroup(
+            sdkapi.DstIpGroupClient{
+                MacAddr: clnt.MacAddr(),
+                IpAddr:  clnt.IpAddr(),
+            },
+            cloudSyncGroupName,
+        )
 
-```go
-func GrantVIPAccess(api sdkapi.IPluginApi, clnt sdkapi.IClientDevice, vipServerIP string, durationMinutes int) error {
-    timeoutSecs := durationMinutes * 60
-    
-    return api.Firewall().OpenIpForClientDevice(sdkapi.OpenIpForClientDeviceParams{
-        DestinationIp: vipServerIP,
-        IpAddr:        clnt.IpAddr(),
-        MacAddr:       clnt.MacAddr(),
-        TimeoutSecs:   timeoutSecs,
-    })
+        // Handle callback logic...
+    }
 }
-
-// Usage:
-// Grant 30-minute VIP access
-err := GrantVIPAccess(api, clnt, "203.0.113.100", 30)
 ```
 
 ## Technical Details
 
-### Firewall Implementation
+### NFTables Structure
 
-- **Backend:** Uses nftables for firewall management
-- **Table:** Creates rules in the `inet internet` table
-- **Chains:** Uses `open_ip_prerouting` and `open_ip_forward` chains
-- **Traffic:** Bidirectional (client → destination and destination → client)
-- **Ports:** All ports are opened (no port restrictions)
+When you create a destination IP group named "my-service", the following nftables resources are created:
 
-### Rule Lifecycle
+- **Sets:**
+  - `dst_grp_my_service_v4` - IPv4 destination addresses
+  - `dst_grp_my_service_v6` - IPv6 destination addresses
+  - `dst_grp_my_service_macs` - Client MAC addresses
+  - `dst_grp_my_service_client_ips_v4` - Client IPv4 addresses (return traffic)
+  - `dst_grp_my_service_client_ips_v6` - Client IPv6 addresses (return traffic)
 
-1. **Rule Creation:**
-   - Creates 4 nftables rules (2 for prerouting, 2 for forward)
-   - Outgoing: client MAC → destination IP
-   - Return: destination IP → client IP
+- **Chains:**
+  - `dst_grp_my_service_prerouting` - Prerouting rules
+  - `dst_grp_my_service_forward` - Forward rules
 
-2. **Timer Management:**
-   - If `TimeoutSecs > 0`: Timer scheduled for automatic removal
-   - If `TimeoutSecs = 0`: No timer, rule persists indefinitely
-   - Timers stored in memory with mutex protection for thread safety
-
-3. **Rule Removal:**
-   - Automatic: Timer expires → calls `CloseIpForClientDevice`
-   - Manual: Call `CloseIpForClientDevice` directly
-   - Removes all 4 associated nftables rules
+- **Jump Rules:**
+  - From `prerouting` → `dst_grp_my_service_prerouting`
+  - From `forward` → `dst_grp_my_service_forward`
 
 ### Performance Considerations
 
 - **DNS Resolution:** Uses 10-second timeout with fallback from Cloudflare to Google DNS
 - **Concurrent Access:** Thread-safe timer management with mutex locks
-- **Rule Reuse:** If rule exists, only timer is reset (no duplicate rules)
-- **Cleanup:** Automatic cleanup on timer expiration
+- **Efficient Operations:** Single nft command to add/remove clients regardless of IP count
+- **Automatic Cleanup:** Clients automatically removed after timeout expiration
+
+### Firewall Implementation
+
+- **Backend:** Uses nftables for firewall management
+- **Table:** Creates rules in the `inet internet` table
+- **Traffic:** Bidirectional (client → destination and destination → client)
+- **Ports:** All ports are opened (no port restrictions)
+- **IP Support:** Both IPv4 and IPv6 are supported
 
 ## Error Handling
 
@@ -314,29 +418,42 @@ if err != nil {
     return
 }
 
-for _, ip := range ips {
-    err := api.Firewall().OpenIpForClientDevice(sdkapi.OpenIpForClientDeviceParams{
-        DestinationIp: ip,
-        IpAddr:        clnt.IpAddr(),
-        MacAddr:       clnt.MacAddr(),
-        TimeoutSecs:   300,
-    })
-    
-    if err != nil {
-        api.Logger().Error("Failed to open firewall for " + ip + ": " + err.Error())
-        // Continue with other IPs or handle error appropriately
+// Create or update IP group
+exists, _ := api.Firewall().DstIpGroupExists("my-service")
+if !exists {
+    if err := api.Firewall().CreateDstIpGroup("my-service", ips...); err != nil {
+        api.Logger().Error("Failed to create group: " + err.Error())
+        return
     }
+} else {
+    if err := api.Firewall().ChangeDstIpGroup("my-service", ips...); err != nil {
+        api.Logger().Error("Failed to update group: " + err.Error())
+        // Continue anyway - existing IPs still work
+    }
+}
+
+// Allow client access
+err = api.Firewall().AllowClientToDstIpGroup(
+    sdkapi.DstIpGroupClient{
+        MacAddr: clnt.MacAddr(),
+        IpAddr:  clnt.IpAddr(),
+    },
+    "my-service",
+    300,
+)
+if err != nil {
+    api.Logger().Error("Failed to allow client: " + err.Error())
 }
 ```
 
 ## Best Practices
 
-1. **Always use timeouts for temporary access** - Set `TimeoutSecs > 0` to prevent orphaned rules
+1. **Always use timeouts for temporary access** - Set `timeoutSecs > 0` to prevent orphaned access
 2. **Resolve hostnames dynamically** - Use `ResolveHostnameToIps()` instead of hardcoding IPs
 3. **Handle DNS resolution failures** - Services may use CDN/multiple IPs
 4. **Log firewall operations** - Use `api.Logger()` to track firewall changes
-5. **Clean up on errors** - If registration fails, consider closing firewall access
-6. **Use permanent rules sparingly** - Only for essential services (DNS, NTP)
+5. **Clean up on errors** - If registration fails, consider removing client from group
+6. **Refresh IPs periodically** - Use `ChangeDstIpGroup` to update IPs from DNS
 7. **Test with IPv4 and IPv6** - Both protocols are supported
 
 ## Related Interfaces

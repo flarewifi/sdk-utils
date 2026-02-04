@@ -47,12 +47,17 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 				return sdkapi.ViewPage{}
 			}
 
-			_, ok := api.SessionsMgr().RunningSession(clnt)
+			var sessionType sdkapi.SessionType
+			runningSession, ok := api.SessionsMgr().RunningSession(clnt)
+			if ok {
+				sessionType = runningSession.Type()
+			}
 			navs := api.Http().Navs().GetPortalItems(r)
 			page := portal.PortalIndexPage(api, portal.PortalIndexData{
 				Navs:             navs,
 				SessionSummary:   summary,
 				IsSessionRunning: ok,
+				SessionType:      sessionType,
 				DeviceMac:        clnt.MacAddr(),
 				DeviceIP:         clnt.IpAddr(),
 			})

@@ -1,6 +1,27 @@
-# Processing Payments
+# Accept Payments
 
 This guide explains how to implement payment processing in FlareHotspot plugins. It covers both product plugins (that create purchase requests) and payment provider plugins (that process payments).
+
+## Payment Flow Diagram
+
+The following diagram illustrates the complete payment flow between a requester plugin (e.g., wifi-hotspot) and a payment provider (e.g., wireless-coinslot):
+
+![Payment Flow Diagram](diagrams/payment-flow.svg)
+
+**Flow Steps:**
+
+1. **Checkout** - wifi-hotspot plugin initiates purchase request
+2. **Save Purchase** - Core API saves purchase and shows payment options
+3. **SetProcessing** - User selects payment method, provider marks as processing
+4. **CreatePayment** - Provider records payment as it's received
+5. **Store Payment** - Core API updates payment totals
+6. **Execute** - Provider triggers webhook with final payment details
+7. **Trigger Webhook** - Core sends confirmation to product plugin
+8. **WebhookHandler** - wifi-hotspot processes webhook and confirms purchase
+9. **Confirm** - Purchase marked as confirmed in database
+10. **Update Status** - Core API updates purchase status
+11. **CreateSession** - wifi-hotspot creates session for user
+12. **User Connected** - User is connected to internet
 
 ## Payment Architecture Overview
 

@@ -40,3 +40,17 @@ func SliceFilter[T any](collection []T, filterFn func(item T) bool) []T {
 	}
 	return newArr
 }
+
+// SliceDedup removes duplicate items from a slice while preserving order.
+// The first occurrence of each item is kept.
+func SliceDedup[T comparable](slice []T) []T {
+	seen := make(map[T]bool)
+	result := make([]T, 0, len(slice))
+	for _, item := range slice {
+		if !seen[item] {
+			seen[item] = true
+			result = append(result, item)
+		}
+	}
+	return result
+}

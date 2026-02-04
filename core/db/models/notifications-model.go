@@ -6,7 +6,6 @@ import (
 	"core/db/queries"
 	"fmt"
 	sdkapi "sdk/api"
-	"time"
 )
 
 type NotificationModel struct {
@@ -48,8 +47,8 @@ func (nm *NotificationModel) GetUnreadNotifications(ctx context.Context) ([]sdka
 			Subject:   n.Subject,
 			Content:   n.Content,
 			Status:    sdkapi.NotificationStatus(n.Status),
-			CreatedAt: n.CreatedAt.In(time.Local),
-			UpdatedAt: n.UpdatedAt.In(time.Local),
+			CreatedAt: n.CreatedAt,
+			UpdatedAt: n.UpdatedAt,
 		}
 	}
 
@@ -76,7 +75,7 @@ func (nm *NotificationModel) GetNotificationByID(ctx context.Context, id int64) 
 		Subject:   dbNotif.Subject,
 		Content:   dbNotif.Content,
 		Status:    sdkapi.NotificationStatus(dbNotif.Status),
-		CreatedAt: dbNotif.CreatedAt.In(time.Local),
-		UpdatedAt: dbNotif.UpdatedAt.In(time.Local),
+		CreatedAt: dbNotif.CreatedAt,
+		UpdatedAt: dbNotif.UpdatedAt,
 	}, nil
 }
