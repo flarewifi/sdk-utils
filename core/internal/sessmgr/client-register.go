@@ -106,13 +106,6 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 		log.Printf("[ClientRegister.UpdateDevice] DEBUG: Session disconnected successfully")
 	}
 
-	// Emit before update hook and check for errors
-	log.Printf("[ClientRegister.UpdateDevice] DEBUG: Emitting EventClientBeforeUpdated")
-	if err := reg.sessionsMgr.emitClientEvent(sdkapi.EventClientBeforeUpdated, clnt); err != nil {
-		log.Printf("[ClientRegister.UpdateDevice] ERROR: EventClientBeforeUpdated hook failed: %v", err)
-		return err
-	}
-
 	// Update device in database with new network details
 	log.Printf("[ClientRegister.UpdateDevice] DEBUG: Updating device in database")
 	err := clnt.Update(ctx, sdkapi.UpdateDeviceParams{
@@ -370,12 +363,6 @@ STEP_3_CREATE_NEW:
 		log.Printf("[ClientRegister] SUCCESS: Created new device - DeviceID=%d, MAC=%s, IP=%s",
 			dev.ID(), params.MacAddr, params.IpAddr)
 		clnt = NewClientDevice(reg.db, reg.mdls, dev)
-
-		// Emit before created hook and check for errors
-		if err := reg.sessionsMgr.emitClientEvent(sdkapi.EventClientBeforeCreated, clnt); err != nil {
-			log.Printf("[ClientRegister] ERROR: EventClientBeforeCreated hook failed: %v", err)
-			return nil, false, err
-		}
 
 		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
 		log.Printf("[ClientRegister] DEBUG: Emitted EventClientCreated for DeviceID=%d", dev.ID())

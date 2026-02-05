@@ -210,11 +210,6 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 		return errors.New(self.coreAPI.Translate("error", "Device is blocked"))
 	}
 
-	// Emit before hook and check for errors
-	if err := self.emitClientEvent(sdkapi.EventClientBeforeConnected, clnt); err != nil {
-		return err
-	}
-
 	// Launch session loop - handles nftables, session start, events, and chaining
 	resultCh := make(chan error, 1)
 	go self.loopSessions(resultCh, clnt, notify)
@@ -245,32 +240,13 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 }
 
 func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
-	// Emit before hook and check for errors
-	if err := self.emitClientEvent(sdkapi.EventClientBeforeDisconnected, clnt); err != nil {
-		return err
-	}
-
-	// Emit session before disconnected hook
-	if session, ok := self.CurrSession(clnt); ok {
-		if err := self.emitSessionEvent(sdkapi.EventSessionBeforeDisconnected, session, clnt); err != nil {
-			return err
-		}
-	}
-
-	// Capture session BEFORE endSession deletes it from memory
-	// This ensures EventSessionDisconnected receives the updated session with correct consumption
-	sessionBeforeEnd, hasSession := self.CurrSession(clnt)
-
+	// Session events (EventSessionDisconnected) are emitted by StopWithReason() inside endSession().
 	err := self.endSession(ctx, clnt)
 	if err != nil {
 		return err
 	}
 
 	clnt.Emit(string(sdkapi.EventSessionDisconnected), []byte(notify))
-	// Use captured session instead of trying to get it after deletion
-	if hasSession && sessionBeforeEnd != nil {
-		self.emitSessionEvent(sdkapi.EventSessionDisconnected, sessionBeforeEnd, clnt)
-	}
 	self.emitClientEvent(sdkapi.EventClientDisconnected, clnt)
 
 	return clnt.Update(ctx, sdkapi.UpdateDeviceParams{

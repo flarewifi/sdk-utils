@@ -26,32 +26,16 @@ type ClientEvent string
 type PortalEvent string
 
 const (
-	EventSessionBeforeCreated SessionEvent = "session:before:created"
-	EventSessionCreated       SessionEvent = "session:created"
+	EventSessionCreated      SessionEvent = "session:created"
+	EventSessionConnected    SessionEvent = "session:connected"
+	EventSessionDisconnected SessionEvent = "session:disconnected"
+	EventSessionConsumed     SessionEvent = "session:expired"
+	EventSessionUpdated      SessionEvent = "session:updated"
 
-	EventSessionBeforeConnected SessionEvent = "session:before:connected"
-	EventSessionConnected       SessionEvent = "session:connected"
-
-	EventSessionBeforeDisconnected SessionEvent = "session:before:disconnected"
-	EventSessionDisconnected       SessionEvent = "session:disconnected"
-
-	EventSessionBeforeConsumed SessionEvent = "session:before:expired"
-	EventSessionConsumed       SessionEvent = "session:expired"
-
-	EventSessionBeforeUpdated SessionEvent = "session:before:updated"
-	EventSessionUpdated       SessionEvent = "session:updated"
-
-	EventClientBeforeCreated ClientEvent = "client:before:created"
-	EventClientCreated       ClientEvent = "client:created"
-
-	EventClientBeforeUpdated ClientEvent = "client:before:updated"
-	EventClientUpdated       ClientEvent = "client:updated"
-
-	EventClientBeforeConnected ClientEvent = "client:before:connected"
-	EventClientConnected       ClientEvent = "client:connected"
-
-	EventClientBeforeDisconnected ClientEvent = "client:before:disconnected"
-	EventClientDisconnected       ClientEvent = "client:disconnected"
+	EventClientCreated      ClientEvent = "client:created"
+	EventClientUpdated      ClientEvent = "client:updated"
+	EventClientConnected    ClientEvent = "client:connected"
+	EventClientDisconnected ClientEvent = "client:disconnected"
 )
 
 // SessionEventData represents the data associated with a session event.
@@ -176,9 +160,5 @@ type ISessionsMgrApi interface {
 	OnSessionEvent(event SessionEvent, callback func(data SessionEventData) error)
 
 	// OnClientEvent registers a callback for client device events.
-	//
-	// The callback can be used for both 'before' and 'after' events.
-	// For 'before' events (EventClientBefore*), the callback can return an error to prevent the event from occurring.
-	// For 'after' events (EventClient*), the callback is purely for notifications.
 	OnClientEvent(event ClientEvent, callback func(clnt IClientDevice) error)
 }

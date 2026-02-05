@@ -48,7 +48,8 @@ revert_updates() {
             touch $APP_DIR/.reverted && \
             echo "Old version restored successfully."
     else
-        echo "\n\nNo backup of old version is available" && exit 1
+        echo "\n\nNo backup of old version is available, keeping current installation"
+        return 1
     fi
 }
 
@@ -81,14 +82,18 @@ start() {
             flare server
         ) || (\
             echo "\n\nFailed to start application, reverting to old version if available..." && \
-            revert_updates && $APP_DIR/start.sh
+            revert_updates
+            $APP_DIR/start.sh
     )
 }
 
 
 if [ -e "$SOFTWARE_UPDATE_DIR" ] && ls $SOFTWARE_UPDATE_DIR/*.tar.gz 1> /dev/null 2>&1; then
-    (apply_updates && $APP_DIR/start.sh) || (echo "\n\nFailed to apply updates!" && \
-        revert_updates && $APP_DIR/start.sh)
+    (apply_updates && $APP_DIR/start.sh) || (
+        echo "\n\nFailed to apply updates!"
+        revert_updates
+        $APP_DIR/start.sh
+    )
 else
     start
 fi

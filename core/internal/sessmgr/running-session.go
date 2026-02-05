@@ -125,7 +125,7 @@ type RunningSession struct {
 	session     sdkapi.IClientSession
 	diffMb      float64
 	callbacks   []chan error
-	stopped     bool // Prevents operations after Stop()
+	stopped     bool // Prevents duplicate Stop() operations; cleared only by Start()
 }
 
 // ============================================================================
@@ -196,14 +196,18 @@ func (self *RunningSession) DiffMb() (mb float64) {
 // Reset prepares the RunningSession for reuse with a new session.
 // Preserves TC class/filter to avoid teardown/recreation overhead.
 // Must be called after StopWithReason() and before Start() with new session.
+//
+// NOTE: stopped flag remains true until Start() successfully loads a new session.
+// This ensures that if Stop() is called after Reset() but before Start() (e.g., when
+// no more sessions are available), it's a no-op since the session was already stopped.
 func (self *RunningSession) Reset() {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	self.stopped = false
+	// Note: stopped remains true - only Start() clears it when new session loads
 	self.callbacks = []chan error{}
 	self.diffMb = 0
-	self.session = nil
+	// Note: session is intentionally preserved until Start() sets a new one
 	// Note: tcClassId is intentionally preserved for reuse
 	// Note: network state is intentionally preserved
 }
@@ -358,12 +362,10 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	}
 	logSlowOperation("DB Reload", dbStart, 2*time.Second, contextInfo)
 
-	// 2. Check if stopped and update session state atomically
+	// 2. Update session state atomically
+	// Note: We allow Start() even if stopped=true (after Reset()) to enable session chaining
 	self.mu.Lock()
-	if self.stopped {
-		self.mu.Unlock()
-		return ErrSessionStopped
-	}
+	self.stopped = false // Clear stopped flag for new session
 	self.session = s
 
 	// Set first start time if this is the first time session is starting
@@ -445,7 +447,7 @@ func (self *RunningSession) StopWithReason(ctx context.Context, isConsumed bool)
 
 	// Calculate and record elapsed time
 	elapsed := self.persistTimeConsumption(session, true)
-	if elapsed > 0 {
+	if elapsed > 0 && session != nil {
 		log.Printf("Recording elapsed time: %d seconds (total consumption: %d)\n",
 			elapsed, session.TimeConsumption())
 	}
@@ -456,14 +458,14 @@ func (self *RunningSession) StopWithReason(ctx context.Context, isConsumed bool)
 	logSlowOperation("DB Save (Stop)", dbStart, 2*time.Second, contextInfo)
 
 	// Emit events (emitter is immutable, no lock needed)
-	if self.emitter != nil && self.clnt != nil {
+	// Only emit events if we have a valid session - session can be nil if Stop() is called
+	// before Start() completes or if the session was never properly initialized
+	if self.emitter != nil && self.clnt != nil && session != nil {
 		if isConsumed {
-			// Session was consumed (time/data exhausted) - emit both expired and disconnected
-			self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeConsumed, session, self.clnt)
+			// Session was consumed (time/data exhausted) - emit both consumed and disconnected
 			self.emitter.emitSessionEvent(sdkapi.EventSessionConsumed, session, self.clnt)
 		}
 		// Always emit disconnected event when session stops
-		self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeDisconnected, session, self.clnt)
 		self.emitter.emitSessionEvent(sdkapi.EventSessionDisconnected, session, self.clnt)
 	}
 
@@ -629,15 +631,6 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 				elapsed := self.persistTimeConsumption(currentSession, false)
 				log.Printf("Periodic save: persisting %d seconds consumed, %d remaining\n",
 					currentSession.ConsumedTimeSecs(), currentSession.RemainingTime())
-
-				// Emit before updated hook (emitter is immutable)
-				if self.emitter != nil && self.clnt != nil {
-					if err := self.emitter.emitSessionEvent(sdkapi.EventSessionBeforeUpdated, currentSession, self.clnt); err != nil {
-						log.Println("Before update hook failed:", err)
-						go self.Stop(context.Background())
-						return
-					}
-				}
 
 				// Direct save
 				contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Elapsed=%ds",
