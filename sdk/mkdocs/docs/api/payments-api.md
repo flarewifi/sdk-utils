@@ -125,6 +125,45 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### OnPurchaseEvent
+
+Registers a callback function for purchase events. This allows plugins to react to purchase state changes such as successful payments, failures, or cancellations.
+
+Available purchase events:
+
+| Event | Description | When Emitted |
+|-------|-------------|--------------|
+| `EventPurchaseSuccess` | Purchase was successfully confirmed | After `purchase.Confirm()` succeeds |
+| `EventPurchaseFailed` | Purchase confirmation or execution failed | When `purchase.Confirm()` or `purchase.Execute()` fails |
+| `EventPurchaseCancelled` | Purchase was cancelled by user | After `purchase.Cancel()` completes |
+
+```go
+// Register for successful purchases
+api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseSuccess, func(data sdkapi.PurchaseEventData) error {
+    api.Logger().Info("Purchase %s confirmed for device %s", 
+        data.Purchase.UUID(), data.Device.MacAddr())
+    
+    // Your business logic here (e.g., send notification, update external system)
+    return nil
+})
+
+// Register for failed purchases
+api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseFailed, func(data sdkapi.PurchaseEventData) error {
+    api.Logger().Error("Purchase %s failed: %s", data.Purchase.UUID(), data.Reason)
+    
+    // Handle failure (e.g., alert admin, retry logic)
+    return nil
+})
+
+// Register for cancelled purchases
+api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseCancelled, func(data sdkapi.PurchaseEventData) error {
+    api.Logger().Info("Purchase %s cancelled: %s", data.Purchase.UUID(), data.Reason)
+    
+    // Handle cancellation (e.g., analytics, cleanup)
+    return nil
+})
+```
+
 ---
 
 ## Types
@@ -158,6 +197,32 @@ const (
     CurrencyUsDollar       SupportedCurrency = "USD"
     CurrencyNigerianNaira  SupportedCurrency = "NGN"
 )
+```
+
+### PurchaseEvent
+
+The `PurchaseEvent` type represents purchase event types:
+
+```go
+type PurchaseEvent string
+
+const (
+    EventPurchaseSuccess   PurchaseEvent = "purchase:success"
+    EventPurchaseFailed    PurchaseEvent = "purchase:failed"
+    EventPurchaseCancelled PurchaseEvent = "purchase:cancelled"
+)
+```
+
+### PurchaseEventData
+
+The `PurchaseEventData` struct represents the data associated with a purchase event:
+
+```go
+type PurchaseEventData struct {
+    Purchase IPurchaseRequest // The purchase request that triggered the event
+    Device   IClientDevice    // The client device associated with the purchase
+    Reason   string           // Context for failure/cancellation (empty for success)
+}
 ```
 
 ---
@@ -343,6 +408,52 @@ func handleDonation(w http.ResponseWriter, r *http.Request) {
     api.Payments().Checkout(w, r, purchase)
 }
 ```
+
+## Cloud Sync Integration
+
+The `IPaymentsApi` provides event callbacks that enable cloud synchronization of purchase data. This allows you to build plugins that sync purchase events to external systems.
+
+### Syncing Purchase Events to Cloud
+
+Use the event callbacks to push purchase updates to your cloud server:
+
+```go
+func Init(api sdkapi.IPluginApi) error {
+    machineID := api.Machine().GetID()
+    
+    // Sync successful purchases
+    api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseSuccess, func(data sdkapi.PurchaseEventData) error {
+        return syncToCloud(machineID, "purchase_success", map[string]interface{}{
+            "purchase_uuid": data.Purchase.UUID(),
+            "device_uuid":   data.Device.UUID(),
+            "sku":           data.Purchase.Sku(),
+            "price":         data.Purchase.Price(),
+        })
+    })
+    
+    // Sync failed purchases for analytics
+    api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseFailed, func(data sdkapi.PurchaseEventData) error {
+        return syncToCloud(machineID, "purchase_failed", map[string]interface{}{
+            "purchase_uuid": data.Purchase.UUID(),
+            "device_uuid":   data.Device.UUID(),
+            "reason":        data.Reason,
+        })
+    })
+    
+    // Sync cancelled purchases
+    api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseCancelled, func(data sdkapi.PurchaseEventData) error {
+        return syncToCloud(machineID, "purchase_cancelled", map[string]interface{}{
+            "purchase_uuid": data.Purchase.UUID(),
+            "device_uuid":   data.Device.UUID(),
+            "reason":        data.Reason,
+        })
+    })
+    
+    return nil
+}
+```
+
+---
 
 ## Related
 

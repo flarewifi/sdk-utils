@@ -178,13 +178,17 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 	pmgr := self.api.PluginsMgr()
 	callbackPkg, ok := pmgr.FindByPkg(self.purchase.CallbackPluginPkg())
 	if !ok {
-		return errors.New("Unable to find plugin to receive the payment")
+		err := errors.New("Unable to find plugin to receive the payment")
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
+		return err
 	}
 
 	// Build the webhook URL
 	webhookRoute := self.purchase.WebHookRoute()
 	if webhookRoute == "" {
-		return errors.New("WebHookRoute is not configured for this purchase")
+		err := errors.New("WebHookRoute is not configured for this purchase")
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
+		return err
 	}
 
 	webhookURL := callbackPkg.Http().Helpers().UrlForRoute(webhookRoute)
@@ -192,7 +196,9 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 	// Create JWT token with device ID and purchase UUID
 	token, err := helpers.CreatePurchaseToken(self.deviceId, self.purchase.UUID())
 	if err != nil {
-		return fmt.Errorf("failed to create purchase token: %w", err)
+		execErr := fmt.Errorf("failed to create purchase token: %w", err)
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
+		return execErr
 	}
 
 	// Append token as query parameter to webhook URL
@@ -208,13 +214,17 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 	// Marshal params to JSON
 	jsonData, err := json.Marshal(params)
 	if err != nil {
-		return fmt.Errorf("failed to marshal execute params: %w", err)
+		execErr := fmt.Errorf("failed to marshal execute params: %w", err)
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
+		return execErr
 	}
 
 	// Create request with context and JSON body
 	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("failed to create webhook request: %w", err)
+		execErr := fmt.Errorf("failed to create webhook request: %w", err)
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
+		return execErr
 	}
 
 	// Set Content-Type header
@@ -226,14 +236,18 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("webhook request failed: %w", err)
+		execErr := fmt.Errorf("webhook request failed: %w", err)
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
+		return execErr
 	}
 	defer resp.Body.Close()
 
 	// Check response status
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("webhook returned status %d: %s", resp.StatusCode, string(body))
+		execErr := fmt.Errorf("webhook returned status %d: %s", resp.StatusCode, string(body))
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
+		return execErr
 	}
 
 	fmt.Println("Webhook executed successfully")
@@ -279,11 +293,57 @@ func (self *Purchase) RedirectToCallback(w http.ResponseWriter, r *http.Request)
 }
 
 func (self *Purchase) Confirm(ctx context.Context) error {
-	return self.purchase.Confirm(ctx)
+	err := self.purchase.Confirm(ctx)
+	if err != nil {
+		// Emit failed event on confirmation error
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
+		return err
+	}
+
+	// Emit success event
+	self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseSuccess, "")
+	return nil
 }
 
 func (self *Purchase) Cancel(ctx context.Context) error {
-	return self.purchase.Cancel(ctx)
+	err := self.purchase.Cancel(ctx)
+	if err != nil {
+		// Emit failed event on cancellation error
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
+		return err
+	}
+
+	// Get the cancellation reason from the purchase after Cancel() sets it
+	reason := ""
+	if self.purchase.CancelledReason() != nil {
+		reason = *self.purchase.CancelledReason()
+	}
+
+	// Emit cancelled event
+	self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseCancelled, reason)
+	return nil
+}
+
+// emitPurchaseEvent emits a purchase event with the device information.
+func (self *Purchase) emitPurchaseEvent(ctx context.Context, event sdkapi.PurchaseEvent, reason string) {
+	// Get the device for the event data
+	device, err := self.api.SessionsMgr().FindClientById(ctx, self.deviceId)
+	if err != nil {
+		// Log error but don't fail - events are best-effort
+		fmt.Printf("Failed to get device for purchase event: %v\n", err)
+		return
+	}
+
+	data := sdkapi.PurchaseEventData{
+		Purchase: self,
+		Device:   device,
+		Reason:   reason,
+	}
+
+	// Emit through the payments manager
+	if err := self.api.PaymentsAPI.paymentsMgr.EmitPurchaseEvent(event, data); err != nil {
+		fmt.Printf("Failed to emit purchase event %s: %v\n", event, err)
+	}
 }
 
 func (self *Purchase) ErrorPage(w http.ResponseWriter, err error) {
