@@ -1,1 +1,10 @@
-.ignore
+data/config
+data/storage
+!data/plugins/local/*
+!data/config
+.tmp/
+.bin/
+plugins/installed
+output/
+!hosts.json
+!openwrt-files
