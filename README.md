@@ -42,6 +42,26 @@ The admin dashboard can be accessed at [http://localhost:3000/admin](http://loca
 
 The database can be managed at [http://localhost:3001](http://localhost:3001)
 
+# Device Activation (Development Environment)
+
+These steps activate a machine locally when running flarehotspot alongside [flare-server](https://github.com/flarehotspot/flare-server). This is for **dev setup only** — not production.
+
+### Prerequisites
+
+1. **Hostfile configured** — add all required entries to `/etc/hosts`. See the [flare-server README](https://github.com/flarehotspot/flare-server#installation) for the full list.
+2. **flare-server running** — `make servers` in the flare-server directory.
+3. **Docker running** — both projects rely on Docker Compose.
+
+### Steps
+
+1. **Set up user permissions** — log into [superuser.flare-local.com](http://superuser.flare-local.com), ensure your user has the required permission flags (at minimum `is_internal`).
+2. **Create a B2B Partner** — on the superuser dashboard, create a new B2B Partner and note the **Brand ID**.
+3. **Configure `os_release.json`** — in `openwrt-files/etc/`, copy the correct variant for your architecture (`os_release.x86.json` or `os_release.arm64.json`) to `os_release.json`, then replace the `brand_id` value with the Brand ID from step 2.
+4. **Start both servers** — run `make servers` in the flare-server terminal and `make` in the flarehotspot terminal.
+5. **Activate the machine** — go to [internal.flare-local.com](http://internal.flare-local.com), find the machine by its `machine_id`, and activate it (fill in user details, tick "Is activated", save).
+
+> **Tip:** When extracting `openwrt-files.zip`, watch out for nested `openwrt-files/openwrt-files/` directories. The directory containing `etc/` must be at the project root.
+
 # Documentation
 
 To view the documentation locally, visit [http://localhost:3002](http://localhost:3002).
