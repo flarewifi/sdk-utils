@@ -49,4 +49,11 @@ type IPaymentsApi interface {
 	// Token expires after 5 minutes for security.
 	// Returns the purchase request if successful, or an error if validation fails.
 	ExtractPurchaseData(r *http.Request) (IPurchaseRequest, error)
+
+	// OnPurchaseEvent registers a callback for purchase events.
+	// Plugins can use this to react to purchase state changes:
+	//   - EventPurchaseSuccess: Emitted after purchase.Confirm() succeeds
+	//   - EventPurchaseFailed: Emitted when purchase.Confirm() or purchase.Execute() fails
+	//   - EventPurchaseCancelled: Emitted after purchase.Cancel() completes
+	OnPurchaseEvent(event PurchaseEvent, callback func(data PurchaseEventData) error)
 }
