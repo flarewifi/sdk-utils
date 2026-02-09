@@ -224,3 +224,31 @@ label := api.Translate("label", "Username")
 - Route naming: `section:subsection:action` (e.g., `"admin:plugins:install"`)
 - Parameters as key-value pairs: `UrlForRoute("admin:device:info", "id", deviceID)`
 - Wrap with `templ.SafeURL()` for href/action attributes
+
+## UI Verification with Playwright MCP
+
+Use the `playwright` MCP server to verify UI implementations against the local dev server at `http://localhost:3000`.
+
+### When to Verify
+
+- After implementing or modifying UI components (views, templates, styles)
+- After changing frontend behavior (JavaScript, htmx interactions, Alpine.js components)
+- When fixing UI bugs - verify the fix visually
+- When the user asks to check or verify the UI
+
+### How to Verify
+
+1. Use `browser_navigate` to go to the relevant page at `http://localhost:3000`
+2. Use `browser_snapshot` to capture the accessibility tree and inspect the page structure
+3. Use `browser_click`, `browser_type`, and `browser_fill_form` to test interactive elements
+4. Use `browser_take_screenshot` when a visual check is needed
+
+### Guidelines
+
+- **Always use accessibility snapshots** (`browser_snapshot`) as the primary inspection method - they are faster and more reliable than screenshots
+- **Save all output files to `.tmp/playwright/`** - screenshots, snapshots, and any other Playwright output files must be saved to the `.tmp/playwright/` directory (e.g., `browser_take_screenshot` with filename `.tmp/playwright/page-screenshot.png`)
+- **Test user flows end-to-end** - navigate, fill forms, submit, and verify success/error messages
+- **Check both admin and portal pages** - admin uses Bootstrap 5.3.3, portal uses Bootstrap 3.4.1
+- **Verify translations** appear correctly (no raw translation keys visible)
+- **Test responsive behavior** when relevant using `browser_resize`
+- **Close the browser** (`browser_close`) when done verifying to free resources

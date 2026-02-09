@@ -53,6 +53,13 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "Admin User"),
+				RouteName: "admin:user:index",
+				Keywords:  []string{"admin", "user", "password", "account", "profile"},
+				Order:     4000, // After Database (3000), before Logs (5000)
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Logs"),
 				RouteName: "admin:logs:index",
 				Keywords:  []string{"log", "logs", "audit", "audits"},

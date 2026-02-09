@@ -55,6 +55,10 @@ func AdminRoutes(g *api.CoreGlobals) {
 			subrouter.Get("/index", adminctrl.DatabaseSettingsIndexCtrl(g)).Name("admin:database:index")
 			subrouter.Post("/reset", adminctrl.DatabaseResetCtrl(g)).Name("admin:database:reset")
 		})
+		subrouter.Group("/user", func(subrouter sdkapi.IHttpRouterInstance) {
+			subrouter.Get("/index", adminctrl.AdminUserIndexCtrl(g)).Name("admin:user:index")
+			subrouter.Post("/change-password", adminctrl.AdminUserChangePasswordCtrl(g)).Name("admin:user:change-password")
+		})
 	})
 
 	adminR.Group("/themes", func(subrouter sdkapi.IHttpRouterInstance) {

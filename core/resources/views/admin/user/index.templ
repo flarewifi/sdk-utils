@@ -1,0 +1,66 @@
+package user
+
+import (
+	"sdk/api"
+)
+
+type AdminUserIndexParams struct {
+	Username string
+	Errors   sdkapi.FormErrors
+}
+
+templ AdminUserIndex(api sdkapi.IPluginApi, params AdminUserIndexParams) {
+	<div id="admin-user-page">
+		<h3 class="mb-4">{ api.Translate("label", "Admin User") }</h3>
+
+		<!-- User Information Card -->
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">{ api.Translate("label", "User Information") }</h5>
+			</div>
+			<div class="card-body">
+				<div class="row align-items-center mb-2">
+					<div class="col-md-4">
+						<label class="form-label fw-bold">{ api.Translate("label", "Username") }</label>
+					</div>
+					<div class="col-md-8">
+						<input type="text" class="form-control" value={ params.Username } disabled/>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Change Password Card -->
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">{ api.Translate("label", "Change Password") }</h5>
+			</div>
+			<div class="card-body">
+				<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:user:change-password")) }>
+					<div class="mb-3">
+						<label for="current_password" class="form-label">{ api.Translate("label", "Current Password") }</label>
+						<input type="password" class="form-control" id="current_password" name="current_password" required/>
+						if params.Errors.HasError("current_password") {
+							<div class="text-danger mt-1">{ params.Errors.GetError("current_password") }</div>
+						}
+					</div>
+					<div class="mb-3">
+						<label for="new_password" class="form-label">{ api.Translate("label", "New Password") }</label>
+						<input type="password" class="form-control" id="new_password" name="new_password" minlength="4" required/>
+						if params.Errors.HasError("new_password") {
+							<div class="text-danger mt-1">{ params.Errors.GetError("new_password") }</div>
+						}
+					</div>
+					<div class="mb-3">
+						<label for="confirm_password" class="form-label">{ api.Translate("label", "Confirm Password") }</label>
+						<input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="4" required/>
+						if params.Errors.HasError("confirm_password") {
+							<div class="text-danger mt-1">{ params.Errors.GetError("confirm_password") }</div>
+						}
+					</div>
+					<button type="submit" class="btn btn-primary">{ api.Translate("label", "Change Password") }</button>
+				</form>
+			</div>
+		</div>
+	</div>
+}
