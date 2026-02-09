@@ -11,6 +11,25 @@ import (
 	"time"
 )
 
+// SessionChangedFields tracks which session fields were modified since last save.
+type SessionChangedFields struct {
+	Time      bool // timeSecs or timeCons changed
+	Data      bool // dataMb or dataCons changed
+	Bandwidth bool // downMbits, upMbits, or useGlobal changed
+}
+
+// SessionSaveParams contains parameters for the session save callback.
+type SessionSaveParams struct {
+	Ctx           context.Context
+	Session       IClientSession
+	ChangedFields SessionChangedFields
+}
+
+// SessionSaveCallback is called after a session is saved to apply side effects.
+// This allows the SessionsMgr to update running sessions (reset timers, update TC rules)
+// and emit events when session.Save() is called.
+type SessionSaveCallback func(params SessionSaveParams) error
+
 // IClientSession represents a client's internet connection session.
 type IClientSession interface {
 	// Returns the session's ID.
@@ -151,4 +170,16 @@ type IClientSession interface {
 
 	// Reloads the session's data from the database.
 	Reload(ctx context.Context) error
+
+	// Saves the session state directly to the database without triggering save callbacks.
+	// Unlike Save(), this does NOT trigger the onSave callback and does NOT clear dirty flags.
+	// Used for internal bookkeeping operations (periodic saves, stop operations).
+	PersistToDB(ctx context.Context) error
+
+	// Atomically snapshots elapsed time into stored consumption and resets resumedAt.
+	// If clearResumed is true, sets resumedAt to nil (session stopping).
+	// If clearResumed is false, resets resumedAt to now (checkpoint for continued tracking).
+	// Returns elapsed seconds for logging purposes.
+	// Does NOT set dirty flags (internal bookkeeping operation).
+	SnapshotTimeCons(clearResumed bool) int
 }

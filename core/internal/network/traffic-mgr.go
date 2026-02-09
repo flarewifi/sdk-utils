@@ -27,8 +27,11 @@ func (self *TrafficMgr) Start() {
 		self.ticker = time.NewTicker(5 * time.Second)
 		self.mu.Unlock()
 
+		// Run MakeTrafficData synchronously in the ticker loop.
+		// If it takes longer than the tick interval, the next tick is simply delayed.
+		// This prevents goroutine accumulation when nftables GetStats is slow.
 		for range self.ticker.C {
-			go self.MakeTrafficData()
+			self.MakeTrafficData()
 		}
 	}()
 }

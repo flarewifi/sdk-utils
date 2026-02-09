@@ -31,6 +31,11 @@ type sessionData struct {
 	useGlobal   bool
 	createdAt   time.Time
 	updatedAt   time.Time
+
+	// Dirty tracking - which fields changed since last save/load
+	dirtyTime      bool // timeSecs or timeCons changed
+	dirtyData      bool // dataMb or dataCons changed
+	dirtyBandwidth bool // downMbits, upMbits, or useGlobal changed
 }
 
 // copyTimePtr creates a deep copy of a time pointer to avoid shared state
@@ -71,12 +76,30 @@ func (d *sessionData) copy() sessionData {
 		useGlobal:   d.useGlobal,
 		createdAt:   d.createdAt,
 		updatedAt:   d.updatedAt,
+		// Preserve dirty flags during copy
+		dirtyTime:      d.dirtyTime,
+		dirtyData:      d.dirtyData,
+		dirtyBandwidth: d.dirtyBandwidth,
 	}
 }
 
-func NewClientSession(dtb *db.Database, mdls *models.Models, pluginsMgr sdkapi.IPluginsMgrApi, s *models.Session) *ClientSession {
-	cs := &ClientSession{db: dtb, mdls: mdls, pluginsMgr: pluginsMgr}
-	cs.loadFromModel(s)
+// NewClientSessionParams contains parameters for creating a ClientSession.
+type NewClientSessionParams struct {
+	DB         *db.Database
+	Models     *models.Models
+	PluginsMgr sdkapi.IPluginsMgrApi
+	Session    *models.Session
+	OnSave     sdkapi.SessionSaveCallback
+}
+
+func NewClientSession(params NewClientSessionParams) *ClientSession {
+	cs := &ClientSession{
+		db:         params.DB,
+		mdls:       params.Models,
+		pluginsMgr: params.PluginsMgr,
+		onSave:     params.OnSave,
+	}
+	cs.loadFromModel(params.Session)
 	return cs
 }
 
@@ -89,6 +112,10 @@ type ClientSession struct {
 	mdls       *models.Models
 	pluginsMgr sdkapi.IPluginsMgrApi
 
+	// Callback for save notifications (set by SessionsMgr)
+	// Called after Save() to apply side effects to running sessions
+	onSave sdkapi.SessionSaveCallback
+
 	// Session data - atomic pointer for lock-free reads
 	data atomic.Pointer[sessionData]
 
@@ -97,9 +124,30 @@ type ClientSession struct {
 }
 
 func (self *ClientSession) Save(ctx context.Context) error {
+	// Take a consistent snapshot and clear dirty flags atomically.
+	// This ensures no writes are lost between reading flags and clearing them.
+	self.writeMu.Lock()
 	d := self.data.Load()
 
-	return self.mdls.Session().Update(ctx, models.UpdateSessionParams{
+	// Collect changed fields from the current snapshot
+	changedFields := sdkapi.SessionChangedFields{
+		Time:      d.dirtyTime,
+		Data:      d.dirtyData,
+		Bandwidth: d.dirtyBandwidth,
+	}
+
+	// Clear dirty flags immediately so concurrent setters mark new changes
+	if changedFields.Time || changedFields.Data || changedFields.Bandwidth {
+		newData := d.copy()
+		newData.dirtyTime = false
+		newData.dirtyData = false
+		newData.dirtyBandwidth = false
+		self.data.Store(&newData)
+	}
+	self.writeMu.Unlock()
+
+	// Save to database (outside lock - DB operations can be slow)
+	err := self.mdls.Session().Update(ctx, models.UpdateSessionParams{
 		ID:          d.id,
 		UUID:        d.uuid,
 		ProviderPkg: d.providerPkg,
@@ -116,6 +164,20 @@ func (self *ClientSession) Save(ctx context.Context) error {
 		UpMbits:     d.upMbits,
 		UseGlobal:   d.useGlobal,
 	})
+	if err != nil {
+		return err
+	}
+
+	// Notify callback if any fields changed and callback is set
+	if self.onSave != nil && (changedFields.Time || changedFields.Data || changedFields.Bandwidth) {
+		return self.onSave(sdkapi.SessionSaveParams{
+			Ctx:           ctx,
+			Session:       self,
+			ChangedFields: changedFields,
+		})
+	}
+
+	return nil
 }
 
 func (self *ClientSession) Reload(ctx context.Context) (err error) {
@@ -392,6 +454,7 @@ func (self *ClientSession) IncTimeCons(sec int) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.timeCons += sec
+	newData.dirtyTime = true
 	self.data.Store(&newData)
 }
 
@@ -404,6 +467,7 @@ func (self *ClientSession) IncDataCons(mbytes float64) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.dataCons += mbytes
+	newData.dirtyData = true
 	self.data.Store(&newData)
 }
 
@@ -416,6 +480,7 @@ func (self *ClientSession) SetTimeSecs(sec int) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.timeSecs = sec
+	newData.dirtyTime = true
 	self.data.Store(&newData)
 }
 
@@ -428,6 +493,7 @@ func (self *ClientSession) SetDataMb(mbytes float64) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.dataMb = mbytes
+	newData.dirtyData = true
 	self.data.Store(&newData)
 }
 
@@ -440,6 +506,7 @@ func (self *ClientSession) SetTimeCons(sec int) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.timeCons = sec
+	newData.dirtyTime = true
 	self.data.Store(&newData)
 }
 
@@ -452,6 +519,7 @@ func (self *ClientSession) SetDataCons(mbytes float64) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.dataCons = mbytes
+	newData.dirtyData = true
 	self.data.Store(&newData)
 }
 
@@ -500,6 +568,7 @@ func (self *ClientSession) SetDownMbits(mbits int) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.downMbits = mbits
+	newData.dirtyBandwidth = true
 	self.data.Store(&newData)
 }
 
@@ -512,6 +581,7 @@ func (self *ClientSession) SetUpMbits(mbits int) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.upMbits = mbits
+	newData.dirtyBandwidth = true
 	self.data.Store(&newData)
 }
 
@@ -524,5 +594,63 @@ func (self *ClientSession) SetUseGlobalSpeed(useGlobal bool) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.useGlobal = useGlobal
+	newData.dirtyBandwidth = true
 	self.data.Store(&newData)
+}
+
+// ============================================================================
+// INTERNAL PERSISTENCE METHODS - For bookkeeping operations
+// ============================================================================
+
+// PersistToDB saves the current session state directly to the database.
+// Unlike Save(), this does NOT trigger the onSave callback and does NOT clear dirty flags.
+// Used for internal bookkeeping operations (periodic saves, stop operations).
+func (self *ClientSession) PersistToDB(ctx context.Context) error {
+	d := self.data.Load()
+	return self.mdls.Session().Update(ctx, models.UpdateSessionParams{
+		ID:          d.id,
+		UUID:        d.uuid,
+		ProviderPkg: d.providerPkg,
+		DeviceID:    d.devId,
+		SessionType: sdkapi.SessionType(d.sessionType),
+		TimeSecs:    d.timeSecs,
+		DataMbytes:  d.dataMb,
+		TimeCons:    d.timeCons,
+		DataCons:    d.dataCons,
+		StartedAt:   d.startedAt,
+		ResumedAt:   d.resumedAt,
+		ExpDays:     d.expDays,
+		DownMbits:   d.downMbits,
+		UpMbits:     d.upMbits,
+		UseGlobal:   d.useGlobal,
+	})
+}
+
+// SnapshotTimeCons atomically bakes elapsed time into timeCons and resets resumedAt.
+// If clearResumed is true, sets resumedAt to nil (session stopping).
+// If clearResumed is false, resets resumedAt to now (checkpoint for continued tracking).
+// Returns elapsed seconds for logging purposes.
+// Does NOT set dirty flags (internal bookkeeping operation).
+func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	d := self.data.Load()
+	if d.resumedAt == nil {
+		return 0
+	}
+
+	elapsed := int(time.Since(*d.resumedAt).Seconds())
+	newData := d.copy()
+	newData.timeCons = d.timeCons + elapsed
+
+	if clearResumed {
+		newData.resumedAt = nil
+	} else {
+		now := time.Now().UTC()
+		newData.resumedAt = &now
+	}
+
+	self.data.Store(&newData)
+	return elapsed
 }

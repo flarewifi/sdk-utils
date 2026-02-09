@@ -65,9 +65,9 @@ type CreateSessionParams struct {
 	ConsumptionMb   float64 // Optional: Data consumption in megabytes (for cloud sync)
 }
 
-// NewSessionParams holds session data fields for wrapping an existing session row
+// NewClientSessionParams holds session data fields for wrapping an existing session row
 // into an IClientSession object without performing database queries.
-type NewSessionParams struct {
+type NewClientSessionParams struct {
 	ID              int64
 	UUID            string
 	ProviderPkg     string
@@ -144,11 +144,11 @@ type ISessionsMgrApi interface {
 	// like RemainingTime() and RemainingData() which account for elapsed time.
 	FindSessionByID(ctx context.Context, sessionID int64) (IClientSession, error)
 
-	// NewSession wraps session data into an IClientSession object without performing
+	// NewClientSession wraps session data into an IClientSession object without performing
 	// additional database queries. This is useful when you already have session data from queries
 	// and want to use SDK methods like RemainingTime() and RemainingData() which account for
 	// elapsed time. The params parameter contains all session fields from the database row.
-	NewSession(params NewSessionParams) IClientSession
+	NewClientSession(params NewClientSessionParams) IClientSession
 
 	// NewClientDevice wraps device data into an IClientDevice object without performing
 	// additional database queries. This is useful when you already have device data from queries
