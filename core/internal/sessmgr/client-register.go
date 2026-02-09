@@ -81,23 +81,13 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 		}
 	}
 
-	// Check if device has a running session (before updating)
-	rs, hasRunningSession := reg.sessionsMgr.GetRunningSession(clnt)
+	// Check if device has a running session
+	_, hasRunningSession := reg.sessionsMgr.GetRunningSession(clnt)
 	log.Printf("[ClientRegister.UpdateDevice] DEBUG: Device has running session: %v", hasRunningSession)
 
-	// If there's a running session, update its network details first
-	// This ensures TC rules and internal state are updated before disconnect/reconnect
+	// Disconnect if running (this handles TC cleanup, nftables, etc.)
 	if hasRunningSession {
-		log.Printf("[ClientRegister.UpdateDevice] DEBUG: Updating running session network details")
-		// Update the running session's MAC and IP addresses
-		// This will update TC (traffic control) rules to point to the new IP
-		if err := rs.UpdateNetworkDetails(ctx, newMac, newIP); err != nil {
-			log.Printf("[ClientRegister.UpdateDevice] ERROR: Failed to update running session network details: %v", err)
-			return fmt.Errorf("failed to update running session network details: %w", err)
-		}
-
-		// Now disconnect the session (it already has updated network details)
-		log.Printf("[ClientRegister.UpdateDevice] DEBUG: Disconnecting session before update")
+		log.Printf("[ClientRegister.UpdateDevice] DEBUG: Disconnecting session before network update")
 		err := reg.sessionsMgr.Disconnect(ctx, clnt, reg.sessionsMgr.coreAPI.Translate("info", "Device network details changed, reconnecting"))
 		if err != nil {
 			log.Printf("[ClientRegister.UpdateDevice] ERROR: Failed to disconnect session: %v", err)

@@ -14,10 +14,13 @@ import (
 )
 
 type ClientDevice struct {
+	// === IMMUTABLE after creation (no lock needed) ===
+	db   *db.Database
+	mdls *models.Models
+	id   int64
+
+	// === MUTABLE (protected by mu) ===
 	mu       sync.RWMutex
-	db       *db.Database
-	mdls     *models.Models
-	id       int64
 	uuid     string
 	mac      string
 	ip       string
@@ -38,9 +41,8 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 	}
 }
 
+// ID returns the device's database ID (immutable, no lock needed).
 func (self *ClientDevice) ID() int64 {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
 	return self.id
 }
 

@@ -190,6 +190,52 @@ api.SessionsMgr().OnClientEvent("client:connected", func(clnt IClientDevice) {
 })
 ```
 
+## Updating Sessions
+
+To update a session's time, data, or bandwidth, use the [IClientSession](./client-session.md) setter methods followed by [Save](./client-session.md#save). The `Save()` method automatically applies side effects for running sessions (timer reset, TC rule updates) and emits `EventSessionUpdated`.
+
+### Update Remaining Time
+
+```go
+session, err := api.SessionsMgr().FindSessionByID(r.Context(), sessionID)
+if err != nil {
+    // handle error
+}
+
+// Set new total time = desired remaining + already consumed
+newTimeSecs := remainingSecs + session.ConsumedTimeSecs()
+session.SetTimeSecs(newTimeSecs)
+err = session.Save(r.Context())
+```
+
+### Update Remaining Data
+
+```go
+session, err := api.SessionsMgr().FindSessionByID(r.Context(), sessionID)
+if err != nil {
+    // handle error
+}
+
+// Set new total data = desired remaining + already consumed
+newDataMb := remainingMb + session.ConsumedDataMb()
+session.SetDataMb(newDataMb)
+err = session.Save(r.Context())
+```
+
+### Update Bandwidth
+
+```go
+session, err := api.SessionsMgr().FindSessionByID(r.Context(), sessionID)
+if err != nil {
+    // handle error
+}
+
+session.SetDownMbits(10) // 10 Mbps download
+session.SetUpMbits(5)    // 5 Mbps upload
+session.SetUseGlobalSpeed(false)
+err = session.Save(r.Context())
+```
+
 ## Cloud Sync Integration
 
 The `ISessionsMgrApi` provides methods that enable cloud synchronization of sessions and devices. This allows you to build plugins that sync local hotspot data to a cloud server and receive remote commands.

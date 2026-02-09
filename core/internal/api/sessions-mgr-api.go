@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"core/db/models"
-	"core/internal/sessmgr"
 	sdkapi "sdk/api"
 )
 
@@ -23,32 +22,17 @@ type SessionsMgrApi struct {
 
 // FindClientById finds a client device by its ID.
 func (self *SessionsMgrApi) FindClientById(ctx context.Context, devId int64) (sdkapi.IClientDevice, error) {
-	device, err := self.pluginApi.models.Device().Find(ctx, devId)
-	if err != nil {
-		return nil, err
-	}
-	clnt := sessmgr.NewClientDevice(self.pluginApi.db, self.pluginApi.models, device)
-	return clnt, nil
+	return self.pluginApi.SessionMgr.FindDeviceByID(ctx, devId)
 }
 
 // FindDeviceByUUID finds a client device by its globally unique identifier.
 func (self *SessionsMgrApi) FindDeviceByUUID(ctx context.Context, uuid string) (sdkapi.IClientDevice, error) {
-	device, err := self.pluginApi.models.Device().FindByUUID(ctx, uuid)
-	if err != nil {
-		return nil, err
-	}
-	clnt := sessmgr.NewClientDevice(self.pluginApi.db, self.pluginApi.models, device)
-	return clnt, nil
+	return self.pluginApi.SessionMgr.FindDeviceByUUID(ctx, uuid)
 }
 
 // FindSessionByUUID finds a session by its globally unique identifier.
 func (self *SessionsMgrApi) FindSessionByUUID(ctx context.Context, uuid string) (sdkapi.IClientSession, error) {
-	session, err := self.pluginApi.models.Session().FindByUUID(ctx, uuid)
-	if err != nil {
-		return nil, err
-	}
-	cs := sessmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), session)
-	return cs, nil
+	return self.pluginApi.SessionMgr.FindSessionByUUID(ctx, uuid)
 }
 
 // Connect connects a client device to the internet.
@@ -100,8 +84,26 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 		return nil, err
 	}
 
-	// Wrap session in IClientSession interface
-	cs := sessmgr.NewClientSession(self.pluginApi.db, self.pluginApi.models, self.pluginApi.PluginsMgr(), session)
+	// Wrap session in IClientSession interface with save callback
+	cs := self.pluginApi.SessionMgr.NewClientSession(sdkapi.NewClientSessionParams{
+		ID:              session.ID(),
+		UUID:            session.UUID(),
+		ProviderPkg:     session.ProviderPkg(),
+		DeviceID:        session.DeviceID(),
+		SessionType:     sdkapi.SessionType(session.SessionType()),
+		TimeSecs:        session.TimeSecs(),
+		DataMbytes:      session.DataMbyte(),
+		ConsumptionSecs: session.TimeConsumed(),
+		ConsumptionMb:   session.DataConsumed(),
+		StartedAt:       session.StartedAt(),
+		ResumedAt:       session.ResumedAt(),
+		ExpDays:         session.ExpDays(),
+		DownMbits:       session.DownMbits(),
+		UpMbits:         session.UpMbits(),
+		UseGlobal:       session.UseGlobal(),
+		CreatedAt:       session.CreatedAt(),
+		UpdatedAt:       session.UpdatedAt(),
+	})
 
 	// Set consumption values if provided (for cloud sync)
 	if params.ConsumptionSecs > 0 || params.ConsumptionMb > 0 {
@@ -138,10 +140,10 @@ func (self *SessionsMgrApi) FindSessionByID(ctx context.Context, sessionID int64
 	return self.pluginApi.SessionMgr.FindSessionByID(ctx, sessionID)
 }
 
-// NewSession wraps session data into an IClientSession object without performing
+// NewClientSession wraps session data into an IClientSession object without performing
 // additional database queries.
-func (self *SessionsMgrApi) NewSession(params sdkapi.NewSessionParams) sdkapi.IClientSession {
-	return self.pluginApi.SessionMgr.NewSession(params)
+func (self *SessionsMgrApi) NewClientSession(params sdkapi.NewClientSessionParams) sdkapi.IClientSession {
+	return self.pluginApi.SessionMgr.NewClientSession(params)
 }
 
 // NewClientDevice wraps device data into an IClientDevice object without performing
