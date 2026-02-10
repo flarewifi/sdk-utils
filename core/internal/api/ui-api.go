@@ -1,7 +1,7 @@
 package api
 
 import (
-	"core/resources/views/bs5utils"
+	"core/resources/views/ui/bs5"
 
 	sdkapi "sdk/api"
 
@@ -19,7 +19,7 @@ type UIApi struct {
 }
 
 func (self *UIApi) Pagination(opts *sdkapi.UIPaginationOpts) templ.Component {
-	paginationTemplate := bs5utils.Pagination(self.api, bs5utils.PaginationOpts{
+	paginationTemplate := bs5.Pagination(self.api, bs5.PaginationOpts{
 		PageURL:     opts.PageURL,
 		PerPage:     opts.PerPage,
 		CurrentPage: opts.CurrentPage,
@@ -28,4 +28,8 @@ func (self *UIApi) Pagination(opts *sdkapi.UIPaginationOpts) templ.Component {
 	})
 
 	return paginationTemplate
+}
+
+func (self *UIApi) LineChart(opts *sdkapi.LineChartOpts) templ.Component {
+	return bs5.LineChart(*opts)
 }

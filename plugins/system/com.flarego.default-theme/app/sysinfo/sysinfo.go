@@ -5,6 +5,7 @@ import (
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/sensors"
 )
@@ -21,6 +22,7 @@ type SystemInfo struct {
 	DiskTotal       uint64    `json:"disk_total"`
 	DiskUsed        uint64    `json:"disk_used"`
 	DiskUsedPercent float64   `json:"disk_used_percent"`
+	Uptime          uint64    `json:"uptime"`
 }
 
 // GetSystemInfo retrieves basic system information: CPU, memory, disk, and temperature.
@@ -59,6 +61,10 @@ func GetSystemInfo() (*SystemInfo, error) {
 		info.DiskUsed = diskUsage.Used
 		info.DiskUsedPercent = diskUsage.UsedPercent
 	}
+
+	// Uptime in seconds
+	uptime, _ := host.Uptime()
+	info.Uptime = uptime
 
 	return info, nil
 }

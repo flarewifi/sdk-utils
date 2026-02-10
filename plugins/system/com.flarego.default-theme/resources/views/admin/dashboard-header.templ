@@ -1,0 +1,16 @@
+package admin
+
+import (
+	"time"
+	sdkapi "sdk/api"
+)
+
+templ DashboardHeader(api sdkapi.IPluginApi) {
+	<div class="fw-dashboard-header">
+		<h1 class="h3 mb-0">{ api.Translate("label", "Dashboard") }</h1>
+		<div class="fw-last-updated">
+			<i class="bi bi-clock"></i>
+			<span>{ api.Translate("label", "Last updated") }: { time.Now().Format("Jan 2, 2006 3:04 PM") }</span>
+		</div>
+	</div>
+}

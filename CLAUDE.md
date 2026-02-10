@@ -197,9 +197,9 @@ label := api.Translate("label", "Username")
 ## Frontend Development
 
 ### CSS Frameworks
-- **Bootstrap 3.4.1** - Portal pages only (captive portal for end users)
-- **Bootstrap 5.3.3** - Admin dashboard only
-- Never mix versions - check which section you're working in
+- **Bootstrap 3.4.1** - Portal/login pages only (captive portal for end users) — rendered via `PortalView`
+- **Bootstrap 5.3.3** - Admin dashboard and all post-login pages — rendered via `AdminView`
+- Never mix versions — check which Go view function renders the page (`PortalView` = BS3, `AdminView` = BS5)
 
 ### JavaScript
 - **ES5 syntax only** - Maximum browser compatibility for embedded devices

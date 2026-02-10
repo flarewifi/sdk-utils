@@ -910,14 +910,15 @@ type ApplyBandwidthUpdateParams struct {
 	Ctx       context.Context
 	DownMbits int
 	UpMbits   int
+	UseGlobal bool
 }
 
 // ApplyBandwidthUpdate applies a bandwidth update to the running session.
-// This updates TC (traffic control) rules immediately.
+// This updates TC (traffic control) rules immediately and syncs the in-memory session.
 // Returns ErrSessionStopped if the session is already stopped.
-// Note: Session values are already updated by the caller; this only applies TC rules.
+// Note: Session values are already saved to DB by the caller; this applies runtime effects.
 func (self *RunningSession) ApplyBandwidthUpdate(params ApplyBandwidthUpdateParams) error {
-	contextInfo := fmt.Sprintf("DeviceID=%d, Down=%d, Up=%d", self.clntId, params.DownMbits, params.UpMbits)
+	contextInfo := fmt.Sprintf("DeviceID=%d, Down=%d, Up=%d, UseGlobal=%v", self.clntId, params.DownMbits, params.UpMbits, params.UseGlobal)
 
 	// Update TC rules
 	return withTcNftLock("TC Bandwidth Update", contextInfo, func() error {
@@ -932,12 +933,27 @@ func (self *RunningSession) ApplyBandwidthUpdate(params ApplyBandwidthUpdatePara
 			return errors.New("no active session")
 		}
 
+		// Update the in-memory session with the new bandwidth values.
+		// This ensures self.session stays in sync with the database so that
+		// future calls to updateTc() or initTc() use the correct values.
+		self.session.SetDownMbits(params.DownMbits)
+		self.session.SetUpMbits(params.UpMbits)
+		self.session.SetUseGlobalSpeed(params.UseGlobal)
+
 		// Read network state inside lock to ensure consistency with UpdateNetworkDetails
 		net := self.network.Load()
 
+		// Calculate effective bandwidth - use global LAN bandwidth if UseGlobal is set
+		downMbits := params.DownMbits
+		upMbits := params.UpMbits
+		if params.UseGlobal {
+			d, u := net.lan.Bandwidth()
+			downMbits, upMbits = int(d), int(u)
+		}
+
 		// Update TC class if it exists
 		if self.tcClassId != nil {
-			if err := net.lan.ChangeClass(self.tcClassId.Uint(), params.DownMbits, params.UpMbits); err != nil {
+			if err := net.lan.ChangeClass(self.tcClassId.Uint(), downMbits, upMbits); err != nil {
 				return fmt.Errorf("failed to update TC class: %w", err)
 			}
 		}

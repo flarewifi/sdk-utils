@@ -1,0 +1,68 @@
+package admin
+
+import sdkapi "sdk/api"
+
+templ ActiveUsersCard(api sdkapi.IPluginApi) {
+	<div class="card border h-100">
+		<div class="card-body d-flex flex-column">
+			<h2 class="h5 mb-3">{ api.Translate("label", "Active Users") }</h2>
+			<div class="d-flex align-items-center justify-content-between flex-grow-1 mb-3">
+				<div>
+					<div class="display-6 fw-semibold mb-1">23</div>
+					<p class="text-muted small mb-0">{ api.Translate("label", "Currently connected") }</p>
+				</div>
+				<div class="fw-icon-circle">
+					<i class="bi bi-people"></i>
+				</div>
+			</div>
+			<div class="pt-3 border-top">
+				<div class="fw-stats-row mb-2">
+					<span class="fw-stats-row-label">{ api.Translate("label", "Peak today") }</span>
+					<span>{ api.Translate("label", "31 users") }</span>
+				</div>
+				<div class="fw-stats-row mb-2">
+					<span class="fw-stats-row-label">{ api.Translate("label", "Average session") }</span>
+					<span>{ api.Translate("label", "2.5 hours") }</span>
+				</div>
+				<div class="fw-stats-row">
+					<span class="fw-stats-row-label">{ api.Translate("label", "Total sessions today") }</span>
+					<span>47</span>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ InternetStatusCard(api sdkapi.IPluginApi) {
+	<div class="card border h-100">
+		<div class="card-body d-flex flex-column">
+			<h2 class="h5 mb-3">{ api.Translate("label", "Internet Status") }</h2>
+			<div class="d-flex align-items-center justify-content-between flex-grow-1 mb-3">
+				<div>
+					<div class="d-flex align-items-center gap-2 mb-2">
+						<span class="fw-pulse-dot"></span>
+						<span class="fs-5">{ api.Translate("label", "Connected") }</span>
+					</div>
+					<p class="text-muted small mb-0">{ api.Translate("label", "Stable connection") }</p>
+				</div>
+				<div class="fw-icon-circle">
+					<i class="bi bi-wifi"></i>
+				</div>
+			</div>
+			<div class="pt-3 border-top">
+				<div class="fw-stats-row mb-2">
+					<span class="fw-stats-row-label">{ api.Translate("label", "Download speed") }</span>
+					<span>98.5 Mbps</span>
+				</div>
+				<div class="fw-stats-row mb-2">
+					<span class="fw-stats-row-label">{ api.Translate("label", "Upload speed") }</span>
+					<span>45.2 Mbps</span>
+				</div>
+				<div class="fw-stats-row">
+					<span class="fw-stats-row-label">{ api.Translate("label", "Latency") }</span>
+					<span>12 ms</span>
+				</div>
+			</div>
+		</div>
+	</div>
+}

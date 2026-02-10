@@ -2,11 +2,27 @@ package admin
 
 import (
 	"com.flarego.default-theme/app/sysinfo"
-	"sdk/api"
+	sdkapi "sdk/api"
 )
 
 templ AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
-	<h1>{ api.Translate("label", "Admin Dashboard") }</h1>
-
-	@ResourceInfo(api, info)
+	@DashboardHeader(api)
+	@SalesSummary(api)
+	<div class="row g-3 mb-4">
+		<div class="col-lg-6">
+			@ActiveUsersCard(api)
+		</div>
+		<div class="col-lg-6">
+			@InternetStatusCard(api)
+		</div>
+	</div>
+	@RevenueChartCard(api)
+	<div class="row g-3 mb-4">
+		<div class="col-lg-6">
+			@DeviceHealthCard(api, info)
+		</div>
+		<div class="col-lg-6">
+			@SystemInfoCard(api, info)
+		</div>
+	</div>
 }

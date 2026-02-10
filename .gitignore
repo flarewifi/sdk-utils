@@ -39,6 +39,7 @@ main.exe
 *:Zone.Identifier
 /storage
 .vscode/
+.serena/
 data.zip
 data*.zip
 hosts.json
