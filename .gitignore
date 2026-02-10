@@ -43,3 +43,4 @@ data.zip
 data*.zip
 hosts.json
 MACHINE_UID
+.serena/

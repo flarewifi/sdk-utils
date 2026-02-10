@@ -33,7 +33,41 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div style=\"position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(128, 128, 128, 0.5);\"><div class=\"container\"><div class=\"row\"><div class=\"col-xs-12 col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3 col-lg-4 col-lg-offset-4\" style=\"margin-top: 50px;\"><div class=\"panel panel-default\"><div class=\"panel-body\" style=\"padding: 20px;\"><h2 class=\"text-center\" style=\"margin-bottom: 20px;\">Log in</h2>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"fw-bg-dark fw-login-wrapper\"><!-- Stars background --><div class=\"fw-stars-layer\"><!-- Large stars --><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:10%;left:15%\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:20%;right:20%;animation-delay:.3s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:60%;left:10%;animation-delay:.6s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:80%;right:15%;animation-delay:.9s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:40%;right:40%;animation-delay:.3s\"></div><!-- Medium stars --><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:15%;left:30%;animation-delay:.5s\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:30%;right:10%;animation-delay:.7s\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:70%;left:25%\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:50%;right:30%;animation-delay:.6s\"></div><!-- Small stars --><div class=\"fw-star fw-star--sm\" style=\"top:25%;left:20%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:35%;right:25%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:65%;left:35%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:85%;right:35%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:45%;left:45%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:55%;right:45%\"></div><!-- Glowing orbs --><div class=\"fw-orb fw-orb--purple\" style=\"top:30%;left:5%;width:128px;height:128px;animation-delay:.3s\"></div><div class=\"fw-orb fw-orb--blue\" style=\"bottom:20%;right:10%;width:160px;height:160px;animation-delay:.9s\"></div><div class=\"fw-orb fw-orb--indigo\" style=\"top:50%;right:5%;width:96px;height:96px;animation-delay:.6s\"></div></div><!-- Login card --><div class=\"fw-card fw-login-card\"><div class=\"fw-login-header\"><!-- FlareWiFi Logo (inline SVG from Figma export) --><div class=\"fw-logo-wrap\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = flarewifiLogo().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div><h1 class=\"fw-heading text-center\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var2 string
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Device Admin Dashboard"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 41, Col: 89}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h1><p class=\"fw-subtitle text-center\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 string
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Flarewifi Hotspot Router"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 42, Col: 91}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -42,12 +76,12 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var2 string
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(data.LoginError.Error())
+			var templ_7745c5c3_Var4 string
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.LoginError.Error())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 17, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 46, Col: 30}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -60,8 +94,8 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var3 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("auth:login"))
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var3)))
+		var templ_7745c5c3_Var5 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("auth:login"))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var5)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -73,7 +107,89 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"form-group\"><input type=\"text\" class=\"form-control\" name=\"username\" id=\"username\" placeholder=\"Username\" required></div><div class=\"form-group\"><input type=\"password\" class=\"form-control\" name=\"password\" id=\"password\" placeholder=\"Password\" required></div><div class=\"form-group\"><button type=\"submit\" class=\"btn btn-primary btn-block\" style=\"margin-bottom: 15px; background: linear-gradient(90deg, #2942d5, #1d71f9, #4d8ffb); border: none;\">Log in</button></div></form></div></div></div></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!-- Username --><div class=\"form-group\"><label for=\"username\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 string
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Username"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 53, Col: 63}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label><div class=\"fw-input-wrap\"><svg class=\"fw-input-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\"></path> <circle cx=\"12\" cy=\"7\" r=\"4\"></circle></svg> <input type=\"text\" class=\"form-control fw-input-with-icon\" name=\"username\" id=\"username\" placeholder=\"admin\" required></div></div><!-- Password --><div class=\"form-group fw-form-group-last\"><label for=\"password\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Password"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 64, Col: 63}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label><div class=\"fw-input-wrap\"><svg class=\"fw-input-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"></rect> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\"></path></svg> <input type=\"password\" class=\"form-control fw-input-with-icon\" name=\"password\" id=\"password\" placeholder=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var8 string
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Enter password"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 70, Col: 153}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" required></div></div><!-- Submit --><button type=\"submit\" class=\"btn btn-block fw-btn-primary fw-btn-submit\"><svg class=\"fw-btn-spinner fw-spin\" style=\"display:none\" xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"></path></svg> <span class=\"fw-btn-text\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var9 string
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Sign In"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 78, Col: 66}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></button></form></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return templ_7745c5c3_Err
+	})
+}
+
+// FlareWiFi wordmark SVG — extracted from Figma Make export (Vector.tsx + svg-6f8s5gy76b.ts)
+func flarewifiLogo() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var10 == nil {
+			templ_7745c5c3_Var10 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<svg fill=\"none\" preserveAspectRatio=\"xMidYMid meet\" viewBox=\"0 0 681.537 145.362\"><!-- \"flare\" text (dark) --><path d=\"M197.053 55.9883H213.538V75.8286H197.053V124.554H173.419V92.4595C173.419 89.3473 173.565 86.8672 173.857 85.0194C174.246 83.0742 174.732 81.5668 175.316 80.4969C175.899 79.4271 176.58 78.6977 177.358 78.3087C178.136 77.9196 178.963 77.7251 179.838 77.7251V75.8286H165.687V55.9883H173.419V49.8611C173.419 45.3873 174.197 41.3511 175.753 37.7527C177.407 34.1542 179.595 31.1392 182.318 28.7078C185.139 26.1791 188.397 24.2826 192.093 23.0183C195.886 21.6567 199.97 20.9759 204.347 20.9759H212.808V43.2963H209.599C208.043 43.2963 206.487 43.4908 204.93 43.8798C203.472 44.2688 202.159 44.8524 200.992 45.6304C199.824 46.4085 198.852 47.4783 198.074 48.8399C197.393 50.1042 197.053 51.709 197.053 53.6541V55.9883Z\" fill=\"#030812\"></path> <path d=\"M218.644 22.4347L242.277 22.5806L242.131 124.7L218.498 124.554L218.644 22.4347Z\" fill=\"#030812\"></path> <path d=\"M303.84 106.319C304.229 109.625 303.84 112.543 302.673 115.072C301.506 117.503 299.902 119.545 297.859 121.199C295.817 122.755 293.483 123.922 290.857 124.7C288.328 125.575 285.799 126.013 283.271 126.013C277.241 126.013 271.94 124.895 267.369 122.658C262.798 120.324 259.005 117.309 255.99 113.613C252.975 109.917 250.69 105.686 249.134 100.921C247.675 96.058 246.945 91.1465 246.945 86.1865C246.945 81.2264 247.675 76.3635 249.134 71.598C250.69 66.8324 252.975 62.6017 255.99 58.906C259.005 55.2102 262.798 52.2439 267.369 50.007C271.94 47.6728 277.241 46.5057 283.271 46.5057C289.203 46.5057 294.018 47.3811 297.713 49.1317C301.506 50.8823 304.667 52.9247 307.196 55.2588L308.655 48.1105H330.683V124.554H308.509L305.737 106.319H303.84ZM271.746 86.1865C271.746 88.8124 272.135 91.2924 272.913 93.6266C273.788 95.8635 274.955 97.8573 276.414 99.6079C277.97 101.261 279.818 102.574 281.958 103.547C284.195 104.519 286.675 105.006 289.398 105.006C292.218 105.006 294.698 104.519 296.838 103.547C298.978 102.574 300.826 101.261 302.382 99.6079C303.938 97.8573 305.105 95.8635 305.883 93.6266C306.661 91.2924 307.05 88.8124 307.05 86.1865C307.05 83.5605 306.661 81.1291 305.883 78.8922C305.105 76.558 303.938 74.5643 302.382 72.9109C300.826 71.1603 298.978 69.7987 296.838 68.8261C294.698 67.8536 292.218 67.3673 289.398 67.3673C286.675 67.3673 284.195 67.8536 281.958 68.8261C279.818 69.7987 277.97 71.1603 276.414 72.9109C274.955 74.5643 273.788 76.558 272.913 78.8922C272.135 81.1291 271.746 83.5605 271.746 86.1865Z\" fill=\"#030812\"></path> <path d=\"M434.262 46.5057C440.972 46.5057 446.856 47.5756 451.914 49.7152C456.971 51.8549 461.105 54.9184 464.314 58.906C467.621 62.7962 469.906 67.5132 471.171 73.0568C472.532 78.6004 472.775 84.8249 471.9 91.7301H418.214C418.701 94.4533 419.479 96.7388 420.549 98.5867C421.716 100.435 423.029 101.942 424.487 103.109C426.044 104.276 427.648 105.103 429.302 105.589C431.052 106.075 432.803 106.319 434.553 106.319C437.568 106.319 440.243 105.784 442.577 104.714C444.911 103.547 446.273 102.234 446.662 100.775H470.733C469.177 105.541 466.989 109.528 464.168 112.738C461.445 115.947 458.43 118.524 455.123 120.469C451.914 122.415 448.558 123.825 445.057 124.7C441.556 125.575 438.346 126.013 435.429 126.013C429.982 126.013 424.828 125.235 419.965 123.679C415.199 122.123 411.017 119.74 407.419 116.531C403.82 113.321 400.951 109.236 398.812 104.276C396.769 99.2188 395.748 93.1889 395.748 86.1865C395.748 79.7675 396.721 74.1266 398.666 69.2638C400.611 64.3037 403.285 60.1703 406.689 56.8636C410.191 53.4596 414.275 50.8823 418.944 49.1317C423.709 47.3811 428.815 46.5057 434.262 46.5057ZM450.017 77.1416V76.2663C450.017 72.5705 448.558 69.6528 445.641 67.5132C442.723 65.3735 439.319 64.3037 435.429 64.3037C426.287 64.3037 420.694 68.583 418.652 77.1416H450.017Z\" fill=\"#030812\"></path><!-- \"wifi\" gradient paths --><path d=\"M531.859 48.1108L539.591 97.7117H541.487L549.511 48.1108H571.831L553.887 124.555H531.275L522.668 87.4997L513.915 124.555H491.303L473.359 48.1108H495.679L503.703 97.7117H505.599L513.331 48.1108H531.859Z\" fill=\"url(#lg0)\"></path> <path d=\"M574.276 124.735V48.291H597.91L597.764 124.735H574.276ZM573.547 32.2436C573.547 26.4082 578.653 21.3023 586.239 21.3023C593.971 21.3023 598.931 26.4082 598.931 32.2436C598.931 38.3708 593.971 43.4768 586.239 43.4768C578.653 43.4768 573.547 38.3708 573.547 32.2436Z\" fill=\"url(#lg1)\"></path> <path d=\"M656.882 124.555V48.1108H680.515L680.37 124.555H656.882ZM656.153 32.0635C656.153 26.2281 661.259 21.1221 668.845 21.1221C676.577 21.1221 681.537 26.2281 681.537 32.0635C681.537 38.1906 676.577 43.2966 668.845 43.2966C661.259 43.2966 656.153 38.1906 656.153 32.0635Z\" fill=\"url(#lg2)\"></path> <path d=\"M634.708 53.6544V55.9886H651.193V75.8289H634.708V124.555H611.074V92.4598C611.074 80.2055 614.138 77.7255 617.493 77.7255V75.8289H603.342V55.9886H611.074V49.8614C611.074 31.9176 624.496 20.9762 642.002 20.9762H650.463V43.2966H647.254C641.126 43.2966 634.708 46.0684 634.708 53.6544Z\" fill=\"url(#lg3)\"></path><!-- \"r\" text (dark) --><path d=\"M361.903 59.3436C362.584 55.6479 364.334 52.5843 367.155 50.1529C369.975 47.7215 373.817 46.5057 378.68 46.5057C382.181 46.5057 385.05 47.3811 387.287 49.1317C389.621 50.785 391.323 52.8761 392.393 55.4047C393.56 57.9334 394.143 60.6566 394.143 63.5743C394.143 66.492 393.56 69.2152 392.393 71.7438C391.226 74.2725 389.475 76.4122 387.141 78.1628C384.904 79.8161 382.083 80.6428 378.68 80.6428C374.595 80.6428 371.093 79.573 368.176 77.4334C365.355 75.1965 363.945 71.8897 363.945 67.5132H361.757L361.903 124.554H338.123V48.1105H360.298L361.903 59.3436Z\" fill=\"#030812\"></path><!-- Logo icon (rounded square + wifi arcs) --><path d=\"M0 36C0 16.1177 16.1178 0 36 0H109.362C129.244 0 145.362 16.1178 145.362 36V109.362C145.362 129.244 129.244 145.362 109.362 145.362H36C16.1177 145.362 0 129.244 0 109.362V36Z\" fill=\"url(#lg4)\"></path> <path d=\"M53.6858 106.645C45.346 106.645 38.5853 99.8838 38.5853 91.5441C38.7979 91.5441 39.009 91.5496 39.2217 91.5579C39.3211 91.562 39.4205 91.5676 39.5199 91.5744C39.5572 91.5759 39.593 91.5772 39.6303 91.5814C39.8125 91.5925 39.992 91.609 40.1714 91.6282C40.2764 91.6379 40.3812 91.6504 40.4875 91.6641C40.5897 91.6765 40.6905 91.6904 40.7913 91.7069C40.9279 91.7262 41.0659 91.7483 41.2026 91.7732C42.7239 92.0423 44.2271 92.5503 45.6669 93.3137C50.105 95.6715 52.8824 99.919 53.5353 104.537C53.585 104.886 53.6236 105.238 53.647 105.591C53.654 105.68 53.6595 105.769 53.665 105.856C53.6789 106.117 53.6858 106.381 53.6858 106.645Z\" fill=\"white\"></path> <path d=\"M38.5857 121.745C38.5857 113.405 45.3461 106.645 53.6858 106.645C53.6872 109.035 53.1186 111.463 51.9163 113.726C50.3606 116.656 47.9779 118.864 45.2102 120.211C43.1548 121.213 40.8868 121.743 38.5857 121.745Z\" fill=\"white\"></path> <path d=\"M38.5857 121.745C36.1933 121.746 33.7666 121.176 31.5055 119.975C30.0657 119.21 28.8026 118.248 27.7287 117.138C24.9886 114.308 23.4867 110.523 23.4853 106.644C31.825 106.644 38.5857 113.405 38.5857 121.745Z\" fill=\"white\"></path> <path d=\"M23.4853 106.644C23.4838 104.252 24.054 101.825 25.255 99.5627C27.9689 94.4566 33.1865 91.5455 38.5853 91.5441C38.5853 99.8839 31.825 106.644 23.4853 106.644Z\" fill=\"white\"></path> <path d=\"M33.0675 57.7831C30.6288 57.7899 28.2926 58.7651 26.573 60.4942C24.8533 62.2234 23.891 64.5649 23.8977 67.0036C23.9044 69.4423 24.8796 71.7784 26.6088 73.4981C28.3379 75.2177 30.6794 76.1801 33.1181 76.1734C42.7831 76.3098 52.014 80.2099 58.8489 87.0448C65.6838 93.8797 69.5839 103.111 69.7203 112.776C69.7126 113.988 69.9467 115.19 70.4089 116.311C70.8711 117.432 71.5522 118.449 72.4123 119.304C73.6969 120.588 75.333 121.463 77.1141 121.818C78.8953 122.174 80.7419 121.994 82.4208 121.301C84.0998 120.608 85.5361 119.434 86.5484 117.926C87.5608 116.418 88.1039 114.644 88.1093 112.827C88.2121 83.2091 62.6846 57.6816 33.0675 57.7831Z\" fill=\"white\"></path> <path d=\"M124.662 112.852C124.793 100.784 122.512 88.8112 117.954 77.6363C113.396 66.4615 106.653 56.3093 98.1187 47.7755C89.5849 39.2416 79.4327 32.4978 68.2579 27.9398C57.083 23.3817 45.1104 21.1011 33.0424 21.2318C30.6037 21.2453 28.2703 22.227 26.5554 23.9609C24.8406 25.6948 23.8847 28.0389 23.8982 30.4776C23.9117 32.9163 24.8933 35.2497 26.6272 36.9646C28.3612 38.6794 30.7053 39.6353 33.144 39.6218C72.6419 39.3932 106.501 73.2523 106.272 112.75C106.259 115.189 107.215 117.533 108.93 119.267C110.644 121.001 112.978 121.983 115.417 121.996C117.855 122.009 120.199 121.054 121.933 119.339C123.667 117.624 124.649 115.29 124.662 112.852Z\" fill=\"white\"></path> <defs><linearGradient id=\"lg0\" x1=\"340.768\" x2=\"340.768\" y1=\"0\" y2=\"145.362\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#2942D5\"></stop> <stop offset=\"1\" stop-color=\"#1D71F9\"></stop></linearGradient> <linearGradient id=\"lg1\" x1=\"340.768\" x2=\"340.768\" y1=\"0\" y2=\"145.362\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#2942D5\"></stop> <stop offset=\"1\" stop-color=\"#1D71F9\"></stop></linearGradient> <linearGradient id=\"lg2\" x1=\"340.768\" x2=\"340.768\" y1=\"0\" y2=\"145.362\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#2942D5\"></stop> <stop offset=\"1\" stop-color=\"#1D71F9\"></stop></linearGradient> <linearGradient id=\"lg3\" x1=\"340.768\" x2=\"340.768\" y1=\"0\" y2=\"145.362\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#2942D5\"></stop> <stop offset=\"1\" stop-color=\"#1D71F9\"></stop></linearGradient> <linearGradient id=\"lg4\" x1=\"648.883\" x2=\"594.747\" y1=\"7.32168\" y2=\"261.141\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#1B79FE\"></stop> <stop offset=\"1\" stop-color=\"#2E32CA\"></stop></linearGradient></defs></svg>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

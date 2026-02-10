@@ -1,0 +1,122 @@
+/* ==========================================================================
+   FlareWiFi Device Dashboard — Shared Utility Classes
+   Prefix: fw-  (flarewifi namespace to avoid conflicts)
+   ========================================================================== */
+
+/* --- CSS Custom Properties --- */
+:root {
+    --fw-blue-600: #2563eb;
+    --fw-blue-700: #1d4ed8;
+    --fw-purple-900: #581c87;
+    --fw-slate-900: #0f172a;
+    --fw-gradient-brand: linear-gradient(135deg, #2942d5, #1d71f9);
+    --fw-gradient-bg: linear-gradient(135deg, var(--fw-slate-900), var(--fw-purple-900), var(--fw-slate-900));
+    --fw-shadow-card: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    --fw-radius-card: 1rem;
+}
+
+/* --- Background Utilities --- */
+.fw-bg-dark {
+    background: var(--fw-gradient-bg);
+    min-height: 100vh;
+}
+
+/* --- Star (pulsing dot) --- */
+.fw-star {
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+}
+.fw-star--lg  { width: 4px; height: 4px; }
+.fw-star--md  { width: 2px; height: 2px; opacity: .7; }
+.fw-star--sm  { width: 1px; height: 1px; opacity: .5; }
+.fw-star--pulse { animation: fw-pulse 3s ease-in-out infinite; }
+
+/* --- Glowing Orb --- */
+.fw-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(64px);
+    opacity: .2;
+    animation: fw-pulse 4s ease-in-out infinite;
+}
+.fw-orb--purple { background: #a855f7; }
+.fw-orb--blue   { background: #3b82f6; }
+.fw-orb--indigo { background: #6366f1; }
+
+/* --- Card Utilities --- */
+.fw-card {
+    background: rgba(255, 255, 255, .95);
+    border-radius: var(--fw-radius-card);
+    box-shadow: var(--fw-shadow-card);
+}
+
+/* --- Typography --- */
+.fw-heading {
+    font-size: 2.25rem;
+    font-weight: 600;
+    margin-bottom: .375rem;
+}
+.fw-subtitle {
+    color: #6b7280;
+    font-size: 1.375rem;
+}
+.fw-hint {
+    color: #6b7280;
+    font-size: 1.0625rem;
+}
+
+/* --- Form Field with Icon --- */
+.fw-input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+    width: 1.375rem;
+    height: 1.375rem;
+}
+.fw-input-with-icon {
+    padding: 1rem 1.125rem 1rem 3.125rem !important;
+    font-size: 1.25rem;
+    border-radius: .75rem;
+    height: auto;
+}
+.fw-input-with-icon:focus {
+    border-color: var(--fw-blue-600);
+    box-shadow: 0 0 0 .2rem rgba(37, 99, 235, .25);
+}
+
+/* --- Button Utilities --- */
+.fw-btn-primary {
+    background-color: var(--fw-blue-600);
+    border: none;
+    color: #fff;
+    font-weight: 500;
+    font-size: 1.375rem;
+    padding: 1.125rem 1.5rem;
+    border-radius: .75rem;
+    transition: background-color .15s ease-in-out;
+}
+.fw-btn-primary:hover,
+.fw-btn-primary:focus {
+    background-color: var(--fw-blue-700);
+    color: #fff;
+}
+.fw-btn-primary:disabled {
+    opacity: .7;
+    cursor: not-allowed;
+}
+
+/* --- Animations --- */
+@keyframes fw-pulse {
+    0%, 100% { opacity: .2; }
+    50%      { opacity: .5; }
+}
+@keyframes fw-spin {
+    to { transform: rotate(360deg); }
+}
+.fw-spin {
+    animation: fw-spin .75s linear infinite;
+}
