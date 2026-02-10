@@ -58,14 +58,16 @@ if isUp {
 }
 ```
 
-### Speed
+### SpeedMbps
 
-Returns the link speed of the network device as a string (e.g., "1000Mb/s", "100Mb/s").
+Returns the link speed of the network device in Mbps (megabits per second). Returns 1000 Mbps as a fallback if the speed cannot be detected or parsed.
 
 ```go
-speed := device.Speed()
-fmt.Printf("Link speed: %s\n", speed)
+speed := device.SpeedMbps()
+fmt.Printf("Link speed: %d Mbps\n", speed) // e.g., "Link speed: 1000 Mbps"
 ```
+
+This method automatically parses the underlying link speed and handles various formats (e.g., "1000M", "10G"). When the bandwidth configuration has upload/download speed set to 0, the system uses this auto-detected link speed as the global speed limit.
 
 ### BridgeMembers
 
@@ -109,10 +111,10 @@ for _, device := range devices {
     fmt.Printf("  Type: %s\n", device.Type())
     fmt.Printf("  MAC: %s\n", device.MacAddr())
     fmt.Printf("  Status: %s\n", map[bool]string{true: "Up", false: "Down"}[device.Up()])
-    fmt.Printf("  Speed: %s\n", device.Speed())
+    fmt.Printf("  Speed: %d Mbps\n", device.SpeedMbps())
     fmt.Printf("  RX: %d bytes, TX: %d bytes\n", device.RxBytes(), device.TxBytes())
 
-    if device.Type() == NetDevBridge {
+    if device.Type() == sdkapi.NetDevBridge {
         fmt.Printf("  Bridge members: %v\n", device.BridgeMembers())
     }
     fmt.Println()
