@@ -25,8 +25,8 @@ func (self *NetworkDevice) Up() bool {
 	return self.netdev.Up
 }
 
-func (self *NetworkDevice) Speed() string {
-	return self.netdev.Speed
+func (self *NetworkDevice) SpeedMbps() int {
+	return ParseLinkSpeed(self.netdev.Speed)
 }
 
 func (self *NetworkDevice) BridgeMembers() []string {

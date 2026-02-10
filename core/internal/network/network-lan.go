@@ -105,14 +105,26 @@ func (self *NetworkLan) ReinitializeTc() (err error) {
 			return nil, errors.New(self.name + " network config not found")
 		}
 
-		if lanCfg.GlobalDownMbits == 0 {
-			lanCfg.GlobalDownMbits = defaultSpeed
-		}
-		if lanCfg.GlobalUpMbits == 0 {
-			lanCfg.GlobalUpMbits = defaultSpeed
-		}
-
 		dev := i.Device
+
+		// Auto-detect link speed when configured speed is 0
+		if lanCfg.GlobalDownMbits == 0 || lanCfg.GlobalUpMbits == 0 {
+			detectedSpeed := defaultSpeed
+			netDev, err := ubus.GetNetworkDevice(dev)
+			if err == nil && netDev != nil {
+				detectedSpeed = ParseLinkSpeed(netDev.Speed)
+				log.Printf("Auto-detected link speed for device '%s': %d Mbps (raw: %s)", dev, detectedSpeed, netDev.Speed)
+			} else {
+				log.Printf("WARNING: Could not detect link speed for device '%s', using default: %d Mbps", dev, defaultSpeed)
+			}
+
+			if lanCfg.GlobalDownMbits == 0 {
+				lanCfg.GlobalDownMbits = detectedSpeed
+			}
+			if lanCfg.GlobalUpMbits == 0 {
+				lanCfg.GlobalUpMbits = detectedSpeed
+			}
+		}
 		ipv4, err := i.IpV4Addr()
 		if err != nil {
 			log.Printf("ERROR: Failed to get IPv4 address for LAN '%s': %v", self.name, err)
@@ -220,14 +232,27 @@ func (self *NetworkLan) SetupTrafficControl() (err error) {
 		}
 
 		if c, ok := cfg.Lans[self.name]; ok {
-			if c.GlobalDownMbits == 0 {
-				c.GlobalDownMbits = defaultSpeed
-			}
-			if c.GlobalUpMbits == 0 {
-				c.GlobalUpMbits = defaultSpeed
+			dev := i.Device
+
+			// Auto-detect link speed when configured speed is 0
+			if c.GlobalDownMbits == 0 || c.GlobalUpMbits == 0 {
+				detectedSpeed := defaultSpeed
+				netDev, err := ubus.GetNetworkDevice(dev)
+				if err == nil && netDev != nil {
+					detectedSpeed = ParseLinkSpeed(netDev.Speed)
+					log.Printf("Auto-detected link speed for device '%s': %d Mbps (raw: %s)", dev, detectedSpeed, netDev.Speed)
+				} else {
+					log.Printf("WARNING: Could not detect link speed for device '%s', using default: %d Mbps", dev, defaultSpeed)
+				}
+
+				if c.GlobalDownMbits == 0 {
+					c.GlobalDownMbits = detectedSpeed
+				}
+				if c.GlobalUpMbits == 0 {
+					c.GlobalUpMbits = detectedSpeed
+				}
 			}
 
-			dev := i.Device
 			classMgr := tc.NewTcClassMgr(dev, tc.Kbit(c.GlobalDownMbits*1000), tc.Kbit(c.GlobalUpMbits*1000))
 			err = classMgr.Setup()
 			if err != nil {

@@ -30,8 +30,9 @@ type INetworkDevice interface {
 	// Returns the status of the network device.
 	Up() bool
 
-	// Returns the link speed of the network device.
-	Speed() string
+	// Returns the link speed of the network device in Mbps.
+	// Returns 1000 Mbps as fallback if speed cannot be detected or parsed.
+	SpeedMbps() int
 
 	// Returns the names of bridge member ports.
 	BridgeMembers() []string

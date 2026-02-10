@@ -13,7 +13,7 @@ import (
 	jobque "core/utils/job-que"
 )
 
-const defaultSpeed int = 100 //mbits download/upload per inteface
+const defaultSpeed int = DefaultLinkSpeed // fallback speed in Mbps when link speed cannot be detected
 
 var lanMap = sync.Map{}
 var netQue = jobque.NewJobQue[any]()
