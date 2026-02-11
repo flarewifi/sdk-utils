@@ -152,6 +152,29 @@ templ ActivationPage(data *ActivationPageData) {
 			</div>
 			</div>
 			<script>
+				// Poll for activation status on page load (redirects if already activated)
+				function pollActivationStatus() {
+					setInterval(function() {
+						fetch('/activation/status', { method: 'GET' })
+							.then(function(response) {
+								if (response.status >= 200 && response.status < 400) {
+									return response.json();
+								}
+							})
+							.then(function(data) {
+								if (data && data.activated) {
+									window.location.href = '/';
+								}
+							})
+							.catch(function() {
+								// Ignore errors during polling
+							});
+					}, 5000);
+				}
+
+				// Start polling on page load
+				pollActivationStatus();
+
 				function checkActivation() {
 					var btn = document.getElementById('check-btn');
 
@@ -164,7 +187,7 @@ templ ActivationPage(data *ActivationPageData) {
 					btn.disabled = true;
 
 					// Trigger validation on the server (blocking - waits for RPC response)
-					fetch('/activation/check', {
+					fetch('/activation/validate', {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json'
@@ -215,7 +238,7 @@ templ ActivationPage(data *ActivationPageData) {
 							.then(function(response) {
 								// Check if response status indicates system is ready
 								// 200 = OK, 301/302/303 = Redirect (system is responding)
-								if (response.status === 200 || response.status === 301 || response.status === 302 || response.status === 303) {
+								if (response.status >= 200 || response.status < 400) {
 									// System is back online - redirect to home
 									clearInterval(checkInterval);
 									window.location.href = '/';

@@ -17,7 +17,12 @@ func ActivationRoutes(g *api.CoreGlobals) {
 	).Methods(http.MethodGet).Name("activation:index")
 
 	router.RootRouter.HandleFunc(
-		controllers.ActivationURL+"/check",
-		activationCtrl.CheckActivationStatus,
-	).Methods(http.MethodPost).Name("activation:check")
+		controllers.ActivationURL+"/status",
+		activationCtrl.GetActivationStatus,
+	).Methods(http.MethodGet).Name("activation:status")
+
+	router.RootRouter.HandleFunc(
+		controllers.ActivationURL+"/validate",
+		activationCtrl.ValidateActivation,
+	).Methods(http.MethodPost).Name("activation:validate")
 }

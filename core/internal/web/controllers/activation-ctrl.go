@@ -38,8 +38,19 @@ func (ctrl *ActivationCtrl) ActivationPage(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// CheckActivationStatus triggers a re-validation of the activation status
-func (ctrl *ActivationCtrl) CheckActivationStatus(w http.ResponseWriter, r *http.Request) {
+// GetActivationStatus returns the current activation status without triggering validation.
+// This is a lightweight endpoint for polling.
+func (ctrl *ActivationCtrl) GetActivationStatus(w http.ResponseWriter, r *http.Request) {
+	response := map[string]interface{}{
+		"activated": activation.IsActivated.Load(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ValidateActivation triggers a re-validation of the activation status
+func (ctrl *ActivationCtrl) ValidateActivation(w http.ResponseWriter, r *http.Request) {
 	// Trigger validation synchronously (blocking) to wait for RPC response
 	activation.Validate()
 
