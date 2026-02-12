@@ -17,6 +17,16 @@ func SetAdminNavs(g *api.CoreGlobals) {
 	coreNavs := g.CoreAPI.HttpAPI.Navs()
 
 	coreNavs.AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
+		quickAccessNavs := []sdkapi.AdminNavItemOpt{
+			{
+				Category:  sdkapi.NavCategoryQuickAccess,
+				Label:     g.CoreAPI.Translate("label", "Dashboard"),
+				RouteName: "admin:dashboard",
+				Keywords:  []string{"dashboard", "home", "main", "overview"},
+				Order:     1000,
+			},
+		}
+
 		systemNavs := []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
@@ -98,7 +108,8 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			},
 		}
 
-		adminNavs := append(systemNavs, themesNavs...)
+		adminNavs := append(quickAccessNavs, systemNavs...)
+		adminNavs = append(adminNavs, themesNavs...)
 		adminNavs = append(adminNavs, powerNavs...)
 		return adminNavs
 	})
