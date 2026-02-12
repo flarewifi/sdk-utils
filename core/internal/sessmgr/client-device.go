@@ -103,7 +103,7 @@ func (self *ClientDevice) Update(ctx context.Context, params sdkapi.UpdateDevice
 
 func (self *ClientDevice) Emit(event string, data []byte) {
 	channel := self.GetEventChannel(event)
-	sse.Emit(self.MacAddr(), event, data)
+	sse.Emit(fmt.Sprintf("%d", self.ID()), event, data)
 	events.Emit(channel, data)
 }
 
@@ -119,5 +119,5 @@ func (self *ClientDevice) Unsubscribe(event string, ch <-chan []byte) {
 }
 
 func (self *ClientDevice) GetEventChannel(event string) string {
-	return fmt.Sprintf("%s:%s", self.MacAddr(), event)
+	return fmt.Sprintf("%d:%s", self.ID(), event)
 }
