@@ -47,7 +47,13 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 			}
 
 			page := admin.AdminIndexPage(api, info)
-			return sdkapi.ViewPage{PageContent: page}
+			return sdkapi.ViewPage{
+				Assets: sdkapi.ViewAssets{
+					JsFile:  "admin/dashboard.js",
+					CssFile: "admin/dashboard.css",
+				},
+				PageContent: page,
+			}
 		},
 	})
 }

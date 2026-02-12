@@ -657,6 +657,7 @@ func (self *SessionsMgr) handleSessionSaved(params sdkapi.SessionSaveParams) err
 				Ctx:       params.Ctx,
 				DownMbits: session.DownMbits(),
 				UpMbits:   session.UpMbits(),
+				UseGlobal: session.UseGlobalSpeed(),
 			}); err != nil {
 				return err
 			}

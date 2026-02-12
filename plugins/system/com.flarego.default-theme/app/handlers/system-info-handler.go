@@ -17,7 +17,7 @@ func SystemResourceCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 			info = &sysinfo.SystemInfo{}
 		}
 
-		view := admin.ResourceInfo(api, info)
+		view := admin.DeviceHealthCard(api, info)
 		view.Render(r.Context(), w)
 	}
 }

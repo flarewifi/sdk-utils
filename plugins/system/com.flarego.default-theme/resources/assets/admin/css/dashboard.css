@@ -1,0 +1,122 @@
+/* dashboard.css — Dashboard-specific styles (shared utils in fw-utils.css) */
+
+/* Large circular icon (Active Users / Internet Status) */
+.fw-icon-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: rgba(16, 185, 129, 0.1);
+}
+.fw-icon-circle i { font-size: 1.75rem; color: #10b981; }
+
+/* Animated pulse dot for internet status */
+.fw-pulse-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  animation: fw-pulse 2s ease-in-out infinite;
+}
+
+@keyframes fw-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Thin progress bars for Device Health */
+.fw-progress-thin {
+  height: 8px;
+  border-radius: 4px;
+  background-color: #f3f4f6;
+}
+
+.fw-progress-thin .progress-bar {
+  border-radius: 4px;
+}
+
+/* System info rows */
+.fw-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.fw-info-row:last-child {
+  border-bottom: none;
+}
+
+.fw-info-row-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.fw-info-row-value {
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Sales card percentage badge */
+.fw-badge-trend {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Stats row in cards (Active Users / Internet Status bottom stats) */
+.fw-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
+
+.fw-stats-row-label {
+  color: #6b7280;
+}
+
+/* Dashboard header */
+.fw-dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.fw-last-updated {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Dark mode overrides */
+[data-bs-theme="dark"] .fw-progress-thin {
+  background-color: #374151;
+}
+
+[data-bs-theme="dark"] .fw-info-row {
+  border-bottom-color: #374151;
+}
+
+[data-bs-theme="dark"] .fw-info-row-label {
+  color: #9ca3af;
+}
+
+[data-bs-theme="dark"] .fw-stats-row-label {
+  color: #9ca3af;
+}
+
+[data-bs-theme="dark"] .fw-last-updated {
+  color: #9ca3af;
+}

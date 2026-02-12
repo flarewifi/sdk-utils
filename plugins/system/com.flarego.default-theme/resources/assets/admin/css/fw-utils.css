@@ -1,0 +1,85 @@
+/* fw-utils.css — Shared utility classes for default-theme plugin admin pages */
+
+/* Override layout .container to span full width (loaded globally on all admin pages) */
+main > .container {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Light gray page background so white cards pop */
+main {
+  background-color: #f9fafb;
+}
+
+[data-bs-theme="dark"] main {
+  background-color: #1a1d21;
+}
+
+/* Rounder cards to match Figma design */
+.card {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+/* Icon backgrounds */
+.fw-icon-bg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 0.5rem;
+}
+
+.fw-icon-bg-blue { background-color: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.fw-icon-bg-purple { background-color: rgba(168, 85, 247, 0.1); color: #a855f7; }
+.fw-icon-bg-green { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
+.fw-icon-bg-orange { background-color: rgba(249, 115, 22, 0.1); color: #f97316; }
+.fw-icon-bg-red { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+/* Monospace text for IDs/MACs */
+.fw-mono {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.75rem;
+}
+
+/* Copy button */
+.fw-copy-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  color: #9ca3af;
+  transition: background-color 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.fw-copy-btn:hover {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.fw-copy-btn.fw-copied {
+  color: #16a34a;
+}
+
+/* Chart legend dots */
+.fw-legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* Dark mode overrides */
+[data-bs-theme="dark"] .fw-icon-bg-blue { background-color: rgba(59, 130, 246, 0.2); }
+[data-bs-theme="dark"] .fw-icon-bg-purple { background-color: rgba(168, 85, 247, 0.2); }
+[data-bs-theme="dark"] .fw-icon-bg-green { background-color: rgba(16, 185, 129, 0.2); }
+[data-bs-theme="dark"] .fw-icon-bg-orange { background-color: rgba(249, 115, 22, 0.2); }
+[data-bs-theme="dark"] .fw-icon-bg-red { background-color: rgba(239, 68, 68, 0.2); }
+
+[data-bs-theme="dark"] .fw-copy-btn:hover {
+  background-color: #374151;
+  color: #d1d5db;
+}

@@ -1,0 +1,119 @@
+/* fw-chart.css — Lightweight SVG chart styles */
+
+/* Chart container */
+.fw-chart-container {
+  height: 350px;
+  position: relative;
+}
+
+/* SVG element */
+.fw-chart-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Grid lines */
+.fw-chart-grid line {
+  stroke: #f3f4f6;
+  stroke-width: 1;
+}
+
+/* Y-axis labels */
+.fw-chart-y-labels text {
+  fill: #6b7280;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+/* X-axis labels */
+.fw-chart-x-labels text {
+  fill: #6b7280;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+/* Hover indicator line */
+.fw-chart-indicator {
+  stroke: #9ca3af;
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* Hover dots at series intersections */
+.fw-chart-hover-dot {
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+/* Tooltip */
+.fw-chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.8125rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.fw-chart-tooltip-title {
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.fw-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.fw-chart-tooltip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Dark mode */
+[data-bs-theme="dark"] .fw-chart-grid line {
+  stroke: #374151;
+}
+
+[data-bs-theme="dark"] .fw-chart-y-labels text {
+  fill: #9ca3af;
+}
+
+[data-bs-theme="dark"] .fw-chart-x-labels text {
+  fill: #9ca3af;
+}
+
+[data-bs-theme="dark"] .fw-chart-indicator {
+  stroke: #6b7280;
+}
+
+[data-bs-theme="dark"] .fw-chart-tooltip {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-bs-theme="dark"] .fw-chart-tooltip-title {
+  color: #f9fafb;
+}
+
+[data-bs-theme="dark"] .fw-chart-tooltip-row {
+  color: #d1d5db;
+}
