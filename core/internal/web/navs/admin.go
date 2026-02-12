@@ -17,6 +17,21 @@ func SetAdminNavs(g *api.CoreGlobals) {
 	coreNavs := g.CoreAPI.HttpAPI.Navs()
 
 	coreNavs.AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
+		quickAccessNavs := []sdkapi.AdminNavItemOpt{
+			{
+				Category:  sdkapi.NavCategoryQuickAccess,
+				Label:     g.CoreAPI.Translate("label", "Dashboard"),
+				RouteName: "admin:dashboard",
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Dashboard"),
+					g.CoreAPI.Translate("label", "Home"),
+					g.CoreAPI.Translate("label", "Main"),
+					g.CoreAPI.Translate("label", "Overview"),
+				},
+				Order: 1000,
+			},
+		}
+
 		systemNavs := []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
@@ -36,8 +51,13 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Updates"),
 				RouteName: "admin:updates:index",
-				Keywords:  []string{"update", "updates", "upgrade", "upgrades", "software"},
-				Order:     2000, // Second item in System category
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Update"),
+					g.CoreAPI.Translate("label", "Updates"),
+					g.CoreAPI.Translate("label", "Upgrade"),
+					g.CoreAPI.Translate("label", "Software"),
+				},
+				Order: 2000, // Second item in System category
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
@@ -47,7 +67,6 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Database"),
 					g.CoreAPI.Translate("label", "Database Settings"),
 					g.CoreAPI.Translate("label", "Reset Database"),
-					"sqlite", "postgresql", "postgres",
 				},
 				Order: 3000, // Third item in System category
 			},
@@ -55,15 +74,25 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Admin User"),
 				RouteName: "admin:user:index",
-				Keywords:  []string{"admin", "user", "password", "account", "profile"},
-				Order:     4000, // After Database (3000), before Logs (5000)
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Admin"),
+					g.CoreAPI.Translate("label", "User"),
+					g.CoreAPI.Translate("label", "Password"),
+					g.CoreAPI.Translate("label", "Account"),
+					g.CoreAPI.Translate("label", "Profile"),
+				},
+				Order: 4000, // After Database (3000), before Logs (5000)
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Logs"),
 				RouteName: "admin:logs:index",
-				Keywords:  []string{"log", "logs", "audit", "audits"},
-				Order:     5000, // Default position (after plugin items with Order < 5000)
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Log"),
+					g.CoreAPI.Translate("label", "Logs"),
+					g.CoreAPI.Translate("label", "Audit"),
+				},
+				Order: 5000, // Default position (after plugin items with Order < 5000)
 			},
 		}
 
@@ -75,7 +104,13 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Category:  sdkapi.NavCategoryThemes,
 				Label:     g.CoreAPI.Translate("label", "Select Theme"),
 				RouteName: "admin:themes:index",
-				Keywords:  []string{"theme", "themes", "style", "portal", "admin"},
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Theme"),
+					g.CoreAPI.Translate("label", "Themes"),
+					g.CoreAPI.Translate("label", "Style"),
+					g.CoreAPI.Translate("label", "Portal"),
+					g.CoreAPI.Translate("label", "Admin"),
+				},
 			},
 		}
 
@@ -86,19 +121,28 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Reboot"),
 				RouteName: "admin:power:reboot",
-				Keywords:  []string{"power", "reboot", "restart"},
-				Order:     9998, // Second to last in System category
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Power"),
+					g.CoreAPI.Translate("label", "Reboot"),
+					g.CoreAPI.Translate("label", "Restart"),
+				},
+				Order: 9998, // Second to last in System category
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Shutdown"),
 				RouteName: "admin:power:shutdown",
-				Keywords:  []string{"power", "shutdown", "off"},
-				Order:     9999, // Last item in System category
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Power"),
+					g.CoreAPI.Translate("label", "Shutdown"),
+					g.CoreAPI.Translate("label", "Off"),
+				},
+				Order: 9999, // Last item in System category
 			},
 		}
 
-		adminNavs := append(systemNavs, themesNavs...)
+		adminNavs := append(quickAccessNavs, systemNavs...)
+		adminNavs = append(adminNavs, themesNavs...)
 		adminNavs = append(adminNavs, powerNavs...)
 		return adminNavs
 	})

@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	RouteNameAdminPrefix = middlewares.RouteNameAdminPrefix
-	RouteNameAdminSSE    = middlewares.RouteNameAdminSSE
+	RouteNameAdminPrefix = "admin:"
+	RouteNameAdminSSE    = "admin:sse"
 )
 
 type HttpRouterApi struct {
@@ -45,7 +45,6 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegis
 func (self *HttpRouterApi) Initialize() {
 	self.adminRouter.Use(middlewares.HTTPSRedirect())
 	self.adminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
-	self.adminRouter.Use(middlewares.TrackNav(self.api.models))
 }
 
 func (self *HttpRouterApi) AdminRouter() sdkapi.IHttpRouterInstance {
