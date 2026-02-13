@@ -29,6 +29,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Overview"),
 				},
 				Order: 1000,
+				Icon:  "<i class='bi bi-columns-gap'></i>",
 			},
 		}
 
@@ -46,6 +47,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Machine ID"),
 				},
 				Order: 1000, // First item in System category
+				Icon:  "<i class='bi bi-gear'></i>",
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
@@ -58,6 +60,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Software"),
 				},
 				Order: 2000, // Second item in System category
+				Icon:  "<i class='bi bi-arrow-clockwise'></i>",
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
@@ -69,19 +72,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Reset Database"),
 				},
 				Order: 3000, // Third item in System category
-			},
-			{
-				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "Admin User"),
-				RouteName: "admin:user:index",
-				Keywords: []string{
-					g.CoreAPI.Translate("label", "Admin"),
-					g.CoreAPI.Translate("label", "User"),
-					g.CoreAPI.Translate("label", "Password"),
-					g.CoreAPI.Translate("label", "Account"),
-					g.CoreAPI.Translate("label", "Profile"),
-				},
-				Order: 4000, // After Database (3000), before Logs (5000)
+				Icon:  "<i class='bi bi-database'></i>",
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
@@ -93,6 +84,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Audit"),
 				},
 				Order: 5000, // Default position (after plugin items with Order < 5000)
+				Icon:  "<i class='bi bi-file-earmark-text'></i>",
 			},
 		}
 
@@ -111,39 +103,12 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Portal"),
 					g.CoreAPI.Translate("label", "Admin"),
 				},
-			},
-		}
-
-		// Power controls should appear last in System category to prevent accidental clicks.
-		// Using very high Order values (9998, 9999) ensures they appear after all other items.
-		powerNavs := []sdkapi.AdminNavItemOpt{
-			{
-				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "Reboot"),
-				RouteName: "admin:power:reboot",
-				Keywords: []string{
-					g.CoreAPI.Translate("label", "Power"),
-					g.CoreAPI.Translate("label", "Reboot"),
-					g.CoreAPI.Translate("label", "Restart"),
-				},
-				Order: 9998, // Second to last in System category
-			},
-			{
-				Category:  sdkapi.NavCategorySystem,
-				Label:     g.CoreAPI.Translate("label", "Shutdown"),
-				RouteName: "admin:power:shutdown",
-				Keywords: []string{
-					g.CoreAPI.Translate("label", "Power"),
-					g.CoreAPI.Translate("label", "Shutdown"),
-					g.CoreAPI.Translate("label", "Off"),
-				},
-				Order: 9999, // Last item in System category
+				Icon: "<i class='bi bi-palette'></i>",
 			},
 		}
 
 		adminNavs := append(quickAccessNavs, systemNavs...)
 		adminNavs = append(adminNavs, themesNavs...)
-		adminNavs = append(adminNavs, powerNavs...)
 		return adminNavs
 	})
 

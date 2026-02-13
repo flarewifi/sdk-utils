@@ -30,6 +30,7 @@ navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
         {
             Category:  sdkapi.NavCategorySystem,    // Category of the menu item
             Label:     "Welcome",                   // Menu display text
+            Icon:      "<i class='bi bi-house'></i>", // Icon HTML tag
             RouteName: "admin:welcome",             // Link to the route
             Keywords: []string{"home", "welcome"},  // Used for searching menu items
         },
@@ -96,6 +97,7 @@ The `AdminNavItemOpt` is a Go struct that represents an admin navigation menu it
 type AdminNavItemOpt struct {
 	Category    INavCategory
 	Label       string
+	Icon        string
 	RouteName   string
 	RouteParams map[string]string
 	ExtraAttrs  map[string]any
@@ -108,6 +110,7 @@ type AdminNavItemOpt struct {
 
 - **Category** - The navigation category where this item will appear
 - **Label** - The display text for the menu item
+- **Icon** - An HTML tag string for the menu item icon (e.g., `"<i class='bi bi-gear'></i>"`)
 - **RouteName** - The named route this menu item links to
 - **RouteParams** - Optional route parameters as key-value pairs
 - **ExtraAttrs** - Optional HTML attributes for the menu item element
@@ -138,6 +141,7 @@ The available `INavCategory` options are:
 {
     Category:  sdkapi.NavCategorySystem,
     Label:     "General Settings",
+    Icon:      "<i class='bi bi-gear'></i>",
     RouteName: "admin:general",
     Order:     1000,
 }
@@ -146,6 +150,7 @@ The available `INavCategory` options are:
 {
     Category:  sdkapi.NavCategorySystem,
     Label:     "Bandwidth Settings",
+    Icon:      "<i class='bi bi-speedometer2'></i>",
     RouteName: "admin:bandwidth:settings",
     Order:     4000,
 }
@@ -154,6 +159,7 @@ The available `INavCategory` options are:
 {
     Category:  sdkapi.NavCategorySystem,
     Label:     "Shutdown",
+    Icon:      "<i class='bi bi-power'></i>",
     RouteName: "admin:power:shutdown",
     Order:     9999,
 }
@@ -273,6 +279,7 @@ The `AdminNavItem` is a Go struct that represents an individual admin menu item 
 ```go
 type AdminNavItem struct {
 	Label      string
+	Icon       string
 	RouteUrl   string
 	IsCurrent  bool               // true if current active route
 	Keywords   []string           // Used for admin nav search indexing
@@ -284,6 +291,7 @@ type AdminNavItem struct {
 ### Fields
 
 - **Label** - The display text for the menu item
+- **Icon** - An HTML tag string for the menu item icon (passed from `AdminNavItemOpt.Icon`)
 - **RouteUrl** - The full URL for the menu item (generated from RouteName)
 - **IsCurrent** - `true` if this is the currently active route
 - **Keywords** - Search keywords for the admin navigation search feature

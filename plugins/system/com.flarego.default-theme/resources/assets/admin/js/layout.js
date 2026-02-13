@@ -1,7 +1,7 @@
 var $ = require("jquery");
 var $window = $(window);
 var navSearch = $("#navbarSearch");
-var mdClasses = "md-classes d-flex align-items-center ms-auto d-none d-md-flex";
+var mdClasses = "md-classes align-items-center d-none d-md-flex";
 var smClasses = "sm-classes w-100 collapse d-md-none";
 var currentClasses = "";
 

@@ -46,3 +46,6 @@ data*.zip
 hosts.json
 MACHINE_UID
 .serena/
+
+/.idea
+/.idea/inspectionProfiles

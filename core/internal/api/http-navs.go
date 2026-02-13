@@ -44,7 +44,7 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 		sdkapi.NavCategorySystem,
 		sdkapi.NavCategoryThemes,
 		sdkapi.NavCategoryNetwork,
-		sdkapi.NavCategoryTools,
+		sdkapi.NavCategorySettings,
 	}
 
 	categoryLabels := map[sdkapi.INavCategory]string{
@@ -53,7 +53,7 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 		sdkapi.NavCategoryThemes:      self.api.CoreAPI.Translate("label", "Themes"),
 		sdkapi.NavCategoryPayments:    self.api.CoreAPI.Translate("label", "Payments"),
 		sdkapi.NavCategoryNetwork:     self.api.CoreAPI.Translate("label", "Network"),
-		sdkapi.NavCategoryTools:       self.api.CoreAPI.Translate("label", "Tools"),
+		sdkapi.NavCategorySettings:    self.api.CoreAPI.Translate("label", "Settings"),
 	}
 
 	navs := []sdkapi.AdminNavList{}
@@ -91,6 +91,7 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 						Keywords:   nav.Keywords,
 						ExtraAttrs: nav.ExtraAttrs, // Pass through HTML attributes for theme plugins
 						Order:      order,
+						Icon:       nav.Icon,
 					})
 				}
 			}
