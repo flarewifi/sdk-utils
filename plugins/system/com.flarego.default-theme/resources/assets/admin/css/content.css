@@ -1,0 +1,97 @@
+:root {
+    --spacing: 0.25rem;
+}
+
+.w-full {
+    width: 100%;
+    & > :not(:last-child) {
+        --tw-space-y-reverse: 0;
+        margin-block-start: calc(calc(var(--spacing) * 6) * var(--tw-space-y-reverse));
+        margin-block-end: calc(calc(var(--spacing) * 6) * calc(1 - var(--tw-space-y-reverse)));
+    };
+}
+
+.icon-container {
+    padding: calc(var(--spacing)*2);
+    border-radius: 0.5rem;
+}
+
+.icon-container.blue {
+    background-color: oklch(97% 0.014 254.604);
+}
+
+.icon-container.purple {
+    background-color: oklch(97.7% .014 308.299);
+}
+
+.icon-container.green {
+    background-color: oklch(98.2% .018 155.826);
+}
+
+.content-layout {
+    padding: calc(var(--spacing)*4);
+    background-color: oklch(98.5% 0.002 247.839);
+    min-height: 100%;
+}
+
+.page-header {
+    margin-bottom: calc(var(--spacing)*6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.page-header .text-container {
+    display: flex;
+    align-items: baseline;
+}
+
+.page-header .text-container h1 {
+    font-size: 1.5rem;
+    line-height: calc(2/1.5);
+}
+
+.custom-card {
+    background-color: white;
+    border-radius: 0.5rem;
+    border: 1px solid oklch(92.8% 0.006 264.531);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+.custom-card-header {
+    padding: calc(var(--spacing)*6);
+    border-bottom: 1px solid oklch(92.8% 0.006 264.531);
+}
+
+.custom-card-header p {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: oklch(21% 0.034 264.665);
+}
+
+.custom-card-body {
+    padding: calc(var(--spacing)*6);
+}
+
+.grid {
+    display: grid;
+    gap: calc(var(--spacing)*6);
+}
+
+.custom-card-body .content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: calc(var(--spacing)*3);
+    border-bottom: 1px solid oklch(96.7% 0.003 264.542);
+
+    &:last-child {
+        border: none;
+    }
+}
+
+.status {
+    padding: calc(var(--spacing)*1) calc(var(--spacing)*3);
+    background-color: oklch(96.2% 0.044 156.743);
+    color: oklch(52.7% 0.154 150.069);
+}
