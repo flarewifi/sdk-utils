@@ -28,3 +28,12 @@ WHERE
   id = @id
 LIMIT
   1;
+
+-- name: MarkAllAsRead :exec
+UPDATE
+  notifications
+SET
+  status = @status,
+  updated_at = datetime('now')
+WHERE
+  status != @status;

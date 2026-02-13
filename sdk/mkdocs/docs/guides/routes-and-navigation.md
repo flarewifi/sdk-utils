@@ -133,6 +133,7 @@ navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
         {
             Category:  sdkapi.NavCategorySystem,    // Category of the menu item
             Label:     "Welcome",                   // Menu display text
+            Icon:      "<i class='bi bi-house'></i>", // Icon HTML tag
             RouteName: "admin:welcome",             // Link to the route
             Keywords:  []string{"welcome", "home"}, // Search keywords
             Order:     5000,                        // Sort order (optional, default: 5000)
@@ -153,12 +154,14 @@ navsAPI.AdminNavsFactory(func(r *http.Request) []AdminNavItemOpt {
         {
             Category:  sdkapi.NavCategorySystem,
             Label:     "My Settings",
+            Icon:      "<i class='bi bi-sliders'></i>",
             RouteName: "admin:mysettings",
             Order:     4000, // Appears before items with Order: 5000
         },
         {
             Category:  sdkapi.NavCategorySystem,
             Label:     "Advanced Options",
+            Icon:      "<i class='bi bi-tools'></i>",
             RouteName: "admin:advanced",
             Order:     6000, // Appears after items with Order: 5000
         },

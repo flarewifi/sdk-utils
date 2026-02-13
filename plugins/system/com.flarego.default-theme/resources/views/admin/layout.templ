@@ -21,119 +21,33 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			@data.Components.Head()
 		</head>
+         <script>
+                (function() {
+                  var t = localStorage.getItem("theme");
+                  if (t === "dark") {
+                    document.documentElement.setAttribute("data-bs-theme", "dark");
+                  } else if (t === "light") {
+                    document.documentElement.setAttribute("data-bs-theme", "light");
+                  } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+                    document.documentElement.setAttribute("data-bs-theme", "dark");
+                  } else {
+                    document.documentElement.setAttribute("data-bs-theme", "light");
+                  }
+                })();
+         </script>
 		<body { data.Components.BodyAttrs()... }>
-			<header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
-				<a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="/admin">
-					<img class="logo-img" src={ api.Http().Helpers().PublicPath("images/flarewifi_logo.png") } alt="Nexifi Logo"/>
-				</a>
-				<ul class="navbar-nav flex-row">
-					<li class="nav-item text-nowrap d-md-none">
-						<button class="nav-link px-3 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSearch" aria-controls="navbarSearch" aria-expanded="false" aria-label="Toggle search">
-							<i class="bi bi-search"></i>
-						</button>
-					</li>
-					<li class="nav-item text-nowrap d-md-none">
-						<button class="nav-link px-3 text-white" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-							<i class="bi bi-list"></i>
-						</button>
-					</li>
-				</ul>
-				<div class="d-flex align-items-center justify-content-start gap-2 ps-2 pe-4">
-					<!-- Navbar Search -->
-					<form
-						id="navbarSearch"
-						class="navbar-search w-100 collapse d-md-none"
-						autocomplete="off"
-						data-results={ navItemsAsJSON(data.NavItems) }
-					>
-						<div class="dropdown w-100 position-relative">
-							<div class="input-group">
-								<span class="input-group-text bg-transparent border-0 p-0 ps-2 d-none d-md-flex">
-									<i class="bi bi-search"></i>
-								</span>
-							<input
-								id="searchInput"
-								type="search"
-								class="form-control border-0 shadow-none bg-transparent"
-								placeholder={ api.Translate("label", "Search settings") }
-								aria-label={ api.Translate("label", "Search settings") }
-							/>
-							</div>
-							<ul id="searchResults" class="dropdown-menu w-100"></ul>
-						</div>
-					</form>
-					<!-- Notifications -->
-					<form id="notification">
-						@NotificationForm(api, data.Notifications)
-					</form>
-				</div>
-			</header>
-			<div class="container-fluid">
-				<div class="row">
-					<div class="sidebar border border-right col-md-3 col-lg-2 p-0 bg-body-tertiary">
-						<div class="offcanvas-md offcanvas-end bg-body-tertiary" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
-							<div class="offcanvas-header">
-								<button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
-							</div>
-						<div class="offcanvas-body d-md-flex flex-column p-0 overflow-y-auto">
-							<div id="sidemenu" class="p-3 pt-md-3">
-									<ul class="nav-menu" x-data={ menuData(data.Navs) }>
-										for i, nav := range data.Navs {
-											<li
-												class={ navCategoryClass(nav) }
-												:class={ fmt.Sprintf("{'active': openIndex === %d}", i) }
-											>
-												<button
-													type="button"
-													class="nav-link w-100"
-													@click.prevent={ fmt.Sprintf("openIndex = (openIndex === %d) ? -1 : %d", i, i) }
-												>
-													<span>{ nav.Label }</span>
-													<i class="bi bi-chevron-right"></i>
-												</button>
-												<ul
-													class="sub-nav"
-													x-show={ fmt.Sprintf("openIndex === %d", i) }
-													x-transition
-												>
-													for _, subnav := range nav.Items {
-														<li class={ subnavItemClass(subnav) }>
-															<a class="sub-nav-link" href={ templ.SafeURL(subnav.RouteUrl) }>
-																{ subnav.Label }
-															</a>
-														</li>
-													}
-												</ul>
-											</li>
-										}
-									</ul>
-								<hr/>
-								<ul class="nav flex-column">
-									<li class="nav-category">
-										<a
-											href="#"
-											id="logoutBtn"
-											type="button"
-											class="nav-link w-100"
-											data-logout-url={ api.Http().Helpers().UrlForRoute("admin:auth:logout") }
-										>
-											<i class="bi bi-box-arrow-left me-2"></i>
-											{ api.Translate("label", "Logout") }
-										</a>
-									</li>
-								</ul>
-								</div>
-							</div>
-						</div>
-					</div>
-					<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-						<div class="container pt-3">
-							@data.Components.PageContent()
-						</div>
+			<div class="layout" x-data="{ sidebarOpen: false }">
+				<div class="sidebar-overlay" x-show="sidebarOpen" x-transition.opacity @click="sidebarOpen = false" x-cloak></div>
+				@sidebar(api, data)
+				<div class="right-content">
+					<header>
+						@topbar(api, data)
+					</header>
+					<main>
+						@data.Components.PageContent()
 					</main>
 				</div>
 			</div>
-
 			<!-- Notification Modal -->
 			<div
 				class="modal fade"
@@ -170,20 +84,130 @@ func navCategoryClass(navs sdkapi.AdminNavList) string {
 }
 
 func menuData(navs []sdkapi.AdminNavList) string {
-	openIndex := -1
+	open := make([]bool, len(navs))
 	for i, nav := range navs {
 		for _, sub := range nav.Items {
 			if sub.IsCurrent {
-				openIndex = i
+				open[i] = true
 				break
 			}
 		}
 	}
 
-	return fmt.Sprintf("{ openIndex: %d }", openIndex)
+	openJSON, _ := json.Marshal(open)
+	return fmt.Sprintf("{ open: %s }", openJSON)
 }
 
 func navItemsAsJSON(items []sdkapi.AdminNavItem) string {
 	bytes, _ := json.Marshal(items)
 	return string(bytes)
+}
+
+templ sidebar(api sdkapi.IPluginApi, data AdminLayoutData) {
+	<aside class="sidebar" :class="sidebarOpen && 'open'">
+		<div class="h-100 d-flex flex-column">
+			<div class="logo-img">
+				<a class="px-3 fs-6 text-white" href="/admin">
+					<img class="logo" src={ api.Http().Helpers().PublicPath("images/flarewifi_logo.png") } alt="Nexifi Logo"/>
+				</a>
+			</div>
+			<!-- Mobile search - only visible on mobile -->
+			<div class="sidebar-search d-md-none">
+				<form class="search-bar mobile-search" data-results={ navItemsAsJSON(data.NavItems) }>
+					<div class="position-relative w-100">
+						<i class="bi bi-search search-icon"></i>
+						<input
+							type="text"
+							placeholder={ api.Translate("label", "Search settings") }
+							aria-label={ api.Translate("label", "Search settings") }
+							class="mobile-search-input"
+						/>
+						<ul class="dropdown-menu w-100 mobile-search-results"></ul>
+					</div>
+				</form>
+			</div>
+			<nav class="items" x-data={menuData(data.Navs)}>
+				for i, nav := range data.Navs {
+					if nav.Category == sdkapi.NavCategoryQuickAccess || nav.Category == sdkapi.NavCategoryPayments {
+						<div class="nav-category">
+							<div class="mb-2">
+								<h6 class="text-uppercase">{nav.Label}</h6>
+							</div>
+							<div>
+								<div class="d-flex flex-column gap-1">
+									for _, subnav := range nav.Items {
+										<div class={subnavItemClass(subnav)}>
+											<a href={templ.SafeURL(subnav.RouteUrl)}>
+												@templ.Raw(subnav.Icon)
+												<span class="fs-6">{subnav.Label}</span>
+											</a>
+										</div>
+									}
+								</div>
+							</div>
+
+						</div>
+					} else {
+					<div class={navCategoryClass(nav)} :class={fmt.Sprintf("{'active': open[%d]}", i)}>
+						<button type="button" @click.prevent={fmt.Sprintf("open[%d] = !open[%d]", i, i)}>
+							<h6 class="text-uppercase">{nav.Label}</h6>
+							<i class="bi bi-chevron-right"></i>
+						</button>
+						<div x-show={fmt.Sprintf("open[%d]", i)} x-cloak x-transition>
+							<div class="d-flex flex-column gap-1">
+								for _, subnav := range nav.Items {
+									<div class={subnavItemClass(subnav)}>
+										<a href={templ.SafeURL(subnav.RouteUrl)}>
+											@templ.Raw(subnav.Icon)
+											<span class="fs-6">{subnav.Label}</span>
+										</a>
+									</div>
+								}
+							</div>
+						</div>
+					</div>
+					}
+				}
+			</nav>
+			<div class="footer">
+				<a href="#" class="logout" id="logoutBtn" type="button" data-logout-url={api.Http().Helpers().UrlForRoute("admin:auth:logout")}>
+					<i class="bi bi-box-arrow-right"></i>
+					<span class="fs-6">{ api.Translate("label", "Logout") }</span>
+				</a>
+			</div>
+		</div>
+	</aside>
+}
+
+templ topbar(api sdkapi.IPluginApi, data AdminLayoutData) {
+	<div class="d-flex align-items-center justify-content-between h-100 px-4">
+		<button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen" type="button">
+			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+				<path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
+			</svg>
+		</button>
+		<form class="search-bar" id="navbarSearch" data-results={navItemsAsJSON(data.NavItems)}>
+			<div class="position-relative w-100">
+				<i class="bi bi-search search-icon"></i>
+				<input
+					type="text"
+					placeholder={ api.Translate("label", "Search settings") }
+					aria-label={ api.Translate("label", "Search settings") }
+					id="searchInput"
+				/>
+				<ul id="searchResults" class="dropdown-menu w-100"></ul>
+			</div>
+		</form>
+
+		<div class="d-flex align-items-center gap-4">
+			@NotificationForm(api, data.Notifications)
+
+			<a href={templ.SafeURL(api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "admin:user:index"))} class="admin">
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person size-5" viewBox="0 0 16 16">
+					<path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
+				</svg>
+				<h6 class="fs-6">Admin</h6>
+			</a>
+		</div>
+	</div>
 }

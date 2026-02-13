@@ -42,4 +42,5 @@ type INotificationAPI interface {
 	GetUnreadNotifications(ctx context.Context) ([]Notification, error)
 	GetNotificationByID(ctx context.Context, id int64) (Notification, error)
 	UpdateNotificationStatus(ctx context.Context, id int64, status NotificationStatus) error
+	MarkAllAsRead(ctx context.Context) error
 }
