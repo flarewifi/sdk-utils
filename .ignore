@@ -1,10 +1,10 @@
-data/config
-data/storage
+!data/storage
 !data/plugins/local/*
+!data/config
+!data/openwrt-files
 !data/config
 .tmp/
 .bin/
 plugins/installed
 output/
 !hosts.json
-!openwrt-files

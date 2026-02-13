@@ -6,10 +6,12 @@ services:
       context: .
     volumes:
       - ./:/app
-      - ./data:/opt/flarehotspot/data
-      - ./openwrt-files/etc/config:/etc/config
-      - ./openwrt-files/etc/openwrt_release:/etc/openwrt_release
-      - ./openwrt-files/etc/os_release.json:/etc/os_release.json
+      - ./data/config:/opt/flarehotspot/data/config
+      - ./data/db:/opt/flarehotspot/data/db
+      - ./data/plugins:/opt/flarehotspot/data/plugins
+      - ./data/openwrt-files/etc/config:/etc/config
+      - ./data/openwrt-files/etc/openwrt_release:/etc/openwrt_release
+      - ./data/openwrt-files/etc/os_release.json:/etc/os_release.json
       - gocache:/var/cache/go
     environment:
       - GOCACHE=/var/cache/go/cache
