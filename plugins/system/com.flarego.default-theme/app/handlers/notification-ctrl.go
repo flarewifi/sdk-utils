@@ -95,3 +95,24 @@ func ShowNotificationContentCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 		view.Render(r.Context(), w)
 	}
 }
+
+func ClearAllNotificationsCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		notifsAPI := api.Notification()
+
+		err := notifsAPI.MarkAllAsRead(r.Context())
+		if err != nil {
+			api.Logger().Error(fmt.Sprintf("clear all notifications error: %v", err))
+		}
+
+		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
+		if err != nil {
+			log.Printf("get notifications error: %v", err)
+			notifs = []sdkapi.Notification{}
+		}
+
+		w.Header().Set("HX-Trigger", "notificationRead")
+		view := admin.NotificationsList(api, notifs)
+		view.Render(r.Context(), w)
+	}
+}
