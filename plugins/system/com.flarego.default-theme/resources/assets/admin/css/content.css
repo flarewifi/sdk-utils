@@ -92,6 +92,10 @@
 
 .status {
     padding: calc(var(--spacing)*1) calc(var(--spacing)*3);
-    background-color: oklch(96.2% 0.044 156.743);
-    color: oklch(52.7% 0.154 150.069);
+    font-size: 0.875rem; /* 0.875rem (14px) */
+    line-height: calc(1.25 / 0.875); /* calc(1.25 / 0.875) */
+    border-radius: calc(infinity * 1px);
+    margin-bottom: 0;
+    font-weight: 600;
+    color: white;
 }
