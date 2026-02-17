@@ -702,3 +702,60 @@ func (self *SessionsMgr) getRunningSessionBySessionID(sessionID int64) (*Running
 	}
 	return nil, nil, false
 }
+
+// UpdateInterfaceBandwidth updates the bandwidth settings for all running sessions on the specified interface.
+// This is called when bandwidth settings are saved via Config().Bandwidth().Save().
+// It iterates all running sessions, and for each session on the specified interface:
+// - Updates bandwidth based on UseGlobal setting
+// - Saves the session (which triggers ApplyBandwidthUpdate via the save callback)
+func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname string, cfg sdkapi.IBandwdCfg) {
+	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: updating sessions on interface %s", ifname)
+
+	self.sessions.Range(func(key, value any) bool {
+		rs := value.(*RunningSession)
+		lan := rs.Lan()
+
+		if lan == nil || lan.Name() != ifname {
+			return true // Continue to next session
+		}
+
+		// Skip stopped sessions
+		if rs.IsStopped() {
+			log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: skipping stopped session for device %d", rs.ClientId())
+			return true
+		}
+
+		session := rs.GetSession()
+		if session == nil {
+			return true
+		}
+
+		// Determine bandwidth based on UseGlobal setting
+		var downMbits, upMbits int
+		if cfg.UseGlobal {
+			downMbits = cfg.GlobalDownMbits
+			upMbits = cfg.GlobalUpMbits
+		} else {
+			downMbits = cfg.UserDownMbits
+			upMbits = cfg.UserUpMbits
+		}
+
+		log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: updating session %d - Down=%d, Up=%d, UseGlobal=%v",
+			session.ID(), downMbits, upMbits, cfg.UseGlobal)
+
+		// Update session bandwidth settings
+		session.SetDownMbits(downMbits)
+		session.SetUpMbits(upMbits)
+		session.SetUseGlobalSpeed(cfg.UseGlobal)
+
+		// Save triggers the save callback which calls ApplyBandwidthUpdate
+		if err := session.Save(ctx); err != nil {
+			log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: failed to save session %d: %v", session.ID(), err)
+			// Continue updating other sessions
+		}
+
+		return true // Continue to next session
+	})
+
+	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: completed for interface %s", ifname)
+}
