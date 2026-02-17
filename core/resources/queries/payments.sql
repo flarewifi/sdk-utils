@@ -1,7 +1,7 @@
 -- name: CreatePayment :one
-INSERT INTO payments (uuid, purchase_id, amount, payment_option_uuid)
+INSERT INTO payments (uuid, purchase_id, amount, payment_option_uuid, provider_pkg, provider_name)
 VALUES
-  (@uuid, @purchase_id, @amount, @payment_option_uuid) RETURNING id;
+  (@uuid, @purchase_id, @amount, @payment_option_uuid, @provider_pkg, @provider_name) RETURNING id;
 
 
 -- name: FindPayment :one
