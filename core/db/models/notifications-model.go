@@ -79,3 +79,7 @@ func (nm *NotificationModel) GetNotificationByID(ctx context.Context, id int64) 
 		UpdatedAt: dbNotif.UpdatedAt,
 	}, nil
 }
+
+func (nm *NotificationModel) MarkAllAsRead(ctx context.Context) error {
+	return nm.db.Queries.MarkAllAsRead(ctx, int64(sdkapi.NotificationStatusRead))
+}

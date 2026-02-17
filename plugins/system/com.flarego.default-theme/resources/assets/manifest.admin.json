@@ -11,7 +11,8 @@
     "./vendor/bootstrap-5.3.3/css/bootstrap.css",
     "./admin/css/fonts.css",
     "./admin/css/layout.css",
-    "./admin/css/sidebar-menu.css"
+    "./admin/css/sidebar-menu.css",
+    "./admin/css/sizing.css"
   ],
   "global.css": [
     "./admin/css/fw-utils.css"

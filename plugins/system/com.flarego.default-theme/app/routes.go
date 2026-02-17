@@ -29,6 +29,7 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 	adminR.Group("/notifications", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/list", handlers.NotificationsListCtrl(api)).Name("admin:notifications:list")
 		subrouter.Post("/update/{id}", handlers.UpdateNotificationCtrl(api)).Name("admin:notifications:update")
+		subrouter.Post("/clear-all", handlers.ClearAllNotificationsCtrl(api)).Name("admin:notifications:clear-all")
 		subrouter.Get("/count", handlers.NotificationsBellCountCtrl(api)).Name("admin:notifications:count")
 		subrouter.Get("/show/{id}", handlers.ShowNotificationContentCtrl(api)).Name("admin:notifications:show")
 	})

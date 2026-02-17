@@ -52,6 +52,10 @@ func (n *NotificationAPI) UpdateNotificationStatus(ctx context.Context, id int64
 	return n.models.Notification().UpdateNotificationStatus(ctx, id, status)
 }
 
+func (n *NotificationAPI) MarkAllAsRead(ctx context.Context) error {
+	return n.models.Notification().MarkAllAsRead(ctx)
+}
+
 func (n *NotificationAPI) sendEvent(api *PluginApi, notif *sdkapi.Notification) {
 	accts, err := api.AcctAPI.GetAll()
 	if err != nil {
