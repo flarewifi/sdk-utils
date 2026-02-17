@@ -20,11 +20,13 @@ templ RebootPage(api sdkapi.IPluginApi) {
 				<div id="reboot-response"></div>
 				
 				<button 
+					id="reboot-btn"
 					type="button" 
 					class="btn btn-danger"
 					hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") }
 					hx-target="#reboot-response"
 					hx-confirm={ api.Translate("label", "Are you sure you want to reboot the system? This will disconnect all users") + "." }
+					hx-on::after-request="this.disabled = true"
 					data-loading-disable>
 					<i class="bi bi-arrow-clockwise me-2"></i>
 					{ api.Translate("label", "Reboot") }

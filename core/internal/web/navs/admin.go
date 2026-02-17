@@ -76,6 +76,19 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "Admin User"),
+				RouteName: "admin:user:index",
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Admin User"),
+					g.CoreAPI.Translate("label", "Password"),
+					g.CoreAPI.Translate("label", "Change Password"),
+					g.CoreAPI.Translate("label", "Account"),
+				},
+				Order: 4000, // After Database, before Logs
+				Icon:  "<i class='bi bi-person-gear'></i>",
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Logs"),
 				RouteName: "admin:logs:index",
 				Keywords: []string{
@@ -85,6 +98,29 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				},
 				Order: 5000, // Default position (after plugin items with Order < 5000)
 				Icon:  "<i class='bi bi-file-earmark-text'></i>",
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "Reboot"),
+				RouteName: "admin:power:reboot",
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Reboot"),
+					g.CoreAPI.Translate("label", "Restart"),
+				},
+				Order: 9000, // Last items in System category
+				Icon:  "<i class='bi bi-arrow-clockwise'></i>",
+			},
+			{
+				Category:  sdkapi.NavCategorySystem,
+				Label:     g.CoreAPI.Translate("label", "Shutdown"),
+				RouteName: "admin:power:shutdown",
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Shutdown"),
+					g.CoreAPI.Translate("label", "Power Off"),
+					g.CoreAPI.Translate("label", "Turn Off"),
+				},
+				Order: 9100, // Very last item
+				Icon:  "<i class='bi bi-power'></i>",
 			},
 		}
 
