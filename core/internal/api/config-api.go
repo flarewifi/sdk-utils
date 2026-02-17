@@ -19,7 +19,7 @@ func (self *ConfigApi) Application() sdkapi.IAppCfgApi {
 }
 
 func (self *ConfigApi) Bandwidth() sdkapi.IBandwidthCfgApi {
-	return NewBandwdCfgApi()
+	return NewBandwdCfgApi(self.api.SessionMgr)
 }
 
 func (self *ConfigApi) Plugin() sdkapi.IPluginCfgApi {
