@@ -60,7 +60,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Software"),
 				},
 				Order: 2000, // Second item in System category
-				Icon:  "<i class='bi bi-arrow-clockwise'></i>",
+				Icon:  "<i class='bi bi-cloud-arrow-down'></i>",
 			},
 			{
 				Category:  sdkapi.NavCategorySystem,
