@@ -44,6 +44,7 @@ nav:
       - "Database Migrations": guides/database-migrations.md
       - "Error Handling": guides/error-handling.md
       - "Debugging": guides/debugging.md
+      - "Frontend Libraries": guides/frontend-libraries.md
       - "FAQ": guides/faq.md
   - Tutorials:
       - "Manage Sessions": tutorials/manage-sessions.md

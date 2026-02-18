@@ -12,4 +12,5 @@ import (
 
 type IUIApi interface {
 	Pagination(opts *UIPaginationOpts) templ.Component
+	LineChart(opts *LineChartOpts) templ.Component
 }

@@ -1,10 +1,12 @@
 {
   "global.js": [
     "./admin/js/globals.js",
-    "./admin/js/plugin_install_events.js"
+    "./admin/js/plugin_install_events.js",
+    "./libs/charts/line-chart.js"
   ],
   "global.css": [
-    "./admin/css/global.css"
+    "./admin/css/global.css",
+    "./libs/charts/line-chart.css"
   ],
   "plugin.js": [
     "./admin/js/plugin.js"

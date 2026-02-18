@@ -33,7 +33,7 @@ const (
 	NavCategoryPayments    INavCategory = "payments"
 	NavCategoryThemes      INavCategory = "themes"
 	NavCategoryNetwork     INavCategory = "network"
-	NavCategoryTools       INavCategory = "tools"
+	NavCategorySettings    INavCategory = "settings"
 )
 
 // AdminNavItemOpt represents an admin navigation menu item.
@@ -45,6 +45,7 @@ type AdminNavItemOpt struct {
 	ExtraAttrs  map[string]any // HTML attributes for the menu item element (e.g., {"class": "custom-class", "data-id": "123"})
 	Keywords    []string       // Used for admin nav search indexing
 	Order       int            // Sort order within category (lower numbers appear first, default: 5000)
+	Icon        string
 }
 
 type PortalNavItemOpt struct {
@@ -69,6 +70,7 @@ type AdminNavItem struct {
 	Keywords   []string       // Used for admin nav search indexing
 	ExtraAttrs map[string]any // HTML attributes for the menu item element (passed from AdminNavItemOpt)
 	Order      int            // Sort order within category
+	Icon       string
 }
 
 type PortalNavItem struct {

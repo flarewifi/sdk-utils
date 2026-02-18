@@ -1,0 +1,105 @@
+package admin
+
+import (
+	"fmt"
+	sdkapi "sdk/api"
+	"com.flarego.default-theme/app/sysinfo"
+)
+
+func formatUptime(seconds uint64) string {
+	days := seconds / 86400
+	hours := (seconds % 86400) / 3600
+	minutes := (seconds % 3600) / 60
+	if days > 0 {
+		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
+	}
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	}
+	return fmt.Sprintf("%dm", minutes)
+}
+
+func shortDeviceID(id string) string {
+	if len(id) <= 16 {
+		return id
+	}
+	return id[:8] + "..." + id[len(id)-8:]
+}
+
+templ SystemInfoCard(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
+	<div class="card border h-100">
+		<div class="card-body">
+			<h2 class="h5 mb-3">{ api.Translate("label", "System Information") }</h2>
+			<div>
+				<!-- Device ID -->
+				<div class="fw-info-row">
+					<div class="fw-info-row-label">
+						<i class="bi bi-fingerprint"></i>
+						<span>{ api.Translate("label", "Device ID") }</span>
+					</div>
+					<div class="fw-info-row-value">
+						<span class="fw-mono">{ shortDeviceID(api.Machine().GetID()) }</span>
+						<button
+							class="fw-copy-btn"
+							data-fw-copy={ api.Machine().GetID() }
+							title={ api.Translate("label", "Copy full device ID") }
+						>
+							<i class="bi bi-clipboard fw-copy-icon-default"></i>
+							<i class="bi bi-check fw-copy-icon-check" style="display:none;"></i>
+						</button>
+					</div>
+				</div>
+				<!-- Firmware -->
+				<div class="fw-info-row">
+					<div class="fw-info-row-label">
+						<i class="bi bi-box"></i>
+						<span>{ api.Translate("label", "Firmware Version") }</span>
+					</div>
+					<div class="fw-info-row-value">
+						<span>v2.4.1</span>
+					</div>
+				</div>
+				<!-- Uptime -->
+				<div class="fw-info-row">
+					<div class="fw-info-row-label">
+						<i class="bi bi-clock"></i>
+						<span>{ api.Translate("label", "Uptime") }</span>
+					</div>
+					<div class="fw-info-row-value">
+						<span>{ formatUptime(info.Uptime) }</span>
+					</div>
+				</div>
+				<!-- IP Address -->
+				<div class="fw-info-row">
+					<div class="fw-info-row-label">
+						<i class="bi bi-diagram-3"></i>
+						<span>{ api.Translate("label", "IP Address") }</span>
+					</div>
+					<div class="fw-info-row-value">
+						<span>192.168.1.1</span>
+					</div>
+				</div>
+				<!-- MAC Address -->
+				<div class="fw-info-row">
+					<div class="fw-info-row-label">
+						<i class="bi bi-link-45deg"></i>
+						<span>{ api.Translate("label", "MAC Address") }</span>
+					</div>
+					<div class="fw-info-row-value">
+						<span class="fw-mono">00:1A:2B:3C:4D:5E</span>
+					</div>
+				</div>
+				<!-- Storage -->
+				<div class="fw-info-row">
+					<div class="fw-info-row-label">
+						<i class="bi bi-hdd"></i>
+						<span>{ api.Translate("label", "Storage") }</span>
+					</div>
+					<div class="fw-info-row-value">
+						<span>{ formatBytes(info.DiskUsed) } / { formatBytes(info.DiskTotal) }</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}

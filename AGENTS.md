@@ -91,8 +91,8 @@ plugins/system/          # System plugins
 - **sqlc** - Type-safe SQL generation
 - **esbuild** - Asset bundling
 - **SQLite** - Embedded database
-- **Bootstrap 3.4.1** - Portal pages only
-- **Bootstrap 5.3.3** - Admin dashboard only
+- **Bootstrap 3.4.1** - Portal/login pages only — rendered via `PortalView`
+- **Bootstrap 5.3.3** - Admin dashboard and all post-login pages — rendered via `AdminView`
 - **htmx v1.9.12** - Dynamic HTML
 - **Alpine.js** - Reactive components (admin)
 - **jQuery** - v1.12.4 (core), v3.7.1 (theme)
@@ -133,9 +133,9 @@ api.Translate("error", "Invalid input", "field", "email")
 ## Frontend Development
 
 ### CSS
-- **Bootstrap 3.4.1** - Portal only (captive portal pages)
-- **Bootstrap 5.3.3** - Admin only (dashboard)
-- Never mix versions
+- **Bootstrap 3.4.1** - Portal/login pages only (`PortalView`)
+- **Bootstrap 5.3.3** - Admin/dashboard and all post-login pages (`AdminView`)
+- Never mix versions — check which Go view function renders the page
 
 ### JavaScript (ES5 Only)
 - Use `var` not `let`/`const`

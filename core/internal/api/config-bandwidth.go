@@ -1,15 +1,20 @@
 package api
 
 import (
+	"context"
+
+	"core/internal/sessmgr"
 	"core/utils/config"
 	sdkapi "sdk/api"
 )
 
-func NewBandwdCfgApi() *BandwdCfgApi {
-	return &BandwdCfgApi{}
+func NewBandwdCfgApi(sessionMgr *sessmgr.SessionsMgr) *BandwdCfgApi {
+	return &BandwdCfgApi{sessionMgr: sessionMgr}
 }
 
-type BandwdCfgApi struct{}
+type BandwdCfgApi struct {
+	sessionMgr *sessmgr.SessionsMgr
+}
 
 func (c *BandwdCfgApi) Get(ifname string) (sdkapi.IBandwdCfg, bool) {
 	cfg, err := config.ReadBandwidthConfig()
@@ -50,5 +55,14 @@ func (c *BandwdCfgApi) Save(ifname string, cfg sdkapi.IBandwdCfg) error {
 		UserUpMbits:     cfg.UserUpMbits,
 	}
 
-	return config.WriteBandwidthConfig(oldCfg)
+	if err := config.WriteBandwidthConfig(oldCfg); err != nil {
+		return err
+	}
+
+	// Update running sessions on this interface with the new bandwidth settings
+	if c.sessionMgr != nil {
+		c.sessionMgr.UpdateInterfaceBandwidth(context.Background(), ifname, cfg)
+	}
+
+	return nil
 }

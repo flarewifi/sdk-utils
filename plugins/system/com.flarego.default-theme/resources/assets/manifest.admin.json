@@ -12,6 +12,15 @@
     "./admin/css/fonts.css",
     "./admin/css/layout.css",
     "./admin/css/sidebar-menu.css",
-    "./admin/css/content.css"
+    "./admin/css/sizing.css"
+  ],
+  "global.css": [
+    "./admin/css/fw-utils.css"
+  ],
+  "admin/dashboard.js": [
+    "./admin/js/dashboard.js"
+  ],
+  "admin/dashboard.css": [
+    "./admin/css/dashboard.css"
   ]
 }

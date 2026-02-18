@@ -12,14 +12,12 @@ import (
 
 func AdminRoutes(g *api.CoreGlobals) {
 	authMw := middlewares.AdminAuth(g.CoreAPI)
-	trackNavMw := middlewares.TrackNav(g.Models)
 	httpsRedirectMw := middlewares.HTTPSRedirect()
 	rootR := router.RootRouter
 	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
 
-	// Register HTTPS redirect and navigation tracking middleware to admin router
+	// Register HTTPS redirect middleware to admin router
 	adminR.Use(httpsRedirectMw)
-	adminR.Use(trackNavMw)
 
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
 	adminSseCtrl := adminctrl.AdminSseHandler(g)
@@ -32,7 +30,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 
 	// TODO: enable csrf protection
 	rootR.Handle("/login", httpsRedirectMw(adminLoginCtrl)).Methods("GET").Name("admin:login")
-	adminR.Get("/events", adminSseCtrl).Name(middlewares.RouteNameAdminSSE)
+	adminR.Get("/events", adminSseCtrl).Name(api.RouteNameAdminSSE)
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Group("/general", func(subrouter sdkapi.IHttpRouterInstance) {

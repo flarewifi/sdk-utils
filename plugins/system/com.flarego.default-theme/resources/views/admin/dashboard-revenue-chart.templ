@@ -1,0 +1,38 @@
+package admin
+
+import sdkapi "sdk/api"
+
+templ RevenueChartCard(api sdkapi.IPluginApi) {
+	<div class="card border mb-4">
+		<div class="card-body pb-0">
+			<div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
+				<div class="mb-2">
+					<h2 class="h5 mb-1">{ api.Translate("label", "Revenue Summary") }</h2>
+					<p class="text-muted small mb-0">{ api.Translate("label", "Last 7 days revenue breakdown") }</p>
+				</div>
+				<div class="d-flex align-items-center gap-3">
+					<div class="d-flex align-items-center gap-1">
+						<span class="fw-legend-dot" style="background-color:#3b82f6;"></span>
+						<span class="text-muted" style="font-size:0.75rem;">{ api.Translate("label", "Coinslot") }</span>
+					</div>
+					<div class="d-flex align-items-center gap-1">
+						<span class="fw-legend-dot" style="background-color:#a855f7;"></span>
+						<span class="text-muted" style="font-size:0.75rem;">{ api.Translate("label", "Voucher") }</span>
+					</div>
+					<div class="d-flex align-items-center gap-1">
+						<span class="fw-legend-dot" style="background-color:#10b981;"></span>
+						<span class="text-muted" style="font-size:0.75rem;">{ api.Translate("label", "Online") }</span>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="card-body border-top pt-3">
+			<div class="fw-chart-container">
+				<div
+					id="revenueChart"
+					data-chart={ `[{"label":"Jan 29","values":{"coinslot":120,"voucher":80,"online":50}},{"label":"Jan 30","values":{"coinslot":180,"voucher":120,"online":70}},{"label":"Jan 31","values":{"coinslot":150,"voucher":100,"online":60}},{"label":"Feb 1","values":{"coinslot":220,"voucher":140,"online":90}},{"label":"Feb 2","values":{"coinslot":190,"voucher":110,"online":80}},{"label":"Feb 3","values":{"coinslot":250,"voucher":160,"online":100}},{"label":"Feb 4","values":{"coinslot":280,"voucher":180,"online":120}}]` }
+				></div>
+			</div>
+		</div>
+	</div>
+}

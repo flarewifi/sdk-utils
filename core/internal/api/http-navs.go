@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	sdkapi "sdk/api"
@@ -45,7 +44,7 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 		sdkapi.NavCategorySystem,
 		sdkapi.NavCategoryThemes,
 		sdkapi.NavCategoryNetwork,
-		sdkapi.NavCategoryTools,
+		sdkapi.NavCategorySettings,
 	}
 
 	categoryLabels := map[sdkapi.INavCategory]string{
@@ -54,54 +53,46 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 		sdkapi.NavCategoryThemes:      self.api.CoreAPI.Translate("label", "Themes"),
 		sdkapi.NavCategoryPayments:    self.api.CoreAPI.Translate("label", "Payments"),
 		sdkapi.NavCategoryNetwork:     self.api.CoreAPI.Translate("label", "Network"),
-		sdkapi.NavCategoryTools:       self.api.CoreAPI.Translate("label", "Tools"),
+		sdkapi.NavCategorySettings:    self.api.CoreAPI.Translate("label", "Settings"),
 	}
 
 	navs := []sdkapi.AdminNavList{}
 	for _, category := range categories {
 		navItems := []sdkapi.AdminNavItem{}
 
-		// Special handling for Quick Access category
-		if category == sdkapi.NavCategoryQuickAccess {
-			navItems = self.getQuickAccessNavItems(r)
-			// Skip Quick Access if there are no items
-			if len(navItems) == 0 {
-				continue
-			}
-		} else {
-			for _, p := range self.api.PluginsMgrApi.All() {
-				navapi := p.Http().Navs().(*HttpNavsApi)
-				adminNavs := navapi.adminNavsFn(r)
-				for _, nav := range adminNavs {
-					if nav.Category == category {
-						routePairs := []string{}
-						for k, v := range nav.RouteParams {
-							routePairs = append(routePairs, k, v)
-						}
-
-						// Check if current url
-						var isCurrent bool
-						routeURL := p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...)
-						parsed, err := url.Parse(routeURL)
-						if parsed != nil && err == nil {
-							isCurrent = strings.HasPrefix(r.URL.Path, parsed.Path) && !strings.Contains(routeURL, "not found")
-						}
-
-						// Set default order if not specified
-						order := nav.Order
-						if order == 0 {
-							order = 5000 // Default middle priority
-						}
-
-						navItems = append(navItems, sdkapi.AdminNavItem{
-							Label:      nav.Label,
-							RouteUrl:   routeURL,
-							IsCurrent:  isCurrent,
-							Keywords:   nav.Keywords,
-							ExtraAttrs: nav.ExtraAttrs, // Pass through HTML attributes for theme plugins
-							Order:      order,
-						})
+		for _, p := range self.api.PluginsMgrApi.All() {
+			navapi := p.Http().Navs().(*HttpNavsApi)
+			adminNavs := navapi.adminNavsFn(r)
+			for _, nav := range adminNavs {
+				if nav.Category == category {
+					routePairs := []string{}
+					for k, v := range nav.RouteParams {
+						routePairs = append(routePairs, k, v)
 					}
+
+					// Check if current url
+					var isCurrent bool
+					routeURL := p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...)
+					parsed, err := url.Parse(routeURL)
+					if parsed != nil && err == nil {
+						isCurrent = strings.HasPrefix(r.URL.Path, parsed.Path) && !strings.Contains(routeURL, "not found")
+					}
+
+					// Set default order if not specified
+					order := nav.Order
+					if order == 0 {
+						order = 5000 // Default middle priority
+					}
+
+					navItems = append(navItems, sdkapi.AdminNavItem{
+						Label:      nav.Label,
+						RouteUrl:   routeURL,
+						IsCurrent:  isCurrent,
+						Keywords:   nav.Keywords,
+						ExtraAttrs: nav.ExtraAttrs, // Pass through HTML attributes for theme plugins
+						Order:      order,
+						Icon:       nav.Icon,
+					})
 				}
 			}
 		}
@@ -124,66 +115,6 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 	}
 
 	return navs
-}
-
-func (self *HttpNavsApi) getQuickAccessNavItems(r *http.Request) []sdkapi.AdminNavItem {
-	ctx := r.Context()
-
-	// Get top 5 most visited navigation items
-	quickAccessNavs, err := self.api.models.QuickAccessNav().GetTop5(ctx)
-	if err != nil {
-		fmt.Println("Error fetching quick access navs:", err)
-		return []sdkapi.AdminNavItem{}
-	}
-
-	navItems := []sdkapi.AdminNavItem{}
-
-	// Build nav items from the quick access data
-	for _, qan := range quickAccessNavs {
-		// Find the corresponding navigation item from all plugins
-		for _, p := range self.api.PluginsMgrApi.All() {
-			if p.Info().Package != qan.PluginPkg() {
-				continue
-			}
-
-			navapi := p.Http().Navs().(*HttpNavsApi)
-			adminNavs := navapi.adminNavsFn(r)
-
-			for _, nav := range adminNavs {
-				if nav.RouteName == qan.RouteName() {
-					routePairs := []string{}
-					for k, v := range nav.RouteParams {
-						routePairs = append(routePairs, k, v)
-					}
-
-					// Check if current url
-					var isCurrent bool
-					routeURL := p.Http().Helpers().UrlForRoute(nav.RouteName, routePairs...)
-					parsed, err := url.Parse(routeURL)
-					if parsed != nil && err == nil {
-						isCurrent = strings.HasPrefix(r.URL.Path, parsed.Path) && !strings.Contains(routeURL, "not found")
-					}
-
-					order := nav.Order
-					if order == 0 {
-						order = 5000 // Default middle priority
-					}
-
-					navItems = append(navItems, sdkapi.AdminNavItem{
-						Label:      nav.Label,
-						RouteUrl:   routeURL,
-						IsCurrent:  isCurrent,
-						Keywords:   nav.Keywords,
-						ExtraAttrs: nav.ExtraAttrs, // Pass through HTML attributes for theme plugins
-						Order:      order,
-					})
-					break
-				}
-			}
-		}
-	}
-
-	return navItems
 }
 
 // GetPortalItems returns the consolidated navigation list from all plugins for the portal.

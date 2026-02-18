@@ -422,7 +422,7 @@ func PortalSseHandler(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		sse.AddSocket(clnt.MacAddr(), s)
+		sse.AddSocket(fmt.Sprintf("%d", clnt.ID()), s)
 		s.Listen()
 	}
 }
