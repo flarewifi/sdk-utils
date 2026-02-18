@@ -20,6 +20,8 @@ type CreatePaymentParams struct {
 	PurchaseID        int64
 	Amount            float64
 	PaymentOptionUUID string
+	ProviderPkg       string
+	ProviderName      string
 }
 
 // UpdatePaymentParams holds parameters for updating a payment
@@ -41,6 +43,8 @@ func (self *PaymentModel) Create(ctx context.Context, params CreatePaymentParams
 		PurchaseID:        params.PurchaseID,
 		Amount:            params.Amount,
 		PaymentOptionUuid: params.PaymentOptionUUID,
+		ProviderPkg:       params.ProviderPkg,
+		ProviderName:      params.ProviderName,
 	})
 	if err != nil {
 		log.Println("error creating payment:", err)
@@ -59,6 +63,8 @@ func (self *PaymentModel) Create(ctx context.Context, params CreatePaymentParams
 	payment.purchaseId = p.PurchaseID
 	payment.amount = p.Amount
 	payment.paymentOptionUUID = p.PaymentOptionUuid
+	payment.providerPkg = p.ProviderPkg
+	payment.providerName = p.ProviderName
 	payment.createdAt = p.CreatedAt
 
 	return payment, nil
@@ -77,6 +83,8 @@ func (self *PaymentModel) Find(ctx context.Context, id int64) (*Payment, error) 
 	payment.purchaseId = p.PurchaseID
 	payment.amount = p.Amount
 	payment.paymentOptionUUID = p.PaymentOptionUuid
+	payment.providerPkg = p.ProviderPkg
+	payment.providerName = p.ProviderName
 	payment.createdAt = p.CreatedAt
 
 	return payment, nil
@@ -98,6 +106,8 @@ func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId int64) ([
 		nP.purchaseId = p.PurchaseID
 		nP.amount = p.Amount
 		nP.paymentOptionUUID = p.PaymentOptionUuid
+		nP.providerPkg = p.ProviderPkg
+		nP.providerName = p.ProviderName
 		nP.createdAt = p.CreatedAt
 		payments = append(payments, nP)
 	}
