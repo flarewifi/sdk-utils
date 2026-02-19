@@ -17,6 +17,8 @@ type Payment struct {
 	purchaseId        int64
 	amount            float64
 	paymentOptionUUID string
+	providerPkg       string
+	providerName      string
 	createdAt         time.Time
 }
 
@@ -45,6 +47,14 @@ func (self *Payment) Amount() float64 {
 
 func (self *Payment) PaymentOptionUUID() string {
 	return self.paymentOptionUUID
+}
+
+func (self *Payment) ProviderPkg() string {
+	return self.providerPkg
+}
+
+func (self *Payment) ProviderName() string {
+	return self.providerName
 }
 
 func (self *Payment) CreatedAt() time.Time {

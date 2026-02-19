@@ -131,10 +131,15 @@ func (self *Purchase) SetProcessing(ctx context.Context, paymentUrl string) erro
 
 func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePaymentParams) error {
 	mdls := self.api.models
+	// Derive provider info from the calling plugin's API instance
+	providerPkg := self.api.info.Package
+	providerName := self.api.info.Name
 	_, err := mdls.Payment().Create(ctx, models.CreatePaymentParams{
 		PurchaseID:        self.purchase.ID(),
 		Amount:            params.Amount,
 		PaymentOptionUUID: params.PaymentOptionUUID,
+		ProviderPkg:       providerPkg,
+		ProviderName:      providerName,
 	})
 	return err
 }
