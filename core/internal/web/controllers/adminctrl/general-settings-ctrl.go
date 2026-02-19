@@ -166,3 +166,16 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)
 	}
 }
+
+func GeneralSettingsSystemResourcesCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		info, err := sysinfo.GetSystemInfo()
+		if err != nil {
+			// If there's an error, provide empty/default system info
+			info = &sysinfo.SystemInfo{}
+		}
+
+		view := generalview.SystemResources(g.CoreAPI, info)
+		view.Render(r.Context(), w)
+	}
+}

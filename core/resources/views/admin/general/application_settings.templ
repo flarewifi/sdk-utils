@@ -1,5 +1,55 @@
 package general
 
-templ applicationSettings() {
+import "sdk/api"
 
+templ ApplicationSettings(api sdkapi.IPluginApi, params AdminGeneralSettingsIndexParams) {
+    <div class="card shadow-sm">
+        <div class="card-header border-bottom border-light-subtle p-4">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-container purple">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings-icon lucide-settings"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <div>
+                    <h5 class="fw-semibold">{ api.Translate("label", "Application Settings") }</h5>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <form method="POST" action={templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:general:save"))}>
+                <div class="mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-globe-icon lucide-globe"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                        <label for="language" class="form-label mb-0">{api.Translate("label", "Language")}</label>
+                    </div>
+                    <select name="language" id="language" class="form-select" required>
+                        for _, lang := range params.SupportedLanguages {
+                            <option value={lang.Code} if params.Cfg.Lang == lang.Code { selected }>{lang.Name}</option>
+                        }
+                    </select>
+                    if params.Errors.HasError("language") {
+                        <div class="text-danger mt-1">{params.Errors.GetError("language")}</div>
+                    }
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-philippine-peso-icon lucide-philippine-peso"><path d="M20 11H4"/><path d="M20 7H4"/><path d="M7 21V4a1 1 0 0 1 1-1h4a1 1 0 0 1 0 12H7"/></svg>
+                        <label for="currency" class="form-label mb-0">{api.Translate("label", "Currency")}</label>
+                    </div>
+                    <select name="currency" id="currency" class="form-select" required>
+                        for _, currency := range params.SupportedCurrencies {
+                            <option value={currency.Code} if params.Cfg.Currency == currency.Code { selected }>{currency.Code} - {currency.Name}</option>
+                        }
+                    </select>
+                    if params.Errors.HasError("currency") {
+                        <div class="text-danger mt-1">{params.Errors.GetError("currency")}</div>
+                    }
+                </div>
+                <button type="submit" class="btn btn-primary rounded-3 d-flex align-items-center gap-2 fw-semibold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    {api.Translate("label", "Save Settings")}
+                </button>
+            </form>
+        </div>
+    </div>
 }
