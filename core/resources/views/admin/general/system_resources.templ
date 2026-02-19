@@ -1,0 +1,135 @@
+package general
+
+import (
+    "sdk/api"
+    "fmt"
+	"core/utils/sysinfo"
+)
+
+templ SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
+    <div class="card shadow-sm border border-light-subtle" hx-get={ api.Http().Helpers().UrlForRoute("admin:general:system-resources") }
+                                        hx-trigger="every 5s"
+                                        hx-swap="outerHTML">
+        <div class="card-header border-bottom border-light-subtle p-4 bg-transparent">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-container green">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cpu-icon lucide-cpu"><path d="M12 20v2"/><path d="M12 2v2"/><path d="M17 20v2"/><path d="M17 2v2"/><path d="M2 12h2"/><path d="M2 17h2"/><path d="M2 7h2"/><path d="M20 12h2"/><path d="M20 17h2"/><path d="M20 7h2"/><path d="M7 20v2"/><path d="M7 2v2"/><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+                </div>
+                <div>
+                    <h5 class="fw-semibold">{ api.Translate("label", "System Resources") }</h5>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="row gap-3 gap-lg-0">
+                <div class="col-lg-4">
+                    <div class="card border">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3 gap-2">
+                                <div class="icon-container blue">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#155dfc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cpu-icon lucide-cpu"><path d="M12 20v2"/><path d="M12 2v2"/><path d="M17 20v2"/><path d="M17 2v2"/><path d="M2 12h2"/><path d="M2 17h2"/><path d="M2 7h2"/><path d="M20 12h2"/><path d="M20 17h2"/><path d="M20 7h2"/><path d="M7 20v2"/><path d="M7 2v2"/><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+                                </div>
+                                <h6 class="fw-semibold">{api.Translate("label", "CPU")}</h6>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Architecture")}</strong>
+                                <p>{info.Arch}</p>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Cores")}</strong>
+                                <p>{fmt.Sprintf("%d", info.NumCPU)}</p>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Usage")}</strong>
+                                <p>{fmt.Sprintf("%.0f%%", avgCPU(info.CPUPercent))}</p>
+                            </div>
+                            @ProgressBar(info.CPUPercent, "#155dfc")
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card border">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3 gap-2">
+                                <div class="icon-container purple">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9810fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-memory-stick-icon lucide-memory-stick"><path d="M12 12v-2"/><path d="M12 18v-2"/><path d="M16 12v-2"/><path d="M16 18v-2"/><path d="M2 11h1.5"/><path d="M20 18v-2"/><path d="M20.5 11H22"/><path d="M4 18v-2"/><path d="M8 12v-2"/><path d="M8 18v-2"/><rect x="2" y="6" width="20" height="10" rx="2"/></svg>
+                                </div>
+                                <h6 class="fw-semibold">{api.Translate("label", "RAM")}</h6>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Total")}</strong>
+                                <p>{formatBytes(info.MemTotal)}</p>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Used")}</strong>
+                                <p>{formatBytes(info.MemUsed)}</p>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Usage")}</strong>
+                                <p>{fmt.Sprintf("%.0f%%", info.MemUsedPercent)}</p>
+                            </div>
+                            @ProgressBar([]float64{info.MemUsedPercent}, "#9810fa")
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card border">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3 gap-2">
+                                <div class="icon-container green">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00a63e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hard-drive-icon lucide-hard-drive"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></svg>
+                                </div>
+                                <h6 class="fw-semibold">{api.Translate("label", "Disk")}</h6>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Total")}</strong>
+                                <p>{formatBytes(info.DiskTotal)}</p>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Used")}</strong>
+                                <p>{formatBytes(info.DiskUsed)}</p>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <strong>{api.Translate("label", "Usage")}</strong>
+                                <p>{fmt.Sprintf("%.0f%%", info.DiskUsedPercent)}</p>
+                            </div>
+                            @ProgressBar([]float64{info.DiskUsedPercent}, "#00a63e")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+css cpuProgress(percent float64, color string) {
+	width: { fmt.Sprintf("%.1f%%", percent) };
+	background-color: {color};
+}
+
+templ ProgressBar(percent []float64, color string) {
+    <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" style="height: 8px">
+         <div class={ "progress-bar", cpuProgress(avgCPU(percent),color) }></div>
+    </div>
+}
+
+func formatBytes(b uint64) string {
+	gb := float64(b) / 1024 / 1024 / 1024
+	if gb >= 1 {
+		return fmt.Sprintf("%.1fGB", gb)
+	}
+	mb := float64(b) / 1024 / 1024
+	return fmt.Sprintf("%.0fMB", mb)
+}
+
+func avgCPU(percents []float64) float64 {
+	if len(percents) == 0 {
+		return 0
+	}
+	var sum float64
+	for _, p := range percents {
+		sum += p
+	}
+	return sum / float64(len(percents))
+}

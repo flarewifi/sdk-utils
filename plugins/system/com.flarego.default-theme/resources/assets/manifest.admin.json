@@ -12,7 +12,8 @@
     "./admin/css/fonts.css",
     "./admin/css/layout.css",
     "./admin/css/sidebar-menu.css",
-    "./admin/css/sizing.css"
+    "./admin/css/sizing.css",
+    "./admin/css/content.css"
   ],
   "global.css": [
     "./admin/css/fw-utils.css"

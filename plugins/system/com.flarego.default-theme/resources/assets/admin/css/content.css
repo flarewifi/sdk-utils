@@ -1,0 +1,44 @@
+.w-full {
+    width: 100%;
+    & > :not(:last-child) {
+        --tw-space-y-reverse: 0;
+        margin-block-start: calc(1.5rem * var(--tw-space-y-reverse));
+        margin-block-end: calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));
+    };
+}
+
+.card {
+    border-radius: 0.625rem;
+}
+
+.icon-container {
+    padding: calc(var(--spacing)*2);
+    border-radius: 0.5rem;
+}
+
+.icon-container.blue {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #155dfc;
+}
+
+.icon-container.purple {
+    background-color: rgba(168, 85, 247, 0.1);
+    color: #9810fa;
+}
+
+.icon-container.green {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #00a63e;
+}
+
+[data-bs-theme="dark"] .icon-container.blue {
+    background-color: rgba(59, 130, 246, 0.2);
+}
+
+[data-bs-theme="dark"] .icon-container.purple {
+    background-color: rgba(168, 85, 247, 0.2);
+}
+
+[data-bs-theme="dark"] .icon-container.green {
+    background-color: rgba(16, 185, 129, 0.2);
+}
