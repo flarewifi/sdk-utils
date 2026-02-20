@@ -4,6 +4,7 @@ package machineuid
 
 import (
 	"path/filepath"
+	"strings"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -17,5 +18,5 @@ func GetMachineUID() (string, string) {
 		return "", "machine_001"
 	}
 
-	return "", uid
+	return "", strings.TrimSpace(uid)
 }

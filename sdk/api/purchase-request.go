@@ -43,8 +43,8 @@ type PurchaseRequest struct {
 
 // CreatePaymentParams holds parameters for creating a payment for a purchase.
 type CreatePaymentParams struct {
-	Amount            float64
-	PaymentOptionUUID string
+	Amount       float64
+	ProviderUUID string
 }
 
 // IPurchaseRequest represents a record in purchases table in the database.
@@ -149,4 +149,8 @@ type IPurchaseRequest interface {
 	// Cancel the purchase.
 	// This must be executed in the purchase webhook handler.
 	Cancel(ctx context.Context) error
+
+	// UpdateMetadata updates the metadata associated with the purchase.
+	// This should be called before Confirm() to ensure metadata is available for sync.
+	UpdateMetadata(ctx context.Context, metadata map[string]string) error
 }

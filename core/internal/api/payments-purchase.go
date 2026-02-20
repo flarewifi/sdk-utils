@@ -137,7 +137,7 @@ func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePay
 	_, err := mdls.Payment().Create(ctx, models.CreatePaymentParams{
 		PurchaseID:        self.purchase.ID(),
 		Amount:            params.Amount,
-		PaymentOptionUUID: params.PaymentOptionUUID,
+		PaymentOptionUUID: params.ProviderUUID,
 		ProviderPkg:       providerPkg,
 		ProviderName:      providerName,
 	})
@@ -349,6 +349,10 @@ func (self *Purchase) emitPurchaseEvent(ctx context.Context, event sdkapi.Purcha
 	if err := self.api.PaymentsAPI.paymentsMgr.EmitPurchaseEvent(event, data); err != nil {
 		fmt.Printf("Failed to emit purchase event %s: %v\n", event, err)
 	}
+}
+
+func (self *Purchase) UpdateMetadata(ctx context.Context, metadata map[string]string) error {
+	return self.purchase.UpdateMetadata(ctx, metadata)
 }
 
 func (self *Purchase) ErrorPage(w http.ResponseWriter, err error) {

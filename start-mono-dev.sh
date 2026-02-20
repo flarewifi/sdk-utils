@@ -51,6 +51,7 @@ for f in \
     "hosts.json" \
     "start.sh" \
     "os_release.json" \
+    "MACHINE_UID" \
     ; do
 
     rm -rf $APP_DIR/$f && \
