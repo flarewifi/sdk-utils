@@ -74,7 +74,7 @@ templ DeviceHealthCard(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
 				<div>
 					<div class="d-flex align-items-center justify-content-between mb-2">
 						<div class="d-flex align-items-center gap-2">
-							<i class="bi bi-hdd text-muted"></i>
+							<i class="bi bi-activity text-muted"></i>
 							<span class="text-muted small">{ api.Translate("label", "Disk Usage") }</span>
 						</div>
 						<span class="small">{ fmt.Sprintf("%.0f%%", info.DiskUsedPercent) }</span>

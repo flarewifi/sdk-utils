@@ -18,10 +18,9 @@
       data: chartData,
       series: [
         { key: "coinslot", color: "#3b82f6", label: "Coinslot" },
-        { key: "voucher",  color: "#a855f7", label: "Voucher" },
-        { key: "online",   color: "#10b981", label: "Online" }
+        { key: "voucher",  color: "#a855f7", label: "Voucher" }
       ],
-      yAxis: { min: 0 },
+      yAxis: { min: 0, max: 600, stepSize: 150 },
       tension: 0.4,
       fillOpacity: [0.35, 0.05],
       padding: { right: 30 },

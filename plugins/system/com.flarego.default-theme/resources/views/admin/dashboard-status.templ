@@ -9,24 +9,41 @@ templ ActiveUsersCard(api sdkapi.IPluginApi) {
 			<div class="d-flex align-items-center justify-content-between flex-grow-1 mb-3">
 				<div>
 					<div class="display-6 fw-semibold mb-1">23</div>
-					<p class="text-muted small mb-0">{ api.Translate("label", "Currently connected") }</p>
+					<p class="text-muted small mb-0">{ api.Translate("label", "connected") }</p>
 				</div>
-				<div class="fw-icon-circle">
-					<i class="bi bi-people"></i>
+				<div class="fw-icon-bg fw-icon-bg-green" style="width:64px;height:64px;">
+					<i class="bi bi-people" style="font-size:1.75rem;"></i>
 				</div>
 			</div>
 			<div class="pt-3 border-top">
-				<div class="fw-stats-row mb-2">
-					<span class="fw-stats-row-label">{ api.Translate("label", "Peak today") }</span>
-					<span>{ api.Translate("label", "31 users") }</span>
-				</div>
-				<div class="fw-stats-row mb-2">
-					<span class="fw-stats-row-label">{ api.Translate("label", "Average session") }</span>
-					<span>{ api.Translate("label", "2.5 hours") }</span>
-				</div>
-				<div class="fw-stats-row">
-					<span class="fw-stats-row-label">{ api.Translate("label", "Total sessions today") }</span>
-					<span>47</span>
+				<div class="row g-3">
+					<div class="col-4">
+						<div class="fw-sub-metric">
+							<div class="fw-sub-metric-header">
+								<i class="bi bi-graph-up-arrow"></i>
+								<span>{ api.Translate("label", "Peak Today") }</span>
+							</div>
+							<div class="fw-sub-metric-value">31</div>
+						</div>
+					</div>
+					<div class="col-4">
+						<div class="fw-sub-metric">
+							<div class="fw-sub-metric-header">
+								<i class="bi bi-clock"></i>
+								<span>{ api.Translate("label", "Avg Session") }</span>
+							</div>
+							<div class="fw-sub-metric-value">2.5h</div>
+						</div>
+					</div>
+					<div class="col-4">
+						<div class="fw-sub-metric">
+							<div class="fw-sub-metric-header">
+								<i class="bi bi-activity"></i>
+								<span>{ api.Translate("label", "Sessions") }</span>
+							</div>
+							<div class="fw-sub-metric-value">47</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -45,22 +62,42 @@ templ InternetStatusCard(api sdkapi.IPluginApi) {
 					</div>
 					<p class="text-muted small mb-0">{ api.Translate("label", "Stable connection") }</p>
 				</div>
-				<div class="fw-icon-circle">
-					<i class="bi bi-wifi"></i>
+				<div class="fw-icon-bg fw-icon-bg-blue" style="width:64px;height:64px;">
+					<i class="bi bi-wifi" style="font-size:1.75rem;"></i>
 				</div>
 			</div>
 			<div class="pt-3 border-top">
-				<div class="fw-stats-row mb-2">
-					<span class="fw-stats-row-label">{ api.Translate("label", "Download speed") }</span>
-					<span>98.5 Mbps</span>
-				</div>
-				<div class="fw-stats-row mb-2">
-					<span class="fw-stats-row-label">{ api.Translate("label", "Upload speed") }</span>
-					<span>45.2 Mbps</span>
-				</div>
-				<div class="fw-stats-row">
-					<span class="fw-stats-row-label">{ api.Translate("label", "Latency") }</span>
-					<span>12 ms</span>
+				<div class="row g-3">
+					<div class="col-4">
+						<div class="fw-sub-metric">
+							<div class="fw-sub-metric-header">
+								<i class="bi bi-arrow-down-left"></i>
+								<span>{ api.Translate("label", "Download") }</span>
+							</div>
+							<div class="fw-sub-metric-value">98.5</div>
+							<div class="fw-sub-metric-unit">Mbps</div>
+						</div>
+					</div>
+					<div class="col-4">
+						<div class="fw-sub-metric">
+							<div class="fw-sub-metric-header">
+								<i class="bi bi-arrow-up-right"></i>
+								<span>{ api.Translate("label", "Upload") }</span>
+							</div>
+							<div class="fw-sub-metric-value">45.2</div>
+							<div class="fw-sub-metric-unit">Mbps</div>
+						</div>
+					</div>
+					<div class="col-4">
+						<div class="fw-sub-metric">
+							<div class="fw-sub-metric-header">
+								<i class="bi bi-activity"></i>
+								<span>{ api.Translate("label", "Latency") }</span>
+							</div>
+							<div class="fw-sub-metric-value">12</div>
+							<div class="fw-sub-metric-unit">ms</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

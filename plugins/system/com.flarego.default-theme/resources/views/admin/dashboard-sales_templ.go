@@ -44,111 +44,85 @@ func SalesSummary(api sdkapi.IPluginApi) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h2><div class=\"row g-3\"><!-- Wireless Coinslot --><div class=\"col-sm-6 col-xl-3\"><div class=\"card border h-100\"><div class=\"card-body\"><div class=\"d-flex align-items-center justify-content-between mb-3\"><div class=\"fw-icon-bg fw-icon-bg-blue\"><i class=\"bi bi-coin fs-5\"></i></div><span class=\"fw-badge-trend text-success\">+12%</span></div><div class=\"fs-4 fw-semibold mb-1\">&#8369;280</div><p class=\"text-muted small mb-0\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h2><div class=\"row g-3\"><!-- Total Revenue --><div class=\"col-md-4\"><div class=\"card border h-100\"><div class=\"card-body\"><div class=\"d-flex align-items-center justify-content-between\"><div><div class=\"fs-4 fw-semibold mb-1\">&#8369;580</div><p class=\"text-muted small mb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Wireless Coinslot"))
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Total Revenue"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 20, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 16, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><p class=\"text-muted smaller mb-0\" style=\"font-size:0.75rem;\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><p class=\"text-muted mb-0\" style=\"font-size:0.75rem;\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Today's earnings"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 21, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 17, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div></div></div><!-- Voucher Sales --><div class=\"col-sm-6 col-xl-3\"><div class=\"card border h-100\"><div class=\"card-body\"><div class=\"d-flex align-items-center justify-content-between mb-3\"><div class=\"fw-icon-bg fw-icon-bg-purple\"><i class=\"bi bi-ticket-perforated fs-5\"></i></div><span class=\"fw-badge-trend text-success\">+8%</span></div><div class=\"fs-4 fw-semibold mb-1\">&#8369;180</div><p class=\"text-muted small mb-0\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div><div class=\"fw-icon-bg fw-icon-bg-orange\"><!-- Peso sign SVG icon --><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 19V5h4c2.5 0 5 2 5 5s-2.5 5-5 5H6\"></path> <line x1=\"4\" y1=\"9\" x2=\"16\" y2=\"9\"></line> <line x1=\"4\" y1=\"12\" x2=\"16\" y2=\"12\"></line></svg></div></div></div></div></div><!-- Wireless Coinslot --><div class=\"col-md-4\"><div class=\"card border h-100\"><div class=\"card-body\"><div class=\"d-flex align-items-center justify-content-between\"><div><div class=\"fs-4 fw-semibold mb-1\">&#8369;280</div><p class=\"text-muted small mb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Voucher Sales"))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Wireless Coinslot"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 36, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 38, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><p class=\"text-muted smaller mb-0\" style=\"font-size:0.75rem;\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><p class=\"text-muted mb-0\" style=\"font-size:0.75rem;\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Today's earnings"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 37, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 39, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div></div></div><!-- Online Payment --><div class=\"col-sm-6 col-xl-3\"><div class=\"card border h-100\"><div class=\"card-body\"><div class=\"d-flex align-items-center justify-content-between mb-3\"><div class=\"fw-icon-bg fw-icon-bg-green\"><i class=\"bi bi-credit-card fs-5\"></i></div><span class=\"fw-badge-trend text-success\">+15%</span></div><div class=\"fs-4 fw-semibold mb-1\">&#8369;120</div><p class=\"text-muted small mb-0\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div><div class=\"fw-icon-bg fw-icon-bg-blue\"><i class=\"bi bi-coin fs-5\"></i></div></div></div></div></div><!-- Voucher Sales --><div class=\"col-md-4\"><div class=\"card border h-100\"><div class=\"card-body\"><div class=\"d-flex align-items-center justify-content-between\"><div><div class=\"fs-4 fw-semibold mb-1\">&#8369;180</div><p class=\"text-muted small mb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Online Payment"))
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Voucher Sales"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 52, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 55, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><p class=\"text-muted smaller mb-0\" style=\"font-size:0.75rem;\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><p class=\"text-muted mb-0\" style=\"font-size:0.75rem;\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Today's earnings"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 53, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 56, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div></div></div><!-- Total Revenue --><div class=\"col-sm-6 col-xl-3\"><div class=\"card border h-100\"><div class=\"card-body\"><div class=\"d-flex align-items-center justify-content-between mb-3\"><div class=\"fw-icon-bg fw-icon-bg-orange\"><!-- Peso sign SVG icon --><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 19V5h4c2.5 0 5 2 5 5s-2.5 5-5 5H6\"></path> <line x1=\"4\" y1=\"9\" x2=\"16\" y2=\"9\"></line> <line x1=\"4\" y1=\"12\" x2=\"16\" y2=\"12\"></line></svg></div><span class=\"fw-badge-trend text-success\">+11%</span></div><div class=\"fs-4 fw-semibold mb-1\">&#8369;580</div><p class=\"text-muted small mb-0\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Total Revenue"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 73, Col: 80}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><p class=\"text-muted smaller mb-0\" style=\"font-size:0.75rem;\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Today's earnings"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-sales.templ`, Line: 74, Col: 112}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div></div></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div><div class=\"fw-icon-bg fw-icon-bg-purple\"><i class=\"bi bi-ticket-perforated fs-5\"></i></div></div></div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
