@@ -12,9 +12,10 @@ import (
 	"time"
 )
 
-type PurchaseState struct {
+type PurchasePaymentData struct {
 	PurchaseID      int64   `json:"purchase_id"`
 	TotalPayment    float64 `json:"total_payment"`
+	PaymentProvider string  `json:"payment_provider"`
 	WalletDebit     float64 `json:"wallet_debit"`
 	WalletEndingBal float64 `json:"wallet_ending_bal"`
 	WalletRealBal   float64 `json:"wallet_real_bal"`
@@ -132,7 +133,7 @@ type IPurchaseRequest interface {
 
 	// Returns the state of the purchase.
 	// The state includes the total accumulated payment for the purchase and other important details.
-	State(ctx context.Context) (PurchaseState, error)
+	State(ctx context.Context) (PurchasePaymentData, error)
 
 	// Executes the webhook for the purchase.
 	// This will make an internal POST request to the webhook route.
