@@ -34,7 +34,7 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 						</div>
 						<div id="update-available"></div>
 					</div>
-					<form class="d-flex align-items-end border-bottom border-light-subtle mb-4 pb-4 gap-3">
+					<form class="d-flex align-items-end mb-4 gap-3">
 						<div class="w-100" style="flex: 1;">
 							<label for="channel" class="form-label fw-semibold">{ api.Translate("label", "Update Channel") }</label>
 							<select class="form-select" id="channel" name="channel" aria-describedby="channel-help">

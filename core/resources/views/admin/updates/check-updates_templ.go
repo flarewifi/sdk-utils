@@ -76,7 +76,7 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysup
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h3><div class=\"w-full\"><div class=\"card shadow-sm border border-light-subtle\"><div class=\"card-body p-4\"><div class=\"d-flex align-items-center justify-content-between mb-4\"><div><h4 class=\"fw-bold\">System Software</h4><p>Current Version: <span id=\"current-version\"></span></p></div><div id=\"update-available\"></div></div><form class=\"d-flex align-items-end border-bottom border-light-subtle mb-4 pb-4 gap-3\"><div class=\"w-100\" style=\"flex: 1;\"><label for=\"channel\" class=\"form-label fw-semibold\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h3><div class=\"w-full\"><div class=\"card shadow-sm border border-light-subtle\"><div class=\"card-body p-4\"><div class=\"d-flex align-items-center justify-content-between mb-4\"><div><h4 class=\"fw-bold\">System Software</h4><p>Current Version: <span id=\"current-version\"></span></p></div><div id=\"update-available\"></div></div><form class=\"d-flex align-items-end mb-4 gap-3\"><div class=\"w-100\" style=\"flex: 1;\"><label for=\"channel\" class=\"form-label fw-semibold\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
