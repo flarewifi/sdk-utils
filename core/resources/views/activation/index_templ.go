@@ -8,7 +8,10 @@ package activation
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import sdkapi "sdk/api"
+import (
+	"fmt"
+	sdkapi "sdk/api"
+)
 
 type ActivationPageData struct {
 	API       sdkapi.IPluginApi
@@ -43,33 +46,41 @@ func ActivationPage(data *ActivationPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Device Activation Required"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 16, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 19, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</title><style>\n\t\t\t\tbody {\n\t\t\t\t\tfont-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;\n\t\t\t\t\tbackground: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n\t\t\t\t\tmin-height: 100vh;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tjustify-content: center;\n\t\t\t\t\tmargin: 0;\n\t\t\t\t\tpadding: 20px;\n\t\t\t\t}\n\t\t\t\t.container {\n\t\t\t\t\tbackground: white;\n\t\t\t\t\tborder-radius: 12px;\n\t\t\t\t\tbox-shadow: 0 10px 40px rgba(0,0,0,0.2);\n\t\t\t\t\tmax-width: 500px;\n\t\t\t\t\twidth: 100%;\n\t\t\t\t\tpadding: 40px;\n\t\t\t\t\ttext-align: center;\n\t\t\t\t}\n\t\t\t\th1 {\n\t\t\t\t\tcolor: #333;\n\t\t\t\t\tmargin: 0 0 20px 0;\n\t\t\t\t\tfont-size: 28px;\n\t\t\t\t}\n\t\t\t\t.info-text {\n\t\t\t\t\tcolor: #666;\n\t\t\t\t\tline-height: 1.6;\n\t\t\t\t\tmargin-bottom: 30px;\n\t\t\t\t}\n\t\t\t\t.machine-id-label {\n\t\t\t\t\tcolor: #888;\n\t\t\t\t\tfont-size: 14px;\n\t\t\t\t\tfont-weight: 600;\n\t\t\t\t\ttext-transform: uppercase;\n\t\t\t\t\tletter-spacing: 1px;\n\t\t\t\t\tmargin-bottom: 10px;\n\t\t\t\t}\n\t\t\t\t.machine-id {\n\t\t\t\t\tbackground: #f5f5f5;\n\t\t\t\t\tborder: 2px solid #e0e0e0;\n\t\t\t\t\tborder-radius: 8px;\n\t\t\t\t\tpadding: 20px;\n\t\t\t\t\tfont-family: \"Courier New\", monospace;\n\t\t\t\t\tfont-size: 18px;\n\t\t\t\t\tfont-weight: bold;\n\t\t\t\t\tcolor: #333;\n\t\t\t\t\tword-break: break-all;\n\t\t\t\t\tmargin-bottom: 30px;\n\t\t\t\t\tuser-select: all;\n\t\t\t\t}\n\t\t\t\t.btn {\n\t\t\t\t\tbackground: #667eea;\n\t\t\t\t\tcolor: white;\n\t\t\t\t\tborder: none;\n\t\t\t\t\tborder-radius: 6px;\n\t\t\t\t\tpadding: 14px 32px;\n\t\t\t\t\tfont-size: 16px;\n\t\t\t\t\tfont-weight: 600;\n\t\t\t\t\tcursor: pointer;\n\t\t\t\t\ttransition: background 0.3s;\n\t\t\t\t\twidth: 100%;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tjustify-content: center;\n\t\t\t\t\tgap: 10px;\n\t\t\t\t}\n\t\t\t\t.btn:hover {\n\t\t\t\t\tbackground: #5568d3;\n\t\t\t\t}\n\t\t\t\t.btn:active {\n\t\t\t\t\tbackground: #4451b8;\n\t\t\t\t}\n\t\t\t\t.btn:disabled {\n\t\t\t\t\topacity: 0.7;\n\t\t\t\t\tcursor: not-allowed;\n\t\t\t\t}\n\t\t\t\t.btn-spinner {\n\t\t\t\t\tdisplay: none;\n\t\t\t\t\twidth: 20px;\n\t\t\t\t\theight: 20px;\n\t\t\t\t\tborder: 3px solid rgba(255, 255, 255, 0.3);\n\t\t\t\t\tborder-top: 3px solid white;\n\t\t\t\t\tborder-radius: 50%;\n\t\t\t\t\tanimation: spin 0.8s linear infinite;\n\t\t\t\t}\n\t\t\t\t.btn.loading .btn-spinner {\n\t\t\t\t\tdisplay: inline-block;\n\t\t\t\t}\n\t\t\t\t@keyframes spin {\n\t\t\t\t\t0% { transform: rotate(0deg); }\n\t\t\t\t\t100% { transform: rotate(360deg); }\n\t\t\t\t}\n\t\t\t\t.reboot-message {\n\t\t\t\t\tdisplay: none;\n\t\t\t\t\tmargin-top: 20px;\n\t\t\t\t\tpadding: 20px;\n\t\t\t\t\tbackground: #f0f9ff;\n\t\t\t\t\tborder: 2px solid #0ea5e9;\n\t\t\t\t\tborder-radius: 8px;\n\t\t\t\t\tcolor: #0c4a6e;\n\t\t\t\t}\n\t\t\t\t.reboot-message.show {\n\t\t\t\t\tdisplay: block;\n\t\t\t\t}\n\t\t\t\t.reboot-message h2 {\n\t\t\t\t\tmargin: 0 0 10px 0;\n\t\t\t\t\tfont-size: 20px;\n\t\t\t\t\tcolor: #0c4a6e;\n\t\t\t\t}\n\t\t\t\t.reboot-message p {\n\t\t\t\t\tmargin: 0;\n\t\t\t\t\tline-height: 1.6;\n\t\t\t\t}\n\t\t\t</style></head><body><div class=\"container\" id=\"activation-container\"><h1>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</title><style>\n\t\t\t\tbody {\n\t\t\t\t\tbackdrop-filter: blur(25px);\n    \t\t\t-webkit-backdrop-filter: blur(12px);\n\t\t\t\t\tbackground-color: #0d0d1a;\n\t\t\t\t\tbackground-size: cover;\n\t\t\t\t\tbackground-position: center center;\n\t\t\t\t\tbackground-repeat: no-repeat;\n\t\t\t\t\tbackground-attachment: fixed;\n\t\t\t\t\tmin-height: 100vh;\n\t\t\t\t\tcolor: #fff;\n\t\t\t\t\t-webkit-font-smoothing: antialiased;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: column;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tmargin: 0;\n\t\t\t\t\tfont-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;\n\t\t\t\t}\n\t\t\t\t.container {\n\t\t\t\t\ttext-align: center;\n\t\t\t\t\tmax-width: 500px;\n\t\t\t\t\twidth: 100%;\n\t\t\t\t\tposition: relative;\n\t\t\t\t\tborder-radius: 16px;\n\t\t\t\t\tbackground: linear-gradient(\n\t\t\t\t\t\t116.21deg,\n\t\t\t\t\t\trgba(255, 255, 255, 0.35) 3.3%,\n\t\t\t\t\t\trgba(217, 217, 217, 0.13) 57.65%\n\t\t\t\t\t);\n\t\t\t\t\tpadding: 35px;\n\t\t\t\t\tbackdrop-filter: blur(45px);\n\t\t\t\t\tborder: none;\n\t\t\t\t\tmargin: auto;\n\t\t\t\t}\n\n\t\t\t\t.container::before {\n\t\t\t\t\tcontent: \"\";\n\t\t\t\t\tposition: absolute;\n\t\t\t\t\tinset: 0;\n\t\t\t\t\tborder-radius: inherit;\n\t\t\t\t\tpadding: 1.5px;\n\t\t\t\t\tpointer-events: none;\n\t\t\t\t\tbackground: linear-gradient(\n\t\t\t\t\t\t66.86deg,\n\t\t\t\t\t\trgba(13, 128, 242, 0.55) 6.76%,\n\t\t\t\t\t\trgba(251, 241, 241, 0.396923) 25.74%,\n\t\t\t\t\t\trgba(251, 241, 241, 0.242216) 60.9%,\n\t\t\t\t\t\trgba(168, 92, 254, 0.25) 92.28%\n\t\t\t\t\t);\n\n\t\t\t\t\t/* Mask trick to create border-only effect */\n\t\t\t\t\t-webkit-mask: \n\t\t\t\t\t\tlinear-gradient(#000 0 0) content-box, \n\t\t\t\t\t\tlinear-gradient(#000 0 0);\n\t\t\t\t\t-webkit-mask-composite: xor;\n\t\t\t\t\t\t\t\t\tmask-composite: exclude;\n\t\t\t\t}\n\t\t\t\th1 {\n\t\t\t\t\tcolor: #white;\n\t\t\t\t\tfont-size: 28px;\n\t\t\t\t}\n\t\t\t\t.info-text {\n\t\t\t\t\tcolor: #a19e9e;\n\t\t\t\t\tline-height: 1.6;\n\t\t\t\t\tmargin-bottom: 30px;\n\t\t\t\t}\n\t\t\t\t.machine-id-label {\n\t\t\t\t\tcolor: #888;\n\t\t\t\t\tfont-size: 14px;\n\t\t\t\t\tfont-weight: 600;\n\t\t\t\t\ttext-transform: uppercase;\n\t\t\t\t\tletter-spacing: 1px;\n\t\t\t\t\tmargin-bottom: 10px;\n\t\t\t\t}\n\t\t\t\t.machine-id {\n\t\t\t\t\tcolor: white;\n\t\t\t\t\tbackground: transparent;\n\t\t\t\t\tborder: 1px solid #00BFFFFC;\n\t\t\t\t\tborder-radius: 8px;\n\t\t\t\t\tpadding: 20px;\n\t\t\t\t\tfont-family: \"Courier New\", monospace;\n\t\t\t\t\tfont-size: 18px;\n\t\t\t\t\tfont-weight: bold;\n\t\t\t\t\tword-break: break-all;\n\t\t\t\t\tmargin-bottom: 30px;\n\t\t\t\t\tuser-select: all;\n\t\t\t\t}\n\t\t\t\t.btn {\n\t\t\t\t\tbackground: radial-gradient(111.61% 84.15% at 78.02% 15.85%, rgba(37, 82, 226, 0.3) 0%, rgb(0, 0, 0) 100%);\n    \t\t\tborder: 1px solid rgba(255, 255, 255, 0.3);\n\t\t\t\t\tcolor: white;\n\t\t\t\t\tborder-radius: 16px;\n\t\t\t\t\tpadding: 20px 32px;\n\t\t\t\t\tfont-size: 16px;\n\t\t\t\t\tfont-weight: 600;\n\t\t\t\t\tcursor: pointer;\n\t\t\t\t\twidth: 100%;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tjustify-content: center;\n\t\t\t\t\tgap: 10px;\n\t\t\t\t\ttransition: all 0.2s ease;\n\t\t\t\t}\n\t\t\t\t.btn:hover {\n\t\t\t\t\topacity: 0.8;\n\t\t\t\t\ttransform: translateY(-2px);\n\t\t\t\t}\n\t\t\t\t.btn:active {\n\t\t\t\t\ttransform: translateY(-2px);\n\t\t\t\t}\n\t\t\t\t.btn:disabled {\n\t\t\t\t\topacity: 0.8;\n\t\t\t\t\tcursor: not-allowed;\n\t\t\t\t\tpointer-events: none;\n\t\t\t\t}\n\t\t\t\t.btn-spinner {\n\t\t\t\t\tdisplay: none;\n\t\t\t\t\twidth: 20px;\n\t\t\t\t\theight: 20px;\n\t\t\t\t\tborder: 3px solid rgba(255, 255, 255, 0.3);\n\t\t\t\t\tborder-top: 3px solid white;\n\t\t\t\t\tborder-radius: 50%;\n\t\t\t\t\tanimation: spin 0.8s linear infinite;\n\t\t\t\t}\n\t\t\t\t.btn.loading .btn-spinner {\n\t\t\t\t\tdisplay: inline-block;\n\t\t\t\t}\n\t\t\t\t@keyframes spin {\n\t\t\t\t\t0% { transform: rotate(0deg); }\n\t\t\t\t\t100% { transform: rotate(360deg); }\n\t\t\t\t}\n\t\t\t\t.reboot-message {\n\t\t\t\t\tdisplay: none;\n\t\t\t\t\tmargin-top: 20px;\n\t\t\t\t\tpadding: 20px;\n\t\t\t\t\tbackground: #f0f9ff;\n\t\t\t\t\tborder: 2px solid #0ea5e9;\n\t\t\t\t\tborder-radius: 8px;\n\t\t\t\t\tcolor: #0c4a6e;\n\t\t\t\t}\n\t\t\t\t.reboot-message.show {\n\t\t\t\t\tdisplay: block;\n\t\t\t\t}\n\t\t\t\t.reboot-message h2 {\n\t\t\t\t\tmargin: 0 0 10px 0;\n\t\t\t\t\tfont-size: 20px;\n\t\t\t\t\tcolor: #0c4a6e;\n\t\t\t\t}\n\t\t\t\t.reboot-message p {\n\t\t\t\t\tmargin: 0;\n\t\t\t\t\tline-height: 1.6;\n\t\t\t\t\tcolor: #888;\t\n\t\t\t\t}\n\t\t\t\t.activation-header {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tjustify-content: center;\n\t\t\t\t}\n\t\t\t\t.activation-header svg {\n\t\t\t\t\tmargin-right: 8px;\n\t\t\t\t}\n\t\t\t</style>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templ.Raw(fmt.Sprintf(`<style>body { background-image: url('%s'); }</style>`, data.API.Http().Helpers().PublicPath("images/main-bg.png"))).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</head><body><div class=\"container\" id=\"activation-container\"><div class=\"activation-header\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" fill=\"white\" viewBox=\"0 0 16 16\"><path d=\"M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z\"></path> <path d=\"m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z\"></path></svg><h1>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Activation Required"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 135, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 191, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h1><p class=\"info-text\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h1></div><p class=\"info-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("info", "This device needs to be activated before you can use it. Please provide the Machine ID to your administrator"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 137, Col: 145}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 194, Col: 145}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -82,7 +93,7 @@ func ActivationPage(data *ActivationPageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Machine ID"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 140, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 197, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -95,7 +106,7 @@ func ActivationPage(data *ActivationPageData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.MachineID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 143, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 200, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -108,20 +119,20 @@ func ActivationPage(data *ActivationPageData) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Check Activation Status"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 147, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 204, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></button><div class=\"reboot-message\" id=\"reboot-message\"><h2>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></button><div class=\"reboot-message btn\" id=\"reboot-message\"><h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "System Rebooting"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 150, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 207, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -134,13 +145,26 @@ func ActivationPage(data *ActivationPageData) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("info", "Activation successful. The system is rebooting to complete setup. The page will reload automatically"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 151, Col: 139}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 208, Col: 140}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div></div><script>\n\t\t\t\t// Poll for activation status on page load (redirects if already activated)\n\t\t\t\tfunction pollActivationStatus() {\n\t\t\t\t\tsetInterval(function() {\n\t\t\t\t\t\tfetch('/activation/status', { method: 'GET' })\n\t\t\t\t\t\t\t.then(function(response) {\n\t\t\t\t\t\t\t\tif (response.status >= 200 && response.status < 400) {\n\t\t\t\t\t\t\t\t\treturn response.json();\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t})\n\t\t\t\t\t\t\t.then(function(data) {\n\t\t\t\t\t\t\t\tif (data && data.activated) {\n\t\t\t\t\t\t\t\t\twindow.location.href = '/';\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t})\n\t\t\t\t\t\t\t.catch(function() {\n\t\t\t\t\t\t\t\t// Ignore errors during polling\n\t\t\t\t\t\t\t});\n\t\t\t\t\t}, 5000);\n\t\t\t\t}\n\n\t\t\t\t// Start polling on page load\n\t\t\t\tpollActivationStatus();\n\n\t\t\t\tfunction checkActivation() {\n\t\t\t\t\tvar btn = document.getElementById('check-btn');\n\n\t\t\t\t\tif (btn.disabled) {\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\t// Show loading state\n\t\t\t\t\tbtn.className = btn.className + ' loading';\n\t\t\t\t\tbtn.disabled = true;\n\n\t\t\t\t\t// Trigger validation on the server (blocking - waits for RPC response)\n\t\t\t\t\tfetch('/activation/validate', {\n\t\t\t\t\t\tmethod: 'POST',\n\t\t\t\t\t\theaders: {\n\t\t\t\t\t\t\t'Content-Type': 'application/json'\n\t\t\t\t\t\t}\n\t\t\t\t\t})\n\t\t\t\t\t.then(function(response) {\n\t\t\t\t\t\treturn response.json();\n\t\t\t\t\t})\n\t\t\t\t\t.then(function(data) {\n\t\t\t\t\t\tif (data.activated) {\n\t\t\t\t\t\t\t// Activation successful - show reboot message and wait for system\n\t\t\t\t\t\t\tshowRebootMessage();\n\t\t\t\t\t\t\twaitForSystemReboot();\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t// Not activated - reset UI and show error if available\n\t\t\t\t\t\t\tresetUI();\n\t\t\t\t\t\t\tif (data.error) {\n\t\t\t\t\t\t\t\tconsole.error('Activation error:', data.error);\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t})\n\t\t\t\t\t.catch(function(error) {\n\t\t\t\t\t\tconsole.error('Error checking activation:', error);\n\t\t\t\t\t\tresetUI();\n\t\t\t\t\t});\n\t\t\t\t}\n\n\t\t\t\tfunction showRebootMessage() {\n\t\t\t\t\tvar btn = document.getElementById('check-btn');\n\t\t\t\t\tvar rebootMsg = document.getElementById('reboot-message');\n\n\t\t\t\t\t// Hide button and show reboot message\n\t\t\t\t\tbtn.style.display = 'none';\n\t\t\t\t\trebootMsg.className = 'reboot-message show';\n\t\t\t\t}\n\n\t\t\t\tfunction waitForSystemReboot() {\n\t\t\t\t\t// Wait 10 seconds for reboot to start\n\t\t\t\t\tsetTimeout(function() {\n\t\t\t\t\t\tcheckSystemAvailability();\n\t\t\t\t\t}, 10000);\n\t\t\t\t}\n\n\t\t\t\tfunction checkSystemAvailability() {\n\t\t\t\t\t// Try to ping the server every 5 seconds\n\t\t\t\t\tvar checkInterval = setInterval(function() {\n\t\t\t\t\t\tfetch('/ok', { method: 'GET', redirect: 'manual' })\n\t\t\t\t\t\t\t.then(function(response) {\n\t\t\t\t\t\t\t\t// Check if response status indicates system is ready\n\t\t\t\t\t\t\t\t// 200 = OK, 301/302/303 = Redirect (system is responding)\n\t\t\t\t\t\t\t\tif (response.status >= 200 || response.status < 400) {\n\t\t\t\t\t\t\t\t\t// System is back online - redirect to home\n\t\t\t\t\t\t\t\t\tclearInterval(checkInterval);\n\t\t\t\t\t\t\t\t\twindow.location.href = '/';\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t})\n\t\t\t\t\t\t\t.catch(function() {\n\t\t\t\t\t\t\t\t// System still rebooting - keep checking\n\t\t\t\t\t\t\t\tconsole.log('System still rebooting...');\n\t\t\t\t\t\t\t});\n\t\t\t\t\t}, 5000);\n\t\t\t\t}\n\n\t\t\t\tfunction resetUI() {\n\t\t\t\t\tvar btn = document.getElementById('check-btn');\n\t\t\t\t\tbtn.className = 'btn';\n\t\t\t\t\tbtn.disabled = false;\n\t\t\t\t}\n\t\t\t</script></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p></div></div><!-- Footer --><div class=\"portal-footer\" style=\"margin-top:auto;padding:12px 20px;font-size:12px;color:white;display:flex;align-items:center;justify-content:center;gap:6px;\"><span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Powered by"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/activation/index.templ`, Line: 213, Col: 53}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span> <a target=\"_blank\" href=\"https://flarewifi.com\" style=\"color:white;text-decoration:none;font-size:15px;\"><strong>flarewifi</strong></a></div><script>\n\t\t\t\t// Poll for activation status on page load (redirects if already activated)\n\t\t\t\tfunction pollActivationStatus() {\n\t\t\t\t\tsetInterval(function() {\n\t\t\t\t\t\tfetch('/activation/status', { method: 'GET' })\n\t\t\t\t\t\t\t.then(function(response) {\n\t\t\t\t\t\t\t\tif (response.status >= 200 && response.status < 400) {\n\t\t\t\t\t\t\t\t\treturn response.json();\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t})\n\t\t\t\t\t\t\t.then(function(data) {\n\t\t\t\t\t\t\t\tif (data && data.activated) {\n\t\t\t\t\t\t\t\t\twindow.location.href = '/';\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t})\n\t\t\t\t\t\t\t.catch(function() {\n\t\t\t\t\t\t\t\t// Ignore errors during polling\n\t\t\t\t\t\t\t});\n\t\t\t\t\t}, 5000);\n\t\t\t\t}\n\n\t\t\t\t// Start polling on page load\n\t\t\t\tpollActivationStatus();\n\n\t\t\t\tfunction checkActivation() {\n\t\t\t\t\tvar btn = document.getElementById('check-btn');\n\t\t\t\t\tvar btnText = document.querySelector('.btn-text');\n\t\t\t\t\tvar origText = btnText.textContent\n\n\t\t\t\t\tif (btn.disabled) {\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\t// Show loading state\n\t\t\t\t\tbtn.className = btn.className + ' loading';\n\t\t\t\t\tbtn.disabled = true;\n\t\t\t\t\tvar textOrig = btn.textContent\n\t\t\t\t\tbtnText.textContent = \"Checking ...\"\n\n\t\t\t\t\tsetTimeout(function () {\n\t\t\t\t\t\t// Trigger validation on the server (blocking - waits for RPC response)\n\t\t\t\t\t\tfetch('/activation/validate', {\n\t\t\t\t\t\t\tmethod: 'POST',\n\t\t\t\t\t\t\theaders: {\n\t\t\t\t\t\t\t\t'Content-Type': 'application/json'\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t})\n\t\t\t\t\t\t.then(function(response) {\n\t\t\t\t\t\t\treturn response.json();\n\t\t\t\t\t\t})\n\t\t\t\t\t\t.then(function(data) {\n\t\t\t\t\t\t\tbtnText.textContent = textOrig\n\t\t\t\t\t\t\tif (data.activated) {\n\t\t\t\t\t\t\t\t// Activation successful - show reboot message and wait for system\n\t\t\t\t\t\t\t\tshowRebootMessage();\n\t\t\t\t\t\t\t\twaitForSystemReboot();\n\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\t// Not activated - reset UI and show error if available\n\t\t\t\t\t\t\t\tresetUI();\n\t\t\t\t\t\t\t\tif (data.error) {\n\t\t\t\t\t\t\t\t\tconsole.error('Activation error:', data.error);\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t})\n\t\t\t\t\t\t.catch(function(error) {\n\t\t\t\t\t\t\tbtnText.textContent = textOrig\n\t\t\t\t\t\t\tconsole.error('Error checking activation:', error);\n\t\t\t\t\t\t\tresetUI();\n\t\t\t\t\t\t});\n\t\t\t\t\t}, 400)\n\t\t\t\t}\n\n\t\t\t\tfunction showRebootMessage() {\n\t\t\t\t\tvar btn = document.getElementById('check-btn');\n\t\t\t\t\tvar rebootMsg = document.getElementById('reboot-message');\n\n\t\t\t\t\t// Hide button and show reboot message\n\t\t\t\t\tbtn.style.display = 'none';\n\t\t\t\t\trebootMsg.className = 'reboot-message show';\n\t\t\t\t}\n\n\t\t\t\tfunction waitForSystemReboot() {\n\t\t\t\t\t// Wait 10 seconds for reboot to start\n\t\t\t\t\tsetTimeout(function() {\n\t\t\t\t\t\tcheckSystemAvailability();\n\t\t\t\t\t}, 10000);\n\t\t\t\t}\n\n\t\t\t\tfunction checkSystemAvailability() {\n\t\t\t\t\t// Try to ping the server every 5 seconds\n\t\t\t\t\tvar checkInterval = setInterval(function() {\n\t\t\t\t\t\tfetch('/ok', { method: 'GET', redirect: 'manual' })\n\t\t\t\t\t\t\t.then(function(response) {\n\t\t\t\t\t\t\t\t// Check if response status indicates system is ready\n\t\t\t\t\t\t\t\t// 200 = OK, 301/302/303 = Redirect (system is responding)\n\t\t\t\t\t\t\t\tif (response.status >= 200 || response.status < 400) {\n\t\t\t\t\t\t\t\t\t// System is back online - redirect to home\n\t\t\t\t\t\t\t\t\tclearInterval(checkInterval);\n\t\t\t\t\t\t\t\t\twindow.location.href = '/';\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t})\n\t\t\t\t\t\t\t.catch(function() {\n\t\t\t\t\t\t\t\t// System still rebooting - keep checking\n\t\t\t\t\t\t\t\tconsole.log('System still rebooting...');\n\t\t\t\t\t\t\t});\n\t\t\t\t\t}, 5000);\n\t\t\t\t}\n\n\t\t\t\tfunction resetUI() {\n\t\t\t\t\tvar btn = document.getElementById('check-btn');\n\t\t\t\t\tbtn.className = 'btn';\n\t\t\t\t\tbtn.disabled = false;\n\t\t\t\t}\n\t\t\t</script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

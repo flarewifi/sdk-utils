@@ -1,1 +1,758 @@
 @import '../vendor/bootstrap-3.4.1/css/bootstrap.css';
+
+/* ==========================================================================
+   FlareWiFi Portal — Dark Theme (mobile-first)
+   ========================================================================== */
+
+/* --- Fonts --- */
+@font-face {
+    font-family: 'Glitz';
+    src: url('../public/fonts/glitz.otf');
+    font-style: normal;
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../public/fonts/Poppins-Regular.woff2') format('woff2');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 500;
+    src: url('../public/fonts/Poppins-Medium.woff2') format('woff2');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 600;
+    src: url('../public/fonts/Poppins-SemiBold.woff2') format('woff2');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 700;
+    src: url('../public/fonts/Poppins-Bold.woff2') format('woff2');
+    font-display: swap;
+}
+
+/* ==========================================================================
+   Base Reset & Body
+   ========================================================================== */
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: #0d0d1a !important;
+    background-image: url('../public/images/main-bg.png') !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+    min-height: 100vh !important;
+    color: #fff !important;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+}
+
+p, span, label, h1, h2, h3, h4, h5 {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+/* Remove Bootstrap container constraints */
+body > .container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+}
+
+/* ==========================================================================
+   Utility Helpers (no prefix — generic, intentionally kept short)
+   ========================================================================== */
+
+.w-full  { width: 100%; }
+.w-half  { width: 50%; }
+.w-48    { width: 48%; }
+.mr-5    { margin-right: 5px; }
+.mr-10   { margin-right: 10px; }
+.ml-5    { margin-left: 5px; }
+.ml-10   { margin-left: 10px; }
+
+/* ==========================================================================
+   Page Wrapper
+   ========================================================================== */
+
+.fw-portal-wrap {
+    max-width: 520px;
+    margin: 0 auto;
+    display: block;
+}
+
+/* ==========================================================================
+   Buttons
+   Naming convention:
+     fw-portal-btn            — base button
+     fw-portal-btn-primary    — purple accent
+     fw-portal-btn-secondary  — cyan accent
+     fw-portal-btn-warning    — amber accent
+     fw-portal-btn-success    — green accent
+     fw-portal-btn-info       — blue accent
+     fw-portal-btn-disabled   — greyed out, non-interactive
+     fw-portal-btn-default    — dark neutral
+   ========================================================================== */
+
+.fw-portal-btn{
+    padding: 10px 5px;
+    border-radius: 16px;
+    cursor: pointer;
+    outline: none;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.fw-portal-btn:hover{
+    opacity: 0.8;
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.fw-portal-btn:active {
+    transform: translateY(-2px);
+}
+
+.fw-portal-btn.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.fw-portal-btn-primary {
+    background:
+        radial-gradient(ellipse 111.61% 84.15% at 78.02% 15.85%,
+            rgba(181, 53, 255, 0.297) 0%,
+            transparent 100%
+        ),
+        #000000 !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.fw-portal-btn-secondary{
+    background:
+        radial-gradient(ellipse 111.61% 84.15% at 78.02% 15.85%,
+            rgba(0, 191, 255, 0.297) 0%,
+            transparent 100%
+        ),
+        #000000 !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.fw-portal-btn-warning {
+    background:
+        radial-gradient(ellipse 111.61% 84.15% at 78.02% 15.85%,
+            rgba(207, 196, 50, 0.3) 0%,
+            transparent 100%
+        ),
+        #000000 !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.fw-portal-btn-success {
+    background:
+        radial-gradient(ellipse 111.61% 84.15% at 78.02% 15.85%,
+            rgba(108, 220, 52, 0.3) 0%,
+            transparent 100%
+        ),
+        #000000 !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.fw-portal-btn-info {
+    background:
+        radial-gradient(ellipse 109.33% 82.14% at 75.74% 17.86%,
+            rgba(40, 70, 217, 0.3) 18.49%,
+            rgba(0, 0, 0, 0) 100%
+        ),
+        #000000 !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.fw-portal-btn-disabled {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: none !important;
+    color: rgba(240, 243, 250, 0.3) !important;
+    pointer-events: none !important;
+}
+
+.fw-portal-btn-disabled .btn-icon {
+    stroke: rgba(255, 255, 255, 0.3) !important;
+}
+
+.fw-portal-btn-default {
+    background:
+        radial-gradient(ellipse 46.75% 36.9% at 50.43% 20.24%,
+            rgba(140, 140, 140, 0.165) 0%,
+            rgba(237, 237, 237, 0.009) 100%
+        ),
+        #1C1C1C !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+    letter-spacing: 0.2px !important;
+    backdrop-filter: blur(20px) !important;
+}
+
+/* ==========================================================================
+   Internet Status Bar
+   ========================================================================== */
+
+.fw-portal-status-bar {
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+    -webkit-box-pack: justify;
+    -ms-flex-pack: justify;
+    justify-content: space-between;
+    padding: 10px 16px;
+    min-height: 44px;
+}
+
+.fw-portal-status-bar.disconnected {
+    background: #EFC7C7;
+    border-bottom: 1px solid rgba(255, 160, 160, 0.2);
+}
+
+.fw-portal-status-bar.connected {
+    background: #C7EFD0;
+    border-bottom: 1px solid rgba(100, 200, 120, 0.2);
+}
+
+.fw-portal-status-bar.connected .fw-portal-status-bar-icon,
+.fw-portal-status-bar.connected .fw-portal-status-bar-text,
+.fw-portal-status-bar.connected .fw-portal-status-bar-label{
+    color: #0F6E2A;
+}
+
+.fw-portal-status-bar-left {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.fw-portal-status-bar-icon {
+    width: 18px;
+    height: 18px;
+    color: #AF0F0F;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.fw-portal-status-bar-text {
+    font-size: 14px;
+    font-weight: 800;
+    color: #AF0F0F;
+    letter-spacing: 0.3px;
+}
+
+.fw-portal-status-bar-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #AF0F0F;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Banner — full bleed, no padding, no radius on mobile
+   ========================================================================== */
+
+.fw-portal-banner {
+    width: 100%;
+    line-height: 0;
+}
+
+.fw-portal-banner img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 0;
+}
+
+/* ==========================================================================
+   Content Area (below the banner)
+   ========================================================================== */
+
+.fw-portal-content {
+    padding: 0 20px 36px;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    -webkit-box-flex: 1;
+    -ms-flex: 1;
+    flex: 1;
+    gap: 0;
+}
+
+/* ==========================================================================
+   Title Block
+   ========================================================================== */
+
+.fw-portal-title {
+    margin-top: 20px;
+}
+
+.fw-portal-heading {
+    font-size: 4rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #fff;
+    line-height: 1.1;
+    font-family: 'Glitz', serif;
+}
+
+.fw-portal-heading span {
+    color: #2F2EC7;
+}
+
+/* ==========================================================================
+   Device Info Bar
+   ========================================================================== */
+
+.fw-portal-device-info {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.5px;
+    padding: 8px 0 20px;
+}
+
+.fw-portal-device-info .info-sep {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.fw-portal-device-info strong {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   Session Timer Block
+   ========================================================================== */
+
+.fw-portal-timer {
+    padding: 5px 0 28px;
+}
+
+.fw-portal-timer-label {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.fw-portal-timer-value{
+    font-size: clamp(40px, 12vw, 45px);
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 4px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 30px rgba(79, 195, 247, 0.35);
+}
+
+.fw-portal-data-remaining {
+    margin-top: 10px;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+.fw-portal-data-remaining {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.fw-portal-data-remaining strong {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ==========================================================================
+   Navigation Buttons
+   ========================================================================== */
+
+.fw-portal-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.fw-portal-nav li a{
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+    width: 100%;
+    padding: 20px 10px;
+    min-height: 52px;
+    border-radius: 16px;
+    text-decoration: none;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    gap: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.32);
+    color: #ffffff;
+}
+
+.fw-portal-nav li a:hover {
+    opacity: 0.8;
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: #ffffff;
+}
+
+.fw-portal-nav li a img {
+    height: 25px;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.fw-portal-footer {
+    margin-top: auto;
+    position: relative;
+    padding: 12px 20px;
+    font-size: 12px;
+    color: white;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.fw-portal-footer a {
+    color: white;
+    text-decoration: none;
+    font-size: 15px;
+    cursor: pointer;
+    font-family: 'Glitz', serif;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.fw-portal-footer a:hover {
+    opacity: 0.8;
+}
+
+/* ==========================================================================
+   Cards (Glassmorphism) — must use !important to override plugin styles
+   Naming convention:
+     fw-portal-card-primary   — main glass card (payment options, summaries)
+     fw-portal-card-secondary — alternate glass card, larger radius (login, voucher)
+     fw-portal-card-dark      — dark tinted card
+   ========================================================================== */
+
+.fw-portal-card-primary {
+    position: relative !important;
+    border-radius: 16px !important;
+    background: linear-gradient(
+        116.21deg,
+        rgba(255, 255, 255, 0.35) 3.3%,
+        rgba(217, 217, 217, 0.13) 57.65%
+    ) !important;
+    padding: 18px !important;
+    backdrop-filter: blur(45px) !important;
+    border: none !important;
+}
+
+.fw-portal-card-primary::before{
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    border-radius: inherit !important;
+    padding: 1.5px !important;
+    pointer-events: none !important;
+    background: linear-gradient(
+        66.86deg,
+        rgba(13, 128, 242, 0.55) 6.76%,
+        rgba(251, 241, 241, 0.397) 25.74%,
+        rgba(251, 241, 241, 0.242) 60.9%,
+        rgba(168, 92, 254, 0.25) 92.28%
+    ) !important;
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+}
+
+.fw-portal-card-secondary {
+    position: relative !important;
+    border-radius: 18px !important;
+    background: linear-gradient(
+        116.21deg,
+        rgba(255, 255, 255, 0.35) 3.3%,
+        rgba(217, 217, 217, 0.13) 57.65%
+    ) !important;
+    padding: 16px !important;
+    backdrop-filter: blur(45px) !important;
+    border: none !important;
+}
+
+.fw-portal-card-secondary::before {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    border-radius: inherit !important;
+    padding: 1.5px !important;
+    pointer-events: none !important;
+    background: linear-gradient(
+        249.94deg,
+        rgba(13, 128, 242, 0.55) 3.41%,
+        rgba(251, 241, 241, 0.397) 24.06%,
+        rgba(251, 241, 241, 0.242) 62.31%,
+        rgba(168, 92, 254, 0.25) 96.46%
+    ) !important;
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+}
+
+.fw-portal-card-dark {
+    background:
+        linear-gradient(118.76deg, rgba(43, 41, 45, 0) -17.28%, rgba(76, 85, 173, 0.315) 133.14%),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
+}
+
+/* ==========================================================================
+   Form Inputs
+   fw-portal-input  — standard glass input
+   ========================================================================== */
+
+.fw-portal-input {
+    border: 1px solid white !important;
+    border-radius: 16px !important;
+    padding: 8px !important;
+    width: 100% !important;
+    background: transparent !important;
+    outline: none !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.fw-portal-input:focus {
+    border-color: rgba(0, 191, 255, 0.99) !important;
+}
+
+/* ==========================================================================
+   Loading Spinner
+   ========================================================================== */
+
+.fw-portal-loading,
+.loading-container {
+    padding: 25px;
+    text-align: center;
+    background: transparent !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.fw-portal-loading .spinner,
+.loading-container .spinner {
+    border: 6px solid #f3f3f3;
+    border-top-color: #1A79FF;
+    border-radius: 50%;
+    width: 55px;
+    height: 55px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+.fw-portal-loading .loading-text,
+.loading-container .loading-text {
+    color: white;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Error Page
+   ========================================================================== */
+
+.fw-portal-error,
+.error-container {
+    background: transparent !important;
+}
+
+.fw-portal-error .error-title,
+.error-container .error-title {
+    color: white;
+}
+
+.fw-portal-error .error-message,
+.error-container .error-message {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.fw-portal-error .error-actions a,
+.error-container .error-actions a {
+    display: block;
+    width: 100%;
+    margin-bottom: 10px;
+    background:
+        radial-gradient(ellipse 109.33% 82.14% at 75.74% 17.86%,
+            rgba(40, 70, 217, 0.3) 18.49%,
+            rgba(0, 0, 0, 0) 100%
+        ),
+        #000000;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.fw-portal-error .error-actions a:hover,
+.error-container .error-actions a:hover {
+    opacity: 0.8;
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.fw-portal-error .error-actions a:active,
+.error-container .error-actions a:active {
+    transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   Payment Status Alerts (overrides Bootstrap 3 alert styles)
+   ========================================================================== */
+
+.fw-portal-payment-status-alert {
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    border: 1px solid transparent;
+}
+
+.fw-portal-payment-status-alert .status-text {
+    margin: 0;
+    line-height: 1.4;
+}
+
+.fw-portal-payment-status-alert.alert-info {
+    background: rgba(79, 110, 247, 0.15);
+    border-color: rgba(79, 110, 247, 0.35);
+    color: #a5b8ff;
+}
+
+.fw-portal-payment-status-alert.alert-success {
+    background: rgba(74, 222, 128, 0.12);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: #86efac;
+}
+
+.fw-portal-payment-status-alert.alert-warning {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #fcd34d;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (min-width: 480px) {
+    .fw-portal-banner img {
+        border-radius: 0 0 12px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .fw-portal-nav li a {
+        font-size: 15px;
+        padding: 15px 5px;
+    }
+
+    .fw-portal-heading {
+        font-size: 2.5rem;
+    }
+
+    .fw-portal-timer-value {
+        font-size: 30px;
+    }
+}

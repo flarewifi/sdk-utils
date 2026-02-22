@@ -1,0 +1,62 @@
+package portal
+
+import (
+	"fmt"
+	sdkapi "sdk/api"
+)
+
+type PortalStatusData struct {
+  IsSessionRunning bool
+  DeviceMac        string
+	DeviceIP         string
+}
+
+templ StatusBar(api sdkapi.IPluginApi, isConnected bool) {
+	{{
+		stateClass := "fw-portal-status-bar disconnected"
+		if isConnected {
+			stateClass = "fw-portal-status-bar connected"
+		}
+	}}
+	<div class={ stateClass }>
+		<div class="fw-portal-status-bar-left">
+			if isConnected {
+				<svg class="fw-portal-status-bar-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+				</svg>
+				<span class="fw-portal-status-bar-text">{ api.Translate("label", "Connected") }</span>
+			} else {
+				<svg class="fw-portal-status-bar-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+				</svg>
+				<span class="fw-portal-status-bar-text">{ api.Translate("label", "Disconnected") }</span>
+			}
+		</div>
+		<span class="fw-portal-status-bar-label">{ api.Translate("label", "INTERNET STATUS") }</span>
+	</div>
+}
+
+templ PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) {
+	<div
+		hx-get={ api.Http().Helpers().UrlForRoute("portal:status-nav") }
+		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s",
+        sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+		hx-swap="outerHTML"
+	>
+		@StatusBar(api, data.IsSessionRunning)
+		<!-- Banner: full bleed, no side padding -->
+		<div class="fw-portal-banner">
+			<img src={ api.Http().Helpers().PublicPath("images/banner.png") } alt="Banner"/>
+		</div>
+		<!-- Portal Title -->
+		<div class="fw-portal-title text-center">
+			<div class="fw-portal-heading">FLARE<span>WIFI</span> HOTSPOT</div>
+		</div>
+		<!-- Device Info -->
+		<div class="fw-portal-device-info">
+			<span>IP &nbsp;<strong> { data.DeviceIP }</strong></span>
+			<span class="info-sep">|</span>
+			<span>MAC &nbsp;<strong> { data.DeviceMac} </strong></span>
+		</div>
+	</div>
+}

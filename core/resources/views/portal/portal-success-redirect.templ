@@ -5,8 +5,9 @@ import sdkapi "sdk/api"
 templ PortalSuccessRedirectPage(api sdkapi.IPluginApi, redirectURL string) {
 	<div class="redirect-container" data-redirect-url={ redirectURL }>
 		<div class="redirect-container-inner">
-			<div class="redirect-card">
-				<div class="redirect-content">
+			<!-- redirect-card fw-portal-card-primary: theme card; .panel .panel-default as Bootstrap fallback -->
+			<div class="redirect-card fw-portal-card-primary panel panel-default">
+				<div class="redirect-content panel-body text-center">
 					<div class="success-icon">
 						<div class="checkmark-simple">✓</div>
 					</div>

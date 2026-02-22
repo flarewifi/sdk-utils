@@ -44,14 +44,14 @@ func PortalSuccessRedirectPage(api sdkapi.IPluginApi, redirectURL string) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"redirect-container-inner\"><div class=\"redirect-card\"><div class=\"redirect-content\"><div class=\"success-icon\"><div class=\"checkmark-simple\">✓</div></div><div class=\"spinner-container\"><div class=\"spinner\"></div></div><h2 class=\"redirect-title\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"redirect-container-inner\"><!-- redirect-card fw-portal-card-primary: theme card; .panel .panel-default as Bootstrap fallback --><div class=\"redirect-card fw-portal-card-primary panel panel-default\"><div class=\"redirect-content panel-body text-center\"><div class=\"success-icon\"><div class=\"checkmark-simple\">✓</div></div><div class=\"spinner-container\"><div class=\"spinner\"></div></div><h2 class=\"redirect-title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Success"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-success-redirect.templ`, Line: 16, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-success-redirect.templ`, Line: 17, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -64,7 +64,7 @@ func PortalSuccessRedirectPage(api sdkapi.IPluginApi, redirectURL string) templ.
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Redirecting"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-success-redirect.templ`, Line: 17, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-success-redirect.templ`, Line: 18, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {

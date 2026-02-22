@@ -18,6 +18,7 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 	pluginR.Group("/sessions", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/summary", PortalSessionSyncHandler(api)).Name("portal:sessions:summary")
 		subrouter.Get("/navs", PortalNavItemsHandler(api)).Name("portal:navs")
+		subrouter.Get("/status-nav", PortalStatusNavHandler(api)).Name("portal:status-nav")
 	})
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {

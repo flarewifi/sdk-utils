@@ -2,6 +2,10 @@
 
 /* Break out of portal .container wrapper for full-viewport background.
    BS3 sets a fixed `width` (not max-width) at each breakpoint, so we must override both. */
+body {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
 body > .container {
     width: 100%;
     max-width: 100%;
@@ -16,6 +20,7 @@ body > .container {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 100vh;
     padding: 15px;
 }
 
@@ -90,7 +95,12 @@ body > .container {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 15px 5px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff !important;
 }
+
 
 /* Credentials hint divider */
 .fw-hint-divider {

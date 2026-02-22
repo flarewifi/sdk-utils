@@ -9,64 +9,83 @@ type PaymentOption struct {
 
 templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opts []PaymentOption) {
 	<div class="payment-checkout-container">
-		<div class="purchase-summary">
-			<div class="summary-header">
-				<div class="checkout-icon">
-					<span class="glyphicon glyphicon-shopping-cart"></span>
-				</div>
-				<h3 class="summary-title">{ api.Translate("label", "Purchase Summary") }</h3>
+		<!-- Purchase Summary Card -->
+		<!-- fw-portal-card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
+		<div class="purchase-summary fw-portal-card-primary panel panel-default">
+			<div class="summary-cart-icon text-center">
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="9" cy="21" r="1"></circle>
+					<circle cx="20" cy="21" r="1"></circle>
+					<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+				</svg>
 			</div>
-			<div class="summary-content">
-				<table class="table">
-					<tbody>
-						<tr class="summary-item product-name">
-							<td class="summary-label">{ api.Translate("label", "Item") }</td>
-							<td class="summary-value">{ purchase.Name() }</td>
-						</tr>
-					if purchase.Description() != "" {
-						<tr class="summary-item product-description">
-							<td class="summary-label">{ api.Translate("label", "Description") }</td>
-							<td class="summary-value">{ purchase.Description() }</td>
-						</tr>
-					}
-					<tr class="summary-divider">
-						<td colspan="2"><hr class="divider-line"/></td>
-					</tr>
-						<tr class="summary-item summary-price">
-							<td class="summary-label price-label">{ api.Translate("label", "Total Price") }</td>
-							<td class="summary-value price-amount">
-								if purchase.IsFixedPrice() {
-									{ api.Payments().FormatCurrency(purchase.Price()) }
-								} else {
-									{ api.Translate("label", "Any Amount") }
-								}
-							</td>
-						</tr>
-					</tbody>
-				</table>
+			<h3 class="summary-title text-center">{ api.Translate("label", "Purchase Summary") }</h3>
+			<div class="summary-product-row">
+				<div class="summary-product-left">
+				<div class="summary-product-thumb">
+					<svg viewBox="-3 3 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<circle cx="28.8295" cy="34.6634" r="28.8295" fill="url(#paint0_linear_1843_223)"/>
+						<path d="M23.6745 44.9294C20.7133 44.9294 18.3128 42.5289 18.3128 39.5678C18.3883 39.5678 18.4633 39.5697 18.5388 39.5727C18.5741 39.5741 18.6094 39.5761 18.6447 39.5786C18.6579 39.5791 18.6706 39.5795 18.6839 39.581C18.7486 39.585 18.8123 39.5908 18.876 39.5977C18.9133 39.6011 18.9505 39.6055 18.9882 39.6104C19.0245 39.6148 19.0603 39.6197 19.0961 39.6256C19.1446 39.6324 19.1936 39.6403 19.2422 39.6491C19.7823 39.7447 20.3161 39.9251 20.8273 40.1961C22.4031 41.0333 23.3892 42.5414 23.6211 44.181C23.6387 44.305 23.6524 44.43 23.6607 44.5554C23.6632 44.5868 23.6652 44.6186 23.6671 44.6495C23.6721 44.7422 23.6745 44.8358 23.6745 44.9294Z" fill="white"/>
+						<path d="M18.313 50.2912C18.313 47.33 20.7135 44.9295 23.6746 44.9295C23.6751 45.7784 23.4732 46.6406 23.0463 47.4439C22.4939 48.4845 21.6479 49.2682 20.6652 49.7466C19.9353 50.1024 19.13 50.2906 18.313 50.2912Z" fill="white"/>
+						<path d="M18.313 50.2912C17.4635 50.2917 16.6019 50.0892 15.799 49.6628C15.2878 49.3912 14.8393 49.0496 14.458 48.6555C13.4851 47.6507 12.9518 46.3068 12.9513 44.9295C15.9125 44.9295 18.313 47.33 18.313 50.2912Z" fill="white"/>
+						<path d="M12.9513 44.9292C12.9508 44.0798 13.1532 43.2182 13.5797 42.4148C14.5433 40.6018 16.396 39.5681 18.313 39.5676C18.313 42.5288 15.9125 44.9292 12.9513 44.9292Z" fill="white"/>
+						<path d="M16.3536 27.5805C15.4877 27.5829 14.6582 27.9292 14.0476 28.5431C13.437 29.1571 13.0953 29.9885 13.0977 30.8544C13.1001 31.7203 13.4464 32.5498 14.0603 33.1604C14.6743 33.7709 15.5057 34.1126 16.3716 34.1103C19.8033 34.1587 23.0809 35.5435 25.5077 37.9703C27.9346 40.3972 29.3194 43.6748 29.3678 47.1065C29.3651 47.537 29.4482 47.9638 29.6123 48.3618C29.7764 48.7598 30.0182 49.1211 30.3236 49.4245C30.7798 49.8804 31.3607 50.1911 31.9931 50.3173C32.6256 50.4434 33.2812 50.3795 33.8774 50.1335C34.4735 49.8876 34.9835 49.4706 35.3429 48.9351C35.7024 48.3997 35.8952 47.7698 35.8971 47.1249C35.9336 36.6084 26.8697 27.5444 16.3536 27.5805Z" fill="white"/>
+						<path d="M48.876 47.1336C48.9224 42.8487 48.1126 38.5976 46.4942 34.6298C44.8758 30.662 42.4813 27.0573 39.4512 24.0272C36.4211 20.9971 32.8164 18.6026 28.8486 16.9842C24.8808 15.3658 20.6297 14.556 16.3448 14.6024C15.4789 14.6072 14.6504 14.9558 14.0415 15.5714C13.4326 16.1871 13.0932 17.0194 13.098 17.8853C13.1028 18.7512 13.4513 19.5797 14.067 20.1886C14.6826 20.7975 15.515 21.1369 16.3808 21.1321C30.4053 21.051 42.4275 33.0732 42.3463 47.0976C42.3415 47.9635 42.6809 48.7958 43.2898 49.4115C43.8987 50.0271 44.7272 50.3757 45.5931 50.3804C46.459 50.3852 47.2913 50.0458 47.907 49.4369C48.5226 48.8281 48.8712 47.9995 48.876 47.1336Z" fill="white"/>
+						<defs>
+								<linearGradient id="paint0_linear_1843_223" x1="49.1355" y1="14.7334" x2="7.39539" y2="54.5306" gradientUnits="userSpaceOnUse">
+										<stop stop-color="#1A79FF"/>
+										<stop offset="1" stop-color="#2F2EC7"/>
+								</linearGradient>
+						</defs>
+				</svg>
+				</div>
+					<div class="summary-product-info">
+						<span class="summary-product-name">{ purchase.Name() }</span>
+						if purchase.Description() != "" {
+							<span class="summary-product-desc">{ purchase.Description() }</span>
+						} else {
+							<span class="summary-product-desc">{ api.Translate("label", "Basic WiFi Hotspot") }</span>
+						}
+					</div>
+				</div>
+				<div class="summary-product-total">
+					<span class="summary-total-label">{ api.Translate("label", "Total") }:</span>
+					&nbsp;
+					<span class="summary-total-amount">
+						if purchase.IsFixedPrice() {
+							{ api.Payments().FormatCurrency(purchase.Price()) }
+						} else {
+							{ api.Translate("label", "Any") }
+						}
+					</span>
+				</div>
 			</div>
 		</div>
+
+		<!-- Payment Options Section -->
 		<div class="payment-options-section">
 			<h3 class="payment-options-title">{ api.Translate("label", "Choose Payment Options") }</h3>
 			<div class="payment-options-grid">
 				for _, opt := range opts {
-					<a href={ templ.SafeURL(opt.URL) } class="payment-option-card" aria-label={ "Select " + opt.Label }>
-						<div class="payment-card-inner">
+				<!-- fw-portal-card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
+				<a href={ templ.SafeURL(opt.URL) } class="payment-option-card fw-portal-card-primary panel panel-default" aria-label={ "Select " + opt.Label }>
+						<div class="payment-card-inner panel-body">
 							<div class="payment-icon">
 								<span class="glyphicon glyphicon-credit-card"></span>
 							</div>
-						<h3 class="payment-name">{ opt.Label }</h3>
-						<div class="payment-arrow">
-							<span class="glyphicon glyphicon-chevron-right"></span>
+							<span class="payment-name">{ opt.Label }</span>
+							<div class="payment-arrow">
+								<span class="glyphicon glyphicon-chevron-right"></span>
+							</div>
+							<div class="payment-loading-spinner">
+								<div class="spinner-icon"></div>
+							</div>
 						</div>
-						<div class="payment-loading-spinner">
-							<div class="spinner-icon"></div>
-						</div>
-					</div>
 					</a>
 				}
 			</div>
 		</div>
+
 		<!-- Cancel Section -->
 		<div class="cancel-purchase-section">
 			<form
@@ -76,17 +95,17 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 				data-confirm={ api.Translate("warning", "Are you sure you want to cancel this purchase") }
 				class="cancel-form"
 			>
-				<button type="submit" class="btn btn-default">
-					<span class="glyphicon glyphicon-remove"></span>
+			<!-- fw-portal-btn fw-portal-btn-default: theme button; .btn .btn-default as Bootstrap fallback -->
+			<button type="submit" class="btn-cancel-purchase fw-portal-btn fw-portal-btn-default btn btn-secondary">
 					{ api.Translate("label", "Cancel Purchase") }
 				</button>
 			</form>
 		</div>
-		<div class="checkout-footer">
-			<div class="secure-payment-badge">
-				<img src={ api.Http().Helpers().PublicPath("images/secure-payment.png") } alt={ api.Translate("label", "Secure Payment") } class="secure-payment-icon"/>
-				<span class="secure-payment-text">{ api.Translate("label", "Secure Payment") }</span>
-			</div>
-		</div>
+	</div>
+	<!-- Footer -->
+	<!-- fw-portal-footer: theme footer; Bootstrap .text-center as fallback -->
+	<div class="fw-portal-footer text-center">
+		<span>{ api.Translate("label", "Powered by") }</span>
+		<a target="_blank" href="https://flarewifi.com"><strong>flarewifi</strong></a>
 	</div>
 }
