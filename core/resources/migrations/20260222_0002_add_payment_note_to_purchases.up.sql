@@ -1,0 +1,1 @@
+ALTER TABLE purchases ADD COLUMN payment_note TEXT NOT NULL DEFAULT '';

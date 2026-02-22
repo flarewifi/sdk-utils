@@ -261,8 +261,8 @@ Creates a payment record for the purchase request.
 ctx := r.Context()
 
 params := sdkapi.CreatePaymentParams{
-    Amount:  29.99,
-    Optname: "credit_card",
+    Amount:       29.99,
+    ProviderUUID: "a1b2c3d4e5f6g7h8", // UUID from PaymentOption
 }
 
 err := purchaseRequest.CreatePayment(ctx, params)
@@ -312,11 +312,9 @@ Executes the webhook for the purchase. This makes an internal POST request to th
 ctx := r.Context()
 
 params := sdkapi.ExecuteParams{
-    DeviceID:    purchaseRequest.DeviceID(),
-    PurchaseUID: purchaseRequest.UUID(),
-    Amount:      29.99,
-    Success:     true,
-    Message:     "Payment successful",
+    Amount:  29.99,
+    Success: true,
+    Message: "Payment successful",
 }
 
 err := purchaseRequest.Execute(ctx, params)
@@ -362,6 +360,28 @@ if err != nil {
 // Purchase is now cancelled
 ```
 
+### UpdateMetadata
+
+Updates the metadata associated with the purchase. This should be called before `Confirm()` to ensure metadata is available for sync.
+
+```go
+ctx := r.Context()
+
+metadata := map[string]string{
+    "transaction_id": "txn_12345",
+    "payment_method": "credit_card",
+    "receipt_number": "RCP-2024-001",
+}
+
+err := purchaseRequest.UpdateMetadata(ctx, metadata)
+if err != nil {
+    // handle error
+}
+
+// Now confirm the purchase
+err = purchaseRequest.Confirm(ctx)
+```
+
 ---
 
 ## Types
@@ -405,8 +425,8 @@ The `CreatePaymentParams` struct is used when creating a payment:
 
 ```go
 type CreatePaymentParams struct {
-    Amount  float64 // Payment amount
-    Optname string  // Payment option name (e.g., "credit_card", "gcash")
+    Amount       float64 // Payment amount
+    ProviderUUID string  // UUID of the payment option (from PaymentOption.UUID)
 }
 ```
 
@@ -416,11 +436,9 @@ The `ExecuteParams` struct holds parameters for executing a purchase webhook:
 
 ```go
 type ExecuteParams struct {
-    DeviceID    int64   `json:"device_id"`    // Device ID making the purchase
-    PurchaseUID string  `json:"purchase_uid"` // UUID of the purchase request
-    Amount      float64 `json:"amount"`       // Payment amount
-    Success     bool    `json:"success"`      // Whether payment was successful
-    Message     string  `json:"message"`      // Status message
+    Amount  float64 `json:"amount"`  // Payment amount
+    Success bool    `json:"success"` // Whether payment was successful
+    Message string  `json:"message"` // Status message
 }
 ```
 
@@ -467,10 +485,13 @@ func handleCreditCardPayment(w http.ResponseWriter, r *http.Request) {
 
     ctx := r.Context()
 
-    // Create payment record
+    // Create payment record with the payment option UUID
+    // The UUID comes from the PaymentOption returned by your payment provider
+    providerUUID := "a1b2c3d4e5f6g7h8" // From PaymentOption.UUID
+    
     params := sdkapi.CreatePaymentParams{
-        Amount:  purchaseReq.Price(),
-        Optname: "credit_card",
+        Amount:       purchaseReq.Price(),
+        ProviderUUID: providerUUID,
     }
 
     err = purchaseReq.CreatePayment(ctx, params)
@@ -495,29 +516,31 @@ func handleCreditCardPayment(w http.ResponseWriter, r *http.Request) {
 
 ```go
 func handlePaymentWebhook(w http.ResponseWriter, r *http.Request) {
-    // Authenticate webhook
-    if err := api.Payments().WebhookAuth(r); err != nil {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+    ctx := r.Context()
+
+    // Extract and validate purchase data from token
+    purchaseReq, err := api.Payments().ExtractPurchaseData(r)
+    if err != nil {
+        http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
         return
     }
 
-    // Parse webhook body
+    // Parse webhook body for payment result
     var params sdkapi.ExecuteParams
     if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
         http.Error(w, "Bad request", http.StatusBadRequest)
         return
     }
 
-    // Find purchase request
-    purchaseReq, err := api.Payments().FindPurchaseRequestByUUID(params.PurchaseUID)
-    if err != nil {
-        http.Error(w, "Purchase not found", http.StatusNotFound)
-        return
-    }
-
-    ctx := r.Context()
-
     if params.Success {
+        // Optionally update metadata before confirming
+        err = purchaseReq.UpdateMetadata(ctx, map[string]string{
+            "transaction_id": "txn_from_gateway",
+        })
+        if err != nil {
+            api.Logger().Error("Failed to update metadata: %v", err)
+        }
+
         // Confirm the purchase
         if err := purchaseReq.Confirm(ctx); err != nil {
             api.Logger().Error("Failed to confirm purchase: %v", err)

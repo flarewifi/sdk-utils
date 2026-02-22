@@ -43,6 +43,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pm
 	NewFirewallApi(pluginApi)
 	pluginApi.UIApi = NewUIApi(pluginApi)
 	pluginApi.NotificationAPI = NewNotificationAPI(pluginApi, pmgr.models)
+	NewVouchersApi(pluginApi)
 
 	log.Println("NewPluginApi: ", dir, " - ", info.Package, " - ", info.Name, " - ", info.Version, " - ", info.Description)
 
@@ -75,6 +76,7 @@ type PluginApi struct {
 	NotificationAPI  *NotificationAPI
 	MachineAPI       *MachineApi
 	FirewallAPI      *FirewallApi
+	VouchersAPI      *VouchersApi
 }
 
 func (self *PluginApi) Initialize(coreApi *PluginApi) {
@@ -175,6 +177,10 @@ func (self *PluginApi) Machine() sdkapi.IMachineApi {
 
 func (self *PluginApi) Firewall() sdkapi.IFirewallAPI {
 	return self.FirewallAPI
+}
+
+func (self *PluginApi) Vouchers() sdkapi.IVouchersApi {
+	return self.VouchersAPI
 }
 
 func (self *PluginApi) LoadAssetsManifest() {

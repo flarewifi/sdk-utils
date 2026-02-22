@@ -366,3 +366,13 @@ func (self *Purchase) SetProcessing(ctx context.Context, paymentUrl string) erro
 
 	return nil
 }
+
+// UpdateMetadata updates the metadata field of the purchase
+func (self *Purchase) UpdateMetadata(ctx context.Context, metadata map[string]string) error {
+	err := self.models.purchaseModel.UpdateMetadata(ctx, self.id, metadata)
+	if err != nil {
+		return err
+	}
+	self.metadata = metadata
+	return nil
+}

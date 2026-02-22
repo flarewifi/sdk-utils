@@ -1,6 +1,6 @@
 -- name: CreatePurchase :one
-INSERT INTO purchases (uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url)
-    VALUES (@uuid, @device_id, @sku, @name, @description, @price, @any_price, @callback_plugin, @callback_route, @webhook_route, @metadata, @processing, @payment_url)
+INSERT INTO purchases (uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url, payment_note)
+    VALUES (@uuid, @device_id, @sku, @name, @description, @price, @any_price, @callback_plugin, @callback_route, @webhook_route, @metadata, @processing, @payment_url, @payment_note)
 RETURNING
     id;
 
@@ -41,7 +41,8 @@ SET
     confirmed_at = @confirmed_at,
     cancelled_reason = @cancelled_reason,
     processing = @processing,
-    payment_url = @payment_url
+    payment_url = @payment_url,
+    payment_note = @payment_note
 WHERE
     id = @id;
 
