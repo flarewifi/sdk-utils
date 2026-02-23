@@ -1,31 +1,27 @@
 package database
 
-import (
-	"sdk/api"
-)
+import sdkapi "sdk/api"
 
 templ databaseInfo(api sdkapi.IPluginApi, params AdminDatabaseSettingsIndexParams) {
 	<div class="row align-items-center mb-2">
-		<div class="col-md-4">
-			<label class="form-label fw-bold">{ api.Translate("label", "Database Type") }</label>
-		</div>
-		<div class="col-md-8">
-			<div class="form-control-plaintext">
-				<span class="badge bg-primary">SQLite</span>
+		<div class="col gap-2">
+			<label class="form-label">{ api.Translate("label", "Database Type") }</label>
+			<div>
+				<h4>
+					<span class="badge bg-primary">SQLite</span>
+				</h4>
 			</div>
 		</div>
 	</div>
 	<div class="row align-items-center mb-2">
-		<div class="col-md-4">
-			<label class="form-label fw-bold">{ api.Translate("label", "Database File") }</label>
-		</div>
-		<div class="col-md-8">
-			<div class="form-control-plaintext">
+		<div class="col gap-2">
+			<label class="form-label">{ api.Translate("label", "Database File") }</label>
+			<div class="border rounded-3 py-2 px-3 form-control-plaintext">
 				<code>{ params.Cfg.SqlitePath }</code>
 			</div>
 		</div>
 	</div>
-	<div class="alert alert-info mt-3">
+	<div class="alert alert-info mt-4">
 		<i class="bi bi-info-circle me-2"></i>
 		{ api.Translate("info", "SQLite is a file-based database The database file is stored locally on the device") }
 	</div>
