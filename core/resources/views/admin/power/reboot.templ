@@ -1,35 +1,36 @@
 package powerview
 
-import "sdk/api"
+import sdkapi "sdk/api"
 
 templ RebootPage(api sdkapi.IPluginApi) {
 	<div id="reboot-page">
-		<h3 class="mb-4">{ api.Translate("label", "Reboot") }</h3>
-		
-		<div class="card">
-			<div class="card-body">
+		<div class="d-flex align-items-center justify-content-between mb-4">
+			<div class="d-flex align-items-baseline gap-3">
+				<h1 class="h2 mb-0">{ api.Translate("label", "Reboot Device") }</h1>
+			</div>
+		</div>
+		<div class="card border mb-4 shadow-sm rounded-3 mt-3">
+			<div class="card-body p-4">
 				<div class="alert alert-warning mb-4">
 					<i class="bi bi-exclamation-triangle me-2"></i>
 					<strong>{ api.Translate("label", "Warning") }:</strong> { api.Translate("warning", "This will reboot the system. All active sessions will be terminated") }.
 				</div>
-				
 				<p class="mb-4">
 					{ api.Translate("info", "Click the button below to reboot the system. The system will be unavailable for a few minutes during the reboot process") }.
 				</p>
-				
 				<div id="reboot-response"></div>
-				
-				<button 
+				<button
 					id="reboot-btn"
-					type="button" 
-					class="btn btn-danger"
+					type="button"
+					class="btn btn-warning px-3 py-2 fs-6 rounded-3"
 					hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") }
 					hx-target="#reboot-response"
 					hx-confirm={ api.Translate("label", "Are you sure you want to reboot the system? This will disconnect all users") + "." }
 					hx-on::after-request="this.disabled = true"
-					data-loading-disable>
+					data-loading-disable
+				>
 					<i class="bi bi-arrow-clockwise me-2"></i>
-					{ api.Translate("label", "Reboot") }
+					{ api.Translate("label", "Reboot Device") }
 				</button>
 			</div>
 		</div>
