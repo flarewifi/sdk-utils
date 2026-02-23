@@ -131,15 +131,13 @@ func (self *Purchase) SetProcessing(ctx context.Context, paymentUrl string) erro
 
 func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePaymentParams) error {
 	mdls := self.api.models
-	// Derive provider info from the calling plugin's API instance
-	providerPkg := self.api.info.Package
-	providerName := self.api.info.Name
+	// Derive provider from the calling plugin's package name
+	provider := self.api.info.Package
 	_, err := mdls.Payment().Create(ctx, models.CreatePaymentParams{
 		PurchaseID:        self.purchase.ID(),
 		Amount:            params.Amount,
-		PaymentOptionUUID: params.PaymentOptionUUID,
-		ProviderPkg:       providerPkg,
-		ProviderName:      providerName,
+		PaymentOptionUUID: params.ProviderUUID,
+		Provider:          provider,
 	})
 	return err
 }
@@ -149,8 +147,8 @@ func (self *Purchase) PayWithWallet(ctx context.Context, dbt float64) error {
 	return err
 }
 
-func (self *Purchase) State(ctx context.Context) (sdkapi.PurchaseState, error) {
-	state := sdkapi.PurchaseState{}
+func (self *Purchase) State(ctx context.Context) (sdkapi.PurchasePaymentData, error) {
+	state := sdkapi.PurchasePaymentData{}
 
 	device, err := self.api.models.Device().Find(ctx, self.deviceId)
 	if err != nil {
@@ -167,11 +165,22 @@ func (self *Purchase) State(ctx context.Context) (sdkapi.PurchaseState, error) {
 		return state, err
 	}
 
+	// Get first payment's provider (if any)
+	payments, err := self.purchase.Payments(ctx)
+	if err != nil {
+		return state, err
+	}
+	var paymentProvider string
+	if len(payments) > 0 {
+		paymentProvider = payments[0].Provider()
+	}
+
 	walletDebit := self.purchase.WalletDebit()
 	walletEndBal := wallet.Balance() - walletDebit
 
 	state.PurchaseID = self.purchase.ID()
 	state.TotalPayment = total
+	state.PaymentProvider = paymentProvider
 	state.WalletDebit = walletDebit
 	state.WalletEndingBal = walletEndBal
 	state.WalletRealBal = wallet.Balance()
@@ -349,6 +358,10 @@ func (self *Purchase) emitPurchaseEvent(ctx context.Context, event sdkapi.Purcha
 	if err := self.api.PaymentsAPI.paymentsMgr.EmitPurchaseEvent(event, data); err != nil {
 		fmt.Printf("Failed to emit purchase event %s: %v\n", event, err)
 	}
+}
+
+func (self *Purchase) UpdateMetadata(ctx context.Context, metadata map[string]string) error {
+	return self.purchase.UpdateMetadata(ctx, metadata)
 }
 
 func (self *Purchase) ErrorPage(w http.ResponseWriter, err error) {

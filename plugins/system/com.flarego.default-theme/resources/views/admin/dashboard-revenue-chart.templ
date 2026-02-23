@@ -19,10 +19,6 @@ templ RevenueChartCard(api sdkapi.IPluginApi) {
 						<span class="fw-legend-dot" style="background-color:#a855f7;"></span>
 						<span class="text-muted" style="font-size:0.75rem;">{ api.Translate("label", "Voucher") }</span>
 					</div>
-					<div class="d-flex align-items-center gap-1">
-						<span class="fw-legend-dot" style="background-color:#10b981;"></span>
-						<span class="text-muted" style="font-size:0.75rem;">{ api.Translate("label", "Online") }</span>
-					</div>
 				</div>
 			</div>
 		</div>
@@ -30,7 +26,7 @@ templ RevenueChartCard(api sdkapi.IPluginApi) {
 			<div class="fw-chart-container">
 				<div
 					id="revenueChart"
-					data-chart={ `[{"label":"Jan 29","values":{"coinslot":120,"voucher":80,"online":50}},{"label":"Jan 30","values":{"coinslot":180,"voucher":120,"online":70}},{"label":"Jan 31","values":{"coinslot":150,"voucher":100,"online":60}},{"label":"Feb 1","values":{"coinslot":220,"voucher":140,"online":90}},{"label":"Feb 2","values":{"coinslot":190,"voucher":110,"online":80}},{"label":"Feb 3","values":{"coinslot":250,"voucher":160,"online":100}},{"label":"Feb 4","values":{"coinslot":280,"voucher":180,"online":120}}]` }
+					data-chart={ `[{"label":"Jan 29","values":{"coinslot":120,"voucher":80}},{"label":"Jan 30","values":{"coinslot":180,"voucher":120}},{"label":"Jan 31","values":{"coinslot":150,"voucher":100}},{"label":"Feb 1","values":{"coinslot":220,"voucher":140}},{"label":"Feb 2","values":{"coinslot":190,"voucher":110}},{"label":"Feb 3","values":{"coinslot":250,"voucher":160}},{"label":"Feb 4","values":{"coinslot":280,"voucher":180}}]` }
 				></div>
 			</div>
 		</div>

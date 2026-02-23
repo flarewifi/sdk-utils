@@ -52,7 +52,7 @@ type ClientSessionSummary struct {
 
 // CreateSessionParams holds parameters for creating a new client session.
 type CreateSessionParams struct {
-	UUID            string // Required: Session UUID (use uuid.New().String() to generate)
+	UUID            string // Required: Session UUID (use sdkutils.NewUUID() to generate)
 	DevId           int64
 	SessionType     SessionType
 	TimeSecs        int
@@ -98,6 +98,40 @@ type NewDeviceParams struct {
 	Status     DeviceStatus
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+}
+
+// SessionFilterAvailability represents the availability filter for listing sessions.
+type SessionFilterAvailability string
+
+const (
+	// SessionFilterAvailable returns sessions with remaining time/data that are not expired
+	SessionFilterAvailable SessionFilterAvailability = "available"
+	// SessionFilterConsumed returns sessions that are fully consumed (time/data exhausted)
+	SessionFilterConsumed SessionFilterAvailability = "consumed"
+	// SessionFilterExpired returns sessions that have passed their expiration date
+	SessionFilterExpired SessionFilterAvailability = "expired"
+)
+
+// ListSessionsParams holds parameters for listing sessions with pagination.
+type ListSessionsParams struct {
+	Search       *string                    // optional search by session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code
+	DeviceID     *int64                     // optional filter: sessions for a specific device ID
+	Availability *SessionFilterAvailability // optional filter: "available", "consumed", or "expired"
+	SessionType  *SessionType               // optional filter by session type: "time", "data", or "time-or-data"
+	DateStart    *time.Time                 // optional filter: sessions created on or after this date (start of day)
+	DateEnd      *time.Time                 // optional filter: sessions created on or before this date (end of day)
+	TimeSecsGt   *int                       // optional filter: sessions with time_secs greater than this value
+	TimeSecsLt   *int                       // optional filter: sessions with time_secs less than this value
+	DataMbGt     *float64                   // optional filter: sessions with data_mbytes greater than this value
+	DataMbLt     *float64                   // optional filter: sessions with data_mbytes less than this value
+	Page         int
+	PerPage      int
+}
+
+// ListSessionsResult holds the result of listing sessions.
+type ListSessionsResult struct {
+	Sessions []IClientSession
+	Count    int64
 }
 
 // ISessionsMgrApi is used to manage client devices.
@@ -161,4 +195,14 @@ type ISessionsMgrApi interface {
 
 	// OnClientEvent registers a callback for client device events.
 	OnClientEvent(event ClientEvent, callback func(clnt IClientDevice) error)
+
+	// ListSessions returns a paginated list of sessions with optional search and filters.
+	// Search matches against session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code.
+	// DeviceID filter returns only sessions for a specific device.
+	// Availability filter: "all" (default), "available", "consumed", or "expired".
+	// SessionType filter: "time", "data", or "time-or-data" (empty string means all types).
+	// DateStart/DateEnd filter by session creation date (inclusive range).
+	// TimeSecsGt/TimeSecsLt filter by allocated time in seconds.
+	// DataMbGt/DataMbLt filter by allocated data in megabytes.
+	ListSessions(ctx context.Context, params ListSessionsParams) (ListSessionsResult, error)
 }

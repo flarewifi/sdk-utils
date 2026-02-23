@@ -83,29 +83,16 @@ func RevenueChartCard(api sdkapi.IPluginApi) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></div><div class=\"d-flex align-items-center gap-1\"><span class=\"fw-legend-dot\" style=\"background-color:#10b981;\"></span> <span class=\"text-muted\" style=\"font-size:0.75rem;\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Online"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 24, Col: 92}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></div></div></div></div><div class=\"card-body border-top pt-3\"><div class=\"fw-chart-container\"><div id=\"revenueChart\" data-chart=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(`[{"label":"Jan 29","values":{"coinslot":120,"voucher":80,"online":50}},{"label":"Jan 30","values":{"coinslot":180,"voucher":120,"online":70}},{"label":"Jan 31","values":{"coinslot":150,"voucher":100,"online":60}},{"label":"Feb 1","values":{"coinslot":220,"voucher":140,"online":90}},{"label":"Feb 2","values":{"coinslot":190,"voucher":110,"online":80}},{"label":"Feb 3","values":{"coinslot":250,"voucher":160,"online":100}},{"label":"Feb 4","values":{"coinslot":280,"voucher":180,"online":120}}]`)
+		var templ_7745c5c3_Var6 string
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(`[{"label":"Jan 29","values":{"coinslot":120,"voucher":80}},{"label":"Jan 30","values":{"coinslot":180,"voucher":120}},{"label":"Jan 31","values":{"coinslot":150,"voucher":100}},{"label":"Feb 1","values":{"coinslot":220,"voucher":140}},{"label":"Feb 2","values":{"coinslot":190,"voucher":110}},{"label":"Feb 3","values":{"coinslot":250,"voucher":160}},{"label":"Feb 4","values":{"coinslot":280,"voucher":180}}]`)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 33, Col: 515}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 29, Col: 429}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

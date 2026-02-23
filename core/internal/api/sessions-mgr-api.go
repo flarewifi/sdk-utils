@@ -3,8 +3,11 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"core/db/models"
+	coreQueries "core/db/queries"
 	sdkapi "sdk/api"
 )
 
@@ -160,4 +163,144 @@ func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback f
 // OnClientEvent registers a callback for client device events.
 func (self *SessionsMgrApi) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice) error) {
 	self.pluginApi.SessionMgr.OnClientEvent(event, callback)
+}
+
+// ListSessions returns a paginated list of sessions with optional search and filters.
+func (self *SessionsMgrApi) ListSessions(ctx context.Context, params sdkapi.ListSessionsParams) (sdkapi.ListSessionsResult, error) {
+	q := coreQueries.New(self.pluginApi.db.DB)
+	offset := int64(params.PerPage * (params.Page - 1))
+
+	// Prepare search parameter
+	var search interface{}
+	if params.Search != nil && *params.Search != "" {
+		search = *params.Search
+	}
+
+	// Prepare device ID parameter
+	var deviceID interface{}
+	if params.DeviceID != nil {
+		deviceID = *params.DeviceID
+	}
+
+	// Prepare availability parameter (nil = all)
+	availability := "all"
+	if params.Availability != nil {
+		availability = string(*params.Availability)
+	}
+
+	// Prepare session type parameter
+	var sessionType interface{}
+	if params.SessionType != nil {
+		sessionType = string(*params.SessionType)
+	}
+
+	// Prepare date parameters
+	var dateStart, dateEnd interface{}
+	if params.DateStart != nil {
+		dateStart = params.DateStart.Format("2006-01-02")
+	}
+	if params.DateEnd != nil {
+		dateEnd = params.DateEnd.Format("2006-01-02")
+	}
+
+	// Prepare time/data filter parameters
+	var timeSecsGt, timeSecsLt interface{}
+	var dataMbGt, dataMbLt interface{}
+	if params.TimeSecsGt != nil {
+		timeSecsGt = *params.TimeSecsGt
+	}
+	if params.TimeSecsLt != nil {
+		timeSecsLt = *params.TimeSecsLt
+	}
+	if params.DataMbGt != nil {
+		dataMbGt = *params.DataMbGt
+	}
+	if params.DataMbLt != nil {
+		dataMbLt = *params.DataMbLt
+	}
+
+	rows, err := q.GetSessionsFiltered(ctx, coreQueries.GetSessionsFilteredParams{
+		Search:       search,
+		DeviceID:     deviceID,
+		Availability: availability,
+		SessionType:  sessionType,
+		DateStart:    dateStart,
+		DateEnd:      dateEnd,
+		TimeSecsGt:   timeSecsGt,
+		TimeSecsLt:   timeSecsLt,
+		DataMbGt:     dataMbGt,
+		DataMbLt:     dataMbLt,
+		RowLimit:     int64(params.PerPage),
+		RowOffset:    offset,
+	})
+	if err != nil {
+		return sdkapi.ListSessionsResult{}, fmt.Errorf("unable to list sessions: %w", err)
+	}
+
+	count, err := q.GetSessionsFilteredCount(ctx, coreQueries.GetSessionsFilteredCountParams{
+		Search:       search,
+		DeviceID:     deviceID,
+		Availability: availability,
+		SessionType:  sessionType,
+		DateStart:    dateStart,
+		DateEnd:      dateEnd,
+		TimeSecsGt:   timeSecsGt,
+		TimeSecsLt:   timeSecsLt,
+		DataMbGt:     dataMbGt,
+		DataMbLt:     dataMbLt,
+	})
+	if err != nil {
+		return sdkapi.ListSessionsResult{}, fmt.Errorf("unable to count sessions: %w", err)
+	}
+
+	return sdkapi.ListSessionsResult{
+		Sessions: self.wrapManySessions(rows),
+		Count:    count,
+	}, nil
+}
+
+// wrapManySessions wraps multiple session rows into IClientSession objects.
+func (self *SessionsMgrApi) wrapManySessions(rows []coreQueries.Session) []sdkapi.IClientSession {
+	sessions := make([]sdkapi.IClientSession, len(rows))
+	for i, row := range rows {
+		sessions[i] = self.wrapSession(row)
+	}
+	return sessions
+}
+
+// wrapSession wraps a single session row into an IClientSession object.
+func (self *SessionsMgrApi) wrapSession(row coreQueries.Session) sdkapi.IClientSession {
+	var startedAt, resumedAt *time.Time
+	if row.StartedAt.Valid {
+		startedAt = &row.StartedAt.Time
+	}
+	if row.ResumedAt.Valid {
+		resumedAt = &row.ResumedAt.Time
+	}
+
+	var expDays *int
+	if row.ExpDays.Valid {
+		d := int(row.ExpDays.Int64)
+		expDays = &d
+	}
+
+	return self.pluginApi.SessionMgr.NewClientSession(sdkapi.NewClientSessionParams{
+		ID:              row.ID,
+		UUID:            row.Uuid,
+		ProviderPkg:     row.ProviderPkg,
+		DeviceID:        row.DeviceID,
+		SessionType:     sdkapi.SessionType(row.SessionType),
+		TimeSecs:        int(row.TimeSecs),
+		DataMbytes:      row.DataMbytes,
+		ConsumptionSecs: int(row.ConsumptionSecs),
+		ConsumptionMb:   row.ConsumptionMb,
+		StartedAt:       startedAt,
+		ResumedAt:       resumedAt,
+		ExpDays:         expDays,
+		DownMbits:       int(row.DownMbits),
+		UpMbits:         int(row.UpMbits),
+		UseGlobal:       row.UseGlobal,
+		CreatedAt:       row.CreatedAt,
+		UpdatedAt:       row.UpdatedAt,
+	})
 }

@@ -170,7 +170,7 @@ func DeviceHealthCard(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div><!-- Disk Usage --><div><div class=\"d-flex align-items-center justify-content-between mb-2\"><div class=\"d-flex align-items-center gap-2\"><i class=\"bi bi-hdd text-muted\"></i> <span class=\"text-muted small\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div><!-- Disk Usage --><div><div class=\"d-flex align-items-center justify-content-between mb-2\"><div class=\"d-flex align-items-center gap-2\"><i class=\"bi bi-activity text-muted\"></i> <span class=\"text-muted small\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

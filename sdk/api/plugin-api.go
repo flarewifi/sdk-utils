@@ -83,4 +83,7 @@ type IPluginApi interface {
 
 	// Returns an instance of NotificationAPI.
 	Notification() INotificationAPI
+
+	// Returns an instance of the vouchers API.
+	Vouchers() IVouchersApi
 }

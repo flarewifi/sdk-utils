@@ -190,6 +190,101 @@ api.SessionsMgr().OnClientEvent("client:connected", func(clnt IClientDevice) {
 })
 ```
 
+### ListSessions
+
+Returns a paginated list of sessions with optional search and filters. This is useful for building admin interfaces that display and filter sessions.
+
+The `ListSessionsParams` struct contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Search` | `*string` | Search by session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code |
+| `DeviceID` | `*int64` | Filter sessions for a specific device |
+| `Availability` | `*SessionFilterAvailability` | Filter by availability: `"available"`, `"consumed"`, or `"expired"` (nil = all) |
+| `SessionType` | `*SessionType` | Filter by session type: `"time"`, `"data"`, or `"time-or-data"` (nil = all) |
+| `DateStart` | `*time.Time` | Sessions created on or after this date |
+| `DateEnd` | `*time.Time` | Sessions created on or before this date |
+| `TimeSecsGt` | `*int` | Sessions with time_secs greater than this value |
+| `TimeSecsLt` | `*int` | Sessions with time_secs less than this value |
+| `DataMbGt` | `*float64` | Sessions with data_mbytes greater than this value |
+| `DataMbLt` | `*float64` | Sessions with data_mbytes less than this value |
+| `Page` | `int` | Page number (1-indexed) |
+| `PerPage` | `int` | Number of sessions per page |
+
+The `SessionFilterAvailability` constants:
+
+- `SessionFilterAvailable` - Sessions with remaining time/data that are not expired
+- `SessionFilterConsumed` - Sessions that are fully consumed (time/data exhausted)
+- `SessionFilterExpired` - Sessions that have passed their expiration date
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    
+    // List all available sessions, page 1
+    result, err := api.SessionsMgr().ListSessions(ctx, sdkapi.ListSessionsParams{
+        Availability: &sdkapi.SessionFilterAvailable,
+        Page:         1,
+        PerPage:      20,
+    })
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Found %d sessions (total: %d)\n", len(result.Sessions), result.Count)
+    for _, session := range result.Sessions {
+        fmt.Printf("Session %d: %s, remaining time: %d secs\n", 
+            session.ID(), session.Type(), session.RemainingTime())
+    }
+}
+```
+
+**Example: List sessions for a specific device with date filtering**
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    deviceID := int64(123)
+    
+    // Filter sessions created in the last 7 days
+    now := time.Now()
+    weekAgo := now.AddDate(0, 0, -7)
+    
+    result, err := api.SessionsMgr().ListSessions(ctx, sdkapi.ListSessionsParams{
+        DeviceID:  &deviceID,
+        DateStart: &weekAgo,
+        DateEnd:   &now,
+        Page:      1,
+        PerPage:   50,
+    })
+    if err != nil {
+        // handle error
+    }
+    
+    // Process sessions...
+}
+```
+
+**Example: Search sessions by MAC address**
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    searchTerm := "AA:BB:CC"
+    
+    result, err := api.SessionsMgr().ListSessions(ctx, sdkapi.ListSessionsParams{
+        Search:  &searchTerm,
+        Page:    1,
+        PerPage: 20,
+    })
+    if err != nil {
+        // handle error
+    }
+    
+    // Process matching sessions...
+}
+```
+
 ## Updating Sessions
 
 To update a session's time, data, or bandwidth, use the [IClientSession](./client-session.md) setter methods followed by [Save](./client-session.md#save). The `Save()` method automatically applies side effects for running sessions (timer reset, TC rule updates) and emits `EventSessionUpdated`.

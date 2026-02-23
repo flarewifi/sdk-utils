@@ -12,9 +12,10 @@ import (
 	"time"
 )
 
-type PurchaseState struct {
+type PurchasePaymentData struct {
 	PurchaseID      int64   `json:"purchase_id"`
 	TotalPayment    float64 `json:"total_payment"`
+	PaymentProvider string  `json:"payment_provider"`
 	WalletDebit     float64 `json:"wallet_debit"`
 	WalletEndingBal float64 `json:"wallet_ending_bal"`
 	WalletRealBal   float64 `json:"wallet_real_bal"`
@@ -43,8 +44,8 @@ type PurchaseRequest struct {
 
 // CreatePaymentParams holds parameters for creating a payment for a purchase.
 type CreatePaymentParams struct {
-	Amount            float64
-	PaymentOptionUUID string
+	Amount       float64
+	ProviderUUID string
 }
 
 // IPurchaseRequest represents a record in purchases table in the database.
@@ -132,7 +133,7 @@ type IPurchaseRequest interface {
 
 	// Returns the state of the purchase.
 	// The state includes the total accumulated payment for the purchase and other important details.
-	State(ctx context.Context) (PurchaseState, error)
+	State(ctx context.Context) (PurchasePaymentData, error)
 
 	// Executes the webhook for the purchase.
 	// This will make an internal POST request to the webhook route.
@@ -149,4 +150,8 @@ type IPurchaseRequest interface {
 	// Cancel the purchase.
 	// This must be executed in the purchase webhook handler.
 	Cancel(ctx context.Context) error
+
+	// UpdateMetadata updates the metadata associated with the purchase.
+	// This should be called before Confirm() to ensure metadata is available for sync.
+	UpdateMetadata(ctx context.Context, metadata map[string]string) error
 }

@@ -93,16 +93,10 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		coreInfo := api.Info()
 
 		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "Unable to Check Updates"))
-		sysupgradeReady := updates.IsSysupgradeReady()
 		currentVersion, err := semver.NewVersion(coreInfo.Version)
 		if err != nil {
 			log.Println("Error:", err)
-			cfgFallback, _ := config.ReadApplicationConfig()
-			channelFallback2 := "stable"
-			if cfgFallback.Channel != "" {
-				channelFallback2 = cfgFallback.Channel
-			}
-			page := updatesview.SoftwareUpdatesPage(api, channelFallback2, checkUpdateErr, sysupgradeReady)
+			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, checkUpdateErr)
 			page.Render(r.Context(), w)
 			return
 		}
@@ -110,12 +104,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		result, err := updates.CheckSoftwareReleaseUpdate(currentVersion)
 		if err != nil {
 			log.Println("Error:", err)
-			cfg3, _ := config.ReadApplicationConfig()
-			channelFallback := "stable"
-			if cfg3.Channel != "" {
-				channelFallback = cfg3.Channel
-			}
-			page := updatesview.SoftwareUpdatesPage(api, channelFallback, checkUpdateErr, sysupgradeReady)
+			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, checkUpdateErr)
 			page.Render(r.Context(), w)
 			return
 		}

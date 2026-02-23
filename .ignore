@@ -8,3 +8,4 @@
 plugins/installed
 output/
 !hosts.json
+!MACHINE_UID
