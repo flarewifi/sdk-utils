@@ -22,6 +22,9 @@ const (
 	// EventVoucherDeleted is emitted when a voucher is deleted.
 	EventVoucherDeleted VoucherEvent = "voucher:deleted"
 
+	// EventVoucherBatchDeleted is emitted when a voucher batch is deleted.
+	EventVoucherBatchDeleted VoucherEvent = "voucher:batch_deleted"
+
 	// EventVoucherBeforeCreate is called before vouchers are created.
 	// Hooks can modify params or return an error to block creation.
 	EventVoucherBeforeCreate VoucherEvent = "voucher:before_create"

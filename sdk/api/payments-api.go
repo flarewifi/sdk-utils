@@ -7,6 +7,7 @@
 package sdkapi
 
 import (
+	"context"
 	"net/http"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -56,4 +57,9 @@ type IPaymentsApi interface {
 	//   - EventPurchaseFailed: Emitted when purchase.Confirm() or purchase.Execute() fails
 	//   - EventPurchaseCancelled: Emitted after purchase.Cancel() completes
 	OnPurchaseEvent(event PurchaseEvent, callback func(data PurchaseEventData) error)
+
+	// CreatePurchase creates a purchase record programmatically without HTTP checkout flow.
+	// Used for admin-generated purchases like voucher batch sales where no customer device is involved.
+	// DeviceID can be nil for admin purchases.
+	CreatePurchase(ctx context.Context, params CreatePurchaseParams) (IPurchaseRequest, error)
 }

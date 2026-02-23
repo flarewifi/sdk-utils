@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"slices"
 	"sync"
-	"time"
 
 	coreQueries "core/db/queries"
 	sdkapi "sdk/api"
@@ -19,7 +18,7 @@ import (
 var (
 	globalVoucherMu            sync.Mutex
 	globalVoucherHandlers      = make(map[sdkapi.VoucherEvent][]func(sdkapi.IVoucher) error)
-	globalVoucherBatchHandlers = make(map[sdkapi.VoucherEvent][]func([]sdkapi.IVoucher) error)
+	globalVoucherBatchHandlers = make(map[sdkapi.VoucherEvent][]func(sdkapi.IVoucherBatch) error)
 	globalBeforeCreateHandlers []func(context.Context, *sdkapi.CreateVouchersParams) error
 )
 
@@ -37,64 +36,13 @@ type VouchersApi struct {
 	pluginApi *PluginApi
 }
 
-// voucherImpl wraps a coreQueries.Voucher row and implements sdkapi.IVoucher.
-type voucherImpl struct {
-	row       coreQueries.Voucher
-	device    sdkapi.IClientDevice
-	session   sdkapi.IClientSession
-	batchUUID string
-}
-
-func (v *voucherImpl) ID() int64                      { return v.row.ID }
-func (v *voucherImpl) UUID() string                   { return v.row.Uuid }
-func (v *voucherImpl) Code() string                   { return v.row.Code }
-func (v *voucherImpl) ProviderPkg() string            { return v.row.ProviderPkg }
-func (v *voucherImpl) Type() sdkapi.SessionType       { return sdkapi.SessionType(v.row.SessionType) }
-func (v *voucherImpl) TimeSecs() int64                { return v.row.TimeSecs }
-func (v *voucherImpl) DataMb() int64                  { return v.row.DataMb }
-func (v *voucherImpl) DownSpeedMbps() int64           { return v.row.DownSpeedMbps }
-func (v *voucherImpl) UpSpeedMbps() int64             { return v.row.UpSpeedMbps }
-func (v *voucherImpl) Device() sdkapi.IClientDevice   { return v.device }
-func (v *voucherImpl) Session() sdkapi.IClientSession { return v.session }
-func (v *voucherImpl) SessionExpDays() *int {
-	if v.row.SessionExpDays.Valid {
-		days := int(v.row.SessionExpDays.Int64)
-		return &days
-	}
-	return nil
-}
-func (v *voucherImpl) UseGlobal() bool { return v.row.UseGlobal != 0 }
-func (v *voucherImpl) VoucherExpiresOn() *time.Time {
-	if v.row.ExpiresOn.Valid {
-		return &v.row.ExpiresOn.Time
-	}
-	return nil
-}
-func (v *voucherImpl) ActivatedAt() *time.Time {
-	if v.row.ActivatedAt.Valid {
-		return &v.row.ActivatedAt.Time
-	}
-	return nil
-}
-func (v *voucherImpl) CreatedAt() time.Time {
-	if v.row.CreatedAt.Valid {
-		return v.row.CreatedAt.Time
-	}
-	return time.Time{}
-}
-func (v *voucherImpl) BatchUUID() string { return v.batchUUID }
-
-func wrapVoucher(row coreQueries.Voucher) sdkapi.IVoucher {
+// wrapWithRelations wraps a voucher row and eagerly loads device/session for activated vouchers.
+func (self *VouchersApi) wrapWithRelations(ctx context.Context, row coreQueries.Voucher) sdkapi.IVoucher {
 	batchUUID := ""
 	if row.BatchUuid.Valid {
 		batchUUID = row.BatchUuid.String
 	}
-	return &voucherImpl{row: row, batchUUID: batchUUID}
-}
-
-// wrapWithRelations wraps a voucher row and eagerly loads device/session for activated vouchers.
-func (self *VouchersApi) wrapWithRelations(ctx context.Context, row coreQueries.Voucher) sdkapi.IVoucher {
-	v := &voucherImpl{row: row}
+	v := &voucherImpl{row: row, batchUUID: batchUUID}
 	if row.DeviceID.Valid {
 		device, err := self.pluginApi.SessionMgr.FindDeviceByID(ctx, row.DeviceID.Int64)
 		if err == nil {
@@ -137,23 +85,24 @@ func (self *VouchersApi) emitSingle(event sdkapi.VoucherEvent, v sdkapi.IVoucher
 	}
 }
 
-func (self *VouchersApi) emitBatch(event sdkapi.VoucherEvent, vs []sdkapi.IVoucher) {
+func (self *VouchersApi) emitBatch(event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch) {
 	// Use global handlers to ensure cross-plugin event delivery
 	globalVoucherMu.Lock()
 	callbacks := globalVoucherBatchHandlers[event]
-	callbacksCopy := make([]func([]sdkapi.IVoucher) error, len(callbacks))
+	callbacksCopy := make([]func(sdkapi.IVoucherBatch) error, len(callbacks))
 	copy(callbacksCopy, callbacks)
 	globalVoucherMu.Unlock()
 
 	for _, cb := range callbacksCopy {
-		if err := cb(vs); err != nil {
+		if err := cb(batch); err != nil {
 			log.Printf("[VouchersApi] Error in %s batch handler: %v", event, err)
 		}
 	}
 }
 
-// Create generates a batch of vouchers and emits EventVoucherGenerated.
-func (self *VouchersApi) Create(ctx context.Context, params sdkapi.CreateVouchersParams) ([]sdkapi.IVoucher, error) {
+// CreateVouchers creates a batch of vouchers and emits EventVoucherGenerated.
+// Automatically creates a voucher batch record before creating vouchers.
+func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.CreateVouchersParams) ([]sdkapi.IVoucher, error) {
 	// Run before-create hooks (can modify params or return error to block)
 	globalVoucherMu.Lock()
 	handlers := make([]func(context.Context, *sdkapi.CreateVouchersParams) error, len(globalBeforeCreateHandlers))
@@ -179,36 +128,35 @@ func (self *VouchersApi) Create(ctx context.Context, params sdkapi.CreateVoucher
 		upSpeedMbps = 10
 	}
 
-	// Generate batch UUID for all vouchers in this batch
-	batchUUID := generateUUID()
+	// Use provided BatchUUID or generate one
+	batchUUID := params.BatchUUID
+	if batchUUID == "" {
+		batchUUID = generateUUID()
+		params.BatchUUID = batchUUID // Update params so hooks can access it
+	}
 
-	// Create batch record if payment info is provided
-	if params.TotalAmount != nil {
-		totalAmount := sql.NullFloat64{}
-		if params.TotalAmount != nil {
-			totalAmount = sql.NullFloat64{Float64: *params.TotalAmount, Valid: true}
-		}
-		paymentNote := sql.NullString{}
-		if params.PaymentNote != nil {
-			paymentNote = sql.NullString{String: *params.PaymentNote, Valid: true}
-		}
-		_, err := q.CreateVoucherBatch(ctx, coreQueries.CreateVoucherBatchParams{
-			Uuid:        batchUUID,
-			TotalAmount: totalAmount,
-			PaymentNote: paymentNote,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("unable to create voucher batch: %w", err)
-		}
+	// Automatically create a voucher batch record
+	amount := sql.NullFloat64{}
+	if params.Amount != nil {
+		amount = sql.NullFloat64{Float64: *params.Amount, Valid: true}
+	}
+	_, err := q.CreateVoucherBatch(ctx, coreQueries.CreateVoucherBatchParams{
+		Uuid:        batchUUID,
+		Amount:      amount,
+		Metadata:    sql.NullString{},
+		ProviderPkg: self.providerPkg(), // Track which plugin generated this batch
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to create voucher batch: %w", err)
 	}
 
 	var created []sdkapi.IVoucher
 	for i := 0; i < params.Count; i++ {
 		code := generateVoucherCode()
 		uuid := generateVoucherUUID()
-		expiresOn := sql.NullTime{}
-		if params.VoucherExpiresOn != nil {
-			expiresOn = sql.NullTime{Time: *params.VoucherExpiresOn, Valid: true}
+		expiresAt := sql.NullTime{}
+		if params.ExpiresAt != nil {
+			expiresAt = sql.NullTime{Time: *params.ExpiresAt, Valid: true}
 		}
 		sessionExpDays := sql.NullInt64{}
 		if params.SessionExpDays != nil {
@@ -230,7 +178,7 @@ func (self *VouchersApi) Create(ctx context.Context, params sdkapi.CreateVoucher
 			UpSpeedMbps:    upSpeedMbps,
 			SessionExpDays: sessionExpDays,
 			UseGlobal:      useGlobal,
-			ExpiresOn:      expiresOn,
+			ExpiresAt:      expiresAt,
 			BatchUuid:      batchUUIDParam,
 		})
 		if err != nil {
@@ -240,36 +188,41 @@ func (self *VouchersApi) Create(ctx context.Context, params sdkapi.CreateVoucher
 	}
 
 	if len(created) > 0 {
-		self.emitBatch(sdkapi.EventVoucherGenerated, created)
+		// Fetch the batch to emit the event
+		batch, err := self.FindBatchByUUID(ctx, batchUUID)
+		if err == nil {
+			self.emitBatch(sdkapi.EventVoucherGenerated, batch)
+		}
 	}
 
 	return created, nil
 }
 
-// FindVoucherBatch retrieves batch metadata by UUID.
-func (self *VouchersApi) FindVoucherBatch(ctx context.Context, uuid string) (*sdkapi.VoucherBatch, error) {
+// GetVouchersByBatchUUID returns vouchers with the given batch UUID with pagination.
+func (self *VouchersApi) GetVouchersByBatchUUID(ctx context.Context, batchUUID string, page int, perPage int) ([]sdkapi.IVoucher, error) {
 	q := coreQueries.New(self.pluginApi.db.DB)
-	row, err := q.FindVoucherBatchByUUID(ctx, uuid)
+	offset := int64(perPage * (page - 1))
+	batchUuidParam := sql.NullString{String: batchUUID, Valid: true}
+	rows, err := q.GetVouchersByBatchUUID(ctx, coreQueries.GetVouchersByBatchUUIDParams{
+		BatchUuid: batchUuidParam,
+		RowLimit:  int64(perPage),
+		RowOffset: offset,
+	})
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("unable to find voucher batch: %w", err)
+		return nil, fmt.Errorf("unable to get vouchers by batch: %w", err)
 	}
+	return self.wrapManyWithRelations(ctx, rows), nil
+}
 
-	batch := &sdkapi.VoucherBatch{
-		ID:        row.ID,
-		UUID:      row.Uuid,
-		CreatedAt: row.CreatedAt.Time,
+// GetVouchersByBatchUUIDCount returns the count of vouchers with the given batch UUID.
+func (self *VouchersApi) GetVouchersByBatchUUIDCount(ctx context.Context, batchUUID string) (int64, error) {
+	q := coreQueries.New(self.pluginApi.db.DB)
+	batchUuidParam := sql.NullString{String: batchUUID, Valid: true}
+	count, err := q.GetVouchersByBatchUUIDCount(ctx, batchUuidParam)
+	if err != nil {
+		return 0, fmt.Errorf("unable to count vouchers by batch: %w", err)
 	}
-	if row.TotalAmount.Valid {
-		batch.TotalAmount = &row.TotalAmount.Float64
-	}
-	if row.PaymentNote.Valid {
-		batch.PaymentNote = &row.PaymentNote.String
-	}
-
-	return batch, nil
+	return count, nil
 }
 
 // FindByCode finds an available voucher by code, scoped to this plugin.
@@ -378,9 +331,9 @@ func (self *VouchersApi) Count(ctx context.Context) (int64, error) {
 // Update changes a voucher's session type, time, data, and speed settings, and emits EventVoucherUpdated.
 func (self *VouchersApi) Update(ctx context.Context, params sdkapi.UpdateVoucherParams) (sdkapi.IVoucher, error) {
 	q := coreQueries.New(self.pluginApi.db.DB)
-	expiresOn := sql.NullTime{}
-	if params.VoucherExpiresOn != nil {
-		expiresOn = sql.NullTime{Time: *params.VoucherExpiresOn, Valid: true}
+	expiresAt := sql.NullTime{}
+	if params.ExpiresAt != nil {
+		expiresAt = sql.NullTime{Time: *params.ExpiresAt, Valid: true}
 	}
 	sessionExpDays := sql.NullInt64{}
 	if params.SessionExpDays != nil {
@@ -398,7 +351,7 @@ func (self *VouchersApi) Update(ctx context.Context, params sdkapi.UpdateVoucher
 		UpSpeedMbps:    params.UpSpeedMbps,
 		SessionExpDays: sessionExpDays,
 		UseGlobal:      useGlobal,
-		ExpiresOn:      expiresOn,
+		ExpiresAt:      expiresAt,
 		ID:             params.ID,
 	})
 	if err != nil {
@@ -572,7 +525,7 @@ func (self *VouchersApi) OnVoucherEvent(event sdkapi.VoucherEvent, callback func
 
 // OnVoucherBatchEvent registers a callback for a batch voucher event (Generated).
 // Handlers are registered globally to allow cross-plugin event delivery.
-func (self *VouchersApi) OnVoucherBatchEvent(event sdkapi.VoucherEvent, callback func([]sdkapi.IVoucher) error) {
+func (self *VouchersApi) OnVoucherBatchEvent(event sdkapi.VoucherEvent, callback func(sdkapi.IVoucherBatch) error) {
 	globalVoucherMu.Lock()
 	defer globalVoucherMu.Unlock()
 	globalVoucherBatchHandlers[event] = append(globalVoucherBatchHandlers[event], callback)
@@ -586,6 +539,155 @@ func (self *VouchersApi) OnBeforeCreate(callback func(context.Context, *sdkapi.C
 	globalVoucherMu.Lock()
 	defer globalVoucherMu.Unlock()
 	globalBeforeCreateHandlers = append(globalBeforeCreateHandlers, callback)
+}
+
+// FindBatchByUUID finds a voucher batch by its UUID.
+func (self *VouchersApi) FindBatchByUUID(ctx context.Context, batchUUID string) (sdkapi.IVoucherBatch, error) {
+	q := coreQueries.New(self.pluginApi.db.DB)
+	row, err := q.FindVoucherBatchByUUID(ctx, batchUUID)
+	if err != nil {
+		return nil, fmt.Errorf("voucher batch not found: %w", err)
+	}
+	return self.wrapBatch(row), nil
+}
+
+// FindBatchByCode finds a voucher batch that contains a voucher with the given code.
+func (self *VouchersApi) FindBatchByCode(ctx context.Context, code string) (sdkapi.IVoucherBatch, error) {
+	q := coreQueries.New(self.pluginApi.db.DB)
+	row, err := q.FindVoucherBatchByCode(ctx, code)
+	if err != nil {
+		return nil, fmt.Errorf("voucher batch not found for code: %w", err)
+	}
+	return self.wrapBatch(row), nil
+}
+
+// UpdateBatch updates a voucher batch's amount and metadata.
+func (self *VouchersApi) UpdateBatch(ctx context.Context, params sdkapi.UpdateVoucherBatchParams) (sdkapi.IVoucherBatch, error) {
+	q := coreQueries.New(self.pluginApi.db.DB)
+
+	amount := sql.NullFloat64{}
+	if params.Amount != nil {
+		amount = sql.NullFloat64{Float64: *params.Amount, Valid: true}
+	}
+
+	metadata := sql.NullString{}
+	if params.Metadata != "" {
+		metadata = sql.NullString{String: params.Metadata, Valid: true}
+	}
+
+	err := q.UpdateVoucherBatch(ctx, coreQueries.UpdateVoucherBatchParams{
+		Uuid:     params.UUID,
+		Amount:   amount,
+		Metadata: metadata,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to update voucher batch: %w", err)
+	}
+
+	return self.FindBatchByUUID(ctx, params.UUID)
+}
+
+// ListBatches returns a paginated list of voucher batches.
+func (self *VouchersApi) ListBatches(ctx context.Context, params sdkapi.ListVoucherBatchesParams) (sdkapi.ListVoucherBatchesResult, error) {
+	q := coreQueries.New(self.pluginApi.db.DB)
+	offset := int64(params.PerPage * (params.Page - 1))
+
+	rows, err := q.GetAllVoucherBatches(ctx, coreQueries.GetAllVoucherBatchesParams{
+		RowLimit:  int64(params.PerPage),
+		RowOffset: offset,
+	})
+	if err != nil {
+		return sdkapi.ListVoucherBatchesResult{}, fmt.Errorf("unable to list voucher batches: %w", err)
+	}
+
+	count, err := q.GetAllVoucherBatchesCount(ctx)
+	if err != nil {
+		return sdkapi.ListVoucherBatchesResult{}, fmt.Errorf("unable to count voucher batches: %w", err)
+	}
+
+	return sdkapi.ListVoucherBatchesResult{
+		Batches: self.wrapManyBatches(rows),
+		Count:   count,
+	}, nil
+}
+
+// CountVouchers returns the total count of vouchers matching the filter criteria.
+func (self *VouchersApi) CountVouchers(ctx context.Context, params sdkapi.ListVouchersParams) (int64, error) {
+	q := coreQueries.New(self.pluginApi.db.DB)
+
+	// Use filtered count if any filters are provided
+	if params.Search != nil || params.IsActivated != nil {
+		// Prepare search parameter
+		var search interface{}
+		if params.Search != nil && *params.Search != "" {
+			search = *params.Search
+		}
+
+		// Prepare isActivated parameter (convert *bool to int 0/1 or nil)
+		var isActivated interface{}
+		if params.IsActivated != nil {
+			if *params.IsActivated {
+				isActivated = 1
+			} else {
+				isActivated = 0
+			}
+		}
+
+		count, err := q.GetVouchersFilteredCount(ctx, coreQueries.GetVouchersFilteredCountParams{
+			ProviderPkg: self.providerPkg(),
+			Search:      search,
+			IsActivated: isActivated,
+		})
+		if err != nil {
+			return 0, fmt.Errorf("unable to count vouchers: %w", err)
+		}
+		return count, nil
+	}
+
+	// Use unfiltered count for backward compatibility
+	count, err := q.GetAllVouchersCount(ctx, self.providerPkg())
+	if err != nil {
+		return 0, fmt.Errorf("unable to count vouchers: %w", err)
+	}
+	return count, nil
+}
+
+// CountBatches returns the total count of voucher batches matching the filter criteria.
+func (self *VouchersApi) CountBatches(ctx context.Context, params sdkapi.ListVoucherBatchesParams) (int64, error) {
+	q := coreQueries.New(self.pluginApi.db.DB)
+
+	count, err := q.GetAllVoucherBatchesCount(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("unable to count voucher batches: %w", err)
+	}
+	return count, nil
+}
+
+// DeleteBatch removes a voucher batch and all its vouchers by UUID.
+// Emits EventVoucherBatchDeleted with the deleted batch.
+func (self *VouchersApi) DeleteBatch(ctx context.Context, batchUUID string) error {
+	q := coreQueries.New(self.pluginApi.db.DB)
+
+	// Find the batch first to emit event with batch data
+	batch, err := self.FindBatchByUUID(ctx, batchUUID)
+	if err != nil {
+		return fmt.Errorf("unable to find voucher batch: %w", err)
+	}
+
+	// Delete all vouchers in the batch first
+	if err := q.DeleteVouchersByBatchUUID(ctx, sql.NullString{String: batchUUID, Valid: true}); err != nil {
+		return fmt.Errorf("unable to delete vouchers in batch: %w", err)
+	}
+
+	// Delete the batch record
+	if err := q.DeleteVoucherBatchByUUID(ctx, batchUUID); err != nil {
+		return fmt.Errorf("unable to delete voucher batch: %w", err)
+	}
+
+	// Emit batch deleted event
+	self.emitBatch(sdkapi.EventVoucherBatchDeleted, batch)
+
+	return nil
 }
 
 // generateVoucherCode generates a random 6-character voucher code avoiding confusable characters.

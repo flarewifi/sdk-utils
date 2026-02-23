@@ -1,4 +1,5 @@
 -- name: CreatePurchase :one
+-- device_id can be NULL for admin-generated purchases (e.g., voucher batch sales)
 INSERT INTO purchases (uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url, payment_note)
     VALUES (@uuid, @device_id, @sku, @name, @description, @price, @any_price, @callback_plugin, @callback_route, @webhook_route, @metadata, @processing, @payment_url, @payment_note)
 RETURNING

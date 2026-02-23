@@ -3,6 +3,7 @@
 !data/config
 !data/openwrt-files
 !data/config
+!data/db/
 .tmp/
 .bin/
 plugins/installed

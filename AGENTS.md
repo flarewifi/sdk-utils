@@ -104,6 +104,22 @@ plugins/system/          # System plugins
 - Plugin migrations: `data/plugins/local/{plugin}/resources/migrations/`
 - Plugin tables only (foreign keys to core, never alter core tables)
 
+### MCP SQLite Access
+
+The `mcp-sqlite` MCP server provides direct database access to `./data/db/database.sqlite` (flarehotspot db).
+
+**Available Tools:**
+- `db_info` - Get database information
+- `list_tables` - List all tables
+- `get_table_schema` - Get table schema (params: `tableName`)
+- `read_records` - Query records (params: `table`, `conditions?`, `limit?`, `offset?`)
+- `create_record` - Insert record (params: `table`, `data`)
+- `update_records` - Update records (params: `table`, `data`, `conditions`)
+- `delete_records` - Delete records (params: `table`, `conditions`)
+- `query` - Execute custom SQL (params: `sql`, `values?`)
+
+**Usage:** Use these tools to inspect database state, debug issues, or verify data integrity during development.
+
 ## Translations & Internationalization
 
 **ALL user-facing text must use translations API**

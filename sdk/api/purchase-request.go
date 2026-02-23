@@ -48,6 +48,17 @@ type CreatePaymentParams struct {
 	ProviderUUID string
 }
 
+// CreatePurchaseParams holds parameters for creating a purchase programmatically.
+// Used for admin-generated purchases where no customer device is involved.
+type CreatePurchaseParams struct {
+	DeviceID    *int64            // Optional - nil for admin purchases (e.g., voucher batch sales)
+	Sku         string            // SKU identifier for the purchase
+	Name        string            // Display name of the purchase
+	Description string            // Description of the purchase
+	Price       float64           // Price of the purchase
+	Metadata    map[string]string // Additional metadata
+}
+
 // IPurchaseRequest represents a record in purchases table in the database.
 type IPurchaseRequest interface {
 	// Returns the database ID of the purchase request.
