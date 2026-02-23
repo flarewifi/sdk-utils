@@ -63,7 +63,7 @@ func (self *LogModel) Clear(ctx context.Context) error {
 	}
 
 	// Reclaim disk space immediately after clearing logs
-	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+	_ = self.models.Vacuum(ctx)
 
 	return nil
 }
@@ -88,7 +88,7 @@ func (self *LogModel) DeleteOlderThan(ctx context.Context, days int) error {
 	}
 
 	// Reclaim disk space after deletion
-	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+	_ = self.models.Vacuum(ctx)
 
 	return nil
 }

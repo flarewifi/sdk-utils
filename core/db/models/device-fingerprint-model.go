@@ -88,5 +88,13 @@ func (self *DeviceFingerprintModel) UpdateLastSeen(ctx context.Context, id int64
 
 // DeleteOldFingerprints removes fingerprints older than 6 months
 func (self *DeviceFingerprintModel) DeleteOldFingerprints(ctx context.Context) error {
-	return self.db.Queries.DeleteOldFingerprints(ctx)
+	err := self.db.Queries.DeleteOldFingerprints(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Reclaim disk space after deletion
+	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+
+	return nil
 }

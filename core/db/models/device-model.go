@@ -321,5 +321,9 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 	}
 
 	log.Printf("[DeviceModel.MergeDevices] SUCCESS: Merged device %d into device %d", sourceDeviceID, targetDeviceID)
+
+	// Reclaim disk space after merge (deletes device, wallet, transfers data)
+	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+
 	return nil
 }
