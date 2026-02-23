@@ -49,7 +49,10 @@ func newSQLiteDatabase(dbpath string) *Database {
 			}
 		}
 
-		dburl := fmt.Sprintf("file:%s?_busy_timeout=5000&_journal_mode=WAL&_loc=UTC", dbpath)
+		// Use DELETE journal mode instead of WAL for NAND flash longevity
+		// WAL mode increases write amplification which accelerates NAND wear
+		// DELETE mode is simpler, more predictable, and better for embedded devices
+		dburl := fmt.Sprintf("file:%s?_busy_timeout=10000&_journal_mode=DELETE&_loc=UTC", dbpath)
 		sqlDB, err := sql.Open(SqliteDriverName, dburl)
 		if err != nil {
 			log.Println("Error opening SQLite DB:", err)
@@ -58,8 +61,14 @@ func newSQLiteDatabase(dbpath string) *Database {
 		}
 
 		sqlDB.SetConnMaxLifetime(0)
-		sqlDB.SetMaxOpenConns(1)
-		sqlDB.SetMaxIdleConns(1)
+		// Increase connection pool to handle concurrent operations:
+		// - Session traffic updates (every 5s)
+		// - Periodic session saves (every 1min per session)
+		// - HTTP request handlers (vouchers, payments, admin)
+		// - Cloud sync operations (event-driven)
+		// - Background jobs (log cleanup, etc)
+		sqlDB.SetMaxOpenConns(5) // Allow up to 5 concurrent database operations
+		sqlDB.SetMaxIdleConns(2) // Keep 2 connections ready for immediate reuse
 
 		for retries := 0; retries < 5; retries++ {
 			if err = sqlDB.PingContext(context.Background()); err == nil {

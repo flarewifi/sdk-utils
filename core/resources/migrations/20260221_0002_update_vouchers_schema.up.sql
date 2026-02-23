@@ -7,7 +7,7 @@ CREATE TABLE vouchers_new (
     data_mb INT NOT NULL DEFAULT 0,
     down_speed_mbps INT NOT NULL DEFAULT 0,
     up_speed_mbps INT NOT NULL DEFAULT 0,
-    expires_on TIMESTAMP,
+    expires_at TIMESTAMP,
     session_id INTEGER REFERENCES sessions(id) ON DELETE SET NULL,
     device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL,
     activated_at TIMESTAMP,

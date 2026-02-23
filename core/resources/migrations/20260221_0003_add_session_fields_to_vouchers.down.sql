@@ -9,15 +9,15 @@ CREATE TABLE vouchers_backup (
     data_mb INT NOT NULL DEFAULT 0,
     down_speed_mbps INT NOT NULL DEFAULT 0,
     up_speed_mbps INT NOT NULL DEFAULT 0,
-    expires_on TIMESTAMP,
+    expires_at TIMESTAMP,
     session_id INTEGER REFERENCES sessions(id) ON DELETE SET NULL,
     device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL,
     activated_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO vouchers_backup (id, code, provider_pkg, session_type, time_secs, data_mb, down_speed_mbps, up_speed_mbps, expires_on, session_id, device_id, activated_at, created_at)
-SELECT id, code, provider_pkg, session_type, time_secs, data_mb, down_speed_mbps, up_speed_mbps, expires_on, session_id, device_id, activated_at, created_at
+INSERT INTO vouchers_backup (id, code, provider_pkg, session_type, time_secs, data_mb, down_speed_mbps, up_speed_mbps, expires_at, session_id, device_id, activated_at, created_at)
+SELECT id, code, provider_pkg, session_type, time_secs, data_mb, down_speed_mbps, up_speed_mbps, expires_at, session_id, device_id, activated_at, created_at
 FROM vouchers;
 
 DROP TABLE vouchers;
