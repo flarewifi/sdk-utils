@@ -53,12 +53,18 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		isDownloading := updates.IsDownloading()
 		isDownloaded := updates.IsDownloaded()
+		sysupgradeReady := updates.IsSysupgradeReady()
+
 		if isDownloaded {
 			res.Redirect(w, r, "admin:updates:download-done")
 			return
 		}
 		if isDownloading {
 			res.Redirect(w, r, "admin:updates:download")
+			return
+		}
+		if sysupgradeReady {
+			res.Redirect(w, r, "admin:updates:sysupgrade-success")
 			return
 		}
 
@@ -69,8 +75,13 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		newUpdate.Store(&updates.SoftwareReleaseUpdate{HasUpdate: false})
-		sysupgradeReady := updates.IsSysupgradeReady()
-		page := updatesview.SoftwareUpdatesPage(api, channel, nil, sysupgradeReady)
+		uploadUrl := api.HttpAPI.Helpers().UrlForRoute("admin:updates:sysupgrade-upload")
+		csrfHTML := api.HttpAPI.Helpers().CsrfHtmlTag(r)
+		maxSizeMB := updates.GetMaxFileSizeMB()
+		allowedExts := updates.GetAllowedExtensions()
+		coreInfo := api.Info()
+		currentVersion := coreInfo.Version
+		page := updatesview.SoftwareUpdatesPage(api, channel, nil, false, uploadUrl, csrfHTML, maxSizeMB, allowedExts, currentVersion)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
@@ -242,29 +253,6 @@ func DownloadDoneCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-func SysupgradePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		api := g.CoreAPI
-		res := api.HttpAPI.Response()
-
-		// If already downloaded, redirect to download-done page
-		if updates.IsDownloaded() {
-			res.Redirect(w, r, "admin:updates:download-done")
-			return
-		}
-
-		uploadUrl := api.HttpAPI.Helpers().UrlForRoute("admin:updates:sysupgrade-upload")
-		csrfHTML := api.HttpAPI.Helpers().CsrfHtmlTag(r)
-		maxSizeMB := updates.GetMaxFileSizeMB()
-		allowedExts := updates.GetAllowedExtensions()
-
-		page := updatesview.SysupgradePage(api, uploadUrl, csrfHTML, maxSizeMB, allowedExts)
-		res.AdminView(w, r, sdkapi.ViewPage{
-			PageContent: page,
-		})
-	}
-}
-
 func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
@@ -275,7 +263,7 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			log.Println("Error parsing multipart form:", err)
 			errMsg := api.Translate("error", "Failed to parse upload form")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin:updates:sysupgrade")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
@@ -285,7 +273,7 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			log.Println("Error getting form file:", err)
 			errMsg := api.Translate("error", "No file uploaded")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin:updates:sysupgrade")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 		defer file.Close()
@@ -303,7 +291,7 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				errMsg = api.Translate("error", "File validation failed")
 			}
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin:updates:sysupgrade")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
@@ -312,7 +300,7 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			log.Println("Error saving sysupgrade file:", err)
 			errMsg := api.Translate("error", "Failed to save firmware file")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin:updates:sysupgrade")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
@@ -329,7 +317,7 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				errMsg = api.Translate("error", "Firmware validation failed")
 			}
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin:updates:sysupgrade")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
@@ -351,9 +339,9 @@ func SysupgradeSuccessPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Check if sysupgrade file exists, if not redirect to upload page
+		// Check if sysupgrade file exists, if not redirect to main updates page
 		if !updates.IsSysupgradeReady() {
-			res.Redirect(w, r, "admin:updates:sysupgrade")
+			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
