@@ -4,6 +4,7 @@ import (
 	"context"
 	"core/db"
 	"core/db/queries"
+	"strconv"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -54,8 +55,42 @@ func (self *LogModel) Create(ctx context.Context, params CreateLogParams) error 
 }
 
 func (self *LogModel) Clear(ctx context.Context) error {
+	// Use TRUNCATE-style approach for faster clearing
+	// For SQLite, DELETE is the only option but we can optimize with VACUUM
 	_, err := self.db.DB.ExecContext(ctx, "DELETE FROM logs")
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Reclaim disk space immediately after clearing logs
+	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+
+	return nil
+}
+
+// CountOlderThan returns the count of logs older than the specified number of days
+func (self *LogModel) CountOlderThan(ctx context.Context, days int) (int64, error) {
+	daysStr := sdkutils.StrToNullString(strconv.Itoa(days))
+	return self.db.Queries.CountLogsOlderThan(ctx, daysStr)
+}
+
+// CountAll returns the total count of all logs
+func (self *LogModel) CountAll(ctx context.Context) (int64, error) {
+	return self.db.Queries.CountAllLogs(ctx)
+}
+
+// DeleteOlderThan deletes logs older than the specified number of days
+func (self *LogModel) DeleteOlderThan(ctx context.Context, days int) error {
+	daysStr := sdkutils.StrToNullString(strconv.Itoa(days))
+	err := self.db.Queries.DeleteLogsOlderThan(ctx, daysStr)
+	if err != nil {
+		return err
+	}
+
+	// Reclaim disk space after deletion
+	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+
+	return nil
 }
 
 // Paginate is implemented in database-specific files:

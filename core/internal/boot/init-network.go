@@ -1,7 +1,6 @@
 package boot
 
 import (
-	"fmt"
 	"log"
 
 	"core/internal/modules/nftables"
@@ -10,8 +9,6 @@ import (
 )
 
 func InitNetwork() (err error) {
-	fmt.Println("Initializing network...")
-
 	err = nftables.Setup()
 	if err != nil {
 		log.Println(err)

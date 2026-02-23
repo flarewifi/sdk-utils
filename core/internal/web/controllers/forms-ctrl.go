@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 
 func DeleteFileCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("accessing?")
 		res := g.CoreAPI.HttpAPI.Response()
 
 		filePath := r.URL.Query().Get("filepath")

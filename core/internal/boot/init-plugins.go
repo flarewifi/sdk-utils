@@ -41,13 +41,9 @@ func InitPlugins(g *api.CoreGlobals) {
 
 	// Load plugins
 	pluginDirs := plugins.InstalledPluginDirs()
-	log.Println("Installed plugin directories:", pluginDirs)
 	for _, dir := range pluginDirs {
-		log.Println("Loading plugin from :", dir)
 		info, err := sdkutils.GetPluginInfoFromPath(dir)
 		if err != nil {
-			fmt.Println("Error getting plugin info: ", err)
-			fmt.Println("Plugin not loaded: ", dir)
 
 			pkg := filepath.Base(dir)
 			if err := LoadFromBackup(g, pkg); err != nil {
@@ -70,8 +66,6 @@ func InitPlugins(g *api.CoreGlobals) {
 			if err := LoadFromBackup(g, info.Package); err != nil {
 				g.CoreAPI.Logger().Error(fmt.Sprintf("Error loading from backup: %v", err))
 			}
-
-			fmt.Println(dir, " plugin not loaded: ", err)
 		}
 
 		migdir := filepath.Join(dir, "resources/migrations")

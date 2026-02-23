@@ -40,8 +40,6 @@ func newSQLiteDatabase(dbpath string) *Database {
 		db.mu.Lock()
 		defer db.mu.Unlock()
 
-		fmt.Println("Using SQLite DB at path:", dbpath)
-
 		if !sdkutils.FsExists(dbpath) {
 			if err := sdkutils.FsEnsureDir(filepath.Dir(dbpath)); err != nil {
 				panic("Failed to create directories for SQLite DB: " + err.Error())
