@@ -12,9 +12,9 @@ vouchersApi := api.Vouchers()
 
 ## IVouchersApi Methods
 
-### Create
+### CreateVouchers
 
-Generates a batch of vouchers and returns them. Emits `EventVoucherGenerated` with the created vouchers.
+Generates a batch of vouchers and returns them. Emits `EventVoucherGenerated` with the created voucher batch.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -31,7 +31,7 @@ func (w http.ResponseWriter, r *http.Request) {
         UseGlobal:      false,    // Use per-user bandwidth
     }
     
-    vouchers, err := api.Vouchers().Create(r.Context(), params)
+    vouchers, err := api.Vouchers().CreateVouchers(r.Context(), params)
     if err != nil {
         // handle error
     }
@@ -80,7 +80,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### List
 
-Returns a paginated list of vouchers for this plugin.
+Returns a paginated list of vouchers for this plugin. Filters vouchers by code, provider package, or device MAC address.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -121,6 +121,26 @@ func (w http.ResponseWriter, r *http.Request) {
     }
     
     // Process matching vouchers...
+}
+```
+
+### CountVouchers
+
+Returns the total count of vouchers matching the filter criteria.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    
+    count, err := api.Vouchers().CountVouchers(ctx, sdkapi.ListVouchersParams{
+        Page:    1,
+        PerPage: 20,
+    })
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Total vouchers: %d\n", count)
 }
 ```
 
@@ -236,25 +256,154 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### FindVoucherBatch
+### GetVouchersByBatchUUIDCount
 
-Retrieves batch metadata by UUID. Returns `nil` if batch not found.
+Returns the count of vouchers with the given batch UUID.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
     batchUUID := "550e8400-e29b-41d4-a716-446655440000"
     
-    batch, err := api.Vouchers().FindVoucherBatch(r.Context(), batchUUID)
+    count, err := api.Vouchers().GetVouchersByBatchUUIDCount(r.Context(), batchUUID)
     if err != nil {
         // handle error
     }
     
-    if batch != nil {
-        fmt.Printf("Batch created at: %s\n", batch.CreatedAt)
-        if batch.TotalAmount != nil {
-            fmt.Printf("Total amount: %.2f\n", *batch.TotalAmount)
-        }
+    fmt.Printf("Vouchers in batch: %d\n", count)
+}
+```
+
+### FindBatchByUUID
+
+Finds a voucher batch by its UUID.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    batchUUID := "550e8400-e29b-41d4-a716-446655440000"
+    
+    batch, err := api.Vouchers().FindBatchByUUID(r.Context(), batchUUID)
+    if err != nil {
+        // handle error
     }
+    
+    fmt.Printf("Batch created at: %s\n", batch.CreatedAt())
+    if batch.Amount() != nil {
+        fmt.Printf("Total amount: %.2f\n", *batch.Amount())
+    }
+}
+```
+
+### FindBatchByCode
+
+Finds a batch that contains a voucher with the given code.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    code := "ABC123XYZ"
+    
+    batch, err := api.Vouchers().FindBatchByCode(r.Context(), code)
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Batch UUID: %s\n", batch.UUID())
+    fmt.Printf("Vouchers in batch: %d\n", batch.VouchersCount())
+}
+```
+
+### UpdateBatch
+
+Updates a voucher batch's amount and metadata.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    amount := 150.00
+    metadata := `{"order_id": "12345", "customer": "John Doe"}`
+    
+    batch, err := api.Vouchers().UpdateBatch(r.Context(), sdkapi.UpdateVoucherBatchParams{
+        UUID:     "550e8400-e29b-41d4-a716-446655440000",
+        Amount:   &amount,
+        Metadata: metadata,
+    })
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Updated batch: %s\n", batch.UUID())
+}
+```
+
+### ListBatches
+
+Returns a paginated list of voucher batches.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    
+    result, err := api.Vouchers().ListBatches(ctx, sdkapi.ListVoucherBatchesParams{
+        Page:    1,
+        PerPage: 10,
+    })
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Found %d batches (total: %d)\n", len(result.Batches), result.Count)
+}
+```
+
+**Example: Search batches**
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    searchTerm := "12345"
+    
+    result, err := api.Vouchers().ListBatches(ctx, sdkapi.ListVoucherBatchesParams{
+        Search:  &searchTerm,
+        Page:    1,
+        PerPage: 10,
+    })
+    if err != nil {
+        // handle error
+    }
+    
+    // Process matching batches...
+}
+```
+
+### CountBatches
+
+Returns the total count of voucher batches matching the filter criteria.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    
+    count, err := api.Vouchers().CountBatches(ctx, sdkapi.ListVoucherBatchesParams{})
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Total batches: %d\n", count)
+}
+```
+
+### DeleteBatch
+
+Removes a voucher batch and all its vouchers by UUID. Emits `EventVoucherBatchDeleted` with the deleted batch.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    batchUUID := "550e8400-e29b-41d4-a716-446655440000"
+    
+    err := api.Vouchers().DeleteBatch(r.Context(), batchUUID)
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Deleted batch: %s\n", batchUUID)
 }
 ```
 
@@ -276,14 +425,11 @@ api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherDeleted, func(voucher sdkapi.IV
 
 ### OnVoucherBatchEvent
 
-Registers a callback to be called when vouchers are generated as a batch.
+Registers a callback to be called when voucher batch events occur.
 
 ```go
-api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(vouchers []sdkapi.IVoucher) error {
-    api.Logger().Info("Generated %d vouchers", len(vouchers))
-    for _, v := range vouchers {
-        fmt.Printf("Code: %s\n", v.Code())
-    }
+api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(batch sdkapi.IVoucherBatch) error {
+    api.Logger().Info("Generated batch %s with %d vouchers", batch.UUID(), batch.VouchersCount())
     return nil
 })
 ```
@@ -320,6 +466,7 @@ The `IVoucher` interface represents a single voucher record.
 |--------|-------------|-------------|
 | `ID()` | `int64` | Database ID |
 | `UUID()` | `string` | Globally unique identifier |
+| `BatchUUID()` | `string` | UUID grouping vouchers created together |
 | `Code()` | `string` | Voucher code for activation |
 | `ProviderPkg()` | `string` | Plugin package that generated the voucher |
 | `Type()` | `SessionType` | Session type: `"time"`, `"data"`, or `"time-or-data"` |
@@ -331,10 +478,25 @@ The `IVoucher` interface represents a single voucher record.
 | `UseGlobal()` | `bool` | `true` = use global bandwidth, `false` = per-user |
 | `Session()` | `IClientSession` | Associated session (only for activated vouchers) |
 | `Device()` | `IClientDevice` | Associated device (only for activated vouchers) |
-| `VoucherExpiresOn()` | `*time.Time` | When the voucher expires (`nil` = never) |
+| `ExpiresAt()` | `*time.Time` | When the voucher expires (`nil` = never) |
 | `ActivatedAt()` | `*time.Time` | When the voucher was activated (`nil` = not activated) |
 | `CreatedAt()` | `time.Time` | When the voucher was created |
-| `BatchUUID()` | `string` | UUID grouping vouchers created together |
+
+### IVoucherBatch
+
+The `IVoucherBatch` interface represents a batch of vouchers with metadata.
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `ID()` | `int64` | Database ID |
+| `UUID()` | `string` | Globally unique identifier for the batch |
+| `Amount()` | `*float64` | Optional amount associated with the batch (e.g., paid vouchers) |
+| `Metadata()` | `string` | JSON metadata string for custom data |
+| `ProviderPkg()` | `string` | Plugin package that created this batch |
+| `Vouchers()` | `([]IVoucher, error)` | Get paginated vouchers in the batch (with search support) |
+| `VouchersCount()` | `int64` | Total count of vouchers in the batch |
+| `CreatedAt()` | `time.Time` | When the batch was created |
+| `UpdatedAt()` | `time.Time` | When the batch was last updated |
 
 ### CreateVouchersParams
 
@@ -342,17 +504,17 @@ Parameters for creating a batch of vouchers:
 
 ```go
 type CreateVouchersParams struct {
-    Count            int        // Number of vouchers to create
-    Type             SessionType // "time", "data", or "time-or-data"
-    TimeSecs         int64      // Session duration in seconds
-    DataMb           int64      // Data allowance in megabytes
-    DownSpeedMbps    int64      // Download speed (default 10 Mbps if 0)
-    UpSpeedMbps      int64      // Upload speed (default 10 Mbps if 0)
-    SessionExpDays   *int       // Days until session expires (nil = never)
-    UseGlobal        bool       // Use global bandwidth (default: false)
-    VoucherExpiresOn *time.Time // When voucher itself expires (nil = never)
-    TotalAmount      *float64   // Optional amount for paid vouchers
-    PaymentNote      *string    // Optional payment note
+    Count          int        // Number of vouchers to create
+    Type           SessionType // "time", "data", or "time-or-data"
+    TimeSecs       int64      // Session duration in seconds
+    DataMb         int64      // Data allowance in megabytes
+    DownSpeedMbps  int64      // Download speed (default 10 Mbps if 0)
+    UpSpeedMbps    int64      // Upload speed (default 10 Mbps if 0)
+    SessionExpDays *int       // Days until session expires (nil = never)
+    UseGlobal      bool       // Use global bandwidth (default: false)
+    ExpiresAt      *time.Time // When voucher itself expires (nil = never)
+    BatchUUID      string     // Optional - if empty, a UUID will be generated
+    Amount         *float64   // Optional amount for the voucher batch
 }
 ```
 
@@ -362,15 +524,15 @@ Parameters for updating a voucher:
 
 ```go
 type UpdateVoucherParams struct {
-    ID               int64      // Voucher database ID
-    Type             SessionType
-    TimeSecs         int64
-    DataMb           int64
-    DownSpeedMbps    int64
-    UpSpeedMbps      int64
-    SessionExpDays   *int       // nil = session never expires
-    UseGlobal        bool
-    VoucherExpiresOn *time.Time // nil = voucher never expires
+    ID             int64      // Voucher database ID
+    Type           SessionType
+    TimeSecs       int64
+    DataMb         int64
+    DownSpeedMbps  int64
+    UpSpeedMbps    int64
+    SessionExpDays *int       // nil = session never expires
+    UseGlobal      bool
+    ExpiresAt      *time.Time // nil = voucher never expires
 }
 ```
 
@@ -420,17 +582,38 @@ type ListVouchersResult struct {
 }
 ```
 
-### VoucherBatch
+### UpdateVoucherBatchParams
 
-Represents a batch of vouchers with payment metadata:
+Parameters for updating a voucher batch:
 
 ```go
-type VoucherBatch struct {
-    ID          int64
-    UUID        string
-    TotalAmount *float64
-    PaymentNote *string
-    CreatedAt   time.Time
+type UpdateVoucherBatchParams struct {
+    UUID     string   // Batch UUID to update
+    Amount   *float64 // New amount (nil to clear)
+    Metadata string   // New metadata (empty string to clear)
+}
+```
+
+### ListVoucherBatchesParams
+
+Parameters for listing voucher batches with pagination:
+
+```go
+type ListVoucherBatchesParams struct {
+    Search  *string // Optional search term
+    Page    int     // Page number (1-indexed)
+    PerPage int     // Results per page
+}
+```
+
+### ListVoucherBatchesResult
+
+Result of listing voucher batches:
+
+```go
+type ListVoucherBatchesResult struct {
+    Batches []IVoucherBatch // Batches for the current page
+    Count   int64           // Total count of matching batches
 }
 ```
 
@@ -442,11 +625,11 @@ The `VoucherEvent` type represents voucher lifecycle events:
 type VoucherEvent string
 
 const (
-    EventVoucherGenerated    VoucherEvent = "voucher:generated"     // After batch creation
-    EventVoucherActivated    VoucherEvent = "voucher:activated"     // When voucher is used
+    EventVoucherGenerated    VoucherEvent = "voucher:generated"     // Batch creation event
+    EventVoucherActivated    VoucherEvent = "voucher:activated"     // When voucher is activated
     EventVoucherUpdated      VoucherEvent = "voucher:updated"       // When voucher is modified
     EventVoucherDeleted      VoucherEvent = "voucher:deleted"       // When voucher is removed
-    EventVoucherBeforeCreate VoucherEvent = "voucher:before_create" // Before creation hook
+    EventVoucherBatchDeleted VoucherEvent = "voucher:batch_deleted" // When batch is deleted
 )
 ```
 
@@ -465,8 +648,8 @@ func Init(api sdkapi.IPluginApi) error {
         return nil
     })
     
-    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(vouchers []sdkapi.IVoucher) error {
-        api.Logger().Info("Generated %d new vouchers", len(vouchers))
+    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(batch sdkapi.IVoucherBatch) error {
+        api.Logger().Info("Generated batch %s with %d new vouchers", batch.UUID(), batch.VouchersCount())
         return nil
     })
     
@@ -474,12 +657,11 @@ func Init(api sdkapi.IPluginApi) error {
 }
 ```
 
-### Creating Vouchers with Payment Info
+### Creating Vouchers with Batch Metadata
 
 ```go
-func handleCreatePaidVouchers(w http.ResponseWriter, r *http.Request) {
+func handleCreateVouchers(w http.ResponseWriter, r *http.Request) {
     amount := 100.00
-    note := "Bulk purchase - Order #12345"
     expDays := 7
     
     params := sdkapi.CreateVouchersParams{
@@ -489,11 +671,10 @@ func handleCreatePaidVouchers(w http.ResponseWriter, r *http.Request) {
         DownSpeedMbps:  10,
         UpSpeedMbps:    5,
         SessionExpDays: &expDays,
-        TotalAmount:    &amount,
-        PaymentNote:    &note,
+        Amount:         &amount,
     }
     
-    vouchers, err := api.Vouchers().Create(r.Context(), params)
+    vouchers, err := api.Vouchers().CreateVouchers(r.Context(), params)
     if err != nil {
         // handle error
         return
@@ -532,7 +713,7 @@ func handleActivateVoucher(w http.ResponseWriter, r *http.Request) {
     }
     
     // Check if voucher has expired
-    if voucher.VoucherExpiresOn() != nil && voucher.VoucherExpiresOn().Before(time.Now()) {
+    if voucher.ExpiresAt() != nil && voucher.ExpiresAt().Before(time.Now()) {
         api.Http().Response().Json(w, r, map[string]string{
             "error": "Voucher has expired",
         }, http.StatusBadRequest)
@@ -575,16 +756,13 @@ The `IVouchersApi` provides event callbacks that enable cloud synchronization of
 func Init(api sdkapi.IPluginApi) error {
     machineID := api.Machine().GetID()
     
-    // Sync generated vouchers
-    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(vouchers []sdkapi.IVoucher) error {
-        codes := make([]string, len(vouchers))
-        for i, v := range vouchers {
-            codes[i] = v.Code()
-        }
-        return syncToCloud(machineID, "vouchers_generated", map[string]interface{}{
-            "batch_uuid": vouchers[0].BatchUUID(),
-            "count":      len(vouchers),
-            "codes":      codes,
+    // Sync generated voucher batches
+    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(batch sdkapi.IVoucherBatch) error {
+        return syncToCloud(machineID, "batch_generated", map[string]interface{}{
+            "batch_uuid":    batch.UUID(),
+            "voucher_count": batch.VouchersCount(),
+            "amount":        batch.Amount(),
+            "metadata":      batch.Metadata(),
         })
     })
     
@@ -592,9 +770,17 @@ func Init(api sdkapi.IPluginApi) error {
     api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherActivated, func(v sdkapi.IVoucher) error {
         return syncToCloud(machineID, "voucher_activated", map[string]interface{}{
             "voucher_uuid": v.UUID(),
+            "batch_uuid":   v.BatchUUID(),
             "code":         v.Code(),
             "device_uuid":  v.Device().UUID(),
             "session_id":   v.Session().ID(),
+        })
+    })
+    
+    // Sync batch deletions
+    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherBatchDeleted, func(batch sdkapi.IVoucherBatch) error {
+        return syncToCloud(machineID, "batch_deleted", map[string]interface{}{
+            "batch_uuid": batch.UUID(),
         })
     })
     
