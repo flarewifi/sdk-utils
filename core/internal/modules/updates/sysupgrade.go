@@ -34,9 +34,10 @@ var (
 )
 
 // GetSysupgradePath returns the path where sysupgrade file is saved
-// Stored at: data/storage/system/sysupgrade.bin
+// Production: data/storage/system/sysupgrade.bin
+// Dev: /tmp/sysupgrade.bin
 func GetSysupgradePath() string {
-	return filepath.Join(sdkutils.PathSysupgradeDir, SysupgradeFilename)
+	return filepath.Join(getSysupgradeDir(), SysupgradeFilename)
 }
 
 // ValidateSysupgradeFile validates the uploaded sysupgrade file
@@ -60,13 +61,8 @@ func ValidateSysupgradeFile(filename string, fileSize int64) error {
 // SaveSysupgradeFile saves the uploaded sysupgrade file to data/storage/system/sysupgrade.bin
 // and creates the completion marker file
 func SaveSysupgradeFile(src io.Reader, filename string) error {
-	// Ensure the sysupgrade directory exists
-	if err := sdkutils.FsEnsureDir(sdkutils.PathSysupgradeDir); err != nil {
-		return ErrSaveFile
-	}
-
-	// Ensure the updates directory exists for marker file
-	if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
+	// Ensure all required directories exist
+	if err := ensureSysupgradeDirs(); err != nil {
 		return ErrSaveFile
 	}
 
@@ -86,7 +82,7 @@ func SaveSysupgradeFile(src io.Reader, filename string) error {
 	}
 
 	// Create completion marker file for UI state tracking
-	markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
+	markerPath := filepath.Join(getSystemUpdateDir(), downloadCompleteFile)
 	if err := os.WriteFile(markerPath, []byte("sysupgrade"), 0644); err != nil {
 		os.Remove(sysupgradePath)
 		return ErrSaveFile
@@ -130,7 +126,7 @@ func ValidateSysupgradeCompatibility() error {
 // RemoveSysupgradeFile removes the sysupgrade file and marker
 func RemoveSysupgradeFile() {
 	os.Remove(GetSysupgradePath())
-	markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
+	markerPath := filepath.Join(getSystemUpdateDir(), downloadCompleteFile)
 	os.Remove(markerPath)
 }
 
