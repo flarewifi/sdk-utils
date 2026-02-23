@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -74,8 +73,6 @@ func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchasePara
 		Processing:     params.Processing,
 		PaymentUrl:     params.PaymentUrl,
 	}
-
-	fmt.Printf("Create Purchase: %+v\n", queryParams)
 
 	pId, err := self.db.Queries.CreatePurchase(ctx, queryParams)
 	if err != nil {

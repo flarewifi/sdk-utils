@@ -223,8 +223,6 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 		fullURL = fullURL + "?token=" + token
 	}
 
-	fmt.Println("Webhook URL:", fullURL)
-
 	// Marshal params to JSON
 	jsonData, err := json.Marshal(params)
 	if err != nil {
@@ -244,8 +242,6 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 	// Set Content-Type header
 	req.Header.Set("Content-Type", "application/json")
 
-	fmt.Println("Webhook request created with purchase token")
-
 	// Make the request
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -264,7 +260,6 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 		return execErr
 	}
 
-	fmt.Println("Webhook executed successfully")
 	return nil
 }
 
@@ -277,12 +272,10 @@ func (self *Purchase) RedirectToCallback(w http.ResponseWriter, r *http.Request)
 	}
 
 	callbackRoute := self.purchase.CallbackRoute()
-	fmt.Println("Redirecting to callback route:", callbackRoute)
 
 	// Create JWT token containing device ID and purchase UUID
 	token, err := helpers.CreatePurchaseToken(self.deviceId, self.purchase.UUID())
 	if err != nil {
-		fmt.Println("RedirectToCallback: Failed to create purchase token:", err)
 		self.ErrorPage(w, errors.New("failed to create purchase token"))
 		return
 	}
@@ -294,8 +287,6 @@ func (self *Purchase) RedirectToCallback(w http.ResponseWriter, r *http.Request)
 	} else {
 		callbackURL = callbackURL + "?token=" + token
 	}
-
-	fmt.Println("Redirecting to callback URL:", callbackURL)
 
 	// Redirect to callback URL with token as query param
 	if r.Header.Get("HX-Request") == "true" {
@@ -343,8 +334,7 @@ func (self *Purchase) emitPurchaseEvent(ctx context.Context, event sdkapi.Purcha
 	// Get the device for the event data
 	device, err := self.api.SessionsMgr().FindClientById(ctx, self.deviceId)
 	if err != nil {
-		// Log error but don't fail - events are best-effort
-		fmt.Printf("Failed to get device for purchase event: %v\n", err)
+		// Events are best-effort - silently skip on error
 		return
 	}
 
@@ -355,9 +345,7 @@ func (self *Purchase) emitPurchaseEvent(ctx context.Context, event sdkapi.Purcha
 	}
 
 	// Emit through the payments manager
-	if err := self.api.PaymentsAPI.paymentsMgr.EmitPurchaseEvent(event, data); err != nil {
-		fmt.Printf("Failed to emit purchase event %s: %v\n", event, err)
-	}
+	_ = self.api.PaymentsAPI.paymentsMgr.EmitPurchaseEvent(event, data)
 }
 
 func (self *Purchase) UpdateMetadata(ctx context.Context, metadata map[string]string) error {

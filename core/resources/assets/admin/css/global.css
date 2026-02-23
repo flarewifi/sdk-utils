@@ -1,2 +1,3 @@
 @import '../../lib/vendor/awesome-notifications-v3.1.3.css';
+@import '../../lib/bootstrap-dropdown-fixes.css';
 @import './htmx-loading-states.css';

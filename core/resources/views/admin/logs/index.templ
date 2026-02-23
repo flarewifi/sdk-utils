@@ -6,11 +6,12 @@ import (
 )
 
 type LogsSearchData struct {
-	Packages   []string
-	Package    string
-	Level      string
-	SearchText string
-	ActionURL  string
+	Packages          []string
+	Package           string
+	Level             string
+	SearchText        string
+	ActionURL         string
+	LogsRetentionDays int
 }
 
 templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData, pagination templ.Component) {
@@ -19,70 +20,101 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 			<h1 class="h2 mb-0">{ api.Translate("label", "System Logs") }</h1>
 		</div>
 	</div>
-	// Logs Filter Form
-	<div class="card border mb-4 shadow-sm rounded-3 mt-3">
-		<div class="card-body p-4">
-			<form method="POST" action={ templ.SafeURL(searchData.ActionURL) }>
-				<div class="row g-2">
-					<div class="col gap-2">
-						<label class="form-label text fs-6">{ api.Translate("label", "Search Logs") }</label>
-						<input
-							type="text"
-							name="search_text"
-							class="form-control form-control-sm fs-6 text p-2 pl-3 rounded-3"
-							placeholder={ api.Translate("label", "Message or package") }
-							onchange="document.getElementById('logs-filter-submit').click();"
-							value={ searchData.SearchText }
-						/>
-					</div>
-					<div class="col gap-2">
-						<label class="form-label text fs-6">{ api.Translate("label", "Log Level") }</label>
-						<select name="level" class="form-select form-select-sm fs-6 text p-2 pl-3 rounded-3" onchange="document.getElementById('logs-filter-submit').click();">
-							<option value="">{ api.Translate("label", "All Levels") }</option>
-							<option value="info" selected?={ searchData.Level == "info" }>{ api.Translate("label", "Info") }</option>
-							<option value="debug" selected?={ searchData.Level == "debug" }>{ api.Translate("label", "Debug") }</option>
-							<option value="error" selected?={ searchData.Level == "error" }>{ api.Translate("label", "Error") }</option>
-						</select>
-					</div>
-					<div class="col gap-2">
-						<label class="form-label text fs-6">{ api.Translate("label", "Package") }</label>
-						<select name="package" class="form-select form-select-sm fs-6 text p-2 pl-3 rounded-3" onchange="document.getElementById('logs-filter-submit').click();">
-							<option value="">{ api.Translate("label", "All Packages") }</option>
-							for _, pkg := range searchData.Packages {
-								<option value={ pkg } selected?={ pkg == searchData.Package }>{ pkg }</option>
-							}
-						</select>
-					</div>
-					<div class="col-md-2 d-none">
-						<button type="submit" id="logs-filter-submit" class="btn btn-primary btn-sm w-100">{ api.Translate("label", "Search Logs") }</button>
-					</div>
-				</div>
-			</form>
+	// Filter Options and Retention Settings with Tabs
+	<div class="card border mb-4 shadow-sm rounded-3">
+		<div class="card-header bg-body border-bottom">
+			<ul class="nav nav-tabs card-header-tabs" id="logsTab" role="tablist">
+				<li class="nav-item" role="presentation">
+					<button class="nav-link active" id="filter-tab" data-bs-toggle="tab" data-bs-target="#filter-pane" type="button" role="tab" aria-controls="filter-pane" aria-selected="true">
+						<i class="bi bi-funnel me-2"></i>{ api.Translate("label", "Filter") }
+					</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-pane" type="button" role="tab" aria-controls="settings-pane" aria-selected="false">
+						<i class="bi bi-gear me-2"></i>{ api.Translate("label", "Settings") }
+					</button>
+				</li>
+			</ul>
 		</div>
-	</div>
-	<div class="card border mb-4 shadow-sm rounded-3 mt-3">
 		<div class="card-body p-4">
-			<div class="row justify-content-between">
-				<div class="col">
-					<button class="btn btn-light border px-3 py-2 fs-6" x-on:click="window.location.reload()">
-						<i class="bi bi-arrow-repeat me-2"></i>{ api.Translate("label", "Refresh") }
-					</button>
-					<button class="btn btn-primary px-3 py-2 fs-6 d-none">
-						<i class="bi bi-download me-2"></i>{ api.Translate("label", "Download Logs") }
-					</button>
+			<div class="tab-content" id="logsTabContent">
+				// Filter Tab (Default)
+				<div class="tab-pane fade show active" id="filter-pane" role="tabpanel" aria-labelledby="filter-tab">
+					<form method="POST" action={ templ.SafeURL(searchData.ActionURL) }>
+						<div class="row g-3">
+							<div class="col-md-4">
+								<label class="form-label fs-6">{ api.Translate("label", "Search Logs") }</label>
+								<input
+									type="text"
+									name="search_text"
+									class="form-control fs-6"
+									placeholder={ api.Translate("label", "Message or package") }
+									onchange="document.getElementById('logs-filter-submit').click();"
+									value={ searchData.SearchText }
+								/>
+							</div>
+							<div class="col-md-4">
+								<label class="form-label fs-6">{ api.Translate("label", "Log Level") }</label>
+								<select name="level" class="form-select fs-6" onchange="document.getElementById('logs-filter-submit').click();">
+									<option value="">{ api.Translate("label", "All Levels") }</option>
+									<option value="info" selected?={ searchData.Level == "info" }>{ api.Translate("label", "Info") }</option>
+									<option value="debug" selected?={ searchData.Level == "debug" }>{ api.Translate("label", "Debug") }</option>
+									<option value="error" selected?={ searchData.Level == "error" }>{ api.Translate("label", "Error") }</option>
+								</select>
+							</div>
+							<div class="col-md-4">
+								<label class="form-label fs-6">{ api.Translate("label", "Package") }</label>
+								<select name="package" class="form-select fs-6" onchange="document.getElementById('logs-filter-submit').click();">
+									<option value="">{ api.Translate("label", "All Packages") }</option>
+									for _, pkg := range searchData.Packages {
+										<option value={ pkg } selected?={ pkg == searchData.Package }>{ pkg }</option>
+									}
+								</select>
+							</div>
+							<div class="d-none">
+								<button type="submit" id="logs-filter-submit" class="btn btn-primary btn-sm">{ api.Translate("label", "Search Logs") }</button>
+							</div>
+						</div>
+					</form>
 				</div>
-				<div class="col d-flex justify-content-end">
-					<button type="submit" name="clear_logs" value="1" hx-confirm={ api.Translate("label", "Are you sure you want to clear all logs") + "?" } class="btn btn-warning px-3 py-2 fs-6">
-						<i class="bi bi-trash me-2"></i>{ api.Translate("label", "Clear Logs") }
-					</button>
+				// Settings Tab
+				<div class="tab-pane fade" id="settings-pane" role="tabpanel" aria-labelledby="settings-tab">
+					<form method="POST" action={ templ.SafeURL(searchData.ActionURL) }>
+						<div class="mb-3">
+							<label class="form-label fs-6">{ api.Translate("label", "Auto-delete logs older than") }</label>
+							<select name="logs_retention_days" class="form-select fs-6" style="max-width: 200px;">
+								<option value="3" selected?={ searchData.LogsRetentionDays == 3 }>{ api.Translate("label", "3 days") }</option>
+								<option value="7" selected?={ searchData.LogsRetentionDays == 7 }>{ api.Translate("label", "7 days") }</option>
+								<option value="14" selected?={ searchData.LogsRetentionDays == 14 }>{ api.Translate("label", "14 days") }</option>
+								<option value="30" selected?={ searchData.LogsRetentionDays == 30 }>{ api.Translate("label", "30 days") }</option>
+							</select>
+							<small class="text-muted">{ api.Translate("label", "Runs daily at 4AM") }</small>
+						</div>
+						<button type="submit" name="save_retention" value="1" class="btn btn-primary px-3 py-2 fs-6">
+							<i class="bi bi-save me-2"></i>{ api.Translate("label", "Save Settings") }
+						</button>
+					</form>
 				</div>
 			</div>
 		</div>
 	</div>
 	// Logs Table
 	<div class="card border mb-4 shadow-sm rounded-3 mt-3 p-0">
+		<div class="card-header border-bottom bg-body d-flex justify-content-between align-items-center px-4 py-3">
+			<h5 class="mb-0">{ api.Translate("label", "Logs") }</h5>
+			<div class="d-flex gap-2">
+				<button type="button" class="btn btn-sm btn-light border" x-on:click="window.location.reload()">
+					<i class="bi bi-arrow-repeat me-1"></i>{ api.Translate("label", "Refresh") }
+				</button>
+				<form method="POST" action={ templ.SafeURL(searchData.ActionURL) } class="d-inline" onsubmit="return confirm('Are you sure you want to clear all logs?')">
+					<button type="submit" name="clear_logs" value="1" class="btn btn-sm btn-warning">
+						<i class="bi bi-trash me-1"></i>{ api.Translate("label", "Clear All Logs") }
+					</button>
+				</form>
+			</div>
+		</div>
 		<div class="card-body p-0">
-			<table class="table table-hover">
+			<table class="table table-hover mb-0">
 				<thead>
 					<tr>
 						<th class="px-2 py-3 ps-4">{ api.Translate("label", "Timestamp") }</th>

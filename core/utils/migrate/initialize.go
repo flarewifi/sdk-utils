@@ -3,7 +3,6 @@ package migrate
 import (
 	"core/db"
 	"database/sql"
-	"fmt"
 )
 
 func Init(sqldb *sql.DB) error {
@@ -24,7 +23,6 @@ func Init(sqldb *sql.DB) error {
 		q = sqliteQ
 	}
 
-	fmt.Printf("Creating migrations table:\n%s\n", q)
 	if _, err := sqldb.Exec(q); err != nil {
 		return err
 	}

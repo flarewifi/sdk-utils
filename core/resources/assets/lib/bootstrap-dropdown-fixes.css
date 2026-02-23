@@ -1,0 +1,30 @@
+/**
+ * Bootstrap Dropdown Fixes
+ * 
+ * Ensures dropdowns are visible above card containers and other elements
+ */
+
+/* Fix dropdown visibility in cards */
+.card:has(.dropdown),
+.card:has(.btn-group) {
+  overflow: visible !important;
+}
+
+/* Ensure dropdown menus appear above all card elements */
+.dropdown,
+.btn-group {
+  position: relative;
+  z-index: 1000;
+}
+
+/* Ensure dropdown menus have proper stacking context */
+.dropdown-menu {
+  z-index: 1050;
+}
+
+/* Fix for dropdowns inside card-body */
+.card-body .dropdown,
+.card-body .btn-group {
+  position: relative;
+  z-index: 1000;
+}

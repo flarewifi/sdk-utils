@@ -36,6 +36,7 @@ const (
 	// errorPrefix = "[ERROR] "
 
 	flarelogBaseMetadataCount = 10
+	maxLogLines               = 50000 // Maximum log lines before rotation
 )
 
 type LogLine struct {
@@ -389,10 +390,21 @@ func LogToFile(file string, line int, level int, title string, body ...any) erro
 		// serialize
 		serialized := sdkutils.Serialize(content)
 
+		// Check if we need to rotate logs to prevent disk fill
+		currentLines := LineCount.Load()
+		if currentLines >= maxLogLines {
+			// Rotate: truncate the log file
+			if err := logFile.Truncate(0); err == nil {
+				logFile.Seek(0, 0)
+				LineCount.Store(0)
+			}
+		}
+
 		// actual logging to file
 		_, err = logFile.WriteString(serialized + "\n")
 		if err != nil {
-			return nil, err
+			// If write fails (e.g., disk full), silently skip to prevent crashes
+			return nil, nil
 		}
 
 		// increment log file lines by 1
