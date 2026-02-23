@@ -11,15 +11,15 @@ templ PortalErrorPage(api sdkapi.IPluginApi, errorMsg string) {
 					<div class="error-icon text-center" aria-hidden="true">
 						<div class="x-mark">✕</div>
 					</div>
-					<h2 class="error-title text-center">{ api.Translate("label", "Error") }</h2>
+					<h2 class="error-title text-center fw-portal-text-white">{ api.Translate("label", "Error") }</h2>
 					if errorMsg != "" {
-						<p class="error-message text-center">{ errorMsg }</p>
+						<p class="error-message text-center fw-portal-text-muted">{ errorMsg }</p>
 					} else {
-						<p class="error-message text-center">{ api.Translate("error", "An unexpected error occurred") }</p>
+						<p class="error-message text-center fw-portal-text-muted">{ api.Translate("error", "An unexpected error occurred") }</p>
 					}
 					<div class="error-actions">
 					<!-- fw-portal-btn fw-portal-btn-info: theme button; falls back to Bootstrap .btn .btn-primary -->
-					<a href="/" class="fw-portal-btn fw-portal-btn-info btn btn-primary btn-block">
+					<a href="/" class="fw-portal-btn fw-portal-btn-info btn btn-primary btn-block" onclick="this.disabled=true;">
 							{ api.Translate("label", "Go Back") }
 						</a>
 					</div>

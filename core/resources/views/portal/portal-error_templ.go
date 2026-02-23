@@ -31,14 +31,14 @@ func PortalErrorPage(api sdkapi.IPluginApi, errorMsg string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"error-container\" role=\"alert\" aria-live=\"assertive\"><div class=\"error-container-inner\"><!-- fw-portal-card-primary: theme card style; falls back to Bootstrap .panel .panel-default --><div class=\"error-card fw-portal-card-primary panel panel-default\"><div class=\"error-content panel-body\"><div class=\"error-icon text-center\" aria-hidden=\"true\"><div class=\"x-mark\">✕</div></div><h2 class=\"error-title text-center\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"error-container\" role=\"alert\" aria-live=\"assertive\"><div class=\"error-container-inner\"><!-- fw-portal-card-primary: theme card style; falls back to Bootstrap .panel .panel-default --><div class=\"error-card fw-portal-card-primary panel panel-default\"><div class=\"error-content panel-body\"><div class=\"error-icon text-center\" aria-hidden=\"true\"><div class=\"x-mark\">✕</div></div><h2 class=\"error-title text-center fw-portal-text-white\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Error"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-error.templ`, Line: 14, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-error.templ`, Line: 14, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -49,14 +49,14 @@ func PortalErrorPage(api sdkapi.IPluginApi, errorMsg string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if errorMsg != "" {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<p class=\"error-message text-center\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<p class=\"error-message text-center fw-portal-text-muted\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(errorMsg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-error.templ`, Line: 16, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-error.templ`, Line: 16, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -67,14 +67,14 @@ func PortalErrorPage(api sdkapi.IPluginApi, errorMsg string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<p class=\"error-message text-center\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<p class=\"error-message text-center fw-portal-text-muted\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("error", "An unexpected error occurred"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-error.templ`, Line: 18, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-error.templ`, Line: 18, Col: 120}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -85,7 +85,7 @@ func PortalErrorPage(api sdkapi.IPluginApi, errorMsg string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"error-actions\"><!-- fw-portal-btn fw-portal-btn-info: theme button; falls back to Bootstrap .btn .btn-primary --><a href=\"/\" class=\"fw-portal-btn fw-portal-btn-info btn btn-primary btn-block\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"error-actions\"><!-- fw-portal-btn fw-portal-btn-info: theme button; falls back to Bootstrap .btn .btn-primary --><a href=\"/\" class=\"fw-portal-btn fw-portal-btn-info btn btn-primary btn-block\" onclick=\"this.disabled=true;\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

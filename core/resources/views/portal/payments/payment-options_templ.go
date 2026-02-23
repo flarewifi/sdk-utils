@@ -36,14 +36,14 @@ func PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opt
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"payment-checkout-container\"><!-- Purchase Summary Card --><!-- fw-portal-card-primary: theme glass card; .panel .panel-default as Bootstrap fallback --><div class=\"purchase-summary fw-portal-card-primary panel panel-default\"><div class=\"summary-cart-icon text-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"9\" cy=\"21\" r=\"1\"></circle> <circle cx=\"20\" cy=\"21\" r=\"1\"></circle> <path d=\"M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6\"></path></svg></div><h3 class=\"summary-title text-center\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"payment-checkout-container\"><!-- Purchase Summary Card --><!-- fw-portal-card-primary: theme glass card; .panel .panel-default as Bootstrap fallback --><div class=\"purchase-summary fw-portal-card-primary panel panel-default\"><div class=\"summary-cart-icon text-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"9\" cy=\"21\" r=\"1\"></circle> <circle cx=\"20\" cy=\"21\" r=\"1\"></circle> <path d=\"M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6\"></path></svg></div><h3 class=\"summary-title text-center fw-portal-text-white\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Purchase Summary"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 22, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 22, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -221,7 +221,7 @@ func PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opt
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"cancel-form\"><!-- fw-portal-btn fw-portal-btn-default: theme button; .btn .btn-default as Bootstrap fallback --><button type=\"submit\" class=\"btn-cancel-purchase fw-portal-btn fw-portal-btn-default btn btn-secondary\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"cancel-form\"><!-- fw-portal-btn fw-portal-btn-default: theme button; .btn .btn-default as Bootstrap fallback --><button type=\"submit\" class=\"btn-cancel-purchase fw-portal-btn fw-portal-btn-default btn btn-secondary\" onclick=\"this.disabled=true; this.form.submit();\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -234,7 +234,7 @@ func PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opt
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></form></div></div><!-- Footer --><!-- fw-portal-footer: theme footer; Bootstrap .text-center as fallback --><div class=\"fw-portal-footer text-center\"><span>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></form></div></div><!-- Footer --><!-- fw-portal-footer: theme footer; Bootstrap .text-center as fallback --><div class=\"fw-portal-footer text-center w-full\"><span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

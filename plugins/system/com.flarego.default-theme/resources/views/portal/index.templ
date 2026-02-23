@@ -56,7 +56,7 @@ templ NavItems(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem) {
 	<ul class="fw-portal-nav">
 		for _, nav := range navs {
 			<li>
-				<a href={ templ.SafeURL(nav.RouteUrl) } { templ.Attributes(nav.ExtraAttrs)... }>
+				<a href={ templ.SafeURL(nav.RouteUrl) } { templ.Attributes(nav.ExtraAttrs)... } onclick="this.disabled=true;">
 					if nav.IconUrl != "" {
 						<img src={ nav.IconUrl } alt=""/>
 					}

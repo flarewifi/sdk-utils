@@ -1,10 +1,16 @@
 @import '../vendor/bootstrap-3.4.1/css/bootstrap.css';
 
-/* ==========================================================================
-   FlareWiFi Portal — Dark Theme (mobile-first)
+/* FlareWiFi Portal — Dark Theme (mobile-first)
    ========================================================================== */
 
-/* --- Fonts --- */
+
+/* ==========================================================================
+   1. FONTS
+   Custom typefaces loaded from /public/fonts/.
+   - Glitz     : decorative display font used in headings and footer branding
+   - Poppins   : primary UI font (weights 400/500/600/700)
+   ========================================================================== */
+
 @font-face {
     font-family: 'Glitz';
     src: url('../public/fonts/glitz.otf');
@@ -44,8 +50,11 @@
     font-display: swap;
 }
 
+
 /* ==========================================================================
-   Base Reset & Body
+   2. BASE / RESET
+   Page-level defaults: full-height body, background image, global font,
+   and a Bootstrap container reset so the portal fills the viewport edge-to-edge.
    ========================================================================== */
 
 html, body {
@@ -63,15 +72,16 @@ body {
     background-attachment: fixed !important;
     min-height: 100vh !important;
     color: #fff !important;
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif !important;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
 }
 
+/* Apply Poppins to all common text elements */
 p, span, label, h1, h2, h3, h4, h5 {
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 
-/* Remove Bootstrap container constraints */
+/* Strip Bootstrap container constraints so the portal is full-width */
 body > .container {
     width: 100%;
     max-width: 100%;
@@ -80,66 +90,332 @@ body > .container {
     background: transparent;
 }
 
-/* ==========================================================================
-   Utility Helpers (no prefix — generic, intentionally kept short)
-   ========================================================================== */
-
-.w-full  { width: 100%; }
-.w-half  { width: 50%; }
-.w-48    { width: 48%; }
-.mr-5    { margin-right: 5px; }
-.mr-10   { margin-right: 10px; }
-.ml-5    { margin-left: 5px; }
-.ml-10   { margin-left: 10px; }
 
 /* ==========================================================================
-   Page Wrapper
+   3. LAYOUT
+   The single-column flex wrapper that centres portal content and stacks
+   the status bar, banner, content area, and footer vertically.
    ========================================================================== */
 
+/* Centres all portal content in a max-width column, fills full viewport height */
 .fw-portal-wrap {
     max-width: 520px;
     margin: 0 auto;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    justify-content: space-between;
+    position: relative;
 }
+
 
 /* ==========================================================================
-   Buttons
-   Naming convention:
-     fw-portal-btn            — base button
-     fw-portal-btn-primary    — purple accent
-     fw-portal-btn-secondary  — cyan accent
-     fw-portal-btn-warning    — amber accent
-     fw-portal-btn-success    — green accent
-     fw-portal-btn-info       — blue accent
-     fw-portal-btn-disabled   — greyed out, non-interactive
-     fw-portal-btn-default    — dark neutral
+   4. UTILITIES
+   Small single-purpose helper classes used inline throughout portal templates.
+   Prefer Tailwind-style naming; use sparingly — prefer component classes.
    ========================================================================== */
 
-.fw-portal-btn{
-    padding: 10px 5px;
-    border-radius: 16px;
-    cursor: pointer;
-    outline: none;
-    text-decoration: none;
-    transition: all 0.2s ease;
+.w-full       { width: 100%; }
+.w-half       { width: 50%; }
+.w-48         { width: 48%; }
+.mr-5         { margin-right: 5px; }
+.mr-10        { margin-right: 10px; }
+.ml-5         { margin-left: 5px; }
+.ml-10        { margin-left: 10px; }
+.padd-top     { padding-top: 20px; }    /* top spacing helper */
+.padd-bottom  { padding-bottom: 20px; } /* bottom spacing helper */
+
+/* Text colour helpers for use inside dark card/glass surfaces */
+.fw-portal-text-white  { color: white !important; }
+.fw-portal-text-muted  { color: rgba(255, 255, 255, 0.7) !important; }
+
+/* Thin separator line for use inside cards */
+.fw-portal-divider     { border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important; }
+
+/* Remove background from a child element that sits over a glass card */
+.fw-portal-bg-none     { background: transparent !important; }
+
+
+/* ==========================================================================
+   5. STATUS BAR
+   Coloured pill-shaped bar at the top of the portal card that shows
+   connection state (connected / disconnected) with an icon and label.
+   ========================================================================== */
+
+.fw-portal-status-bar {
+    border-top-left-radius: 15px !important;
+    border-top-right-radius: 15px !important;
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    -webkit-box-pack: justify !important;
+    -ms-flex-pack: justify !important;
+    justify-content: space-between !important;
+    padding: 10px 16px !important;
+    min-height: 44px !important;
 }
 
-.fw-portal-btn:hover{
-    opacity: 0.8;
-    transform: translateY(-2px);
-    text-decoration: none;
-    color: rgba(255, 255, 255, 0.85);
+/* Disconnected state — warm red tint */
+.fw-portal-status-bar.disconnected {
+    background: #EFC7C7 !important;
+    border-bottom: 1px solid rgba(255, 160, 160, 0.2) !important;
+}
+
+/* Connected state — cool green tint */
+.fw-portal-status-bar.connected {
+    background: #C7EFD0 !important;
+    border-bottom: 1px solid rgba(100, 200, 120, 0.2) !important;
+}
+
+/* Override icon/text/label colour to dark green when connected */
+.fw-portal-status-bar.connected .fw-portal-status-bar-icon,
+.fw-portal-status-bar.connected .fw-portal-status-bar-text,
+.fw-portal-status-bar.connected .fw-portal-status-bar-label {
+    color: #0F6E2A !important;
+}
+
+/* Left-side flex group: icon + text */
+.fw-portal-status-bar-left {
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+/* SVG/icon element inside the status bar */
+.fw-portal-status-bar-icon {
+    width: 18px !important;
+    height: 18px !important;
+    color: #AF0F0F !important;   /* default: red (disconnected) */
+    -ms-flex-negative: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+/* Primary status text (e.g. "Disconnected") */
+.fw-portal-status-bar-text {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: #AF0F0F !important;
+    letter-spacing: 0.3px !important;
+}
+
+/* Small uppercase label below status text */
+.fw-portal-status-bar-label {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    color: #AF0F0F !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+}
+
+
+/* ==========================================================================
+   6. BANNER
+   Full-width image banner that appears below the status bar.
+   On small screens (< 480 px) the bottom corners are rounded.
+   ========================================================================== */
+
+.fw-portal-banner {
+    width: 100% !important;
+    line-height: 0 !important; /* removes inline-block gap under <img> */
+}
+
+.fw-portal-banner img {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    border-radius: 0 !important;
+}
+
+
+/* ==========================================================================
+   7. CONTENT AREA
+   Flex column that fills the remaining vertical space between the banner
+   and the footer. All portal sections (title, timer, nav, etc.) live here.
+   ========================================================================== */
+
+.fw-portal-content {
+    padding: 0 20px 36px !important;
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-box-direction: normal !important;
+    -ms-flex-direction: column !important;
+    flex-direction: column !important;
+    -webkit-box-flex: 1 !important;
+    -ms-flex: 1 !important;
+    flex: 1 !important;
+    gap: 0 !important;
+}
+
+
+/* ==========================================================================
+   8. HEADING / TITLE
+   Large decorative heading shown at the top of the content area.
+   Uses the Glitz display font; an inner <span> can accent one word in blue.
+   ========================================================================== */
+
+/* Margin above the heading block */
+.fw-portal-title {
+    margin-top: 20px !important;
+}
+
+/* Main portal heading — Glitz display font, all-caps */
+.fw-portal-heading {
+    font-size: 4rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 3px !important;
+    text-transform: uppercase !important;
+    color: #fff !important;
+    line-height: 1.1 !important;
+    font-family: 'Glitz', serif !important;
+}
+
+/* Accent colour for a highlighted word inside the heading */
+.fw-portal-heading span {
+    color: #2F2EC7 !important;
+}
+
+
+/* ==========================================================================
+   9. DEVICE INFO BAR
+   Compact one-liner showing the connected device's MAC address, IP, etc.
+   Renders as a centred, wrapping flex row of small muted tokens.
+   ========================================================================== */
+
+.fw-portal-device-info {
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    -webkit-box-pack: center !important;
+    -ms-flex-pack: center !important;
+    justify-content: center !important;
+    -ms-flex-wrap: wrap !important;
+    flex-wrap: wrap !important;
+    gap: 6px 10px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    letter-spacing: 0.5px !important;
+    padding: 8px 0 20px !important;
+}
+
+/* Separator character between info tokens (e.g. "·") */
+.fw-portal-device-info .info-sep {
+    color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Highlighted value (e.g. the actual IP/MAC string) */
+.fw-portal-device-info strong {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-weight: 700 !important;
+}
+
+
+/* ==========================================================================
+   10. SESSION TIMER
+   Displays the remaining session time as a large, glowing numeric countdown.
+   Also includes a secondary data-remaining indicator.
+   ========================================================================== */
+
+/* Outer timer block spacing */
+.fw-portal-timer {
+    padding: 5px 0 28px !important;
+}
+
+/* Small uppercase label above the timer value ("TIME REMAINING") */
+.fw-portal-timer-label {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: 3px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    text-transform: uppercase !important;
+    margin-bottom: 6px !important;
+}
+
+/* Large monospaced countdown value — clamps between 30 px and 45 px */
+.fw-portal-timer-value {
+    font-size: clamp(40px, 12vw, 45px) !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    letter-spacing: 4px !important;
+    line-height: 1 !important;
+    font-variant-numeric: tabular-nums !important;
+    text-shadow: 0 0 30px rgba(79, 195, 247, 0.35) !important;
+}
+
+/* Secondary line showing data quota remaining */
+.fw-portal-data-remaining {
+    margin-top: 10px !important;
+    font-size: 13px !important;
+    letter-spacing: 0.5px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.fw-portal-data-remaining strong {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+
+/* ==========================================================================
+   11. BUTTONS
+   Base button style + colour variants.  All variants share .fw-portal-btn.
+
+   Variants:
+     .fw-portal-btn-primary   — purple radial gradient  (main CTA)
+     .fw-portal-btn-secondary — cyan radial gradient    (secondary action)
+     .fw-portal-btn-warning   — amber radial gradient   (caution action)
+     .fw-portal-btn-success   — green radial gradient   (positive action)
+     .fw-portal-btn-info      — blue radial gradient    (informational)
+     .fw-portal-btn-disabled  — greyed out, non-interactive
+     .fw-portal-btn-default   — dark neutral with blur  (generic)
+   ========================================================================== */
+
+/* Base: shared padding, radius, cursor, and hover transition */
+.fw-portal-btn {
+    padding: 12px 8px;
+    border-radius: 16px;
+    cursor: pointer !important;
+    outline: none !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.fw-portal-btn:hover {
+    opacity: 0.8 !important;
+    transform: translateY(-2px) !important;
+    text-decoration: none !important;
+    color: rgba(255, 255, 255, 0.85) !important;
 }
 
 .fw-portal-btn:active {
-    transform: translateY(-2px);
+    transform: translateY(-2px) !important;
 }
 
+.fw-portal-btn:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.4 !important;
+    transform: none !important;
+    pointer-events: none !important;
+}
+
+/* In-flight state while a form/action is processing */
 .fw-portal-btn.loading {
-    opacity: 0.6;
-    pointer-events: none;
+    opacity: 0.6 !important;
+    pointer-events: none !important;
 }
 
+/* Purple — primary CTA (e.g. "Connect", "Buy") */
 .fw-portal-btn-primary {
     background:
         radial-gradient(ellipse 111.61% 84.15% at 78.02% 15.85%,
@@ -151,7 +427,8 @@ body > .container {
     color: white !important;
 }
 
-.fw-portal-btn-secondary{
+/* Cyan — secondary action (e.g. "View Plans") */
+.fw-portal-btn-secondary {
     background:
         radial-gradient(ellipse 111.61% 84.15% at 78.02% 15.85%,
             rgba(0, 191, 255, 0.297) 0%,
@@ -162,6 +439,7 @@ body > .container {
     color: white !important;
 }
 
+/* Amber — caution action (e.g. "Renew", "Extend") */
 .fw-portal-btn-warning {
     background:
         radial-gradient(ellipse 111.61% 84.15% at 78.02% 15.85%,
@@ -173,6 +451,7 @@ body > .container {
     color: white !important;
 }
 
+/* Green — positive/confirmatory action (e.g. "Confirm") */
 .fw-portal-btn-success {
     background:
         radial-gradient(ellipse 111.61% 84.15% at 78.02% 15.85%,
@@ -184,6 +463,7 @@ body > .container {
     color: white !important;
 }
 
+/* Blue — informational action (e.g. "Details", "Help") */
 .fw-portal-btn-info {
     background:
         radial-gradient(ellipse 109.33% 82.14% at 75.74% 17.86%,
@@ -195,6 +475,7 @@ body > .container {
     color: white !important;
 }
 
+/* Grey — non-interactive / coming-soon state */
 .fw-portal-btn-disabled {
     background: rgba(0, 0, 0, 0.3) !important;
     border: none !important;
@@ -202,10 +483,12 @@ body > .container {
     pointer-events: none !important;
 }
 
+/* Dim the icon inside a disabled button */
 .fw-portal-btn-disabled .btn-icon {
     stroke: rgba(255, 255, 255, 0.3) !important;
 }
 
+/* Dark neutral with frosted-glass blur — generic / low-priority action */
 .fw-portal-btn-default {
     background:
         radial-gradient(ellipse 46.75% 36.9% at 50.43% 20.24%,
@@ -219,307 +502,81 @@ body > .container {
     backdrop-filter: blur(20px) !important;
 }
 
-/* ==========================================================================
-   Internet Status Bar
-   ========================================================================== */
-
-.fw-portal-status-bar {
-    border-top-left-radius: 15px;
-    border-top-right-radius: 15px;
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    -webkit-box-align: center;
-    -ms-flex-align: center;
-    align-items: center;
-    -webkit-box-pack: justify;
-    -ms-flex-pack: justify;
-    justify-content: space-between;
-    padding: 10px 16px;
-    min-height: 44px;
-}
-
-.fw-portal-status-bar.disconnected {
-    background: #EFC7C7;
-    border-bottom: 1px solid rgba(255, 160, 160, 0.2);
-}
-
-.fw-portal-status-bar.connected {
-    background: #C7EFD0;
-    border-bottom: 1px solid rgba(100, 200, 120, 0.2);
-}
-
-.fw-portal-status-bar.connected .fw-portal-status-bar-icon,
-.fw-portal-status-bar.connected .fw-portal-status-bar-text,
-.fw-portal-status-bar.connected .fw-portal-status-bar-label{
-    color: #0F6E2A;
-}
-
-.fw-portal-status-bar-left {
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    -webkit-box-align: center;
-    -ms-flex-align: center;
-    align-items: center;
-    gap: 8px;
-}
-
-.fw-portal-status-bar-icon {
-    width: 18px;
-    height: 18px;
-    color: #AF0F0F;
-    -ms-flex-negative: 0;
-    flex-shrink: 0;
-}
-
-.fw-portal-status-bar-text {
-    font-size: 14px;
-    font-weight: 800;
-    color: #AF0F0F;
-    letter-spacing: 0.3px;
-}
-
-.fw-portal-status-bar-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: #AF0F0F;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-}
 
 /* ==========================================================================
-   Banner — full bleed, no padding, no radius on mobile
-   ========================================================================== */
-
-.fw-portal-banner {
-    width: 100%;
-    line-height: 0;
-}
-
-.fw-portal-banner img {
-    width: 100%;
-    height: auto;
-    display: block;
-    border-radius: 0;
-}
-
-/* ==========================================================================
-   Content Area (below the banner)
-   ========================================================================== */
-
-.fw-portal-content {
-    padding: 0 20px 36px;
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    -ms-flex-direction: column;
-    flex-direction: column;
-    -webkit-box-flex: 1;
-    -ms-flex: 1;
-    flex: 1;
-    gap: 0;
-}
-
-/* ==========================================================================
-   Title Block
-   ========================================================================== */
-
-.fw-portal-title {
-    margin-top: 20px;
-}
-
-.fw-portal-heading {
-    font-size: 4rem;
-    font-weight: 700;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #fff;
-    line-height: 1.1;
-    font-family: 'Glitz', serif;
-}
-
-.fw-portal-heading span {
-    color: #2F2EC7;
-}
-
-/* ==========================================================================
-   Device Info Bar
-   ========================================================================== */
-
-.fw-portal-device-info {
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    -webkit-box-align: center;
-    -ms-flex-align: center;
-    align-items: center;
-    -webkit-box-pack: center;
-    -ms-flex-pack: center;
-    justify-content: center;
-    -ms-flex-wrap: wrap;
-    flex-wrap: wrap;
-    gap: 6px 10px;
-    font-size: 11px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.5);
-    letter-spacing: 0.5px;
-    padding: 8px 0 20px;
-}
-
-.fw-portal-device-info .info-sep {
-    color: rgba(255, 255, 255, 0.25);
-}
-
-.fw-portal-device-info strong {
-    color: rgba(255, 255, 255, 0.8);
-    font-weight: 700;
-}
-
-/* ==========================================================================
-   Session Timer Block
-   ========================================================================== */
-
-.fw-portal-timer {
-    padding: 5px 0 28px;
-}
-
-.fw-portal-timer-label {
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 3px;
-    color: rgba(255, 255, 255, 0.4);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-}
-
-.fw-portal-timer-value{
-    font-size: clamp(40px, 12vw, 45px);
-    font-weight: 800;
-    color: #fff;
-    letter-spacing: 4px;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 30px rgba(79, 195, 247, 0.35);
-}
-
-.fw-portal-data-remaining {
-    margin-top: 10px;
-    font-size: 13px;
-    letter-spacing: 0.5px;
-}
-
-.fw-portal-data-remaining {
-    color: rgba(255, 255, 255, 0.4);
-}
-
-.fw-portal-data-remaining strong {
-    color: rgba(255, 255, 255, 0.8);
-}
-
-/* ==========================================================================
-   Navigation Buttons
+   12. NAV BUTTONS
+   Vertical list of large icon+label navigation links (e.g. "Free WiFi",
+   "Premium Plans").  Each <li> contains a single <a> styled as a full-width
+   pill button with a drop shadow.
    ========================================================================== */
 
 .fw-portal-nav {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    -ms-flex-direction: column;
-    flex-direction: column;
-    gap: 14px;
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 0 20px !important;
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-box-direction: normal !important;
+    -ms-flex-direction: column !important;
+    flex-direction: column !important;
+    gap: 14px !important;
 }
 
-.fw-portal-nav li a{
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    -webkit-box-align: center;
-    -ms-flex-align: center;
-    align-items: center;
-    -webkit-box-pack: center;
-    -ms-flex-pack: center;
-    justify-content: center;
-    width: 100%;
-    padding: 20px 10px;
-    min-height: 52px;
-    border-radius: 16px;
-    text-decoration: none;
-    cursor: pointer;
-    backdrop-filter: blur(5px);
-    gap: 8px;
-    font-family: 'Poppins', sans-serif;
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.32);
-    color: #ffffff;
+/* Each nav link: centred icon + label, full-width pill */
+.fw-portal-nav li a {
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    -webkit-box-pack: center !important;
+    -ms-flex-pack: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    padding: 15px 10px !important;
+    min-height: 52px !important;
+    border-radius: 16px !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    backdrop-filter: blur(5px) !important;
+    gap: 8px !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.32) !important;
+    color: #ffffff !important;
 }
 
 .fw-portal-nav li a:hover {
-    opacity: 0.8;
-    transform: translateY(-2px);
-    text-decoration: none;
-    color: #ffffff;
+    opacity: 0.8 !important;
+    transform: translateY(-2px) !important;
+    text-decoration: none !important;
+    color: #ffffff !important;
 }
 
+/* Icon/logo image inside a nav link */
 .fw-portal-nav li a img {
-    height: 25px;
-    flex-shrink: 0;
+    height: 25px !important;
+    flex-shrink: 0 !important;
 }
+
 
 /* ==========================================================================
-   Footer
+   13. CARDS
+   Glassmorphism surface components used to group related content.
+
+   Variants:
+     .fw-portal-card-primary   — glass card with blue-to-purple border gradient
+     .fw-portal-card-secondary — alternate glass card, larger radius, mirrored gradient
+     .fw-portal-card-dark      — dark translucent surface, subtle white border
    ========================================================================== */
 
-.fw-portal-footer {
-    margin-top: auto;
-    position: relative;
-    padding: 12px 20px;
-    font-size: 12px;
-    color: white;
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    -webkit-box-align: center;
-    -ms-flex-align: center;
-    align-items: center;
-    -webkit-box-pack: center;
-    -ms-flex-pack: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-.fw-portal-footer a {
-    color: white;
-    text-decoration: none;
-    font-size: 15px;
-    cursor: pointer;
-    font-family: 'Glitz', serif;
-    font-weight: 400;
-    line-height: 1;
-}
-
-.fw-portal-footer a:hover {
-    opacity: 0.8;
-}
-
-/* ==========================================================================
-   Cards (Glassmorphism) — must use !important to override plugin styles
-   Naming convention:
-     fw-portal-card-primary   — main glass card (payment options, summaries)
-     fw-portal-card-secondary — alternate glass card, larger radius (login, voucher)
-     fw-portal-card-dark      — dark tinted card
-   ========================================================================== */
-
+/* Shared glass look: frosted background + gradient border via ::before pseudo-element */
 .fw-portal-card-primary {
     position: relative !important;
     border-radius: 16px !important;
@@ -531,9 +588,11 @@ body > .container {
     padding: 18px !important;
     backdrop-filter: blur(45px) !important;
     border: none !important;
+    color: white !important;
 }
 
-.fw-portal-card-primary::before{
+/* Gradient border rendered via a masked ::before layer */
+.fw-portal-card-primary::before {
     content: "" !important;
     position: absolute !important;
     inset: 0 !important;
@@ -554,6 +613,7 @@ body > .container {
     mask-composite: exclude;
 }
 
+/* Alternate glass card — slightly larger radius and reversed gradient angle */
 .fw-portal-card-secondary {
     position: relative !important;
     border-radius: 18px !important;
@@ -565,6 +625,7 @@ body > .container {
     padding: 16px !important;
     backdrop-filter: blur(45px) !important;
     border: none !important;
+    color: white !important;
 }
 
 .fw-portal-card-secondary::before {
@@ -588,22 +649,25 @@ body > .container {
     mask-composite: exclude;
 }
 
+/* Dark opaque card — used for secondary info blocks on a glass surface */
 .fw-portal-card-dark {
-    background:
-        linear-gradient(118.76deg, rgba(43, 41, 45, 0) -17.28%, rgba(76, 85, 173, 0.315) 133.14%),
-        linear-gradient(0deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
+    background: rgba(24, 26, 32, 0.77) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 14px;
 }
 
+
 /* ==========================================================================
-   Form Inputs
-   fw-portal-input  — standard glass input
+   14. INPUTS
+   Text/number inputs styled for the dark portal theme.
+   The white border turns cyan on focus.
    ========================================================================== */
 
 .fw-portal-input {
-    border: 1px solid white !important;
-    border-radius: 16px !important;
-    padding: 8px !important;
-    width: 100% !important;
+    border: 1px solid white;
+    border-radius: 16px;
+    padding: 8px;
+    width: 100%;
     background: transparent !important;
     outline: none !important;
     color: rgba(255, 255, 255, 0.8) !important;
@@ -613,146 +677,225 @@ body > .container {
     border-color: rgba(0, 191, 255, 0.99) !important;
 }
 
+
 /* ==========================================================================
-   Loading Spinner
+   15. LOADING SPINNER
+   Full-area centred loading overlay used while portal data is being fetched.
+   The animated border-top creates the spinning arc effect.
    ========================================================================== */
 
+/* Both .fw-portal-loading and legacy .loading-container are supported */
 .fw-portal-loading,
 .loading-container {
-    padding: 25px;
-    text-align: center;
+    width: 100% !important;
+    padding: 25px !important;
+    text-align: center !important;
     background: transparent !important;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
 }
 
+/* Spinning arc: grey track + blue leading edge */
 .fw-portal-loading .spinner,
 .loading-container .spinner {
-    border: 6px solid #f3f3f3;
-    border-top-color: #1A79FF;
-    border-radius: 50%;
-    width: 55px;
-    height: 55px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
-}
-
-.fw-portal-loading .loading-text,
-.loading-container .loading-text {
-    color: white;
+    border: 6px solid #f3f3f3 !important;
+    border-top-color: #1A79FF !important;
+    border-radius: 50% !important;
+    width: 55px !important;
+    height: 55px !important;
+    animation: spin 1s linear infinite !important;
+    margin: 0 auto 20px !important;
 }
 
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
+
 /* ==========================================================================
-   Error Page
+   16. ERROR PAGE
+   Shown when a portal page fails to load (network error, session expired, etc.).
+   Uses blue info-style buttons for recovery actions ("Retry", "Go Home").
    ========================================================================== */
 
+/* Both .fw-portal-error and legacy .error-container are supported */
 .fw-portal-error,
 .error-container {
     background: transparent !important;
 }
 
-.fw-portal-error .error-title,
-.error-container .error-title {
-    color: white;
-}
-
-.fw-portal-error .error-message,
-.error-container .error-message {
-    color: rgba(255, 255, 255, 0.8);
-}
-
+/* Error action buttons share the info (blue) gradient style */
 .fw-portal-error .error-actions a,
 .error-container .error-actions a {
-    display: block;
-    width: 100%;
-    margin-bottom: 10px;
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 10px !important;
     background:
         radial-gradient(ellipse 109.33% 82.14% at 75.74% 17.86%,
             rgba(40, 70, 217, 0.3) 18.49%,
             rgba(0, 0, 0, 0) 100%
         ),
-        #000000;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    transition: all 0.2s ease;
+        #000000 !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+    transition: all 0.2s ease !important;
 }
 
 .fw-portal-error .error-actions a:hover,
 .error-container .error-actions a:hover {
-    opacity: 0.8;
-    transform: translateY(-2px);
-    text-decoration: none;
+    opacity: 0.8 !important;
+    transform: translateY(-2px) !important;
+    text-decoration: none !important;
 }
 
 .fw-portal-error .error-actions a:active,
 .error-container .error-actions a:active {
-    transform: translateY(-2px);
+    transform: translateY(-2px) !important;
 }
 
+
 /* ==========================================================================
-   Payment Status Alerts (overrides Bootstrap 3 alert styles)
+   17. PAYMENT STATUS ALERTS
+   Inline alert banners shown after a payment attempt.
+   Applied as .fw-portal-status-alert + .alert-{info|success|warning}.
    ========================================================================== */
 
-.fw-portal-payment-status-alert {
-    border-radius: 10px;
-    padding: 10px 14px;
-    margin-bottom: 14px;
-    font-size: 13px;
-    font-weight: 500;
+/* Base alert bar */
+.fw-portal-status-alert {
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    margin-bottom: 14px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    border: 1px solid transparent !important;
+}
+
+.fw-portal-status-alert .status-text {
+    margin: 0 !important;
+    line-height: 1.4 !important;
+}
+
+/* Informational — blue (e.g. "Payment processing…") */
+.fw-portal-status-alert.alert-info {
+    background: rgba(79, 110, 247, 0.15) !important;
+    border-color: rgba(79, 110, 247, 0.35) !important;
+    color: #a5b8ff !important;
+}
+
+/* Success — green (e.g. "Payment confirmed") */
+.fw-portal-status-alert.alert-success {
+    background: rgba(74, 222, 128, 0.12) !important;
+    border-color: rgba(74, 222, 128, 0.35) !important;
+    color: #86efac !important;
+}
+
+/* Warning — amber (e.g. "Payment pending") */
+.fw-portal-status-alert.alert-warning {
+    background: rgba(245, 158, 11, 0.12) !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+    color: #fcd34d !important;
+}
+
+
+/* ==========================================================================
+   18. INSTRUCTION CARD
+   Small frosted card listing step-by-step instructions, often shown before
+   a payment or after a session expires.  Includes title, list, and footnote.
+   ========================================================================== */
+
+/* Container */
+.fw-portal-instruction-card {
+    padding: 14px 16px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px !important;
+}
+
+/* Small all-caps section label at the top of the card */
+.fw-portal-instruction-card-title {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Numbered/bulleted instruction steps */
+.fw-portal-instruction-card-list li {
+    font-size: 13px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    line-height: 1.5 !important;
+}
+
+.fw-portal-instruction-card-list li strong {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Footnote / disclaimer at the bottom of the card */
+.fw-portal-instruction-card-note {
+    font-size: 11px !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+    padding-top: 10px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.07) !important;
+    line-height: 1.4 !important;
+}
+
+
+/* ==========================================================================
+   19. FOOTER
+   Branding line at the very bottom of the portal wrap.
+   Displays the site/operator name as a Glitz-font link.
+   ========================================================================== */
+
+.fw-portal-footer {
+    padding-bottom: 5px;
+    font-size: 12px;
     text-align: center;
-    border: 1px solid transparent;
 }
 
-.fw-portal-payment-status-alert .status-text {
-    margin: 0;
-    line-height: 1.4;
+/* Branding link — Glitz font, white, no underline */
+.fw-portal-footer a {
+    color: white !important;
+    text-decoration: none !important;
+    font-size: 15px !important;
+    cursor: pointer !important;
+    font-family: 'Glitz', serif !important;
+    font-weight: 400 !important;
+    line-height: 1 !important;
 }
 
-.fw-portal-payment-status-alert.alert-info {
-    background: rgba(79, 110, 247, 0.15);
-    border-color: rgba(79, 110, 247, 0.35);
-    color: #a5b8ff;
+.fw-portal-footer a:hover {
+    opacity: 0.8 !important;
 }
 
-.fw-portal-payment-status-alert.alert-success {
-    background: rgba(74, 222, 128, 0.12);
-    border-color: rgba(74, 222, 128, 0.35);
-    color: #86efac;
-}
-
-.fw-portal-payment-status-alert.alert-warning {
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.35);
-    color: #fcd34d;
-}
 
 /* ==========================================================================
-   Responsive
+   20. RESPONSIVE OVERRIDES
+   Adjustments for screens narrower than 480 px (most phones in portrait).
    ========================================================================== */
-
-@media (min-width: 480px) {
-    .fw-portal-banner img {
-        border-radius: 0 0 12px 12px;
-    }
-}
 
 @media (max-width: 480px) {
+    /* Round banner bottom corners on small screens */
+    .fw-portal-banner img {
+        border-radius: 0 0 12px 12px !important;
+    }
+
+    /* Slightly smaller nav text and tighter padding on narrow screens */
     .fw-portal-nav li a {
-        font-size: 15px;
-        padding: 15px 5px;
+        font-size: 15px !important;
+        padding: 15px 5px !important;
     }
 
+    /* Scale down the heading on small screens */
     .fw-portal-heading {
-        font-size: 2.5rem;
+        font-size: 2.5rem !important;
     }
 
+    /* Scale down the timer on small screens */
     .fw-portal-timer-value {
-        font-size: 30px;
+        font-size: 30px !important;
     }
 }

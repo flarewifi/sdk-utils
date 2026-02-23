@@ -9,6 +9,10 @@ body {
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
     Arial, sans-serif;
 }
+body > .container {
+  padding-left: 15px;
+  padding-left: 15px;
+}
 
 /* Break out of Bootstrap container wrapper */
 .error-container {
