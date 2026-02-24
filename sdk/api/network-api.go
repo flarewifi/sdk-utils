@@ -27,4 +27,7 @@ type INetworkApi interface {
 
 	// Returns the network traffic API.
 	Traffic() ITrafficApi
+
+	// OnReady registers a callback that will be called when the network API is ready to use.
+	OnReady(func())
 }
