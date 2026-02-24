@@ -25,6 +25,8 @@ func Init(g *api.CoreGlobals) {
 		InitAccounts()
 		if err := InitNetwork(); err != nil {
 			log.Println("Error initializing network:", err)
+		} else {
+			api.RunNetworkReadyCallbacks(g.CoreAPI.Logger())
 		}
 
 		// Initialize sessions manager
