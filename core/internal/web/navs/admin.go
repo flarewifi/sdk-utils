@@ -127,24 +127,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 		// Append plugin navs
 		systemNavs = append(systemNavs, GetAdminPluginNavs(g)...)
 
-		themesNavs := []sdkapi.AdminNavItemOpt{
-			{
-				Category:  sdkapi.NavCategoryThemes,
-				Label:     g.CoreAPI.Translate("label", "Select Theme"),
-				RouteName: "admin:themes:index",
-				Keywords: []string{
-					g.CoreAPI.Translate("label", "Theme"),
-					g.CoreAPI.Translate("label", "Themes"),
-					g.CoreAPI.Translate("label", "Style"),
-					g.CoreAPI.Translate("label", "Portal"),
-					g.CoreAPI.Translate("label", "Admin"),
-				},
-				Icon: "<i class='bi bi-palette'></i>",
-			},
-		}
-
 		adminNavs := append(quickAccessNavs, systemNavs...)
-		adminNavs = append(adminNavs, themesNavs...)
 		return adminNavs
 	})
 
