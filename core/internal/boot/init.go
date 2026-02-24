@@ -12,6 +12,7 @@ func Init(g *api.CoreGlobals) {
 	bootCh := make(chan struct{})
 
 	InitDirs()
+	CleanUpLogs()
 
 	go func() {
 		g.Database.WaitReady()
