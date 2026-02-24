@@ -56,7 +56,7 @@ func getRootDir() string {
 }
 
 func getTmpDir() string {
-	tmp := os.Getenv("APPTMP")
+	tmp := os.Getenv("APP_TMP")
 	if tmp == "" {
 		return filepath.Join(getRootDir(), ".tmp")
 	}
