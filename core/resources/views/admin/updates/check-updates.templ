@@ -13,7 +13,7 @@ type SoftwareUpdate struct {
 
 templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysupgradeReady bool, uploadUrl string, csrfHTML string, maxSizeMB int, allowedExts []string, currentVersion string) {
 	<div>
-    	<h3 class="card-title mb-4">{ api.Translate("label", "Software Updates") }</h3>
+		<h3 class="card-title mb-4">{ api.Translate("label", "Software Updates") }</h3>
 		<div class="w-full">
 			<div class="card shadow-sm border border-light-subtle">
 				<div class="card-body p-4">
@@ -24,56 +24,56 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 						</div>
 						<div id="update-available"></div>
 					</div>
-					<form class="d-flex align-items-end mb-4 gap-3">
+					<form class="d-flex align-items-end mb-4 gap-3" data-loading-states>
 						<div class="w-100" style="flex: 1;">
 							<label for="channel" class="form-label fw-semibold">{ api.Translate("label", "Update Channel") }</label>
 							<select class="form-select" id="channel" name="channel" aria-describedby="channel-help">
-							<option
-								value="stable"
-								if channel == "stable" {
-									selected
-								}
-							>
-								{ api.Translate("label", "Stable") } - { api.Translate("label", "Recommended") }
-							</option>
-							<option
-								value="beta"
-								if channel == "beta" {
-									selected
-								}
-							>
-								{ api.Translate("label", "Beta") } - { api.Translate("label", "Pre-release") }
-							</option>
-							<option
-								value="development"
-								if channel == "development" {
-									selected
-								}
-							>
-								{ api.Translate("label", "Development") } - { api.Translate("label", "Cutting edge") }
-							</option>
+								<option
+									value="stable"
+									if channel == "stable" {
+										selected
+									}
+								>
+									{ api.Translate("label", "Stable") } - { api.Translate("label", "Recommended") }
+								</option>
+								<option
+									value="beta"
+									if channel == "beta" {
+										selected
+									}
+								>
+									{ api.Translate("label", "Beta") } - { api.Translate("label", "Pre-release") }
+								</option>
+								<option
+									value="development"
+									if channel == "development" {
+										selected
+									}
+								>
+									{ api.Translate("label", "Development") } - { api.Translate("label", "Cutting edge") }
+								</option>
 							</select>
 						</div>
-					<button
-						class="btn btn-primary"
-						type="submit"
-						hx-target="#update-status-message"
-						hx-swap="innerHTML"
-						hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:query") }
-						hx-include="[name='channel']"
-						data-loading-disable
-					>
-						<span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" data-loading-class-remove="d-none"></span>
-						<span class="d-flex align-items-center gap-2 fw-semibold" data-loading-class="d-none">
-							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw-icon lucide-refresh-cw">
-								<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-								<path d="M21 3v5h-5"/>
-								<path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-								<path d="M8 16H3v5"/>
-							</svg>
-							{ api.Translate("label", "Check for updates") }
-						</span>
-						<span class="d-none" data-loading-class-remove="d-none">{ api.Translate("label", "Checking for updates") }...</span>
+						<button
+							class="btn btn-primary"
+							type="submit"
+							hx-target="#update-status-message"
+							hx-swap="innerHTML"
+							hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:query") }
+							hx-include="[name='channel']"
+							data-loading-disable
+						>
+							<span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" data-loading-class-remove="d-none"></span>
+							<span class="d-flex align-items-center gap-2 fw-semibold" data-loading-class="d-none">
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw-icon lucide-refresh-cw">
+									<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+									<path d="M21 3v5h-5"></path>
+									<path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+									<path d="M8 16H3v5"></path>
+								</svg>
+								{ api.Translate("label", "Check for updates") }
+							</span>
+							<span class="d-none" data-loading-class-remove="d-none">{ api.Translate("label", "Checking for updates") }...</span>
 						</button>
 					</form>
 					<div id="update-status-message"></div>
@@ -81,63 +81,84 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 				</div>
 			</div>
 			<!-- Manual Sysupgrade Section -->
-			<div class="card shadow-sm border border-light-subtle">
+			<style>
+				#firmware-upload-form.htmx-request #firmware-upload-ui { display: none; }
+				#firmware-upload-form.htmx-request #firmware-upload-loading { display: block !important; }
+				#firmware-upload-loading { display: none; }
+			</style>
+			<div class="card shadow-sm border border-light-subtle" id="firmware-upload-card">
 				<div class="card-header border-bottom border-light-subtle p-4 bg-transparent">
-					<h4 class="fw-semibold">Manual Firmware Upload</h4>
-					<p>Install firmware from a file for advanced users</p>
+					<h4 class="fw-semibold">{ api.Translate("label", "Manual Firmware Upload") }</h4>
+					<p>{ api.Translate("info", "Install firmware from a file for advanced users") }</p>
 				</div>
 				<div class="card-body p-4">
-					<form 
+					<!-- Upload Form -->
+					<form
+						id="firmware-upload-form"
 						hx-post={ uploadUrl }
-						hx-encoding="multipart/form-data">
-						
+						hx-encoding="multipart/form-data"
+						data-loading-states
+					>
 						@templ.Raw(csrfHTML)
-						
-						<div class="border-dashed p-5 text-center mb-4">
-							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload-icon lucide-upload mb-1">
-								<path d="M12 3v12"/>
-								<path d="m17 8-5-5-5 5"/>
-								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-							</svg>
-							<h5 class="fw-semibold mb-1">Upload Firmware File</h5>
-							<p class="mb-2">Select a .bin, .img, or .firmware file</p>
-							
-							<input 
-								type="file" 
-								class="d-none" 
-								id="sysupgrade_file_inline" 
+						<!-- Normal upload UI -->
+						<div id="firmware-upload-ui">
+							<input
+								type="file"
+								class="d-none"
+								id="sysupgrade_file_inline"
 								name="sysupgrade_file"
 								accept={ formatExtensionsForAccept(allowedExts) }
-								onchange="document.getElementById('selected-filename').textContent = this.files[0] ? this.files[0].name : ''; this.form.requestSubmit()"
-								required />
-							
-							<label for="sysupgrade_file_inline" class="btn bg-purple text-light" style="cursor: pointer;">
-								<span class="d-flex align-items-center gap-2 fw-semibold">
-									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload-icon lucide-upload">
-										<path d="M12 3v12"/>
-										<path d="m17 8-5-5-5 5"/>
-										<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-									</svg>
-									Choose File
+								required
+							/>
+							<label for="sysupgrade_file_inline" class="border-dashed p-5 text-center mb-4 d-block" style="cursor: pointer;">
+								<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload-icon lucide-upload mb-1">
+									<path d="M12 3v12"></path>
+									<path d="m17 8-5-5-5 5"></path>
+									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+								</svg>
+								<h5 class="fw-semibold mb-1">{ api.Translate("label", "Upload Firmware File") }</h5>
+								<p class="mb-2">{ api.Translate("info", "Select a .bin, .img, or .firmware file") }</p>
+								<span class="btn bg-purple text-light">
+									<span class="d-flex align-items-center gap-2 fw-semibold">
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload-icon lucide-upload">
+											<path d="M12 3v12"></path>
+											<path d="m17 8-5-5-5 5"></path>
+											<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+										</svg>
+										{ api.Translate("label", "Choose File") }
+									</span>
 								</span>
+								<div id="selected-filename" class="mt-3 fw-semibold text-primary"></div>
 							</label>
-							
-							<div id="selected-filename" class="mt-3 fw-semibold text-primary"></div>
+						</div>
+						<!-- Loading state (shown during upload/validation) -->
+						<div id="firmware-upload-loading">
+							<div class="border-dashed p-5 text-center mb-4">
+								<div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+									<span class="visually-hidden">
+										{ api.Translate("label", "Loading") }...
+									</span>
+								</div>
+								<h5 class="fw-semibold mb-2">{ api.Translate("label", "Uploading and Validating Firmware") }...</h5>
+								<p class="text-muted mb-0">{ api.Translate("info", "Please wait while we upload and verify your firmware file") }</p>
+								<div class="progress mt-3" style="height: 6px;">
+									<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+								</div>
+							</div>
 						</div>
 						<div class="d-flex align-items-center gap-2">
 							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert-icon lucide-circle-alert text-warning">
-								<circle cx="12" cy="12" r="10"/>
-								<line x1="12" x2="12" y1="8" y2="12"/>
-								<line x1="12" x2="12.01" y1="16" y2="16"/>
+								<circle cx="12" cy="12" r="10"></circle>
+								<line x1="12" x2="12" y1="8" y2="12"></line>
+								<line x1="12" x2="12.01" y1="16" y2="16"></line>
 							</svg>
-							<p>Only upload firmware files from trusted sources. Invalid firmware may damage your device.</p>
+							<p>{ api.Translate("info", "Only upload firmware files from trusted sources. Invalid firmware may damage your device") }.</p>
 						</div>
 					</form>
 				</div>
 			</div>
 		</div>
 	</div>
-
 }
 
 templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err error) {
@@ -159,22 +180,22 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 			<code class="ms-1">{ update.CurrentVersion }</code>
 			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 		</div>
-		<span class="fw-semibold" id="current-version" hx-swap-oob="true">{update.CurrentVersion}</span>
+		<span class="fw-semibold" id="current-version" hx-swap-oob="true">{ update.CurrentVersion }</span>
 		{{ return }}
 	}
 	<div id="update-available" hx-swap-oob="true">
 		<div class="d-flex align-items-center rounded-pill bg-warning bg-opacity-25 px-3 py-1 border border-warning gap-2 text-warning">
 			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert-icon lucide-circle-alert">
-				<circle cx="12" cy="12" r="10"/>
-				<line x1="12" x2="12" y1="8" y2="12"/>
-				<line x1="12" x2="12.01" y1="16" y2="16"/>
+				<circle cx="12" cy="12" r="10"></circle>
+				<line x1="12" x2="12" y1="8" y2="12"></line>
+				<line x1="12" x2="12.01" y1="16" y2="16"></line>
 			</svg>
 			Update Available
 		</div>
 	</div>
 	<div id="update-info" hx-swap-oob="true">
 		<div class="my-4">
-			<h5 class="fw-bold">Version {update.NewVersion} Available</h5>
+			<h5 class="fw-bold">Version { update.NewVersion } Available</h5>
 			<p>Released on <span>2026-02-05</span> • <span>24.5 MB</span></p>
 		</div>
 		if update.ReleaseNotes != "" {
@@ -182,15 +203,15 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 				<div class="accordion-item">
 					<p class="accordion-header">
 						<button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#whatsNew" aria-expanded="true" aria-controls="whatsNew">
-						What's New
+							What's New
 						</button>
 					</p>
 					<div class="accordion-collapse collapse show" id="whatsNew">
 						<div class="accordion-body">
 							<div class="d-flex align-items-center gap-2 mb-2">
 								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00a63e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check">
-									<circle cx="12" cy="12" r="10"/>
-									<path d="m9 12 2 2 4-4"/>
+									<circle cx="12" cy="12" r="10"></circle>
+									<path d="m9 12 2 2 4-4"></path>
 								</svg>
 								@update.ReleaseNotesHTML
 							</div>
@@ -205,9 +226,9 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 		>
 			<span class="d-flex align-items-center gap-2 fw-semibold justify-content-center">
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download">
-					<path d="M12 15V3"/>
-					<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-					<path d="m7 10 5 5 5-5"/>
+					<path d="M12 15V3"></path>
+					<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+					<path d="m7 10 5 5 5-5"></path>
 				</svg>
 				{ api.Translate("label", "Download and Install Update") }
 			</span>
