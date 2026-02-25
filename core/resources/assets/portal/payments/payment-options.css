@@ -1,471 +1,261 @@
-/* Payment Checkout Page Styles */
+body {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.portal-wrap {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+:root {
+  --text-black: rgba(0,0,0,0.75);
+  --text-black-6: rgba(0,0,0,0.6);
+  --text-white: white;
+  --text-muted: rgba(255, 255, 255, 0.7);
+}
 
 .payment-checkout-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial,
-    sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-/* Header Styles */
-.checkout-header {
-  text-align: center;
-  margin-bottom: 40px;
-  padding: 30px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  color: #ffffff;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
-.checkout-icon {
-  font-size: 48px;
-  margin-bottom: 15px;
-  opacity: 0.95;
-  text-align: center;
-}
-
-.checkout-title {
-  margin: 15px 0 10px 0;
-  font-size: 32px;
-  font-weight: 600;
-  color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.checkout-subtitle {
-  margin: 0;
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 400;
-}
-
-/* Purchase Summary */
 .purchase-summary {
+  margin-bottom: 25px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: 2px solid transparent;
   border-radius: 10px;
   padding: 24px;
   margin-bottom: 30px;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.summary-header {
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  text-align: center;
+.summary-cart-icon {
+    margin-bottom: 10px;
 }
 
-.summary-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #ffffff;
+.summary-cart-icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--text-white);
 }
 
-.summary-content {
-  display: block;
-}
-
-.summary-content .table {
-  margin-bottom: 0;
-  background: transparent;
-}
-
-.summary-content .table > tbody > tr > td {
-  border: none;
-  color: #ffffff;
-  padding: 12px 8px;
-}
-
-.summary-label {
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-}
-
-.summary-value {
-  font-weight: 400;
-  color: #ffffff;
-  font-size: 14px;
-}
-
-.summary-divider td {
-  padding: 8px 0;
-  border-bottom: none;
-}
-
-.divider-line {
-  margin: 0;
-  border-top: 2px solid rgba(255, 255, 255, 0.3);
-}
-
-.summary-price td {
-  padding-top: 16px;
-  padding-bottom: 8px;
-}
-
-.summary-price .price-label {
+.payment-checkout-container .summary-title {
   font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.summary-price .price-amount {
   font-weight: 700;
-  color: #ffffff;
-  font-size: 20px;
   letter-spacing: 0.5px;
+  margin: 0 0 14px;
+  color: var(--text-white);
 }
 
-/* Payment Options Section */
-.payment-options-section {
-  margin: 30px 0;
+/* Row: product thumb + info on the left, total on the right */
+.payment-checkout-container .summary-product-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.payment-options-title {
-  text-align: center;
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-}
-
-/* Payment Options Grid */
-.payment-options-grid {
-  display: block;
-  margin-top: 20px;
-  margin-bottom: 30px;
-}
-
-.payment-option-card {
-  display: block;
-  background: #ffffff;
-  border: 2px solid #e1e8ed;
-  border-radius: 10px;
-  padding: 24px;
-  margin-bottom: 16px;
-  text-decoration: none;
-  color: #333333;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  position: relative;
-  overflow: hidden;
-}
-
-.payment-option-card:hover {
-  transform: translateY(-4px);
-  border-color: #667eea;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
-  text-decoration: none;
-  color: #333333;
-}
-
-.payment-option-card:hover .payment-arrow {
-  transform: translateX(5px);
-  color: #667eea;
-}
-
-.payment-option-card:active {
-  transform: translateY(-2px);
-}
-
-.payment-card-inner {
-  display: table;
-  width: 100%;
-}
-
-/* Payment Icon */
-.payment-icon {
-  display: table-cell;
-  vertical-align: middle;
-  width: 60px;
-  font-size: 32px;
-  color: #667eea;
-  text-align: center;
-}
-
-/* Payment Name */
-.payment-name {
-  display: table-cell;
-  vertical-align: middle;
-  margin: 0;
-  padding: 0 20px;
-  font-size: 20px;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-/* Payment Arrow */
-.payment-arrow {
-  display: table-cell;
-  vertical-align: middle;
-  width: 40px;
-  text-align: right;
-  font-size: 20px;
-  color: #999999;
-  transition: all 0.3s ease;
-}
-
-/* Footer Styles */
-.checkout-footer {
-  text-align: center;
-  padding: 20px;
-}
-
-.secure-payment-badge {
-  display: inline-flex;
+.payment-checkout-container .summary-product-left {
+  display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  background-color: #f8f9fa;
+  flex: 1;
+  min-width: 0;
 }
 
-.secure-payment-icon {
-  height: 50px;
-  width: 50px;
-  display: block;
+/* Square thumbnail container */
+.payment-checkout-container .summary-product-thumb {
+  width: 35px;
+  height: 35px;
   flex-shrink: 0;
 }
 
-.secure-payment-text {
+.payment-checkout-container .summary-product-thumb svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Stacked name + description */
+.payment-checkout-container .summary-product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+
+.payment-checkout-container .summary-product-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.payment-checkout-container .summary-product-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Right group: label + formatted amount */
+.payment-checkout-container .summary-product-total {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+
+.payment-checkout-container .summary-total-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.payment-checkout-container .summary-total-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-white);
+}
+
+
+.payment-checkout-container .payment-options-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+
+.payment-checkout-container .payment-options-title {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  letter-spacing: 0.3px;
+  margin: 0;
+  text-align: center;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .checkout-header {
-    padding: 20px 15px;
-  }
-
-  .checkout-title {
-    font-size: 24px;
-  }
-
-  .checkout-subtitle {
-    font-size: 16px;
-  }
-
-  .payment-option-card {
-    padding: 18px;
-  }
-
-  .payment-icon {
-    width: 50px;
-    font-size: 28px;
-  }
-
-  .payment-name {
-    font-size: 18px;
-    padding: 0 15px;
-  }
-
-  .purchase-summary {
-    padding: 18px;
-  }
-
-  .summary-title {
-    font-size: 18px;
-  }
-
-  .summary-content .table > tbody > tr > td {
-    padding: 10px 6px;
-  }
-
-  .summary-label {
-    font-size: 13px;
-  }
-
-  .summary-value {
-    font-size: 13px;
-  }
-
-  .summary-price .price-label {
-    font-size: 14px;
-  }
-
-  .summary-price .price-amount {
-    font-size: 18px;
-  }
-
-  .secure-payment-badge {
-    padding: 8px 16px;
-    gap: 10px;
-  }
-
-  .secure-payment-icon {
-    height: 60px;
-    width: 60px;
-  }
-
-  .secure-payment-text {
-    font-size: 15px;
-  }
+/* Grid of payment method cards — single column, stretches full width */
+.payment-checkout-container .payment-options-grid {
+  display: flex;
+  flex-direction: column;
 }
 
-@media (max-width: 480px) {
-  .payment-checkout-container {
-    padding: 15px;
-  }
+.payment-checkout-container .payment-option-card {
+  display: block;
+  text-decoration: none;
+  color: var(--text-black);
+  padding: 10px !important;
+  border-radius: 15px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 
-  .checkout-header {
-    padding: 15px 10px;
-  }
-
-  .checkout-icon {
-    font-size: 36px;
-  }
-
-  .checkout-title {
-    font-size: 20px;
-  }
-
-  .checkout-subtitle {
-    font-size: 14px;
-  }
-
-  .payment-option-card {
-    padding: 15px;
-  }
-
-  .payment-icon {
-    width: 40px;
-    font-size: 24px;
-  }
-
-  .payment-name {
-    font-size: 16px;
-    padding: 0 10px;
-  }
-
-  .payment-arrow {
-    width: 30px;
-    font-size: 18px;
-  }
-
-  .purchase-summary {
-    padding: 15px;
-  }
-
-  .summary-title {
-    font-size: 16px;
-  }
-
-  .summary-content .table > tbody > tr > td {
-    padding: 8px 4px;
-  }
-
-  .summary-label {
-    font-size: 12px;
-  }
-
-  .summary-value {
-    font-size: 12px;
-  }
-
-  .summary-price .price-label {
-    font-size: 13px;
-  }
-
-  .summary-price .price-amount {
-    font-size: 16px;
-  }
-
-  .secure-payment-badge {
-    padding: 6px 12px;
-    gap: 8px;
-  }
-
-  .secure-payment-icon {
-    height: 50px;
-    width: 50px;
-  }
-
-  .secure-payment-text {
-    font-size: 14px;
-  }
 }
 
-/* Loading State (Optional) */
-.payment-option-card.loading {
+.payment-checkout-container .payment-option-card:hover {
+  opacity: 0.85;
+  text-decoration: none;
+}
+#payment-options-page .payment-option-card:hover,
+#payment-options-page .payment-option-card:hover .payment-arrow,
+#payment-options-page .payment-option-card:hover .payment-icon {
+  color: var(--text-black-6);
+}
+
+.payment-checkout-container .payment-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.payment-checkout-container .payment-icon {
+  font-size: 20px;
+  color: var(--text-black-6);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Payment method name — grows to fill available space */
+.payment-checkout-container .payment-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+/* Chevron arrow on the right */
+.payment-checkout-container .payment-arrow {
+    font-size: 13px;
+    color: var(--text-black-6);
+    flex-shrink: 0;
+}
+
+/* Loading spinner — hidden by default; shown when card is clicked */
+.payment-checkout-container .payment-loading-spinner {
+  display: none;
+  flex-shrink: 0;
+}
+.payment-checkout-container .payment-option-card.loading {
   opacity: 0.6;
   pointer-events: none;
 }
 
-/* Focus State for Accessibility */
-.payment-option-card:focus {
-  outline: 3px solid #667eea;
-  outline-offset: 2px;
-}
-
-/* Empty State */
-.payment-options-grid:empty::after {
-  content: 'No payment options available';
-  display: block;
-  text-align: center;
-  padding: 40px;
-  color: rgba(255, 255, 255, 0.7);
-  font-style: italic;
-}
-/* Disabled State */
-.payment-option-card.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-  cursor: not-allowed;
-}
-
-/* Loading State */
-.payment-option-card.loading .payment-arrow {
+.payment-checkout-container .payment-option-card.loading .payment-arrow {
   display: none;
 }
 
-.payment-option-card.loading .payment-loading-spinner {
+.payment-checkout-container .payment-option-card.loading .payment-loading-spinner {
   display: table-cell;
 }
 
-.payment-loading-spinner {
-  display: none;
-  vertical-align: middle;
-  width: 40px;
-  text-align: right;
-}
-
-.spinner-icon {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 3px solid #e1e8ed;
-  border-top-color: #667eea;
+/* Spinner arc — reuses the global @keyframes spin */
+.payment-checkout-container .spinner-icon {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  border-top-color: var(--text-black);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.payment-checkout-container .cancel-purchase-section {
+  display: flex;
+  justify-content: center;
 }
 
-/* Cancel Purchase Section */
-.cancel-purchase-section {
+.payment-checkout-container .cancel-form {
+  width: 100%;
   text-align: center;
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #e5e5e5;
 }
 
-.cancel-text {
-  margin: 0 0 15px 0;
+/* Cancel button — full width, inherits btn-default styling */
+.payment-checkout-container .btn-cancel-purchase {
   font-size: 14px;
-  color: #666;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 12px 30px;
 }
 
-.cancel-form {
-  margin: 0;
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 250px) {
+  .payment-checkout-container .summary-product-row {
+    display: block !important;
+  }
+  .payment-checkout-container .summary-product-left {
+    justify-content: center !important;
+  }
+  .payment-checkout-container .summary-product-total {
+    justify-content: center;
+    margin-top: 10px !important;
+  }
+  .payment-checkout-container .payment-name {
+    font-size: 12px !important;
+  }
 }

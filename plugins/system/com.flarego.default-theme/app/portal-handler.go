@@ -48,3 +48,26 @@ func PortalNavItemsHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 		navsView.Render(r.Context(), w)
 	}
 }
+
+func PortalStatusNavHandler(api sdkapi.IPluginApi) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res := api.Http().Response()
+		clnt, err := api.Http().GetClientDevice(r)
+		if err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+		_, isConnected := api.SessionsMgr().RunningSession(clnt)
+		data := portal.PortalStatusData{
+			IsSessionRunning: isConnected,
+			DeviceMac:        clnt.MacAddr(),
+			DeviceIP:         clnt.IpAddr(),
+		}
+
+		statusView := portal.PortalStatusNavView(api, data)
+		if err := statusView.Render(r.Context(), w); err != nil {
+			res.Error(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
+}

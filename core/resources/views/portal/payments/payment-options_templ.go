@@ -36,129 +36,121 @@ func PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opt
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"payment-checkout-container\"><div class=\"purchase-summary\"><div class=\"summary-header\"><div class=\"checkout-icon\"><span class=\"glyphicon glyphicon-shopping-cart\"></span></div><h3 class=\"summary-title\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"payment-checkout-container\" id=\"payment-options-page\"><!-- Purchase Summary Card --><!-- card-primary: theme glass card; .panel .panel-default as Bootstrap fallback --><div class=\"purchase-summary card card-primary panel panel-default\"><div class=\"summary-cart-icon text-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"9\" cy=\"21\" r=\"1\"></circle> <circle cx=\"20\" cy=\"21\" r=\"1\"></circle> <path d=\"M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6\"></path></svg></div><h3 class=\"summary-title text-center\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Purchase Summary"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 17, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 22, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h3></div><div class=\"summary-content\"><table class=\"table\"><tbody><tr class=\"summary-item product-name\"><td class=\"summary-label\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h3><div class=\"summary-product-row\"><div class=\"summary-product-left\"><div class=\"summary-product-thumb\"><svg viewBox=\"-3 3 64 64\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"28.8295\" cy=\"34.6634\" r=\"28.8295\" fill=\"url(#paint0_linear_1843_223)\"></circle> <path d=\"M23.6745 44.9294C20.7133 44.9294 18.3128 42.5289 18.3128 39.5678C18.3883 39.5678 18.4633 39.5697 18.5388 39.5727C18.5741 39.5741 18.6094 39.5761 18.6447 39.5786C18.6579 39.5791 18.6706 39.5795 18.6839 39.581C18.7486 39.585 18.8123 39.5908 18.876 39.5977C18.9133 39.6011 18.9505 39.6055 18.9882 39.6104C19.0245 39.6148 19.0603 39.6197 19.0961 39.6256C19.1446 39.6324 19.1936 39.6403 19.2422 39.6491C19.7823 39.7447 20.3161 39.9251 20.8273 40.1961C22.4031 41.0333 23.3892 42.5414 23.6211 44.181C23.6387 44.305 23.6524 44.43 23.6607 44.5554C23.6632 44.5868 23.6652 44.6186 23.6671 44.6495C23.6721 44.7422 23.6745 44.8358 23.6745 44.9294Z\" fill=\"white\"></path> <path d=\"M18.313 50.2912C18.313 47.33 20.7135 44.9295 23.6746 44.9295C23.6751 45.7784 23.4732 46.6406 23.0463 47.4439C22.4939 48.4845 21.6479 49.2682 20.6652 49.7466C19.9353 50.1024 19.13 50.2906 18.313 50.2912Z\" fill=\"white\"></path> <path d=\"M18.313 50.2912C17.4635 50.2917 16.6019 50.0892 15.799 49.6628C15.2878 49.3912 14.8393 49.0496 14.458 48.6555C13.4851 47.6507 12.9518 46.3068 12.9513 44.9295C15.9125 44.9295 18.313 47.33 18.313 50.2912Z\" fill=\"white\"></path> <path d=\"M12.9513 44.9292C12.9508 44.0798 13.1532 43.2182 13.5797 42.4148C14.5433 40.6018 16.396 39.5681 18.313 39.5676C18.313 42.5288 15.9125 44.9292 12.9513 44.9292Z\" fill=\"white\"></path> <path d=\"M16.3536 27.5805C15.4877 27.5829 14.6582 27.9292 14.0476 28.5431C13.437 29.1571 13.0953 29.9885 13.0977 30.8544C13.1001 31.7203 13.4464 32.5498 14.0603 33.1604C14.6743 33.7709 15.5057 34.1126 16.3716 34.1103C19.8033 34.1587 23.0809 35.5435 25.5077 37.9703C27.9346 40.3972 29.3194 43.6748 29.3678 47.1065C29.3651 47.537 29.4482 47.9638 29.6123 48.3618C29.7764 48.7598 30.0182 49.1211 30.3236 49.4245C30.7798 49.8804 31.3607 50.1911 31.9931 50.3173C32.6256 50.4434 33.2812 50.3795 33.8774 50.1335C34.4735 49.8876 34.9835 49.4706 35.3429 48.9351C35.7024 48.3997 35.8952 47.7698 35.8971 47.1249C35.9336 36.6084 26.8697 27.5444 16.3536 27.5805Z\" fill=\"white\"></path> <path d=\"M48.876 47.1336C48.9224 42.8487 48.1126 38.5976 46.4942 34.6298C44.8758 30.662 42.4813 27.0573 39.4512 24.0272C36.4211 20.9971 32.8164 18.6026 28.8486 16.9842C24.8808 15.3658 20.6297 14.556 16.3448 14.6024C15.4789 14.6072 14.6504 14.9558 14.0415 15.5714C13.4326 16.1871 13.0932 17.0194 13.098 17.8853C13.1028 18.7512 13.4513 19.5797 14.067 20.1886C14.6826 20.7975 15.515 21.1369 16.3808 21.1321C30.4053 21.051 42.4275 33.0732 42.3463 47.0976C42.3415 47.9635 42.6809 48.7958 43.2898 49.4115C43.8987 50.0271 44.7272 50.3757 45.5931 50.3804C46.459 50.3852 47.2913 50.0458 47.907 49.4369C48.5226 48.8281 48.8712 47.9995 48.876 47.1336Z\" fill=\"white\"></path> <defs><linearGradient id=\"paint0_linear_1843_223\" x1=\"49.1355\" y1=\"14.7334\" x2=\"7.39539\" y2=\"54.5306\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#1A79FF\"></stop> <stop offset=\"1\" stop-color=\"#2F2EC7\"></stop></linearGradient></defs></svg></div><div class=\"summary-product-info\"><span class=\"summary-product-name\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Item"))
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(purchase.Name())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 23, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 43, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</td><td class=\"summary-value\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(purchase.Name())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 24, Col: 50}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</td></tr>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if purchase.Description() != "" {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<tr class=\"summary-item product-description\"><td class=\"summary-label\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span class=\"summary-product-desc\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var4 string
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(purchase.Description())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 45, Col: 66}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<span class=\"summary-product-desc\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Description"))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Basic WiFi Hotspot"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 28, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 47, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</td><td class=\"summary-value\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(purchase.Description())
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 29, Col: 57}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</td></tr>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<tr class=\"summary-divider\"><td colspan=\"2\"><hr class=\"divider-line\"></td></tr><tr class=\"summary-item summary-price\"><td class=\"summary-label price-label\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div><div class=\"summary-product-total\"><span class=\"summary-total-label\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Total Price"))
+		var templ_7745c5c3_Var6 string
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Total"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 36, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 52, Col: 72}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</td><td class=\"summary-value price-amount\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(":</span> &nbsp; <span class=\"summary-total-amount\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if purchase.IsFixedPrice() {
-			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Payments().FormatCurrency(purchase.Price()))
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Payments().FormatCurrency(purchase.Price()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 39, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 56, Col: 56}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			var templ_7745c5c3_Var8 string
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Any"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 58, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		} else {
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Any Amount"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 41, Col: 47}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</td></tr></tbody></table></div></div><div class=\"payment-options-section\"><h3 class=\"payment-options-title\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></div></div></div><!-- Payment Options Section --><div class=\"payment-options-section\"><h3 class=\"payment-options-title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Choose Payment Options"))
+		var templ_7745c5c3_Var9 string
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Choose Payment Options"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 50, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 67, Col: 87}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -167,42 +159,42 @@ func PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opt
 			return templ_7745c5c3_Err
 		}
 		for _, opt := range opts {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<a href=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!-- card-primary: theme glass card; .panel .panel-default as Bootstrap fallback --> <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var11 templ.SafeURL = templ.SafeURL(opt.URL)
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var11)))
+			var templ_7745c5c3_Var10 templ.SafeURL = templ.SafeURL(opt.URL)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var10)))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"payment-option-card\" aria-label=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"payment-option-card card card-primary panel panel-default\" aria-label=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var11 string
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs("Select " + opt.Label)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 71, Col: 139}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"payment-card-inner panel-body\"><div class=\"payment-icon\"><span class=\"glyphicon glyphicon-credit-card\"></span></div><span class=\"payment-name\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs("Select " + opt.Label)
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 53, Col: 102}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 76, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"payment-card-inner\"><div class=\"payment-icon\"><span class=\"glyphicon glyphicon-credit-card\"></span></div><h3 class=\"payment-name\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 58, Col: 42}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h3><div class=\"payment-arrow\"><span class=\"glyphicon glyphicon-chevron-right\"></span></div><div class=\"payment-loading-spinner\"><div class=\"spinner-icon\"></div></div></div></a>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span><div class=\"payment-arrow\"><span class=\"glyphicon glyphicon-chevron-right\"></span></div><div class=\"payment-loading-spinner\"><div class=\"spinner-icon\"></div></div></div></a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -211,8 +203,8 @@ func PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opt
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var14 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("portal:payments:cancel"))
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var14)))
+		var templ_7745c5c3_Var13 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("portal:payments:cancel"))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var13)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -220,68 +212,42 @@ func PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opt
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("warning", "Are you sure you want to cancel this purchase"))
+		var templ_7745c5c3_Var14 string
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("warning", "Are you sure you want to cancel this purchase"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 76, Col: 92}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 95, Col: 92}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"cancel-form\"><!-- portal-btn portal-btn-default: theme button; .btn .btn-default as Bootstrap fallback --><button type=\"submit\" class=\"btn-cancel-purchase btn btn-default\" onclick=\"this.disabled=true; this.form.submit();\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var15 string
+		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Cancel Purchase"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 100, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"cancel-form\"><button type=\"submit\" class=\"btn btn-default\"><span class=\"glyphicon glyphicon-remove\"></span> ")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></form></div></div><!-- Footer --><!-- footer: theme footer; Bootstrap .text-center as fallback --><div class=\"footer text-center w-full\"><span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Cancel Purchase"))
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Powered by"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 81, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 108, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></form></div><div class=\"checkout-footer\"><div class=\"secure-payment-badge\"><img src=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().PublicPath("images/secure-payment.png"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 87, Col: 75}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" alt=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var18 string
-		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Secure Payment"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 87, Col: 124}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"secure-payment-icon\"> <span class=\"secure-payment-text\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Secure Payment"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/payments/payment-options.templ`, Line: 88, Col: 80}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span> <a target=\"_blank\" href=\"https://flarewifi.com\"><strong>flarewifi</strong></a></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -5,16 +5,16 @@ import sdkapi "sdk/api"
 templ PortalSuccessRedirectPage(api sdkapi.IPluginApi, redirectURL string) {
 	<div class="redirect-container" data-redirect-url={ redirectURL }>
 		<div class="redirect-container-inner">
-			<div class="redirect-card">
-				<div class="redirect-content">
+			<div class="redirect-card card card-primary panel panel-default">
+				<div class="redirect-content panel-body text-center">
 					<div class="success-icon">
 						<div class="checkmark-simple">✓</div>
 					</div>
 					<div class="spinner-container">
 						<div class="spinner"></div>
 					</div>
-					<h2 class="redirect-title">{ api.Translate("label", "Success") }!</h2>
-					<p class="redirect-text">{ api.Translate("label", "Redirecting") }...</p>
+					<h2 class="redirect-title text-primary">{ api.Translate("label", "Success") }!</h2>
+					<p class="redirect-text text-muted">{ api.Translate("label", "Redirecting") }...</p>
 				</div>
 			</div>
 		</div>

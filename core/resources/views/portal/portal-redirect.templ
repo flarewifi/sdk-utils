@@ -7,17 +7,20 @@ templ PortalRedirectPage(api sdkapi.IPluginApi, redirectUrl string, registerUrl 
     // Meta refresh immediately redirects to cookie-based registration
     <noscript>
         <meta http-equiv="refresh" content={ "0;url=" + fallbackUrl }/>
-        <div class="loading-container">
+        <!-- loading-container: theme class; Bootstrap .text-center provides baseline alignment -->
+        <div class="loading-container text-center">
             <div class="loading-text">{ api.Translate("label", "Redirecting") }...</div>
         </div>
     </noscript>
-    
-    <div id="loading-container" class="loading-container" 
+
+    <!-- loading-container: theme spinner overlay; Bootstrap .text-center as fallback -->
+    <div id="loading-container" class="loading-container text-center"
          data-redirect-url={ redirectUrl }
          data-register-url={ registerUrl }
          data-fallback-url={ fallbackUrl }
          data-storage-key={ localStorageKey }>
         <div class="spinner"></div>
-        <div class="loading-text">{ api.Translate("label", "Loading") }...</div>
+        <h2 class="loading-text text-primary">{ api.Translate("label", "Authenticating") }...</h2>
+        <span class="text-muted">{ api.Translate("label", "Please wait while we connect you") }</span>
     </div>
 }

@@ -1,6 +1,9 @@
 package activation
 
-import sdkapi "sdk/api"
+import (
+	"fmt"
+	sdkapi "sdk/api"
+)
 
 type ActivationPageData struct {
 	API       sdkapi.IPluginApi
@@ -16,31 +19,72 @@ templ ActivationPage(data *ActivationPageData) {
 			<title>{ data.API.Translate("label", "Device Activation Required") }</title>
 			<style>
 				body {
-					font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-					background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+					backdrop-filter: blur(25px);
+    			-webkit-backdrop-filter: blur(12px);
+					background-color: #0d0d1a;
+					background-size: cover;
+					background-position: center center;
+					background-repeat: no-repeat;
+					background-attachment: fixed;
 					min-height: 100vh;
+					color: #fff;
+					-webkit-font-smoothing: antialiased;
 					display: flex;
+					flex-direction: column;
 					align-items: center;
-					justify-content: center;
 					margin: 0;
-					padding: 20px;
+					font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 				}
 				.container {
-					background: white;
-					border-radius: 12px;
-					box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+					padding: 0 15px !important;
+					min-height: 100vh !important;
+					display: flex !important;
+					flex-direction: column !important;
+					justify-content: center !important;
 					max-width: 500px;
-					width: 100%;
-					padding: 40px;
+				}
+				.card {
 					text-align: center;
+					position: relative;
+					border-radius: 16px;
+					background: linear-gradient(
+						116.21deg,
+						rgba(255, 255, 255, 0.35) 3.3%,
+						rgba(217, 217, 217, 0.13) 57.65%
+					);
+					padding: 35px;
+					backdrop-filter: blur(45px);
+					border: none;
+				}
+
+				.card::before {
+					content: "";
+					position: absolute;
+					inset: 0;
+					border-radius: inherit;
+					padding: 1.5px;
+					pointer-events: none;
+					background: linear-gradient(
+						66.86deg,
+						rgba(13, 128, 242, 0.55) 6.76%,
+						rgba(251, 241, 241, 0.396923) 25.74%,
+						rgba(251, 241, 241, 0.242216) 60.9%,
+						rgba(168, 92, 254, 0.25) 92.28%
+					);
+
+					/* Mask trick to create border-only effect */
+					-webkit-mask: 
+						linear-gradient(#000 0 0) content-box, 
+						linear-gradient(#000 0 0);
+					-webkit-mask-composite: xor;
+									mask-composite: exclude;
 				}
 				h1 {
-					color: #333;
-					margin: 0 0 20px 0;
+					color: #white;
 					font-size: 28px;
 				}
 				.info-text {
-					color: #666;
+					color: #a19e9e;
 					line-height: 1.6;
 					margin-bottom: 30px;
 				}
@@ -53,43 +97,45 @@ templ ActivationPage(data *ActivationPageData) {
 					margin-bottom: 10px;
 				}
 				.machine-id {
-					background: #f5f5f5;
-					border: 2px solid #e0e0e0;
+					color: white;
+					background: transparent;
+					border: 1px solid #00BFFFFC;
 					border-radius: 8px;
 					padding: 20px;
 					font-family: "Courier New", monospace;
 					font-size: 18px;
 					font-weight: bold;
-					color: #333;
 					word-break: break-all;
 					margin-bottom: 30px;
 					user-select: all;
 				}
 				.btn {
-					background: #667eea;
+					background: radial-gradient(111.61% 84.15% at 78.02% 15.85%, rgba(37, 82, 226, 0.3) 0%, rgb(0, 0, 0) 100%);
+    			border: 1px solid rgba(255, 255, 255, 0.3);
 					color: white;
-					border: none;
-					border-radius: 6px;
-					padding: 14px 32px;
+					border-radius: 16px;
+					padding: 20px 32px;
 					font-size: 16px;
 					font-weight: 600;
 					cursor: pointer;
-					transition: background 0.3s;
 					width: 100%;
 					display: flex;
 					align-items: center;
 					justify-content: center;
 					gap: 10px;
+					transition: all 0.2s ease;
 				}
 				.btn:hover {
-					background: #5568d3;
+					opacity: 0.8;
+					transform: translateY(-2px);
 				}
 				.btn:active {
-					background: #4451b8;
+					transform: translateY(-2px);
 				}
 				.btn:disabled {
-					opacity: 0.7;
+					opacity: 0.8;
 					cursor: not-allowed;
+					pointer-events: none;
 				}
 				.btn-spinner {
 					display: none;
@@ -127,29 +173,84 @@ templ ActivationPage(data *ActivationPageData) {
 				.reboot-message p {
 					margin: 0;
 					line-height: 1.6;
+					color: #888;	
 				}
+				.activation-header {
+					display: flex;
+					align-items: center;
+					justify-content: center;
+				}
+				.activation-header svg {
+					margin-right: 8px;
+				}
+				.footer {
+					margin-top:auto;
+					padding:12px 20px;
+					font-size:12px;
+					color:white;
+					display:flex;
+					align-items:center;
+					justify-content:center;
+					gap:6px;
+				}
+
+				.footer strong {
+					color:white;
+					text-decoration:none;
+					font-size:15px;
+				}
+				.footer a {
+					text-decoration:  none;
+				}
+				.footer strong:hover{
+					opacity: 0.8;
+				}
+
+				@media (max-width: 768px) {
+					.card {
+						padding: 25px !important;
+					}
+					h1 {
+						font-size: 21px !important;
+					}
+				}
+
 			</style>
+			@templ.Raw(fmt.Sprintf(`<style>body { background-image: url('%s'); }</style>`, data.API.Http().Helpers().PublicPath("images/main-bg.png")))
 		</head>
 		<body>
 			<div class="container" id="activation-container">
-				<h1>{ data.API.Translate("label", "Activation Required") }</h1>
-				<p class="info-text">
-					{ data.API.Translate("info", "This device needs to be activated before you can use it. Please provide the Machine ID to your administrator") }
-				</p>
-				<div class="machine-id-label">
-					{ data.API.Translate("label", "Machine ID") }
+				<div class="card card-primary">
+					<div class="activation-header">
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" viewBox="0 0 16 16">
+							<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+							<path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+						</svg>
+						<h1>{ data.API.Translate("label", "Activation Required") }</h1>
+					</div>
+					<p class="info-text">
+						{ data.API.Translate("info", "This device needs to be activated before you can use it. Please provide the Machine ID to your administrator") }
+					</p>
+					<div class="machine-id-label">
+						{ data.API.Translate("label", "Machine ID") }
+					</div>
+					<div class="machine-id">
+						{ data.MachineID }
+					</div>
+					<button class="btn btn-info" id="check-btn" onclick="checkActivation()">
+						<span class="btn-spinner"></span>
+						<span class="btn-text">{ data.API.Translate("label", "Check Activation Status") }</span>
+					</button>
+					<div class="reboot-message btn" id="reboot-message">
+						<h2>{ data.API.Translate("label", "System Rebooting") }</h2>
+						<p>{ data.API.Translate("info", "Activation successful. The system is rebooting to complete setup. The page will reload automatically") }</p>
+					</div>
 				</div>
-				<div class="machine-id">
-					{ data.MachineID }
-				</div>
-				<button class="btn" id="check-btn" onclick="checkActivation()">
-					<span class="btn-spinner"></span>
-					<span class="btn-text">{ data.API.Translate("label", "Check Activation Status") }</span>
-				</button>
-			<div class="reboot-message" id="reboot-message">
-				<h2>{ data.API.Translate("label", "System Rebooting") }</h2>
-				<p>{ data.API.Translate("info", "Activation successful. The system is rebooting to complete setup. The page will reload automatically") }</p>
 			</div>
+			<!-- Footer -->
+			<div class="footer">
+				<span>{ data.API.Translate("label", "Powered by") }</span>
+				<a target="_blank" href="https://flarewifi.com"><strong>flarewifi</strong></a>
 			</div>
 			<script>
 				// Poll for activation status on page load (redirects if already activated)
@@ -177,6 +278,8 @@ templ ActivationPage(data *ActivationPageData) {
 
 				function checkActivation() {
 					var btn = document.getElementById('check-btn');
+					var btnText = document.querySelector('.btn-text');
+					var origText = btnText.textContent
 
 					if (btn.disabled) {
 						return;
@@ -185,34 +288,40 @@ templ ActivationPage(data *ActivationPageData) {
 					// Show loading state
 					btn.className = btn.className + ' loading';
 					btn.disabled = true;
+					var textOrig = btn.textContent
+					btnText.textContent = "Checking ..."
 
-					// Trigger validation on the server (blocking - waits for RPC response)
-					fetch('/activation/validate', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						}
-					})
-					.then(function(response) {
-						return response.json();
-					})
-					.then(function(data) {
-						if (data.activated) {
-							// Activation successful - show reboot message and wait for system
-							showRebootMessage();
-							waitForSystemReboot();
-						} else {
-							// Not activated - reset UI and show error if available
-							resetUI();
-							if (data.error) {
-								console.error('Activation error:', data.error);
+					setTimeout(function () {
+						// Trigger validation on the server (blocking - waits for RPC response)
+						fetch('/activation/validate', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json'
 							}
-						}
-					})
-					.catch(function(error) {
-						console.error('Error checking activation:', error);
-						resetUI();
-					});
+						})
+						.then(function(response) {
+							return response.json();
+						})
+						.then(function(data) {
+							btnText.textContent = textOrig
+							if (data.activated) {
+								// Activation successful - show reboot message and wait for system
+								showRebootMessage();
+								waitForSystemReboot();
+							} else {
+								// Not activated - reset UI and show error if available
+								resetUI();
+								if (data.error) {
+									console.error('Activation error:', data.error);
+								}
+							}
+						})
+						.catch(function(error) {
+							btnText.textContent = textOrig
+							console.error('Error checking activation:', error);
+							resetUI();
+						});
+					}, 400)
 				}
 
 				function showRebootMessage() {

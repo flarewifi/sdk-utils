@@ -44,27 +44,27 @@ func PortalRedirectPage(api sdkapi.IPluginApi, redirectUrl string, registerUrl s
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"loading-container\"><div class=\"loading-text\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><!-- loading-container: theme class; Bootstrap .text-center provides baseline alignment --><div class=\"loading-container text-center\"><div class=\"loading-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Redirecting"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 11, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 12, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</div></div></noscript><div id=\"loading-container\" class=\"loading-container\" data-redirect-url=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</div></div></noscript><!-- loading-container: theme spinner overlay; Bootstrap .text-center as fallback --><div id=\"loading-container\" class=\"loading-container text-center\" data-redirect-url=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(redirectUrl)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 16, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 18, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -77,7 +77,7 @@ func PortalRedirectPage(api sdkapi.IPluginApi, redirectUrl string, registerUrl s
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(registerUrl)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 17, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 19, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -90,7 +90,7 @@ func PortalRedirectPage(api sdkapi.IPluginApi, redirectUrl string, registerUrl s
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fallbackUrl)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 18, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 20, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -103,26 +103,39 @@ func PortalRedirectPage(api sdkapi.IPluginApi, redirectUrl string, registerUrl s
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(localStorageKey)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 19, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 21, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"spinner\"></div><div class=\"loading-text\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"spinner\"></div><h2 class=\"loading-text text-primary\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Loading"))
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Authenticating"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 21, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 23, Col: 88}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</h2><span class=\"text-muted\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var9 string
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Please wait while we connect you"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-redirect.templ`, Line: 24, Col: 93}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -18,7 +18,9 @@ templ PortalLayout(data PortalLayoutData) {
 		<body { data.Components.BodyAttrs()... }>
 			<!-- Theme Layout -->
 			<div class="container">
-				@data.Components.PageContent()
+				<div class="portal-wrap">
+					@data.Components.PageContent()
+				</div>
 			</div>
 			@data.Components.Scripts()
 		</body>

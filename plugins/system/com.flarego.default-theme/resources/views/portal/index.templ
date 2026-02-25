@@ -16,48 +16,56 @@ type PortalIndexData struct {
 }
 
 templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
-	<div class="banner-container" style="margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto;">
-		<img src={ api.Http().Helpers().PublicPath("images/banner.png") } alt="Banner" style="max-width: 100%; height: auto; border-radius: 8px;"/>
+	<div id="home-page">
+		<div
+			hx-get={ api.Http().Helpers().UrlForRoute("portal:status-nav") }
+			hx-trigger={ fmt.Sprintf("load, sse:%s, sse:%s",
+					sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+			hx-swap="outerHTML"
+		></div>
+		<div class="content">
+			<!-- Session Summary (time left) -->
+			<div
+				class="session"
+				hx-get={ api.Http().Helpers().UrlForRoute("portal:sessions:summary") }
+				hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, every 5s",
+					sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+			>
+				@SessionSummary(api, SessionSummaryData{
+					SessionSummary:   data.SessionSummary,
+					IsSessionRunning: data.IsSessionRunning,
+					SessionType:      data.SessionType,
+				})
+			</div>
+			<!-- Nav Buttons -->
+			<div
+				hx-get={ api.Http().Helpers().UrlForRoute("portal:navs") }
+				hx-trigger={ fmt.Sprintf("sse:%s, sse:%s",
+					sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+			>
+				@NavItems(api, data.Navs)
+			</div>
+		</div>
 	</div>
-	<div style="text-align: center; margin-bottom: 20px; color: #666; font-size: 14px;">
-		<div>MAC: { data.DeviceMac }</div>
-		<div>IP: { data.DeviceIP }</div>
-	</div>
-	<div
-		hx-get={ api.Http().Helpers().UrlForRoute("portal:navs") }
-		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s",
-    sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
-	>
-		@NavItems(api, data.Navs)
-	</div>
-	<div
-		hx-get={ api.Http().Helpers().UrlForRoute("portal:sessions:summary") }
-		hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, every 5s",
-    sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
-	>
-		@SessionSummary(api, SessionSummaryData{
-			SessionSummary:   data.SessionSummary,
-			IsSessionRunning: data.IsSessionRunning,
-			SessionType:      data.SessionType,
-		})
+	<div class="footer">
+		<span>{ api.Translate("label", "Powered by") }</span>
+		<a target="_blank" href="https://flarewifi.com"><strong>flarewifi</strong></a>
 	</div>
 }
 
 templ NavItems(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem) {
-	<div class="portal-items-container text-center">
-		<ul class="list-unstyled">
-			for _, nav := range navs {
-				<li class="portal-item" style="margin-bottom: 12px;">
-					<a class="btn btn-primary btn-lg" id={ nav.ID } href={ templ.SafeURL(nav.RouteUrl) } style="display: inline-block; min-width: 250px;">
-						if nav.IconUrl != "" {
-							<img src={ nav.IconUrl } style="max-width: 50px; margin-right: 10px; vertical-align: middle;"/>
-						}
-						<span style="vertical-align: middle;">{ nav.Label }</span>
-					</a>
-				</li>
-			}
-		</ul>
-	</div>
+	<ul class="nav">
+		for _, nav := range navs {
+			<li>
+				<a href={ templ.SafeURL(nav.RouteUrl) } { templ.Attributes(nav.ExtraAttrs)... } onclick="this.disabled=true;">
+					if nav.IconUrl != "" {
+						<img src={ nav.IconUrl } alt=""/>
+					}
+					{ nav.Label }
+				</a>
+			</li>
+		}
+	</ul>
 }
 
 type SessionSummaryData struct {
@@ -67,41 +75,20 @@ type SessionSummaryData struct {
 }
 
 templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
-	<div class="session-summary-container" style="margin-top: 30px;">
-		<div class="panel panel-primary" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 4px;">
-			<div class="panel-heading" style="background-color: #337ab7; color: white; padding: 15px; border-radius: 4px 4px 0 0;">
-				<h4 class="panel-title" style="margin: 0; font-size: 16px; font-weight: 600;">
-					{ api.Translate("label", "Session Summary") }
-				</h4>
+	<div class="timer text-center">
+		if data.SessionSummary.RemainingTimeSecs > 0 {
+			<div class="timer-label">{ api.Translate("label", "Time Left") }</div>
+			<div class="timer-value">
+				<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
+					{ sdkutils.FormatTimeSecs(int(data.SessionSummary.RemainingTimeSecs)) }
+				</span>
 			</div>
-			<div class="panel-body" style="padding: 20px;">
-			if data.SessionType != sdkapi.SessionTypeTime {
-				<div class="summary-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee;">
-					<span class="summary-label" style="color: #666; font-weight: 500;">{ api.Translate("label", "Remaining Time") }:</span>
-					<span class="summary-value" style="color: #333; font-weight: 600; font-size: 16px;">
-						<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
-							{ sdkutils.FormatTimeSecs(int(data.SessionSummary.RemainingTimeSecs)) }
-						</span>
-					</span>
-				</div>
-				<div class="summary-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
-					<span class="summary-label" style="color: #666; font-weight: 500;">{ api.Translate("label", "Remaining Data") }:</span>
-					<span class="summary-value" style="color: #333; font-weight: 600; font-size: 16px;">
-						{ sdkutils.FormatByteData(data.SessionSummary.RemainingDataMbytes) }
-					</span>
-				</div>
-			} else {
-				<div class="summary-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
-					<span class="summary-label" style="color: #666; font-weight: 500;">{ api.Translate("label", "Remaining Time") }:</span>
-					<span class="summary-value" style="color: #333; font-weight: 600; font-size: 16px;">
-						<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
-							{ sdkutils.FormatTimeSecs(int(data.SessionSummary.RemainingTimeSecs)) }
-						</span>
-					</span>
-				</div>
-			}
+		}
+		if data.SessionType != sdkapi.SessionTypeTime && data.SessionSummary.RemainingDataMbytes > 0{
+			<div class="data-remaining">
+				<span>{ api.Translate("label", "Remaining Data") }</span>: <strong>{ sdkutils.FormatByteData(data.SessionSummary.RemainingDataMbytes) }</strong>
 			</div>
-		</div>
+		}
 	</div>
 	{{
 data := map[string]interface{}{

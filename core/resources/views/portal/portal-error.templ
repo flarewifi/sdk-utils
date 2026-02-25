@@ -5,19 +5,20 @@ import sdkapi "sdk/api"
 templ PortalErrorPage(api sdkapi.IPluginApi, errorMsg string) {
 	<div class="error-container" role="alert" aria-live="assertive">
 		<div class="error-container-inner">
-			<div class="error-card">
-				<div class="error-content">
-					<div class="error-icon" aria-hidden="true">
+			<!-- card card-primary: theme card style; falls back to Bootstrap .panel .panel-default -->
+			<div class="error-card card card-primary panel panel-default">
+				<div class="error-content panel-body">
+					<div class="error-icon text-center" aria-hidden="true">
 						<div class="x-mark">✕</div>
 					</div>
-					<h2 class="error-title">{ api.Translate("label", "Error") }</h2>
+					<h2 class="error-title text-center text-primary">{ api.Translate("label", "Error") }</h2>
 					if errorMsg != "" {
-						<p class="error-message">{ errorMsg }</p>
+						<p class="error-message text-center text-muted">{ errorMsg }</p>
 					} else {
-						<p class="error-message">{ api.Translate("error", "An unexpected error occurred") }</p>
+						<p class="error-message text-center text-muted">{ api.Translate("error", "An unexpected error occurred") }</p>
 					}
 					<div class="error-actions">
-						<a href="/" class="btn btn-primary btn-lg">
+					<a href="/" class="btn btn-primary btn-block" onclick="this.disabled=true;">
 							{ api.Translate("label", "Go Back") }
 						</a>
 					</div>

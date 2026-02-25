@@ -33,7 +33,7 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"fw-bg-dark fw-login-wrapper\"><!-- Stars background --><div class=\"fw-stars-layer\"><!-- Large stars --><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:10%;left:15%\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:20%;right:20%;animation-delay:.3s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:60%;left:10%;animation-delay:.6s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:80%;right:15%;animation-delay:.9s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:40%;right:40%;animation-delay:.3s\"></div><!-- Medium stars --><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:15%;left:30%;animation-delay:.5s\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:30%;right:10%;animation-delay:.7s\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:70%;left:25%\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:50%;right:30%;animation-delay:.6s\"></div><!-- Small stars --><div class=\"fw-star fw-star--sm\" style=\"top:25%;left:20%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:35%;right:25%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:65%;left:35%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:85%;right:35%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:45%;left:45%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:55%;right:45%\"></div><!-- Glowing orbs --><div class=\"fw-orb fw-orb--purple\" style=\"top:30%;left:5%;width:128px;height:128px;animation-delay:.3s\"></div><div class=\"fw-orb fw-orb--blue\" style=\"bottom:20%;right:10%;width:160px;height:160px;animation-delay:.9s\"></div><div class=\"fw-orb fw-orb--indigo\" style=\"top:50%;right:5%;width:96px;height:96px;animation-delay:.6s\"></div></div><!-- Login card --><div class=\"fw-card fw-login-card\"><div class=\"fw-login-header\"><!-- FlareWiFi Logo (inline SVG from Figma export) --><div class=\"fw-logo-wrap\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"fw-login-wrapper\"><!-- Stars background --><div class=\"fw-stars-layer\"><!-- Large stars --><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:10%;left:15%\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:20%;right:20%;animation-delay:.3s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:60%;left:10%;animation-delay:.6s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:80%;right:15%;animation-delay:.9s\"></div><div class=\"fw-star fw-star--lg fw-star--pulse\" style=\"top:40%;right:40%;animation-delay:.3s\"></div><!-- Medium stars --><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:15%;left:30%;animation-delay:.5s\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:30%;right:10%;animation-delay:.7s\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:70%;left:25%\"></div><div class=\"fw-star fw-star--md fw-star--pulse\" style=\"top:50%;right:30%;animation-delay:.6s\"></div><!-- Small stars --><div class=\"fw-star fw-star--sm\" style=\"top:25%;left:20%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:35%;right:25%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:65%;left:35%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:85%;right:35%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:45%;left:45%\"></div><div class=\"fw-star fw-star--sm\" style=\"top:55%;right:45%\"></div><!-- Glowing orbs --><div class=\"fw-orb fw-orb--purple\" style=\"top:30%;left:5%;width:128px;height:128px;animation-delay:.3s\"></div><div class=\"fw-orb fw-orb--blue\" style=\"bottom:20%;right:10%;width:160px;height:160px;animation-delay:.9s\"></div><div class=\"fw-orb fw-orb--indigo\" style=\"top:50%;right:5%;width:96px;height:96px;animation-delay:.6s\"></div></div><!-- Login card --><div class=\"fw-card fw-login-card card card-secondary\"><div class=\"fw-login-header\"><!-- FlareWiFi Logo (inline SVG from Figma export) --><div class=\"fw-logo-wrap\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -41,27 +41,27 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div><h1 class=\"fw-heading text-center\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div><h1 class=\"fw-heading text-center text-primary\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Device Admin Dashboard"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 41, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 41, Col: 102}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h1><p class=\"fw-subtitle text-center\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h1><p class=\"fw-subtitle text-center text-muted\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Flarewifi Hotspot Router"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 42, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 42, Col: 102}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -146,7 +146,7 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" required></div></div><!-- Submit --><button type=\"submit\" class=\"btn btn-block fw-btn-primary fw-btn-submit\"><svg class=\"fw-btn-spinner fw-spin\" style=\"display:none\" xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"></path></svg> <span class=\"fw-btn-text\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" required></div></div><!-- Submit --><button type=\"submit\" class=\"btn btn-info btn-block fw-btn-submit\" onclick=\"this.disabled=true; this.form.submit();\"><svg class=\"fw-btn-spinner fw-spin\" style=\"display:none\" xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"></path></svg> <span class=\"fw-btn-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
