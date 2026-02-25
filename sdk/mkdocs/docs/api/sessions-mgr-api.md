@@ -394,11 +394,11 @@ func handleCloudCommand(ctx context.Context, api sdkapi.IPluginApi, cmd CloudCom
         
         // Block the device
         return device.Update(ctx, sdkapi.UpdateDeviceParams{
+            UUID:     device.UUID(),
             Mac:      device.MacAddr(),
             Ip:       device.IpAddr(),
             Hostname: device.Hostname(),
-            UUID:     device.UUID(),
-            Status:   int(sdkapi.Blocked),
+            Status:   sdkapi.DeviceStatusBlocked,
         })
     }
     return nil

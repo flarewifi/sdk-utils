@@ -13,6 +13,7 @@ func main() {}
 
 func Init(api sdkapi.IPluginApi) error {
 	app.SetupRoutes(api)
+	app.SetupNavs(api)
 	themes.SetPortalTheme(api)
 	themes.SetAdminTheme(api)
 	return nil

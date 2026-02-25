@@ -46,6 +46,7 @@ data*.zip
 hosts.json
 MACHINE_UID
 .serena/
+.playwright-mcp/
 
 /.idea
 /.idea/inspectionProfiles

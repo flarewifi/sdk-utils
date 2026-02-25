@@ -23,5 +23,11 @@
   ],
   "admin/dashboard.css": [
     "./admin/css/dashboard.css"
+  ],
+  "admin/themes.js": [
+    "./admin/js/themes.js"
+  ],
+  "admin/themes.css": [
+    "./admin/css/themes.css"
   ]
 }

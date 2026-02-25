@@ -35,6 +35,11 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 		subrouter.Get("/show/{id}", handlers.ShowNotificationContentCtrl(api)).Name("admin:notifications:show")
 	})
 
+	adminR.Group("/themes", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/admin", handlers.AdminThemesPageCtrl(api)).Name("admin:themes:admin")
+		subrouter.Get("/portal", handlers.PortalThemesPageCtrl(api)).Name("admin:themes:portal")
+	})
+
 	pluginR.Post("/login", handlers.AdminAuthenticateCtrl(api)).Name(RouteNameAuthenticate)
 	adminR.Post("/logout", handlers.LogoutCtrl(api)).Name(RouteNameLogout)
 }
