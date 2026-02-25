@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"core/db"
 )
 
@@ -75,4 +76,11 @@ func (self *Models) Log() *LogModel {
 
 func (self *Models) Notification() *NotificationModel {
 	return self.notificationModel
+}
+
+// Vacuum runs SQLite VACUUM to reclaim disk space after bulk delete operations.
+// This should be called after operations that delete significant amounts of data.
+func (self *Models) Vacuum(ctx context.Context) error {
+	_, err := self.logModel.db.DB.ExecContext(ctx, "VACUUM")
+	return err
 }

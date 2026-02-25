@@ -2,7 +2,6 @@ package boot
 
 import (
 	cmd "core/utils/shell"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,8 +11,6 @@ import (
 
 // Install ipk files in ./packages directory
 func InitOpkg() {
-	fmt.Println("Installing ipk packages...")
-
 	var files []string
 
 	packagesDir := filepath.Join(sdkutils.PathAppDir, "packages")

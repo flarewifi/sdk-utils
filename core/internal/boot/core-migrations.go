@@ -1,7 +1,6 @@
 package boot
 
 import (
-	"fmt"
 	"log"
 
 	"core/internal/api"
@@ -11,8 +10,6 @@ import (
 )
 
 func RunCoreMigrations(g *api.CoreGlobals) {
-	fmt.Println("Running core migrations...")
-
 	err := migrate.Init(g.Database.DB)
 	if err != nil {
 		log.Println(err)

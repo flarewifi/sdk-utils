@@ -45,10 +45,11 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 			return
 		}
 
+		deviceID := clnt.ID()
 		_, err = self.api.models.Purchase().Create(
 			ctx,
 			models.CreatePurchaseParams{
-				DeviceID:       clnt.ID(),
+				DeviceID:       &deviceID,
 				SKU:            p.Sku,
 				Name:           p.Name,
 				Description:    p.Description,
@@ -170,4 +171,37 @@ func (self *PaymentsApi) ExtractPurchaseData(r *http.Request) (sdkapi.IPurchaseR
 
 func (self *PaymentsApi) OnPurchaseEvent(event sdkapi.PurchaseEvent, callback func(data sdkapi.PurchaseEventData) error) {
 	self.paymentsMgr.OnPurchaseEvent(event, callback)
+}
+
+// CreatePurchase creates a purchase record programmatically without HTTP checkout flow.
+// Used for admin-generated purchases like voucher batch sales where no customer device is involved.
+func (self *PaymentsApi) CreatePurchase(ctx context.Context, params sdkapi.CreatePurchaseParams) (sdkapi.IPurchaseRequest, error) {
+	mdls := self.api.models
+
+	p, err := mdls.Purchase().Create(ctx, models.CreatePurchaseParams{
+		DeviceID:       params.DeviceID,
+		SKU:            params.Sku,
+		Name:           params.Name,
+		Description:    params.Description,
+		Price:          params.Price,
+		AnyPrice:       false,
+		CallbackPlugin: self.api.Info().Package,
+		CallbackRoute:  "",
+		WebHookRoute:   "",
+		Metadata:       params.Metadata,
+		Processing:     false,
+		PaymentUrl:     "",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create purchase: %w", err)
+	}
+
+	// For admin purchases without device, use device ID 0
+	deviceID := int64(0)
+	if params.DeviceID != nil {
+		deviceID = *params.DeviceID
+	}
+
+	purchase := NewPurchase(self.api, ctx, deviceID, p)
+	return purchase, nil
 }

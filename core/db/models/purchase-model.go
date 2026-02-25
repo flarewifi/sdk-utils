@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -21,7 +20,7 @@ type PurchaseModel struct {
 
 // CreatePurchaseParams holds parameters for creating a new purchase
 type CreatePurchaseParams struct {
-	DeviceID       int64
+	DeviceID       *int64 // Nullable - nil for admin purchases (e.g., voucher batch sales)
 	SKU            string
 	Name           string
 	Description    string
@@ -59,9 +58,15 @@ func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchasePara
 
 	uid := sdkutils.NewUUID()
 
+	// Convert nullable device ID
+	var deviceID sql.NullInt64
+	if params.DeviceID != nil {
+		deviceID = sql.NullInt64{Int64: *params.DeviceID, Valid: true}
+	}
+
 	queryParams := queries.CreatePurchaseParams{
 		Uuid:           uid,
-		DeviceID:       params.DeviceID,
+		DeviceID:       deviceID,
 		Sku:            params.SKU,
 		Name:           params.Name,
 		Description:    params.Description,
@@ -73,9 +78,8 @@ func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchasePara
 		Metadata:       string(b),
 		Processing:     params.Processing,
 		PaymentUrl:     params.PaymentUrl,
+		PaymentNote:    "",
 	}
-
-	fmt.Printf("Create Purchase: %+v\n", queryParams)
 
 	pId, err := self.db.Queries.CreatePurchase(ctx, queryParams)
 	if err != nil {
@@ -96,7 +100,8 @@ func (self *PurchaseModel) Find(ctx context.Context, id int64) (*Purchase, error
 }
 
 func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId int64) (*Purchase, error) {
-	p, err := self.db.Queries.FindPendingPurchase(ctx, deviceId)
+	deviceIdParam := sql.NullInt64{Int64: deviceId, Valid: true}
+	p, err := self.db.Queries.FindPendingPurchase(ctx, deviceIdParam)
 	if err != nil {
 		log.Printf("error finding pending purchase with dev id %v: %v\n", deviceId, err)
 		return nil, err
@@ -106,7 +111,8 @@ func (self *PurchaseModel) PendingPurchase(ctx context.Context, deviceId int64) 
 }
 
 func (self *PurchaseModel) FindByDeviceId(ctx context.Context, deviceId int64) (*Purchase, error) {
-	p, err := self.db.Queries.FindPurchaseByDeviceId(ctx, deviceId)
+	deviceIdParam := sql.NullInt64{Int64: deviceId, Valid: true}
+	p, err := self.db.Queries.FindPurchaseByDeviceId(ctx, deviceIdParam)
 	if err != nil {
 		log.Printf("error finding purchase by device id %v: %v", deviceId, err)
 		return nil, err

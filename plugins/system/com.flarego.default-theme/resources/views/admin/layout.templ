@@ -139,7 +139,10 @@ templ sidebar(api sdkapi.IPluginApi, data AdminLayoutData) {
 										<div class={subnavItemClass(subnav)}>
 											<a href={templ.SafeURL(subnav.RouteUrl)}>
 												@templ.Raw(subnav.Icon)
-												<span class="fs-6">{subnav.Label}</span>
+												<span class="fs-6" style="flex: 1;">{subnav.Label}</span>
+												if subnav.Label == "eCash" {
+												    <span class="badge bg-warning bg-opacity-25 rounded-pill px-2 py-1 border border-warning text-warning">Coming Soon</span>
+												}
 											</a>
 										</div>
 									}

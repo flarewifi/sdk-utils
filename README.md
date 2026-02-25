@@ -75,6 +75,48 @@ make docs-build
 Then you can find the built documentation in the `sdk/mkdocs/site` directory.
 
 
+# UI Testing with Playwright
+
+The project includes Playwright MCP for automated UI testing and verification. Playwright is installed in `.opencode/` and accessible to all developers.
+
+## Installation
+
+Playwright is already configured in `.opencode/package.json`. To install or update dependencies:
+
+```sh
+cd .opencode
+npm install
+npx playwright install chromium
+```
+
+## Usage
+
+Playwright can be used to test the application running at `http://localhost:3000`:
+
+- Navigate to pages and take snapshots
+- Click buttons and fill forms
+- Verify UI flows work correctly
+- Test both admin (Bootstrap 5) and portal (Bootstrap 3) interfaces
+- Verify translations display correctly
+
+All Playwright outputs (screenshots, reports) should be saved to `.tmp/playwright/`.
+
+## Example Workflow
+
+1. Start the application: `make` (from project root)
+2. Use Playwright MCP tools to:
+   - Navigate to a page (`browser_navigate`)
+   - Inspect the page structure (`browser_snapshot`)
+   - Interact with elements (`browser_click`, `browser_type`)
+   - Take screenshots for verification (`browser_take_screenshot`)
+3. Close the browser when done (`browser_close`)
+
+## Notes
+
+- Portal/login pages use Bootstrap 3.4.1
+- Admin/dashboard pages use Bootstrap 5.3.3
+- Remember to close the browser after testing to free resources
+
 # Plugins
 
 To clone an existing plugin, run the following command:

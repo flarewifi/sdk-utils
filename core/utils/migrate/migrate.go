@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,8 +33,6 @@ func MigrateUp(db *sql.DB, pluginDir string) error {
 			}
 
 			if !done {
-				fmt.Printf("Executing migration: %s\n", f)
-
 				if err := execFile(f, tx); err != nil {
 					return err
 				}
@@ -43,8 +40,6 @@ func MigrateUp(db *sql.DB, pluginDir string) error {
 				if err := commitFile(f, tx); err != nil {
 					return err
 				}
-
-				fmt.Printf("Applied migration: %s\n", f)
 			}
 
 			return nil
@@ -86,8 +81,6 @@ func MigrateDown(plguinDir string, db *sql.DB) error {
 					return err
 				}
 			}
-
-			fmt.Printf("Reverted migration: %s\n", downfile)
 
 			return nil
 		})

@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"strings"
@@ -243,8 +244,8 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 	// 2. Transfer purchases from source to target
 	log.Printf("[DeviceModel.MergeDevices] Transferring purchases...")
 	err = qtx.TransferPurchasesToDevice(ctx, queries.TransferPurchasesToDeviceParams{
-		TargetDeviceID: targetDeviceID,
-		SourceDeviceID: sourceDeviceID,
+		TargetDeviceID: sql.NullInt64{Int64: targetDeviceID, Valid: true},
+		SourceDeviceID: sql.NullInt64{Int64: sourceDeviceID, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer purchases: %v", err)
@@ -321,5 +322,9 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 	}
 
 	log.Printf("[DeviceModel.MergeDevices] SUCCESS: Merged device %d into device %d", sourceDeviceID, targetDeviceID)
+
+	// Reclaim disk space after merge (deletes device, wallet, transfers data)
+	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+
 	return nil
 }

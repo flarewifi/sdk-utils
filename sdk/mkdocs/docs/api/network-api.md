@@ -93,6 +93,29 @@ trafficAPI := api.Network().Traffic()
 fmt.Println(trafficAPI) // ITrafficApi
 ```
 
+### OnReady
+
+Registers a callback that will be called when the network API is ready to use. This is useful for plugins that need to perform network-related operations during initialization.
+
+If the network is already ready when `OnReady` is called, the callback will be executed immediately (synchronously). Otherwise, the callback will be queued and executed after the network initialization completes.
+
+```go
+api.Network().OnReady(func() {
+    // Network is now ready
+    devices, err := api.Network().ListDevices()
+    if err != nil {
+        api.Logger().Error("Failed to list devices: " + err.Error())
+        return
+    }
+    
+    for _, device := range devices {
+        api.Logger().Info("Found device: " + device.Name())
+    }
+})
+```
+
+**Note:** Callbacks are executed synchronously in the order they were registered. If a callback panics, the error will be logged and execution will continue with the next callback.
+
 ## Related Interfaces
 
 - [INetworkDevice](./network-device.md) - Represents a network device

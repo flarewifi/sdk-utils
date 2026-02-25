@@ -30,6 +30,11 @@ func (self *LogModel) Paginate(ctx context.Context, opts LogsPaginateOpts) (*Pag
 	offset := int64(opts.PerPage * (opts.Page - 1))
 	limit := int64(opts.PerPage)
 
+	// Limit max fetch to prevent memory issues when disk is full
+	if limit > 1000 {
+		limit = 1000
+	}
+
 	// Count
 	countQuery := "SELECT COUNT(id) FROM logs" + whereClause
 	var count int64

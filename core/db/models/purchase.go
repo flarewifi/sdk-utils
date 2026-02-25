@@ -21,7 +21,9 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 	if p != nil {
 		purchase.id = p.ID
 		purchase.uuid = p.Uuid
-		purchase.deviceId = p.DeviceID
+		if p.DeviceID.Valid {
+			purchase.deviceId = &p.DeviceID.Int64
+		}
 		purchase.sku = p.Sku
 		purchase.name = p.Name
 		purchase.description = p.Description
@@ -71,7 +73,7 @@ type Purchase struct {
 	models            *Models
 	id                int64
 	uuid              string
-	deviceId          int64
+	deviceId          *int64 // nullable for admin purchases
 	sku               string
 	name              string
 	description       string
@@ -100,7 +102,10 @@ func (self *Purchase) UUID() string {
 }
 
 func (self *Purchase) DeviceID() int64 {
-	return self.deviceId
+	if self.deviceId != nil {
+		return *self.deviceId
+	}
+	return 0
 }
 
 func (self *Purchase) Sku() string {
@@ -184,25 +189,30 @@ func (self *Purchase) FixedPrice() (float64, bool) {
 }
 
 func (self *Purchase) Device(ctx context.Context) (*Device, error) {
-	return self.models.deviceModel.Find(ctx, self.deviceId)
+	if self.deviceId == nil {
+		return nil, errors.New("no device associated with this purchase")
+	}
+	return self.models.deviceModel.Find(ctx, *self.deviceId)
 }
 
 func (self *Purchase) Confirm(ctx context.Context) error {
-	dev, err := self.Device(ctx)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	wallet, err := dev.Wallet(ctx)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
 	var txid *int64
 	dbt := self.walletDebit
-	if dbt > 0 {
+
+	// Only process wallet debit if there's a device associated
+	if self.deviceId != nil && dbt > 0 {
+		dev, err := self.Device(ctx)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		wallet, err := dev.Wallet(ctx)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
 		newBal := wallet.Balance() - dbt
 		err = wallet.Update(ctx, newBal)
 		if err != nil {
@@ -225,7 +235,7 @@ func (self *Purchase) Confirm(ctx context.Context) error {
 	}
 
 	now := time.Now().UTC()
-	err = self.Update(ctx, dbt, txid, nil, &now, nil)
+	err := self.Update(ctx, dbt, txid, nil, &now, nil)
 	if err != nil {
 		return err
 	}
@@ -238,12 +248,6 @@ func (self *Purchase) Confirm(ctx context.Context) error {
 }
 
 func (self *Purchase) Cancel(ctx context.Context) error {
-	dev, err := self.Device(ctx)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
 	pmtTotal, err := self.TotalPayment(ctx)
 	if err != nil {
 		return err
@@ -258,7 +262,14 @@ func (self *Purchase) Cancel(ctx context.Context) error {
 	self.processing = false
 	self.paymentUrl = ""
 
-	if pmtTotal > 0 {
+	// Only process refund if there's a device associated and payment was made
+	if self.deviceId != nil && pmtTotal > 0 {
+		dev, err := self.Device(ctx)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
 		wallet, err := dev.Wallet(ctx)
 		if err != nil {
 			log.Println(err)

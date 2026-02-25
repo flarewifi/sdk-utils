@@ -133,6 +133,7 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 	prevPercent.Store(0)
 	downloadedBytes.Store(0)
 	totalSizeBytes.Store(0)
+	downloadError.Store(nil) // Clear any previous download error
 
 	go func() {
 		defer downloading.Store(false)

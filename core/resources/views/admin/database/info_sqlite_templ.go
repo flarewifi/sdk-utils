@@ -8,9 +8,7 @@ package database
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import (
-	"sdk/api"
-)
+import sdkapi "sdk/api"
 
 func databaseInfo(api sdkapi.IPluginApi, params AdminDatabaseSettingsIndexParams) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -33,53 +31,53 @@ func databaseInfo(api sdkapi.IPluginApi, params AdminDatabaseSettingsIndexParams
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"row align-items-center mb-2\"><div class=\"col-md-4\"><label class=\"form-label fw-bold\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"row align-items-center mb-2\"><div class=\"col gap-2\"><label class=\"form-label\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Database Type"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/database/info_sqlite.templ`, Line: 10, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/database/info_sqlite.templ`, Line: 8, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label></div><div class=\"col-md-8\"><div class=\"form-control-plaintext\"><span class=\"badge bg-primary\">SQLite</span></div></div></div><div class=\"row align-items-center mb-2\"><div class=\"col-md-4\"><label class=\"form-label fw-bold\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label><div><h4><span class=\"badge bg-primary\">SQLite</span></h4></div></div></div><div class=\"row align-items-center mb-2\"><div class=\"col gap-2\"><label class=\"form-label\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Database File"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/database/info_sqlite.templ`, Line: 20, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/database/info_sqlite.templ`, Line: 18, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label></div><div class=\"col-md-8\"><div class=\"form-control-plaintext\"><code>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label><div class=\"border rounded-3 py-2 px-3 form-control-plaintext\"><code>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(params.Cfg.SqlitePath)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/database/info_sqlite.templ`, Line: 24, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/database/info_sqlite.templ`, Line: 20, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</code></div></div></div><div class=\"alert alert-info mt-3\"><i class=\"bi bi-info-circle me-2\"></i> ")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</code></div></div></div><div class=\"alert alert-info mt-4\"><i class=\"bi bi-info-circle me-2\"></i> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "SQLite is a file-based database The database file is stored locally on the device"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/database/info_sqlite.templ`, Line: 30, Col: 110}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/database/info_sqlite.templ`, Line: 26, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

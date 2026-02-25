@@ -4,6 +4,7 @@ import (
 	"core/db/models"
 	"core/internal/api"
 	logsview "core/resources/views/admin/logs"
+	"core/utils/config"
 	"errors"
 	"net/http"
 	"net/url"
@@ -84,12 +85,20 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 			packages = append(packages, info.Package)
 		}
 
+		// Get log retention days from application config
+		logsRetentionDays := 3 // default
+		appCfg, err := config.ReadApplicationConfig()
+		if err == nil && appCfg.LogsRetentionDays > 0 {
+			logsRetentionDays = appCfg.LogsRetentionDays
+		}
+
 		searchData := logsview.LogsSearchData{
-			Packages:   packages,
-			Package:    pkg,
-			Level:      level,
-			SearchText: searchTxt,
-			ActionURL:  g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:search"),
+			Packages:          packages,
+			Package:           pkg,
+			Level:             level,
+			SearchText:        searchTxt,
+			ActionURL:         g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:search"),
+			LogsRetentionDays: logsRetentionDays,
 		}
 
 		logsIndex := logsview.Index(g.CoreAPI, result.Logs, searchData, pagination)
@@ -128,6 +137,39 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		searchURL += "?" + query.Encode()
+
+		// Handle save_retention action
+		if r.FormValue("save_retention") == "1" {
+			retentionDaysStr := r.FormValue("logs_retention_days")
+			retentionDays, err := strconv.Atoi(retentionDaysStr)
+			if err != nil || (retentionDays != 3 && retentionDays != 7 && retentionDays != 14 && retentionDays != 30) {
+				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(g.CoreAPI.Translate("error", "Invalid retention period")), http.StatusBadRequest)
+				return
+			}
+
+			// Read current config
+			appCfg, err := config.ReadApplicationConfig()
+			if err != nil {
+				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(g.CoreAPI.Translate("error", "Unable to read configuration")), http.StatusInternalServerError)
+				g.CoreAPI.LoggerAPI.Error(err.Error())
+				return
+			}
+
+			// Update retention days
+			appCfg.LogsRetentionDays = retentionDays
+
+			// Save config
+			if err := config.WriteApplicationConfig(appCfg); err != nil {
+				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(g.CoreAPI.Translate("error", "Unable to save configuration")), http.StatusInternalServerError)
+				g.CoreAPI.LoggerAPI.Error(err.Error())
+				return
+			}
+
+			successMsg := g.CoreAPI.Translate("success", "Log retention settings saved successfully")
+			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
+			http.Redirect(w, r, g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index"), http.StatusSeeOther)
+			return
+		}
 
 		// Handle clear_logs action
 		if r.FormValue("clear_logs") == "1" {

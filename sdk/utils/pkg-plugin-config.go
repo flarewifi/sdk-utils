@@ -13,6 +13,9 @@ type AppConfig struct {
 
 	// Application channel: development, beta, stable
 	Channel string `json:"channel"`
+
+	// Log retention period in days (default: 3)
+	LogsRetentionDays int `json:"logs_retention_days"`
 }
 
 type DbConfig struct {

@@ -52,7 +52,6 @@ func CreatePurchaseToken(deviceID int64, purchaseUUID string) (string, error) {
 func VerifyPurchaseToken(tokenString string) (*PurchaseClaims, error) {
 	appCfg, err := config.ReadApplicationConfig()
 	if err != nil {
-		fmt.Println("VerifyPurchaseToken: Failed to read application config:", err)
 		return nil, errors.New("server configuration error")
 	}
 
@@ -64,16 +63,12 @@ func VerifyPurchaseToken(tokenString string) (*PurchaseClaims, error) {
 	})
 
 	if err != nil {
-		fmt.Println("VerifyPurchaseToken: Token verification failed:", err)
 		return nil, errors.New("invalid purchase token")
 	}
 
 	if claims, ok := token.Claims.(*PurchaseClaims); ok && token.Valid {
-		fmt.Printf("VerifyPurchaseToken: Valid token for device %d, purchase %s\n",
-			claims.DeviceID, claims.PurchaseUID)
 		return claims, nil
 	}
 
-	fmt.Println("VerifyPurchaseToken: Invalid token claims")
 	return nil, errors.New("invalid token claims")
 }

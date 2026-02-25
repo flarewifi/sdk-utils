@@ -1,0 +1,2 @@
+-- No-op: expires_at is the correct column name going forward
+-- Data in expires_on/expires_at was not preserved during up migration
