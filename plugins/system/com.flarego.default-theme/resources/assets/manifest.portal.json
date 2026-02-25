@@ -1,12 +1,16 @@
 {
   "theme.css": [
-    "./portal/portal.css"
+    "./portal/css/portal.css",
+    "./portal/css/home-page.css",
+    "./portal/css/voucher-form.css",
+    "./portal/css/payment-options.css",
+    "./portal/css/insert-coin.css"
   ],
   "theme.js": [
-    "./portal/portal.js"
+    "./portal/js/portal.js"
   ],
   "portal/index.js": [
-    "./portal/portal-index.js"
+    "./portal/js/portal-index.js"
   ],
   "auth/login.js": [
     "./auth/login.js"

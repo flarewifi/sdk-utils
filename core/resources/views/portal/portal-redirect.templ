@@ -20,7 +20,7 @@ templ PortalRedirectPage(api sdkapi.IPluginApi, redirectUrl string, registerUrl 
          data-fallback-url={ fallbackUrl }
          data-storage-key={ localStorageKey }>
         <div class="spinner"></div>
-        <h2 class="loading-text fw-portal-text-white">{ api.Translate("label", "Authenticating") }...</h2>
-        <span class="fw-portal-text-muted">{ api.Translate("label", "Please wait while we connect you") }</span>
+        <h2 class="loading-text text-primary">{ api.Translate("label", "Authenticating") }...</h2>
+        <span class="text-muted">{ api.Translate("label", "Please wait while we connect you") }</span>
     </div>
 }

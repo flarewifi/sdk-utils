@@ -16,44 +16,45 @@ type PortalIndexData struct {
 }
 
 templ PortalIndexPage(api sdkapi.IPluginApi, data PortalIndexData) {
-	<div
-		hx-get={ api.Http().Helpers().UrlForRoute("portal:status-nav") }
-		hx-trigger={ fmt.Sprintf("load, sse:%s, sse:%s",
-        sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
-		hx-swap="outerHTML"
-	></div>
-	<div class="fw-portal-content">
-		<!-- Session Summary (time left) -->
+	<div id="home-page">
 		<div
-			class="portal-session"
-			hx-get={ api.Http().Helpers().UrlForRoute("portal:sessions:summary") }
-			hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, every 5s",
-        sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
-		>
-			@SessionSummary(api, SessionSummaryData{
-				SessionSummary:   data.SessionSummary,
-				IsSessionRunning: data.IsSessionRunning,
-				SessionType:      data.SessionType,
-			})
-		</div>
-		<!-- Nav Buttons -->
-		<div
-			hx-get={ api.Http().Helpers().UrlForRoute("portal:navs") }
-			hx-trigger={ fmt.Sprintf("sse:%s, sse:%s",
-        sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
-		>
-			@NavItems(api, data.Navs)
+			hx-get={ api.Http().Helpers().UrlForRoute("portal:status-nav") }
+			hx-trigger={ fmt.Sprintf("load, sse:%s, sse:%s",
+					sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+			hx-swap="outerHTML"
+		></div>
+		<div class="content">
+			<!-- Session Summary (time left) -->
+			<div
+				class="session"
+				hx-get={ api.Http().Helpers().UrlForRoute("portal:sessions:summary") }
+				hx-trigger={ fmt.Sprintf("sse:%s, sse:%s, every 5s",
+					sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+			>
+				@SessionSummary(api, SessionSummaryData{
+					SessionSummary:   data.SessionSummary,
+					IsSessionRunning: data.IsSessionRunning,
+					SessionType:      data.SessionType,
+				})
+			</div>
+			<!-- Nav Buttons -->
+			<div
+				hx-get={ api.Http().Helpers().UrlForRoute("portal:navs") }
+				hx-trigger={ fmt.Sprintf("sse:%s, sse:%s",
+					sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected) }
+			>
+				@NavItems(api, data.Navs)
+			</div>
 		</div>
 	</div>
-	<div class="fw-portal-footer">
+	<div class="footer">
 		<span>{ api.Translate("label", "Powered by") }</span>
 		<a target="_blank" href="https://flarewifi.com"><strong>flarewifi</strong></a>
 	</div>
 }
 
-
 templ NavItems(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem) {
-	<ul class="fw-portal-nav">
+	<ul class="nav">
 		for _, nav := range navs {
 			<li>
 				<a href={ templ.SafeURL(nav.RouteUrl) } { templ.Attributes(nav.ExtraAttrs)... } onclick="this.disabled=true;">
@@ -74,17 +75,17 @@ type SessionSummaryData struct {
 }
 
 templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
-	<div class="fw-portal-timer text-center">
+	<div class="timer text-center">
 		if data.SessionSummary.RemainingTimeSecs > 0 {
-			<div class="fw-portal-timer-label">{ api.Translate("label", "Time Left") }</div>
-			<div class="fw-portal-timer-value">
+			<div class="timer-label">{ api.Translate("label", "Time Left") }</div>
+			<div class="timer-value">
 				<span id="session-time" data-value={ fmt.Sprintf("%d", data.SessionSummary.RemainingTimeSecs) }>
 					{ sdkutils.FormatTimeSecs(int(data.SessionSummary.RemainingTimeSecs)) }
 				</span>
 			</div>
 		}
 		if data.SessionType != sdkapi.SessionTypeTime && data.SessionSummary.RemainingDataMbytes > 0{
-			<div class="fw-portal-data-remaining">
+			<div class="data-remaining">
 				<span>{ api.Translate("label", "Remaining Data") }</span>: <strong>{ sdkutils.FormatByteData(data.SessionSummary.RemainingDataMbytes) }</strong>
 			</div>
 		}

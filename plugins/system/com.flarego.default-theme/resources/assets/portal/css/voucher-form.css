@@ -1,0 +1,167 @@
+/* ==========================================================================
+   VOUCHER FORM PAGE (#voucher-form-page)
+   ========================================================================== */
+
+#voucher-form-page {
+    padding: 0 15px !important;
+     -webkit-box-flex: 1 !important;
+    -ms-flex: 1 1 auto !important;
+    flex: 1 1 auto !important;
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-box-direction: normal !important;
+    -ms-flex-direction: column !important;
+    flex-direction: column !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    -webkit-box-pack: center !important;
+    -ms-flex-pack: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    padding-bottom: 8px !important;
+}
+
+#voucher-form-page .voucher-card {
+    padding: 28px 24px 32px !important;
+}
+
+#voucher-form-page .back-btn {
+    color: rgba(255, 255, 255, 0.85) !important;
+    cursor: pointer !important;
+    font-size: 22px !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+}
+
+#voucher-form-page .voucher-title {
+    color: #ffffff !important;
+}
+
+/* Glitz display font heading — same style as home-page .heading */
+#voucher-form-page .heading {
+    font-size: 4rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 3px !important;
+    text-transform: uppercase !important;
+    color: white !important;
+    line-height: 1.1 !important;
+    font-family: 'Glitz', serif !important;
+}
+
+#voucher-form-page .heading span {
+    color: #2F2EC7 !important;
+}
+
+/* Device info bar — wrapping flex row of small metadata tokens */
+#voucher-form-page .device-info {
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    -webkit-box-pack: center !important;
+    -ms-flex-pack: center !important;
+    justify-content: center !important;
+    -ms-flex-wrap: wrap !important;
+    flex-wrap: wrap !important;
+    gap: 6px 10px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    letter-spacing: 0.5px !important;
+    padding: 8px 0 20px !important;
+}
+
+#voucher-form-page .device-info .info-sep {
+    color: rgba(255, 255, 255, 0.25) !important;
+}
+
+#voucher-form-page .device-info strong {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-weight: 700 !important;
+}
+
+/* ==========================================================================
+   FORM
+   ========================================================================== */
+
+#voucher-form-page .voucher-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+}
+
+#voucher-form-page .voucher-label {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    margin-bottom: 4px !important;
+}
+
+#voucher-form-page .voucher-input {
+    padding: 30px 12px !important;
+    text-transform: uppercase !important;
+    box-sizing: border-box !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+    font-size: 32px !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    margin-bottom: 0px !important;
+}
+
+#voucher-form-page .voucher-input::placeholder {
+    color: rgba(255, 255, 255, 0.3) !important;
+    letter-spacing: 6px !important;
+}
+
+#voucher-form-page .voucher-connect-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+    padding: 18px !important;
+    margin: 10px 0 !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    outline: none !important;
+    transition: all 0.2s ease !important;
+    border-radius: 16px !important;
+}
+
+#voucher-form-page .voucher-connect-btn.disabled {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    border-radius: 16px !important;
+}
+
+#voucher-form-page .voucher-connect-btn .btn-icon {
+    width: 24px !important;
+    height: 24px !important;
+    stroke: rgba(255, 255, 255, 0.7) !important;
+    flex-shrink: 0 !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE OVERRIDES
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    #voucher-form-page .heading {
+        font-size: 3rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #voucher-form-page .heading {
+        font-size: 2.5rem !important;
+    }
+}

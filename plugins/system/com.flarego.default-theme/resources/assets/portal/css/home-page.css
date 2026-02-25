@@ -1,0 +1,286 @@
+/* ==========================================================================
+   HOME PAGE (#home-page)
+   ========================================================================== */
+#home-page{
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-bottom: 8px !important;
+}
+#home-page .nav {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 0 20px !important;
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-box-direction: normal !important;
+    -ms-flex-direction: column !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+}
+
+/* Full-width pill nav link with centred icon + label */
+#home-page .nav li a {
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    -webkit-box-pack: center !important;
+    -ms-flex-pack: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    padding: 15px 10px !important;
+    min-height: 52px !important;
+    border-radius: 16px !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    backdrop-filter: blur(5px) !important;
+    gap: 8px !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.32) !important;
+    color: #ffffff !important;
+}
+
+#home-page .nav li a:hover {
+    opacity: 0.8 !important;
+    transform: translateY(-2px) !important;
+    text-decoration: none !important;
+    color: #ffffff !important;
+}
+
+#home-page .nav li a img {
+    height: 25px !important;
+    flex-shrink: 0 !important;
+}
+
+#home-page .title {
+    margin-top: 20px !important;
+}
+
+/* Main portal heading — Glitz display font, all-caps */
+#home-page .heading {
+    font-size: 4rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 3px !important;
+    text-transform: uppercase !important;
+    color: white !important;
+    line-height: 1.1 !important;
+    font-family: 'Glitz', serif !important;
+}
+
+/* Accent colour for a highlighted word inside the heading */
+#home-page .heading span {
+    color: #2F2EC7 !important;
+}
+
+/* Device info bar — wrapping flex row of small metadata tokens */
+#home-page .device-info {
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    -webkit-box-pack: center !important;
+    -ms-flex-pack: center !important;
+    justify-content: center !important;
+    -ms-flex-wrap: wrap !important;
+    flex-wrap: wrap !important;
+    gap: 6px 10px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    letter-spacing: 0.5px !important;
+    padding: 8px 0 20px !important;
+}
+
+#home-page .device-info .info-sep {
+    color: rgba(255, 255, 255, 0.25) !important;
+}
+
+#home-page .device-info strong {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-weight: 700 !important;
+}
+
+/* ==========================================================================
+   SESSION TIMER
+   ========================================================================== */
+
+#home-page .timer {
+    padding: 5px 0 28px !important;
+}
+
+#home-page .timer-label {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: 3px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    text-transform: uppercase !important;
+    margin-bottom: 6px !important;
+}
+
+/* Large monospaced countdown value */
+#home-page .timer-value {
+    font-size: clamp(40px, 12vw, 45px) !important;
+    font-weight: 800 !important;
+    color: white !important;
+    letter-spacing: 4px !important;
+    line-height: 1 !important;
+    font-variant-numeric: tabular-nums !important;
+    text-shadow: 0 0 30px rgba(79, 195, 247, 0.35) !important;
+}
+
+#home-page .data-remaining {
+    margin-top: 10px !important;
+    font-size: 13px !important;
+    letter-spacing: 0.5px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+#home-page .data-remaining strong {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ==========================================================================
+   STATUS BAR
+   ========================================================================== */
+
+#home-page .status-bar {
+    border-top-left-radius: 15px !important;
+    border-top-right-radius: 15px !important;
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    -webkit-box-pack: justify !important;
+    -ms-flex-pack: justify !important;
+    justify-content: space-between !important;
+    padding: 10px 16px !important;
+    min-height: 44px !important;
+}
+
+#home-page .status-bar.disconnected {
+    background: #EFC7C7 !important;
+    border-bottom: 1px solid rgba(255, 160, 160, 0.2) !important;
+}
+
+#home-page .status-bar.connected {
+    background: #C7EFD0 !important;
+    border-bottom: 1px solid rgba(100, 200, 120, 0.2) !important;
+}
+
+/* Dark green text/icon when connected */
+#home-page .status-bar.connected .status-bar-icon,
+#home-page .status-bar.connected .status-bar-text,
+#home-page .status-bar.connected .status-bar-label {
+    color: #0F6E2A !important;
+}
+
+#home-page .status-bar-left {
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-align: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+#home-page .status-bar-icon {
+    width: 18px !important;
+    height: 18px !important;
+    color: #AF0F0F !important;
+    -ms-flex-negative: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+#home-page .status-bar-text {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: #AF0F0F !important;
+    letter-spacing: 0.3px !important;
+}
+
+#home-page .status-bar-label {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    color: #AF0F0F !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+}
+
+/* ==========================================================================
+   BANNER
+   ========================================================================== */
+
+#home-page .banner {
+    width: 100% !important;
+    line-height: 0 !important;
+    padding-bottom: 10px !important;
+}
+
+#home-page .banner img {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    border-radius: 0 !important;
+}
+
+/* ==========================================================================
+   CONTENT AREA
+   ========================================================================== */
+
+#home-page .content {
+    padding: 0 20px 36px !important;
+    display: -webkit-box !important;
+    display: -ms-flexbox !important;
+    display: flex !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-box-direction: normal !important;
+    -ms-flex-direction: column !important;
+    flex-direction: column !important;
+    -webkit-box-flex: 1 !important;
+    -ms-flex: 1 !important;
+    flex: 1 !important;
+    gap: 0 !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE OVERRIDES
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    #home-page .heading {
+        font-size: 3rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #home-page .banner img {
+        border-radius: 0 0 12px 12px !important;
+    }
+
+    #home-page .nav li a {
+        font-size: 15px !important;
+        padding: 15px 5px !important;
+    }
+
+    #home-page .heading {
+        font-size: 2.5rem !important;
+    }
+
+    #home-page .timer-value {
+        font-size: 30px !important;
+    }
+}

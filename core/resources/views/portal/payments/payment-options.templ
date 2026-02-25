@@ -8,10 +8,10 @@ type PaymentOption struct {
 }
 
 templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opts []PaymentOption) {
-	<div class="payment-checkout-container">
+	<div class="payment-checkout-container" id="payment-options-page">
 		<!-- Purchase Summary Card -->
-		<!-- fw-portal-card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
-		<div class="purchase-summary fw-portal-card-primary panel panel-default">
+		<!-- card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
+		<div class="purchase-summary card card-primary panel panel-default">
 			<div class="summary-cart-icon text-center">
 				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<circle cx="9" cy="21" r="1"></circle>
@@ -19,7 +19,7 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 					<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
 				</svg>
 			</div>
-			<h3 class="summary-title text-center fw-portal-text-white">{ api.Translate("label", "Purchase Summary") }</h3>
+			<h3 class="summary-title text-center">{ api.Translate("label", "Purchase Summary") }</h3>
 			<div class="summary-product-row">
 				<div class="summary-product-left">
 				<div class="summary-product-thumb">
@@ -67,8 +67,8 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 			<h3 class="payment-options-title">{ api.Translate("label", "Choose Payment Options") }</h3>
 			<div class="payment-options-grid">
 				for _, opt := range opts {
-				<!-- fw-portal-card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
-				<a href={ templ.SafeURL(opt.URL) } class="payment-option-card fw-portal-card-primary panel panel-default" aria-label={ "Select " + opt.Label }>
+				<!-- card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
+				<a href={ templ.SafeURL(opt.URL) } class="payment-option-card card card-primary panel panel-default" aria-label={ "Select " + opt.Label }>
 						<div class="payment-card-inner panel-body">
 							<div class="payment-icon">
 								<span class="glyphicon glyphicon-credit-card"></span>
@@ -95,16 +95,16 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 				data-confirm={ api.Translate("warning", "Are you sure you want to cancel this purchase") }
 				class="cancel-form"
 			>
-			<!-- fw-portal-btn fw-portal-btn-default: theme button; .btn .btn-default as Bootstrap fallback -->
-			<button type="submit" class="btn-cancel-purchase fw-portal-btn fw-portal-btn-default btn btn-secondary" onclick="this.disabled=true; this.form.submit();">
+			<!-- portal-btn portal-btn-default: theme button; .btn .btn-default as Bootstrap fallback -->
+			<button type="submit" class="btn-cancel-purchase btn btn-default" onclick="this.disabled=true; this.form.submit();">
 					{ api.Translate("label", "Cancel Purchase") }
 				</button>
 			</form>
 		</div>
 	</div>
 	<!-- Footer -->
-	<!-- fw-portal-footer: theme footer; Bootstrap .text-center as fallback -->
-	<div class="fw-portal-footer text-center w-full">
+	<!-- footer: theme footer; Bootstrap .text-center as fallback -->
+	<div class="footer text-center w-full">
 		<span>{ api.Translate("label", "Powered by") }</span>
 		<a target="_blank" href="https://flarewifi.com"><strong>flarewifi</strong></a>
 	</div>

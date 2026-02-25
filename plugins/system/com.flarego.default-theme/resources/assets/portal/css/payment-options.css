@@ -1,0 +1,141 @@
+/* ==========================================================================
+   PAYMENT OPTIONS PAGE (#payment-options-page)
+   ========================================================================== */
+
+#payment-options-page {
+    padding: 0 15px !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+}
+
+/* ==========================================================================
+   PURCHASE SUMMARY
+   ========================================================================== */
+
+#payment-options-page .purchase-summary {
+    border-radius: 10px !important;
+    padding: 24px !important;
+    margin-bottom: 30px !important;
+}
+
+#payment-options-page .summary-cart-icon svg {
+    width: 36px !important;
+    height: 36px !important;
+    color: #264FDF !important;
+}
+
+/* Product row: thumbnail + info on the left, total on the right */
+#payment-options-page .summary-product-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+}
+
+#payment-options-page .summary-product-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+#payment-options-page .summary-product-thumb {
+    width: 35px !important;
+    height: 35px !important;
+    flex-shrink: 0 !important;
+}
+
+#payment-options-page .summary-product-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    min-width: 0 !important;
+}
+
+#payment-options-page .summary-product-desc {
+    font-size: 12px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+#payment-options-page .summary-product-total {
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+}
+
+/* ==========================================================================
+   PAYMENT OPTIONS
+   ========================================================================== */
+
+#payment-options-page .payment-options-section {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+}
+
+#payment-options-page .payment-options-title {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.3px !important;
+    margin: 0 !important;
+    text-align: center !important;
+}
+
+/* Single-column list of payment method cards */
+#payment-options-page .payment-options-grid {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#payment-options-page .payment-option-card {
+    display: block !important;
+    text-decoration: none !important;
+    transition: transform 0.2s ease, opacity 0.2s ease !important;
+}
+
+#payment-options-page .payment-option-card:hover {
+    opacity: 0.85 !important;
+    transform: translateY(-2px) !important;
+    text-decoration: none !important;
+}
+
+/* ==========================================================================
+   COLOR TOKENS
+   ========================================================================== */
+
+/* White text for primary elements */
+#payment-options-page .summary-title,
+#payment-options-page .payment-options-title,
+#payment-options-page .summary-product-name,
+#payment-options-page .summary-total-amount,
+#payment-options-page .payment-option-card,
+#payment-options-page .payment-icon,
+#payment-options-page .payment-arrow {
+    color: white !important;
+}
+
+/* Muted text for secondary elements and hovered card children */
+#payment-options-page .summary-product-desc,
+#payment-options-page .summary-total-label,
+#payment-options-page .payment-option-card:hover,
+#payment-options-page .payment-option-card:hover .payment-arrow,
+#payment-options-page .payment-option-card:hover .payment-icon {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* ==========================================================================
+   SPINNER
+   ========================================================================== */
+
+/* Spinner arc — animation driven by global @keyframes spin in portal.css */
+#payment-options-page .spinner-icon {
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    border-top-color: white !important;
+}

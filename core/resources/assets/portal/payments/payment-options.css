@@ -1,406 +1,261 @@
-
-
-/* ========================================
-   Page Background
-   ======================================== */
-/* Bootstrap container: fill full viewport height and center vertically */
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-
 body {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
-body > .container {
-  padding-left: 15px;
-  padding-right: 15px;
-}
-
-.fw-portal-wrap {
+.portal-wrap {
   max-width: 520px;
+  margin: 0 auto;
 }
 
-/* ========================================
-   Container
-   ======================================== */
+:root {
+  --text-black: rgba(0,0,0,0.75);
+  --text-black-6: rgba(0,0,0,0.6);
+  --text-white: white;
+  --text-muted: rgba(255, 255, 255, 0.7);
+}
+
 .payment-checkout-container {
-  width: 100%;
-  margin: 20px auto;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  /* Allow natural height — no min-height forcing */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .purchase-summary {
-  padding: 24px;
   margin-bottom: 25px;
-  /* Default fallback gradient when the theme (fw-card-primary) is not present.
-     portal.css overrides this via .purchase-summary.fw-card-primary specificity. */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 30px;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-/* Cart icon at top */
 .summary-cart-icon {
-  text-align: center;
-  margin-bottom: 10px;
+    margin-bottom: 10px;
 }
 
 .summary-cart-icon svg {
-  width: 40px;
-  height: 40px;
-  color: #264FDF;
-  stroke: #264FDF;
+  width: 36px;
+  height: 36px;
+  color: var(--text-white);
 }
 
-/* "Purchase Summary" title */
-.summary-title {
-  text-align: center;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 18px 0;
-  letter-spacing: 0.2px;
+.payment-checkout-container .summary-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin: 0 0 14px;
+  color: var(--text-white);
 }
 
-/* Product row */
-.summary-product-row {
+/* Row: product thumb + info on the left, total on the right */
+.payment-checkout-container .summary-product-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: end;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 14px;
   gap: 12px;
 }
-.summary-product-left {
+
+.payment-checkout-container .summary-product-left {
   display: flex;
   align-items: center;
-}
-
-/* Product thumbnail */
-.summary-product-thumb {
-  margin-right: 10px;
-  flex-shrink: 0;
-  width: 52px;
-  height: 40px;
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(74, 144, 217, 0.15);
-}
-
-.summary-product-thumb svg {
-  width: 52px;
-  height: 40px;
-  display: block;
-}
-
-/* Product name & description */
-.summary-product-info {
+  gap: 12px;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   min-width: 0;
 }
 
-.summary-product-name {
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.summary-product-desc {
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-  font-weight: 400;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Total price */
-.summary-product-total {
+/* Square thumbnail container */
+.payment-checkout-container .summary-product-thumb {
+  width: 35px;
+  height: 35px;
   flex-shrink: 0;
-  text-align: right;
+}
+
+.payment-checkout-container .summary-product-thumb svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Stacked name + description */
+.payment-checkout-container .summary-product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+
+.payment-checkout-container .summary-product-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.payment-checkout-container .summary-product-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Right group: label + formatted amount */
+.payment-checkout-container .summary-product-total {
   display: flex;
-  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+
+.payment-checkout-container .summary-total-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.payment-checkout-container .summary-total-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-white);
+}
+
+
+.payment-checkout-container .payment-options-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+
+.payment-checkout-container .payment-options-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin: 0;
+  text-align: center;
+}
+
+/* Grid of payment method cards — single column, stretches full width */
+.payment-checkout-container .payment-options-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-checkout-container .payment-option-card {
+  display: block;
+  text-decoration: none;
+  color: var(--text-black);
+  padding: 10px !important;
+  border-radius: 15px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+
+}
+
+.payment-checkout-container .payment-option-card:hover {
+  opacity: 0.85;
+  text-decoration: none;
+}
+#payment-options-page .payment-option-card:hover,
+#payment-options-page .payment-option-card:hover .payment-arrow,
+#payment-options-page .payment-option-card:hover .payment-icon {
+  color: var(--text-black-6);
+}
+
+.payment-checkout-container .payment-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.payment-checkout-container .payment-icon {
+  font-size: 20px;
+  color: var(--text-black-6);
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
 }
 
-.summary-total-label {
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 11px;
-  font-weight: 400;
-}
-
-.summary-total-amount {
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
-
-/* ========================================
-   Payment Options Section
-   ======================================== */
-.payment-options-section {
-  margin-bottom: 24px;
-}
-
-.payment-options-title {
-  text-align: center;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 16px 0;
+/* Payment method name — grows to fill available space */
+.payment-checkout-container .payment-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
   letter-spacing: 0.2px;
 }
 
-/* ========================================
-   Payment Options Grid / Cards
-   ======================================== */
-.payment-options-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* Chevron arrow on the right */
+.payment-checkout-container .payment-arrow {
+    font-size: 13px;
+    color: var(--text-black-6);
+    flex-shrink: 0;
 }
 
-.payment-option-card {
-  display: block;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  position: relative;
-  overflow: hidden;
+/* Loading spinner — hidden by default; shown when card is clicked */
+.payment-checkout-container .payment-loading-spinner {
+  display: none;
+  flex-shrink: 0;
+}
+.payment-checkout-container .payment-option-card.loading {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
-.payment-option-card:hover,
-.payment-option-card:focus {
-  transform: translateY(-4px);
-  border-color: rgba(74, 144, 217, 0.5);
-  box-shadow: 0 8px 24px rgba(74, 144, 217, 0.2);
-  text-decoration: none;
-  opacity: 0.85;
+.payment-checkout-container .payment-option-card.loading .payment-arrow {
+  display: none;
 }
 
-.payment-option-card:hover .payment-arrow {
-  transform: translateX(5px);
-  color: #667eea;
-}
-
-.payment-option-card:active {
-  transform: translateY(-2px);
-}
-
-.payment-card-inner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  /* Neutralise Bootstrap .panel-body padding so card padding alone controls spacing */
-  padding: 0;
-}
-
-/* Payment Icon */
-.payment-icon img{
-  max-width: 40px;
-  border-radius: 5px;  
-}
-.payment-icon span {
+.payment-checkout-container .payment-option-card.loading .payment-loading-spinner {
   display: table-cell;
-  vertical-align: middle;
-  width: 60px;
-  font-size: 32px;
-  color: #667eea;
-  text-align: center;
-  padding: 5px;
 }
 
-
-/* Payment name — white for dark/glass theme; Bootstrap panel fallback inherits panel color */
-.payment-name {
-  flex: 1;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-/* Payment arrow */
-.payment-arrow {
-  flex-shrink: 0;
-  font-size: 14px;
-  transition: color 0.2s ease;
-}
-
-/* Loading spinner */
-.payment-loading-spinner {
-  display: none;
-  flex-shrink: 0;
-  width: 22px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-/* ========================================
-   Loading / Disabled States
-   ======================================== */
-.payment-option-card.loading {
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.payment-option-card.loading .payment-arrow {
-  display: none;
-}
-
-.payment-option-card.loading .payment-loading-spinner {
-  display: flex;
-}
-
-.payment-option-card.disabled {
-  opacity: 0.45;
-  pointer-events: none;
-  cursor: not-allowed;
-}
-
-.spinner-icon {
-  display: inline-block;
+/* Spinner arc — reuses the global @keyframes spin */
+.payment-checkout-container .spinner-icon {
   width: 18px;
   height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #4A90D9;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  border-top-color: var(--text-black);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.payment-checkout-container .cancel-purchase-section {
+  display: flex;
+  justify-content: center;
+}
+
+.payment-checkout-container .cancel-form {
+  width: 100%;
+  text-align: center;
+}
+
+/* Cancel button — full width, inherits btn-default styling */
+.payment-checkout-container .btn-cancel-purchase {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 12px 30px;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* ========================================
-   Cancel Purchase Section
-   ======================================== */
-.cancel-purchase-section {
-  text-align: center;
-  margin-top: 24px;
-  margin-bottom: 24px;
-}
-
-.cancel-form {
-  margin: 0;
-}
-
-.btn-cancel-purchase {
-  display: inline-block;
-  font-size: 15px;
-  font-weight: 500;
-  padding: 10px 36px;
-  font-family: inherit;
-  border-radius: 50px;
-  transition: all 0.2s ease !important;
-}
-
-.btn-cancel-purchase:hover {
-  opacity: 0.8;
-  transform: translateY(-4px);
-}
-.btn-cancel-purchase:active{
-  transform: translateY(-2px);
-}
-/* ========================================
-   Empty State
-   ======================================== */
-.payment-options-grid:empty::after {
-  content: 'No payment options available';
-  display: block;
-  text-align: center;
-  padding: 40px;
-  color: rgba(255, 255, 255, 0.4);
-  font-style: italic;
-}
-
-/* =====================================================
-  Footer fallback (portal-footer may be absent)
-  ===================================================== */
-.fw-portal-footer {
-    padding-bottom: 5px;
-    font-size: 12px;
-    text-align: center;
-}
-.fw-portal-footer a {
-  color: rgba(0,0,0,0.8);
-  text-decoration: none;
-}
-.fw-portal-footer a:hover {
-  opacity: 0.8;
-}
-
-.ic-actions {
-  display: block;
-}
-
-
-/* ========================================
-   Responsive
-   ======================================== */
-@media (max-width: 380px) {
-  .summary-product-row {
+@media (max-width: 250px) {
+  .payment-checkout-container .summary-product-row {
     display: block !important;
   }
-  .purchase-summary {
-    padding: 20px 16px 16px;
+  .payment-checkout-container .summary-product-left {
+    justify-content: center !important;
   }
-  .summary-product-left {
-    display: block;
-    text-align: center;
-    margin-bottom: 10px;
-  }
-
-  .summary-product-thumb {
-    width: 44px;
-    height: 34px;
-    margin: 0 auto;
-    margin-bottom: 10px;
-  }
-  .summary-product-total {
+  .payment-checkout-container .summary-product-total {
     justify-content: center;
+    margin-top: 10px !important;
   }
-
-  .summary-product-name {
-    font-size: 13px;
-  }
-
-  .summary-product-desc {
-    font-size: 11px;
-  }
-
-  .summary-total-amount {
-    font-size: 12px;
-  }
-
-  }
-
-@media (max-width: 768px) {
-  .payment-name {
-    font-size: 15px;
-  }
-
-  .btn-cancel-purchase {
-    font-size: 14px;
-    padding: 9px 28px;
+  .payment-checkout-container .payment-name {
+    font-size: 12px !important;
   }
 }
