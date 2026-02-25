@@ -102,8 +102,8 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 		Mac:      newMac,
 		Ip:       newIP,
 		Hostname: newHostname,
-		UUID:     clnt.UUID(),              // Preserve existing UUID
-		Status:   int(sdkapi.Disconnected), // Set to disconnected during update
+		UUID:     clnt.UUID(),                     // Preserve existing UUID
+		Status:   sdkapi.DeviceStatusDisconnected, // Set to disconnected during update
 	})
 	if err != nil {
 		log.Printf("[ClientRegister.UpdateDevice] ERROR: Failed to update device in database: %v", err)
@@ -129,7 +129,7 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 			Ip:       newIP,
 			Hostname: newHostname,
 			UUID:     clnt.UUID(), // Preserve existing UUID
-			Status:   int(sdkapi.Connected),
+			Status:   sdkapi.DeviceStatusConnected,
 		}); err != nil {
 			log.Printf("[ClientRegister.UpdateDevice] ERROR: Failed to update device to connected: %v", err)
 			return fmt.Errorf("could not update device to connected: %w", err)
