@@ -69,9 +69,9 @@ Available device statuses:
 
 | Value | Description
 | --- | ---
-| `1` | `Connected` - Device is connected to the internet
-| `2` | `Disconnected` - Device is disconnected from the internet
-| `3` | `Blocked` - Device is blocked from accessing the internet
+| `1` | `DeviceStatusConnected` - Device is connected to the internet
+| `2` | `DeviceStatusDisconnected` - Device is disconnected from the internet
+| `3` | `DeviceStatusBlocked` - Device is blocked from accessing the internet
 
 ### Update
 
@@ -79,22 +79,22 @@ Updates the client device record in the database using the `UpdateDeviceParams` 
 
 The `UpdateDeviceParams` struct contains:
 
+- `UUID string` - the device UUID
 - `Mac string` - the new MAC address
 - `Ip string` - the new IP address
 - `Hostname string` - the new hostname
-- `UUID string` - the device UUID
-- `Status int` - the new device status (1=Connected, 2=Disconnected, 3=Blocked)
+- `Status DeviceStatus` - the new device status (`DeviceStatusConnected`, `DeviceStatusDisconnected`, `DeviceStatusBlocked`)
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
 
-    params := UpdateDeviceParams{
+    params := sdkapi.UpdateDeviceParams{
+        UUID:     clnt.UUID(),
         Mac:      "00:11:22:33:44:55",
         Ip:       "192.168.1.123",
         Hostname: "new-hostname",
-        UUID:     clnt.UUID(),
-        Status:   1, // Connected
+        Status:   sdkapi.DeviceStatusConnected,
     }
 
     if err := clnt.Update(r.Context(), params); err != nil {

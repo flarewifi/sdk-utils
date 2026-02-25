@@ -398,7 +398,7 @@ func handleCloudCommand(ctx context.Context, api sdkapi.IPluginApi, cmd CloudCom
             Mac:      device.MacAddr(),
             Ip:       device.IpAddr(),
             Hostname: device.Hostname(),
-            Status:   sdkapi.Blocked,
+            Status:   sdkapi.DeviceStatusBlocked,
         })
     }
     return nil

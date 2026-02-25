@@ -14,9 +14,9 @@ type DeviceStatus int
 
 // List of device statuses.
 const (
-	Connected DeviceStatus = iota + 1
-	Disconnected
-	Blocked
+	DeviceStatusConnected DeviceStatus = iota + 1
+	DeviceStatusDisconnected
+	DeviceStatusBlocked
 )
 
 // UpdateDeviceParams holds parameters for updating a client device.
