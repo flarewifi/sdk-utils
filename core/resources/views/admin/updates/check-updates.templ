@@ -1,5 +1,7 @@
 package updatesview
 
+import "fmt"
+
 import sdkapi "sdk/api"
 
 type SoftwareUpdate struct {
@@ -89,7 +91,7 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 			<div class="card shadow-sm border border-light-subtle" id="firmware-upload-card">
 				<div class="card-header border-bottom border-light-subtle p-4 bg-transparent">
 					<h4 class="fw-semibold">{ api.Translate("label", "Manual Firmware Upload") }</h4>
-					<p>{ api.Translate("info", "Install firmware from a file for advanced users") }</p>
+					<p>{ api.Translate("info", "Install firmware from a file for advanced users") }.</p>
 				</div>
 				<div class="card-body p-4">
 					<!-- Upload Form -->
@@ -139,8 +141,8 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 										{ api.Translate("label", "Loading") }...
 									</span>
 								</div>
-								<h5 class="fw-semibold mb-2">{ api.Translate("label", "Uploading and Validating Firmware") }...</h5>
-								<p class="text-muted mb-0">{ api.Translate("info", "Please wait while we upload and verify your firmware file") }</p>
+								<h5 class="fw-semibold mb-2">{ api.Translate("label", "Uploading Firmware") }</h5>
+								<p class="text-muted mb-0">{ fmt.Sprintf("%s...", api.Translate("info", "Please wait while we upload and verify your firmware file")) }</p>
 								<div class="progress mt-3" style="height: 6px;">
 									<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
 								</div>
