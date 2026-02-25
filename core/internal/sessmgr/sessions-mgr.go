@@ -256,7 +256,7 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 			Mac:      clnt.MacAddr(),
 			Ip:       clnt.IpAddr(),
 			Hostname: clnt.Hostname(),
-			Status:   int(sdkapi.Connected),
+			Status:   sdkapi.Connected,
 		})
 		if err != nil {
 			err = fmt.Errorf("unable to update device status to connected: %w", err)
@@ -280,7 +280,7 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 		Mac:      clnt.MacAddr(),
 		Ip:       clnt.IpAddr(),
 		Hostname: clnt.Hostname(),
-		Status:   int(sdkapi.Disconnected),
+		Status:   sdkapi.Disconnected,
 	})
 }
 

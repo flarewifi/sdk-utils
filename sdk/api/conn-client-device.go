@@ -21,11 +21,11 @@ const (
 
 // UpdateDeviceParams holds parameters for updating a client device.
 type UpdateDeviceParams struct {
+	UUID     string
 	Mac      string
 	Ip       string
 	Hostname string
-	UUID     string
-	Status   int
+	Status   DeviceStatus
 }
 
 // IClientDevice represents a client device connected to the network.

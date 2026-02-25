@@ -80,13 +80,18 @@ func (self *ClientDevice) Update(ctx context.Context, params sdkapi.UpdateDevice
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
+	// If a field is not provided (zero value), keep the existing value.
+	if params.Status == 0 {
+		params.Status = self.status
+	}
+
 	err := self.mdls.Device().Update(ctx, models.UpdateDeviceParams{
 		ID:         self.id,
 		MacAddress: params.Mac,
 		IpAddress:  params.Ip,
 		Hostname:   params.Hostname,
 		UUID:       params.UUID,
-		Status:     params.Status,
+		Status:     int(params.Status),
 	})
 	if err != nil {
 		return err
