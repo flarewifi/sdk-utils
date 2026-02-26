@@ -81,14 +81,46 @@
     }, 2000);
   }
 
+  // Last updated timestamp
+  function updateLastUpdated() {
+    var el = document.getElementById("fw-last-updated-time");
+    if (!el) return;
+    var now = new Date();
+    var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    var month = months[now.getMonth()];
+    var day = now.getDate();
+    var year = now.getFullYear();
+    var hours = now.getHours();
+    var minutes = now.getMinutes();
+    var ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    var mm = minutes < 10 ? "0" + minutes : "" + minutes;
+    var seconds = now.getSeconds();
+    var ss = seconds < 10 ? "0" + seconds : "" + seconds;
+    var label = el.getAttribute("data-label") || "Last updated";
+    el.textContent = label + ": " + month + " " + day + ", " + year + " " + hours + ":" + mm + ":" + ss + " " + ampm;
+  }
+
+  // Re-initialize chart after htmx settles new content into the DOM.
+  // htmx:afterSettle fires after the swap is complete and new elements are live.
+  document.addEventListener("htmx:afterSettle", function () {
+    var el = document.getElementById("revenueChart");
+    if (el && !el.querySelector("svg")) {
+      initRevenueChart();
+    }
+    updateLastUpdated();
+  });
+
   // Initialize on DOM ready
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
       initRevenueChart();
       initCopyButtons();
+      updateLastUpdated();
     });
   } else {
     initRevenueChart();
     initCopyButtons();
+    updateLastUpdated();
   }
 })();

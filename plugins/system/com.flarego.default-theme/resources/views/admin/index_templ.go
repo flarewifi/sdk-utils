@@ -9,11 +9,21 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"com.flarego.default-theme/app/dashboard"
 	"com.flarego.default-theme/app/sysinfo"
 	sdkapi "sdk/api"
 )
 
-func AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Component {
+type AdminData struct {
+	SysInfo            *sysinfo.SystemInfo
+	Sales              dashboard.DashboardSalesData
+	ActiveUsersData    dashboard.ActiveUsersData
+	InternetStatusData dashboard.InternetStatusData
+	ChartData          []dashboard.RevenueChartPoint
+	FirmwareVersion    string
+}
+
+func AdminIndexPage(api sdkapi.IPluginApi, data AdminData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -38,7 +48,7 @@ func AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Compo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SalesSummary(api).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SalesSummary(api, data.Sales).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -46,7 +56,7 @@ func AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Compo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ActiveUsersCard(api).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ActiveUsersCard(api, data.ActiveUsersData).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -54,7 +64,7 @@ func AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Compo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InternetStatusCard(api).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = InternetStatusCard(api, data.InternetStatusData).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -62,7 +72,7 @@ func AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Compo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = RevenueChartCard(api).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = RevenueChartCard(api, data.ChartData).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -70,7 +80,7 @@ func AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Compo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = DeviceHealthCard(api, info).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = DeviceHealthCard(api, data.SysInfo).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -78,7 +88,7 @@ func AdminIndexPage(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Compo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SystemInfoCard(api, info).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SystemInfoCard(api, data.SysInfo, data.FirmwareVersion).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

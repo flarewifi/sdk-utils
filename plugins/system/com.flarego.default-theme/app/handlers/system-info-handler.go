@@ -11,7 +11,7 @@ import (
 func SystemResourceCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get system information
-		info, err := sysinfo.GetSystemInfo()
+		info, err := sysinfo.GetSystemInfo(api)
 		if err != nil {
 			// If there's an error, provide empty/default system info
 			info = &sysinfo.SystemInfo{}

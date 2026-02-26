@@ -1,9 +1,32 @@
 package admin
 
-import sdkapi "sdk/api"
+import (
+	"fmt"
+	"strings"
+	"com.flarego.default-theme/app/dashboard"
+	sdkapi "sdk/api"
+)
 
-templ RevenueChartCard(api sdkapi.IPluginApi) {
-	<div class="card border mb-4">
+// revenueChartJSON serialises []RevenueChartPoint to the JSON format expected
+// by $flare.ui.line_chart: [{"label":"...","values":{"coinslot":0,"voucher":0}}]
+func revenueChartJSON(points []dashboard.RevenueChartPoint) string {
+	parts := make([]string, len(points))
+	for i, p := range points {
+		parts[i] = fmt.Sprintf(
+			`{"label":%q,"values":{"coinslot":%.2f,"voucher":%.2f}}`,
+			p.Label, p.Coinslot, p.Voucher,
+		)
+	}
+	return "[" + strings.Join(parts, ",") + "]"
+}
+
+templ RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint) {
+	<div
+		class="card border mb-4"
+		hx-get={ api.Http().Helpers().UrlForRoute("admin:dashboard:revenue-chart") }
+		hx-trigger="load delay:10s"
+		hx-swap="outerHTML"
+	>
 		<div class="card-body pb-0">
 			<div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
 				<div class="mb-2">
@@ -26,7 +49,7 @@ templ RevenueChartCard(api sdkapi.IPluginApi) {
 			<div class="fw-chart-container">
 				<div
 					id="revenueChart"
-					data-chart={ `[{"label":"Jan 29","values":{"coinslot":120,"voucher":80}},{"label":"Jan 30","values":{"coinslot":180,"voucher":120}},{"label":"Jan 31","values":{"coinslot":150,"voucher":100}},{"label":"Feb 1","values":{"coinslot":220,"voucher":140}},{"label":"Feb 2","values":{"coinslot":190,"voucher":110}},{"label":"Feb 3","values":{"coinslot":250,"voucher":160}},{"label":"Feb 4","values":{"coinslot":280,"voucher":180}}]` }
+					data-chart={ revenueChartJSON(data) }
 				></div>
 			</div>
 		</div>

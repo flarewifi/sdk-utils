@@ -10,7 +10,7 @@ templ DashboardHeader(api sdkapi.IPluginApi) {
 		<h1 class="h3 mb-0">{ api.Translate("label", "Dashboard") }</h1>
 		<div class="fw-last-updated">
 			<i class="bi bi-clock"></i>
-			<span>{ api.Translate("label", "Last updated") }: { time.Now().Format("Jan 2, 2006 3:04 PM") }</span>
+			<span id="fw-last-updated-time" data-label={ api.Translate("label", "Last updated") }>{ api.Translate("label", "Last updated") }: { time.Now().Format("Jan 2, 2006 3:04:05 PM") }</span>
 		</div>
 	</div>
 }

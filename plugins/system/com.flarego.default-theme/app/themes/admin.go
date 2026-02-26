@@ -5,6 +5,7 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 
+	"com.flarego.default-theme/app/dashboard"
 	"com.flarego.default-theme/app/sysinfo"
 	"com.flarego.default-theme/resources/views/admin"
 )
@@ -39,14 +40,32 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 			}
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
-			// Get system information
-			info, err := sysinfo.GetSystemInfo()
+			fVersion := "1.0.0" // Default
+			if corePlugin, ok := api.PluginsMgr().FindByPkg("com.flarego.core"); ok {
+				fVersion = corePlugin.Info().Version
+			}
+
+			info, err := sysinfo.GetSystemInfo(api)
 			if err != nil {
 				// If there's an error, provide empty/default system info
 				info = &sysinfo.SystemInfo{}
 			}
 
-			page := admin.AdminIndexPage(api, info)
+			sales := dashboard.GetSalesSummaryToday(api, r.Context())
+			activeData := dashboard.GetActiveUsersDataToday(api, r.Context())
+			internet := dashboard.GetInternetStatus(api, r.Context())
+			chart := dashboard.GetRevenueChartData(api, r.Context())
+
+			data := admin.AdminData{
+				SysInfo:            info,
+				Sales:              sales,
+				ActiveUsersData:    activeData,
+				InternetStatusData: internet,
+				ChartData:          chart,
+				FirmwareVersion:    fVersion,
+			}
+
+			page := admin.AdminIndexPage(api, data)
 			return sdkapi.ViewPage{
 				Assets: sdkapi.ViewAssets{
 					JsFile:  "admin/dashboard.js",
