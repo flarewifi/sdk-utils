@@ -5,6 +5,7 @@ import (
 	"time"
 
 	cmd "core/utils/shell"
+
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -56,18 +57,6 @@ func performScheduledUpdateCheck() {
 			waitForDownloadAndReboot()
 		}
 		return
-	}
-
-	// Optional updates - download but don't auto-install
-	log.Println("Optional update available - downloading only (requires manual installation)")
-	if !IsDownloading() && !IsDownloaded() {
-		DownloadSoftwareUpdate(DownloadParams{
-			FileURL:      result.ReleseFileURL,
-			Checksum:     result.ReleaseFileChecksum,
-			OutputPath:   GetUpdateOutputPath(result.ReleseFileURL, result.IsSysupgrade),
-			IsSysupgrade: result.IsSysupgrade,
-		})
-		// Don't waitForDownloadAndReboot() for optional updates
 	}
 }
 
