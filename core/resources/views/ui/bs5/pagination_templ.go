@@ -13,7 +13,6 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 	"net/url"
-
 	sdkapi "sdk/api"
 )
 
@@ -75,7 +74,7 @@ func Pagination(api sdkapi.IPluginApi, opts PaginationOpts) templ.Component {
 			endPage = pageCount
 			startPage = endPage - (numPager - 1)
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<nav aria-label=\"Pagination\"><ul class=\"pagination\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<nav aria-label=\"Pagination\"><ul class=\"pagination flex-wrap\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -163,7 +162,7 @@ func pageItem(opts PaginationOpts, page int) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", page))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/ui/bs5/pagination.templ`, Line: 74, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/ui/bs5/pagination.templ`, Line: 72, Col: 96}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -239,7 +238,7 @@ func previousItem(api sdkapi.IPluginApi, opts PaginationOpts) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Previous"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/ui/bs5/pagination.templ`, Line: 88, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/ui/bs5/pagination.templ`, Line: 86, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -325,7 +324,7 @@ func nextItem(api sdkapi.IPluginApi, opts PaginationOpts) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Next"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/ui/bs5/pagination.templ`, Line: 113, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/ui/bs5/pagination.templ`, Line: 111, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
