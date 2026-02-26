@@ -3,7 +3,7 @@
    ========================================================================== */
 
 #payment-options-page {
-    padding: 0 15px !important;
+    padding: 15px !important;
     min-height: 100vh !important;
     display: flex !important;
     flex-direction: column !important;
@@ -138,4 +138,23 @@
 #payment-options-page .spinner-icon {
     border: 2px solid rgba(255, 255, 255, 0.2) !important;
     border-top-color: white !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE OVERRIDES
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    #payment-options-page {
+        min-height: 0 !important;
+        justify-content: center !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+    }
+
+    #payment-options-page.has-many-options {
+        justify-content: flex-start !important;
+    }
 }
