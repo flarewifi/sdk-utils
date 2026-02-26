@@ -158,6 +158,14 @@
     #voucher-form-page .heading {
         font-size: 3rem !important;
     }
+
+    #voucher-form-page {
+        justify-content: center !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        min-height: 0 !important;
+    }
 }
 
 @media (max-width: 480px) {

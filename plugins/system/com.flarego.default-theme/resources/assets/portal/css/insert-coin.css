@@ -3,7 +3,7 @@
    ========================================================================== */
 
 #insert-coin-page {
-    padding: 0 15px !important;
+    padding: 15px !important;
     min-height: 100vh !important;
     display: flex !important;
     flex-direction: column !important;
@@ -427,6 +427,25 @@
 /* ==========================================================================
    RESPONSIVE OVERRIDES
    ========================================================================== */
+
+@media (max-width: 768px) {
+    #insert-coin-page {
+        min-height: 0 !important;
+        justify-content: flex-start !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+        padding-bottom: 8px !important;
+    }
+
+    #insert-coin-page .ic-payment-page-container {
+        flex-shrink: 0 !important;
+    }
+    #insert-coin-page.alert-container {
+        justify-content: center !important;
+    }
+}
 
 @media (max-width: 480px) {
     #insert-coin-page .ic-amount-value {

@@ -219,7 +219,7 @@ body > .container {
     transition: all 0.2s ease !important;
 }
 
-.btn:hover {
+.btn:hover:not(:disabled) {
     opacity: 0.8 !important;
     transform: translateY(-2px) !important;
     text-decoration: none !important;
@@ -231,13 +231,12 @@ body > .container {
 }
 
 .btn:disabled {
-    cursor: not-allowed !important;
-    opacity: 0.4 !important;
+    opacity: 0.8 !important;
     transform: none !important;
-    pointer-events: none !important;
     background: var(--btn-disabled-bg) !important;
     border: none !important;
     color: var(--btn-disabled-color) !important;
+    cursor: not-allowed !important;
 }
 
 .btn:disabled .btn-icon {
@@ -502,7 +501,7 @@ body > .container {
 .footer {
     flex-shrink: 0;
     margin-top: auto;
-    padding: 12px 0 8px;
+    padding: 2px;
     font-size: 12px;
     text-align: center;
     color: var(--fw-text-primary);
@@ -621,4 +620,60 @@ body > .container {
 }
 #activation-container .activation-header svg {
     margin-right: 8px;
+}
+
+/* ==========================================================================
+   MOBILE LAYOUT LOCK (≤768px) — prevent page scroll, pin footer
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    html,
+    body {
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    body {
+        height: 100vh !important;
+        height: 100dvh !important;
+        overflow: hidden !important;
+    }
+
+    body > .container {
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    .portal-wrap {
+        height: 100vh !important;
+        height: 100dvh !important;
+        min-height: unset !important;
+        overflow: hidden !important;
+    }
+
+    .footer {
+        flex-shrink: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    /* Activation page */
+    #activation-container {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+    }
+
+    /* Purchase success page */
+    #wifi-purchase-success-page {
+        height: auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        align-items: flex-start !important;
+        padding-top: 20px !important;
+    }
 }

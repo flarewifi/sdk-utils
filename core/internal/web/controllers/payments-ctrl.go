@@ -37,6 +37,23 @@ func PaymentOptionsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
+func PaymentOptionsListCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		result := g.PaymentsMgr.AllOptions(r)
+		opts := make([]paymentsview.PaymentOption, len(result))
+
+		for i, opt := range result {
+			opts[i] = paymentsview.PaymentOption{
+				Label: opt.Label(),
+				URL:   opt.URL(),
+			}
+		}
+
+		view := paymentsview.PaymentOptionCard(g.CoreAPI, opts)
+		view.Render(r.Context(), w)
+	}
+}
+
 func CancelPurchaseCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
