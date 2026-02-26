@@ -5,7 +5,7 @@
     flex: 1 1 auto !important;
     display: flex !important;
     flex-direction: column !important;
-    padding-bottom: 8px !important;
+    padding-top: 10px !important;
 }
 #home-page .nav {
     list-style: none !important;
@@ -46,13 +46,6 @@
     letter-spacing: 2px !important;
     text-transform: uppercase !important;
     box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.32) !important;
-    color: #ffffff !important;
-}
-
-#home-page .nav li a:hover {
-    opacity: 0.8 !important;
-    transform: translateY(-2px) !important;
-    text-decoration: none !important;
     color: #ffffff !important;
 }
 
@@ -221,7 +214,7 @@
 }
 
 /* ==========================================================================
-   BANNER
+   BANNER — static base + JS-driven overlay
    ========================================================================== */
 
 #home-page .banner {
@@ -230,11 +223,51 @@
     padding-bottom: 10px !important;
 }
 
-#home-page .banner img {
+#home-page .banner-inner {
+    position: relative !important;
+    width: 100% !important;
+    line-height: 0 !important;
+}
+
+/* Static banner.png — always visible, drives container height */
+#home-page .banner-static {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    border-radius: 0 !important;
+}
+
+/* Slideshow container covers the static image exactly */
+#home-page .banner-slideshow {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+}
+
+/* All slides hidden by default; JS fades them in/out via opacity transition */
+#home-page .banner-slide {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100% !important;
     height: auto !important;
     display: block !important;
     border-radius: 0 !important;
+    opacity: 0;
+    transition: opacity 0.6s ease-in-out;
+}
+
+/* ==========================================================================
+   SECONDS FADE ANIMATION
+   ========================================================================== */
+
+.timer-secs-card {
+    display: inline-block;
+    opacity: 1;
+    transition: opacity 0.4s ease-in-out;
 }
 
 /* ==========================================================================
@@ -263,6 +296,13 @@
 @media (max-width: 768px) {
     #home-page .heading {
         font-size: 3rem !important;
+    }
+
+    #home-page {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        min-height: 0 !important;
     }
 }
 

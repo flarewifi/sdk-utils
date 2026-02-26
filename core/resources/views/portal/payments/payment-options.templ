@@ -1,5 +1,7 @@
 package paymentsview
 
+import "fmt"
+
 import 	sdkapi "sdk/api"
 
 type PaymentOption struct {
@@ -8,7 +10,7 @@ type PaymentOption struct {
 }
 
 templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, opts []PaymentOption) {
-	<div class="payment-checkout-container" id="payment-options-page">
+	<div class={ "payment-checkout-container", templ.KV("has-many-options", len(opts) > 4) } id="payment-options-page">
 		<!-- Purchase Summary Card -->
 		<!-- card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
 		<div class="purchase-summary card card-primary panel panel-default">
@@ -63,28 +65,7 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 		</div>
 
 		<!-- Payment Options Section -->
-		<div class="payment-options-section">
-			<h3 class="payment-options-title">{ api.Translate("label", "Choose Payment Options") }</h3>
-			<div class="payment-options-grid">
-				for _, opt := range opts {
-				<!-- card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
-				<a href={ templ.SafeURL(opt.URL) } class="payment-option-card card card-primary panel panel-default" aria-label={ "Select " + opt.Label }>
-						<div class="payment-card-inner panel-body">
-							<div class="payment-icon">
-								<span class="glyphicon glyphicon-credit-card"></span>
-							</div>
-							<span class="payment-name">{ opt.Label }</span>
-							<div class="payment-arrow">
-								<span class="glyphicon glyphicon-chevron-right"></span>
-							</div>
-							<div class="payment-loading-spinner">
-								<div class="spinner-icon"></div>
-							</div>
-						</div>
-					</a>
-				}
-			</div>
-		</div>
+		@PaymentOptionCard(api, opts)
 
 		<!-- Cancel Section -->
 		<div class="cancel-purchase-section">
@@ -107,5 +88,36 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 	<div class="footer text-center w-full">
 		<span>{ api.Translate("label", "Powered by") }</span>
 		<a target="_blank" href="https://flarewifi.com"><strong>flarewifi</strong></a>
+	</div>
+}
+
+
+templ PaymentOptionCard(api sdkapi.IPluginApi, opts []PaymentOption) {
+	<div
+		class="payment-options-section"
+		hx-get={ api.Http().Helpers().UrlForRoute("payments:options:list") }
+		hx-trigger={ fmt.Sprintf("every 5s") }
+		hx-swap="outerHTML"
+	>
+		<h3 class="payment-options-title">{ api.Translate("label", "Choose Payment Options") }</h3>
+		<div class="payment-options-grid">
+			for _, opt := range opts {
+			<!-- card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
+			<a href={ templ.SafeURL(opt.URL) } class="payment-option-card card card-primary panel panel-default" aria-label={ "Select " + opt.Label }>
+					<div class="payment-card-inner panel-body">
+						<div class="payment-icon">
+							<span class="glyphicon glyphicon-credit-card"></span>
+						</div>
+						<span class="payment-name">{ opt.Label }</span>
+						<div class="payment-arrow">
+							<span class="glyphicon glyphicon-chevron-right"></span>
+						</div>
+						<div class="payment-loading-spinner">
+							<div class="spinner-icon"></div>
+						</div>
+					</div>
+				</a>
+			}
+		</div>
 	</div>
 }

@@ -5,7 +5,6 @@ package bs5
 import (
 	"fmt"
 	"net/url"
-
 	sdkapi "sdk/api"
 )
 
@@ -39,19 +38,18 @@ templ Pagination(api sdkapi.IPluginApi, opts PaginationOpts) {
 		startPage = opts.CurrentPage - (opts.MaxPagerCount / 2)
 	}
 
-    if startPage < 1 {
-        startPage = 1
-    }
+	if startPage < 1 {
+		startPage = 1
+	}
 
-    endPage := startPage + (numPager - 1)
-    if endPage > pageCount {
-        endPage = pageCount
-        startPage = endPage - (numPager - 1)
-    }
-
+	endPage := startPage + (numPager - 1)
+	if endPage > pageCount {
+		endPage = pageCount
+		startPage = endPage - (numPager - 1)
+	}
 	}}
 	<nav aria-label="Pagination">
-		<ul class="pagination">
+		<ul class="pagination flex-wrap">
 			@previousItem(api, opts)
 			for i := startPage; i <= endPage; i++ {
 				@pageItem(opts, i)

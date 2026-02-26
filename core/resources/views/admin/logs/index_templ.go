@@ -498,7 +498,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></form></div></div><div class=\"card-body p-0\"><table class=\"table table-hover mb-0\"><thead><tr><th class=\"px-2 py-3 ps-4\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></form></div></div><div class=\"card-body p-0 table-responsive-lg\"><table class=\"table table-hover mb-0\"><thead><tr><th class=\"px-2 py-3 ps-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

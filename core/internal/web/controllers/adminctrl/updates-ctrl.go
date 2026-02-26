@@ -84,6 +84,9 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		page := updatesview.SoftwareUpdatesPage(api, channel, nil, false, uploadUrl, csrfHTML, maxSizeMB, allowedExts, currentVersion)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
+			Assets: sdkapi.ViewAssets{
+				JsFile: "check-updates.js",
+			},
 		})
 	}
 }

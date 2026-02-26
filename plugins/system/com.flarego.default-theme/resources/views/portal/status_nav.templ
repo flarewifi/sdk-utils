@@ -44,9 +44,16 @@ templ PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) {
 		hx-swap="outerHTML"
 	>
 		@StatusBar(api, data.IsSessionRunning)
-		<!-- Banner: full bleed, no side padding -->
+		<!-- Banner: static base + slideshow overlay -->
 		<div class="banner">
-			<img src={ api.Http().Helpers().PublicPath("images/banner.png") } alt="Banner"/>
+			<div class="banner-inner">
+				<img class="banner-static" src={ api.Http().Helpers().PublicPath("images/banner.png") } alt="Banner"/>
+				<div class="banner-slideshow">
+					<img class="banner-slide" src={ api.Http().Helpers().PublicPath("images/banner-1.png") } alt="Banner 1"/>
+					<img class="banner-slide" src={ api.Http().Helpers().PublicPath("images/banner-2.png") } alt="Banner 2"/>
+					<img class="banner-slide" src={ api.Http().Helpers().PublicPath("images/banner-3.png") } alt="Banner 3"/>
+				</div>
+			</div>
 		</div>
 		<!-- Portal Title -->
 		<div class="heading text-center">FLARE<span>WIFI</span> HOTSPOT</div>

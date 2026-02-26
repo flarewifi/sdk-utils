@@ -13,5 +13,8 @@
   ],
   "admin-error.js": [
     "./admin/js/admin-error.js"
+  ],
+  "check-updates.js": [
+    "./admin/js/check-updates.js"
   ]
 }

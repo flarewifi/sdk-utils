@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 var (
@@ -33,12 +34,33 @@ var (
 		"shutdown",
 		"reboot",
 		"halt",
-		"sysupgrade",
 	}
+
+	// FakeSysupgradeValidationSuccess controls whether sysupgrade -T returns success or failure in dev mode
+	// Set to false to test firmware validation failure scenarios
+	FakeSysupgradeValidationSuccess = true
 )
 
 func Exec(command string, opts *ExecOpts) error {
 	log.Println("Executing:", command)
+
+	// Handle sysupgrade -T command for firmware validation in dev mode
+	if strings.HasPrefix(command, "sysupgrade -T") {
+		time.Sleep(5 * time.Second)
+		if FakeSysupgradeValidationSuccess {
+			log.Println("Dev mode: Fake sysupgrade validation SUCCESS")
+			return nil
+		}
+		log.Println("Dev mode: Fake sysupgrade validation FAILURE")
+		return errors.New("firmware validation failed: incompatible firmware")
+	}
+
+	// Handle other sysupgrade commands (actual upgrade) - ignore in dev mode
+	if strings.HasPrefix(command, "sysupgrade") {
+		time.Sleep(5 * time.Second)
+		log.Println("Dev mode: Ignoring sysupgrade command")
+		return nil
+	}
 
 	// don't execute some commands in dev mode
 	for _, ignoreCmd := range ignoreCmdsStart {
