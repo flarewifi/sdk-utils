@@ -60,6 +60,15 @@ func Setup() (err error) {
 		fmt.Sprintf("nft add map %s %s %s '{ type ether_addr : verdict ; counter; }'", tableFamily, internetTable, connMacMap),
 		fmt.Sprintf("nft add set %s %s %s '{ type ether_addr; }'", tableFamily, internetTable, connMacSet),
 
+		// Anti-tethering rules: Drop packets with TTL values indicating NAT traversal
+		// These MUST come before the accept rules to block tethered traffic
+		// Linux/Android: normal TTL=64, tethered=63,62,61,60 (up to 4 hops)
+		fmt.Sprintf("nft add rule %s %s %s ip ttl 60-63 counter log prefix \"[TETHER-BLOCK] \" drop", tableFamily, internetTable, forwardChain),
+		// Windows: normal TTL=128, tethered=127,126,125,124 (up to 4 hops)
+		fmt.Sprintf("nft add rule %s %s %s ip ttl 124-127 counter log prefix \"[TETHER-BLOCK] \" drop", tableFamily, internetTable, forwardChain),
+		// iOS/network equipment: normal TTL=255, tethered=254,253,252,251 (up to 4 hops)
+		fmt.Sprintf("nft add rule %s %s %s ip ttl 251-254 counter log prefix \"[TETHER-BLOCK] \" drop", tableFamily, internetTable, forwardChain),
+
 		// Add rules to our custom forward chain
 		// Verdict maps will accept if MAC/IP is in the map, otherwise continue to drop rule
 		fmt.Sprintf("nft add rule %s %s %s ether saddr vmap @%s", tableFamily, internetTable, forwardChain, connMacMap),
