@@ -14,16 +14,6 @@
         "@playwright/mcp@latest"
       ],
       "enabled": true
-    },
-    "sqlite": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "mcp-sqlite",
-        "./data/db/database.sqlite"
-      ],
-      "enabled": true
     }
   }
 }
