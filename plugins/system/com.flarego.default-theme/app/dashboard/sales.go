@@ -27,7 +27,7 @@ type DashboardSalesData struct {
 func GetSalesSummaryToday(api sdkapi.IPluginApi, ctx context.Context) DashboardSalesData {
 	db := queries.New(api.SqlDB())
 
-	row, err := db.GetDashboardSalesSummary(ctx)
+	row, err := db.GetSalesSummaryToday(ctx)
 	if err != nil {
 		log.Printf("[DEBUG] Failed to get sales summary: " + err.Error())
 		return DashboardSalesData{
@@ -50,7 +50,7 @@ func GetSalesSummaryToday(api sdkapi.IPluginApi, ctx context.Context) DashboardS
 func GetRevenueChartData(api sdkapi.IPluginApi, ctx context.Context) []RevenueChartPoint {
 	db := queries.New(api.SqlDB())
 
-	rows, err := db.GetRevenueChartLast7Days(ctx)
+	rows, err := db.GetRevenueLast7Days(ctx)
 	if err != nil {
 		log.Printf("[DEBUG] Failed to get revenue chart data: " + err.Error())
 		rows = nil
@@ -58,7 +58,7 @@ func GetRevenueChartData(api sdkapi.IPluginApi, ctx context.Context) []RevenueCh
 
 	// Index DB rows by date string "2006-01-02".
 	// Day is interface{} from SQLite driver; assert to string.
-	byDay := make(map[string]queries.GetRevenueChartLast7DaysRow, len(rows))
+	byDay := make(map[string]queries.GetRevenueLast7DaysRow, len(rows))
 	for _, r := range rows {
 		if key, ok := r.Day.(string); ok {
 			byDay[key] = r

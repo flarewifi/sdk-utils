@@ -1,4 +1,4 @@
--- name: GetRevenueChartLast7Days :many
+-- name: GetRevenueLast7Days :many
 SELECT
     days.day,
     COALESCE(c.coinslot_revenue, 0) AS coinslot_revenue,
@@ -36,7 +36,7 @@ LEFT JOIN (
 ) AS vr ON vr.day = days.day
 ORDER BY days.day ASC;
 
--- name: GetDashboardSalesSummary :one
+-- name: GetSalesSummaryToday :one
 SELECT
     COALESCE(SUM(py.amount), 0) + COALESCE((
         SELECT SUM(vb.amount)

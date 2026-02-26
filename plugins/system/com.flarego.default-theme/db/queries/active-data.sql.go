@@ -12,9 +12,22 @@ import (
 const getAvgSessionSecsToday = `-- name: GetAvgSessionSecsToday :one
 SELECT COALESCE(AVG(s.consumption_secs), 0)
 FROM sessions s
-JOIN devices d ON d.id = s.device_id
-WHERE d.status = 1
-  AND (s.resumed_at IS NOT NULL OR s.started_at IS NOT NULL)
+WHERE (
+    s.started_at >= DATETIME('now', 'start of day')
+    OR s.resumed_at >= DATETIME('now', 'start of day')
+  )
+  AND (
+    (s.session_type = 'time'          AND s.consumption_secs < s.time_secs)
+    OR (s.session_type = 'data'       AND s.consumption_mb < s.data_mbytes)
+    OR (s.session_type = 'time-or-data'
+        AND s.consumption_secs < s.time_secs
+        AND s.consumption_mb < s.data_mbytes)
+  )
+  AND (
+    s.exp_days IS NULL
+    OR s.started_at IS NULL
+    OR datetime('now') < datetime(s.started_at, '+' || s.exp_days || ' days')
+  )
 `
 
 func (q *Queries) GetAvgSessionSecsToday(ctx context.Context) (interface{}, error) {

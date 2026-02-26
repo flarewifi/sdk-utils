@@ -56,7 +56,7 @@ templ SystemInfoCard(api sdkapi.IPluginApi, info *sysinfo.SystemInfo, firmware s
 						<span>{ api.Translate("label", "Firmware Version") }</span>
 					</div>
 					<div class="fw-info-row-value">
-						<span>{ firmware } </span>
+						<span>{ fmt.Sprintf("v%s", firmware) } </span>
 					</div>
 				</div>
 				<!-- Uptime -->

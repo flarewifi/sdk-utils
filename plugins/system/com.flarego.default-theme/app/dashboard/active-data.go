@@ -56,12 +56,21 @@ func GetActiveUsersDataToday(api sdkapi.IPluginApi, ctx context.Context) ActiveU
 		peakToday = 0
 	}
 
-	avgHours := utils.ToFloat64(avgRaw) / 3600.0
+	avgSecs := utils.ToFloat64(avgRaw)
+	var avgSessionStr string
+	switch {
+	case avgSecs >= 3600:
+		avgSessionStr = fmt.Sprintf("%.1fh", avgSecs/3600.0)
+	case avgSecs >= 60:
+		avgSessionStr = fmt.Sprintf("%.1fm", avgSecs/60.0)
+	default:
+		avgSessionStr = fmt.Sprintf("%.0fs", avgSecs)
+	}
 
 	return ActiveUsersData{
 		ConnectedToday:  connected,
 		SessionsToday:   sessionsToday,
-		AvgSessionToday: fmt.Sprintf("%.1fh", avgHours),
+		AvgSessionToday: avgSessionStr,
 		PeakToday:       peakToday,
 	}
 }

@@ -9,46 +9,7 @@ import (
 	"context"
 )
 
-const getDashboardSalesSummary = `-- name: GetDashboardSalesSummary :one
-SELECT
-    COALESCE(SUM(py.amount), 0) + COALESCE((
-        SELECT SUM(vb.amount)
-        FROM vouchers v
-        LEFT JOIN voucher_batches vb ON vb.uuid = v.batch_uuid
-        WHERE v.created_at IS NOT NULL
-          AND v.created_at >= DATE('now', 'start of day')
-          AND v.created_at < DATE('now', '+1 day', 'start of day')
-    ), 0) AS total_revenue,
-    COALESCE(SUM(CASE WHEN py.provider = 'com.flarego.wireless-coinslot' OR py.provider = 'com.flarego.wired-coinslot' THEN py.amount ELSE 0 END), 0) AS coinslot_revenue,
-    COALESCE((
-        SELECT SUM(vb.amount)
-        FROM vouchers v
-        LEFT JOIN voucher_batches vb ON vb.uuid = v.batch_uuid
-        WHERE v.created_at IS NOT NULL
-          AND v.created_at >= DATE('now', 'start of day')
-          AND v.created_at < DATE('now', '+1 day', 'start of day')
-    ), 0) AS voucher_revenue
-FROM purchases p
-LEFT JOIN payments py ON py.purchase_id = p.id
-WHERE p.confirmed_at IS NOT NULL
-  AND p.confirmed_at >= DATE('now', 'start of day')
-  AND p.confirmed_at < DATE('now', '+1 day', 'start of day')
-`
-
-type GetDashboardSalesSummaryRow struct {
-	TotalRevenue    int64
-	CoinslotRevenue interface{}
-	VoucherRevenue  interface{}
-}
-
-func (q *Queries) GetDashboardSalesSummary(ctx context.Context) (GetDashboardSalesSummaryRow, error) {
-	row := q.db.QueryRowContext(ctx, getDashboardSalesSummary)
-	var i GetDashboardSalesSummaryRow
-	err := row.Scan(&i.TotalRevenue, &i.CoinslotRevenue, &i.VoucherRevenue)
-	return i, err
-}
-
-const getRevenueChartLast7Days = `-- name: GetRevenueChartLast7Days :many
+const getRevenueLast7Days = `-- name: GetRevenueLast7Days :many
 SELECT
     days.day,
     COALESCE(c.coinslot_revenue, 0) AS coinslot_revenue,
@@ -87,21 +48,21 @@ LEFT JOIN (
 ORDER BY days.day ASC
 `
 
-type GetRevenueChartLast7DaysRow struct {
+type GetRevenueLast7DaysRow struct {
 	Day             interface{}
 	CoinslotRevenue float64
 	VoucherRevenue  float64
 }
 
-func (q *Queries) GetRevenueChartLast7Days(ctx context.Context) ([]GetRevenueChartLast7DaysRow, error) {
-	rows, err := q.db.QueryContext(ctx, getRevenueChartLast7Days)
+func (q *Queries) GetRevenueLast7Days(ctx context.Context) ([]GetRevenueLast7DaysRow, error) {
+	rows, err := q.db.QueryContext(ctx, getRevenueLast7Days)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetRevenueChartLast7DaysRow
+	var items []GetRevenueLast7DaysRow
 	for rows.Next() {
-		var i GetRevenueChartLast7DaysRow
+		var i GetRevenueLast7DaysRow
 		if err := rows.Scan(&i.Day, &i.CoinslotRevenue, &i.VoucherRevenue); err != nil {
 			return nil, err
 		}
@@ -114,4 +75,43 @@ func (q *Queries) GetRevenueChartLast7Days(ctx context.Context) ([]GetRevenueCha
 		return nil, err
 	}
 	return items, nil
+}
+
+const getSalesSummaryToday = `-- name: GetSalesSummaryToday :one
+SELECT
+    COALESCE(SUM(py.amount), 0) + COALESCE((
+        SELECT SUM(vb.amount)
+        FROM vouchers v
+        LEFT JOIN voucher_batches vb ON vb.uuid = v.batch_uuid
+        WHERE v.created_at IS NOT NULL
+          AND v.created_at >= DATE('now', 'start of day')
+          AND v.created_at < DATE('now', '+1 day', 'start of day')
+    ), 0) AS total_revenue,
+    COALESCE(SUM(CASE WHEN py.provider = 'com.flarego.wireless-coinslot' OR py.provider = 'com.flarego.wired-coinslot' THEN py.amount ELSE 0 END), 0) AS coinslot_revenue,
+    COALESCE((
+        SELECT SUM(vb.amount)
+        FROM vouchers v
+        LEFT JOIN voucher_batches vb ON vb.uuid = v.batch_uuid
+        WHERE v.created_at IS NOT NULL
+          AND v.created_at >= DATE('now', 'start of day')
+          AND v.created_at < DATE('now', '+1 day', 'start of day')
+    ), 0) AS voucher_revenue
+FROM purchases p
+LEFT JOIN payments py ON py.purchase_id = p.id
+WHERE p.confirmed_at IS NOT NULL
+  AND p.confirmed_at >= DATE('now', 'start of day')
+  AND p.confirmed_at < DATE('now', '+1 day', 'start of day')
+`
+
+type GetSalesSummaryTodayRow struct {
+	TotalRevenue    int64
+	CoinslotRevenue interface{}
+	VoucherRevenue  interface{}
+}
+
+func (q *Queries) GetSalesSummaryToday(ctx context.Context) (GetSalesSummaryTodayRow, error) {
+	row := q.db.QueryRowContext(ctx, getSalesSummaryToday)
+	var i GetSalesSummaryTodayRow
+	err := row.Scan(&i.TotalRevenue, &i.CoinslotRevenue, &i.VoucherRevenue)
+	return i, err
 }

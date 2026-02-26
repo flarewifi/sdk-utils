@@ -138,9 +138,9 @@ func SystemInfoCard(api sdkapi.IPluginApi, info *sysinfo.SystemInfo, firmware st
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(firmware)
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("v%s", firmware))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-system-info.templ`, Line: 59, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-system-info.templ`, Line: 59, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {

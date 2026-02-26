@@ -8,10 +8,7 @@ import (
 	"com.flarego.default-theme/app/dashboard"
 	"com.flarego.default-theme/app/sysinfo"
 	"com.flarego.default-theme/resources/views/admin"
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
-
-const osReleaseFile = "/app/data/openwrt-files/openwrt-files/etc/os_release.json"
 
 func SetAdminTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewAdminTheme(sdkapi.AdminThemeOpts{
@@ -43,10 +40,9 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 			}
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
-			osVersion := "1.0.0"
-			osInfo, err := sdkutils.ReadOsRelease(osReleaseFile)
-			if err == nil {
-				osVersion = osInfo.OsVersion
+			fVersion := "1.0.0" // Default
+			if corePlugin, ok := api.PluginsMgr().FindByPkg("com.flarego.core"); ok {
+				fVersion = corePlugin.Info().Version
 			}
 
 			info, err := sysinfo.GetSystemInfo(api)
@@ -66,7 +62,7 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 				ActiveUsersData:    activeData,
 				InternetStatusData: internet,
 				ChartData:          chart,
-				FirmwareVersion:    osVersion,
+				FirmwareVersion:    fVersion,
 			}
 
 			page := admin.AdminIndexPage(api, data)
