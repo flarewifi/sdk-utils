@@ -4,7 +4,8 @@
     "./admin/js/layout.js",
     "./admin/js/color-modes.js",
     "./admin/js/nav-search.js",
-    "./admin/js/notifications.js"
+    "./admin/js/notifications.js",
+    "./admin/js/dashboard.js"
   ],
   "theme.css": [
     "./vendor/bootstrap-icons-1.13.1/bootstrap-icons.min.css",
