@@ -123,7 +123,25 @@
       var plotW = plotR - plotL;
       var plotH = plotB - plotT;
       var n = data.length;
-      if (n === 0) return;
+      if (n === 0) {
+        gGrid.innerHTML = "";
+        gAreas.innerHTML = "";
+        gLines.innerHTML = "";
+        gYLabels.innerHTML = "";
+        gXLabels.innerHTML = "";
+        gHover.innerHTML = "";
+        svg.innerHTML = "";
+        var noDataText = createEl("text", {
+          x: w / 2,
+          y: h / 2,
+          "text-anchor": "middle",
+          "dominant-baseline": "middle",
+          "class": "fw-chart-no-data"
+        });
+        noDataText.textContent = opts.noDataText || "No data available";
+        svg.appendChild(noDataText);
+        return;
+      }
 
       // Update clip rect to match plot area
       clipRect.setAttribute("x", plotL);

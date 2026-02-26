@@ -38,7 +38,7 @@ templ DeviceHealthCard(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) {
 	<div
 		class="card border h-100"
 		hx-get={ api.Http().Helpers().UrlForRoute("admin:system:resource") }
-		hx-trigger="load delay:5s"
+		hx-trigger="load delay:10s"
 		hx-swap="outerHTML"
 	>
 		<div class="card-body">

@@ -3,6 +3,8 @@ package sysinfo
 import (
 	"runtime"
 
+	sdkapi "sdk/api"
+
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/host"
@@ -23,10 +25,12 @@ type SystemInfo struct {
 	DiskUsed        uint64    `json:"disk_used"`
 	DiskUsedPercent float64   `json:"disk_used_percent"`
 	Uptime          uint64    `json:"uptime"`
+	IPAddress       string    `json:"ip_address"`
+	MACAddress      string    `json:"mac_address"`
 }
 
-// GetSystemInfo retrieves basic system information: CPU, memory, disk, and temperature.
-func GetSystemInfo() (*SystemInfo, error) {
+// GetSystemInfo retrieves basic system information: CPU, memory, disk, temperature, and network.
+func GetSystemInfo(api sdkapi.IPluginApi) (*SystemInfo, error) {
 	info := &SystemInfo{
 		Arch:   runtime.GOARCH,
 		NumCPU: runtime.NumCPU(),
@@ -65,6 +69,17 @@ func GetSystemInfo() (*SystemInfo, error) {
 	// Uptime in seconds
 	uptime, _ := host.Uptime()
 	info.Uptime = uptime
+
+	// LAN IP and MAC address
+	iface, err := api.Network().GetInterface("lan")
+	if err == nil {
+		if ipv4, err := iface.IpV4Addr(); err == nil {
+			info.IPAddress = ipv4.Addr
+		}
+		if dev, err := iface.Device(); err == nil {
+			info.MACAddress = dev.MacAddr()
+		}
+	}
 
 	return info, nil
 }

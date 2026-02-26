@@ -21,6 +21,13 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 		subrouter.Get("/status-nav", PortalStatusNavHandler(api)).Name("portal:status-nav")
 	})
 
+	adminR.Group("/dashboard", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/sales-summary", handlers.DashboardSalesCtrl(api)).Name("admin:dashboard:sales")
+		subrouter.Get("/active-data", handlers.DashboardActiveDataCtrl(api)).Name("admin:dashboard:active-data")
+		subrouter.Get("/internet-status", handlers.DashboardInternetStatusCtrl(api)).Name("admin:dashboard:internet-status")
+		subrouter.Get("/revenue-chart", handlers.DashboardRevenueChartCtrl(api)).Name("admin:dashboard:revenue-chart")
+	})
+
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Group("/resource", func(subrouter sdkapi.IHttpRouterInstance) {
 			subrouter.Get("/", handlers.SystemResourceCtrl(api)).Name("admin:system:resource")

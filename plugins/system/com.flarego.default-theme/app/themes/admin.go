@@ -5,9 +5,13 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 
+	"com.flarego.default-theme/app/dashboard"
 	"com.flarego.default-theme/app/sysinfo"
 	"com.flarego.default-theme/resources/views/admin"
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
+
+const osReleaseFile = "/app/data/openwrt-files/openwrt-files/etc/os_release.json"
 
 func SetAdminTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewAdminTheme(sdkapi.AdminThemeOpts{
@@ -39,14 +43,33 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 			}
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
-			// Get system information
-			info, err := sysinfo.GetSystemInfo()
+			osVersion := "1.0.0"
+			osInfo, err := sdkutils.ReadOsRelease(osReleaseFile)
+			if err == nil {
+				osVersion = osInfo.OsVersion
+			}
+
+			info, err := sysinfo.GetSystemInfo(api)
 			if err != nil {
 				// If there's an error, provide empty/default system info
 				info = &sysinfo.SystemInfo{}
 			}
 
-			page := admin.AdminIndexPage(api, info)
+			sales := dashboard.GetSalesSummaryToday(api, r.Context())
+			activeData := dashboard.GetActiveUsersDataToday(api, r.Context())
+			internet := dashboard.GetInternetStatus(api, r.Context())
+			chart := dashboard.GetRevenueChartData(api, r.Context())
+
+			data := admin.AdminData{
+				SysInfo:            info,
+				Sales:              sales,
+				ActiveUsersData:    activeData,
+				InternetStatusData: internet,
+				ChartData:          chart,
+				FirmwareVersion:    osVersion,
+			}
+
+			page := admin.AdminIndexPage(api, data)
 			return sdkapi.ViewPage{
 				Assets: sdkapi.ViewAssets{
 					JsFile:  "admin/dashboard.js",

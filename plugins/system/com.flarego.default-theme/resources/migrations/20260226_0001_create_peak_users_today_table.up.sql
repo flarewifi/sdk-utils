@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS peak_users_today (
+    date TEXT NOT NULL PRIMARY KEY,
+    peak_count INTEGER NOT NULL DEFAULT 0
+);
