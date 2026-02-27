@@ -17,8 +17,9 @@ import (
 const (
 	internetTable   string = "internet" // Our custom table
 	tableFamily     string = "inet"     // inet family (handles both ipv4 and ipv6)
-	forwardChain    string = "forward"
-	preroutingChain string = "prerouting"
+	forwardChain     string = "forward"
+	preroutingChain  string = "prerouting"
+	postroutingChain string = "postrouting"
 	connMacMap      string = "connected_macs_map"
 	connIpMap       string = "connected_ips_map"
 	connMacSet      string = "connected_macs_set"
@@ -60,6 +61,10 @@ func Setup() (err error) {
 		fmt.Sprintf("nft add map %s %s %s '{ type ether_addr : verdict ; counter; }'", tableFamily, internetTable, connMacMap),
 		fmt.Sprintf("nft add set %s %s %s '{ type ether_addr; }'", tableFamily, internetTable, connMacSet),
 
+		// Create postrouting chain for anti-tethering (TTL set)
+		// Sets outgoing TTL to 1 so tethered devices cannot forward packets (TTL drops to 0)
+		fmt.Sprintf("nft add chain %s %s %s '{ type filter hook postrouting priority 0; policy accept; }'", tableFamily, internetTable, postroutingChain),
+
 		// Add rules to our custom forward chain
 		// Verdict maps will accept if MAC/IP is in the map, otherwise continue to drop rule
 		fmt.Sprintf("nft add rule %s %s %s ether saddr vmap @%s", tableFamily, internetTable, forwardChain, connMacMap),
@@ -89,6 +94,11 @@ func SetupCaptivePortal(dev string, routerIp string) (err error) {
 				fmt.Sprintf("nft add rule %s %s %s ether saddr @%s counter accept", tableFamily, internetTable, preroutingChain, connMacSet),
 				// Redirect HTTP/HTTPS traffic to captive portal
 				fmt.Sprintf("nft add rule %s %s %s iif %s tcp dport '{ 80, 443 }' counter dnat ip to %s", tableFamily, internetTable, preroutingChain, dev, routerIp),
+
+				// Anti-tethering: set TTL=1 on packets going out through this LAN device
+				// Direct clients receive TTL=1 and process it normally
+				// Tethered devices try to forward, TTL drops to 0, packet is dropped
+				fmt.Sprintf("nft add rule %s %s %s oifname %s ip ttl set 1", tableFamily, internetTable, postroutingChain, dev),
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

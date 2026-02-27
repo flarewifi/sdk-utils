@@ -26,7 +26,7 @@ func PendingPurchase(api sdkapi.IPluginApi, mdls *models.Models) func(http.Handl
 
 			purchase, err := mdls.Purchase().PendingPurchase(ctx, client.ID())
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				res.FlashMsg(w, r, api.Translate("error", "Client device not registered"), sdkapi.FlashMsgError)
+				res.FlashMsg(w, r, api.Translate("error", "No pending purchase found"), sdkapi.FlashMsgError)
 				res.RedirectToPortal(w, r)
 				return
 			}
