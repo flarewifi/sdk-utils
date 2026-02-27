@@ -19,6 +19,7 @@ func SetupRoutes(api sdkapi.IPluginApi) {
 		subrouter.Get("/summary", PortalSessionSyncHandler(api)).Name("portal:sessions:summary")
 		subrouter.Get("/navs", PortalNavItemsHandler(api)).Name("portal:navs")
 		subrouter.Get("/status-nav", PortalStatusNavHandler(api)).Name("portal:status-nav")
+		subrouter.Get("/wif-rates", PortalWifiRatesCtrl(api)).Name("portal:wifi-rates")
 	})
 
 	adminR.Group("/dashboard", func(subrouter sdkapi.IHttpRouterInstance) {
