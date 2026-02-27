@@ -15,6 +15,7 @@
     var data = opts.data || [];
     var series = opts.series || [];
     var tension = opts.tension != null ? opts.tension : 0.4;
+    var stacked = opts.stacked !== false; // default true; pass stacked:false for independent series
     var fillOpacity = opts.fillOpacity || [0.8, 0.1];
     var tooltipFormat = opts.tooltipFormat || null;
     var pad = merge({ top: 10, right: 10, bottom: 30, left: 50 }, opts.padding || {});
@@ -22,7 +23,7 @@
     // Y-axis config
     var yAxis = opts.yAxis || {};
     var yMin = yAxis.min != null ? yAxis.min : 0;
-    var yMax = yAxis.max != null ? yAxis.max : autoMax(data, series);
+    var yMax = yAxis.max != null ? yAxis.max : autoMax(data, series, stacked);
     var yStep = yAxis.stepSize || niceStep(yMax - yMin);
 
     // Ensure container fills its parent
@@ -179,21 +180,25 @@
         gXLabels.appendChild(xLabel);
       }
 
-      // Compute stacked values
-      var stacked = [];
+      // Compute stacked (or independent) values per series per data point
+      var stackedVals = [];
       for (var di = 0; di < n; di++) {
         var row = [];
         var cumulative = 0;
         for (var si = 0; si < series.length; si++) {
           var v = (data[di].values && data[di].values[series[si].key]) || 0;
-          cumulative += v;
-          row.push(cumulative);
+          if (stacked) {
+            cumulative += v;
+            row.push(cumulative);
+          } else {
+            row.push(v);
+          }
         }
-        stacked.push(row);
+        stackedVals.push(row);
       }
 
       // Store for hover dot positioning
-      _stacked = stacked;
+      _stacked = stackedVals;
       _plotB = plotB;
       _plotH = plotH;
 
@@ -203,18 +208,19 @@
         for (var pi = 0; pi < n; pi++) {
           pts.push({
             x: xPositions[pi],
-            y: plotB - (stacked[pi][si2] - yMin) / (yMax - yMin) * plotH
+            y: plotB - (stackedVals[pi][si2] - yMin) / (yMax - yMin) * plotH
           });
         }
 
         var basePts = [];
-        if (si2 === 0) {
+        if (!stacked || si2 === 0) {
+          // Non-stacked OR bottom stacked series: always close to zero baseline
           basePts = [{ x: plotR, y: plotB }, { x: plotL, y: plotB }];
         } else {
           for (var bp = n - 1; bp >= 0; bp--) {
             basePts.push({
               x: xPositions[bp],
-              y: plotB - (stacked[bp][si2 - 1] - yMin) / (yMax - yMin) * plotH
+              y: plotB - (stackedVals[bp][si2 - 1] - yMin) / (yMax - yMin) * plotH
             });
           }
         }
@@ -224,8 +230,8 @@
 
         // Area: line path + base (reversed) + close
         var areaD;
-        if (si2 === 0) {
-          // Bottom series: close straight to baseline (plotB = y=0)
+        if (!stacked || si2 === 0) {
+          // Non-stacked OR bottom stacked series: close straight to baseline
           areaD = linePath + " L" + plotR + "," + plotB +
             " L" + plotL + "," + plotB + " Z";
         } else {
@@ -376,14 +382,23 @@
     return out;
   }
 
-  function autoMax(data, series) {
+  function autoMax(data, series, isStacked) {
     var max = 0;
     for (var i = 0; i < data.length; i++) {
-      var sum = 0;
-      for (var s = 0; s < series.length; s++) {
-        sum += (data[i].values && data[i].values[series[s].key]) || 0;
+      if (isStacked) {
+        // Stacked: Y-axis must accommodate the sum of all series
+        var sum = 0;
+        for (var s = 0; s < series.length; s++) {
+          sum += (data[i].values && data[i].values[series[s].key]) || 0;
+        }
+        if (sum > max) max = sum;
+      } else {
+        // Non-stacked: Y-axis must accommodate the largest individual series value
+        for (var s2 = 0; s2 < series.length; s2++) {
+          var v = (data[i].values && data[i].values[series[s2].key]) || 0;
+          if (v > max) max = v;
+        }
       }
-      if (sum > max) max = sum;
     }
     return Math.ceil(max / 100) * 100 || 100;
   }
