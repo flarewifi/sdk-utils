@@ -261,13 +261,35 @@
 }
 
 /* ==========================================================================
+   WIFI RATES — pinned to bottom-right rectangle of .banner-inner
+   ========================================================================== */
+
+#home-page .wifi-rates {
+    position: absolute !important;
+    top: 50% !important;
+    left: 58.6% !important;
+    right: 3% !important;
+    bottom: 12% !important;
+    z-index: 10 !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+}
+
+#home-page .wifi-rates-svg {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+/* ==========================================================================
    SECONDS FADE ANIMATION
    ========================================================================== */
 
 .timer-secs-card {
     display: inline-block;
     opacity: 1;
-    transition: opacity 0.4s ease-in-out;
+    transition: opacity 0.5s ease-in-out;
 }
 
 /* ==========================================================================
