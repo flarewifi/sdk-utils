@@ -104,7 +104,7 @@ templ sidebar(api sdkapi.IPluginApi, data AdminLayoutData) {
 				</a>
 			</div>
 			<!-- Mobile search - only visible on mobile -->
-			<div class="sidebar-search d-md-none">
+			<div class="sidebar-search d-block d-md-none">
 				<form class="search-bar mobile-search" data-results={ navItemsAsJSON(data.NavItems) }>
 					<div class="position-relative w-100">
 						<i class="bi bi-search search-icon"></i>
@@ -181,7 +181,7 @@ templ topbar(api sdkapi.IPluginApi, data AdminLayoutData) {
 				<path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
 			</svg>
 		</button>
-		<form class="search-bar" id="navbarSearch" data-results={navItemsAsJSON(data.NavItems)}>
+		<form class="search-bar d-none d-md-block" data-results={navItemsAsJSON(data.NavItems)}>
 			<div class="position-relative w-100">
 				<i class="bi bi-search search-icon"></i>
 				<input
