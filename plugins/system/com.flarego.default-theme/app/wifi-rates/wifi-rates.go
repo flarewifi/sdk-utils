@@ -2,11 +2,7 @@ package wifirates
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	sdkapi "sdk/api"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type PauseSessionSetting struct {
@@ -20,8 +16,9 @@ type PauseSessionConfig struct {
 }
 
 func GetPauseConfig(api sdkapi.IPluginApi) PauseSessionConfig {
-	filePath := filepath.Join(sdkutils.PathConfigDir, "plugins", "com.flarego.wifi-hotspot", "session_settings")
-	file, err := os.ReadFile(filePath)
+	p, _ := api.PluginsMgr().FindByPkg("com.flarego.wifi-hotspot")
+	session, err := p.Config().Plugin().Read("session_settings")
+
 	if err != nil {
 		return PauseSessionConfig{
 			Settings: []PauseSessionSetting{
@@ -32,8 +29,9 @@ func GetPauseConfig(api sdkapi.IPluginApi) PauseSessionConfig {
 			},
 		}
 	}
+
 	var cfg PauseSessionConfig
-	if err := json.Unmarshal(file, &cfg); err != nil {
+	if err := json.Unmarshal(session, &cfg); err != nil {
 		return PauseSessionConfig{}
 	}
 	return cfg
@@ -93,28 +91,18 @@ var DefaultPaymentSettings = PaymentSettings{
 		ExpiryTime:     3,
 		ExpiryUnit:     "days",
 	},
-	{
-		Amount:         20,
-		DataMb:         100,
-		TimeMins:       180,
-		DataCapEnabled: false,
-		ExpiryEnabled:  true,
-		ExpiryTime:     7,
-		ExpiryUnit:     "days",
-	},
 }
 
 func GetPaymentConfig(api sdkapi.IPluginApi) PaymentSettings {
 	var settings PaymentSettings
-
-	filePath := filepath.Join(sdkutils.PathConfigDir, "plugins", "com.flarego.wifi-hotspot", "payment_settings")
-	file, err := os.ReadFile(filePath)
+	p, _ := api.PluginsMgr().FindByPkg("com.flarego.wifi-hotspot")
+	rates, err := p.Config().Plugin().Read("payment_settings")
 
 	if err != nil {
 		return DefaultPaymentSettings
 	}
 
-	if err := json.Unmarshal(file, &settings); err != nil {
+	if err := json.Unmarshal(rates, &settings); err != nil {
 		return DefaultPaymentSettings
 	}
 
