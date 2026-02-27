@@ -16,23 +16,27 @@ type PauseSessionConfig struct {
 }
 
 func GetPauseConfig(api sdkapi.IPluginApi) PauseSessionConfig {
-	p, _ := api.PluginsMgr().FindByPkg("com.flarego.wifi-hotspot")
-	session, err := p.Config().Plugin().Read("session_settings")
+	defaultData := PauseSessionConfig{
+		Settings: []PauseSessionSetting{
+			{Amount: 1, Count: 0},
+			{Amount: 5, Count: 3},
+			{Amount: 10, Count: 6},
+			{Amount: 20, Count: 12},
+		},
+	}
 
+	p, ok := api.PluginsMgr().FindByPkg("com.flarego.wifi-hotspot")
+	if !ok {
+		return defaultData
+	}
+	session, err := p.Config().Plugin().Read("session_settings")
 	if err != nil {
-		return PauseSessionConfig{
-			Settings: []PauseSessionSetting{
-				{Amount: 1, Count: 0},
-				{Amount: 5, Count: 3},
-				{Amount: 10, Count: 6},
-				{Amount: 20, Count: 12},
-			},
-		}
+		return defaultData
 	}
 
 	var cfg PauseSessionConfig
 	if err := json.Unmarshal(session, &cfg); err != nil {
-		return PauseSessionConfig{}
+		return defaultData
 	}
 	return cfg
 }
@@ -95,7 +99,10 @@ var DefaultPaymentSettings = PaymentSettings{
 
 func GetPaymentConfig(api sdkapi.IPluginApi) PaymentSettings {
 	var settings PaymentSettings
-	p, _ := api.PluginsMgr().FindByPkg("com.flarego.wifi-hotspot")
+	p, ok := api.PluginsMgr().FindByPkg("com.flarego.wifi-hotspot")
+	if !ok {
+		return DefaultPaymentSettings
+	}
 	rates, err := p.Config().Plugin().Read("payment_settings")
 
 	if err != nil {
