@@ -156,13 +156,11 @@ func Validate() {
 		return
 	}
 
-	// Offline validation failed - token is invalid
-	// Remove the activation file and update state
-	if _, err := os.Stat(activationFile); err == nil {
-		_ = os.Remove(activationFile)
-		log.Printf("Offline activation validation failed, removing activation file: %v", errOffline)
-	}
-	ActivationError.Store(errOnline)
+	// Offline validation failed - token is invalid or expired
+	// Do NOT remove the activation file when server is unreachable
+	// Only remove when server explicitly says "not activated"
+	log.Printf("Offline activation validation failed (server unreachable): %v", errOffline)
+	ActivationError.Store(errOffline)
 	IsActivated.Store(false)
 }
 
