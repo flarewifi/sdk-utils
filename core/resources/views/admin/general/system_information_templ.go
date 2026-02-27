@@ -64,9 +64,9 @@ func SystemInformation(api sdkapi.IPluginApi, params AdminGeneralSettingsIndexPa
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(params.MachineID)
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(truncate(params.MachineID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_information.templ`, Line: 28, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_information.templ`, Line: 28, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -196,6 +196,14 @@ func getStatus(params AdminGeneralSettingsIndexParams) (string, string) {
 		statusText = "Not Activated"
 	}
 	return class, statusText
+}
+
+func truncate(machineId string) string {
+	if len(machineId) < 16 {
+		return machineId
+	}
+
+	return machineId[:8] + "..." + machineId[len(machineId)-8:]
 }
 
 var _ = templruntime.GeneratedTemplate
