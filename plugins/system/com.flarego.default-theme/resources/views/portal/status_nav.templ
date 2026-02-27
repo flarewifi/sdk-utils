@@ -2,13 +2,18 @@ package portal
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	sdkapi "sdk/api"
+	wifirates "com.flarego.default-theme/app/wifi-rates"
 )
 
 type PortalStatusData struct {
-  IsSessionRunning bool
-  DeviceMac        string
+	IsSessionRunning bool
+	DeviceMac        string
 	DeviceIP         string
+	WifiRates        wifirates.PaymentSettings
+	PauseConfig      wifirates.PauseSessionConfig
 }
 
 templ StatusBar(api sdkapi.IPluginApi, isConnected bool) {
@@ -53,6 +58,7 @@ templ PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) {
 					<img class="banner-slide" src={ api.Http().Helpers().PublicPath("images/banner-2.png") } alt="Banner 2"/>
 					<img class="banner-slide" src={ api.Http().Helpers().PublicPath("images/banner-3.png") } alt="Banner 3"/>
 				</div>
+				@WifiRatesView(api, data.WifiRates, data.PauseConfig)
 			</div>
 		</div>
 		<!-- Portal Title -->
@@ -64,4 +70,97 @@ templ PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) {
 			<span>MAC &nbsp;<strong> { data.DeviceMac} </strong></span>
 		</div>
 	</div>
+}
+
+
+templ WifiRatesView(api sdkapi.IPluginApi, rates wifirates.PaymentSettings, pauseCfg wifirates.PauseSessionConfig) {
+	<div
+		class="wifi-rates"
+		hx-get={ api.Http().Helpers().UrlForRoute("portal:wifi-rates") }
+		hx-trigger="load delay:5s"
+		hx-swap="outerHTML"
+	>
+		{{
+			rowBg := "#4C4C4C33"
+			colX  := [3]int{44, 132, 215}
+		}}
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 265 148"
+			width="100%"
+			height="100%"
+			preserveAspectRatio="none"
+			class="wifi-rates-svg"
+		>
+			<defs>
+				<style>
+					{ fmt.Sprintf(`@font-face{font-family:'Glitz';src:url('%s');}`, api.Http().Helpers().PublicPath("fonts/glitz.otf")) }
+				</style>
+			</defs>
+			<!-- Title -->
+			<text
+				x="132"
+				y="17"
+				text-anchor="middle"
+				font-family="Glitz, serif"
+				font-size="13"
+				font-weight="400"
+				fill="#ffffff"
+				letter-spacing="3"
+			>{ api.Translate("label", "WIFI RATES") }</text>
+			<!-- Header row background -->
+			<rect x="0" y="22" width="265" height="20" fill={ rowBg }></rect>
+			<!-- Header labels -->
+			<text x={ strconv.Itoa(colX[0]) } y="35" text-anchor="middle" font-family="Poppins,sans-serif" font-size="8" font-weight="700" fill="#ffffff" letter-spacing="1">{ api.Translate("label", "PRICE") }</text>
+			<text x={ strconv.Itoa(colX[1]) } y="35" text-anchor="middle" font-family="Poppins,sans-serif" font-size="8" font-weight="700" fill="#ffffff" letter-spacing="1">{ api.Translate("label", "TIME") }</text>
+			<text x={ strconv.Itoa(colX[2]) } y="35" text-anchor="middle" font-family="Poppins,sans-serif" font-size="8" font-weight="700" fill="#ffffff" letter-spacing="1">{ api.Translate("label", "PAUSE LIMITS") }</text>
+			<!-- Divider -->
+			<line x1="0" y1="42" x2="265" y2="42" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"></line>
+			<!-- Data rows: 3 rows × 35px = 105px, y=42..147 -->
+			for i, r := range rates {
+				{{
+					rowY   := 42 + i*35
+					textY  := rowY + 22
+					isEven := i%2 == 1
+				}}
+				if isEven {
+					<rect x="0" y={ strconv.Itoa(rowY) } width="265" height="35" fill={ rowBg }></rect>
+				}
+				<text x={ strconv.Itoa(colX[0]) } y={ strconv.Itoa(textY) } text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="400" fill="#ffffff">{ api.Payments().FormatCurrency(r.Amount) }</text>
+				<text x={ strconv.Itoa(colX[1]) } y={ strconv.Itoa(textY) } text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="400" fill="#ffffff" letter-spacing="1">{ wifiRateTimeLabel(r) }</text>
+				<text x={ strconv.Itoa(colX[2]) } y={ strconv.Itoa(textY) } text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="400" fill="#ffffff">{ wifiPauseLabel(pauseCfg, r.Amount) }</text>
+			}
+		</svg>
+	</div>
+}
+
+func wifiPauseLabel(cfg wifirates.PauseSessionConfig, amount float64) string {
+	count := cfg.PauseCountFor(amount)
+	if count == -1 {
+		return "Unlimited"
+	}
+	return strconv.Itoa(count)
+}
+
+func wifiRateTimeLabel(r wifirates.PaymentSetting) string {
+	if r.ExpiryEnabled && r.ExpiryTime > 0 {
+		unit := strings.ToUpper(r.ExpiryUnit)
+		if r.ExpiryTime == 1 {
+			// singular: strip trailing S
+			unit = strings.TrimSuffix(unit, "S")
+		}
+		return strconv.Itoa(r.ExpiryTime) + " " + unit
+	}
+	mins := r.TimeMins
+	if mins < 60 {
+		if mins == 1 {
+			return "1 MIN"
+		}
+		return strconv.Itoa(mins) + " MINS"
+	}
+	hours := mins / 60
+	if hours == 1 {
+		return "1 HOUR"
+	}
+	return strconv.Itoa(hours) + " HOURS"
 }
