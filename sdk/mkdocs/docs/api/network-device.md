@@ -47,16 +47,31 @@ fmt.Printf("MAC address: %s\n", mac) // "00:11:22:33:44:55"
 
 ### Up
 
-Returns `true` if the network device is up and operational, `false` otherwise.
+Returns `true` if the network device is administratively up, `false` otherwise.
 
 ```go
 isUp := device.Up()
 if isUp {
-    fmt.Println("Device is operational")
+    fmt.Println("Device is administratively up")
 } else {
-    fmt.Println("Device is down")
+    fmt.Println("Device is administratively down")
 }
 ```
+
+### Carrier
+
+Returns `true` if the physical link is connected (cable plugged in, signal detected), `false` otherwise. For wireless devices, this indicates association status.
+
+```go
+hasCarrier := device.Carrier()
+if hasCarrier {
+    fmt.Println("Physical link is connected")
+} else {
+    fmt.Println("No physical link detected")
+}
+```
+
+**Note:** A device can be administratively `Up()` but have no `Carrier()` if the cable is unplugged.
 
 ### SpeedMbps
 
@@ -68,6 +83,15 @@ fmt.Printf("Link speed: %d Mbps\n", speed) // e.g., "Link speed: 1000 Mbps"
 ```
 
 This method automatically parses the underlying link speed and handles various formats (e.g., "1000M", "10G"). When the bandwidth configuration has upload/download speed set to 0, the system uses this auto-detected link speed as the global speed limit.
+
+### Duplex
+
+Returns the duplex mode of the network device: `"full"`, `"half"`, or `"unknown"`.
+
+```go
+duplex := device.Duplex()
+fmt.Printf("Duplex mode: %s\n", duplex) // e.g., "full"
+```
 
 ### BridgeMembers
 
@@ -95,6 +119,28 @@ Returns the current transmit (TX) bytes count of the network device.
 txBytes := device.TxBytes()
 fmt.Printf("Transmitted bytes: %d\n", txBytes)
 ```
+
+### RxRate
+
+Returns the current download rate in bytes per second. The rate is calculated from the difference in `RxBytes` since the last call to this method.
+
+```go
+rxRate := device.RxRate()
+fmt.Printf("Download rate: %.1f KB/s\n", float64(rxRate)/1024)
+```
+
+**Note:** Returns 0 on the first call since there's no previous reading to compare against.
+
+### TxRate
+
+Returns the current upload rate in bytes per second. The rate is calculated from the difference in `TxBytes` since the last call to this method.
+
+```go
+txRate := device.TxRate()
+fmt.Printf("Upload rate: %.1f KB/s\n", float64(txRate)/1024)
+```
+
+**Note:** Returns 0 on the first call since there's no previous reading to compare against.
 
 ## Usage Example
 

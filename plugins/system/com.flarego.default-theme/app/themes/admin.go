@@ -53,7 +53,7 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 
 			sales := dashboard.GetSalesSummaryToday(api, r.Context())
 			activeData := dashboard.GetActiveUsersDataToday(api, r.Context())
-			internet := dashboard.GetInternetStatus(api, r.Context())
+			internet := dashboard.GetInternetStatus(api)
 			chart := dashboard.GetRevenueChartData(api, r.Context())
 
 			data := admin.AdminData{

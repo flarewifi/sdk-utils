@@ -3,6 +3,7 @@ package sysinfo
 import (
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -11,6 +12,15 @@ import (
 	"github.com/shirou/gopsutil/v4/net"
 	"github.com/shirou/gopsutil/v4/sensors"
 )
+
+// netRateState tracks previous network readings for rate calculation
+var netRateState struct {
+	sync.Mutex
+	timestamp   time.Time
+	bytesSent   uint64
+	bytesRecv   uint64
+	initialized bool
+}
 
 // SystemInfo holds basic system metrics.
 type SystemInfo struct {
@@ -25,8 +35,8 @@ type SystemInfo struct {
 	DiskUsed        uint64    `json:"disk_used"`
 	DiskUsedPercent float64   `json:"disk_used_percent"`
 	NetInterface    string    `json:"net_interface"`
-	NetBytesSent    uint64    `json:"net_bytes_sent"`
-	NetBytesRecv    uint64    `json:"net_bytes_recv"`
+	NetDownloadRate uint64    `json:"net_download_rate"` // bytes per second (RX)
+	NetUploadRate   uint64    `json:"net_upload_rate"`   // bytes per second (TX)
 }
 
 // GetSystemInfo retrieves basic system information: CPU, memory, disk, and temperature.
@@ -66,13 +76,27 @@ func GetSystemInfo() (*SystemInfo, error) {
 		info.DiskUsedPercent = diskUsage.UsedPercent
 	}
 
-	// Network stats - find WAN interface
+	// Network stats - find WAN interface and calculate rates
 	netStats, _ := net.IOCounters(true) // per interface
 	wanInterface := findWANInterface(netStats)
 	if wanInterface != nil {
 		info.NetInterface = wanInterface.Name
-		info.NetBytesSent = wanInterface.BytesSent
-		info.NetBytesRecv = wanInterface.BytesRecv
+
+		// Calculate rates based on previous reading
+		netRateState.Lock()
+		now := time.Now()
+		if netRateState.initialized {
+			elapsed := now.Sub(netRateState.timestamp).Seconds()
+			if elapsed > 0 {
+				info.NetDownloadRate = uint64(float64(wanInterface.BytesRecv-netRateState.bytesRecv) / elapsed)
+				info.NetUploadRate = uint64(float64(wanInterface.BytesSent-netRateState.bytesSent) / elapsed)
+			}
+		}
+		netRateState.timestamp = now
+		netRateState.bytesSent = wanInterface.BytesSent
+		netRateState.bytesRecv = wanInterface.BytesRecv
+		netRateState.initialized = true
+		netRateState.Unlock()
 	}
 
 	return info, nil

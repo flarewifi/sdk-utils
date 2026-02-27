@@ -25,6 +25,11 @@ type INetworkApi interface {
 	// The clientIp parameter is the IP address of the client that is connected to the system.
 	FindByIp(clientIp string) (INetworkInterface, error)
 
+	// Returns the WAN network interface.
+	// Searches for interfaces named: wan, wan6, wan0 (in priority order).
+	// Returns an error if no WAN interface is found.
+	GetWanInterface() (INetworkInterface, error)
+
 	// Returns the network traffic API.
 	Traffic() ITrafficApi
 

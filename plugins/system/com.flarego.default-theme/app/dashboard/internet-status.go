@@ -1,11 +1,9 @@
 package dashboard
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	sdkapi "sdk/api"
@@ -27,16 +25,15 @@ const dialTarget = "8.8.8.8:53"
 const dialTimeout = 2 * time.Second
 
 // GetInternetStatus checks WAN connectivity via a TCP dial and measures
-// throughput by sampling the WAN interface rx/tx byte counters over a short
-// interval.
-func GetInternetStatus(api sdkapi.IPluginApi, ctx context.Context) InternetStatusData {
+// throughput using the SDK's rate tracking methods.
+func GetInternetStatus(api sdkapi.IPluginApi) InternetStatusData {
 	data := InternetStatusData{}
 
 	latencyMs, ok := measureLatency()
 	data.Connected = ok
 	data.LatencyMs = latencyMs
 
-	down, up := measureThroughput(api, ctx)
+	down, up := measureThroughput(api)
 	data.DownloadMbps = down
 	data.UploadMbps = up
 
@@ -55,69 +52,28 @@ func measureLatency() (int64, bool) {
 	return time.Since(start).Milliseconds(), true
 }
 
-// measureThroughput samples WAN interface byte counters before and after a
-// short sleep, then derives Mbps. It picks the first non-loopback device
-// whose name starts with "eth" or "wan" as the WAN interface heuristic.
-func measureThroughput(api sdkapi.IPluginApi, ctx context.Context) (downloadMbps, uploadMbps float64) {
-	devices, err := api.Network().ListDevices()
-
-	if err != nil || len(devices) == 0 {
-		return 0, 0
-	}
-
-	// Find the WAN device: prefer "wan", then "eth0", then first non-loopback.
-	var wan sdkapi.INetworkDevice
-	for _, d := range devices {
-		name := d.Name()
-		if name == "wan" || strings.HasPrefix(name, "wan") {
-			wan = d
-			break
-		}
-	}
-	if wan == nil {
-		for _, d := range devices {
-			name := d.Name()
-			if strings.HasPrefix(name, "eth") {
-				wan = d
-				break
-			}
-		}
-	}
-	if wan == nil {
-		for _, d := range devices {
-			if d.Name() != "lo" {
-				wan = d
-				break
-			}
-		}
-	}
-	if wan == nil {
-		return 0, 0
-	}
-
-	rxBefore := wan.RxBytes()
-	txBefore := wan.TxBytes()
-
-	const defaultMs = 500
-	select {
-	case <-time.After(defaultMs * time.Millisecond):
-	case <-ctx.Done():
-		return 0, 0
-	}
-
-	// Re-fetch device to get updated counters.
-	wan2, err := api.Network().GetDevice(wan.Name())
+// measureThroughput returns the current WAN download/upload rates in Mbps.
+// Uses the SDK's RxRate()/TxRate() methods which track rate across calls.
+func measureThroughput(api sdkapi.IPluginApi) (downloadMbps, uploadMbps float64) {
+	wanIface, err := api.Network().GetWanInterface()
 	if err != nil {
 		return 0, 0
 	}
-	rxAfter := wan2.RxBytes()
-	txAfter := wan2.TxBytes()
 
-	elapsed := float64(defaultMs) / 1000.0 // seconds
-	rxDelta := float64(rxAfter-rxBefore) * 8 / 1e6 / elapsed
-	txDelta := float64(txAfter-txBefore) * 8 / 1e6 / elapsed
+	wanDevice, err := wanIface.Device()
+	if err != nil {
+		return 0, 0
+	}
 
-	return formatMbps(rxDelta), formatMbps(txDelta)
+	// Use SDK rate methods - no blocking!
+	rxRate := wanDevice.RxRate() // bytes/sec
+	txRate := wanDevice.TxRate() // bytes/sec
+
+	// Convert to Mbps (bits per second / 1,000,000)
+	downloadMbps = float64(rxRate) * 8 / 1e6
+	uploadMbps = float64(txRate) * 8 / 1e6
+
+	return formatMbps(downloadMbps), formatMbps(uploadMbps)
 }
 
 // formatMbps clamps negative values (counter wrap) to 0 and rounds to 1dp.
