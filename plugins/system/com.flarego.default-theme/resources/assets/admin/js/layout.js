@@ -25,12 +25,6 @@ $(document).ready(function () {
   $window.on("resize", responsive);
   responsive();
 
-  $("[data-bs-target='#navbarSearch']").on("click", function () {
-    if ($window.width() <= 768) {
-      $("#navbarSearch input").focus();
-    }
-  });
-
   $("#logoutBtn").on("click", function (e) {
     e.preventDefault();
     var confirmLogout = confirm("Are you sure you want to logout?");

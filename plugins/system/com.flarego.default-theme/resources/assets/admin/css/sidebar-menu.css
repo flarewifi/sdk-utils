@@ -5,7 +5,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 60;
+  z-index: 1001;
   background-color: var(--bs-body-bg);
   border-right: 1px solid oklch(92.8% .006 264.531);
   transition: all;

@@ -191,7 +191,7 @@ func sidebar(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" alt=\"Nexifi Logo\"></a></div><!-- Mobile search - only visible on mobile --><div class=\"sidebar-search d-md-none\"><form class=\"search-bar mobile-search\" data-results=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" alt=\"Nexifi Logo\"></a></div><!-- Mobile search - only visible on mobile --><div class=\"sidebar-search d-block d-md-none\"><form class=\"search-bar mobile-search\" data-results=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -524,7 +524,7 @@ func topbar(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 			templ_7745c5c3_Var25 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"d-flex align-items-center justify-content-between h-100 px-4\"><button class=\"sidebar-toggle\" @click=\"sidebarOpen = !sidebarOpen\" type=\"button\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path fill-rule=\"evenodd\" d=\"M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5\"></path></svg></button><form class=\"search-bar\" id=\"navbarSearch\" data-results=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"d-flex align-items-center justify-content-between h-100 px-4\"><button class=\"sidebar-toggle\" @click=\"sidebarOpen = !sidebarOpen\" type=\"button\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path fill-rule=\"evenodd\" d=\"M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5\"></path></svg></button><form class=\"search-bar d-none d-md-block\" data-results=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
