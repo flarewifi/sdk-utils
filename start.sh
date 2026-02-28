@@ -88,12 +88,20 @@ start() {
 }
 
 
+DOWNLOAD_COMPLETE_MARKER="$SOFTWARE_UPDATE_DIR/.dl_software_update_complete"
+
 if [ -e "$SOFTWARE_UPDATE_DIR" ] && ls $SOFTWARE_UPDATE_DIR/*.tar.gz 1> /dev/null 2>&1; then
-    (apply_updates && $APP_DIR/start.sh) || (
-        echo "\n\nFailed to apply updates!"
-        revert_updates
-        $APP_DIR/start.sh
-    )
+    if [ -e "$DOWNLOAD_COMPLETE_MARKER" ]; then
+        (apply_updates && $APP_DIR/start.sh) || (
+            echo "\n\nFailed to apply updates!"
+            revert_updates
+            $APP_DIR/start.sh
+        )
+    else
+        echo "\n\nUpdate files found but download incomplete (marker missing), skipping update..."
+        rm -rf $SOFTWARE_UPDATE_DIR/*.tar.gz
+        start
+    fi
 else
     start
 fi

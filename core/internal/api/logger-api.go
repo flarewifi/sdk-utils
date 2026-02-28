@@ -4,6 +4,7 @@ import (
 	"context"
 	"core/db/models"
 	"core/internal/modules/logger"
+	"core/utils/config"
 )
 
 const (
@@ -21,14 +22,30 @@ func NewLoggerApi(api *PluginApi) {
 	api.LoggerAPI = loggerApi
 }
 
+// isLoggingEnabled checks if logging is enabled in the application config.
+func (l *LoggerApi) isLoggingEnabled() bool {
+	appCfg, err := config.ReadApplicationConfig()
+	if err != nil {
+		return false // Default to disabled if config cannot be read
+	}
+	return appCfg.EnableLogging
+}
+
 func (l *LoggerApi) Info(message string) error {
 	calldepth := 1
 	level := 0
 
-	info := l.api.Info()
 	file, line := logger.GetCallerFileLine(calldepth)
 
+	// Always log to console
 	logger.LogToConsole(file, line, level, message)
+
+	// Only write to database if logging is enabled
+	if !l.isLoggingEnabled() {
+		return nil
+	}
+
+	info := l.api.Info()
 	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
 		Package:    info.Package,
 		Level:      LogLevelInfo,
@@ -43,10 +60,17 @@ func (l *LoggerApi) Debug(message string) error {
 	calldepth := 1
 	level := 1
 
-	info := l.api.Info()
 	file, line := logger.GetCallerFileLine(calldepth)
 
+	// Always log to console
 	logger.LogToConsole(file, line, level, message)
+
+	// Only write to database if logging is enabled
+	if !l.isLoggingEnabled() {
+		return nil
+	}
+
+	info := l.api.Info()
 	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
 		Package:    info.Package,
 		Level:      LogLevelDebug,
@@ -61,10 +85,17 @@ func (l *LoggerApi) Error(message string) error {
 	calldepth := 1
 	level := 2
 
-	info := l.api.Info()
 	file, line := logger.GetCallerFileLine(calldepth)
 
+	// Always log to console
 	logger.LogToConsole(file, line, level, message)
+
+	// Only write to database if logging is enabled
+	if !l.isLoggingEnabled() {
+		return nil
+	}
+
+	info := l.api.Info()
 	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
 		Package:    info.Package,
 		Level:      LogLevelError,

@@ -16,6 +16,9 @@ type AppConfig struct {
 
 	// Log retention period in days (default: 3)
 	LogsRetentionDays int `json:"logs_retention_days"`
+
+	// Enable logging to database (default: false)
+	EnableLogging bool `json:"enable_logging"`
 }
 
 type DbConfig struct {

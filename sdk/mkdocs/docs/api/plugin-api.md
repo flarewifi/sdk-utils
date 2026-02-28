@@ -233,3 +233,21 @@ It returns the [IUIApi](./ui-api.md) object which is used for ui reusable templa
 ui := api.UI()
 fmt.Println(ui) // IUIApi
 ```
+
+### Vouchers
+
+It returns the [IVouchersApi](./voucher-api.md) object which is used to create and manage vouchers.
+
+```go
+vouchers := api.Vouchers()
+fmt.Println(vouchers) // IVouchersApi
+```
+
+### Wifi
+
+It returns the [IWifiApi](./wifi-api.md) object which is used to listen for WiFi client connect/disconnect events.
+
+```go
+wifi := api.Wifi()
+fmt.Println(wifi) // IWifiApi
+```

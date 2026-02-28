@@ -24,6 +24,7 @@ func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg
 		paymgr:  paymgr,
 		clntReg: clntReg,
 		clntMgr: clntMgr,
+		trfkMgr: trfkMgr,
 		plugins: []*PluginApi{},
 	}
 	return pmgr

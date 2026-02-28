@@ -12,6 +12,7 @@ type LogsSearchData struct {
 	SearchText        string
 	ActionURL         string
 	LogsRetentionDays int
+	EnableLogging     bool
 }
 
 templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData, pagination templ.Component) {
@@ -81,6 +82,13 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 				<div class="tab-pane fade" id="settings-pane" role="tabpanel" aria-labelledby="settings-tab">
 					<form method="POST" action={ templ.SafeURL(searchData.ActionURL) }>
 						<div class="mb-3">
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" role="switch" id="enable_logging" name="enable_logging" value="1" checked?={ searchData.EnableLogging }/>
+								<label class="form-check-label fs-6" for="enable_logging">{ api.Translate("label", "Enable Logging") }</label>
+							</div>
+							<small class="text-muted">{ api.Translate("label", "When disabled, logs will not be saved to the database") }</small>
+						</div>
+						<div class="mb-3">
 							<label class="form-label fs-6">{ api.Translate("label", "Auto-delete logs older than") }</label>
 							<select name="logs_retention_days" class="form-select fs-6" style="max-width: 200px;">
 								<option value="3" selected?={ searchData.LogsRetentionDays == 3 }>{ api.Translate("label", "3 days") }</option>
@@ -88,9 +96,9 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 								<option value="14" selected?={ searchData.LogsRetentionDays == 14 }>{ api.Translate("label", "14 days") }</option>
 								<option value="30" selected?={ searchData.LogsRetentionDays == 30 }>{ api.Translate("label", "30 days") }</option>
 							</select>
-							<small class="text-muted">{ api.Translate("label", "Runs daily at 4AM") }</small>
+							<small class="text-muted">{ api.Translate("label", "Runs every hour") }</small>
 						</div>
-						<button type="submit" name="save_retention" value="1" class="btn btn-primary px-3 py-2 fs-6">
+						<button type="submit" name="save_settings" value="1" class="btn btn-primary px-3 py-2 fs-6">
 							<i class="bi bi-save me-2"></i>{ api.Translate("label", "Save Settings") }
 						</button>
 					</form>
