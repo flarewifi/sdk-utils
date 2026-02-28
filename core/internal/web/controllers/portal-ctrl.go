@@ -132,6 +132,10 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
+		// Emit WiFi connect event - portal access confirms the client is connected
+		// This serves as redundancy for hostapd_cli events and cancels any pending auto-pause
+		api.EmitWifiEvent(sdkapi.WifiEventClientConnected, clnt.MacAddr())
+
 		// Set "register" cookie with 12-hour expiration to allow access to /portal/index (only if not already set)
 		if _, err := g.CoreAPI.HttpAPI.Cookie().GetPlainCookie(r, "register"); err != nil {
 			cookieOpts := &sdkapi.HttpCookieOpts{
@@ -317,6 +321,10 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Failed to set device cookie - DeviceID: %d, Error: %v", clnt.ID(), err))
 			}
 		}
+
+		// Emit WiFi connect event - portal access confirms the client is connected
+		// This serves as redundancy for hostapd_cli events and cancels any pending auto-pause
+		api.EmitWifiEvent(sdkapi.WifiEventClientConnected, clnt.MacAddr())
 
 		// Get redirect URL
 		redirectUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:index")
