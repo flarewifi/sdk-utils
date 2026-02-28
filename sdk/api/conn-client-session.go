@@ -53,6 +53,12 @@ type SessionData struct {
 
 // RemainingTime returns the session's remaining time in seconds.
 func (s SessionData) RemainingTime() int {
+	// If session has no consumption and was never started, return full allocated time
+	hasConsumption := s.TimeCons > 0 || s.DataCons > 0
+	if s.StartedAt == nil && s.ResumedAt == nil && !hasConsumption {
+		return s.TimeSecs
+	}
+
 	remaining := s.TimeSecs - s.TimeCons
 	if remaining < 0 {
 		return 0
@@ -62,6 +68,12 @@ func (s SessionData) RemainingTime() int {
 
 // RemainingData returns the session's remaining data in megabytes.
 func (s SessionData) RemainingData() float64 {
+	// If session has no consumption and was never started, return full allocated data
+	hasConsumption := s.TimeCons > 0 || s.DataCons > 0
+	if s.StartedAt == nil && s.ResumedAt == nil && !hasConsumption {
+		return s.DataMb
+	}
+
 	remaining := s.DataMb - s.DataCons
 	if remaining < 0 {
 		return 0
@@ -71,10 +83,18 @@ func (s SessionData) RemainingData() float64 {
 
 // ExpiresAt returns the time when session will expire, or nil if no expiration.
 func (s SessionData) ExpiresAt() *time.Time {
-	if s.ExpDays == nil || s.StartedAt == nil {
+	if s.ExpDays == nil {
 		return nil
 	}
-	expTime := s.StartedAt.Add(time.Hour * 24 * time.Duration(*s.ExpDays))
+	// Use started_at, or resumed_at as fallback if started_at is nil
+	effectiveStart := s.StartedAt
+	if effectiveStart == nil {
+		effectiveStart = s.ResumedAt
+	}
+	if effectiveStart == nil {
+		return nil
+	}
+	expTime := effectiveStart.Add(time.Hour * 24 * time.Duration(*s.ExpDays))
 	return &expTime
 }
 

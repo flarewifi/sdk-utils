@@ -323,6 +323,12 @@ func (self *ClientSession) isExpiredWithData(d *sessionData) bool {
 
 // remainingTimeWithData calculates remaining time using provided data snapshot.
 func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
+	// If session has no consumption and was never started, return full allocated time
+	hasConsumption := d.timeCons > 0 || d.dataCons > 0
+	if d.startedAt == nil && d.resumedAt == nil && !hasConsumption {
+		return d.timeSecs
+	}
+
 	remaining := d.timeSecs - d.timeCons
 
 	// If session is running, subtract elapsed time since resumed_at
@@ -340,7 +346,17 @@ func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
 
 // remainingDataWithData calculates remaining data using provided data snapshot.
 func (self *ClientSession) remainingDataWithData(d *sessionData) float64 {
-	return d.dataMb - d.dataCons
+	// If session has no consumption and was never started, return full allocated data
+	hasConsumption := d.timeCons > 0 || d.dataCons > 0
+	if d.startedAt == nil && d.resumedAt == nil && !hasConsumption {
+		return d.dataMb
+	}
+
+	remaining := d.dataMb - d.dataCons
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
 }
 
 // IsConsumed returns true if the session resources are fully consumed.
