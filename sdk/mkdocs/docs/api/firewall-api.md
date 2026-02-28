@@ -18,14 +18,14 @@ The following methods are available in `IFirewallAPI`:
 Resolves a hostname to a list of IP addresses using Cloudflare (1.1.1.1) and Google (8.8.8.8) DNS servers. This is useful when you need to open firewall access to a domain rather than a specific IP.
 
 **Parameters:**
-- `hostname` (string) - The hostname to resolve (e.g., "cloud-sync.flarewifi.com")
+- `hostname` (string) - The hostname to resolve (e.g., "api.example.com")
 
 **Returns:**
 - `[]string` - List of IP addresses
 - `error` - Error if resolution fails
 
 ```go
-ips, err := api.Firewall().ResolveHostnameToIps("cloud-sync.flarewifi.com")
+ips, err := api.Firewall().ResolveHostnameToIps("api.example.com")
 if err != nil {
     // handle error - DNS resolution failed
 }
@@ -70,8 +70,8 @@ Creates a named group of destination IP addresses with dedicated nftables infras
 - `error` - Error if group already exists or creation fails
 
 ```go
-// Create a group for cloud-sync service
-err := api.Firewall().CreateDstIpGroup("cloud-sync", 
+// Create a group for an external API service
+err := api.Firewall().CreateDstIpGroup("my-api-service", 
     "104.21.45.123", 
     "172.67.132.45",
     "2606:4700:3030::6815:2d7b",
@@ -82,7 +82,7 @@ if err != nil {
 ```
 
 **Notes:**
-- Group names are slugified (e.g., "cloud-sync" becomes "cloud_sync" in nftables)
+- Group names are slugified (e.g., "my-api-service" becomes "my_api_service" in nftables)
 - Returns error if group with same name already exists
 - Creates nftables sets and chains for the group atomically
 - IPv4 and IPv6 addresses are automatically separated
@@ -100,7 +100,7 @@ Checks if a named destination IP group exists. Useful for conditionally creating
 
 ```go
 // Check if group exists before creating
-exists, err := api.Firewall().DstIpGroupExists("cloud-sync")
+exists, err := api.Firewall().DstIpGroupExists("my-api-service")
 if err != nil {
     api.Logger().Error("Invalid group name: " + err.Error())
     return
@@ -108,7 +108,7 @@ if err != nil {
 
 if !exists {
     // Create the group
-    err := api.Firewall().CreateDstIpGroup("cloud-sync", "104.21.45.123")
+    err := api.Firewall().CreateDstIpGroup("my-api-service", "104.21.45.123")
     if err != nil {
         api.Logger().Error("Failed to create group: " + err.Error())
     }
@@ -133,7 +133,7 @@ Adds IP addresses to an existing destination IP group. The new IPs are merged wi
 
 ```go
 // Add more IPs to existing group (e.g., after DNS re-resolution)
-err := api.Firewall().AddIpsToDstIpGroup("cloud-sync", "104.21.45.124")
+err := api.Firewall().AddIpsToDstIpGroup("my-api-service", "104.21.45.124")
 if err != nil {
     api.Logger().Error("Failed to add IPs: " + err.Error())
 }
@@ -158,9 +158,9 @@ Replaces all IP addresses in an existing destination IP group with a new set. Al
 
 ```go
 // Replace all IPs in group (e.g., after DNS refresh)
-newIPs, _ := api.Firewall().ResolveHostnameToIps("cloud-sync.example.com")
+newIPs, _ := api.Firewall().ResolveHostnameToIps("api.example.com")
 
-err := api.Firewall().ChangeDstIpGroup("cloud-sync", newIPs...)
+err := api.Firewall().ChangeDstIpGroup("my-api-service", newIPs...)
 if err != nil {
     api.Logger().Error("Failed to update IPs: " + err.Error())
 }
@@ -186,13 +186,13 @@ Allows a specific client device to access all IPs in a named destination IP grou
 ```go
 clnt, _ := api.Http().GetClientDevice(r)
 
-// Allow client to access all IPs in the cloud-sync group for 5 minutes
+// Allow client to access all IPs in the my-api-service group for 5 minutes
 err := api.Firewall().AllowClientToDstIpGroup(
     sdkapi.DstIpGroupClient{
         MacAddr: clnt.MacAddr(),
         IpAddr:  clnt.IpAddr(),
     },
-    "cloud-sync",
+    "my-api-service",
     300, // 5 minutes
 )
 if err != nil {
@@ -219,13 +219,13 @@ Removes access for a specific client device from a named destination IP group. T
 ```go
 clnt, _ := api.Http().GetClientDevice(r)
 
-// Remove client from cloud-sync group
+// Remove client from my-api-service group
 err := api.Firewall().RemoveClientFromDstIpGroup(
     sdkapi.DstIpGroupClient{
         MacAddr: clnt.MacAddr(),
         IpAddr:  clnt.IpAddr(),
     },
-    "cloud-sync",
+    "my-api-service",
 )
 if err != nil {
     api.Logger().Error("Failed to remove client: " + err.Error())
@@ -280,9 +280,9 @@ func PortalRedirectHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 }
 ```
 
-### Complete Example: Cloud Sync Plugin Pattern
+### Complete Example: External Service Plugin Pattern
 
-This example shows the recommended pattern for plugins that need to open firewall access to a cloud service:
+This example shows the recommended pattern for plugins that need to open firewall access to an external service:
 
 ```go
 package myplugin
@@ -291,18 +291,18 @@ import (
     sdkapi "sdk/api"
 )
 
-const cloudSyncGroupName = "my-cloud-service"
+const externalServiceGroup = "my-external-service"
 
 // Init creates the IP group at plugin startup
 func Init(api sdkapi.IPluginApi) error {
-    // Resolve the cloud service domain
+    // Resolve the external service domain
     ips, err := api.Firewall().ResolveHostnameToIps("api.myservice.com")
     if err != nil {
         return err
     }
 
     // Create the destination IP group
-    if err := api.Firewall().CreateDstIpGroup(cloudSyncGroupName, ips...); err != nil {
+    if err := api.Firewall().CreateDstIpGroup(externalServiceGroup, ips...); err != nil {
         api.Logger().Error("Failed to create IP group: " + err.Error())
         // Continue anyway - may already exist from previous run
     }
@@ -322,11 +322,11 @@ func refreshIPsInBackground(api sdkapi.IPluginApi) {
             api.Logger().Error("DNS refresh failed: " + err.Error())
             continue
         }
-        api.Firewall().ChangeDstIpGroup(cloudSyncGroupName, ips...)
+        api.Firewall().ChangeDstIpGroup(externalServiceGroup, ips...)
     }
 }
 
-// PortalMiddleware opens firewall for client to access cloud service
+// PortalMiddleware opens firewall for client to access external service
 func PortalMiddleware(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -338,7 +338,7 @@ func PortalMiddleware(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
                     MacAddr: clnt.MacAddr(),
                     IpAddr:  clnt.IpAddr(),
                 },
-                cloudSyncGroupName,
+                externalServiceGroup,
                 300, // 5 minute timeout
             )
             if err != nil {
@@ -350,7 +350,7 @@ func PortalMiddleware(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
     }
 }
 
-// CallbackHandler closes firewall after cloud interaction completes
+// CallbackHandler closes firewall after external interaction completes
 func CallbackHandler(api sdkapi.IPluginApi) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         clnt, _ := api.Http().GetClientDevice(r)
@@ -361,7 +361,7 @@ func CallbackHandler(api sdkapi.IPluginApi) http.HandlerFunc {
                 MacAddr: clnt.MacAddr(),
                 IpAddr:  clnt.IpAddr(),
             },
-            cloudSyncGroupName,
+            externalServiceGroup,
         )
 
         // Handle callback logic...

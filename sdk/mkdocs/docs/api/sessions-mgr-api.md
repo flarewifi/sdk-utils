@@ -20,7 +20,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### FindDeviceByUUID
 
-Finds a client device by its globally unique identifier (UUID). This is useful for cloud sync scenarios where the cloud server needs to reference devices by their UUID rather than local database ID.
+Finds a client device by its globally unique identifier (UUID). This is useful when you need to reference devices by their UUID rather than local database ID.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -35,7 +35,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### FindSessionByUUID
 
-Finds a session by its globally unique identifier (UUID). This is useful for cloud sync scenarios where the cloud server needs to terminate or query sessions by their UUID.
+Finds a session by its globally unique identifier (UUID). This is useful when you need to terminate or query sessions by their UUID.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -157,6 +157,124 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### FindSessionByID
+
+Finds a session by its database ID and wraps it into an [IClientSession](./client-session.md) object. This is useful for displaying session information in templates and controllers where you have a session ID from database queries but need access to SDK methods like `RemainingTime()` and `RemainingData()` which account for elapsed time.
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    sessionID := int64(456)
+    session, err := api.SessionsMgr().FindSessionByID(r.Context(), sessionID)
+    if err != nil {
+        // handle error - session not found
+    }
+    
+    // Use SDK methods that calculate elapsed time
+    remaining := session.RemainingTime()
+    fmt.Printf("Session %d has %d seconds remaining\n", sessionID, remaining)
+}
+```
+
+### NewClientSession
+
+Wraps session data into an [IClientSession](./client-session.md) object without performing additional database queries. This is useful when you already have session data from queries (e.g., batch operations) and want to use SDK methods like `RemainingTime()` and `RemainingData()` which account for elapsed time.
+
+The `NewClientSessionParams` struct contains all session fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | `int64` | Session database ID |
+| `UUID` | `string` | Session unique identifier |
+| `ProviderPkg` | `string` | Package name of the plugin that created the session |
+| `DeviceID` | `int64` | ID of the device that owns this session |
+| `SessionType` | `SessionType` | Type of session: `"time"`, `"data"`, or `"time-or-data"` |
+| `TimeSecs` | `int` | Allocated time in seconds |
+| `DataMbytes` | `float64` | Allocated data in megabytes |
+| `ConsumptionSecs` | `int` | Time consumed in seconds |
+| `ConsumptionMb` | `float64` | Data consumed in megabytes |
+| `StartedAt` | `*time.Time` | When the session was first started |
+| `ResumedAt` | `*time.Time` | When the session was last resumed (nil if not running) |
+| `ExpDays` | `*int` | Expiration days after session start |
+| `DownMbits` | `int` | Download speed limit in Mbps |
+| `UpMbits` | `int` | Upload speed limit in Mbps |
+| `UseGlobal` | `bool` | Whether to use global bandwidth settings |
+| `CreatedAt` | `time.Time` | When the session was created |
+| `UpdatedAt` | `time.Time` | When the session was last updated |
+
+```go
+// Example: Wrap session data from external source
+func wrapSessionData(data SessionData) sdkapi.IClientSession {
+    return api.SessionsMgr().NewClientSession(sdkapi.NewClientSessionParams{
+        ID:              data.ID,
+        UUID:            data.UUID,
+        ProviderPkg:     data.ProviderPkg,
+        DeviceID:        data.DeviceID,
+        SessionType:     sdkapi.SessionType(data.Type),
+        TimeSecs:        data.TimeSecs,
+        DataMbytes:      data.DataMb,
+        ConsumptionSecs: data.ConsumedSecs,
+        ConsumptionMb:   data.ConsumedMb,
+        StartedAt:       data.StartedAt,
+        ResumedAt:       data.ResumedAt,
+        ExpDays:         data.ExpDays,
+        DownMbits:       data.DownMbits,
+        UpMbits:         data.UpMbits,
+        UseGlobal:       data.UseGlobal,
+        CreatedAt:       data.CreatedAt,
+        UpdatedAt:       data.UpdatedAt,
+    })
+}
+```
+
+### NewClientDevice
+
+Wraps device data into an [IClientDevice](./client-device.md) object without performing additional database queries. This is useful when you already have device data from queries (e.g., batch operations) and want to use SDK methods like `Update()`, `Emit()`, and `Subscribe()`.
+
+The `NewDeviceParams` struct contains all device fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | `int64` | Device database ID |
+| `UUID` | `string` | Device unique identifier |
+| `MacAddress` | `string` | Device MAC address |
+| `IpAddress` | `string` | Device IP address |
+| `Hostname` | `string` | Device hostname |
+| `Status` | `DeviceStatus` | Device status: `DeviceStatusConnected`, `DeviceStatusDisconnected`, or `DeviceStatusBlocked` |
+| `CreatedAt` | `time.Time` | When the device was created |
+| `UpdatedAt` | `time.Time` | When the device was last updated |
+
+```go
+// Example: Wrap device data for use with SDK methods
+func wrapDeviceData(data DeviceRow) sdkapi.IClientDevice {
+    return api.SessionsMgr().NewClientDevice(sdkapi.NewDeviceParams{
+        ID:         data.ID,
+        UUID:       data.UUID,
+        MacAddress: data.Mac,
+        IpAddress:  data.IP,
+        Hostname:   data.Hostname,
+        Status:     sdkapi.DeviceStatus(data.Status),
+        CreatedAt:  data.CreatedAt,
+        UpdatedAt:  data.UpdatedAt,
+    })
+}
+
+// Example: Create device from external data and emit event
+func processDeviceData(deviceData ExternalDeviceData) {
+    device := api.SessionsMgr().NewClientDevice(sdkapi.NewDeviceParams{
+        ID:         deviceData.ID,
+        UUID:       deviceData.UUID,
+        MacAddress: deviceData.Mac,
+        IpAddress:  deviceData.IP,
+        Hostname:   deviceData.Hostname,
+        Status:     sdkapi.DeviceStatusConnected,
+        CreatedAt:  deviceData.CreatedAt,
+        UpdatedAt:  time.Now(),
+    })
+    
+    // Use SDK methods on the wrapped device
+    device.Emit("device:processed", []byte(`{"status": "ok"}`))
+}
+```
 
 ### OnSessionEvent
 
@@ -329,78 +447,4 @@ session.SetDownMbits(10) // 10 Mbps download
 session.SetUpMbits(5)    // 5 Mbps upload
 session.SetUseGlobalSpeed(false)
 err = session.Save(r.Context())
-```
-
-## Cloud Sync Integration
-
-The `ISessionsMgrApi` provides methods that enable cloud synchronization of sessions and devices. This allows you to build plugins that sync local hotspot data to a cloud server and receive remote commands.
-
-### Syncing Events to Cloud
-
-Use the event callbacks to push incremental updates to your cloud server:
-
-```go
-func Init(api sdkapi.IPluginApi) error {
-    machineID := api.Machine().GetID()
-    
-    // Sync session events
-    api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionConnected, func(data sdkapi.SessionEventData) {
-        syncToCloud(machineID, "session_connected", map[string]interface{}{
-            "session_uuid": data.Session.UUID(),
-            "device_uuid":  data.Device.UUID(),
-            "device_id":    data.Session.DeviceID(),
-        })
-    })
-    
-    // Sync client events
-    api.SessionsMgr().OnClientEvent(sdkapi.EventClientCreated, func(clnt sdkapi.IClientDevice) {
-        syncToCloud(machineID, "client_created", map[string]interface{}{
-            "device_uuid": clnt.UUID(),
-            "mac_addr":    clnt.MacAddr(),
-            "hostname":    clnt.Hostname(),
-        })
-    })
-}
-```
-
-### Receiving Cloud Commands
-
-Use UUID-based lookups to process commands from your cloud server:
-
-```go
-func handleCloudCommand(ctx context.Context, api sdkapi.IPluginApi, cmd CloudCommand) error {
-    switch cmd.Action {
-    case "terminate_session":
-        // Find session by UUID from cloud
-        session, err := api.SessionsMgr().FindSessionByUUID(ctx, cmd.SessionUUID)
-        if err != nil {
-            return err
-        }
-        
-        // Get the device and disconnect
-        device, err := api.SessionsMgr().FindClientById(ctx, session.DeviceID())
-        if err != nil {
-            return err
-        }
-        
-        return api.SessionsMgr().Disconnect(ctx, device, "Terminated by cloud")
-        
-    case "block_device":
-        // Find device by UUID from cloud
-        device, err := api.SessionsMgr().FindDeviceByUUID(ctx, cmd.DeviceUUID)
-        if err != nil {
-            return err
-        }
-        
-        // Block the device
-        return device.Update(ctx, sdkapi.UpdateDeviceParams{
-            UUID:     device.UUID(),
-            Mac:      device.MacAddr(),
-            Ip:       device.IpAddr(),
-            Hostname: device.Hostname(),
-            Status:   sdkapi.DeviceStatusBlocked,
-        })
-    }
-    return nil
-}
 ```

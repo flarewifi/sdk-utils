@@ -409,50 +409,6 @@ func handleDonation(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-## Cloud Sync Integration
-
-The `IPaymentsApi` provides event callbacks that enable cloud synchronization of purchase data. This allows you to build plugins that sync purchase events to external systems.
-
-### Syncing Purchase Events to Cloud
-
-Use the event callbacks to push purchase updates to your cloud server:
-
-```go
-func Init(api sdkapi.IPluginApi) error {
-    machineID := api.Machine().GetID()
-    
-    // Sync successful purchases
-    api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseSuccess, func(data sdkapi.PurchaseEventData) error {
-        return syncToCloud(machineID, "purchase_success", map[string]interface{}{
-            "purchase_uuid": data.Purchase.UUID(),
-            "device_uuid":   data.Device.UUID(),
-            "sku":           data.Purchase.Sku(),
-            "price":         data.Purchase.Price(),
-        })
-    })
-    
-    // Sync failed purchases for analytics
-    api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseFailed, func(data sdkapi.PurchaseEventData) error {
-        return syncToCloud(machineID, "purchase_failed", map[string]interface{}{
-            "purchase_uuid": data.Purchase.UUID(),
-            "device_uuid":   data.Device.UUID(),
-            "reason":        data.Reason,
-        })
-    })
-    
-    // Sync cancelled purchases
-    api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseCancelled, func(data sdkapi.PurchaseEventData) error {
-        return syncToCloud(machineID, "purchase_cancelled", map[string]interface{}{
-            "purchase_uuid": data.Purchase.UUID(),
-            "device_uuid":   data.Device.UUID(),
-            "reason":        data.Reason,
-        })
-    })
-    
-    return nil
-}
-```
-
 ---
 
 ## Related
