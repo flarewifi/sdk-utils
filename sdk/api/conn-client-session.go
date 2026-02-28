@@ -107,8 +107,26 @@ func (s SessionData) IsExpired() bool {
 	return time.Now().After(*expiresAt)
 }
 
+// IsAvailable returns true if the session is available for use.
+// A session is NOT available if:
+// - It has been started (started_at OR resumed_at is set, OR there's consumption data), OR
+// - It has expired
+func (s SessionData) IsAvailable() bool {
+	if s.IsExpired() {
+		return false
+	}
+	hasConsumption := s.TimeCons > 0 || s.DataCons > 0
+	return s.StartedAt == nil && s.ResumedAt == nil && !hasConsumption
+}
+
 // IsConsumed returns true if the session resources are fully consumed or expired.
+// Returns false if the session has never been started (is available).
 func (s SessionData) IsConsumed() bool {
+	// Available sessions are not consumed
+	if s.IsAvailable() {
+		return false
+	}
+
 	if s.IsExpired() {
 		return true
 	}
@@ -211,6 +229,9 @@ type IClientSession interface {
 
 	// IsRunning returns true if the session is currently active (resumedAt is not nil).
 	IsRunning() bool
+
+	// IsAvailable returns true if the session has never been started (available for use).
+	IsAvailable() bool
 
 	// Returns a snapshot of all session data fields.
 	// This method acquires the mutex once and returns all fields,

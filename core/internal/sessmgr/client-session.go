@@ -360,7 +360,13 @@ func (self *ClientSession) remainingDataWithData(d *sessionData) float64 {
 }
 
 // IsConsumed returns true if the session resources are fully consumed.
+// Returns false if the session has never been started (is available).
 func (self *ClientSession) IsConsumed() bool {
+	// Available sessions are not consumed
+	if self.IsAvailable() {
+		return false
+	}
+
 	d := self.data.Load()
 	sessionType := sdkapi.SessionType(d.sessionType)
 
@@ -401,6 +407,19 @@ func (self *ClientSession) ResumedAt() *time.Time {
 // IsRunning returns true if the session is currently active (resumedAt is not nil).
 func (self *ClientSession) IsRunning() bool {
 	return self.data.Load().resumedAt != nil
+}
+
+// IsAvailable returns true if the session is available for use.
+// A session is NOT available if:
+// - It has been started (started_at OR resumed_at is set, OR there's consumption data), OR
+// - It has expired
+func (self *ClientSession) IsAvailable() bool {
+	if self.IsExpired() {
+		return false
+	}
+	d := self.data.Load()
+	hasConsumption := d.timeCons > 0 || d.dataCons > 0
+	return d.startedAt == nil && d.resumedAt == nil && !hasConsumption
 }
 
 // CreatedAt returns the created at time.

@@ -207,6 +207,31 @@ if session.IsRunning() {
 }
 ```
 
+### IsAvailable
+
+Returns `true` if the session is available for use. A session is NOT available when any of the following is true:
+
+- `StartedAt` is set, OR
+- `ResumedAt` is set, OR
+- There's consumption data (`TimeConsumption > 0` or `DataConsumption > 0`), OR
+- The session has expired (`IsExpired()` returns true)
+
+This is useful for determining session status in admin interfaces:
+
+```go
+if session.IsAvailable() {
+    // Session has never been used and not expired - show as "Available"
+} else if session.IsConsumed() {
+    // Session is fully consumed - show as "Consumed"
+} else if session.IsExpired() {
+    // Session has expired by date - show as "Expired"
+} else if session.IsRunning() {
+    // Session is currently active - show as "Active"
+} else {
+    // Session was started but is not running - show as "Paused"
+}
+```
+
 ### StartedAt
 
 Returns a `*time.Time` value representing the time the session started. A `nil` value is returned if the session has not started.
@@ -317,6 +342,7 @@ The `SessionData` struct also provides helper methods:
 - `IsExpired() bool` - Returns true if session is expired
 - `IsConsumed() bool` - Returns true if session is consumed
 - `IsRunning() bool` - Returns true if session is running
+- `IsAvailable() bool` - Returns true if session has never been started
 
 ### RawData
 
