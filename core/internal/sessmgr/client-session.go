@@ -398,6 +398,11 @@ func (self *ClientSession) ResumedAt() *time.Time {
 	return self.data.Load().resumedAt
 }
 
+// IsRunning returns true if the session is currently active (resumedAt is not nil).
+func (self *ClientSession) IsRunning() bool {
+	return self.data.Load().resumedAt != nil
+}
+
 // CreatedAt returns the created at time.
 func (self *ClientSession) CreatedAt() time.Time {
 	return self.data.Load().createdAt

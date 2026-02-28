@@ -182,4 +182,7 @@ type IClientSession interface {
 	// Returns elapsed seconds for logging purposes.
 	// Does NOT set dirty flags (internal bookkeeping operation).
 	SnapshotTimeCons(clearResumed bool) int
+
+	// IsRunning returns true if the session is currently active (resumedAt is not nil).
+	IsRunning() bool
 }

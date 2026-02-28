@@ -9,6 +9,50 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+## Supporting Types
+
+### SessionType
+
+`SessionType` is a string type that defines the type of session. The available values are:
+
+| Value | Description |
+| --- | --- |
+| `"time"` | A time-based session that expires when the allocated time is consumed |
+| `"data"` | A data-based session that expires when the allocated data is consumed |
+| `"time-or-data"` | A session limited by both time and data, expiring when either is exhausted |
+
+### SessionChangedFields
+
+Tracks which session fields were modified since the last save. Used internally for optimized updates.
+
+```go
+type SessionChangedFields struct {
+    Time      bool // timeSecs or timeCons changed
+    Data      bool // dataMb or dataCons changed
+    Bandwidth bool // downMbits, upMbits, or useGlobal changed
+}
+```
+
+### SessionSaveParams
+
+Contains parameters passed to the session save callback.
+
+```go
+type SessionSaveParams struct {
+    Ctx           context.Context
+    Session       IClientSession
+    ChangedFields SessionChangedFields
+}
+```
+
+### SessionSaveCallback
+
+A callback function type that is called after a session is saved. This allows the `SessionsMgr` to update running sessions (reset timers, update traffic control rules) and emit events when `session.Save()` is called.
+
+```go
+type SessionSaveCallback func(params SessionSaveParams) error
+```
+
 ## IClientSession Methods
 
 The following methods are available in `IClientSession`.
@@ -128,12 +172,55 @@ Returns the remaining session data in Megabytes. The return type is a `float64` 
 mb := session.RemainingData()
 ```
 
+### IsConsumed
+
+Returns `true` if the session resources are fully consumed. A session is considered consumed when:
+
+- For `time` sessions: remaining time <= 0
+- For `data` sessions: data consumption >= data allowance
+- For `time-or-data` sessions: either time or data is exhausted
+- For any session type: expiration date has passed
+
+```go
+if session.IsConsumed() {
+    // Session is no longer usable
+}
+```
+
+### IsExpired
+
+Returns `true` if the session has passed its expiration date. This only checks the expiration date (calculated from `ExpDays` and `StartedAt`), not whether time/data resources are exhausted. Returns `false` if the session has no expiration date set.
+
+```go
+if session.IsExpired() {
+    // Session has expired by date
+}
+```
+
+### IsRunning
+
+Returns `true` if the session is currently active (i.e., `ResumedAt` is not nil). This indicates whether the session is actively tracking time consumption.
+
+```go
+if session.IsRunning() {
+    // Session is currently active
+}
+```
+
 ### StartedAt
 
 Returns a `*time.Time` value representing the time the session started. A `nil` value is returned if the session has not started.
 
 ```go
 s := session.StartedAt()
+```
+
+### ResumedAt
+
+Returns a `*time.Time` value representing the time the session was last resumed. A `nil` value is returned if the session is not currently running. This is used for calculating elapsed time since the session started running.
+
+```go
+resumed := session.ResumedAt()
 ```
 
 ### CreatedAt
@@ -251,8 +338,19 @@ session.Save()
 Sets the session start time. The new value is not saved until the [save](#save) method is called.
 
 ```go
-session.SetStartedAt(time.Now())
-session.Save()
+now := time.Now()
+session.SetStartedAt(&now)
+session.Save(ctx)
+```
+
+### SetResumedAt
+
+Sets the time when the session was last resumed. This is used to track when a session starts running. The new value is not saved until the [save](#save) method is called.
+
+```go
+now := time.Now()
+session.SetResumedAt(&now)
+session.Save(ctx)
 ```
 
 ### SetExpDays
@@ -305,4 +403,32 @@ Reload the session data from the database.
 
 ```go
 err := session.Reload(ctx)
+```
+
+### PersistToDB
+
+Saves the session state directly to the database without triggering save callbacks. Unlike `Save()`, this does NOT trigger the `onSave` callback and does NOT clear dirty flags. This is used for internal bookkeeping operations such as periodic saves and stop operations.
+
+!!! warning "Internal Use"
+    This method is primarily intended for internal system operations. For normal session updates, use [Save](#save) instead.
+
+```go
+err := session.PersistToDB(ctx)
+```
+
+### SnapshotTimeCons
+
+Atomically snapshots elapsed time into stored consumption and resets `resumedAt`. This method does NOT set dirty flags as it's an internal bookkeeping operation.
+
+- If `clearResumed` is `true`, sets `resumedAt` to `nil` (session is stopping)
+- If `clearResumed` is `false`, resets `resumedAt` to `now` (checkpoint for continued tracking)
+
+Returns the elapsed seconds for logging purposes.
+
+!!! warning "Internal Use"
+    This method is primarily intended for internal system operations. For normal session updates, use the standard consumption methods instead.
+
+```go
+elapsed := session.SnapshotTimeCons(true)  // Session stopping
+elapsed := session.SnapshotTimeCons(false) // Checkpoint, continue tracking
 ```
