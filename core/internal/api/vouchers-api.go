@@ -266,6 +266,9 @@ func (self *VouchersApi) List(ctx context.Context, params sdkapi.ListVouchersPar
 
 		// Prepare isActivated parameter (convert *bool to int 0/1 or nil)
 		var isActivated interface{}
+		var dateStart interface{}
+		var dateEnd interface{}
+
 		if params.IsActivated != nil {
 			if *params.IsActivated {
 				isActivated = 1
@@ -274,14 +277,19 @@ func (self *VouchersApi) List(ctx context.Context, params sdkapi.ListVouchersPar
 			}
 		}
 
+		if params.DateStart != nil && params.DateEnd != nil {
+			dateStart = *params.DateStart
+			dateEnd = *params.DateEnd
+		}
+
 		rows, err := q.GetVouchersFiltered(ctx, coreQueries.GetVouchersFilteredParams{
 			ProviderPkg: self.providerPkg(),
 			Search:      search,
 			IsActivated: isActivated,
 			RowLimit:    int64(params.PerPage),
 			RowOffset:   offset,
-			DateStart:   *params.DateStart,
-			DateEnd:     *params.DateEnd,
+			DateStart:   dateStart,
+			DateEnd:     dateEnd,
 		})
 		if err != nil {
 			return sdkapi.ListVouchersResult{}, fmt.Errorf("unable to list vouchers: %w", err)
