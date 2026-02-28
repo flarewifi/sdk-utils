@@ -277,21 +277,17 @@ func (self *ClientSession) TimeConsumption() (sec int) {
 }
 
 // DataConsumption returns the session's data consumption in megabytes.
-// Note: Data consumption is tracked in real-time via traffic monitoring,
-// so this returns the saved value without additional elapsed time calculation.
 func (self *ClientSession) DataConsumption() (mbytes float64) {
 	return self.data.Load().dataCons
 }
 
 // ConsumedTimeSecs returns the raw stored time consumption in seconds.
 // Does NOT include elapsed time since resumed_at.
-// Use this for syncing/persistence.
 func (self *ClientSession) ConsumedTimeSecs() (sec int) {
 	return self.data.Load().timeCons
 }
 
 // ConsumedDataMb returns the raw stored data consumption in megabytes.
-// Use this for syncing/persistence.
 func (self *ClientSession) ConsumedDataMb() (mbytes float64) {
 	return self.data.Load().dataCons
 }
@@ -317,7 +313,6 @@ func (self *ClientSession) RemainingData() (mbytes float64) {
 // ============================================================================
 
 // isExpiredWithData checks expiration using provided data snapshot.
-// This avoids multiple atomic loads when called from IsConsumed().
 func (self *ClientSession) isExpiredWithData(d *sessionData) bool {
 	if d.startedAt != nil && d.expDays != nil {
 		exp := d.startedAt.Add(time.Hour * 24 * time.Duration(*d.expDays))
@@ -327,7 +322,6 @@ func (self *ClientSession) isExpiredWithData(d *sessionData) bool {
 }
 
 // remainingTimeWithData calculates remaining time using provided data snapshot.
-// This avoids multiple atomic loads when called from IsConsumed().
 func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
 	remaining := d.timeSecs - d.timeCons
 
@@ -345,36 +339,25 @@ func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
 }
 
 // remainingDataWithData calculates remaining data using provided data snapshot.
-// This avoids multiple atomic loads when called from IsConsumed().
 func (self *ClientSession) remainingDataWithData(d *sessionData) float64 {
 	return d.dataMb - d.dataCons
 }
 
 // IsConsumed returns true if the session resources are fully consumed.
-// A session is consumed when:
-// - For time-based sessions: remaining time <= 0
-// - For data-based sessions: remaining data <= 0
-// - For time-or-data sessions: either time or data is exhausted
-// - For any session type: expiration date has passed
-//
-// Uses a single atomic load for consistent snapshot across all checks.
 func (self *ClientSession) IsConsumed() bool {
-	d := self.data.Load() // Single atomic load for consistency
+	d := self.data.Load()
 	sessionType := sdkapi.SessionType(d.sessionType)
 
-	// Check expiration date first (applies to all types)
 	if self.isExpiredWithData(d) {
 		return true
 	}
 
-	// For time-based or time-or-data sessions, check time consumption
 	if sessionType == sdkapi.SessionTypeTime || sessionType == sdkapi.SessionTypeTimeOrData {
 		if self.remainingTimeWithData(d) <= 0 {
 			return true
 		}
 	}
 
-	// For data-based or time-or-data sessions, check data consumption
 	if sessionType == sdkapi.SessionTypeData || sessionType == sdkapi.SessionTypeTimeOrData {
 		if self.remainingDataWithData(d) <= 0 {
 			return true
@@ -385,9 +368,6 @@ func (self *ClientSession) IsConsumed() bool {
 }
 
 // IsExpired returns true if the session has passed its expiration date.
-// This only checks the expiration date (ExpDays from StartedAt),
-// not whether time/data resources are exhausted.
-// Returns false if the session has no expiration date set.
 func (self *ClientSession) IsExpired() bool {
 	return self.isExpiredWithData(self.data.Load())
 }
@@ -418,14 +398,11 @@ func (self *ClientSession) UpdatedAt() time.Time {
 }
 
 // ExpDays returns the session's expiration time in days.
-// If session has no expiration, it returns nil.
 func (self *ClientSession) ExpDays() *int {
 	return self.data.Load().expDays
 }
 
 // ExpiresAt returns the time when session will expire.
-// If session has no expiration, it returns nil.
-// Expiration time is calculated from the time when session was started.
 func (self *ClientSession) ExpiresAt() *time.Time {
 	d := self.data.Load()
 	if d.startedAt != nil && d.expDays != nil {
@@ -448,6 +425,62 @@ func (self *ClientSession) UpMbits() int {
 // UseGlobalSpeed returns whether session uses global speed limits.
 func (self *ClientSession) UseGlobalSpeed() bool {
 	return self.data.Load().useGlobal
+}
+
+// Data returns a snapshot of all session data fields.
+// TimeCons includes elapsed time for running sessions.
+func (self *ClientSession) Data() sdkapi.SessionData {
+	d := self.data.Load()
+
+	// Calculate time consumption including elapsed time for running sessions
+	timeCons := d.timeCons
+	if d.resumedAt != nil {
+		elapsed := int(time.Since(*d.resumedAt).Seconds())
+		timeCons += elapsed
+	}
+
+	return sdkapi.SessionData{
+		ID:             d.id,
+		UUID:           d.uuid,
+		DeviceID:       d.devId,
+		Type:           sdkapi.SessionType(d.sessionType),
+		TimeSecs:       d.timeSecs,
+		DataMb:         d.dataMb,
+		TimeCons:       timeCons,
+		DataCons:       d.dataCons,
+		DownMbits:      d.downMbits,
+		UpMbits:        d.upMbits,
+		UseGlobalSpeed: d.useGlobal,
+		ExpDays:        copyIntPtr(d.expDays),
+		StartedAt:      copyTimePtr(d.startedAt),
+		ResumedAt:      copyTimePtr(d.resumedAt),
+		CreatedAt:      d.createdAt,
+		UpdatedAt:      d.updatedAt,
+	}
+}
+
+// RawData returns a snapshot of all session data fields with raw stored values.
+// Unlike Data(), TimeCons does NOT include elapsed time calculation.
+func (self *ClientSession) RawData() sdkapi.SessionData {
+	d := self.data.Load()
+	return sdkapi.SessionData{
+		ID:             d.id,
+		UUID:           d.uuid,
+		DeviceID:       d.devId,
+		Type:           sdkapi.SessionType(d.sessionType),
+		TimeSecs:       d.timeSecs,
+		DataMb:         d.dataMb,
+		TimeCons:       d.timeCons,
+		DataCons:       d.dataCons,
+		DownMbits:      d.downMbits,
+		UpMbits:        d.upMbits,
+		UseGlobalSpeed: d.useGlobal,
+		ExpDays:        copyIntPtr(d.expDays),
+		StartedAt:      copyTimePtr(d.startedAt),
+		ResumedAt:      copyTimePtr(d.resumedAt),
+		CreatedAt:      d.createdAt,
+		UpdatedAt:      d.updatedAt,
+	}
 }
 
 // ============================================================================

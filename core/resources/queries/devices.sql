@@ -19,6 +19,7 @@ SELECT
   hostname,
   uuid,
   created_at,
+  updated_at,
   status
 FROM
   devices
@@ -36,6 +37,7 @@ SELECT
   mac_address,
   uuid,
   created_at,
+  updated_at,
   status
 FROM
   devices
@@ -53,6 +55,7 @@ SELECT
   mac_address,
   uuid,
   created_at,
+  updated_at,
   status
 FROM
   devices
@@ -70,7 +73,8 @@ SET
   ip_address = @ip_address,
   mac_address = @mac_address,
   uuid = @uuid,
-  status = @status
+  status = @status,
+  updated_at = CURRENT_TIMESTAMP
 WHERE
   id = @id;
 
@@ -83,6 +87,7 @@ SELECT
   mac_address,
   uuid,
   created_at,
+  updated_at,
   status
 FROM
   devices

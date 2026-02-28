@@ -30,6 +30,86 @@ type SessionSaveParams struct {
 // and emit events when session.Save() is called.
 type SessionSaveCallback func(params SessionSaveParams) error
 
+// SessionData holds all session fields returned by Data() method.
+// This struct is returned as a snapshot to minimize mutex usage.
+type SessionData struct {
+	ID             int64
+	UUID           string
+	DeviceID       int64
+	Type           SessionType
+	TimeSecs       int
+	DataMb         float64
+	TimeCons       int     // Raw stored time consumption (without elapsed)
+	DataCons       float64 // Raw stored data consumption
+	DownMbits      int
+	UpMbits        int
+	UseGlobalSpeed bool
+	ExpDays        *int
+	StartedAt      *time.Time
+	ResumedAt      *time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+// RemainingTime returns the session's remaining time in seconds.
+func (s SessionData) RemainingTime() int {
+	remaining := s.TimeSecs - s.TimeCons
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// RemainingData returns the session's remaining data in megabytes.
+func (s SessionData) RemainingData() float64 {
+	remaining := s.DataMb - s.DataCons
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// ExpiresAt returns the time when session will expire, or nil if no expiration.
+func (s SessionData) ExpiresAt() *time.Time {
+	if s.ExpDays == nil || s.StartedAt == nil {
+		return nil
+	}
+	expTime := s.StartedAt.Add(time.Hour * 24 * time.Duration(*s.ExpDays))
+	return &expTime
+}
+
+// IsExpired returns true if the session has passed its expiration date.
+func (s SessionData) IsExpired() bool {
+	expiresAt := s.ExpiresAt()
+	if expiresAt == nil {
+		return false
+	}
+	return time.Now().After(*expiresAt)
+}
+
+// IsConsumed returns true if the session resources are fully consumed or expired.
+func (s SessionData) IsConsumed() bool {
+	if s.IsExpired() {
+		return true
+	}
+
+	switch s.Type {
+	case SessionTypeTime:
+		return s.RemainingTime() <= 0
+	case SessionTypeData:
+		return s.RemainingData() <= 0
+	case SessionTypeTimeOrData:
+		return s.RemainingTime() <= 0 || s.RemainingData() <= 0
+	default:
+		return s.RemainingTime() <= 0
+	}
+}
+
+// IsRunning returns true if the session is currently active (resumedAt is not nil).
+func (s SessionData) IsRunning() bool {
+	return s.ResumedAt != nil
+}
+
 // IClientSession represents a client's internet connection session.
 type IClientSession interface {
 	// Returns the session's ID.
@@ -54,6 +134,7 @@ type IClientSession interface {
 	DataMb() (mbytes float64)
 
 	// Returns the session's time consumption in seconds.
+	// If session is running, includes elapsed time since resumed_at.
 	TimeConsumption() (sec int)
 
 	// Returns the session's data consumption in megabytes.
@@ -74,17 +155,9 @@ type IClientSession interface {
 	RemainingData() (mbytes float64)
 
 	// Returns true if the session resources are fully consumed.
-	// A session is consumed when:
-	// - For time-based sessions: remaining time <= 0
-	// - For data-based sessions: data consumption >= data allowance
-	// - For time-or-data sessions: either time or data is exhausted
-	// - For any session type: expiration date has passed
 	IsConsumed() bool
 
 	// Returns true if the session has passed its expiration date.
-	// This only checks the expiration date (ExpDays from StartedAt),
-	// not whether time/data resources are exhausted.
-	// Returns false if the session has no expiration date set.
 	IsExpired() bool
 
 	// Returns the time when session was first started.
@@ -105,7 +178,6 @@ type IClientSession interface {
 
 	// Returns the time when session will expire.
 	// If session has no expiration, it returns nil.
-	// Expiration time is calculated from the time when session was started.
 	ExpiresAt() *time.Time
 
 	// Returns the session's download speed limit in megabits per second.
@@ -116,6 +188,20 @@ type IClientSession interface {
 
 	// Returns whether session uses global speed limits.
 	UseGlobalSpeed() bool
+
+	// IsRunning returns true if the session is currently active (resumedAt is not nil).
+	IsRunning() bool
+
+	// Returns a snapshot of all session data fields.
+	// This method acquires the mutex once and returns all fields,
+	// reducing lock contention compared to calling individual getters.
+	// Note: TimeCons includes elapsed time for running sessions.
+	Data() SessionData
+
+	// Returns a snapshot of all session data fields with raw stored values.
+	// Unlike Data(), TimeCons does NOT include elapsed time calculation.
+	// Use this for syncing/persistence where you need the base values.
+	RawData() SessionData
 
 	// Increases the session's time consumption in seconds.
 	// This value is not saved until Save() method is called.
@@ -182,7 +268,4 @@ type IClientSession interface {
 	// Returns elapsed seconds for logging purposes.
 	// Does NOT set dirty flags (internal bookkeeping operation).
 	SnapshotTimeCons(clearResumed bool) int
-
-	// IsRunning returns true if the session is currently active (resumedAt is not nil).
-	IsRunning() bool
 }

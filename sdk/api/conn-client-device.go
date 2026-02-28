@@ -8,6 +8,7 @@ package sdkapi
 
 import (
 	"context"
+	"time"
 )
 
 type DeviceStatus int
@@ -28,6 +29,19 @@ type UpdateDeviceParams struct {
 	Status   DeviceStatus
 }
 
+// DeviceData holds all device fields returned by Data() method.
+// This struct is returned as a snapshot to minimize mutex usage.
+type DeviceData struct {
+	ID        int64
+	UUID      string
+	MacAddr   string
+	IpAddr    string
+	Hostname  string
+	Status    DeviceStatus
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 // IClientDevice represents a client device connected to the network.
 type IClientDevice interface {
 
@@ -46,8 +60,19 @@ type IClientDevice interface {
 	// Returns the MAC address of the device.
 	MacAddr() string
 
-	// Returns the status device status.
+	// Returns the device status.
 	Status() DeviceStatus
+
+	// Returns the creation timestamp of the device.
+	CreatedAt() time.Time
+
+	// Returns the last update timestamp of the device.
+	UpdatedAt() time.Time
+
+	// Returns a snapshot of all device data fields.
+	// This method acquires the mutex once and returns all fields,
+	// reducing lock contention compared to calling individual getters.
+	Data() DeviceData
 
 	// Updates the client device.
 	Update(ctx context.Context, params UpdateDeviceParams) error
