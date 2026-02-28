@@ -4,7 +4,7 @@ import (
 	"net/http"
 	sdkapi "sdk/api"
 
-	wifirates "com.flarego.default-theme/app/wifi-rates"
+	"com.flarego.default-theme/app/utils"
 	"com.flarego.default-theme/resources/views/portal"
 )
 
@@ -58,15 +58,18 @@ func PortalStatusNavHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 			res.Error(w, r, err, http.StatusInternalServerError)
 			return
 		}
-		rates := wifirates.GetPaymentConfig(api)
-		pauseCfg := wifirates.GetPauseConfig(api)
+		rates := utils.GetPaymentConfig(api)
+		pauseCfg := utils.GetPauseConfig(api)
+		edSettings := utils.GetEnableDisableConfig(api)
+
 		_, isConnected := api.SessionsMgr().RunningSession(clnt)
 		data := portal.PortalStatusData{
-			IsSessionRunning: isConnected,
-			DeviceMac:        clnt.MacAddr(),
-			DeviceIP:         clnt.IpAddr(),
-			WifiRates:        rates,
-			PauseConfig:      pauseCfg,
+			IsSessionRunning:    isConnected,
+			DeviceMac:           clnt.MacAddr(),
+			DeviceIP:            clnt.IpAddr(),
+			WifiRates:           rates,
+			PauseConfig:         pauseCfg,
+			EnableDisableConfig: edSettings,
 		}
 
 		statusView := portal.PortalStatusNavView(api, data)
@@ -80,8 +83,8 @@ func PortalStatusNavHandler(api sdkapi.IPluginApi) http.HandlerFunc {
 func PortalWifiRatesCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := api.Http().Response()
-		rates := wifirates.GetPaymentConfig(api)
-		pauseCfg := wifirates.GetPauseConfig(api)
+		rates := utils.GetPaymentConfig(api)
+		pauseCfg := utils.GetPauseConfig(api)
 
 		view := portal.WifiRatesView(api, rates, pauseCfg)
 		if err := view.Render(r.Context(), w); err != nil {

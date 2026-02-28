@@ -219,7 +219,13 @@ func (self *SessionsMgrApi) ListSessions(ctx context.Context, params sdkapi.List
 		dataMbLt = *params.DataMbLt
 	}
 
-	rows, err := q.GetSessionsFiltered(ctx, coreQueries.GetSessionsFilteredParams{
+	// payment type
+	paymentType := "all"
+	if params.PaymentType != nil {
+		paymentType = string(*params.PaymentType)
+	}
+
+	paginatedRows, err := q.GetSessionsPaginated(ctx, coreQueries.GetSessionsPaginatedParams{
 		Search:       search,
 		DeviceID:     deviceID,
 		Availability: availability,
@@ -232,12 +238,13 @@ func (self *SessionsMgrApi) ListSessions(ctx context.Context, params sdkapi.List
 		DataMbLt:     dataMbLt,
 		RowLimit:     int64(params.PerPage),
 		RowOffset:    offset,
+		PaymentType:  paymentType,
 	})
 	if err != nil {
 		return sdkapi.ListSessionsResult{}, fmt.Errorf("unable to list sessions: %w", err)
 	}
 
-	count, err := q.GetSessionsFilteredCount(ctx, coreQueries.GetSessionsFilteredCountParams{
+	filteredRows, err := q.GetSessionsFiltered(ctx, coreQueries.GetSessionsFilteredParams{
 		Search:       search,
 		DeviceID:     deviceID,
 		Availability: availability,
@@ -248,14 +255,15 @@ func (self *SessionsMgrApi) ListSessions(ctx context.Context, params sdkapi.List
 		TimeSecsLt:   timeSecsLt,
 		DataMbGt:     dataMbGt,
 		DataMbLt:     dataMbLt,
+		PaymentType:  paymentType,
 	})
 	if err != nil {
 		return sdkapi.ListSessionsResult{}, fmt.Errorf("unable to count sessions: %w", err)
 	}
 
 	return sdkapi.ListSessionsResult{
-		Sessions: self.wrapManySessions(rows),
-		Count:    count,
+		PaginatedSessions: self.wrapManySessions(paginatedRows),
+		FilteredSessions:  self.wrapManySessions(filteredRows),
 	}, nil
 }
 

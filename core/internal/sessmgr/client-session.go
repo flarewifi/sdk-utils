@@ -305,7 +305,11 @@ func (self *ClientSession) RemainingTime() (sec int) {
 // RemainingData returns the session's remaining data in megabytes.
 func (self *ClientSession) RemainingData() (mbytes float64) {
 	d := self.data.Load()
-	return self.remainingDataWithData(d)
+	mb := self.remainingDataWithData(d)
+	if mb < 0 {
+		return 0
+	}
+	return mb
 }
 
 // ============================================================================

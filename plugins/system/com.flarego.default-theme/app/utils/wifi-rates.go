@@ -1,4 +1,4 @@
-package wifirates
+package utils
 
 import (
 	"encoding/json"
@@ -10,6 +10,9 @@ type PauseSessionSetting struct {
 	Count  int     `json:"count"`
 }
 
+type EnableDisableSettings struct {
+	EnablePortalRates bool `json:"enable_portal_rates"`
+}
 type PauseSessionConfig struct {
 	Unlimited bool                  `json:"unlimited"`
 	Settings  []PauseSessionSetting `json:"settings"`
@@ -111,6 +114,26 @@ func GetPaymentConfig(api sdkapi.IPluginApi) PaymentSettings {
 
 	if err := json.Unmarshal(rates, &settings); err != nil {
 		return DefaultPaymentSettings
+	}
+
+	return settings
+}
+
+func GetEnableDisableConfig(api sdkapi.IPluginApi) EnableDisableSettings {
+	var settings EnableDisableSettings
+	defaultSettings := EnableDisableSettings{EnablePortalRates: true}
+	p, ok := api.PluginsMgr().FindByPkg("com.flarego.wifi-hotspot")
+	if !ok {
+		return defaultSettings
+	}
+
+	b, err := p.Config().Plugin().Read("enable_disable_settings")
+	if err != nil {
+		return defaultSettings
+	}
+
+	if err := json.Unmarshal(b, &settings); err != nil {
+		return defaultSettings
 	}
 
 	return settings
