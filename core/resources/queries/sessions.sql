@@ -205,6 +205,94 @@ LIMIT @row_limit OFFSET @row_offset;
 SELECT COUNT(*) FROM sessions;
 
 
+-- name: GetSessionsPaginated :many
+SELECT s.* FROM sessions s
+LEFT JOIN devices d ON d.id = s.device_id
+LEFT JOIN vouchers v ON v.session_id = s.id
+WHERE (
+    -- Search filter
+    @search IS NULL
+    OR s.uuid LIKE '%' || @search || '%'
+    OR s.provider_pkg LIKE '%' || @search || '%'
+    OR d.uuid LIKE '%' || @search || '%'
+    OR d.mac_address LIKE '%' || @search || '%'
+    OR d.hostname LIKE '%' || @search || '%'
+    OR d.ip_address LIKE '%' || @search || '%'
+    OR v.code LIKE '%' || @search || '%'
+)
+AND (
+    -- Device ID filter
+    @device_id IS NULL OR s.device_id = @device_id
+)
+AND (
+    -- Availability filter: 'all', 'available', 'consumed', 'expired'
+    @availability = 'all' OR @availability IS NULL OR @availability = ''
+    OR (
+        -- Available: has remaining time/data AND not expired
+        @availability = 'available' AND (
+            (s.session_type = 'time' AND s.consumption_secs < s.time_secs)
+            OR (s.session_type = 'data' AND s.consumption_mb < s.data_mbytes)
+            OR (s.session_type = 'time-or-data' AND s.consumption_secs < s.time_secs AND s.consumption_mb < s.data_mbytes)
+        )
+        AND (
+            s.exp_days IS NULL
+            OR s.started_at IS NULL
+            OR datetime('now') < datetime(s.started_at, '+' || s.exp_days || ' days')
+        )
+    )
+    OR (
+        -- Consumed: time/data exhausted (but not expired by date)
+        @availability = 'consumed' AND (
+            (s.session_type = 'time' AND s.consumption_secs >= s.time_secs)
+            OR (s.session_type = 'data' AND s.consumption_mb >= s.data_mbytes)
+            OR (s.session_type = 'time-or-data' AND (s.consumption_secs >= s.time_secs OR s.consumption_mb >= s.data_mbytes))
+        )
+    )
+    OR (
+        -- Expired: passed expiration date
+        @availability = 'expired' AND (
+            s.exp_days IS NOT NULL AND s.started_at IS NOT NULL 
+            AND datetime('now') >= datetime(s.started_at, '+' || s.exp_days || ' days')
+        )
+    )
+)
+AND (
+    -- Session type filter
+    @session_type IS NULL OR @session_type = '' OR s.session_type = @session_type
+)
+AND (
+    -- Date range filter: sessions created on or after date_start
+    @date_start IS NULL OR date(s.created_at) >= date(@date_start)
+)
+AND (
+    -- Date range filter: sessions created on or before date_end
+    @date_end IS NULL OR date(s.created_at) <= date(@date_end)
+)
+AND (
+    -- Time seconds greater than filter
+    @time_secs_gt IS NULL OR s.time_secs > @time_secs_gt
+)
+AND (
+    -- Time seconds less than filter
+    @time_secs_lt IS NULL OR s.time_secs < @time_secs_lt
+)
+AND (
+    -- Data MB greater than filter
+    @data_mb_gt IS NULL OR s.data_mbytes > @data_mb_gt
+)
+AND (
+    -- Data MB less than filter
+    @data_mb_lt IS NULL OR s.data_mbytes < @data_mb_lt
+)
+AND (
+    -- Payment type filter: 'all', 'voucher', 'coin'
+    @payment_type IS NULL OR @payment_type = '' OR @payment_type = 'all'
+    OR (@payment_type = 'voucher' AND v.id IS NOT NULL)
+    OR (@payment_type = 'coin' AND v.id IS NULL)
+)
+ORDER BY s.created_at DESC
+LIMIT @row_limit OFFSET @row_offset;
+
 -- name: GetSessionsFiltered :many
 SELECT s.* FROM sessions s
 LEFT JOIN devices d ON d.id = s.device_id
@@ -284,87 +372,10 @@ AND (
     -- Data MB less than filter
     @data_mb_lt IS NULL OR s.data_mbytes < @data_mb_lt
 )
-ORDER BY s.created_at DESC
-LIMIT @row_limit OFFSET @row_offset;
-
-
--- name: GetSessionsFilteredCount :one
-SELECT COUNT(*) FROM sessions s
-LEFT JOIN devices d ON d.id = s.device_id
-LEFT JOIN vouchers v ON v.session_id = s.id
-WHERE (
-    -- Search filter
-    @search IS NULL
-    OR s.uuid LIKE '%' || @search || '%'
-    OR s.provider_pkg LIKE '%' || @search || '%'
-    OR d.uuid LIKE '%' || @search || '%'
-    OR d.mac_address LIKE '%' || @search || '%'
-    OR d.hostname LIKE '%' || @search || '%'
-    OR d.ip_address LIKE '%' || @search || '%'
-    OR v.code LIKE '%' || @search || '%'
-)
 AND (
-    -- Device ID filter
-    @device_id IS NULL OR s.device_id = @device_id
-)
-AND (
-    -- Availability filter: 'all', 'available', 'consumed', 'expired'
-    @availability = 'all' OR @availability IS NULL OR @availability = ''
-    OR (
-        -- Available: has remaining time/data AND not expired
-        @availability = 'available' AND (
-            (s.session_type = 'time' AND s.consumption_secs < s.time_secs)
-            OR (s.session_type = 'data' AND s.consumption_mb < s.data_mbytes)
-            OR (s.session_type = 'time-or-data' AND s.consumption_secs < s.time_secs AND s.consumption_mb < s.data_mbytes)
-        )
-        AND (
-            s.exp_days IS NULL
-            OR s.started_at IS NULL
-            OR datetime('now') < datetime(s.started_at, '+' || s.exp_days || ' days')
-        )
-    )
-    OR (
-        -- Consumed: time/data exhausted (but not expired by date)
-        @availability = 'consumed' AND (
-            (s.session_type = 'time' AND s.consumption_secs >= s.time_secs)
-            OR (s.session_type = 'data' AND s.consumption_mb >= s.data_mbytes)
-            OR (s.session_type = 'time-or-data' AND (s.consumption_secs >= s.time_secs OR s.consumption_mb >= s.data_mbytes))
-        )
-    )
-    OR (
-        -- Expired: passed expiration date
-        @availability = 'expired' AND (
-            s.exp_days IS NOT NULL AND s.started_at IS NOT NULL 
-            AND datetime('now') >= datetime(s.started_at, '+' || s.exp_days || ' days')
-        )
-    )
-)
-AND (
-    -- Session type filter
-    @session_type IS NULL OR @session_type = '' OR s.session_type = @session_type
-)
-AND (
-    -- Date range filter: sessions created on or after date_start
-    @date_start IS NULL OR date(s.created_at) >= date(@date_start)
-)
-AND (
-    -- Date range filter: sessions created on or before date_end
-    @date_end IS NULL OR date(s.created_at) <= date(@date_end)
-)
-AND (
-    -- Time seconds greater than filter
-    @time_secs_gt IS NULL OR s.time_secs > @time_secs_gt
-)
-AND (
-    -- Time seconds less than filter
-    @time_secs_lt IS NULL OR s.time_secs < @time_secs_lt
-)
-AND (
-    -- Data MB greater than filter
-    @data_mb_gt IS NULL OR s.data_mbytes > @data_mb_gt
-)
-AND (
-    -- Data MB less than filter
-    @data_mb_lt IS NULL OR s.data_mbytes < @data_mb_lt
+    -- Payment type filter: 'all', 'voucher', 'coin'
+    @payment_type IS NULL OR @payment_type = '' OR @payment_type = 'all'
+    OR (@payment_type = 'voucher' AND v.id IS NOT NULL)
+    OR (@payment_type = 'coin' AND v.id IS NULL)
 );
 

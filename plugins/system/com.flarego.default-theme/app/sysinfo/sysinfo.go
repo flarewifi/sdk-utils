@@ -71,7 +71,7 @@ func GetSystemInfo(api sdkapi.IPluginApi) (*SystemInfo, error) {
 	info.Uptime = uptime
 
 	// LAN IP and MAC address
-	iface, err := api.Network().GetInterface("lan")
+	iface, err := api.Network().GetWanInterface()
 	if err == nil {
 		if ipv4, err := iface.IpV4Addr(); err == nil {
 			info.IPAddress = ipv4.Addr

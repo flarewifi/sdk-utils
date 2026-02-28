@@ -5,15 +5,16 @@ import (
 	"strconv"
 	"strings"
 	sdkapi "sdk/api"
-	wifirates "com.flarego.default-theme/app/wifi-rates"
+	"com.flarego.default-theme/app/utils"
 )
 
 type PortalStatusData struct {
 	IsSessionRunning bool
 	DeviceMac        string
 	DeviceIP         string
-	WifiRates        wifirates.PaymentSettings
-	PauseConfig      wifirates.PauseSessionConfig
+	WifiRates        utils.PaymentSettings
+	PauseConfig      utils.PauseSessionConfig
+	EnableDisableConfig  utils.EnableDisableSettings
 }
 
 templ StatusBar(api sdkapi.IPluginApi, isConnected bool) {
@@ -52,13 +53,23 @@ templ PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) {
 		<!-- Banner: static base + slideshow overlay -->
 		<div class="banner">
 			<div class="banner-inner">
-				<img class="banner-static" src={ api.Http().Helpers().PublicPath("images/banner.png") } alt="Banner"/>
+				{{
+					dirPref := ""
+					if !data.EnableDisableConfig.EnablePortalRates {
+						dirPref = "disabled-rates/"
+					}
+				}}
+
+				<img class="banner-static" src={ api.Http().Helpers().PublicPath(fmt.Sprintf("images/%sbanner.png", dirPref)) } alt="Banner"/>
 				<div class="banner-slideshow">
-					<img class="banner-slide" src={ api.Http().Helpers().PublicPath("images/banner-1.png") } alt="Banner 1"/>
-					<img class="banner-slide" src={ api.Http().Helpers().PublicPath("images/banner-2.png") } alt="Banner 2"/>
-					<img class="banner-slide" src={ api.Http().Helpers().PublicPath("images/banner-3.png") } alt="Banner 3"/>
+					<img class="banner-slide" src={ api.Http().Helpers().PublicPath(fmt.Sprintf("images/%sbanner-1.png", dirPref)) } alt="Banner 1"/>
+					<img class="banner-slide" src={ api.Http().Helpers().PublicPath(fmt.Sprintf("images/%sbanner-2.png", dirPref)) } alt="Banner 2"/>
+					<img class="banner-slide" src={ api.Http().Helpers().PublicPath(fmt.Sprintf("images/%sbanner-3.png", dirPref)) } alt="Banner 3"/>
 				</div>
-				@WifiRatesView(api, data.WifiRates, data.PauseConfig)
+				if data.EnableDisableConfig.EnablePortalRates {
+					
+						@WifiRatesView(api, data.WifiRates, data.PauseConfig)
+				}
 			</div>
 		</div>
 		<!-- Portal Title -->
@@ -73,17 +84,17 @@ templ PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) {
 }
 
 
-templ WifiRatesView(api sdkapi.IPluginApi, rates wifirates.PaymentSettings, pauseCfg wifirates.PauseSessionConfig) {
+templ WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg utils.PauseSessionConfig) {
 	<div
 		class="wifi-rates"
 		hx-get={ api.Http().Helpers().UrlForRoute("portal:wifi-rates") }
-		hx-trigger="load delay:5s"
+		hx-trigger="load delay:60s"
 		hx-swap="outerHTML"
-	>
+		>
 		{{
-			rowBg := "#4C4C4C33"
-			colX  := [3]int{44, 132, 215}
-		}}
+		rowBg := "#4C4C4C33"
+		colX  := [3]int{44, 132, 215}
+	}}
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 265 148"
@@ -119,6 +130,9 @@ templ WifiRatesView(api sdkapi.IPluginApi, rates wifirates.PaymentSettings, paus
 			<!-- Data rows: 3 rows × 35px = 105px, y=42..147 -->
 			for i, r := range rates {
 				{{
+					if i > 2 { // display only first 3
+						break
+					}
 					rowY   := 42 + i*35
 					textY  := rowY + 22
 					isEven := i%2 == 1
@@ -134,7 +148,7 @@ templ WifiRatesView(api sdkapi.IPluginApi, rates wifirates.PaymentSettings, paus
 	</div>
 }
 
-func wifiPauseLabel(cfg wifirates.PauseSessionConfig, amount float64) string {
+func wifiPauseLabel(cfg utils.PauseSessionConfig, amount float64) string {
 	count := cfg.PauseCountFor(amount)
 	if count == -1 {
 		return "Unlimited"
@@ -142,7 +156,7 @@ func wifiPauseLabel(cfg wifirates.PauseSessionConfig, amount float64) string {
 	return strconv.Itoa(count)
 }
 
-func wifiRateTimeLabel(r wifirates.PaymentSetting) string {
+func wifiRateTimeLabel(r utils.PaymentSetting) string {
 	if r.ExpiryEnabled && r.ExpiryTime > 0 {
 		unit := strings.ToUpper(r.ExpiryUnit)
 		if r.ExpiryTime == 1 {
