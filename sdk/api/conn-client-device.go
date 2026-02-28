@@ -32,6 +32,7 @@ type UpdateDeviceParams struct {
 // DeviceData holds all device fields returned by Data() method.
 // This struct is returned as a snapshot to minimize mutex usage.
 type DeviceData struct {
+	// Raw database values
 	ID        int64
 	UUID      string
 	MacAddr   string
@@ -40,6 +41,9 @@ type DeviceData struct {
 	Status    DeviceStatus
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	// Pre-computed values
+	IsConnected bool // True if device has an active internet session
 }
 
 // IClientDevice represents a client device connected to the network.

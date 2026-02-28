@@ -578,19 +578,26 @@ func (self *SessionsMgr) NewClientSession(params sdkapi.NewClientSessionParams) 
 // wrapModelSession wraps a models.Session into an IClientSession with save callback.
 // This is the internal helper used by all session-wrapping methods.
 func (self *SessionsMgr) wrapModelSession(s *models.Session) *ClientSession {
-	return NewClientSession(NewClientSessionParams{
-		DB:         self.db,
-		Models:     self.mdl,
-		PluginsMgr: self.coreAPI.PluginsMgr(),
-		Session:    s,
-		OnSave:     self.createSessionSaveCallback(),
-	})
+	cs := NewClientSession(self.db, self.mdl, self.coreAPI.PluginsMgr(), s)
+	cs.SetOnSave(self.createSessionSaveCallback())
+	return cs
 }
 
 // wrapModelDevice wraps a models.Device into an IClientDevice.
 // This is the internal helper used by all device-wrapping methods.
 func (self *SessionsMgr) wrapModelDevice(d *models.Device) *ClientDevice {
-	return NewClientDevice(self.db, self.mdl, d)
+	clnt := NewClientDevice(self.db, self.mdl, d)
+	clnt.SetIsConnectedFunc(self.isDeviceConnected)
+	return clnt
+}
+
+// isDeviceConnected checks if a device has a running session (resumed_at IS NOT NULL).
+func (self *SessionsMgr) isDeviceConnected(deviceID int64) bool {
+	// Check in-memory running sessions first (faster)
+	if _, ok := self.sessions.Load(deviceID); ok {
+		return true
+	}
+	return false
 }
 
 // NewClientDevice wraps device data into an IClientDevice object without performing

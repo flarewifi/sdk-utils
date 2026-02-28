@@ -306,14 +306,23 @@ useGlobal := session.UseGlobalSpeed()
 
 ### Data
 
-Returns a snapshot of all session data fields as a `SessionData` struct. This method acquires the mutex once and returns all fields, reducing lock contention compared to calling individual getters. The `TimeCons` field includes elapsed time for running sessions.
+Returns a snapshot of all session data fields as a `SessionData` struct with pre-computed values. This method acquires the mutex once and returns all fields, reducing lock contention compared to calling individual getters. The `TimeCons` field includes elapsed time for running sessions.
 
 ```go
 data := session.Data()
-fmt.Printf("Session: %s - Time: %d/%d secs\n", data.UUID, data.TimeCons, data.TimeSecs)
+fmt.Printf("Session: %s - Remaining: %d secs\n", data.UUID, data.RemainingTime)
+
+// Use pre-computed status fields
+if data.IsAvailable {
+    fmt.Println("Session is available")
+} else if data.IsConsumed {
+    fmt.Println("Session is consumed")
+}
 ```
 
-The `SessionData` struct contains:
+The `SessionData` struct contains raw fields and pre-computed values:
+
+**Raw Fields:**
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -334,24 +343,20 @@ The `SessionData` struct contains:
 | `CreatedAt` | `time.Time` | Creation timestamp |
 | `UpdatedAt` | `time.Time` | Last update timestamp |
 
-The `SessionData` struct also provides helper methods:
+**Pre-computed Fields:**
 
-- `RemainingTime() int` - Returns remaining time in seconds
-- `RemainingData() float64` - Returns remaining data in MB
-- `ExpiresAt() *time.Time` - Returns expiration time
-- `IsExpired() bool` - Returns true if session is expired
-- `IsConsumed() bool` - Returns true if session is consumed
-- `IsRunning() bool` - Returns true if session is running
-- `IsAvailable() bool` - Returns true if session has never been started
+| Field | Type | Description |
+|-------|------|-------------|
+| `RemainingTime` | `int` | Remaining time in seconds |
+| `RemainingData` | `float64` | Remaining data in MB |
+| `ExpiresAt` | `*time.Time` | Expiration time (nil if no expiration) |
+| `IsExpired` | `bool` | True if session is expired |
+| `IsAvailable` | `bool` | True if session has never been started |
+| `IsConsumed` | `bool` | True if session is consumed |
+| `IsRunning` | `bool` | True if session is running |
 
-### RawData
-
-Returns a snapshot of all session data fields with raw stored values. Unlike `Data()`, the `TimeCons` field does NOT include elapsed time calculation. Use this for syncing/persistence where you need the base values.
-
-```go
-rawData := session.RawData()
-// rawData.TimeCons contains only the stored value, not elapsed time
-```
+!!! note "Pre-computed Values"
+    The `SessionData` struct has no methods - all derived values are pre-computed when `Data()` is called. This ensures consistent values within a single snapshot.
 
 ### IncTimeCons
 
