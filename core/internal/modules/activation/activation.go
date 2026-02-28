@@ -2,7 +2,8 @@ package activation
 
 import (
 	machineuid "core/internal/modules/machine-uid"
-	rpc_flarewifi_v1 "core/internal/rpc"
+	"core/internal/rpc"
+	"core/internal/rpc_flarewifi_v2"
 	"core/utils/config"
 	"core/utils/crypt"
 	"core/utils/tags"
@@ -33,7 +34,7 @@ var (
 )
 
 // buildMachineInfo builds a MachineInfo struct from system information
-func buildMachineInfo(machineID string) (*rpc_flarewifi_v1.MachineInfo, error) {
+func buildMachineInfo(machineID string) (*rpc_flarewifi_v2.MachineInfo, error) {
 	release, err := sdkutils.ReadOsRelease(osReleaseFile)
 	if err != nil {
 		return nil, err
@@ -49,7 +50,7 @@ func buildMachineInfo(machineID string) (*rpc_flarewifi_v1.MachineInfo, error) {
 		return nil, err
 	}
 
-	return &rpc_flarewifi_v1.MachineInfo{
+	return &rpc_flarewifi_v2.MachineInfo{
 		DeviceModel:    release.DeviceModel,
 		DeviceConfig:   release.DeviceConfig,
 		MachineId:      machineID,
@@ -72,7 +73,7 @@ func buildMachineInfo(machineID string) (*rpc_flarewifi_v1.MachineInfo, error) {
 func OnMachineIDChanged(oldID, newID string) {
 	log.Printf("Machine ID changed: %s -> %s. Updating server...", oldID, newID)
 
-	srv, ctx := rpc_flarewifi_v1.GetTwirpServiceAndCtx()
+	srv, ctx := rpc.GetTwirpServiceAndCtx()
 
 	machineInfo, err := buildMachineInfo(newID)
 	if err != nil {
@@ -80,7 +81,7 @@ func OnMachineIDChanged(oldID, newID string) {
 		return
 	}
 
-	req := &rpc_flarewifi_v1.UpdateMachineInfoRequest{
+	req := &rpc_flarewifi_v2.UpdateMachineInfoRequest{
 		MachineId:   oldID,
 		MachineInfo: machineInfo,
 	}
@@ -218,7 +219,7 @@ func offlineActivation() (ok bool, err error) {
 }
 
 func checkActivationOnline() (ok bool, err error) {
-	srv, ctx := rpc_flarewifi_v1.GetTwirpServiceAndCtx()
+	srv, ctx := rpc.GetTwirpServiceAndCtx()
 
 	release, err := sdkutils.ReadOsRelease(osReleaseFile)
 	if err != nil {
@@ -236,8 +237,8 @@ func checkActivationOnline() (ok bool, err error) {
 	}
 
 	_, machineID := machineuid.GetMachineUID()
-	params := rpc_flarewifi_v1.MachineActivationRequest{
-		MachineInfo: &rpc_flarewifi_v1.MachineInfo{
+	params := rpc_flarewifi_v2.MachineActivationRequest{
+		MachineInfo: &rpc_flarewifi_v2.MachineInfo{
 			DeviceModel:    release.DeviceModel,
 			DeviceConfig:   release.DeviceConfig,
 			MachineId:      machineID,
@@ -255,7 +256,7 @@ func checkActivationOnline() (ok bool, err error) {
 		},
 	}
 
-	var act *rpc_flarewifi_v1.MachineActivationResponse
+	var act *rpc_flarewifi_v2.MachineActivationResponse
 	maxAttempts := 3
 	retryDelays := []time.Duration{0, 5 * time.Second, 10 * time.Second}
 

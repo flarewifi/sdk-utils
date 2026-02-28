@@ -51,6 +51,7 @@
 - Hardcode user-facing text (use `api.Translate()`)
 - Hardcode URLs (use `api.Http().Helpers().UrlForRoute()`)
 - Modify core migrations for plugins
+- Discard errors with `_ = functionThatCanError()` (always handle errors)
 
 ### ALWAYS
 - Use `int64` for database IDs
