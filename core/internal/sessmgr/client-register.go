@@ -32,6 +32,15 @@ func (reg *ClientRegister) SetSessionsMgr(mgr *SessionsMgr) {
 	reg.sessionsMgr = mgr
 }
 
+// wrapDevice wraps a models.Device into a ClientDevice with IsConnected callback.
+func (reg *ClientRegister) wrapDevice(d *models.Device) *ClientDevice {
+	clnt := NewClientDevice(reg.db, reg.mdls, d)
+	if reg.sessionsMgr != nil {
+		clnt.SetIsConnectedFunc(reg.sessionsMgr.isDeviceConnected)
+	}
+	return clnt
+}
+
 // FindByID finds a client device by its database ID
 func (reg *ClientRegister) FindByID(ctx context.Context, deviceID int64) (sdkapi.IClientDevice, error) {
 	dev, err := reg.mdls.Device().Find(ctx, deviceID)
@@ -39,8 +48,7 @@ func (reg *ClientRegister) FindByID(ctx context.Context, deviceID int64) (sdkapi
 		return nil, err
 	}
 
-	clnt := NewClientDevice(reg.db, reg.mdls, dev)
-	return clnt, nil
+	return reg.wrapDevice(dev), nil
 }
 
 // UpdateDevice updates device network details and handles reconnection if needed.
@@ -61,7 +69,7 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 				clnt.ID(), newMac, existingDev.ID())
 
 			// Check if the conflicting device has an active session
-			conflictingClnt := NewClientDevice(reg.db, reg.mdls, existingDev)
+			conflictingClnt := reg.wrapDevice(existingDev)
 			if _, hasSession := reg.sessionsMgr.GetRunningSession(conflictingClnt); hasSession {
 				log.Printf("[ClientRegister.UpdateDevice] Disconnecting active session on conflicting device %d before merge", existingDev.ID())
 				if err := reg.sessionsMgr.Disconnect(ctx, conflictingClnt, ""); err != nil {
@@ -272,7 +280,7 @@ STEP_2_MAC_MATCH:
 	if err == nil && dev != nil {
 		log.Printf("[ClientRegister] DEBUG: Found device by MAC - DeviceID=%d, IP=%s, Hostname=%s",
 			dev.ID(), dev.IpAddr(), dev.Hostname())
-		clnt = NewClientDevice(reg.db, reg.mdls, dev)
+		clnt = reg.wrapDevice(dev)
 
 		// Validate fingerprint if we have it
 		if hasFingerprintData {
@@ -352,7 +360,7 @@ STEP_3_CREATE_NEW:
 
 		log.Printf("[ClientRegister] SUCCESS: Created new device - DeviceID=%d, MAC=%s, IP=%s",
 			dev.ID(), params.MacAddr, params.IpAddr)
-		clnt = NewClientDevice(reg.db, reg.mdls, dev)
+		clnt = reg.wrapDevice(dev)
 
 		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
 		log.Printf("[ClientRegister] DEBUG: Emitted EventClientCreated for DeviceID=%d", dev.ID())

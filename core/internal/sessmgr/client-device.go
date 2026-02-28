@@ -14,12 +14,16 @@ import (
 	sdkapi "sdk/api"
 )
 
+// IsConnectedFunc is a callback to check if a device is connected.
+type IsConnectedFunc func(deviceID int64) bool
+
 type ClientDevice struct {
 	// === IMMUTABLE after creation (no lock needed) ===
-	db        *db.Database
-	mdls      *models.Models
-	id        int64
-	createdAt time.Time
+	db          *db.Database
+	mdls        *models.Models
+	id          int64
+	createdAt   time.Time
+	isConnected IsConnectedFunc // Callback to check connection status
 
 	// === MUTABLE (protected by mu) ===
 	mu        sync.RWMutex
@@ -44,6 +48,11 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 		status:    d.Status(),
 		updatedAt: d.UpdatedAt(),
 	}
+}
+
+// SetIsConnectedFunc sets the callback function for checking connection status.
+func (self *ClientDevice) SetIsConnectedFunc(fn IsConnectedFunc) {
+	self.isConnected = fn
 }
 
 // ID returns the device's database ID (immutable, no lock needed).
@@ -93,21 +102,29 @@ func (self *ClientDevice) UpdatedAt() time.Time {
 	return self.updatedAt
 }
 
-// Data returns a snapshot of all device data fields.
+// Data returns a snapshot of all device data fields with pre-computed values.
 // This method acquires the mutex once and returns all fields,
 // reducing lock contention compared to calling individual getters.
 func (self *ClientDevice) Data() sdkapi.DeviceData {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
+
+	// Compute IsConnected using the callback
+	isConnected := false
+	if self.isConnected != nil {
+		isConnected = self.isConnected(self.id)
+	}
+
 	return sdkapi.DeviceData{
-		ID:        self.id,
-		UUID:      self.uuid,
-		MacAddr:   self.mac,
-		IpAddr:    self.ip,
-		Hostname:  self.hostname,
-		Status:    self.status,
-		CreatedAt: self.createdAt,
-		UpdatedAt: self.updatedAt,
+		ID:          self.id,
+		UUID:        self.uuid,
+		MacAddr:     self.mac,
+		IpAddr:      self.ip,
+		Hostname:    self.hostname,
+		Status:      self.status,
+		CreatedAt:   self.createdAt,
+		UpdatedAt:   self.updatedAt,
+		IsConnected: isConnected,
 	}
 }
 

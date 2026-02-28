@@ -83,24 +83,19 @@ func (d *sessionData) copy() sessionData {
 	}
 }
 
-// NewClientSessionParams contains parameters for creating a ClientSession.
-type NewClientSessionParams struct {
-	DB         *db.Database
-	Models     *models.Models
-	PluginsMgr sdkapi.IPluginsMgrApi
-	Session    *models.Session
-	OnSave     sdkapi.SessionSaveCallback
+func NewClientSession(dtb *db.Database, mdls *models.Models, pluginsMgr sdkapi.IPluginsMgrApi, s *models.Session) *ClientSession {
+	cs := &ClientSession{
+		db:         dtb,
+		mdls:       mdls,
+		pluginsMgr: pluginsMgr,
+	}
+	cs.loadFromModel(s)
+	return cs
 }
 
-func NewClientSession(params NewClientSessionParams) *ClientSession {
-	cs := &ClientSession{
-		db:         params.DB,
-		mdls:       params.Models,
-		pluginsMgr: params.PluginsMgr,
-		onSave:     params.OnSave,
-	}
-	cs.loadFromModel(params.Session)
-	return cs
+// SetOnSave sets the callback function for session save events.
+func (self *ClientSession) SetOnSave(fn sdkapi.SessionSaveCallback) {
+	self.onSave = fn
 }
 
 // ClientSession wraps session data with lock-free reads and synchronized writes.
@@ -359,8 +354,58 @@ func (self *ClientSession) remainingDataWithData(d *sessionData) float64 {
 	return remaining
 }
 
+// expiresAtWithData calculates expiration time using provided data snapshot.
+func (self *ClientSession) expiresAtWithData(d *sessionData) *time.Time {
+	if d.startedAt != nil && d.expDays != nil {
+		exp := d.startedAt.Add(time.Hour * 24 * time.Duration(*d.expDays))
+		return &exp
+	}
+	return nil
+}
+
+// isAvailableWithData checks if session is available using provided data snapshot.
+func (self *ClientSession) isAvailableWithData(d *sessionData) bool {
+	if self.isExpiredWithData(d) {
+		return false
+	}
+	hasConsumption := d.timeCons > 0 || d.dataCons > 0
+	return d.startedAt == nil && d.resumedAt == nil && !hasConsumption
+}
+
+// isConsumedWithData checks if session is consumed using pre-computed values.
+func (self *ClientSession) isConsumedWithData(d *sessionData, sessionType sdkapi.SessionType, remainingTime int, remainingData float64, isAvailable bool, isExpired bool) bool {
+	// Available sessions are not consumed
+	if isAvailable {
+		return false
+	}
+
+	if isExpired {
+		return true
+	}
+
+	if sessionType == sdkapi.SessionTypeTime || sessionType == sdkapi.SessionTypeTimeOrData {
+		if remainingTime <= 0 {
+			return true
+		}
+	}
+
+	if sessionType == sdkapi.SessionTypeData || sessionType == sdkapi.SessionTypeTimeOrData {
+		if remainingData <= 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
 // IsConsumed returns true if the session resources are fully consumed.
+// Returns false if the session has never been started (is available).
 func (self *ClientSession) IsConsumed() bool {
+	// Available sessions are not consumed
+	if self.IsAvailable() {
+		return false
+	}
+
 	d := self.data.Load()
 	sessionType := sdkapi.SessionType(d.sessionType)
 
@@ -403,6 +448,19 @@ func (self *ClientSession) IsRunning() bool {
 	return self.data.Load().resumedAt != nil
 }
 
+// IsAvailable returns true if the session is available for use.
+// A session is NOT available if:
+// - It has been started (started_at OR resumed_at is set, OR there's consumption data), OR
+// - It has expired
+func (self *ClientSession) IsAvailable() bool {
+	if self.IsExpired() {
+		return false
+	}
+	d := self.data.Load()
+	hasConsumption := d.timeCons > 0 || d.dataCons > 0
+	return d.startedAt == nil && d.resumedAt == nil && !hasConsumption
+}
+
 // CreatedAt returns the created at time.
 func (self *ClientSession) CreatedAt() time.Time {
 	return self.data.Load().createdAt
@@ -443,7 +501,7 @@ func (self *ClientSession) UseGlobalSpeed() bool {
 	return self.data.Load().useGlobal
 }
 
-// Data returns a snapshot of all session data fields.
+// Data returns a snapshot of all session data fields with pre-computed values.
 // TimeCons includes elapsed time for running sessions.
 func (self *ClientSession) Data() sdkapi.SessionData {
 	d := self.data.Load()
@@ -455,11 +513,21 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 		timeCons += elapsed
 	}
 
+	// Pre-compute all derived values
+	sessionType := sdkapi.SessionType(d.sessionType)
+	remainingTime := self.remainingTimeWithData(d)
+	remainingData := self.remainingDataWithData(d)
+	expiresAt := self.expiresAtWithData(d)
+	isExpired := self.isExpiredWithData(d)
+	isAvailable := self.isAvailableWithData(d)
+	isRunning := d.resumedAt != nil
+	isConsumed := self.isConsumedWithData(d, sessionType, remainingTime, remainingData, isAvailable, isExpired)
+
 	return sdkapi.SessionData{
 		ID:             d.id,
 		UUID:           d.uuid,
 		DeviceID:       d.devId,
-		Type:           sdkapi.SessionType(d.sessionType),
+		Type:           sessionType,
 		TimeSecs:       d.timeSecs,
 		DataMb:         d.dataMb,
 		TimeCons:       timeCons,
@@ -472,30 +540,14 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 		ResumedAt:      copyTimePtr(d.resumedAt),
 		CreatedAt:      d.createdAt,
 		UpdatedAt:      d.updatedAt,
-	}
-}
-
-// RawData returns a snapshot of all session data fields with raw stored values.
-// Unlike Data(), TimeCons does NOT include elapsed time calculation.
-func (self *ClientSession) RawData() sdkapi.SessionData {
-	d := self.data.Load()
-	return sdkapi.SessionData{
-		ID:             d.id,
-		UUID:           d.uuid,
-		DeviceID:       d.devId,
-		Type:           sdkapi.SessionType(d.sessionType),
-		TimeSecs:       d.timeSecs,
-		DataMb:         d.dataMb,
-		TimeCons:       d.timeCons,
-		DataCons:       d.dataCons,
-		DownMbits:      d.downMbits,
-		UpMbits:        d.upMbits,
-		UseGlobalSpeed: d.useGlobal,
-		ExpDays:        copyIntPtr(d.expDays),
-		StartedAt:      copyTimePtr(d.startedAt),
-		ResumedAt:      copyTimePtr(d.resumedAt),
-		CreatedAt:      d.createdAt,
-		UpdatedAt:      d.updatedAt,
+		// Pre-computed values
+		RemainingTime: remainingTime,
+		RemainingData: remainingData,
+		ExpiresAt:     expiresAt,
+		IsExpired:     isExpired,
+		IsAvailable:   isAvailable,
+		IsConsumed:    isConsumed,
+		IsRunning:     isRunning,
 	}
 }
 
