@@ -6,6 +6,7 @@ import (
 
 	"core/db"
 	"core/db/models"
+	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/sessmgr"
 	"core/utils/plugins"
@@ -14,7 +15,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pmgr *PluginsMgr, trfkMgr *network.TrafficMgr) *PluginApi {
+func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pmgr *PluginsMgr, trfkMgr *network.TrafficMgr, wifiMgr *ubus.WifiMgr) *PluginApi {
 	pluginApi := &PluginApi{
 		dir:            dir,
 		db:             pmgr.db,
@@ -44,6 +45,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pm
 	pluginApi.UIApi = NewUIApi(pluginApi)
 	pluginApi.NotificationAPI = NewNotificationAPI(pluginApi, pmgr.models)
 	NewVouchersApi(pluginApi)
+	NewWifiApi(pluginApi, wifiMgr)
 
 	log.Println("NewPluginApi: ", dir, " - ", info.Package, " - ", info.Name, " - ", info.Version, " - ", info.Description)
 
@@ -77,6 +79,7 @@ type PluginApi struct {
 	MachineAPI       *MachineApi
 	FirewallAPI      *FirewallApi
 	VouchersAPI      *VouchersApi
+	WifiAPI          *WifiApi
 }
 
 func (self *PluginApi) Initialize(coreApi *PluginApi) {
@@ -181,6 +184,10 @@ func (self *PluginApi) Firewall() sdkapi.IFirewallAPI {
 
 func (self *PluginApi) Vouchers() sdkapi.IVouchersApi {
 	return self.VouchersAPI
+}
+
+func (self *PluginApi) Wifi() sdkapi.IWifiApi {
+	return self.WifiAPI
 }
 
 func (self *PluginApi) LoadAssetsManifest() {

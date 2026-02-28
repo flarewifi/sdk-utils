@@ -27,10 +27,11 @@ var SupportedLanguages = []sdkapi.SupportedLanguage{
 var SupportedCurrencies = sdkutils.SupportedCurrencies
 
 var defaultAppCfg = sdkapi.AppConfig{
-	Lang:     "en",
-	Currency: "USD",
-	Secret:   sdkutils.RandomStr(16),
-	Channel:  "stable",
+	Lang:          "en",
+	Currency:      "USD",
+	Secret:        sdkutils.RandomStr(16),
+	Channel:       "stable",
+	EnableLogging: false,
 }
 
 func ReadApplicationConfig() (sdkapi.AppConfig, error) {

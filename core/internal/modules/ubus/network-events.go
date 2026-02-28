@@ -49,7 +49,7 @@ func parseEvent(b []byte) {
 
 func Listen() {
 	listner := NewUbusListener()
-	go cmd.ExecOutput("ubus listen", listner)
+	go cmd.ExecOutput("ubus listen network.interface", listner)
 	go func() {
 		// then continue listening for more events
 		for evt := range listner.OutCh() {

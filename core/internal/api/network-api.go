@@ -84,14 +84,16 @@ func (self *NetworkApi) Traffic() sdkapi.ITrafficApi {
 
 func (self *NetworkApi) OnReady(cb func()) {
 	networkReadyMu.Lock()
-	defer networkReadyMu.Unlock()
-
-	if networkReady {
-		// Network is already ready, execute callback immediately (synchronously)
-		cb()
-		return
+	isReady := networkReady
+	if !isReady {
+		networkReadyCallbacks = append(networkReadyCallbacks, cb)
 	}
-	networkReadyCallbacks = append(networkReadyCallbacks, cb)
+	networkReadyMu.Unlock()
+
+	if isReady {
+		// Network is already ready, execute callback immediately (outside lock to prevent deadlock)
+		cb()
+	}
 }
 
 // RunNetworkReadyCallbacks executes all registered OnReady callbacks.

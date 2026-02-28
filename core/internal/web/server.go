@@ -42,6 +42,7 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 	routes.PortalRoutes(g)
 	routes.AdminRoutes(g)
 	routes.PaymentRoutes(g)
+	routes.WifiEventRoutes(g)
 
 	navs.SetAdminNavs(g)
 

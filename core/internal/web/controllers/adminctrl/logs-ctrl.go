@@ -85,11 +85,15 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 			packages = append(packages, info.Package)
 		}
 
-		// Get log retention days from application config
+		// Get log settings from application config
 		logsRetentionDays := 3 // default
+		enableLogging := false // default disabled
 		appCfg, err := config.ReadApplicationConfig()
-		if err == nil && appCfg.LogsRetentionDays > 0 {
-			logsRetentionDays = appCfg.LogsRetentionDays
+		if err == nil {
+			if appCfg.LogsRetentionDays > 0 {
+				logsRetentionDays = appCfg.LogsRetentionDays
+			}
+			enableLogging = appCfg.EnableLogging
 		}
 
 		searchData := logsview.LogsSearchData{
@@ -99,6 +103,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 			SearchText:        searchTxt,
 			ActionURL:         g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:search"),
 			LogsRetentionDays: logsRetentionDays,
+			EnableLogging:     enableLogging,
 		}
 
 		logsIndex := logsview.Index(g.CoreAPI, result.Logs, searchData, pagination)
@@ -138,8 +143,8 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 
 		searchURL += "?" + query.Encode()
 
-		// Handle save_retention action
-		if r.FormValue("save_retention") == "1" {
+		// Handle save_settings action (includes enable_logging and retention days)
+		if r.FormValue("save_settings") == "1" {
 			retentionDaysStr := r.FormValue("logs_retention_days")
 			retentionDays, err := strconv.Atoi(retentionDaysStr)
 			if err != nil || (retentionDays != 3 && retentionDays != 7 && retentionDays != 14 && retentionDays != 30) {
@@ -155,8 +160,9 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 				return
 			}
 
-			// Update retention days
+			// Update settings
 			appCfg.LogsRetentionDays = retentionDays
+			appCfg.EnableLogging = r.FormValue("enable_logging") == "1"
 
 			// Save config
 			if err := config.WriteApplicationConfig(appCfg); err != nil {
@@ -165,7 +171,7 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 				return
 			}
 
-			successMsg := g.CoreAPI.Translate("success", "Log retention settings saved successfully")
+			successMsg := g.CoreAPI.Translate("success", "Log settings saved successfully")
 			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
 			http.Redirect(w, r, g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index"), http.StatusSeeOther)
 			return

@@ -6,7 +6,6 @@ import (
 )
 
 func Init(g *api.CoreGlobals) {
-
 	// Start scheduled update checker (runs at 2AM daily)
 	updates.StartScheduledUpdateChecker()
 
@@ -15,4 +14,10 @@ func Init(g *api.CoreGlobals) {
 
 	// Start log cleanup scheduler (runs at 4AM daily, deletes logs older than 7 days)
 	StartLogCleanupScheduler(g.Database, g.Models)
+
+	// Start ubus listener for network interface events
+	StartUbusListener()
+
+	// Start WiFi event listener to bridge WifiMgr events to legacy callbacks
+	StartWifiEventListener(g.WifiMgr)
 }

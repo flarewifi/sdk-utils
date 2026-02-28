@@ -378,7 +378,7 @@ func PluginInstallFromZipCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			time.Sleep(10 * time.Second)
 
 			installPath := plugins.GetInstallPath(info.Package)
-			p := api.NewPluginApi(installPath, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr)
+			p := api.NewPluginApi(installPath, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr, g.WifiMgr)
 			g.PluginMgr.RegisterPlugin(p)
 
 			successMsg := g.CoreAPI.Translate("info", "Plugin Successfully Installed", "plugin", info.Package)
@@ -464,7 +464,7 @@ func PluginsInstallFromGitCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			UpdateStatus(pluginName, InProgressStatus, "Registering plugin...", 75)
 
 			installPath := plugins.GetInstallPath(info.Package)
-			p := api.NewPluginApi(installPath, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr)
+			p := api.NewPluginApi(installPath, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr, g.WifiMgr)
 			g.PluginMgr.RegisterPlugin(p)
 
 			time.Sleep(5 * time.Second)

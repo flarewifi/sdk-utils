@@ -20,6 +20,7 @@ type LogsSearchData struct {
 	SearchText        string
 	ActionURL         string
 	LogsRetentionDays int
+	EnableLogging     bool
 }
 
 func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData, pagination templ.Component) templ.Component {
@@ -50,7 +51,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "System Logs"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 20, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 21, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -63,7 +64,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Filter"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 29, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 30, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -76,7 +77,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Settings"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 34, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 35, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +99,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Search Logs"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 46, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 47, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +112,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Message or package"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 51, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 52, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -124,7 +125,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(searchData.SearchText)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 53, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 54, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -137,7 +138,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Log Level"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 57, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 58, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -150,7 +151,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "All Levels"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 59, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 60, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -173,7 +174,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Info"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 60, Col: 103}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 61, Col: 103}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -196,7 +197,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Debug"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 61, Col: 106}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 62, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -219,7 +220,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Error"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 62, Col: 106}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 63, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -232,7 +233,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Package"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 66, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 67, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -245,7 +246,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "All Packages"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 68, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 69, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -263,7 +264,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(pkg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 70, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 71, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -286,7 +287,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(pkg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 70, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 71, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -304,7 +305,7 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Search Logs"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 75, Col: 124}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 76, Col: 124}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -319,16 +320,52 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"mb-3\"><label class=\"form-label fs-6\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"mb-3\"><div class=\"form-check form-switch\"><input class=\"form-check-input\" type=\"checkbox\" role=\"switch\" id=\"enable_logging\" name=\"enable_logging\" value=\"1\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if searchData.EnableLogging {
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(" checked")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("> <label class=\"form-check-label fs-6\" for=\"enable_logging\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Auto-delete logs older than"))
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Enable Logging"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 84, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 87, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label></div><small class=\"text-muted\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var21 string
+		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "When disabled, logs will not be saved to the database"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 89, Col: 114}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</small></div><div class=\"mb-3\"><label class=\"form-label fs-6\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var22 string
+		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Auto-delete logs older than"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 92, Col: 93}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -346,12 +383,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var21 string
-		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "3 days"))
+		var templ_7745c5c3_Var23 string
+		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "3 days"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 86, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 94, Col: 108}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -369,12 +406,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var22 string
-		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "7 days"))
+		var templ_7745c5c3_Var24 string
+		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "7 days"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 87, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 95, Col: 108}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -392,12 +429,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var23 string
-		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "14 days"))
+		var templ_7745c5c3_Var25 string
+		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "14 days"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 88, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 96, Col: 111}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -415,12 +452,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var24 string
-		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "30 days"))
+		var templ_7745c5c3_Var26 string
+		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "30 days"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 89, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 97, Col: 111}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -428,25 +465,25 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Runs daily at 4AM"))
+		var templ_7745c5c3_Var27 string
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Runs every hour"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 91, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 99, Col: 76}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</small></div><button type=\"submit\" name=\"save_retention\" value=\"1\" class=\"btn btn-primary px-3 py-2 fs-6\"><i class=\"bi bi-save me-2\"></i>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var26 string
-		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Save Settings"))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</small></div><button type=\"submit\" name=\"save_settings\" value=\"1\" class=\"btn btn-primary px-3 py-2 fs-6\"><i class=\"bi bi-save me-2\"></i>")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 94, Col: 79}
+			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
+		var templ_7745c5c3_Var28 string
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Save Settings"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 102, Col: 79}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -454,12 +491,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Logs"))
+		var templ_7745c5c3_Var29 string
+		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Logs"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 104, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 112, Col: 52}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -467,12 +504,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Refresh"))
+		var templ_7745c5c3_Var30 string
+		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Refresh"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 107, Col: 79}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 115, Col: 79}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -480,8 +517,8 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var29 templ.SafeURL = templ.SafeURL(searchData.ActionURL)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var29)))
+		var templ_7745c5c3_Var31 templ.SafeURL = templ.SafeURL(searchData.ActionURL)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var31)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -489,12 +526,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var30 string
-		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Clear All Logs"))
+		var templ_7745c5c3_Var32 string
+		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Clear All Logs"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 111, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 119, Col: 80}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -502,36 +539,10 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var31 string
-		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Timestamp"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 120, Col: 70}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</th><th class=\"px-2 py-3\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var32 string
-		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Package"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 121, Col: 63}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</th><th class=\"px-2 py-3\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
 		var templ_7745c5c3_Var33 string
-		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Level"))
+		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Timestamp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 122, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 128, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -542,11 +553,37 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var34 string
-		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Message"))
+		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Package"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 123, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 129, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</th><th class=\"px-2 py-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var35 string
+		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Level"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 130, Col: 61}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</th><th class=\"px-2 py-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var36 string
+		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Message"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 131, Col: 63}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -559,12 +596,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var35 string
-			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "No logs found"))
+			var templ_7745c5c3_Var37 string
+			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "No logs found"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 130, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 138, Col: 49}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -578,12 +615,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var36 string
-			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(log.CreatedAt.Format("2006-01-02 15:04:05"))
+			var templ_7745c5c3_Var38 string
+			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(log.CreatedAt.Format("2006-01-02 15:04:05"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 136, Col: 116}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 144, Col: 116}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -591,12 +628,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var37 string
-			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(log.Package)
+			var templ_7745c5c3_Var39 string
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(log.Package)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 137, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 145, Col: 79}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -610,12 +647,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var38 string
-				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Info"))
+				var templ_7745c5c3_Var40 string
+				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Info"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 144, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 152, Col: 44}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -628,12 +665,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var39 string
-				templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Debug"))
+				var templ_7745c5c3_Var41 string
+				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Debug"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 149, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 157, Col: 45}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -646,12 +683,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var40 string
-				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Error"))
+				var templ_7745c5c3_Var42 string
+				templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Error"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 154, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 162, Col: 45}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -664,12 +701,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var41 string
-				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(log.Level)
+				var templ_7745c5c3_Var43 string
+				templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(log.Level)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 159, Col: 23}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 167, Col: 23}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -682,12 +719,12 @@ func Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData,
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var42 string
-			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(log.Message)
+			var templ_7745c5c3_Var44 string
+			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(log.Message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 164, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/logs/index.templ`, Line: 172, Col: 42}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
