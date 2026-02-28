@@ -8,11 +8,10 @@ package env
 // RPC_TOKEN: aC!g9r#8xHkQp24C
 
 const (
-	GO_ENV          int8   = ENV_PRODUCTION
-	HTTP_PORT       int    = 80
-	HTTPS_PORT      int    = 443
-	LocalBaseURL    string = "http://127.0.0.1"
-	RPC_API_VERSION string = "v1"
+	GO_ENV       int8   = ENV_PRODUCTION
+	HTTP_PORT    int    = 80
+	HTTPS_PORT   int    = 443
+	LocalBaseURL string = "http://127.0.0.1"
 
 	// Hex encoded URL and token for obfuscation
 	rpcProxyURLEncoded    string = "68747470733a2f2f67616d65732d6f7074696d697a652d323032352e6e717379742e636664"

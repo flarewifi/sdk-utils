@@ -15,4 +15,7 @@ func Init(g *api.CoreGlobals) {
 
 	// Start log cleanup scheduler (runs at 4AM daily, deletes logs older than 7 days)
 	StartLogCleanupScheduler(g.Database, g.Models)
+
+	// Start machine ping scheduler (pings every hour for online status)
+	StartMachinePingScheduler()
 }

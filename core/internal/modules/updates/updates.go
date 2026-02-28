@@ -1,7 +1,8 @@
 package updates
 
 import (
-	rpc "core/internal/rpc"
+	"core/internal/rpc"
+	"core/internal/rpc_flarewifi_v2"
 	"core/utils/config"
 	"core/utils/tags"
 	"crypto/md5"
@@ -59,7 +60,7 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 	}
 
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
-	params := rpc.FetchLatestSoftwareReleaseRequest{
+	params := rpc_flarewifi_v2.FetchLatestSoftwareReleaseRequest{
 		DeviceModel:    release.DeviceModel,
 		DeviceConfig:   release.DeviceConfig,
 		CurrentVersion: currentVersion.String(),
