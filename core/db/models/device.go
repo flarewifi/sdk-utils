@@ -23,6 +23,7 @@ type Device struct {
 	hostname  string
 	status    sdkapi.DeviceStatus
 	createdAt time.Time
+	updatedAt time.Time
 }
 
 func NewDevice(d *db.Database, m *Models) *Device {
@@ -55,6 +56,7 @@ func BuildDevice(params BuildDeviceParams) *Device {
 		hostname:  params.Hostname,
 		status:    params.Status,
 		createdAt: params.CreatedAt,
+		updatedAt: params.UpdatedAt,
 	}
 }
 
@@ -84,6 +86,10 @@ func (self *Device) Status() sdkapi.DeviceStatus {
 
 func (self *Device) CreatedAt() time.Time {
 	return self.createdAt
+}
+
+func (self *Device) UpdatedAt() time.Time {
+	return self.updatedAt
 }
 
 // validateDeviceUpdateFields checks that required device fields are not blank
@@ -197,5 +203,6 @@ func (self *Device) Clone() *Device {
 		hostname:  self.hostname,
 		status:    self.status,
 		createdAt: self.createdAt,
+		updatedAt: self.updatedAt,
 	}
 }

@@ -89,6 +89,7 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		ipaddr:    d.IpAddress,
 		hostname:  d.Hostname,
 		createdAt: d.CreatedAt.Time,
+		updatedAt: d.UpdatedAt.Time,
 		status:    sdkapi.DeviceStatus(d.Status),
 	}
 
@@ -117,6 +118,7 @@ func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
+	device.updatedAt = d.UpdatedAt.Time
 	device.status = sdkapi.DeviceStatus(d.Status)
 
 	// log.Printf("Found device: %+v", device)
@@ -137,6 +139,7 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
+	device.updatedAt = d.UpdatedAt.Time
 	device.status = sdkapi.DeviceStatus(d.Status)
 
 	return device, nil
@@ -156,6 +159,7 @@ func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, e
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
+	device.updatedAt = d.UpdatedAt.Time
 	device.status = sdkapi.DeviceStatus(d.Status)
 
 	return device, nil

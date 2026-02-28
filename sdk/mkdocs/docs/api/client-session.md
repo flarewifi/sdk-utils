@@ -279,6 +279,54 @@ Returns a `bool` value indicating if the session uses the global [bandwidth sett
 useGlobal := session.UseGlobalSpeed()
 ```
 
+### Data
+
+Returns a snapshot of all session data fields as a `SessionData` struct. This method acquires the mutex once and returns all fields, reducing lock contention compared to calling individual getters. The `TimeCons` field includes elapsed time for running sessions.
+
+```go
+data := session.Data()
+fmt.Printf("Session: %s - Time: %d/%d secs\n", data.UUID, data.TimeCons, data.TimeSecs)
+```
+
+The `SessionData` struct contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | `int64` | Session database ID |
+| `UUID` | `string` | Session UUID |
+| `DeviceID` | `int64` | Device database ID |
+| `Type` | `SessionType` | Session type (time/data/time-or-data) |
+| `TimeSecs` | `int` | Allocated time in seconds |
+| `DataMb` | `float64` | Allocated data in MB |
+| `TimeCons` | `int` | Consumed time (includes elapsed for running sessions) |
+| `DataCons` | `float64` | Consumed data in MB |
+| `DownMbits` | `int` | Download speed limit in Mbps |
+| `UpMbits` | `int` | Upload speed limit in Mbps |
+| `UseGlobalSpeed` | `bool` | Whether to use global speed settings |
+| `ExpDays` | `*int` | Expiration days (nil if no expiration) |
+| `StartedAt` | `*time.Time` | Session start time |
+| `ResumedAt` | `*time.Time` | Last resume time |
+| `CreatedAt` | `time.Time` | Creation timestamp |
+| `UpdatedAt` | `time.Time` | Last update timestamp |
+
+The `SessionData` struct also provides helper methods:
+
+- `RemainingTime() int` - Returns remaining time in seconds
+- `RemainingData() float64` - Returns remaining data in MB
+- `ExpiresAt() *time.Time` - Returns expiration time
+- `IsExpired() bool` - Returns true if session is expired
+- `IsConsumed() bool` - Returns true if session is consumed
+- `IsRunning() bool` - Returns true if session is running
+
+### RawData
+
+Returns a snapshot of all session data fields with raw stored values. Unlike `Data()`, the `TimeCons` field does NOT include elapsed time calculation. Use this for syncing/persistence where you need the base values.
+
+```go
+rawData := session.RawData()
+// rawData.TimeCons contains only the stored value, not elapsed time
+```
+
 ### IncTimeCons
 
 Increments the consumed session time by `n` seconds. The new value is not saved until the [save](#save) method is called.

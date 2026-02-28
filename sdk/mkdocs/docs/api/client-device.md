@@ -65,6 +65,14 @@ Returns the status of the client device as a `DeviceStatus` value.
 status := clnt.Status()
 ```
 
+Available device statuses:
+
+| Value | Description
+| --- | ---
+| `1` | `DeviceStatusConnected` - Device is connected to the internet
+| `2` | `DeviceStatusDisconnected` - Device is disconnected from the internet
+| `3` | `DeviceStatusBlocked` - Device is blocked from accessing the internet
+
 ### CreatedAt
 
 Returns the creation timestamp of the client device as a `time.Time` value.
@@ -73,6 +81,37 @@ Returns the creation timestamp of the client device as a `time.Time` value.
 createdAt := clnt.CreatedAt()
 fmt.Println(createdAt.Format("January 02, 2006"))
 ```
+
+### UpdatedAt
+
+Returns the last update timestamp of the client device as a `time.Time` value.
+
+```go
+updatedAt := clnt.UpdatedAt()
+fmt.Println(updatedAt.Format("January 02, 2006 3:04 PM"))
+```
+
+### Data
+
+Returns a snapshot of all device data fields as a `DeviceData` struct. This method acquires the mutex once and returns all fields, reducing lock contention compared to calling individual getters.
+
+```go
+data := clnt.Data()
+fmt.Printf("Device: %s (%s) - Status: %d\n", data.MacAddr, data.IpAddr, data.Status)
+```
+
+The `DeviceData` struct contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | `int64` | Database ID |
+| `UUID` | `string` | Device UUID |
+| `MacAddr` | `string` | MAC address |
+| `IpAddr` | `string` | IP address |
+| `Hostname` | `string` | Device hostname |
+| `Status` | `DeviceStatus` | Device status |
+| `CreatedAt` | `time.Time` | Creation timestamp |
+| `UpdatedAt` | `time.Time` | Last update timestamp |
 
 ### Update
 
@@ -97,11 +136,6 @@ func (w http.ResponseWriter, r *http.Request) {
         Hostname: "new-hostname",
         Status:   sdkapi.DeviceStatusConnected,
     }
-
-    if err := clnt.Update(r.Context(), params); err != nil {
-        // handle error
-    }
-}
 
     if err := clnt.Update(r.Context(), params); err != nil {
         // handle error
