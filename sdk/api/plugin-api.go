@@ -86,4 +86,7 @@ type IPluginApi interface {
 
 	// Returns an instance of the vouchers API.
 	Vouchers() IVouchersApi
+
+	// Returns an instance of the WiFi API.
+	Wifi() IWifiApi
 }

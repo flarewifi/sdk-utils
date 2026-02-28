@@ -112,6 +112,13 @@ const (
 	SessionFilterExpired SessionFilterAvailability = "expired"
 )
 
+type SessionPaymentType string
+
+const (
+	SessionVoucherPaymentType SessionPaymentType = "voucher"
+	SessionCoinPaymentType    SessionPaymentType = "coin"
+)
+
 // ListSessionsParams holds parameters for listing sessions with pagination.
 type ListSessionsParams struct {
 	Search       *string                    // optional search by session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code
@@ -126,12 +133,13 @@ type ListSessionsParams struct {
 	DataMbLt     *float64                   // optional filter: sessions with data_mbytes less than this value
 	Page         int
 	PerPage      int
+	PaymentType  *SessionPaymentType
 }
 
 // ListSessionsResult holds the result of listing sessions.
 type ListSessionsResult struct {
-	Sessions []IClientSession
-	Count    int64
+	PaginatedSessions []IClientSession
+	FilteredSessions  []IClientSession
 }
 
 // ISessionsMgrApi is used to manage client devices.

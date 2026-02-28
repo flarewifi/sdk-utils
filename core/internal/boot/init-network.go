@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"core/internal/modules/nftables"
-	"core/internal/modules/ubus"
 	"core/internal/network"
 )
 
@@ -20,8 +19,6 @@ func InitNetwork() (err error) {
 		log.Println(err)
 		return err
 	}
-
-	ubus.Listen()
 
 	return nil
 }

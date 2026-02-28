@@ -247,7 +247,30 @@
     pointer-events: none !important;
 }
 
-/* All slides hidden by default; JS fades them in/out via opacity transition */
+/* CSS-driven slideshow — 3 slides, 2s visible + 0.6s crossfade, 7.8s total cycle */
+/* Slide 1: on 0s–2s, fade out 2s–2.6s */
+@keyframes slide1-fade {
+    0%           { opacity: 1; }
+    25.6%        { opacity: 1; }
+    33.3%        { opacity: 0; }
+    100%         { opacity: 0; }
+}
+/* Slide 2: fade in 2s–2.6s, on 2.6s–4.6s, fade out 4.6s–5.2s */
+@keyframes slide2-fade {
+    0%,   25.6%  { opacity: 0; }
+    33.3%        { opacity: 1; }
+    59%          { opacity: 1; }
+    66.6%        { opacity: 0; }
+    100%         { opacity: 0; }
+}
+/* Slide 3: fade in 4.6s–5.2s, on 5.2s–7.2s, fade out 7.2s–7.8s */
+@keyframes slide3-fade {
+    0%,   59%    { opacity: 0; }
+    66.6%        { opacity: 1; }
+    92.3%        { opacity: 1; }
+    100%         { opacity: 0; }
+}
+
 #home-page .banner-slide {
     position: absolute !important;
     top: 0 !important;
@@ -257,8 +280,13 @@
     display: block !important;
     border-radius: 0 !important;
     opacity: 0;
-    transition: opacity 0.6s ease-in-out;
+    animation-duration: 7.8s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
 }
+#home-page .banner-slide:nth-child(1) { animation-name: slide1-fade; }
+#home-page .banner-slide:nth-child(2) { animation-name: slide2-fade; }
+#home-page .banner-slide:nth-child(3) { animation-name: slide3-fade; }
 
 /* ==========================================================================
    WIFI RATES — pinned to bottom-right rectangle of .banner-inner

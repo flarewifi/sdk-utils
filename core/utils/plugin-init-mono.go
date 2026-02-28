@@ -94,7 +94,7 @@ func MakePluginInitMono() {
 			fmt.Println("Warning: failed to apply migrations for plugin :", pkg)
 		}
 		// Load plugin
-		api = NewPluginApi(pluginDir, info, g.GlobalAssets, self, self.trfkMgr)
+		api = NewPluginApi(pluginDir, info, g.GlobalAssets, self, self.trfkMgr, g.WifiMgr)
 		// Standard signature: func Init(api sdkapi.IPluginApi) error
 		if err := %s.Init(api); err != nil {
 			fmt.Println("Error initializing plugin", pkg, ":", err)

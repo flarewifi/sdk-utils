@@ -6,7 +6,6 @@ import (
 )
 
 func Init(g *api.CoreGlobals) {
-
 	// Start scheduled update checker (runs at 2AM daily)
 	updates.StartScheduledUpdateChecker()
 
@@ -18,4 +17,10 @@ func Init(g *api.CoreGlobals) {
 
 	// Start machine ping scheduler (pings every hour for online status)
 	StartMachinePingScheduler()
+
+	// Start ubus listener for network interface events
+	StartUbusListener()
+
+	// Start WiFi event listener to bridge WifiMgr events to legacy callbacks
+	StartWifiEventListener(g.WifiMgr)
 }

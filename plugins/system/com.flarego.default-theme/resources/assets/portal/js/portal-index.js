@@ -115,49 +115,7 @@
   }
 
   // ── Banner Slideshow ─────────────────────────────────────────────────────────
-  var _slideshowTimer = null;
-  var _slideshowObserver = null;
-
-  function startSlideshow() {
-    var slides = document.querySelectorAll('.banner-slide');
-    if (!slides || slides.length === 0) return;
-
-    if (_slideshowTimer) clearInterval(_slideshowTimer);
-
-    var current = 0;
-
-    function showSlide(idx) {
-      for (var i = 0; i < slides.length; i++) {
-        slides[i].style.opacity = '0';
-      }
-      slides[idx].style.opacity = '1';
-    }
-
-    showSlide(current);
-
-    _slideshowTimer = setInterval(function() {
-      current = (current + 1) % slides.length;
-      showSlide(current);
-    }, 3000);
-  }
-
-  function waitForSlides() {
-    var slides = document.querySelectorAll('.banner-slide');
-    if (slides && slides.length > 0) {
-      startSlideshow();
-      return;
-    }
-    if (_slideshowObserver) _slideshowObserver.disconnect();
-    _slideshowObserver = new MutationObserver(function() {
-      var found = document.querySelectorAll('.banner-slide');
-      if (found && found.length > 0) {
-        _slideshowObserver.disconnect();
-        _slideshowObserver = null;
-        startSlideshow();
-      }
-    });
-    _slideshowObserver.observe(document.body, { childList: true, subtree: true });
-  }
+  // Slideshow is driven entirely by CSS @keyframes — no JS needed.
 
   // ── Timer state — tracked in JS, not the DOM ─────────────────────────────────
   var _timerSecs = 0;
@@ -186,13 +144,11 @@
 
     seedTimerFromDOM();
     seedRunningFromDOM();
-    waitForSlides();
 
     document.body.addEventListener('htmx:afterSettle', function() {
       // Reseed from the freshly swapped-in DOM values
       seedTimerFromDOM();
       seedRunningFromDOM();
-      startSlideshow();
     });
 
     setInterval(function() {

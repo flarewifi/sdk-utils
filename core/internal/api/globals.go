@@ -3,6 +3,7 @@ package api
 import (
 	"core/db"
 	"core/db/models"
+	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/sessmgr"
 	"sync/atomic"
@@ -22,6 +23,7 @@ type CoreGlobals struct {
 	ClientRegister *sessmgr.ClientRegister
 	ClientMgr      *sessmgr.SessionsMgr
 	TrafficMgr     *network.TrafficMgr
+	WifiMgr        *ubus.WifiMgr
 	Models         *models.Models
 	PluginMgr      *PluginsMgr
 	PaymentsMgr    *PaymentsMgr
@@ -41,15 +43,17 @@ func NewGlobals() *CoreGlobals {
 	clntReg := sessmgr.NewClientRegister(db, mdls)
 	sessionMgr := sessmgr.NewSessionsMgr(db, mdls)
 	trfcMgr := network.NewTrafficMgr()
+	wifiMgr := ubus.NewWifiMgr()
 	pmtMgr := NewPaymentMgr()
 
 	clntReg.SetSessionsMgr(sessionMgr)
 
 	trfcMgr.Start()
+	wifiMgr.Start()
 	sessionMgr.ListenTraffic(trfcMgr)
 
 	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, sessionMgr, trfcMgr)
-	coreApi := NewPluginApi(sdkutils.PathCoreDir, info, assets, plgnMgr, trfcMgr)
+	coreApi := NewPluginApi(sdkutils.PathCoreDir, info, assets, plgnMgr, trfcMgr, wifiMgr)
 	plgnMgr.InitCoreApi(coreApi)
 	sessionMgr.SetCoreAPI(coreApi)
 
@@ -61,6 +65,7 @@ func NewGlobals() *CoreGlobals {
 		clntReg,
 		sessionMgr,
 		trfcMgr,
+		wifiMgr,
 		mdls,
 		plgnMgr,
 		pmtMgr,
