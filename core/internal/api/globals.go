@@ -49,7 +49,11 @@ func NewGlobals() *CoreGlobals {
 	clntReg.SetSessionsMgr(sessionMgr)
 
 	trfcMgr.Start()
+
+	// Set traffic channel for WiFi fallback detection before starting
+	wifiMgr.SetTrafficChannel(trfcMgr.Listen())
 	wifiMgr.Start()
+
 	sessionMgr.ListenTraffic(trfcMgr)
 
 	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, sessionMgr, trfcMgr)

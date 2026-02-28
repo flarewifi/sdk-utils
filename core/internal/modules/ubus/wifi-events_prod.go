@@ -54,9 +54,38 @@ type hostapdProcess struct {
 }
 
 // Start begins listening for WiFi client events from hostapd using hostapd_cli action mode.
+// Also starts traffic-based fallback detection in parallel to catch missed events.
 func (self *WifiMgr) Start() {
 	log.Println("[WifiMgr] Starting WiFi event listener")
+
+	// Always start the fallback detector in parallel
+	// This ensures we catch disconnects even if hostapd_cli misses events
+	self.startFallback()
+
+	// Check if hostapd_cli is available
+	if _, err := exec.LookPath("hostapd_cli"); err != nil {
+		log.Printf("[WifiMgr] hostapd_cli not found, relying on fallback traffic-based detection only")
+		return
+	}
+
+	// Check if hostapd sockets exist
+	if _, err := os.Stat(hostapdSocketDir); os.IsNotExist(err) {
+		log.Printf("[WifiMgr] hostapd socket directory not found (%s), relying on fallback traffic-based detection only", hostapdSocketDir)
+		return
+	}
+
 	go self.run()
+}
+
+// startFallback starts the traffic-based fallback detector
+func (self *WifiMgr) startFallback() {
+	if self.trafficCh == nil {
+		log.Println("[WifiMgr] WARNING: No traffic channel set, fallback detection disabled")
+		return
+	}
+
+	detector := NewFallbackDetector(self, self.trafficCh)
+	detector.Start()
 }
 
 // run is the main event loop

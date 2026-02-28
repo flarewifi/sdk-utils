@@ -17,10 +17,19 @@ type WifiEvent struct {
 type WifiMgr struct {
 	mu        sync.RWMutex
 	listeners []chan WifiEvent
+
+	// trafficCh is used for fallback detection when hostapd_cli is unavailable
+	trafficCh <-chan sdkapi.TrafficData
 }
 
 func NewWifiMgr() *WifiMgr {
 	return &WifiMgr{}
+}
+
+// SetTrafficChannel sets the traffic data channel for fallback detection.
+// This must be called before Start() to enable fallback detection.
+func (self *WifiMgr) SetTrafficChannel(ch <-chan sdkapi.TrafficData) {
+	self.trafficCh = ch
 }
 
 // Start begins listening for WiFi events.
