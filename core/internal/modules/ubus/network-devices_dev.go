@@ -9,36 +9,46 @@ var (
 		Name:          "br-lan",
 		Type:          "bridge",
 		Up:            true,
+		Carrier:       true,
 		Speed:         "1000F",
+		Duplex:        "full",
 		BridgeMembers: []string{"eth0"},
 	}
 
 	eth0 = NetworkDevice{
-		Name:  "eth0",
-		Type:  "ethernet",
-		Up:    true,
-		Speed: "1000F",
+		Name:    "eth0",
+		Type:    "ethernet",
+		Up:      true,
+		Carrier: true,
+		Speed:   "1000F",
+		Duplex:  "full",
 	}
 
 	eth1 = NetworkDevice{
-		Name:  "eth1",
-		Type:  "ethernet",
-		Up:    true,
-		Speed: "1000F",
+		Name:    "eth1",
+		Type:    "ethernet",
+		Up:      true,
+		Carrier: true,
+		Speed:   "1000F",
+		Duplex:  "full",
 	}
 
 	wlan = NetworkDevice{
-		Name:  "wlan0",
-		Type:  "wlan",
-		Up:    true,
-		Speed: "1000F",
+		Name:    "wlan0",
+		Type:    "wlan",
+		Up:      true,
+		Carrier: true,
+		Speed:   "1000F",
+		Duplex:  "full",
 	}
 
 	vlan = NetworkDevice{
-		Name:  "br-lan.22",
-		Type:  "vlan",
-		Up:    true,
-		Speed: "1000F",
+		Name:    "br-lan.22",
+		Type:    "vlan",
+		Up:      true,
+		Carrier: true,
+		Speed:   "1000F",
+		Duplex:  "full",
 	}
 )
 

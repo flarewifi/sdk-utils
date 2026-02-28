@@ -28,7 +28,7 @@ func DashboardActiveDataCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 
 func DashboardInternetStatusCtrl(api sdkapi.IPluginApi) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data := dashboard.GetInternetStatus(api, r.Context())
+		data := dashboard.GetInternetStatus(api)
 		view := admin.InternetStatusCard(api, data)
 		view.Render(r.Context(), w)
 	}

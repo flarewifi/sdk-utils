@@ -407,9 +407,9 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var28 string
-			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Sent"))
+			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Download"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 116, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 116, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -420,9 +420,9 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var29 string
-			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(formatBytes(info.NetBytesSent))
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(formatBytesPerSec(info.NetDownloadRate))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 117, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 117, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -433,9 +433,9 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var30 string
-			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Received"))
+			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Upload"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 120, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 120, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -446,9 +446,9 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var31 string
-			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(formatBytes(info.NetBytesRecv))
+			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(formatBytesPerSec(info.NetUploadRate))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 121, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 121, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -536,6 +536,25 @@ func formatBytes(b uint64) string {
 	}
 	mb := float64(b) / 1024 / 1024
 	return fmt.Sprintf("%.0fMB", mb)
+}
+
+func formatBytesPerSec(b uint64) string {
+	if b == 0 {
+		return "0 B/s"
+	}
+	gb := float64(b) / 1024 / 1024 / 1024
+	if gb >= 1 {
+		return fmt.Sprintf("%.1f GB/s", gb)
+	}
+	mb := float64(b) / 1024 / 1024
+	if mb >= 1 {
+		return fmt.Sprintf("%.1f MB/s", mb)
+	}
+	kb := float64(b) / 1024
+	if kb >= 1 {
+		return fmt.Sprintf("%.1f KB/s", kb)
+	}
+	return fmt.Sprintf("%d B/s", b)
 }
 
 func avgCPU(percents []float64) float64 {

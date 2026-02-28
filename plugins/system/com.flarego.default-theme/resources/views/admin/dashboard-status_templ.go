@@ -240,7 +240,7 @@ func InternetStatusCard(api sdkapi.IPluginApi, data dashboard.InternetStatusData
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-trigger=\"load delay:10s\" hx-swap=\"outerHTML\"><div class=\"card-body d-flex flex-column\"><h2 class=\"h5 mb-3\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-trigger=\"every 5s\" hx-swap=\"outerHTML\"><div class=\"card-body d-flex flex-column\"><h2 class=\"h5 mb-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

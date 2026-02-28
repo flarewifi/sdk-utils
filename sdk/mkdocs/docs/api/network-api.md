@@ -81,7 +81,41 @@ if err != nil {
     // handle error
 }
 
-fmt.Printf("Client is connected to interface: %s\n", iface.Name())
+fmt.Printf("Client is connected to interface: %s\n", iface.Ifname())
+```
+
+### GetWanInterface
+
+Returns the WAN network interface.
+
+- **Production (OpenWRT):** Searches for standard WAN interface names in priority order: "wan", "wan6", "wan0"
+- **Development:** Returns the container's default network interface (the one used to reach external networks)
+
+```go
+wanIface, err := api.Network().GetWanInterface()
+if err != nil {
+    api.Logger().Error("No WAN interface found: " + err.Error())
+    return
+}
+
+// Get WAN device for traffic rates
+wanDevice, err := wanIface.Device()
+if err != nil {
+    return
+}
+
+// Get real-time traffic rates
+downloadRate := wanDevice.RxRate() // bytes per second
+uploadRate := wanDevice.TxRate()   // bytes per second
+fmt.Printf("WAN Download: %.1f KB/s\n", float64(downloadRate)/1024)
+fmt.Printf("WAN Upload: %.1f KB/s\n", float64(uploadRate)/1024)
+
+// Check physical link status
+if wanDevice.Carrier() {
+    fmt.Printf("WAN Link: %d Mbps %s-duplex\n", wanDevice.SpeedMbps(), wanDevice.Duplex())
+} else {
+    fmt.Println("WAN Link: No carrier (cable unplugged?)")
+}
 ```
 
 ### Traffic

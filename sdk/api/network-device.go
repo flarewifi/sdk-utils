@@ -27,12 +27,19 @@ type INetworkDevice interface {
 	// Returns the MAC address of the network device.
 	MacAddr() string
 
-	// Returns the status of the network device.
+	// Returns the administrative status of the network device.
 	Up() bool
+
+	// Returns true if the physical link is connected (cable plugged in, signal detected).
+	// For wireless devices, this indicates association status.
+	Carrier() bool
 
 	// Returns the link speed of the network device in Mbps.
 	// Returns 1000 Mbps as fallback if speed cannot be detected or parsed.
 	SpeedMbps() int
+
+	// Returns the duplex mode of the network device ("full", "half", or "unknown").
+	Duplex() string
 
 	// Returns the names of bridge member ports.
 	BridgeMembers() []string
@@ -42,4 +49,14 @@ type INetworkDevice interface {
 
 	// Returns the current transmit bytes of the network device.
 	TxBytes() uint
+
+	// Returns the current download rate in bytes per second.
+	// Calculated from the difference in RxBytes since last call.
+	// Returns 0 on the first call (no previous reading available).
+	RxRate() uint64
+
+	// Returns the current upload rate in bytes per second.
+	// Calculated from the difference in TxBytes since last call.
+	// Returns 0 on the first call (no previous reading available).
+	TxRate() uint64
 }
