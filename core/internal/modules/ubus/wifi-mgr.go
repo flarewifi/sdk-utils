@@ -1,7 +1,6 @@
 package ubus
 
 import (
-	"log"
 	"sync"
 
 	sdkapi "sdk/api"
@@ -35,7 +34,6 @@ func (self *WifiMgr) Listen() <-chan WifiEvent {
 		defer self.mu.Unlock()
 		ch := make(chan WifiEvent)
 		self.listeners = append(self.listeners, ch)
-		log.Printf("[WifiMgr] New listener registered (total listeners: %d)", len(self.listeners))
 		retCh <- ch
 	}()
 	return <-retCh
@@ -47,28 +45,18 @@ func (self *WifiMgr) emit(event WifiEvent) {
 	defer self.mu.Unlock()
 
 	if len(self.listeners) == 0 {
-		log.Printf("[WifiMgr] WARNING: Event %s for MAC %s received but NO listeners registered!", event.Event, event.Mac)
 		return
 	}
 
-	log.Printf("[WifiMgr] Emitting event %s for MAC %s to %d listeners", event.Event, event.Mac, len(self.listeners))
-
 	activeListeners := []chan WifiEvent{}
-	droppedCount := 0
-	for i, ch := range self.listeners {
+	for _, ch := range self.listeners {
 		select {
 		case ch <- event:
-			log.Printf("[WifiMgr] Event sent to listener %d/%d", i+1, len(self.listeners))
 			activeListeners = append(activeListeners, ch)
 		default:
 			// Listener not consuming, close and remove
-			log.Printf("[WifiMgr] WARNING: Listener %d/%d not consuming, dropping", i+1, len(self.listeners))
 			close(ch)
-			droppedCount++
 		}
-	}
-	if droppedCount > 0 {
-		log.Printf("[WifiMgr] Dropped %d non-consuming listeners, %d active remain", droppedCount, len(activeListeners))
 	}
 	self.listeners = activeListeners
 }

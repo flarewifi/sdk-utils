@@ -6,7 +6,6 @@ import (
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/sessmgr"
-	"log"
 	"sync/atomic"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -49,11 +48,8 @@ func NewGlobals() *CoreGlobals {
 
 	clntReg.SetSessionsMgr(sessionMgr)
 
-	log.Println("[Init] Starting TrafficMgr...")
 	trfcMgr.Start()
-	log.Println("[Init] Starting WifiMgr...")
 	wifiMgr.Start()
-	log.Println("[Init] WifiMgr started, setting up session traffic listener...")
 	sessionMgr.ListenTraffic(trfcMgr)
 
 	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, sessionMgr, trfcMgr)

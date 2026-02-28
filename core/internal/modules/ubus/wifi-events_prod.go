@@ -55,11 +55,7 @@ type hostapdProcess struct {
 
 // Start begins listening for WiFi client events from hostapd using hostapd_cli action mode.
 func (self *WifiMgr) Start() {
-	log.Println("[WifiMgr] Starting WiFi event listener (hostapd_cli action mode)")
-	log.Printf("[WifiMgr] Hostapd socket directory: %s", hostapdSocketDir)
-	log.Printf("[WifiMgr] Action script: %s", actionScriptPath)
-	log.Printf("[WifiMgr] Event FIFO: %s", eventFifoPath)
-
+	log.Println("[WifiMgr] Starting WiFi event listener")
 	go self.run()
 }
 
@@ -82,7 +78,7 @@ func (self *WifiMgr) run() {
 			continue
 		}
 
-		log.Printf("[WifiMgr] Started %d hostapd_cli process(es)", len(processes))
+		log.Printf("[WifiMgr] Listening for WiFi events (%d interface(s))", len(processes))
 
 		// Read events from FIFO (blocks until FIFO is closed or error)
 		self.readEvents()
@@ -104,13 +100,11 @@ func (self *WifiMgr) setup() error {
 	os.Remove(eventFifoPath)
 
 	// Create FIFO
-	log.Printf("[WifiMgr] Creating FIFO at %s", eventFifoPath)
 	if err := syscall.Mkfifo(eventFifoPath, 0666); err != nil {
 		return fmt.Errorf("create FIFO: %w", err)
 	}
 
 	// Write action script
-	log.Printf("[WifiMgr] Writing action script to %s", actionScriptPath)
 	if err := os.WriteFile(actionScriptPath, []byte(actionScriptContent), 0755); err != nil {
 		return fmt.Errorf("write action script: %w", err)
 	}
@@ -122,7 +116,6 @@ func (self *WifiMgr) setup() error {
 func (self *WifiMgr) cleanup() {
 	os.Remove(eventFifoPath)
 	os.Remove(actionScriptPath)
-	log.Println("[WifiMgr] Cleaned up temporary files")
 }
 
 // startHostapdCli starts hostapd_cli process(es) in action mode
@@ -137,7 +130,6 @@ func (self *WifiMgr) startHostapdCli() ([]*hostapdProcess, error) {
 	// Try global interface first
 	globalSocket := filepath.Join(hostapdSocketDir, "global")
 	if _, err := os.Stat(globalSocket); err == nil {
-		log.Println("[WifiMgr] Global socket found, using global interface")
 		proc, err := self.startProcess("global")
 		if err != nil {
 			return nil, fmt.Errorf("start global: %w", err)
@@ -145,8 +137,6 @@ func (self *WifiMgr) startHostapdCli() ([]*hostapdProcess, error) {
 		processes = append(processes, proc)
 		return processes, nil
 	}
-
-	log.Println("[WifiMgr] Global socket not found, scanning for individual interfaces")
 
 	// Fallback: start process for each interface
 	interfaces, err := self.scanHostapdInterfaces()
@@ -176,8 +166,6 @@ func (self *WifiMgr) startHostapdCli() ([]*hostapdProcess, error) {
 
 // startProcess starts a single hostapd_cli process for an interface
 func (self *WifiMgr) startProcess(interfaceName string) (*hostapdProcess, error) {
-	log.Printf("[WifiMgr] Starting hostapd_cli -i %s -a %s", interfaceName, actionScriptPath)
-
 	// Use -a for action script mode, -r for auto-reconnect
 	cmd := exec.Command("hostapd_cli", "-i", interfaceName, "-a", actionScriptPath, "-r")
 
@@ -188,15 +176,11 @@ func (self *WifiMgr) startProcess(interfaceName string) (*hostapdProcess, error)
 		return nil, fmt.Errorf("start command: %w", err)
 	}
 
-	log.Printf("[WifiMgr] hostapd_cli for %s started (PID: %d)", interfaceName, cmd.Process.Pid)
-
 	// Start goroutine to wait for process exit and log it
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
 			log.Printf("[WifiMgr] hostapd_cli for %s exited with error: %v", interfaceName, err)
-		} else {
-			log.Printf("[WifiMgr] hostapd_cli for %s exited normally", interfaceName)
 		}
 	}()
 
@@ -209,15 +193,12 @@ func (self *WifiMgr) startProcess(interfaceName string) (*hostapdProcess, error)
 // stopProcess stops a hostapd_cli process
 func (self *WifiMgr) stopProcess(proc *hostapdProcess) {
 	if proc.cmd != nil && proc.cmd.Process != nil {
-		log.Printf("[WifiMgr] Stopping hostapd_cli for %s (PID: %d)", proc.interfaceName, proc.cmd.Process.Pid)
 		proc.cmd.Process.Kill()
 	}
 }
 
 // readEvents reads events from the FIFO and emits them
 func (self *WifiMgr) readEvents() {
-	log.Printf("[WifiMgr] Opening FIFO for reading: %s", eventFifoPath)
-
 	// Open FIFO for read-write to prevent EOF when writers close
 	// Using O_RDWR keeps the FIFO open even when no writers are connected
 	file, err := os.OpenFile(eventFifoPath, os.O_RDWR, 0666)
@@ -227,10 +208,7 @@ func (self *WifiMgr) readEvents() {
 	}
 	defer file.Close()
 
-	log.Println("[WifiMgr] FIFO opened, reading events...")
-
 	reader := bufio.NewReader(file)
-	eventCount := 0
 
 	for {
 		line, err := reader.ReadString('\n')
@@ -244,9 +222,6 @@ func (self *WifiMgr) readEvents() {
 			continue
 		}
 
-		eventCount++
-		log.Printf("[WifiMgr] Event #%d from FIFO: %q", eventCount, line)
-
 		self.parseAndEmitEvent(line)
 	}
 }
@@ -256,29 +231,18 @@ func (self *WifiMgr) scanHostapdInterfaces() ([]string, error) {
 	entries, err := os.ReadDir(hostapdSocketDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Printf("[WifiMgr] Hostapd socket directory %s does not exist yet", hostapdSocketDir)
 			return nil, nil
 		}
 		return nil, err
 	}
 
-	log.Printf("[WifiMgr] Found %d entries in %s", len(entries), hostapdSocketDir)
-
 	var interfaces []string
 	for _, entry := range entries {
 		name := entry.Name()
-		log.Printf("[WifiMgr] Entry: %s (isDir: %v)", name, entry.IsDir())
-
 		// Skip directories and the global socket (handled separately)
 		if !entry.IsDir() && name != "global" {
 			interfaces = append(interfaces, name)
 		}
-	}
-
-	if len(interfaces) == 0 {
-		log.Printf("[WifiMgr] No hostapd interface sockets found in %s", hostapdSocketDir)
-	} else {
-		log.Printf("[WifiMgr] Found %d hostapd interfaces: %v", len(interfaces), interfaces)
 	}
 
 	return interfaces, nil
@@ -288,11 +252,8 @@ func (self *WifiMgr) scanHostapdInterfaces() ([]string, error) {
 func (self *WifiMgr) parseAndEmitEvent(line string) {
 	// Skip non-event lines
 	if !strings.Contains(line, "AP-STA-") {
-		log.Printf("[WifiMgr] Skipping non-event line: %q", line)
 		return
 	}
-
-	log.Printf("[WifiMgr] Parsing event: %q", line)
 
 	matches := eventRegex.FindStringSubmatch(line)
 	if matches == nil {
@@ -305,8 +266,6 @@ func (self *WifiMgr) parseAndEmitEvent(line string) {
 	eventType := matches[2]
 	mac := strings.ToUpper(matches[3])
 
-	log.Printf("[WifiMgr] Parsed - Interface: %s, Event: %s, MAC: %s", interfaceName, eventType, mac)
-
 	var event sdkapi.WifiClientEvent
 	switch eventType {
 	case "AP-STA-CONNECTED":
@@ -316,7 +275,6 @@ func (self *WifiMgr) parseAndEmitEvent(line string) {
 		event = sdkapi.WifiEventClientDisconnected
 		log.Printf("[WifiMgr] Client DISCONNECTED on %s: %s", interfaceName, mac)
 	default:
-		log.Printf("[WifiMgr] Unknown event type: %s", eventType)
 		return
 	}
 
