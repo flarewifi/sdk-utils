@@ -8,6 +8,7 @@ package sdkapi
 
 import (
 	"context"
+	"time"
 )
 
 type DeviceStatus int
@@ -48,6 +49,9 @@ type IClientDevice interface {
 
 	// Returns the status device status.
 	Status() DeviceStatus
+
+	// Returns the creation timestamp of the device.
+	CreatedAt() time.Time
 
 	// Updates the client device.
 	Update(ctx context.Context, params UpdateDeviceParams) error

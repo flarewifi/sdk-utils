@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"core/db"
 	"core/db/models"
@@ -15,9 +16,10 @@ import (
 
 type ClientDevice struct {
 	// === IMMUTABLE after creation (no lock needed) ===
-	db   *db.Database
-	mdls *models.Models
-	id   int64
+	db        *db.Database
+	mdls      *models.Models
+	id        int64
+	createdAt time.Time
 
 	// === MUTABLE (protected by mu) ===
 	mu       sync.RWMutex
@@ -30,14 +32,15 @@ type ClientDevice struct {
 
 func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *ClientDevice {
 	return &ClientDevice{
-		db:       dtb,
-		mdls:     mdls,
-		id:       d.ID(),
-		uuid:     d.UUID(),
-		mac:      d.MacAddr(),
-		ip:       d.IpAddr(),
-		hostname: d.Hostname(),
-		status:   d.Status(),
+		db:        dtb,
+		mdls:      mdls,
+		id:        d.ID(),
+		createdAt: d.CreatedAt(),
+		uuid:      d.UUID(),
+		mac:       d.MacAddr(),
+		ip:        d.IpAddr(),
+		hostname:  d.Hostname(),
+		status:    d.Status(),
 	}
 }
 
@@ -74,6 +77,11 @@ func (self *ClientDevice) Status() sdkapi.DeviceStatus {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.status
+}
+
+// CreatedAt returns the device's creation timestamp (immutable, no lock needed).
+func (self *ClientDevice) CreatedAt() time.Time {
+	return self.createdAt
 }
 
 func (self *ClientDevice) Update(ctx context.Context, params sdkapi.UpdateDeviceParams) error {

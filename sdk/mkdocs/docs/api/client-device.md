@@ -65,13 +65,14 @@ Returns the status of the client device as a `DeviceStatus` value.
 status := clnt.Status()
 ```
 
-Available device statuses:
+### CreatedAt
 
-| Value | Description
-| --- | ---
-| `1` | `DeviceStatusConnected` - Device is connected to the internet
-| `2` | `DeviceStatusDisconnected` - Device is disconnected from the internet
-| `3` | `DeviceStatusBlocked` - Device is blocked from accessing the internet
+Returns the creation timestamp of the client device as a `time.Time` value.
+
+```go
+createdAt := clnt.CreatedAt()
+fmt.Println(createdAt.Format("January 02, 2006"))
+```
 
 ### Update
 
@@ -96,6 +97,11 @@ func (w http.ResponseWriter, r *http.Request) {
         Hostname: "new-hostname",
         Status:   sdkapi.DeviceStatusConnected,
     }
+
+    if err := clnt.Update(r.Context(), params); err != nil {
+        // handle error
+    }
+}
 
     if err := clnt.Update(r.Context(), params); err != nil {
         // handle error

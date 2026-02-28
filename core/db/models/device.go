@@ -82,6 +82,10 @@ func (self *Device) Status() sdkapi.DeviceStatus {
 	return self.status
 }
 
+func (self *Device) CreatedAt() time.Time {
+	return self.createdAt
+}
+
 // validateDeviceUpdateFields checks that required device fields are not blank
 func validateDeviceUpdateFields(uuid, ip, mac string) error {
 	if strings.TrimSpace(uuid) == "" {
