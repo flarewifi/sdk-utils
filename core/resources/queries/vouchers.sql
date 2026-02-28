@@ -48,6 +48,12 @@ AND (
     (@is_activated = 1 AND v.activated_at IS NOT NULL) OR
     (@is_activated = 0 AND v.activated_at IS NULL)
 )
+AND (
+    @date_start IS NULL OR v.created_at >= @date_start
+    )
+AND (
+    @date_end IS NULL OR v.created_at <= @date_end
+    )
 ORDER BY v.created_at DESC
 LIMIT @row_limit OFFSET @row_offset;
 
@@ -66,7 +72,13 @@ AND (
     @is_activated IS NULL OR
     (@is_activated = 1 AND v.activated_at IS NOT NULL) OR
     (@is_activated = 0 AND v.activated_at IS NULL)
-);
+)
+AND (
+    @date_start IS NULL OR v.created_at >= @date_start
+    )
+AND (
+    @date_end IS NULL OR V.created_at <= @date_end
+    );
 
 -- name: UpdateVoucher :exec
 UPDATE vouchers

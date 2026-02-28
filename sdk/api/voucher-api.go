@@ -91,6 +91,8 @@ type ListVouchersParams struct {
 	IsActivated *bool   // optional filter to show only activated or unactivated vouchers
 	Page        int
 	PerPage     int
+	DateStart   *time.Time
+	DateEnd     *time.Time
 }
 
 // UpdateVoucherBatchParams holds parameters for updating a voucher batch.

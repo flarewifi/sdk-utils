@@ -254,12 +254,15 @@ func (self *VouchersApi) List(ctx context.Context, params sdkapi.ListVouchersPar
 	offset := int64(params.PerPage * (params.Page - 1))
 
 	// Use filtered query if any filters are provided
-	if params.Search != nil || params.IsActivated != nil {
+	if params.Search != nil || params.IsActivated != nil || params.DateStart != nil || params.DateEnd != nil {
 		// Prepare search parameter
 		var search interface{}
 		if params.Search != nil && *params.Search != "" {
 			search = *params.Search
 		}
+
+		fmt.Println(params.DateStart)
+		fmt.Println(params.DateEnd)
 
 		// Prepare isActivated parameter (convert *bool to int 0/1 or nil)
 		var isActivated interface{}
@@ -277,6 +280,8 @@ func (self *VouchersApi) List(ctx context.Context, params sdkapi.ListVouchersPar
 			IsActivated: isActivated,
 			RowLimit:    int64(params.PerPage),
 			RowOffset:   offset,
+			DateStart:   *params.DateStart,
+			DateEnd:     *params.DateEnd,
 		})
 		if err != nil {
 			return sdkapi.ListVouchersResult{}, fmt.Errorf("unable to list vouchers: %w", err)
