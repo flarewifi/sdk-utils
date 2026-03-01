@@ -312,3 +312,38 @@ func (self *SessionsMgrApi) wrapSession(row coreQueries.Session) sdkapi.IClientS
 		UpdatedAt:       row.UpdatedAt,
 	})
 }
+
+// DeleteSession deletes a session by ID. If the session is currently running,
+// it disconnects the device first. Emits EventSessionDeleted after deletion.
+func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) error {
+	// Find the session first to get its data (including UUID for cloud sync)
+	session, err := self.FindSessionByID(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("session not found: %w", err)
+	}
+
+	// Get the device for the event
+	device, err := self.FindClientById(ctx, session.DeviceID())
+	if err != nil {
+		return fmt.Errorf("device not found: %w", err)
+	}
+
+	// If session is running, disconnect first
+	if session.IsRunning() && self.IsConnected(device) {
+		if disconnectErr := self.Disconnect(ctx, device, "Session deleted"); disconnectErr != nil {
+			// Log but don't fail - we still want to delete
+			self.pluginApi.Logger().Error(fmt.Sprintf("Failed to disconnect device before session deletion: %v", disconnectErr))
+		}
+	}
+
+	// Delete from local database
+	if err := self.pluginApi.models.Session().Delete(ctx, sessionID); err != nil {
+		return fmt.Errorf("failed to delete session: %w", err)
+	}
+
+	// Emit EventSessionDeleted AFTER deletion
+	// The session object still has all the data needed (UUID, etc.)
+	self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionDeleted, session, device)
+
+	return nil
+}
