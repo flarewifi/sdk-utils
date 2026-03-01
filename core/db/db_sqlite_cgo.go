@@ -49,10 +49,10 @@ func newSQLiteDatabase(dbpath string) *Database {
 			}
 		}
 
-		// Use DELETE journal mode instead of WAL for NAND flash longevity
-		// WAL mode increases write amplification which accelerates NAND wear
-		// DELETE mode is simpler, more predictable, and better for embedded devices
-		dburl := fmt.Sprintf("file:%s?_busy_timeout=10000&_journal_mode=DELETE&_loc=UTC", dbpath)
+		// Use WAL journal mode for better concurrency (multiple readers + 1 writer)
+		// WAL allows reads and writes to proceed concurrently without blocking
+		// Trade-off: Higher write amplification vs DELETE mode, but fewer SQLITE_BUSY errors
+		dburl := fmt.Sprintf("file:%s?_busy_timeout=10000&_journal_mode=WAL&_sync=NORMAL&_loc=UTC", dbpath)
 		sqlDB, err := sql.Open(SqliteDriverName, dburl)
 		if err != nil {
 			log.Println("Error opening SQLite DB:", err)
@@ -86,6 +86,13 @@ func newSQLiteDatabase(dbpath string) *Database {
 		if err != nil {
 			log.Println("Warning: Failed to set SQLite timezone to UTC:", err)
 			// Don't fail - _loc=UTC in connection string should handle it
+		}
+
+		// Configure WAL checkpointing: checkpoint when WAL file reaches 1000 pages (~4MB)
+		// This prevents WAL file from growing unbounded
+		_, err = sqlDB.ExecContext(context.Background(), "PRAGMA wal_autocheckpoint = 1000")
+		if err != nil {
+			log.Println("Warning: Failed to set WAL autocheckpoint:", err)
 		}
 
 		db.DB = sqlDB
