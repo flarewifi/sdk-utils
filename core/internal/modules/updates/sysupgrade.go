@@ -58,8 +58,8 @@ func ValidateSysupgradeFile(filename string, fileSize int64) error {
 	return nil
 }
 
-// SaveSysupgradeFile saves the uploaded sysupgrade file to data/storage/system/sysupgrade.bin
-// and creates the completion marker file
+// SaveSysupgradeFile saves the uploaded sysupgrade file to data/storage/system/sysupgrade.bin.
+// After calling this, call FinalizeSysupgrade() to validate and create the completion marker.
 func SaveSysupgradeFile(src io.Reader, filename string) error {
 	// Ensure all required directories exist
 	if err := ensureSysupgradeDirs(); err != nil {
@@ -77,13 +77,6 @@ func SaveSysupgradeFile(src io.Reader, filename string) error {
 
 	// Copy the file contents
 	if _, err := io.Copy(destFile, src); err != nil {
-		os.Remove(sysupgradePath)
-		return ErrSaveFile
-	}
-
-	// Create completion marker file for UI state tracking
-	markerPath := filepath.Join(getSystemUpdateDir(), downloadCompleteFile)
-	if err := os.WriteFile(markerPath, []byte("sysupgrade"), 0644); err != nil {
 		os.Remove(sysupgradePath)
 		return ErrSaveFile
 	}
@@ -118,6 +111,32 @@ func ValidateSysupgradeCompatibility() error {
 	err := cmd.Exec("sysupgrade -T "+GetSysupgradePath(), nil)
 	if err != nil {
 		return ErrIncompatibleFirmware
+	}
+
+	return nil
+}
+
+// FinalizeSysupgrade validates the sysupgrade file compatibility and creates
+// the completion marker. This is the shared path for both local uploads and
+// remote downloads. Returns nil on success, removes the file on failure.
+func FinalizeSysupgrade() error {
+	// Validate firmware compatibility with the device
+	if err := ValidateSysupgradeCompatibility(); err != nil {
+		RemoveSysupgradeFile()
+		return err
+	}
+
+	// Ensure the marker directory exists
+	if err := sdkutils.FsEnsureDir(getSystemUpdateDir()); err != nil {
+		RemoveSysupgradeFile()
+		return ErrSaveFile
+	}
+
+	// Create completion marker file for UI state tracking
+	markerPath := filepath.Join(getSystemUpdateDir(), downloadCompleteFile)
+	if err := os.WriteFile(markerPath, []byte("sysupgrade"), 0644); err != nil {
+		RemoveSysupgradeFile()
+		return ErrSaveFile
 	}
 
 	return nil

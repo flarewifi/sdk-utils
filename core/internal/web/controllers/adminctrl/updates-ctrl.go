@@ -307,11 +307,10 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Validate firmware compatibility with the device
-		if err := updates.ValidateSysupgradeCompatibility(); err != nil {
-			log.Println("Firmware compatibility check failed:", err)
-			// Remove the incompatible firmware file
-			updates.RemoveSysupgradeFile()
+		// Validate firmware compatibility and create completion marker
+		// This is the shared path for both local uploads and remote downloads
+		if err := updates.FinalizeSysupgrade(); err != nil {
+			log.Println("Firmware finalization failed:", err)
 			var errMsg string
 			switch err {
 			case updates.ErrIncompatibleFirmware:

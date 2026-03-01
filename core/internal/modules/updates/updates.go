@@ -277,19 +277,25 @@ func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 
 		log.Println("Update file downloaded to", params.OutputPath)
 
-		// Ensure the marker directory exists
-		if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
-			log.Println("Warning: failed to create marker directory:", err)
-		}
-
-		// Create completion marker file
-		markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
-		markerContent := "complete"
+		// For sysupgrade files, use the shared finalization path
+		// This validates compatibility and creates the marker file
 		if params.IsSysupgrade {
-			markerContent = "sysupgrade"
-		}
-		if err := os.WriteFile(markerPath, []byte(markerContent), 0644); err != nil {
-			log.Println("Warning: failed to create download completion marker:", err)
+			log.Println("Finalizing sysupgrade...")
+			if err := FinalizeSysupgrade(); err != nil {
+				log.Println("Sysupgrade finalization failed:", err)
+				resultCh <- DownloadResult{Error: err}
+				return
+			}
+			log.Println("Sysupgrade finalized successfully")
+		} else {
+			// For regular updates, create the completion marker
+			if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
+				log.Println("Warning: failed to create marker directory:", err)
+			}
+			markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
+			if err := os.WriteFile(markerPath, []byte("complete"), 0644); err != nil {
+				log.Println("Warning: failed to create download completion marker:", err)
+			}
 		}
 
 		resultCh <- DownloadResult{

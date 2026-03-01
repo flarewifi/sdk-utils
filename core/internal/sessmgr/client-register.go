@@ -266,6 +266,8 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 				}
 			}
 
+			reg.sessionsMgr.emitClientEvent(sdkapi.EventClientRegistered, clnt)
+			log.Printf("[ClientRegister] DEBUG: Emitted EventClientRegistered for DeviceID=%d", clnt.ID())
 			log.Printf("[ClientRegister] SUCCESS: Returned device from cookie - DeviceID=%d", clnt.ID())
 			return clnt, true, nil
 		} else if err != nil {
@@ -337,6 +339,8 @@ STEP_2_MAC_MATCH:
 			}
 		}
 
+		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientRegistered, clnt)
+		log.Printf("[ClientRegister] DEBUG: Emitted EventClientRegistered for DeviceID=%d", dev.ID())
 		log.Printf("[ClientRegister] SUCCESS: Returned device from MAC match - DeviceID=%d", dev.ID())
 		return clnt, true, nil
 	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -364,6 +368,9 @@ STEP_3_CREATE_NEW:
 
 		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
 		log.Printf("[ClientRegister] DEBUG: Emitted EventClientCreated for DeviceID=%d", dev.ID())
+
+		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientRegistered, clnt)
+		log.Printf("[ClientRegister] DEBUG: Emitted EventClientRegistered for DeviceID=%d", dev.ID())
 
 		// Add first fingerprint for new device (full, partial/CNA, or minimal/JS-disabled)
 		if hasFingerprintData && fpHash != "" {
