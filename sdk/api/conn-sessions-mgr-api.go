@@ -34,6 +34,7 @@ const (
 	EventSessionDeleted      SessionEvent = "session:deleted"
 
 	EventClientCreated      ClientEvent = "client:created"
+	EventClientRegistered   ClientEvent = "client:registered"
 	EventClientUpdated      ClientEvent = "client:updated"
 	EventClientConnected    ClientEvent = "client:connected"
 	EventClientDisconnected ClientEvent = "client:disconnected"
