@@ -255,3 +255,12 @@ func (self *SessionModel) Summary(ctx context.Context, deviceID int64) (*sdkapi.
 		RemainingDataMbytes: remainingDataMb,
 	}, nil
 }
+
+func (self *SessionModel) Delete(ctx context.Context, id int64) error {
+	err := self.db.Queries.DeleteSession(ctx, id)
+	if err != nil {
+		log.Printf("error deleting session %v: %v", id, err)
+		return err
+	}
+	return nil
+}

@@ -31,6 +31,7 @@ const (
 	EventSessionDisconnected SessionEvent = "session:disconnected"
 	EventSessionConsumed     SessionEvent = "session:expired"
 	EventSessionUpdated      SessionEvent = "session:updated"
+	EventSessionDeleted      SessionEvent = "session:deleted"
 
 	EventClientCreated      ClientEvent = "client:created"
 	EventClientUpdated      ClientEvent = "client:updated"
@@ -213,4 +214,8 @@ type ISessionsMgrApi interface {
 	// TimeSecsGt/TimeSecsLt filter by allocated time in seconds.
 	// DataMbGt/DataMbLt filter by allocated data in megabytes.
 	ListSessions(ctx context.Context, params ListSessionsParams) (ListSessionsResult, error)
+
+	// DeleteSession deletes a session by ID. If the session is currently running,
+	// it disconnects the device first. Emits EventSessionDeleted after deletion.
+	DeleteSession(ctx context.Context, sessionID int64) error
 }

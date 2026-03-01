@@ -379,3 +379,7 @@ AND (
     OR (@payment_type = 'coin' AND v.id IS NULL)
 );
 
+
+-- name: DeleteSession :exec
+DELETE FROM sessions WHERE id = @id;
+
