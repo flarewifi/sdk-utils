@@ -20,8 +20,23 @@ const (
 )
 
 type IThemesApi interface {
+	// NewAdminTheme registers a new admin theme. The admin theme controls the layout
+	// and appearance of the admin dashboard (post-login pages).
+	// Only one admin theme can be active at a time.
 	NewAdminTheme(AdminThemeOpts)
+
+	// NewPortalTheme registers a new portal theme. The portal theme controls the layout
+	// and appearance of the captive portal (user-facing pages like login and home).
+	// Only one portal theme can be active at a time.
 	NewPortalTheme(PortalThemeOpts)
+
+	// GetAdminTheme returns the plugin API for the currently configured admin theme.
+	// Returns nil if no admin theme is configured or if the theme plugin is not found.
+	GetAdminTheme() IPluginApi
+
+	// GetPortalTheme returns the plugin API for the currently configured portal theme.
+	// Returns nil if no portal theme is configured or if the theme plugin is not found.
+	GetPortalTheme() IPluginApi
 }
 
 type FlashMsg struct {

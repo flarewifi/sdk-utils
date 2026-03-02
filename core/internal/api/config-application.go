@@ -18,19 +18,21 @@ func (c *AppCfgApi) Get() (sdkapi.AppConfig, error) {
 	}
 
 	return sdkapi.AppConfig{
-		Lang:     cfg.Lang,
-		Currency: cfg.Currency,
-		Secret:   cfg.Secret,
-		Channel:  cfg.Channel,
+		Lang:              cfg.Lang,
+		Currency:          cfg.Currency,
+		Secret:            cfg.Secret,
+		Channel:           cfg.Channel,
+		PluginMaxFileSize: cfg.PluginMaxFileSize,
 	}, nil
 }
 
 func (c *AppCfgApi) Save(cfg sdkapi.AppConfig) error {
 	data := sdkapi.AppConfig{
-		Lang:     cfg.Lang,
-		Currency: cfg.Currency,
-		Secret:   cfg.Secret,
-		Channel:  cfg.Channel,
+		Lang:              cfg.Lang,
+		Currency:          cfg.Currency,
+		Secret:            cfg.Secret,
+		Channel:           cfg.Channel,
+		PluginMaxFileSize: cfg.PluginMaxFileSize,
 	}
 
 	return config.WriteApplicationConfig(data)

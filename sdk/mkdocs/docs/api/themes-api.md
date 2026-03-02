@@ -43,6 +43,52 @@ api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
 })
 ```
 
+### GetAdminTheme
+
+Returns the plugin API for the currently configured admin theme. This allows you to access the theme plugin's APIs and resources.
+
+```go
+themePlugin := api.Themes().GetAdminTheme()
+if themePlugin != nil {
+    // Access theme plugin information
+    info := themePlugin.Info()
+    fmt.Printf("Admin theme: %s v%s\n", info.Name, info.Version)
+    
+    // Access theme plugin's storage
+    logoData, err := themePlugin.Storage().Read("branding/logo.png")
+    
+    // Use theme plugin's translation
+    message := themePlugin.Translate("label", "Welcome")
+}
+```
+
+**Returns:**
+- The `IPluginApi` for the admin theme plugin if configured and found
+- `nil` if no admin theme is configured or the plugin is not installed
+
+### GetPortalTheme
+
+Returns the plugin API for the currently configured portal theme. This allows you to access the theme plugin's APIs and resources.
+
+```go
+themePlugin := api.Themes().GetPortalTheme()
+if themePlugin != nil {
+    // Access theme plugin information
+    info := themePlugin.Info()
+    fmt.Printf("Portal theme: %s v%s\n", info.Name, info.Version)
+    
+    // Get theme-specific configuration
+    themeConfig, err := themePlugin.Config().Plugin().Read("theme_settings")
+    
+    // Access theme assets
+    assetPath := themePlugin.Http().Helpers().PublicPath("logo.png")
+}
+```
+
+**Returns:**
+- The `IPluginApi` for the portal theme plugin if configured and found
+- `nil` if no portal theme is configured or the plugin is not installed
+
 ---
 
 ## Types
@@ -199,6 +245,82 @@ templ AdminLayout(data AdminLayoutData) {
 ---
 
 ## Usage Examples
+
+### Getting Current Theme Information
+
+```go
+func DisplayThemeInfo(api sdkapi.IPluginApi) {
+    // Get admin theme
+    adminTheme := api.Themes().GetAdminTheme()
+    if adminTheme != nil {
+        info := adminTheme.Info()
+        fmt.Printf("Admin Theme: %s (%s) v%s\n", 
+            info.Name, info.Package, info.Version)
+        
+        // Check if theme has custom branding
+        if adminTheme.Storage().Exists("branding/logo.png") {
+            logoURL := adminTheme.Storage().UrlFor("branding/logo.png")
+            fmt.Printf("Custom logo: %s\n", logoURL)
+        }
+    }
+    
+    // Get portal theme
+    portalTheme := api.Themes().GetPortalTheme()
+    if portalTheme != nil {
+        info := portalTheme.Info()
+        fmt.Printf("Portal Theme: %s (%s) v%s\n", 
+            info.Name, info.Package, info.Version)
+    }
+}
+```
+
+### Accessing Theme Resources from Another Plugin
+
+```go
+func GetThemeBranding(api sdkapi.IPluginApi) ([]byte, error) {
+    // Get the current admin theme
+    theme := api.Themes().GetAdminTheme()
+    if theme == nil {
+        return nil, fmt.Errorf("no admin theme configured")
+    }
+    
+    // Read branding image from theme's storage
+    logoData, err := theme.Storage().Read("branding/company-logo.png")
+    if err != nil {
+        return nil, fmt.Errorf("failed to read theme logo: %w", err)
+    }
+    
+    return logoData, nil
+}
+```
+
+### Customizing Theme Behavior Based on Theme Plugin
+
+```go
+func CustomizeForTheme(api sdkapi.IPluginApi, w http.ResponseWriter, r *http.Request) {
+    adminTheme := api.Themes().GetAdminTheme()
+    if adminTheme == nil {
+        // Use default behavior
+        return
+    }
+    
+    themePackage := adminTheme.Info().Package
+    
+    // Apply theme-specific customizations
+    switch themePackage {
+    case "com.example.dark-theme":
+        // Enable dark mode features
+        w.Header().Set("X-Theme-Mode", "dark")
+        
+    case "com.example.minimal-theme":
+        // Use minimal UI components
+        w.Header().Set("X-Theme-Style", "minimal")
+        
+    default:
+        // Default theme behavior
+    }
+}
+```
 
 ### Admin Theme Implementation
 

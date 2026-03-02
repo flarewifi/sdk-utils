@@ -84,3 +84,7 @@ func (self *HttpHelpers) RemoveFile(path string) error {
 	}
 	return nil
 }
+
+func (self *HttpHelpers) StoragePath(p string) string {
+	return path.Join("/storage/plugin", self.api.info.Package, p)
+}

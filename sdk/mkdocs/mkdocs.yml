@@ -40,6 +40,7 @@ nav:
       - "Form Submission": guides/form-submission.md
       - "Form Validator": guides/defining-form-validator.md
       - "Saving Data": guides/saving-data.md
+      - "Storing Files": guides/storing-files.md
       - "Translations": guides/translations.md
       - "Database Migrations": guides/database-migrations.md
       - "Error Handling": guides/error-handling.md
@@ -68,7 +69,9 @@ nav:
       - "ILoggerApi": api/logger-api.md
       - "IPaymentsApi": api/payments-api.md
       - "IPluginApi": api/plugin-api.md
+      - "IPluginsMgrApi": api/plugins-mgr-api.md
       - "ISessionsMgrApi": api/sessions-mgr-api.md
+      - "IStorageApi": api/storage-api.md
       - "IThemesApi": api/themes-api.md
       - "Assets Manifest": api/assets-manifest.md
       - "window.$flare": api/flare-variable.md

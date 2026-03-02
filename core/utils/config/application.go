@@ -27,11 +27,12 @@ var SupportedLanguages = []sdkapi.SupportedLanguage{
 var SupportedCurrencies = sdkutils.SupportedCurrencies
 
 var defaultAppCfg = sdkapi.AppConfig{
-	Lang:          "en",
-	Currency:      "USD",
-	Secret:        sdkutils.RandomStr(16),
-	Channel:       "stable",
-	EnableLogging: false,
+	Lang:              "en",
+	Currency:          "USD",
+	Secret:            sdkutils.RandomStr(16),
+	Channel:           "stable",
+	EnableLogging:     false,
+	PluginMaxFileSize: 10 * 1024 * 1024, // 10MB
 }
 
 func ReadApplicationConfig() (sdkapi.AppConfig, error) {
@@ -61,6 +62,10 @@ func ReadApplicationConfig() (sdkapi.AppConfig, error) {
 
 	if cfg.Channel == "" {
 		cfg.Channel = defaultAppCfg.Channel
+	}
+
+	if cfg.PluginMaxFileSize == 0 {
+		cfg.PluginMaxFileSize = defaultAppCfg.PluginMaxFileSize
 	}
 
 	return cfg, nil

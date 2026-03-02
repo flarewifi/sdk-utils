@@ -67,13 +67,13 @@ for _, plugin := range allPlugins {
 ### Checking if a Plugin is Installed
 
 ```go
-func isPluginInstalled(packageName string) bool {
+func isPluginInstalled(api sdkapi.IPluginApi, packageName string) bool {
     _, found := api.PluginsMgr().FindByPkg(packageName)
     return found
 }
 
 // Usage
-if isPluginInstalled("com.example.payment") {
+if isPluginInstalled(api, "com.example.payment") {
     fmt.Println("Payment plugin is available")
 } else {
     fmt.Println("Payment plugin is not installed")
@@ -83,7 +83,7 @@ if isPluginInstalled("com.example.payment") {
 ### Getting Plugin Information
 
 ```go
-func getPluginInfo(packageName string) {
+func getPluginInfo(api sdkapi.IPluginApi, packageName string) {
     plugin, found := api.PluginsMgr().FindByPkg(packageName)
     if !found {
         fmt.Printf("Plugin %s not found\n", packageName)
@@ -118,7 +118,7 @@ if found {
     configAPI := paymentPlugin.Config()
 
     // Use the plugin's translation function
-    message := paymentPlugin.Translate("en", "payment_success", "amount", 29.99)
+    message := paymentPlugin.Translate("label", "payment_success")
     fmt.Println(message)
 }
 ```

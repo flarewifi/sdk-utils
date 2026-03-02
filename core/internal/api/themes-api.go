@@ -22,3 +22,19 @@ func (self *ThemesApi) NewAdminTheme(theme sdkapi.AdminThemeOpts) {
 func (self *ThemesApi) NewPortalTheme(theme sdkapi.PortalThemeOpts) {
 	self.PortalTheme = &theme
 }
+
+func (self *ThemesApi) GetAdminTheme() sdkapi.IPluginApi {
+	pluginApi, _, err := self.api.PluginsMgrApi.GetAdminTheme()
+	if err != nil {
+		return nil
+	}
+	return pluginApi
+}
+
+func (self *ThemesApi) GetPortalTheme() sdkapi.IPluginApi {
+	pluginApi, _, err := self.api.PluginsMgrApi.GetPortalTheme()
+	if err != nil {
+		return nil
+	}
+	return pluginApi
+}
