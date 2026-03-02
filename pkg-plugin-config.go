@@ -19,6 +19,9 @@ type AppConfig struct {
 
 	// Enable logging to database (default: false)
 	EnableLogging bool `json:"enable_logging"`
+
+	// Maximum file size for plugin storage in bytes (default: 10MB)
+	PluginMaxFileSize int64 `json:"plugin_max_file_size"`
 }
 
 type DbConfig struct {
