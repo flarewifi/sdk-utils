@@ -96,7 +96,7 @@ templ PaymentOptionCard(api sdkapi.IPluginApi, opts []PaymentOption) {
 	<div
 		class="payment-options-section"
 		hx-get={ api.Http().Helpers().UrlForRoute("payments:options:list") }
-		hx-trigger={ fmt.Sprintf("every 5s") }
+		hx-trigger={ fmt.Sprintf("sse:%s, every 60s", sdkapi.EventPaymentOptionsChanged) }
 		hx-swap="outerHTML"
 	>
 		<h3 class="payment-options-title">{ api.Translate("label", "Choose Payment Options") }</h3>
