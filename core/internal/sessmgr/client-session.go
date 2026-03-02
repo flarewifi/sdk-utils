@@ -33,9 +33,16 @@ type sessionData struct {
 	updatedAt   time.Time
 
 	// Dirty tracking - which fields changed since last save/load
-	dirtyTime      bool // timeSecs or timeCons changed
-	dirtyData      bool // dataMb or dataCons changed
-	dirtyBandwidth bool // downMbits, upMbits, or useGlobal changed
+	dirtyTimeSecs       bool // time_secs changed
+	dirtyDataMb         bool // data_mb changed
+	dirtyTimeCons       bool // time_secs_consumed changed
+	dirtyDataCons       bool // data_mb_consumed changed
+	dirtyDownMbits      bool // down_speed_mbits changed
+	dirtyUpMbits        bool // up_speed_mbits changed
+	dirtyUseGlobalSpeed bool // use_global_speed changed
+	dirtyExpDays        bool // exp_days changed
+	dirtyStartedAt      bool // started_at changed
+	dirtyResumedAt      bool // resumed_at changed
 }
 
 // copyTimePtr creates a deep copy of a time pointer to avoid shared state
@@ -77,9 +84,16 @@ func (d *sessionData) copy() sessionData {
 		createdAt:   d.createdAt,
 		updatedAt:   d.updatedAt,
 		// Preserve dirty flags during copy
-		dirtyTime:      d.dirtyTime,
-		dirtyData:      d.dirtyData,
-		dirtyBandwidth: d.dirtyBandwidth,
+		dirtyTimeSecs:       d.dirtyTimeSecs,
+		dirtyDataMb:         d.dirtyDataMb,
+		dirtyTimeCons:       d.dirtyTimeCons,
+		dirtyDataCons:       d.dirtyDataCons,
+		dirtyDownMbits:      d.dirtyDownMbits,
+		dirtyUpMbits:        d.dirtyUpMbits,
+		dirtyUseGlobalSpeed: d.dirtyUseGlobalSpeed,
+		dirtyExpDays:        d.dirtyExpDays,
+		dirtyStartedAt:      d.dirtyStartedAt,
+		dirtyResumedAt:      d.dirtyResumedAt,
 	}
 }
 
@@ -126,17 +140,36 @@ func (self *ClientSession) Save(ctx context.Context) error {
 
 	// Collect changed fields from the current snapshot
 	changedFields := sdkapi.SessionChangedFields{
-		Time:      d.dirtyTime,
-		Data:      d.dirtyData,
-		Bandwidth: d.dirtyBandwidth,
+		TimeSecs:       d.dirtyTimeSecs,
+		DataMb:         d.dirtyDataMb,
+		TimeCons:       d.dirtyTimeCons,
+		DataCons:       d.dirtyDataCons,
+		DownMbits:      d.dirtyDownMbits,
+		UpMbits:        d.dirtyUpMbits,
+		UseGlobalSpeed: d.dirtyUseGlobalSpeed,
+		ExpDays:        d.dirtyExpDays,
+		StartedAt:      d.dirtyStartedAt,
+		ResumedAt:      d.dirtyResumedAt,
 	}
 
 	// Clear dirty flags immediately so concurrent setters mark new changes
-	if changedFields.Time || changedFields.Data || changedFields.Bandwidth {
+	hasChanges := changedFields.TimeSecs || changedFields.DataMb || changedFields.TimeCons ||
+		changedFields.DataCons || changedFields.DownMbits || changedFields.UpMbits ||
+		changedFields.UseGlobalSpeed || changedFields.ExpDays || changedFields.StartedAt ||
+		changedFields.ResumedAt
+
+	if hasChanges {
 		newData := d.copy()
-		newData.dirtyTime = false
-		newData.dirtyData = false
-		newData.dirtyBandwidth = false
+		newData.dirtyTimeSecs = false
+		newData.dirtyDataMb = false
+		newData.dirtyTimeCons = false
+		newData.dirtyDataCons = false
+		newData.dirtyDownMbits = false
+		newData.dirtyUpMbits = false
+		newData.dirtyUseGlobalSpeed = false
+		newData.dirtyExpDays = false
+		newData.dirtyStartedAt = false
+		newData.dirtyResumedAt = false
 		self.data.Store(&newData)
 	}
 	self.writeMu.Unlock()
@@ -164,7 +197,7 @@ func (self *ClientSession) Save(ctx context.Context) error {
 	}
 
 	// Notify callback if any fields changed and callback is set
-	if self.onSave != nil && (changedFields.Time || changedFields.Data || changedFields.Bandwidth) {
+	if self.onSave != nil && hasChanges {
 		return self.onSave(sdkapi.SessionSaveParams{
 			Ctx:           ctx,
 			Session:       self,
@@ -564,7 +597,7 @@ func (self *ClientSession) IncTimeCons(sec int) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.timeCons += sec
-	newData.dirtyTime = true
+	newData.dirtyTimeCons = true
 	self.data.Store(&newData)
 }
 
@@ -577,134 +610,67 @@ func (self *ClientSession) IncDataCons(mbytes float64) {
 	old := self.data.Load()
 	newData := old.copy()
 	newData.dataCons += mbytes
-	newData.dirtyData = true
+	newData.dirtyDataCons = true
 	self.data.Store(&newData)
 }
 
-// SetTimeSecs sets the session's available time in seconds.
+// SetData sets multiple session fields in a single batch operation.
+// Only non-nil fields in the data parameter will be updated.
+// This is more efficient than calling individual setters when updating multiple fields.
 // This value is not saved until Save() method is called.
-func (self *ClientSession) SetTimeSecs(sec int) {
+func (self *ClientSession) SetData(data sdkapi.SessionUpdateData) {
 	self.writeMu.Lock()
 	defer self.writeMu.Unlock()
 
 	old := self.data.Load()
 	newData := old.copy()
-	newData.timeSecs = sec
-	newData.dirtyTime = true
-	self.data.Store(&newData)
-}
 
-// SetDataMb sets the session's available data in megabytes.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetDataMb(mbytes float64) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
+	// Update time/data allocation and consumption
+	if data.TimeSecs != nil {
+		newData.timeSecs = *data.TimeSecs
+		newData.dirtyTimeSecs = true
+	}
+	if data.DataMb != nil {
+		newData.dataMb = *data.DataMb
+		newData.dirtyDataMb = true
+	}
+	if data.TimeCons != nil {
+		newData.timeCons = *data.TimeCons
+		newData.dirtyTimeCons = true
+	}
+	if data.DataCons != nil {
+		newData.dataCons = *data.DataCons
+		newData.dirtyDataCons = true
+	}
 
-	old := self.data.Load()
-	newData := old.copy()
-	newData.dataMb = mbytes
-	newData.dirtyData = true
-	self.data.Store(&newData)
-}
+	// Update bandwidth settings
+	if data.DownMbits != nil {
+		newData.downMbits = *data.DownMbits
+		newData.dirtyDownMbits = true
+	}
+	if data.UpMbits != nil {
+		newData.upMbits = *data.UpMbits
+		newData.dirtyUpMbits = true
+	}
+	if data.UseGlobalSpeed != nil {
+		newData.useGlobal = *data.UseGlobalSpeed
+		newData.dirtyUseGlobalSpeed = true
+	}
 
-// SetTimeCons sets the session's time consumption in seconds.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetTimeCons(sec int) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
+	// Update timestamps
+	if data.StartedAt != nil {
+		newData.startedAt = copyTimePtr(data.StartedAt)
+		newData.dirtyStartedAt = true
+	}
+	if data.ResumedAt != nil {
+		newData.resumedAt = copyTimePtr(data.ResumedAt)
+		newData.dirtyResumedAt = true
+	}
+	if data.ExpDays != nil {
+		newData.expDays = copyIntPtr(data.ExpDays)
+		newData.dirtyExpDays = true
+	}
 
-	old := self.data.Load()
-	newData := old.copy()
-	newData.timeCons = sec
-	newData.dirtyTime = true
-	self.data.Store(&newData)
-}
-
-// SetDataCons sets the session's data consumption in megabytes.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetDataCons(mbytes float64) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
-
-	old := self.data.Load()
-	newData := old.copy()
-	newData.dataCons = mbytes
-	newData.dirtyData = true
-	self.data.Store(&newData)
-}
-
-// SetStartedAt sets the time when session was first started.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetStartedAt(started *time.Time) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
-
-	old := self.data.Load()
-	newData := old.copy()
-	newData.startedAt = copyTimePtr(started)
-	self.data.Store(&newData)
-}
-
-// SetResumedAt sets the time when session was last resumed.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetResumedAt(resumed *time.Time) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
-
-	old := self.data.Load()
-	newData := old.copy()
-	newData.resumedAt = copyTimePtr(resumed)
-	self.data.Store(&newData)
-}
-
-// SetExpDays sets the session's expiration time in days.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetExpDays(exp *int) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
-
-	old := self.data.Load()
-	newData := old.copy()
-	newData.expDays = copyIntPtr(exp)
-	self.data.Store(&newData)
-}
-
-// SetDownMbits sets the session's download speed limit in megabits per second.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetDownMbits(mbits int) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
-
-	old := self.data.Load()
-	newData := old.copy()
-	newData.downMbits = mbits
-	newData.dirtyBandwidth = true
-	self.data.Store(&newData)
-}
-
-// SetUpMbits sets the session's upload speed limit in megabits per second.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetUpMbits(mbits int) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
-
-	old := self.data.Load()
-	newData := old.copy()
-	newData.upMbits = mbits
-	newData.dirtyBandwidth = true
-	self.data.Store(&newData)
-}
-
-// SetUseGlobalSpeed sets whether session uses global speed limits.
-// This value is not saved until Save() method is called.
-func (self *ClientSession) SetUseGlobalSpeed(useGlobal bool) {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
-
-	old := self.data.Load()
-	newData := old.copy()
-	newData.useGlobal = useGlobal
-	newData.dirtyBandwidth = true
 	self.data.Store(&newData)
 }
 

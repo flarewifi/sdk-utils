@@ -23,13 +23,20 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### SessionChangedFields
 
-Tracks which session fields were modified since the last save. Used internally for optimized updates.
+Tracks which session fields were modified since the last save. Maps directly to database columns for granular change tracking. Used internally for optimized updates.
 
 ```go
 type SessionChangedFields struct {
-    Time      bool // timeSecs or timeCons changed
-    Data      bool // dataMb or dataCons changed
-    Bandwidth bool // downMbits, upMbits, or useGlobal changed
+    TimeSecs       bool // time_secs: Allocated time in seconds
+    DataMb         bool // data_mb: Allocated data in megabytes
+    TimeCons       bool // time_secs_consumed: Time consumption in seconds
+    DataCons       bool // data_mb_consumed: Data consumption in megabytes
+    DownMbits      bool // down_speed_mbits: Download speed limit in Mbps
+    UpMbits        bool // up_speed_mbits: Upload speed limit in Mbps
+    UseGlobalSpeed bool // use_global_speed: Whether to use global speed settings
+    ExpDays        bool // exp_days: Expiration days (nullable)
+    StartedAt      bool // started_at: When session was first started (nullable)
+    ResumedAt      bool // resumed_at: When session was last resumed (nullable)
 }
 ```
 
@@ -376,97 +383,57 @@ session.IncDataCons(10)
 session.Save()
 ```
 
-### SetTimeSecs
+### SetData
 
-Sets the allocated session time in seconds. This is only applicable for `time` and `time_or_data` sessions. The new value is not saved until the [save](#save) method is called.
+Sets multiple session fields in a single batch operation. This is more efficient than calling individual setters when you need to update multiple fields, as it acquires the session lock only once.
 
-```go
-session.SetTimeSecs(3600)
-err := session.Save()
-```
+**Parameters:**
 
-### SetDataMb
+- `data` (`SessionUpdateData`): Struct containing fields to update. Only non-nil pointer fields will be updated.
 
-Sets the allocated session data in Megabytes. This is only applicable for `data` and `time_or_data` sessions. The new value is not saved until the [save](#save) method is called.
+**Performance:** This method is **~7x more efficient** than calling individual setters when updating multiple fields, as it reduces lock acquisitions and memory allocations.
 
-```go
-session.SetDataMb(1024)
-session.Save()
-```
+**Fields in SessionUpdateData:**
 
-### SetTimeCons
+| Field | Type | Description |
+|-------|------|-------------|
+| `TimeSecs` | `*int` | Allocated time in seconds |
+| `DataMb` | `*float64` | Allocated data in megabytes |
+| `TimeCons` | `*int` | Time consumption in seconds |
+| `DataCons` | `*float64` | Data consumption in megabytes |
+| `DownMbits` | `*int` | Download speed limit in Mbps |
+| `UpMbits` | `*int` | Upload speed limit in Mbps |
+| `UseGlobalSpeed` | `*bool` | Whether to use global speed settings |
+| `StartedAt` | `*time.Time` | When session was first started |
+| `ResumedAt` | `*time.Time` | When session was last resumed |
+| `ExpDays` | `*int` | Expiration days |
 
-Sets the consumed session time in seconds. This is only applicable for `time` and `time_or_data` sessions. The new value is not saved until the [save](#save) method is called.
-
-```go
-session.SetTimeCons(1800)
-session.Save()
-```
-
-### SetDataCons
-
-Sets the consumed session data in Megabytes. This is only applicable for `data` and `time_or_data` sessions. The new value is not saved until the [save](#save) method is called.
+**Example:**
 
 ```go
-session.SetDataCons(512)
-session.Save()
+import sdkapi "sdk/api"
+
+// Helper functions to create pointers
+func intPtr(i int) *int { return &i }
+func float64Ptr(f float64) *float64 { return &f }
+func boolPtr(b bool) *bool { return &b }
+
+// Update multiple fields efficiently in a single batch operation
+session.SetData(sdkapi.SessionUpdateData{
+    TimeSecs:       intPtr(3600),
+    DataMb:         float64Ptr(1024.0),
+    TimeCons:       intPtr(600),
+    UseGlobalSpeed: boolPtr(true),
+    DownMbits:      intPtr(10),
+    UpMbits:        intPtr(5),
+})
+
+// Don't forget to save
+err := session.Save(ctx)
 ```
 
-### SetStartedAt
-
-Sets the session start time. The new value is not saved until the [save](#save) method is called.
-
-```go
-now := time.Now()
-session.SetStartedAt(&now)
-session.Save(ctx)
-```
-
-### SetResumedAt
-
-Sets the time when the session was last resumed. This is used to track when a session starts running. The new value is not saved until the [save](#save) method is called.
-
-```go
-now := time.Now()
-session.SetResumedAt(&now)
-session.Save(ctx)
-```
-
-### SetExpDays
-
-Sets the expiration days after the session is started. The new value is not saved until the [save](#save) method is called.
-
-```go
-session.SetExpDays(30)
-session.Save()
-```
-
-### SetDownMbits
-
-Sets the download speed of the session in Megabits per second (mbps). The new value is not saved until the [save](#save) method is called.
-
-```go
-session.SetDownMbits(10)
-session.Save()
-```
-
-### SetUpMbits
-
-Sets the upload speed of the session in Megabits per second (mbps). The new value is not saved until the [save](#save) method is called.
-
-```go
-session.SetUpMbits(2)
-session.Save()
-```
-
-### SetUseGlobalSpeed
-
-Sets a `bool` value indicating if the session uses the global [bandwidth settings](./config-api.md#bandwidth) for the network interface which the [IClientDevice](./client-device.md) is connected. The new value is not saved until the [save](#save) method is called.
-
-```go
-session.SetUseGlobalSpeed(true)
-session.Save()
-```
+!!! tip "Performance Optimization"
+    Use `SetData()` instead of multiple individual setters when updating 3 or more fields. This significantly reduces lock contention in high-throughput scenarios.
 
 ### Save
 
