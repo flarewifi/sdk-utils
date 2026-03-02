@@ -2,12 +2,16 @@ package routes
 
 import (
 	"net/http"
+	"path"
+	"path/filepath"
 
 	"core/internal/api"
 	"core/internal/web/controllers"
 	"core/internal/web/middlewares"
 	"core/internal/web/router"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 
 	"github.com/gorilla/mux"
 )
@@ -50,4 +54,14 @@ func setupAssetsRoutes(r *mux.Router, p sdkapi.IPluginApi) {
 	pubPrefix := h.PublicPath("")
 	pubServer := cacheMw(http.StripPrefix(pubPrefix, pubFs))
 	r.PathPrefix(pubPrefix).Handler(pubServer)
+
+	// Storage files route
+	storageDir := filepath.Join(sdkutils.PathPluginStorageDir, p.Info().Package)
+	if sdkutils.FsExists(storageDir) {
+		storageFs := http.FileServer(http.Dir(storageDir))
+		storagePrefix := path.Join("/storage/plugin", p.Info().Package)
+		storageMw := middlewares.CacheResponse(7) // 7 days cache
+		storageServer := storageMw(http.StripPrefix(storagePrefix, storageFs))
+		r.PathPrefix(storagePrefix + "/").Handler(storageServer)
+	}
 }

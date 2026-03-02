@@ -89,4 +89,7 @@ type IPluginApi interface {
 
 	// Returns an instance of the WiFi API.
 	Wifi() IWifiApi
+
+	// Returns an instance of storage API.
+	Storage() IStorageApi
 }

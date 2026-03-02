@@ -31,6 +31,7 @@ var (
 	PathPluginCacheDir   = filepath.Join(PathConfigDir, "plugins", "cache")
 	PathSystemUpdateDir  = filepath.Join(PathStorageDir, "system", "updates")
 	PathSysupgradeDir    = filepath.Join(PathStorageDir, "system")
+	PathPluginStorageDir = filepath.Join(PathStorageDir, "plugins")
 	PathCacheDir         = filepath.Join(PathTmpDir, ".cache")
 	PathIsUpdated        = filepath.Join(PathAppDir, ".updated")
 	PathIsReverted       = filepath.Join(PathAppDir, ".reverted")
