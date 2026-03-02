@@ -13,7 +13,6 @@ import (
 	"fmt"
 	sdkapi "sdk/api"
 	"strconv"
-	"strings"
 )
 
 type PortalStatusData struct {
@@ -81,7 +80,7 @@ func StatusBar(api sdkapi.IPluginApi, isConnected bool) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Connected"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 33, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 32, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -99,7 +98,7 @@ func StatusBar(api sdkapi.IPluginApi, isConnected bool) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Disconnected"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 38, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 37, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -117,7 +116,7 @@ func StatusBar(api sdkapi.IPluginApi, isConnected bool) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "INTERNET STATUS"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 41, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 40, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -159,7 +158,7 @@ func PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) templ.Com
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("portal:status-nav"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 47, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 46, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -173,7 +172,7 @@ func PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) templ.Com
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("sse:%s, sse:%s",
 			sdkapi.EventSessionConnected, sdkapi.EventSessionDisconnected))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 49, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 48, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -203,7 +202,7 @@ func PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) templ.Com
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().PublicPath(fmt.Sprintf("images/%sbanner.png", dirPref)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 63, Col: 113}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 62, Col: 113}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -216,7 +215,7 @@ func PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) templ.Com
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().PublicPath(fmt.Sprintf("images/%sbanner-1.png", dirPref)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 65, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 64, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -229,7 +228,7 @@ func PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) templ.Com
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().PublicPath(fmt.Sprintf("images/%sbanner-2.png", dirPref)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 66, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 65, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -242,7 +241,7 @@ func PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) templ.Com
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().PublicPath(fmt.Sprintf("images/%sbanner-3.png", dirPref)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 67, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 66, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -265,7 +264,7 @@ func PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) templ.Com
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(data.DeviceIP)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 79, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 78, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -278,7 +277,7 @@ func PortalStatusNavView(api sdkapi.IPluginApi, data PortalStatusData) templ.Com
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(data.DeviceMac)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 81, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 80, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -320,7 +319,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("portal:wifi-rates"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 90, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 89, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -340,7 +339,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "WIFI RATES"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 121, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 120, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -353,7 +352,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(rowBg)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 123, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 122, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -366,7 +365,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(colX[0]))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 125, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 124, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -379,7 +378,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "PRICE"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 125, Col: 197}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 124, Col: 197}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -392,7 +391,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(colX[1]))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 126, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 125, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -405,7 +404,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "TIME"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 126, Col: 196}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 125, Col: 196}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -418,7 +417,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(colX[2]))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 127, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 126, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -431,7 +430,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "PAUSE LIMITS"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 127, Col: 204}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 126, Col: 204}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -457,7 +456,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(rowY))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 141, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 140, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
@@ -470,7 +469,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 				var templ_7745c5c3_Var27 string
 				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(rowBg)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 141, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 140, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 				if templ_7745c5c3_Err != nil {
@@ -488,7 +487,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(colX[0]))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 143, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 142, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -501,7 +500,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(textY))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 143, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 142, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -514,7 +513,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(api.Payments().FormatCurrency(r.Amount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 143, Col: 207}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 142, Col: 207}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -527,7 +526,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(colX[1]))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 144, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 143, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -540,7 +539,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(textY))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 144, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 143, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
@@ -551,9 +550,9 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var33 string
-			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(wifiRateTimeLabel(r))
+			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(wifiRateTimeLabel(r.TimeMins))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 144, Col: 207}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 143, Col: 216}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -566,7 +565,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(colX[2]))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 145, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 144, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -579,7 +578,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(textY))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 145, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 144, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -592,7 +591,7 @@ func WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg 
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(wifiPauseLabel(pauseCfg, r.Amount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 145, Col: 202}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/status_nav.templ`, Line: 144, Col: 202}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -619,16 +618,7 @@ func wifiPauseLabel(cfg utils.PauseSessionConfig, amount float64) string {
 	return strconv.Itoa(count)
 }
 
-func wifiRateTimeLabel(r utils.PaymentSetting) string {
-	if r.ExpiryEnabled && r.ExpiryTime > 0 {
-		unit := strings.ToUpper(r.ExpiryUnit)
-		if r.ExpiryTime == 1 {
-			// singular: strip trailing S
-			unit = strings.TrimSuffix(unit, "S")
-		}
-		return strconv.Itoa(r.ExpiryTime) + " " + unit
-	}
-	mins := r.TimeMins
+func wifiRateTimeLabel(mins int) string {
 	if mins < 60 {
 		if mins == 1 {
 			return "1 MIN"
