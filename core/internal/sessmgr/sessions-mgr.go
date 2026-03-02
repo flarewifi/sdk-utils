@@ -644,7 +644,8 @@ func (self *SessionsMgr) handleSessionSaved(params sdkapi.SessionSaveParams) err
 
 	if isRunning {
 		// Apply side effects to running session
-		if changed.Time {
+		// Time changed: timeSecs or timeCons
+		if changed.TimeSecs || changed.TimeCons {
 			remainingSecs := session.RemainingTime()
 			if err := rs.ApplyTimeUpdate(ApplyTimeUpdateParams{
 				Ctx:           params.Ctx,
@@ -653,13 +654,15 @@ func (self *SessionsMgr) handleSessionSaved(params sdkapi.SessionSaveParams) err
 				return err
 			}
 		}
-		if changed.Data {
+		// Data changed: dataMb or dataCons
+		if changed.DataMb || changed.DataCons {
 			// Check if session is now consumed after data update
 			if err := rs.ApplyDataUpdate(params.Ctx); err != nil {
 				return err
 			}
 		}
-		if changed.Bandwidth {
+		// Bandwidth changed: downMbits, upMbits, or useGlobalSpeed
+		if changed.DownMbits || changed.UpMbits || changed.UseGlobalSpeed {
 			if err := rs.ApplyBandwidthUpdate(ApplyBandwidthUpdateParams{
 				Ctx:       params.Ctx,
 				DownMbits: session.DownMbits(),
@@ -751,9 +754,11 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 			session.ID(), downMbits, upMbits, cfg.UseGlobal)
 
 		// Update session bandwidth settings
-		session.SetDownMbits(downMbits)
-		session.SetUpMbits(upMbits)
-		session.SetUseGlobalSpeed(cfg.UseGlobal)
+		session.SetData(sdkapi.SessionUpdateData{
+			DownMbits:      &downMbits,
+			UpMbits:        &upMbits,
+			UseGlobalSpeed: &cfg.UseGlobal,
+		})
 
 		// Save triggers the save callback which calls ApplyBandwidthUpdate
 		if err := session.Save(ctx); err != nil {

@@ -12,10 +12,18 @@ import (
 )
 
 // SessionChangedFields tracks which session fields were modified since last save.
+// Maps directly to database columns for granular change tracking.
 type SessionChangedFields struct {
-	Time      bool // timeSecs or timeCons changed
-	Data      bool // dataMb or dataCons changed
-	Bandwidth bool // downMbits, upMbits, or useGlobal changed
+	TimeSecs       bool // time_secs: Allocated time in seconds
+	DataMb         bool // data_mb: Allocated data in megabytes
+	TimeCons       bool // time_secs_consumed: Time consumption in seconds
+	DataCons       bool // data_mb_consumed: Data consumption in megabytes
+	DownMbits      bool // down_speed_mbits: Download speed limit in Mbps
+	UpMbits        bool // up_speed_mbits: Upload speed limit in Mbps
+	UseGlobalSpeed bool // use_global_speed: Whether to use global speed settings
+	ExpDays        bool // exp_days: Expiration days (nullable)
+	StartedAt      bool // started_at: When session was first started (nullable)
+	ResumedAt      bool // resumed_at: When session was last resumed (nullable)
 }
 
 // SessionSaveParams contains parameters for the session save callback.
@@ -59,6 +67,22 @@ type SessionData struct {
 	IsAvailable   bool       // True if session has never been started
 	IsConsumed    bool       // True if session resources are fully consumed
 	IsRunning     bool       // True if session is currently active
+}
+
+// SessionUpdateData contains fields to update on a session in a single batch operation.
+// Only non-nil pointer fields will be updated. This allows selective field updates.
+// Use SetData() to apply all updates in a single lock acquisition.
+type SessionUpdateData struct {
+	TimeSecs       *int       // Allocated time in seconds
+	DataMb         *float64   // Allocated data in megabytes
+	TimeCons       *int       // Time consumption in seconds
+	DataCons       *float64   // Data consumption in megabytes
+	DownMbits      *int       // Download speed limit in Mbps
+	UpMbits        *int       // Upload speed limit in Mbps
+	UseGlobalSpeed *bool      // Whether to use global speed settings
+	StartedAt      *time.Time // When session was first started (nil clears it)
+	ResumedAt      *time.Time // When session was last resumed (nil clears it)
+	ExpDays        *int       // Expiration days (nil clears it)
 }
 
 // IClientSession represents a client's internet connection session.
@@ -161,45 +185,10 @@ type IClientSession interface {
 	// This value is not saved until Save() method is called.
 	IncDataCons(mbytes float64)
 
-	// Sets the session's available time in seconds.
-	// This value is not saved until Save() method is called.
-	SetTimeSecs(sec int)
-
-	// Sets the session's available data in megabytes.
-	// This value is not saved until Save() method is called.
-	SetDataMb(mbytes float64)
-
-	// Sets the session's time consumption in seconds.
-	// This value is not saved until Save() method is called.
-	SetTimeCons(sec int)
-
-	// Sets the session's data consumption in megabytes.
-	// This value is not saved until Save() method is called.
-	SetDataCons(mbytes float64)
-
-	// Sets the time when session was first started.
-	// This value is not saved until Save() method is called.
-	SetStartedAt(started *time.Time)
-
-	// Sets the time when session was last resumed.
-	// This value is not saved until Save() method is called.
-	SetResumedAt(resumed *time.Time)
-
-	// Sets the session's expiration time in days.
-	// This value is not saved until Save() method is called.
-	SetExpDays(exp *int)
-
-	// Sets the session's download speed limit in megabits per second.
-	// This value is not saved until Save() method is called.
-	SetDownMbits(mbits int)
-
-	// Sets the session's upload speed limit in megabits per second.
-	// This value is not saved until Save() method is called.
-	SetUpMbits(mbits int)
-
-	// Sets whether session uses global speed limits.
-	// This value is not saved until Save() method is called.
-	SetUseGlobalSpeed(bool)
+	// Sets multiple session fields in a single batch operation.
+	// Only non-nil fields in the data parameter will be updated.
+	// Values are not saved until Save() method is called.
+	SetData(data SessionUpdateData)
 
 	// Saves the session's changes.
 	Save(ctx context.Context) error

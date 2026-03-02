@@ -110,8 +110,10 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 
 	// Set consumption values if provided (for cloud sync)
 	if params.ConsumptionSecs > 0 || params.ConsumptionMb > 0 {
-		cs.SetTimeCons(params.ConsumptionSecs)
-		cs.SetDataCons(params.ConsumptionMb)
+		cs.SetData(sdkapi.SessionUpdateData{
+			TimeCons: &params.ConsumptionSecs,
+			DataCons: &params.ConsumptionMb,
+		})
 		if err = cs.Save(ctx); err != nil {
 			return nil, err
 		}

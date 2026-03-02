@@ -376,14 +376,24 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	self.session = s
 
 	// Set first start time if this is the first time session is starting
+	// and set resumed time to track current running period
 	timeNow := time.Now().UTC()
+	updateData := sdkapi.SessionUpdateData{}
+	hasUpdates := false
+
 	if s.StartedAt() == nil {
-		s.SetStartedAt(&timeNow)
+		updateData.StartedAt = &timeNow
+		hasUpdates = true
 	}
 
-	// Set resumed time to track current running period
 	if s.ResumedAt() == nil {
-		s.SetResumedAt(&timeNow)
+		updateData.ResumedAt = &timeNow
+		hasUpdates = true
+	}
+
+	// Apply timestamp updates in batch if needed
+	if hasUpdates {
+		s.SetData(updateData)
 	}
 	self.mu.Unlock()
 
@@ -936,9 +946,11 @@ func (self *RunningSession) ApplyBandwidthUpdate(params ApplyBandwidthUpdatePara
 		// Update the in-memory session with the new bandwidth values.
 		// This ensures self.session stays in sync with the database so that
 		// future calls to updateTc() or initTc() use the correct values.
-		self.session.SetDownMbits(params.DownMbits)
-		self.session.SetUpMbits(params.UpMbits)
-		self.session.SetUseGlobalSpeed(params.UseGlobal)
+		self.session.SetData(sdkapi.SessionUpdateData{
+			DownMbits:      &params.DownMbits,
+			UpMbits:        &params.UpMbits,
+			UseGlobalSpeed: &params.UseGlobal,
+		})
 
 		// Read network state inside lock to ensure consistency with UpdateNetworkDetails
 		net := self.network.Load()
