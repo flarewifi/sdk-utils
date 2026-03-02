@@ -3,7 +3,6 @@ package api
 import (
 	"html/template"
 	"net/http"
-	"os"
 	"path"
 
 	sdkapi "sdk/api"
@@ -76,15 +75,4 @@ func (self *HttpHelpers) UrlForRoute(name string, pairs ...string) string {
 
 func (self *HttpHelpers) UrlForPkgRoute(pkg string, name string, pairs ...string) string {
 	return self.api.HttpAPI.httpRouter.UrlForPkgRoute(pkg, name, pairs...)
-}
-
-func (self *HttpHelpers) RemoveFile(path string) error {
-	if err := os.Remove(path); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (self *HttpHelpers) StoragePath(p string) string {
-	return path.Join("/storage/plugin", self.api.info.Package, p)
 }

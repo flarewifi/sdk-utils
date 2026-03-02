@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -349,5 +350,5 @@ func (s *StorageApi) Path(filename string) string {
 }
 
 func (s *StorageApi) UrlFor(filename string) string {
-	return s.api.Http().Helpers().StoragePath(filepath.ToSlash(filename))
+	return path.Join("/storage/plugin", s.api.info.Package, filepath.ToSlash(filename))
 }

@@ -43,10 +43,4 @@ type IHttpHelpers interface {
 
 	// Returns the url from other plugins.
 	UrlForPkgRoute(pkg string, name string, pairs ...string) (uri string)
-
-	// Removes a file in the given path.
-	RemoveFile(path string) error
-
-	// Returns the URI path for a stored file
-	StoragePath(filename string) (uri string)
 }
