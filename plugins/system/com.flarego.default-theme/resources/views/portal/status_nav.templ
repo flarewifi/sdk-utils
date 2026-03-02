@@ -3,7 +3,6 @@ package portal
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	sdkapi "sdk/api"
 	"com.flarego.default-theme/app/utils"
 )
@@ -141,7 +140,7 @@ templ WifiRatesView(api sdkapi.IPluginApi, rates utils.PaymentSettings, pauseCfg
 					<rect x="0" y={ strconv.Itoa(rowY) } width="265" height="35" fill={ rowBg }></rect>
 				}
 				<text x={ strconv.Itoa(colX[0]) } y={ strconv.Itoa(textY) } text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="400" fill="#ffffff">{ api.Payments().FormatCurrency(r.Amount) }</text>
-				<text x={ strconv.Itoa(colX[1]) } y={ strconv.Itoa(textY) } text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="400" fill="#ffffff" letter-spacing="1">{ wifiRateTimeLabel(r) }</text>
+				<text x={ strconv.Itoa(colX[1]) } y={ strconv.Itoa(textY) } text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="400" fill="#ffffff" letter-spacing="1">{ wifiRateTimeLabel(r.TimeMins) }</text>
 				<text x={ strconv.Itoa(colX[2]) } y={ strconv.Itoa(textY) } text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="400" fill="#ffffff">{ wifiPauseLabel(pauseCfg, r.Amount) }</text>
 			}
 		</svg>
@@ -156,16 +155,7 @@ func wifiPauseLabel(cfg utils.PauseSessionConfig, amount float64) string {
 	return strconv.Itoa(count)
 }
 
-func wifiRateTimeLabel(r utils.PaymentSetting) string {
-	if r.ExpiryEnabled && r.ExpiryTime > 0 {
-		unit := strings.ToUpper(r.ExpiryUnit)
-		if r.ExpiryTime == 1 {
-			// singular: strip trailing S
-			unit = strings.TrimSuffix(unit, "S")
-		}
-		return strconv.Itoa(r.ExpiryTime) + " " + unit
-	}
-	mins := r.TimeMins
+func wifiRateTimeLabel(mins int) string {
 	if mins < 60 {
 		if mins == 1 {
 			return "1 MIN"
