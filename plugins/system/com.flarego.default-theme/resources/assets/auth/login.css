@@ -12,6 +12,9 @@ body > .container {
     padding: 0;
     margin: 0;
 }
+.fill-primary {
+    fill: #030812;
+}
 
 /* --- Login Page Layout --- */
 .fw-login-wrapper {

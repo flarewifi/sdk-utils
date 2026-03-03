@@ -283,6 +283,7 @@
     animation-duration: 7.8s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
+    animation-play-state: paused;
 }
 #home-page .banner-slide:nth-child(1) { animation-name: slide1-fade; }
 #home-page .banner-slide:nth-child(2) { animation-name: slide2-fade; }
