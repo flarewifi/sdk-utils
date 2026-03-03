@@ -64,10 +64,9 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 	}
 
 	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
-		MacAddress: params.MacAddress,
-		IpAddress:  params.IpAddress,
-		Hostname:   params.Hostname,
-		Uuid:       uid,
+		IpAddress: params.IpAddress,
+		Hostname:  params.Hostname,
+		Uuid:      uid,
 	})
 	if err != nil {
 		log.Println("error creating new device:", err)
@@ -85,12 +84,23 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		models:    self.models,
 		id:        d.ID,
 		uuid:      d.Uuid,
-		macaddr:   d.MacAddress,
+		macaddr:   params.MacAddress, // Store in memory for now
 		ipaddr:    d.IpAddress,
 		hostname:  d.Hostname,
 		createdAt: d.CreatedAt.Time,
 		updatedAt: d.UpdatedAt.Time,
 		status:    sdkapi.DeviceStatus(d.Status),
+	}
+
+	// Record initial MAC address in device_macs table
+	_, err = self.models.DeviceMac().Create(ctx, queries.CreateDeviceMacParams{
+		DeviceID:   dId,
+		MacAddress: params.MacAddress,
+		IsCurrent:  true,
+	})
+	if err != nil {
+		log.Printf("[DeviceModel.Create] ERROR: Failed to record initial MAC address: %v", err)
+		// Don't fail device creation, but this is serious
 	}
 
 	_, err = self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
@@ -114,7 +124,7 @@ func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
 	device := NewDevice(self.db, self.models)
 	device.id = d.ID
 	device.uuid = d.Uuid
-	device.macaddr = d.MacAddress
+	device.macaddr = d.MacAddress // Now comes from JOIN
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
@@ -126,16 +136,28 @@ func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
 }
 
 func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, error) {
-	device := NewDevice(self.db, self.models)
-	d, err := self.db.Queries.FindDeviceByMac(ctx, mac)
+	// Find device by MAC using device_macs table
+	deviceID, err := self.models.DeviceMac().FindDeviceByMac(ctx, mac)
 	if err != nil {
-		log.Printf("error finding device %s: %v", mac, err)
+		log.Printf("error finding device by MAC %s: %v", mac, err)
 		return nil, err
 	}
 
+	// Now fetch the full device
+	return self.Find(ctx, deviceID)
+}
+
+func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, error) {
+	d, err := self.db.Queries.FindDeviceByUUID(ctx, uid)
+	if err != nil {
+		log.Printf("error finding device by UUID %s: %v", uid, err)
+		return nil, err
+	}
+
+	device := NewDevice(self.db, self.models)
 	device.id = d.ID
 	device.uuid = d.Uuid
-	device.macaddr = d.MacAddress
+	device.macaddr = d.MacAddress // Now comes from JOIN
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
@@ -145,17 +167,17 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 	return device, nil
 }
 
-func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, error) {
-	device := NewDevice(self.db, self.models)
-	d, err := self.db.Queries.FindDeviceByUUID(ctx, uid)
+func (self *DeviceModel) FindByIp(ctx context.Context, ip string) (*Device, error) {
+	d, err := self.db.Queries.FindDeviceByIp(ctx, ip)
 	if err != nil {
-		log.Printf("error finding device by UUID %s: %v", uid, err)
+		log.Printf("error finding device by IP %s: %v", ip, err)
 		return nil, err
 	}
 
+	device := NewDevice(self.db, self.models)
 	device.id = d.ID
 	device.uuid = d.Uuid
-	device.macaddr = d.MacAddress
+	device.macaddr = d.MacAddress // Now comes from JOIN
 	device.ipaddr = d.IpAddress
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
@@ -173,16 +195,24 @@ func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) 
 	}
 
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
-		ID:         params.ID,
-		MacAddress: params.MacAddress,
-		IpAddress:  params.IpAddress,
-		Hostname:   params.Hostname,
-		Uuid:       params.UUID,
-		Status:     int64(params.Status),
+		ID:        params.ID,
+		IpAddress: params.IpAddress,
+		Hostname:  params.Hostname,
+		Uuid:      params.UUID,
+		Status:    int64(params.Status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", params.ID, err)
 		return err
+	}
+
+	// Always record MAC address to update last_seen_at and ensure is_current is set
+	// RecordMacAddress is idempotent - if MAC exists, it just updates timestamp
+	log.Printf("[DeviceModel.Update] Recording MAC address %s for device %d", params.MacAddress, params.ID)
+	err = self.models.DeviceMac().RecordMacAddress(ctx, params.ID, params.MacAddress)
+	if err != nil {
+		log.Printf("[DeviceModel.Update] ERROR: Failed to record MAC address: %v", err)
+		// Don't fail the entire update, but log the error
 	}
 
 	log.Printf("Successfully updated device with id %v", params.ID)
@@ -218,7 +248,7 @@ func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 }
 
 // MergeDevices merges sourceDeviceID into targetDeviceID.
-// This transfers all sessions, purchases, fingerprints, and wallet balance from source to target,
+// This transfers all sessions, purchases, fingerprints, MAC addresses, and wallet balance from source to target,
 // then deletes the source device. Used when MAC randomization creates duplicate device records
 // for the same physical device (validated by fingerprint matching).
 func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourceDeviceID int64) error {
@@ -267,7 +297,18 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 		return fmt.Errorf("failed to transfer fingerprints: %w", err)
 	}
 
-	// 4. Merge wallets - transfer balance and transactions
+	// 4. Transfer MAC address records from source to target
+	log.Printf("[DeviceModel.MergeDevices] Transferring MAC addresses...")
+	err = qtx.TransferMacs(ctx, queries.TransferMacsParams{
+		TargetDeviceID: targetDeviceID,
+		SourceDeviceID: sourceDeviceID,
+	})
+	if err != nil {
+		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer MAC addresses: %v", err)
+		return fmt.Errorf("failed to transfer MAC addresses: %w", err)
+	}
+
+	// 5. Merge wallets - transfer balance and transactions
 	log.Printf("[DeviceModel.MergeDevices] Merging wallets...")
 	sourceWallet, err := qtx.FindWalletByDeviceId(ctx, sourceDeviceID)
 	if err != nil {
@@ -311,7 +352,7 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 		}
 	}
 
-	// 5. Delete the source device
+	// 6. Delete the source device
 	log.Printf("[DeviceModel.MergeDevices] Deleting source device %d...", sourceDeviceID)
 	err = qtx.DeleteDevice(ctx, sourceDeviceID)
 	if err != nil {

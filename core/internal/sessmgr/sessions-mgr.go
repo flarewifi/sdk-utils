@@ -682,7 +682,7 @@ func (self *SessionsMgr) handleSessionSaved(params sdkapi.SessionSaveParams) err
 	}
 
 	// Emit event
-	self.emitSessionEvent(sdkapi.EventSessionUpdated, session, clnt)
+	self.emitSessionEvent(sdkapi.EventSessionChanged, session, clnt)
 	return nil
 }
 
@@ -770,4 +770,49 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 	})
 
 	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: completed for interface %s", ifname)
+}
+
+// FindClientById finds a client device by its database ID.
+func (self *SessionsMgr) FindClientById(ctx context.Context, devId int64) (sdkapi.IClientDevice, error) {
+	device, err := self.mdl.Device().Find(ctx, devId)
+	if err != nil {
+		return nil, fmt.Errorf("device not found: %w", err)
+	}
+
+	clnt := NewClientDevice(self.db, self.mdl, device)
+	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
+		return self.IsConnected(clnt)
+	})
+
+	return clnt, nil
+}
+
+// FindClientByMac finds a client device by its MAC address.
+func (self *SessionsMgr) FindClientByMac(ctx context.Context, mac string) (sdkapi.IClientDevice, error) {
+	device, err := self.mdl.Device().FindByMac(ctx, mac)
+	if err != nil {
+		return nil, fmt.Errorf("device not found by MAC %s: %w", mac, err)
+	}
+
+	clnt := NewClientDevice(self.db, self.mdl, device)
+	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
+		return self.IsConnected(clnt)
+	})
+
+	return clnt, nil
+}
+
+// FindClientByIp finds a client device by its IP address.
+func (self *SessionsMgr) FindClientByIp(ctx context.Context, ip string) (sdkapi.IClientDevice, error) {
+	device, err := self.mdl.Device().FindByIp(ctx, ip)
+	if err != nil {
+		return nil, fmt.Errorf("device not found by IP %s: %w", ip, err)
+	}
+
+	clnt := NewClientDevice(self.db, self.mdl, device)
+	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
+		return self.IsConnected(clnt)
+	})
+
+	return clnt, nil
 }

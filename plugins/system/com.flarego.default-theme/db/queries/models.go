@@ -10,14 +10,19 @@ import (
 )
 
 type Device struct {
-	ID         int64
-	Uuid       string
-	IpAddress  string
+	ID        int64
+	Uuid      string
+	IpAddress string
+	Hostname  string
+	Status    int64
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+}
+
+type DeviceCurrentMac struct {
+	DeviceID   int64
 	MacAddress string
-	Hostname   string
-	Status     int64
-	CreatedAt  sql.NullTime
-	UpdatedAt  sql.NullTime
+	LastSeenAt sql.NullTime
 }
 
 type DeviceFingerprint struct {
@@ -33,6 +38,15 @@ type DeviceFingerprint struct {
 	CreatedAt        sql.NullTime
 	LastSeenAt       sql.NullTime
 	Timezone         string
+}
+
+type DeviceMac struct {
+	ID          int64
+	DeviceID    int64
+	MacAddress  string
+	IsCurrent   bool
+	FirstSeenAt sql.NullTime
+	LastSeenAt  sql.NullTime
 }
 
 type Log struct {

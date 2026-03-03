@@ -110,9 +110,11 @@ func (self *Device) Reload(ctx context.Context) error {
 	dRow, err := self.db.Queries.FindDevice(ctx, self.id)
 	if err != nil {
 		log.Printf("error finding device with id %v: %v", self.id, err)
+		return err
 	}
+
 	self.hostname = dRow.Hostname
-	self.macaddr = dRow.MacAddress
+	self.macaddr = dRow.MacAddress // Now comes from JOIN
 	self.ipaddr = dRow.IpAddress
 	self.uuid = dRow.Uuid
 	self.status = sdkapi.DeviceStatus(dRow.Status)
@@ -127,17 +129,30 @@ func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams
 		return err
 	}
 
+	// Update device record (without MAC address)
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
-		Hostname:   params.Hostname,
-		IpAddress:  params.Ip,
-		MacAddress: params.Mac,
-		Uuid:       params.UUID,
-		ID:         self.id,
-		Status:     int64(params.Status),
+		Hostname:  params.Hostname,
+		IpAddress: params.Ip,
+		Uuid:      params.UUID,
+		ID:        self.id,
+		Status:    int64(params.Status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", self.id, err)
 		return err
+	}
+
+	// Always record MAC address to update last_seen_at and ensure is_current is set
+	// RecordMacAddress is idempotent - if MAC exists, it just updates timestamp
+	if self.macaddr != params.Mac {
+		log.Printf("[Device.Update] MAC address changed from %s to %s, recording in device_macs", self.macaddr, params.Mac)
+	} else {
+		log.Printf("[Device.Update] Refreshing MAC address %s in device_macs", params.Mac)
+	}
+	err = self.models.DeviceMac().RecordMacAddress(ctx, self.id, params.Mac)
+	if err != nil {
+		log.Printf("[Device.Update] ERROR: Failed to record MAC address: %v", err)
+		// Don't fail the entire update, but log the error
 	}
 
 	self.hostname = params.Hostname
