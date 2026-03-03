@@ -8,6 +8,7 @@ import (
 
 	"core/db/models"
 	coreQueries "core/db/queries"
+	"core/internal/sessmgr"
 	sdkapi "sdk/api"
 )
 
@@ -26,6 +27,16 @@ type SessionsMgrApi struct {
 // FindClientById finds a client device by its ID.
 func (self *SessionsMgrApi) FindClientById(ctx context.Context, devId int64) (sdkapi.IClientDevice, error) {
 	return self.pluginApi.SessionMgr.FindDeviceByID(ctx, devId)
+}
+
+// FindClientByMac finds a client device by its MAC address.
+func (self *SessionsMgrApi) FindClientByMac(ctx context.Context, mac string) (sdkapi.IClientDevice, error) {
+	return self.pluginApi.SessionMgr.FindClientByMac(ctx, mac)
+}
+
+// FindClientByIp finds a client device by its IP address.
+func (self *SessionsMgrApi) FindClientByIp(ctx context.Context, ip string) (sdkapi.IClientDevice, error) {
+	return self.pluginApi.SessionMgr.FindClientByIp(ctx, ip)
 }
 
 // FindDeviceByUUID finds a client device by its globally unique identifier.
@@ -109,13 +120,22 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 	})
 
 	// Set consumption values if provided (for cloud sync)
+	// Use PersistToDB to avoid triggering EventSessionChanged during creation
 	if params.ConsumptionSecs > 0 || params.ConsumptionMb > 0 {
 		cs.SetData(sdkapi.SessionUpdateData{
 			TimeCons: &params.ConsumptionSecs,
 			DataCons: &params.ConsumptionMb,
 		})
-		if err = cs.Save(ctx); err != nil {
-			return nil, err
+		// Type assert to access internal PersistToDB method
+		if internal, ok := cs.(*sessmgr.ClientSession); ok {
+			if err = internal.PersistToDB(ctx); err != nil {
+				return nil, err
+			}
+		} else {
+			// Fallback - should never happen in practice
+			if err = cs.Save(ctx); err != nil {
+				return nil, err
+			}
 		}
 	}
 

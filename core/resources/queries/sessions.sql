@@ -208,6 +208,7 @@ SELECT COUNT(*) FROM sessions;
 -- name: GetSessionsPaginated :many
 SELECT s.* FROM sessions s
 LEFT JOIN devices d ON d.id = s.device_id
+LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 LEFT JOIN vouchers v ON v.session_id = s.id
 WHERE (
     -- Search filter
@@ -215,7 +216,7 @@ WHERE (
     OR s.uuid LIKE '%' || @search || '%'
     OR s.provider_pkg LIKE '%' || @search || '%'
     OR d.uuid LIKE '%' || @search || '%'
-    OR d.mac_address LIKE '%' || @search || '%'
+    OR dm.mac_address LIKE '%' || @search || '%'
     OR d.hostname LIKE '%' || @search || '%'
     OR d.ip_address LIKE '%' || @search || '%'
     OR v.code LIKE '%' || @search || '%'
@@ -296,6 +297,7 @@ LIMIT @row_limit OFFSET @row_offset;
 -- name: GetSessionsFiltered :many
 SELECT s.* FROM sessions s
 LEFT JOIN devices d ON d.id = s.device_id
+LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 LEFT JOIN vouchers v ON v.session_id = s.id
 WHERE (
     -- Search filter
@@ -303,7 +305,7 @@ WHERE (
     OR s.uuid LIKE '%' || @search || '%'
     OR s.provider_pkg LIKE '%' || @search || '%'
     OR d.uuid LIKE '%' || @search || '%'
-    OR d.mac_address LIKE '%' || @search || '%'
+    OR dm.mac_address LIKE '%' || @search || '%'
     OR d.hostname LIKE '%' || @search || '%'
     OR d.ip_address LIKE '%' || @search || '%'
     OR v.code LIKE '%' || @search || '%'

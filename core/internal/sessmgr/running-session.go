@@ -398,8 +398,12 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	self.mu.Unlock()
 
 	// 3. Save to DB - no lock needed
+	// Use PersistToDB() instead of Save() to avoid emitting EventSessionChanged.
+	// EventSessionConnected is already emitted in loopSessions() when the session starts,
+	// so we don't need a duplicate event here. This is an internal state transition (setting
+	// started_at/resumed_at timestamps), not a user-initiated modification.
 	dbStart = time.Now()
-	if err := s.Save(ctx); err != nil {
+	if err := s.PersistToDB(ctx); err != nil {
 		return fmt.Errorf("failed to save session: %w", err)
 	}
 	logSlowOperation("DB Save", dbStart, 2*time.Second, contextInfo)
@@ -727,7 +731,7 @@ func (self *RunningSession) handlePeriodicSave(gen uint64) bool {
 	self.saveFailCount = 0
 	self.mu.Unlock()
 
-	// Emit session:updated event - re-read session under lock to avoid stale reference
+	// Check if session is now consumed or expired (e.g., expiration date passed)
 	self.mu.Lock()
 	freshSession := self.session
 	stale := self.stopped || self.timerGen != gen
@@ -737,11 +741,6 @@ func (self *RunningSession) handlePeriodicSave(gen uint64) bool {
 		return false
 	}
 
-	if self.emitter != nil && self.clnt != nil && freshSession != nil {
-		self.emitter.emitSessionEvent(sdkapi.EventSessionUpdated, freshSession, self.clnt)
-	}
-
-	// Check if session is now consumed or expired (e.g., expiration date passed)
 	if freshSession != nil && freshSession.IsConsumed() {
 		log.Println("Session consumed or expired during periodic check")
 		// StopWithReason has its own stopped guard so concurrent calls are safe

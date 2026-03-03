@@ -47,7 +47,6 @@ func NewGlobals() *CoreGlobals {
 	pmtMgr := NewPaymentMgr()
 
 	clntReg.SetSessionsMgr(sessionMgr)
-
 	trfcMgr.Start()
 
 	// Set traffic channel for WiFi fallback detection before starting
@@ -61,17 +60,19 @@ func NewGlobals() *CoreGlobals {
 	plgnMgr.InitCoreApi(coreApi)
 	sessionMgr.SetCoreAPI(coreApi)
 
-	return &CoreGlobals{
-		assets,
-		db,
-		state,
-		coreApi,
-		clntReg,
-		sessionMgr,
-		trfcMgr,
-		wifiMgr,
-		mdls,
-		plgnMgr,
-		pmtMgr,
+	g := &CoreGlobals{
+		GlobalAssets:   assets,
+		Database:       db,
+		State:          state,
+		CoreAPI:        coreApi,
+		ClientRegister: clntReg,
+		ClientMgr:      sessionMgr,
+		TrafficMgr:     trfcMgr,
+		WifiMgr:        wifiMgr,
+		Models:         mdls,
+		PluginMgr:      plgnMgr,
+		PaymentsMgr:    pmtMgr,
 	}
+
+	return g
 }

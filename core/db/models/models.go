@@ -8,6 +8,7 @@ import (
 type Models struct {
 	deviceModel            *DeviceModel
 	deviceFingerprintModel *DeviceFingerprintModel
+	deviceMacModel         *DeviceMacModel
 	sessionModel           *SessionModel
 	purchaseModel          *PurchaseModel
 	paymentModel           *PaymentModel
@@ -22,6 +23,7 @@ func New(dtb *db.Database) *Models {
 
 	deviceModel := NewDeviceModel(dtb, &models)
 	deviceFingerprintModel := NewDeviceFingerprintModel(dtb, &models)
+	deviceMacModel := NewDeviceMacModel(dtb, &models)
 	sessionModel := NewSessionModel(dtb, &models)
 	purchaseModel := NewPurchaseModel(dtb, &models)
 	paymentModel := NewPaymentModel(dtb, &models)
@@ -31,6 +33,7 @@ func New(dtb *db.Database) *Models {
 
 	models.deviceModel = deviceModel
 	models.deviceFingerprintModel = deviceFingerprintModel
+	models.deviceMacModel = deviceMacModel
 	models.sessionModel = sessionModel
 	models.purchaseModel = purchaseModel
 	models.paymentModel = paymentModel
@@ -48,6 +51,10 @@ func (self *Models) Device() *DeviceModel {
 
 func (self *Models) DeviceFingerprint() *DeviceFingerprintModel {
 	return self.deviceFingerprintModel
+}
+
+func (self *Models) DeviceMac() *DeviceMacModel {
+	return self.deviceMacModel
 }
 
 func (self *Models) Session() *SessionModel {

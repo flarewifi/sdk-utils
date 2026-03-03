@@ -11,7 +11,6 @@ FROM vouchers
 WHERE code = @code
 AND activated_at IS NULL
 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-AND provider_pkg = @provider_pkg
 LIMIT 1;
 
 -- name: FindVoucherByID :one
@@ -36,12 +35,13 @@ WHERE provider_pkg = @provider_pkg;
 SELECT v.*
 FROM vouchers v
 LEFT JOIN devices d ON v.device_id = d.id
+LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 WHERE v.provider_pkg = @provider_pkg
 AND (
     @search IS NULL OR @search = '' OR
     v.code LIKE '%' || @search || '%' OR
     v.provider_pkg LIKE '%' || @search || '%' OR
-    d.mac_address LIKE '%' || @search || '%'
+    dm.mac_address LIKE '%' || @search || '%'
 )
 AND (
     @is_activated IS NULL OR
@@ -61,12 +61,13 @@ LIMIT @row_limit OFFSET @row_offset;
 SELECT COUNT(v.id)
 FROM vouchers v
 LEFT JOIN devices d ON v.device_id = d.id
+LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 WHERE v.provider_pkg = @provider_pkg
 AND (
     @search IS NULL OR @search = '' OR
     v.code LIKE '%' || @search || '%' OR
     v.provider_pkg LIKE '%' || @search || '%' OR
-    d.mac_address LIKE '%' || @search || '%'
+    dm.mac_address LIKE '%' || @search || '%'
 )
 AND (
     @is_activated IS NULL OR

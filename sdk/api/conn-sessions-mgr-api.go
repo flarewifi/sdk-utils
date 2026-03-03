@@ -30,7 +30,7 @@ const (
 	EventSessionConnected    SessionEvent = "session:connected"
 	EventSessionDisconnected SessionEvent = "session:disconnected"
 	EventSessionConsumed     SessionEvent = "session:expired"
-	EventSessionUpdated      SessionEvent = "session:updated"
+	EventSessionChanged      SessionEvent = "session:changed"
 	EventSessionDeleted      SessionEvent = "session:deleted"
 
 	EventClientCreated      ClientEvent = "client:created"
@@ -149,6 +149,14 @@ type ISessionsMgrApi interface {
 
 	// Finds a client device by its ID.
 	FindClientById(ctx context.Context, devId int64) (IClientDevice, error)
+
+	// Finds a client by MAC address
+	FindClientByMac(ctx context.Context, mac string) (IClientDevice, error)
+
+	// FindClientByIp finds a client device by its IP address.
+	// This is useful for scenarios where you have an IP address (e.g., from an HTTP request)
+	// and need to find the associated device.
+	FindClientByIp(ctx context.Context, ip string) (IClientDevice, error)
 
 	// FindDeviceByUUID finds a client device by its globally unique identifier.
 	// This is useful for cloud sync scenarios where the cloud server needs to

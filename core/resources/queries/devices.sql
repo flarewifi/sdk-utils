@@ -1,10 +1,9 @@
 -- name: CreateDevice :one
 INSERT INTO devices (
-  mac_address, ip_address, hostname, uuid
+  ip_address, hostname, uuid
 )
 VALUES
   (
-    @mac_address,
     @ip_address,
     @hostname,
     @uuid
@@ -13,54 +12,57 @@ VALUES
 
 -- name: FindDevice :one
 SELECT
-  id,
-  mac_address,
-  ip_address,
-  hostname,
-  uuid,
-  created_at,
-  updated_at,
-  status
+  d.id,
+  d.ip_address,
+  d.hostname,
+  d.uuid,
+  d.created_at,
+  d.updated_at,
+  d.status,
+  COALESCE(dm.mac_address, '') as mac_address
 FROM
-  devices
+  devices d
+  LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 WHERE
-  id = @id
-LIMIT
-  1;
-
-
--- name: FindDeviceByMac :one
-SELECT
-  id,
-  hostname,
-  ip_address,
-  mac_address,
-  uuid,
-  created_at,
-  updated_at,
-  status
-FROM
-  devices
-WHERE
-  mac_address = @mac_address
+  d.id = @id
 LIMIT
   1;
 
 
 -- name: FindDeviceByUUID :one
 SELECT
-  id,
-  hostname,
-  ip_address,
-  mac_address,
-  uuid,
-  created_at,
-  updated_at,
-  status
+  d.id,
+  d.hostname,
+  d.ip_address,
+  d.uuid,
+  d.created_at,
+  d.updated_at,
+  d.status,
+  COALESCE(dm.mac_address, '') as mac_address
 FROM
-  devices
+  devices d
+  LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 WHERE
-  uuid = @uuid
+  d.uuid = @uuid
+LIMIT
+  1;
+
+
+-- name: FindDeviceByIp :one
+SELECT
+  d.id,
+  d.hostname,
+  d.ip_address,
+  d.uuid,
+  d.created_at,
+  d.updated_at,
+  d.status,
+  COALESCE(dm.mac_address, '') as mac_address
+FROM
+  devices d
+  LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
+WHERE
+  d.ip_address = @ip_address
 LIMIT
   1;
 
@@ -71,7 +73,6 @@ UPDATE
 SET
   hostname = @hostname,
   ip_address = @ip_address,
-  mac_address = @mac_address,
   uuid = @uuid,
   status = @status,
   updated_at = CURRENT_TIMESTAMP
@@ -81,18 +82,19 @@ WHERE
 
 -- name: FindDevicesWithEmptyUUID :many
 SELECT
-  id,
-  hostname,
-  ip_address,
-  mac_address,
-  uuid,
-  created_at,
-  updated_at,
-  status
+  d.id,
+  d.hostname,
+  d.ip_address,
+  COALESCE(dm.mac_address, '') as mac_address,
+  d.uuid,
+  d.created_at,
+  d.updated_at,
+  d.status
 FROM
-  devices
+  devices d
+  LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 WHERE
-  uuid = '';
+  d.uuid = '';
 
 
 -- name: UpdateDeviceUUID :exec

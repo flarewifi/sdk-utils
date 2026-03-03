@@ -14,8 +14,8 @@ func EnsureDeviceRegistered(api sdkapi.IPluginApi) func(http.Handler) http.Handl
 			// Check if client device is registered before showing portal index
 			clnt, err := api.Http().GetClientDevice(r)
 			if err != nil || clnt == nil {
-				// Device not found - redirect to registration
-				api.Http().Response().RedirectToPortal(w, r)
+				// Device not found - redirect to root to trigger registration flow
+				http.Redirect(w, r, "/", http.StatusSeeOther)
 				return
 			}
 

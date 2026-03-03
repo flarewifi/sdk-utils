@@ -225,13 +225,11 @@ func (self *VouchersApi) GetVouchersByBatchUUIDCount(ctx context.Context, batchU
 	return count, nil
 }
 
-// FindByCode finds an available voucher by code, scoped to this plugin.
+// FindByCode finds an available voucher by code (global search across all providers).
+// The provider_pkg field is preserved for historical tracking only.
 func (self *VouchersApi) FindByCode(ctx context.Context, code string) (sdkapi.IVoucher, error) {
 	q := coreQueries.New(self.pluginApi.db.DB)
-	row, err := q.FindVoucherByCode(ctx, coreQueries.FindVoucherByCodeParams{
-		Code:        code,
-		ProviderPkg: self.providerPkg(),
-	})
+	row, err := q.FindVoucherByCode(ctx, code)
 	if err != nil {
 		return nil, fmt.Errorf("voucher not found: %w", err)
 	}
