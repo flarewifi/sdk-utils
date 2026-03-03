@@ -622,6 +622,11 @@ body > .container {
     margin-right: 8px;
 }
 
+#admin-login-page .fw-logo-wrap svg#logo .fill-primary{
+    fill: var(--fw-text-primary) !important;
+}
+
+
 /* ==========================================================================
    MOBILE LAYOUT LOCK (≤768px) — prevent page scroll, pin footer
    ========================================================================== */
