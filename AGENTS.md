@@ -21,219 +21,119 @@
 - `data/plugins/local/{plugin-name}/` - Plugin-specific code
 - `plugins/system/{plugin-name}/` - System plugins
 
-## Agent Workflow
-
-### Plan First, Implement After Confirmation
+## Workflow
 
 1. **Research** - Use Read/Glob/Grep to understand existing patterns
-2. **Consult** - Ask specialists BEFORE planning:
-   - **@frontend** - Templ templates, CSS/JS, asset loading
-   - **@backend** - HTTP routing, controllers, authentication
-   - **@translator** - i18n, translation scanning
-3. **Plan** - Create detailed implementation plan with specific file changes
+2. **Consult** specialists: @frontend (templates/CSS/JS), @backend (routing/auth), @translator (i18n)
+3. **Plan** - Detailed implementation plan with specific file changes
 4. **Confirm** - Get user approval before implementing
-5. **Implement** - Only after explicit approval
+5. **Implement** - Code the solution
+6. **Review** - Check for errors, logic bugs, security issues (see checklist below)
 
-### When to Escalate
+### Implementation Review Checklist (MANDATORY)
 
-**@frontend:** 2+ failed templ edits, complex template changes, CSS/JS issues
-**@backend:** HTTP routing issues, form processing, authentication errors
-**@translator:** Translation scanning, batch updates, i18n validation
+**Error Handling:**
+- ✅ Catch ALL errors, no silent failures
+- ✅ Rollback on partial failures (e.g., `CreateSession()` → `RecordUsage()` fails → `DeleteSession()`)
+- ❌ NEVER `_ = functionThatCanError()` or log-and-continue for critical operations
+
+**Logic & Security:**
+- ✅ Race conditions (add DB unique constraints)
+- ✅ Data consistency (transaction-like behavior)
+- ✅ Boundary conditions (time ranges: use `endTime.Add(59s, 999ms)`)
+- ✅ Authorization & input validation
+- ✅ Re-validate before actions (not just at UI)
+
+**Example:**
+```go
+// ❌ BAD: Silent error, data inconsistency
+session := CreateSession()
+RecordUsage()  // If fails, inconsistent state!
+
+// ✅ GOOD: Rollback on failure
+session, err := CreateSession()
+if err := RecordUsage(); err != nil {
+    DeleteSession(session.ID())  // Rollback
+    return err
+}
+```
 
 ## Critical Rules
 
-### DO NOT
-- Run docker manually (already watching files - check logs instead)
-- Import `sdk/api` into `sdk/utils` (creates import cycles)
-- Create test files (not part of this project)
+**DO NOT:**
+- Import `sdk/api` into `sdk/utils` (import cycle)
 - Use ES6+ JavaScript (ES5 only: `var`, `function() {}`)
-- Modify `go.work` or `go.mod` without permission
-- Hardcode user-facing text (use `api.Translate()`)
-- Hardcode URLs (use `api.Http().Helpers().UrlForRoute()`)
-- Modify core migrations for plugins
-- Discard errors with `_ = functionThatCanError()` (always handle errors)
+- Hardcode text/URLs (use `api.Translate()` / `api.Http().Helpers().UrlForRoute()`)
+- Modify core files without permission
+- Discard errors or create resources without rollback
 
-### ALWAYS
-- Use `int64` for database IDs
-- Use SQLite-compatible SQL with named params (`@param`)
-- Check docker logs for `Listening on port :3000` (build success)
-- Wrap URLs in templ with `templ.SafeURL()`
-- Update SDK docs when modifying `sdk/api/` or `core/internal/api/`
+**ALWAYS:**
+- Use `int64` for IDs, named params (`@param`) for SQL
+- Wrap URLs with `templ.SafeURL()`
+- Handle ALL errors, implement rollback for multi-step ops
+- Add DB constraints (UNIQUE, FOREIGN KEY) for business rules
+- Check docker logs for `Listening on port :3000`
 
-## Build/Dev/Test
+## Build/Dev
 
 - `make` - Development build (tags: "dev")
-- Docker auto-watches `*.go`, `*.templ`, `*.sql` files
-- Never manually build - watch docker logs instead
-- Build tags: `dev` (development), `prod` (production)
-- Go build example: `go build -tags="dev" -o flare ./core/internal/cli/main.go`
+- Docker auto-watches `*.go`, `*.templ`, `*.sql` - check logs, never build manually
 
-## Project Structure
+## Structure
 
 ```
-core/                     # Core application
-  internal/api/          # SDK implementation
-  internal/web/          # Routing, controllers
-  db/queries/            # Generated sqlc code
-  resources/             # Migrations, queries, views, assets, translations
-sdk/
-  api/                   # Plugin interfaces
-  utils/                 # Shared utilities (NEVER imports sdk/api)
-  mkdocs/docs/           # SDK documentation
-data/plugins/local/      # Custom plugins
-plugins/system/          # System plugins
+core/internal/api/       # SDK implementation (protected)
+core/resources/          # Migrations, queries, views (protected)
+sdk/api/                 # Plugin interfaces
+sdk/utils/               # Shared utilities (NEVER imports sdk/api)
+data/plugins/local/      # Custom plugins (safe to modify)
 ```
 
 ## Tech Stack
 
-- **Go** - Primary language (version locked to `go.work.default`)
-- **gorilla/mux** - HTTP routing
-- **templ** - Type-safe templates
-- **sqlc** - Type-safe SQL generation
-- **esbuild** - Asset bundling
-- **SQLite** - Embedded database
-- **Bootstrap 3.4.1** - Portal/login pages only — rendered via `PortalView`
-- **Bootstrap 5.3.3** - Admin dashboard and all post-login pages — rendered via `AdminView`
-- **htmx v1.9.12** - Dynamic HTML
-- **Alpine.js** - Reactive components (admin)
-- **jQuery** - v1.12.4 (core), v3.7.1 (theme)
+- **Go**, **SQLite**, **templ**, **sqlc**, **gorilla/mux**
+- **Bootstrap 3.4.1** - Portal/login (`PortalView`)
+- **Bootstrap 5.3.3** - Admin/dashboard (`AdminView`)
+- **htmx v1.9.12**, **Alpine.js**, **jQuery**
 
 ## Database
 
 - SQLite with sqlc-generated queries
-- Migration format: `YYYYMMDD_NNNN_description.{up,down}.sql`
-- Plugin migrations: `data/plugins/local/{plugin}/resources/migrations/`
-- Plugin tables only (foreign keys to core, never alter core tables)
+- Migrations: `YYYYMMDD_NNNN_description.{up,down}.sql`
+- Plugins: Create own tables with foreign keys to core, never alter core tables
+- MCP SQLite tools available: `db_info`, `list_tables`, `read_records`, `query`, etc.
 
-### MCP SQLite Access
+## Translations
 
-The `mcp-sqlite` MCP server provides direct database access to `./data/db/database.sqlite` (flarehotspot db).
+**ALL user-facing text:** `api.Translate("label", "Username")` or `api.Translate("error", "Invalid input")`
 
-**Available Tools:**
-- `db_info` - Get database information
-- `list_tables` - List all tables
-- `get_table_schema` - Get table schema (params: `tableName`)
-- `read_records` - Query records (params: `table`, `conditions?`, `limit?`, `offset?`)
-- `create_record` - Insert record (params: `table`, `data`)
-- `update_records` - Update records (params: `table`, `data`, `conditions`)
-- `delete_records` - Delete records (params: `table`, `conditions`)
-- `query` - Execute custom SQL (params: `sql`, `values?`)
+Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural language (no snake_case)
 
-**Usage:** Use these tools to inspect database state, debug issues, or verify data integrity during development.
+## Frontend
 
-## Translations & Internationalization
-
-**ALL user-facing text must use translations API**
-
-```go
-// Go
-api.Translate("label", "Username")
-api.Translate("error", "Invalid input", "field", "email")
-
-// Templ
-<h1>{ api.Translate("label", "Sessions") }</h1>
-<button>{ api.Translate("label", "Save") }</button>
-```
-
-### Translation Types
-- `"label"` - UI labels, buttons, form fields
-- `"error"` - Error messages
-- `"success"` - Success messages  
-- `"info"` - Informational messages
-- `"warning"` - Warning messages
-
-### Key Rules
-- No snake_case (use natural language)
-- Max 120 chars (auto-truncated beyond this)
-- Punctuation allowed
-
-## Frontend Development
-
-### CSS
-- **Bootstrap 3.4.1** - Portal/login pages only (`PortalView`)
-- **Bootstrap 5.3.3** - Admin/dashboard and all post-login pages (`AdminView`)
-- Never mix versions — check which Go view function renders the page
-
-### JavaScript (ES5 Only)
-- Use `var` not `let`/`const`
-- Use `function() {}` not arrow functions
-- Use string concatenation, not template literals
-- No ES6+ features
-
-### Assets
-- Manifests: `manifest.admin.json`, `manifest.portal.json`
-- Global assets (`global.js`, `global.css`) load automatically
-
-### URL Generation
-```templ
-<a href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:sessions:index")) }>
-```
+**CSS:** Bootstrap 3 (portal) vs Bootstrap 5 (admin) - never mix  
+**JavaScript:** ES5 only (`var`, `function() {}`, no template literals)  
+**Interactivity:** Use htmx and Alpine.js - avoid custom JavaScript when possible  
+**Real-time Updates:** Use Server-Sent Events (SSE) for live UI updates, not polling  
+**URLs:** `templ.SafeURL(api.Http().Helpers().UrlForRoute("route:name"))`
 
 ## Plugin Development
 
-### Entry Point
-```go
-package main
-import sdkapi "github.com/flarehotspot/sdk-api"
+**Entry:** `func Init(api sdkapi.IPluginApi) error` in `main.go`  
+**Structure:** `data/plugins/local/{plugin}/` → `main.go`, `plugin.json`, `resources/{migrations,queries,views,assets,translations}`  
+**APIs:** `api.SqlDB()`, `api.Http()`, `api.Translate()`, `api.SessionsMgr()`, etc. (see `sdk/mkdocs/docs/`)
 
-var Api sdkapi.IPluginApi
+### Common Functions & Helpers
 
-func Init(api sdkapi.IPluginApi) error {
-    Api = api
-    // Register routes, navigation, etc.
-    return nil
-}
-```
+**ALWAYS check `sdk/utils/` first before creating custom functions:**
+- UUID generation, string/slice helpers, formatters
+- Pagination, validators, file system operations
+- Payment utilities, translations, retry logic
+- Database utilities, system info (OpenWRT, OS release)
 
-### Structure
-```
-data/plugins/local/{plugin-name}/
-├── main.go                   # Plugin entry point
-├── plugin.json               # Plugin metadata
-├── sqlc.yml                  # SQLite configuration
-├── db/queries/               # Generated sqlc code
-└── resources/
-    ├── assets/
-    │   ├── admin/           # Bootstrap 5 assets
-    │   ├── portal/          # Bootstrap 3 assets
-    │   ├── manifest.admin.json
-    │   └── manifest.portal.json
-    ├── migrations/          # Plugin migrations ONLY
-    ├── queries/             # Plugin SQL queries
-    ├── translations/        # i18n files
-    └── views/               # Plugin templates
-```
+Only create custom functions if needed functionality doesn't exist in `sdk/utils/`
 
-### Available APIs
-- `api.SqlDB()` - Database access
-- `api.Http()` - HTTP routing, responses, forms
-- `api.Translate()` - i18n
-- `api.Machine()` - System info, network interfaces
-- `api.Config()` - Configuration
-- `api.Logger()` - Logging
-- `api.Network()` - Network operations
-- `api.SessionsMgr()` - Session management
-- `api.PluginsMgr()` - Plugin management
-- `api.UI()` - UI components
-- `api.Notification()` - Notifications
-- Full reference: `sdk/mkdocs/docs/`
 
-## Common Scenarios
-
-### Adding a New Feature
-1. Research existing patterns
-2. Default to plugin (not core)
-3. Consult specialists (@frontend, @backend, @translator)
-4. Create detailed plan
-5. Get user confirmation
-6. Implement
-7. Verify build in docker logs
-
-### Core Modification
-- Only with explicit user request/confirmation
-- Provide detailed justification
-- Consider plugin alternative first
-- Update SDK docs if APIs change
 
 ## Common Pitfalls
 
@@ -249,18 +149,13 @@ data/plugins/local/{plugin-name}/
 | Asset not loading | Check manifest.json matches `ViewAssets{JsFile: "key"}` |
 | ES6 syntax error | Convert to ES5: `var`, `function() {}` |
 | 2+ templ edit failures | Stop and consult @frontend |
+| Creating custom helper function | Check `sdk/utils/` first (UUID, strings, validators, pagination, etc.) |
+| **Silent error in critical path** | **ALWAYS handle errors; rollback on failure** |
+| **Data inconsistency** | **Implement transaction-like behavior with rollback** |
+| **Race condition in check-then-act** | **Add DB unique constraints; re-validate before action** |
+| **Inclusive time range bug** | **Use `endTime.Add(59s, 999ms)` or `<=` comparison** |
+| **Skipping implementation review** | **Review EVERY implementation before completion** |
 
-## UI Verification with Playwright
+## UI Testing
 
-Use Playwright MCP against `http://localhost:3000`:
-
-```
-browser_navigate → browser_snapshot → browser_click/type → browser_take_screenshot
-```
-
-- Save outputs to `.tmp/playwright/`
-- Use accessibility snapshots as primary inspection method
-- Test end-to-end flows
-- Check both admin (Bootstrap 5) and portal (Bootstrap 3)
-- Verify translations display correctly
-- Close browser when done
+Playwright MCP (`http://localhost:3000`): `browser_navigate` → `browser_snapshot` → test → verify both admin/portal
