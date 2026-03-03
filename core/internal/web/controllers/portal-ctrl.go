@@ -19,9 +19,89 @@ import (
 )
 
 // PortalRootCtrl handles the root path "/"
-// Renders a simple HTML page with inline JavaScript that redirects to http://<lan-ip>/portal/redirect
+// OPTIMIZATION: Checks for valid device cookie and performs inline registration
+// If device cookie exists and validation passes, redirects directly to /portal/index (fast path)
+// Otherwise, renders redirect page to /portal/redirect (normal path)
 func PortalRootCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		clntMgr := g.CoreAPI.ClientRegister
+
+		// FAST PATH: Check for device cookie
+		deviceID, cookieErr := devicetoken.GetDeviceCookie(r)
+		if cookieErr == nil && deviceID > 0 {
+			g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRoot: Device cookie found (ID=%d), attempting fast-path registration", deviceID))
+
+			// Get device MAC/IP/hostname from request
+			h, err := hostfinder.GetHostFromRequest(r)
+			if err != nil {
+				// Check if error is DHCP-related (we still have MAC/IP) or ARP failure (critical)
+				if h != nil && h.MacAddr != "" {
+					// Got MAC/IP but DHCP lease read failed - continue with empty hostname
+					g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRoot: DHCP lookup failed but MAC/IP available - MAC: %s, IP: %s", h.MacAddr, h.IpAddr))
+				} else {
+					// Critical error - couldn't identify device, fall through to normal path
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRoot: Failed to identify device - RemoteAddr: %s, Error: %v - falling back to normal path", r.RemoteAddr, err))
+					goto NORMAL_PATH
+				}
+			}
+
+			// Get User-Agent from request headers
+			userAgent := r.Header.Get("User-Agent")
+
+			// Register/validate device inline (handles MAC changes, fingerprint validation)
+			clnt, shouldSetCookie, err := clntMgr.Register(r.Context(), sessmgr.ClientRegisterParams{
+				CookieDeviceID: &deviceID,
+				MacAddr:        h.MacAddr,
+				IpAddr:         h.IpAddr,
+				Hostname:       h.Hostname,
+				UserAgent:      userAgent,
+			})
+
+			// Check if registration succeeded
+			if err != nil {
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRoot: Fast-path registration failed - DeviceID: %d, MAC: %s, Error: %v - falling back to normal path", deviceID, h.MacAddr, err))
+				goto NORMAL_PATH
+			}
+			if clnt == nil {
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRoot: Fast-path registration returned nil client - DeviceID: %d, MAC: %s - falling back to normal path", deviceID, h.MacAddr))
+				goto NORMAL_PATH
+			}
+
+			// Registration successful - set cookies and redirect
+			g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRoot: Fast-path registration successful - DeviceID: %d, MAC: %s", clnt.ID(), clnt.MacAddr()))
+
+			// Set device cookie if validation passed
+			if shouldSetCookie {
+				if err := devicetoken.SetDeviceCookie(w, clnt.ID()); err != nil {
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRoot: Failed to set device cookie - DeviceID: %d, Error: %v", clnt.ID(), err))
+				}
+			}
+
+			// Emit WiFi connect event - portal access confirms the client is connected
+			api.EmitWifiEvent(sdkapi.WifiEventClientConnected, clnt.MacAddr())
+
+			// Always set "register" cookie with 12-hour expiration (skip check, always set)
+			cookieOpts := &sdkapi.HttpCookieOpts{
+				Path:    "/",
+				Expires: time.Now().Add(12 * time.Hour),
+			}
+			g.CoreAPI.HttpAPI.Cookie().SetPlainCookie(w, "register", "1", cookieOpts)
+
+			// Redirect directly to portal index (FAST PATH - no loading screen)
+			g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRoot: Redirecting to portal index (fast path) - DeviceID: %d", clnt.ID()))
+			g.CoreAPI.HttpAPI.Response().Redirect(w, r, "portal:index")
+			return
+		}
+
+		// Log why we're taking the normal path
+		if cookieErr != nil {
+			g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRoot: No valid device cookie found - Error: %v - using normal path", cookieErr))
+		} else {
+			g.CoreAPI.LoggerAPI.Info("PortalRoot: Device cookie has invalid ID (0) - using normal path")
+		}
+
+	NORMAL_PATH:
+		// NORMAL PATH: No cookie or fast-path failed - render redirect page
 		lanIP := helpers.GetLanIP(r)
 
 		// Get redirect path using UrlForRoute
