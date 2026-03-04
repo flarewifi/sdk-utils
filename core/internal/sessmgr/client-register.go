@@ -196,14 +196,27 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 					reg.addFingerprint(ctx, clnt.ID(), params, browserInfo, fpHash)
 				}
 			} else {
-				// No fingerprint data provided - check if device has stored fingerprints
-				storedFingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, clnt.ID())
-				if err == nil && len(storedFingerprints) > 0 {
-					// Device has fingerprints but current request doesn't - suspicious
-					// Possible cookie theft or JavaScript disabled, reject cookie
-					goto STEP_2_MAC_MATCH
+				// No full fingerprint data - try OS-only validation if we have User-Agent
+				if params.UserAgent != "" && browserInfo.OSFamily != "" {
+					// Use validateDeviceFingerprint with OS-only mode (empty hash/screen/lang, not CNA)
+					isValid, _, err := reg.validateDeviceFingerprint(ctx, clnt.ID(), "", "", browserInfo.OSFamily, "", "", false)
+					if err != nil {
+						goto STEP_2_MAC_MATCH
+					}
+					if !isValid {
+						// OS family doesn't match any stored fingerprint - possible cookie theft
+						goto STEP_2_MAC_MATCH
+					}
+					// OS matches or no stored fingerprints - accept cookie (minimal validation passed)
+				} else {
+					// No User-Agent - check if device has stored fingerprints
+					storedFingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, clnt.ID())
+					if err == nil && len(storedFingerprints) > 0 {
+						// Device has fingerprints but we can't validate - reject for security
+						goto STEP_2_MAC_MATCH
+					}
+					// No stored fingerprints - accept (backward compatibility)
 				}
-				// No stored fingerprints and no current fingerprint - accept (backward compatibility)
 			}
 
 			// Update network details if changed
@@ -249,14 +262,30 @@ STEP_2_MAC_MATCH:
 				reg.addFingerprint(ctx, dev.ID(), params, browserInfo, fpHash)
 			}
 		} else {
-			// No fingerprint data - check if device has stored fingerprints
-			storedFingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, dev.ID())
-			if err == nil && len(storedFingerprints) > 0 {
-				// Device has fingerprints but current request doesn't - suspicious
-				dev = nil
-				goto STEP_2_5_MAC_HISTORY
+			// No full fingerprint data - try OS-only validation if we have User-Agent
+			if params.UserAgent != "" && browserInfo.OSFamily != "" {
+				// Use validateDeviceFingerprint with OS-only mode (empty hash/screen/lang, not CNA)
+				isValid, _, err := reg.validateDeviceFingerprint(ctx, dev.ID(), "", "", browserInfo.OSFamily, "", "", false)
+				if err != nil {
+					dev = nil
+					goto STEP_2_5_MAC_HISTORY
+				}
+				if !isValid {
+					// OS family doesn't match any stored fingerprint - possible MAC collision
+					dev = nil
+					goto STEP_2_5_MAC_HISTORY
+				}
+				// OS matches or no stored fingerprints - accept MAC match (minimal validation passed)
+			} else {
+				// No User-Agent - check if device has stored fingerprints
+				storedFingerprints, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, dev.ID())
+				if err == nil && len(storedFingerprints) > 0 {
+					// Device has fingerprints but we can't validate - reject for security
+					dev = nil
+					goto STEP_2_5_MAC_HISTORY
+				}
+				// No stored fingerprints - accept (backward compatibility)
 			}
-			// No stored fingerprints - accept (backward compatibility)
 		}
 
 		// Update network details if changed (MAC change will be recorded by UpdateDevice)
@@ -353,6 +382,10 @@ STEP_3_CREATE_NEW:
 }
 
 // validateDeviceFingerprint checks if current fingerprint matches any stored fingerprints.
+// Supports three validation modes:
+// 1. Full fingerprint: Hash + Screen + Lang + TZ + OS
+// 2. Partial fingerprint (CNA): OS only with IsCNA flag
+// 3. Minimal fingerprint (OS-only): When only User-Agent/OS is available (e.g., JS disabled)
 // Returns (isValid, matchedFingerprint, error)
 func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, deviceID int64, currentHash string, currentScreen string, currentOS string, currentLang string, currentTZ string, currentIsCNA bool) (bool, *queries.DeviceFingerprint, error) {
 	// Get all fingerprints for device (within 6 months)
@@ -366,10 +399,26 @@ func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, device
 		return true, nil, nil
 	}
 
+	// Determine if this is an OS-only validation (minimal fingerprint)
+	// This happens when we have User-Agent (OS) but no other fingerprint data
+	isOSOnlyValidation := currentOS != "" && currentHash == "" && currentScreen == "" && currentLang == "" && !currentIsCNA
+
 	// Check against all stored fingerprints
 	for i := range fingerprints {
 		fp := &fingerprints[i]
 
+		// OS-only validation mode: just check if OS family matches
+		// This is used when device has cookie/token but JS is disabled or fingerprint collection failed
+		if isOSOnlyValidation {
+			if fp.OsFamily != "" && fp.OsFamily == currentOS {
+				// OS matches - minimal validation passed
+				// Return nil for matchedFP since we don't have full fingerprint to update
+				return true, nil, nil
+			}
+			continue
+		}
+
+		// Full/partial fingerprint validation
 		result := fingerprint.ValidateFingerprint(
 			fingerprint.StoredFingerprint{
 				FingerprintHash:  fp.FingerprintHash,
