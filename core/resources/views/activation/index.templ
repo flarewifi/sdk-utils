@@ -18,9 +18,19 @@ templ ActivationPage(data *ActivationPageData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ data.API.Translate("label", "Device Activation Required") }</title>
 			<style>
+				body::before {
+					content: "";
+					position: fixed;
+					inset: 0;
+					background: inherit; /* or same background image */
+					background-size: cover;
+					background-position: center;
+					filter: blur(12px);
+					z-index: -1;
+				}
+
 				body {
-					backdrop-filter: blur(25px);
-    			-webkit-backdrop-filter: blur(12px);
+					position: relative;
 					background-color: #0d0d1a;
 					background-size: cover;
 					background-position: center center;
