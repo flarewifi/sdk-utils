@@ -9,7 +9,7 @@ services:
       - ./data/config:/opt/flarehotspot/data/config
       - ./data/db:/opt/flarehotspot/data/db
       - ./data/plugins:/opt/flarehotspot/data/plugins
-      - ./data/storage:/opt/flarehotspot/data/storage
+      - flare_storage:/opt/flarehotspot/data/storage
       - ./data/openwrt-files/etc/config:/etc/config
       - ./data/openwrt-files/etc/openwrt_release:/etc/openwrt_release
       - ./data/openwrt-files/etc/os_release.json:/etc/os_release.json
@@ -43,6 +43,7 @@ services:
 
 volumes:
   gocache:
+  flare_storage:
 
 networks:
   flare_network:
