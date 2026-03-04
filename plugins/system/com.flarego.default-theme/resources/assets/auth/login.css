@@ -3,8 +3,19 @@
 /* Break out of portal .container wrapper for full-viewport background.
    BS3 sets a fixed `width` (not max-width) at each breakpoint, so we must override both. */
 body {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  position: relative;
+  min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: inherit; /* or same background image */
+  background-size: cover;
+  background-position: center;
+  filter: blur(12px);
+  z-index: -1;
 }
 body > .container {
     width: 100%;
