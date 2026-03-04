@@ -27,10 +27,22 @@ $(document).ready(function () {
           '<span class="dropdown-item text-muted">No results found</span>'
         );
       } else {
+        var seen = {};
         matches.forEach(function(item) {
+          // Find the first keyword that matched the query
+          var matchedKeyword = item.Keywords.find(function(k) {
+            return k.toLowerCase().indexOf(query) !== -1;
+          }) || item.Label;
+
+          // Deduplicate by RouteUrl + matchedKeyword combination
+          var key = item.RouteUrl + '|' + matchedKeyword.toLowerCase();
+          if (seen[key]) return;
+          seen[key] = true;
+
           $resultsDropdown.append(
-            '<a href="' + item.RouteUrl + '" class="dropdown-item">' +
-            item.Label +
+            '<a href="' + item.RouteUrl + '" class="dropdown-item d-flex flex-column">' +
+            '<span class="fw-medium">' + item.Label + '</span>' +
+            '<small class="text-muted">' + matchedKeyword + '</small>' +
             '</a>'
           );
         });
