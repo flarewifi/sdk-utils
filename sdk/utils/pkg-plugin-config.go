@@ -22,6 +22,9 @@ type AppConfig struct {
 
 	// Maximum file size for plugin storage in bytes (default: 10MB)
 	PluginMaxFileSize int64 `json:"plugin_max_file_size"`
+
+	// Enable HTTPS for admin web interface (default: false)
+	AdminWebHttps bool `json:"admin_web_https"`
 }
 
 type DbConfig struct {

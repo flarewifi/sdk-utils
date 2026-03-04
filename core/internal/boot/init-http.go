@@ -49,6 +49,8 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	}
 
 	log.Println("Starting server...")
-	web.StartHTTPSServer(router.RootRouter)
+	if err := web.StartHTTPSServer(router.RootRouter); err != nil {
+		log.Printf("Warning: Failed to start HTTPS server: %v\n", err)
+	}
 	web.StartServer(router.RootRouter, true)
 }
