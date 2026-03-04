@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"core/utils/config"
 	"core/utils/env"
 )
 
@@ -14,6 +15,14 @@ import (
 func HTTPSRedirect() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check if HTTPS is enabled using cached config
+			cfg, err := config.GetCachedAppConfig()
+			if err != nil || !cfg.AdminWebHttps {
+				// Config error or HTTPS disabled - allow HTTP
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			// Check if already HTTPS
 			isHTTPS := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	sdkapi "sdk/api"
+	"sync"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -25,6 +26,46 @@ var SupportedLanguages = []sdkapi.SupportedLanguage{
 }
 
 var SupportedCurrencies = sdkutils.SupportedCurrencies
+
+var (
+	appConfigCache   *sdkapi.AppConfig
+	appConfigCacheMu sync.RWMutex
+)
+
+// GetCachedAppConfig returns the cached application config.
+// If cache is empty, reads from file and caches the result.
+func GetCachedAppConfig() (sdkapi.AppConfig, error) {
+	appConfigCacheMu.RLock()
+	if appConfigCache != nil {
+		cfg := *appConfigCache
+		appConfigCacheMu.RUnlock()
+		return cfg, nil
+	}
+	appConfigCacheMu.RUnlock()
+
+	// Cache miss - read from file
+	appConfigCacheMu.Lock()
+	defer appConfigCacheMu.Unlock()
+
+	// Double-check after acquiring write lock
+	if appConfigCache != nil {
+		return *appConfigCache, nil
+	}
+
+	cfg, err := ReadApplicationConfig()
+	if err != nil {
+		return cfg, err
+	}
+	appConfigCache = &cfg
+	return cfg, nil
+}
+
+// updateAppConfigCache updates the cache with new config
+func updateAppConfigCache(cfg sdkapi.AppConfig) {
+	appConfigCacheMu.Lock()
+	defer appConfigCacheMu.Unlock()
+	appConfigCache = &cfg
+}
 
 var defaultAppCfg = sdkapi.AppConfig{
 	Lang:              "en",
@@ -72,5 +113,10 @@ func ReadApplicationConfig() (sdkapi.AppConfig, error) {
 }
 
 func WriteApplicationConfig(cfg sdkapi.AppConfig) error {
-	return writeConfigFile(applicationJsonFile, cfg)
+	err := writeConfigFile(applicationJsonFile, cfg)
+	if err != nil {
+		return err
+	}
+	updateAppConfigCache(cfg)
+	return nil
 }

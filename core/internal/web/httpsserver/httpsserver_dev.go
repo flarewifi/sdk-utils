@@ -1,6 +1,6 @@
 //go:build dev
 
-package web
+package httpsserver
 
 import (
 	"github.com/gorilla/mux"
@@ -20,4 +20,9 @@ func StopHTTPSServer() {
 // IsHTTPSServerRunning always returns false in dev mode
 func IsHTTPSServerRunning() bool {
 	return false
+}
+
+// GetCurrentRouter returns nil in dev mode
+func GetCurrentRouter() *mux.Router {
+	return nil
 }
