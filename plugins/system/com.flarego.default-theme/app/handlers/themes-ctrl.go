@@ -45,11 +45,18 @@ func buildThemeCards(api sdkapi.IPluginApi, feature string, currentPkg string) [
 		for _, f := range features {
 			if f == feature {
 				info := p.Info()
+				var previewMeta *sdkapi.ThemePreviewMeta
+				if feature == "theme:admin" {
+					previewMeta = p.Themes().AdminPreviewMeta()
+				} else if feature == "theme:portal" {
+					previewMeta = p.Themes().PortalPreviewMeta()
+				}
 				cards = append(cards, admin.ThemeCard{
 					Package:     info.Package,
 					Name:        info.Name,
 					Description: info.Description,
 					IsCurrent:   info.Package == currentPkg,
+					PreviewMeta: previewMeta,
 				})
 				break
 			}

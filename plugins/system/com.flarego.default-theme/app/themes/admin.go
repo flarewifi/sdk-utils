@@ -15,6 +15,14 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 		JsFile:  "theme.js",
 		CssFile: "theme.css",
 		CssLib:  sdkapi.CssLibBootstrap5,
+		PreviewMeta: &sdkapi.ThemePreviewMeta{
+			Background:     "#f9fafb",
+			PrimaryColor:   "#2563eb",
+			SecondaryColor: "#3b82f6",
+			AccentColor:    "#60a5fa",
+			ButtonColor:    "#2563eb",
+			TextColor:      "#1f2937",
+		},
 		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
 			navs := api.Http().Navs().GetAdminNavs(r)
 

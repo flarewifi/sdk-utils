@@ -10,6 +10,7 @@ type ThemeCard struct {
 	Name        string
 	Description string
 	IsCurrent   bool
+	PreviewMeta *sdkapi.ThemePreviewMeta
 }
 
 func styleAttr(css string) templ.Attributes {
@@ -63,13 +64,13 @@ templ adminThemeCard(card ThemeCard) {
 		<div class="fw-theme-preview fw-theme-preview-admin position-relative">
 			<!-- Color Bars -->
 			<div class="d-flex flex-column gap-2 p-3">
-				<div class="rounded" { styleAttr(fmt.Sprintf("height: 12px; width: 60%%; background-color: %s", adminPreviewColor(card.Package, "primary")))... }></div>
-				<div class="rounded" { styleAttr(fmt.Sprintf("height: 8px; width: 80%%; background-color: %s", adminPreviewColor(card.Package, "secondary")))... }></div>
-				<div class="rounded" { styleAttr(fmt.Sprintf("height: 8px; width: 40%%; background-color: %s", adminPreviewColor(card.Package, "accent")))... }></div>
+				<div class="rounded" { styleAttr(fmt.Sprintf("height: 12px; width: 60%%; background-color: %s", getPreviewColor(card.PreviewMeta, "primary")))... }></div>
+				<div class="rounded" { styleAttr(fmt.Sprintf("height: 8px; width: 80%%; background-color: %s", getPreviewColor(card.PreviewMeta, "secondary")))... }></div>
+				<div class="rounded" { styleAttr(fmt.Sprintf("height: 8px; width: 40%%; background-color: %s", getPreviewColor(card.PreviewMeta, "accent")))... }></div>
 			</div>
 			<!-- Mini Button Preview -->
 			<div class="position-absolute bottom-0 end-0 m-3">
-				<div class="rounded px-3 py-1 text-white small fw-medium" { styleAttr(fmt.Sprintf("background-color: %s", adminPreviewColor(card.Package, "primary")))... }>
+				<div class="rounded px-3 py-1 text-white small fw-medium" { styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "primary")))... }>
 					Button
 				</div>
 			</div>
@@ -92,9 +93,9 @@ templ adminThemeCard(card ThemeCard) {
 			<p class="card-text text-body-secondary small mb-3">{ card.Description }</p>
 			<!-- Color Swatches -->
 			<div class="d-flex align-items-center gap-1">
-				<div class="fw-theme-swatch rounded-circle border" { styleAttr(fmt.Sprintf("background-color: %s", adminPreviewColor(card.Package, "primary")))... }></div>
-				<div class="fw-theme-swatch rounded-circle border" { styleAttr(fmt.Sprintf("background-color: %s", adminPreviewColor(card.Package, "secondary")))... }></div>
-				<div class="fw-theme-swatch rounded-circle border" { styleAttr(fmt.Sprintf("background-color: %s", adminPreviewColor(card.Package, "accent")))... }></div>
+				<div class="fw-theme-swatch rounded-circle border" { styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "primary")))... }></div>
+				<div class="fw-theme-swatch rounded-circle border" { styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "secondary")))... }></div>
+				<div class="fw-theme-swatch rounded-circle border" { styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "accent")))... }></div>
 			</div>
 		</div>
 	</div>
@@ -141,21 +142,21 @@ templ portalThemeCard(card ThemeCard) {
 		@click={ fmt.Sprintf("selected = '%s'", card.Package) }
 	>
 		<!-- Portal Preview Area -->
-		<div class="fw-theme-preview fw-theme-preview-portal position-relative d-flex align-items-center justify-content-center" { styleAttr(fmt.Sprintf("background: %s", portalPreviewBg(card.Package)))... }>
+		<div class="fw-theme-preview fw-theme-preview-portal position-relative d-flex align-items-center justify-content-center" { styleAttr(fmt.Sprintf("background: %s", getPreviewBg(card.PreviewMeta)))... }>
 			<!-- Logo Icon (top position) -->
-			if portalLogoPosition(card.Package) == "top" {
+			if getLogoPosition(card.PreviewMeta) == "top" {
 				<div class="position-absolute top-0 start-50 translate-middle-x mt-3">
-					<div class="fw-portal-logo-circle d-flex align-items-center justify-content-center" { styleAttr(fmt.Sprintf("background-color: %s", portalPreviewColor(card.Package, "primary")))... }>
-						<i class="bi bi-wifi" { styleAttr(fmt.Sprintf("color: %s", portalPreviewColor(card.Package, "button")))... }></i>
+					<div class="fw-portal-logo-circle d-flex align-items-center justify-content-center" { styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "card")))... }>
+						<i class="bi bi-wifi" { styleAttr(fmt.Sprintf("color: %s", getPreviewColor(card.PreviewMeta, "button")))... }></i>
 					</div>
 				</div>
 			}
 			<!-- Mini Login Card -->
-			<div class="fw-portal-login-card rounded shadow-lg p-3" { styleAttr(fmt.Sprintf("background-color: %s", portalPreviewColor(card.Package, "primary")))... }>
-				if portalLogoPosition(card.Package) == "center" {
+			<div class="fw-portal-login-card rounded shadow-lg p-3" { styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "card")))... }>
+				if getLogoPosition(card.PreviewMeta) == "center" {
 					<div class="text-center mb-2">
-						<div class="fw-portal-logo-sm rounded-circle d-inline-flex align-items-center justify-content-center" { styleAttr(fmt.Sprintf("background-color: %s20", portalPreviewColor(card.Package, "button")))... }>
-							<i class="bi bi-wifi small" { styleAttr(fmt.Sprintf("color: %s", portalPreviewColor(card.Package, "button")))... }></i>
+						<div class="fw-portal-logo-sm rounded-circle d-inline-flex align-items-center justify-content-center" { styleAttr(fmt.Sprintf("background-color: %s20", getPreviewColor(card.PreviewMeta, "button")))... }>
+							<i class="bi bi-wifi small" { styleAttr(fmt.Sprintf("color: %s", getPreviewColor(card.PreviewMeta, "button")))... }></i>
 						</div>
 					</div>
 				}
@@ -163,7 +164,7 @@ templ portalThemeCard(card ThemeCard) {
 				<div class="d-flex flex-column gap-2">
 					<div class="rounded bg-body-secondary" style="height: 6px;"></div>
 					<div class="rounded bg-body-secondary" style="height: 6px;"></div>
-					<div class="rounded text-white text-center fw-medium mt-1" { styleAttr(fmt.Sprintf("height: 20px; font-size: 10px; line-height: 20px; background-color: %s", portalPreviewColor(card.Package, "button")))... }>
+					<div class="rounded text-white text-center fw-medium mt-1" { styleAttr(fmt.Sprintf("height: 20px; font-size: 10px; line-height: 20px; background-color: %s", getPreviewColor(card.PreviewMeta, "button")))... }>
 						Connect
 					</div>
 				</div>
@@ -188,33 +189,54 @@ templ portalThemeCard(card ThemeCard) {
 			<!-- Theme Details -->
 			<div class="d-flex align-items-center justify-content-between">
 				<span class="text-body-secondary" style="font-size: 0.75rem;">
-					Logo: { portalLogoPositionLabel(card.Package) }
+					Logo: { getLogoPositionLabel(card.PreviewMeta) }
 				</span>
-				<div class="fw-theme-swatch rounded-circle border" { styleAttr(fmt.Sprintf("background-color: %s", portalPreviewColor(card.Package, "button")))... }></div>
+				<div class="fw-theme-swatch rounded-circle border" { styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "button")))... }></div>
 			</div>
 		</div>
 	</div>
 }
 
-// ---- Color helpers ----
-// These return preview colors for known theme plugins.
-// Unknown plugins get a gray fallback.
+// ---- Preview helpers ----
+// These read from ThemePreviewMeta with sensible gray fallbacks
+// for themes that don't provide preview metadata.
 
-func adminPreviewColor(pkg string, role string) string {
-	switch pkg {
-	case "com.flarego.default-theme":
+func getPreviewBg(meta *sdkapi.ThemePreviewMeta) string {
+	if meta != nil && meta.Background != "" {
+		return meta.Background
+	}
+	return "linear-gradient(135deg, #6b7280 0%, #9ca3af 100%)"
+}
+
+func getPreviewColor(meta *sdkapi.ThemePreviewMeta, role string) string {
+	if meta != nil {
 		switch role {
 		case "primary":
-			return "#2563eb"
+			if meta.PrimaryColor != "" {
+				return meta.PrimaryColor
+			}
 		case "secondary":
-			return "#3b82f6"
+			if meta.SecondaryColor != "" {
+				return meta.SecondaryColor
+			}
 		case "accent":
-			return "#60a5fa"
-		case "background":
-			return "#f9fafb"
+			if meta.AccentColor != "" {
+				return meta.AccentColor
+			}
+		case "button":
+			if meta.ButtonColor != "" {
+				return meta.ButtonColor
+			}
+		case "text":
+			if meta.TextColor != "" {
+				return meta.TextColor
+			}
+		case "card":
+			if meta.CardColor != "" {
+				return meta.CardColor
+			}
 		}
 	}
-	// Fallback for unknown themes
 	switch role {
 	case "primary":
 		return "#6b7280"
@@ -222,54 +244,25 @@ func adminPreviewColor(pkg string, role string) string {
 		return "#9ca3af"
 	case "accent":
 		return "#d1d5db"
-	case "background":
-		return "#f3f4f6"
-	}
-	return "#6b7280"
-}
-
-func portalPreviewBg(pkg string) string {
-	switch pkg {
-	case "com.flarego.default-theme":
-		return "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-	}
-	return "linear-gradient(135deg, #6b7280 0%, #9ca3af 100%)"
-}
-
-func portalPreviewColor(pkg string, role string) string {
-	switch pkg {
-	case "com.flarego.default-theme":
-		switch role {
-		case "primary":
-			return "#ffffff"
-		case "button":
-			return "#4f46e5"
-		case "text":
-			return "#ffffff"
-		}
-	}
-	switch role {
-	case "primary":
-		return "#ffffff"
 	case "button":
 		return "#6b7280"
 	case "text":
 		return "#ffffff"
+	case "card":
+		return "#ffffff"
 	}
 	return "#6b7280"
 }
 
-func portalLogoPosition(pkg string) string {
-	switch pkg {
-	case "com.flarego.default-theme":
-		return "top"
+func getLogoPosition(meta *sdkapi.ThemePreviewMeta) string {
+	if meta != nil && meta.LogoPosition != "" {
+		return meta.LogoPosition
 	}
 	return "top"
 }
 
-func portalLogoPositionLabel(pkg string) string {
-	pos := portalLogoPosition(pkg)
-	if pos == "center" {
+func getLogoPositionLabel(meta *sdkapi.ThemePreviewMeta) string {
+	if getLogoPosition(meta) == "center" {
 		return "Center"
 	}
 	return "Top"

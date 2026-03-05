@@ -38,3 +38,17 @@ func (self *ThemesApi) GetPortalTheme() sdkapi.IPluginApi {
 	}
 	return pluginApi
 }
+
+func (self *ThemesApi) AdminPreviewMeta() *sdkapi.ThemePreviewMeta {
+	if self.AdminTheme == nil {
+		return nil
+	}
+	return self.AdminTheme.PreviewMeta
+}
+
+func (self *ThemesApi) PortalPreviewMeta() *sdkapi.ThemePreviewMeta {
+	if self.PortalTheme == nil {
+		return nil
+	}
+	return self.PortalTheme.PreviewMeta
+}
