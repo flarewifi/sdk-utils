@@ -30,6 +30,8 @@ func buildLineChartHTML(opts sdkapi.LineChartOpts) string {
 		"data":   opts.Data,
 		"series": opts.Series,
 	}
+
+	if opts.IsStacked != nil {jsOpts["stacked"] = *opts.IsStacked} else {jsOpts["stacked"]=false}
 	if opts.Tension != nil {
 		jsOpts["tension"] = *opts.Tension
 	}

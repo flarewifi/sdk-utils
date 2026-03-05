@@ -36,6 +36,7 @@ func revenueChartJSON(points []dashboard.RevenueChartPoint) *sdkapi.LineChartOpt
 			{Key: "coinslot", Color: "#3b82f6", Label: "Coinslot"},
 			{Key: "voucher", Color: "#a855f7", Label: "Voucher"},
 		},
+		TooltipTemplate: "{label}: " + "\u20B1" + "{value}",
 	}
 }
 

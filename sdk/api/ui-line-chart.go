@@ -48,4 +48,5 @@ type LineChartOpts struct {
 	TooltipTemplate string               // Tooltip format, e.g., "{label}: {value} MB"
 	TooltipPrefix   string               // Prefix before value, e.g., "₱"
 	TooltipDecimals *int                 // Decimal places (default: 2)
+	IsStacked       *bool
 }
