@@ -26,7 +26,8 @@ templ AdminIndexPage(api sdkapi.IPluginApi, data AdminData) {
 			@InternetStatusCard(api, data.InternetStatusData)
 		</div>
 	</div>
-	@RevenueChartCard(api, data.ChartData)
+	//@RevenueChartCard(api, data.ChartData)
+	@RevenueChartCardLoading(api)
 	<div class="row g-3 mb-4">
 		<div class="col-lg-6">
 			@DeviceHealthCard(api, data.SysInfo)

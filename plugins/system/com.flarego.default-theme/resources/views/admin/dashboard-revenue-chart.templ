@@ -28,6 +28,7 @@ func revenueChartJSON(points []dashboard.RevenueChartPoint) *sdkapi.LineChartOpt
 	        { Key: "coinslot", Color: "#3b82f6", Label: "Coinslot" },
 	        { Key: "voucher", Color: "#a855f7", Label: "Voucher" },
 	    },
+
 	}
 }
 
@@ -60,6 +61,38 @@ templ RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint
 			<div class="fw-chart-container">
 				@api.UI().LineChart(revenueChartJSON(data))
 			</div>
+		</div>
+	</div>
+}
+
+templ RevenueChartCardLoading(api sdkapi.IPluginApi) {
+	<div
+		class="card border mb-4"
+		hx-get={ api.Http().Helpers().UrlForRoute("admin:dashboard:revenue-chart") }
+		hx-trigger="load"
+		hx-swap="outerHTML"
+		hx-indicator="#loading"
+	>
+		<div class="card-body pb-0">
+			<div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
+				<div class="mb-2">
+					<h2 class="h5 mb-1">{ api.Translate("label", "Revenue Summary") }</h2>
+					<p class="text-muted small mb-0">{ api.Translate("label", "Last 7 days revenue breakdown") }</p>
+				</div>
+				<div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="fw-legend-dot" style="background-color:#3b82f6;"></span>
+                        <span class="text-muted" style="font-size:0.75rem;">{ api.Translate("label", "Coinslot") }</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="fw-legend-dot" style="background-color:#a855f7;"></span>
+                        <span class="text-muted" style="font-size:0.75rem;">{ api.Translate("label", "Voucher") }</span>
+                    </div>
+                </div>
+			</div>
+		</div>
+		<div class="card-body border-top pt-3">
+			<div class="htmx-indicator spinner-grow text-dark" id="loading" role="status"></div>
 		</div>
 	</div>
 }
