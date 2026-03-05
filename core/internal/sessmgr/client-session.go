@@ -9,108 +9,13 @@ import (
 	"core/db"
 	"core/db/models"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-// sessionData holds all session fields as an immutable snapshot.
-// This enables lock-free reads via atomic.Pointer.
-type sessionData struct {
-	id          int64
-	uuid        string
-	providerPkg string
-	devId       int64
-	sessionType string
-	timeSecs    int
-	dataMb      float64
-	timeCons    int
-	dataCons    float64
-	startedAt   *time.Time
-	resumedAt   *time.Time
-	expDays     *int
-	downMbits   int
-	upMbits     int
-	useGlobal   bool
-	createdAt   time.Time
-	updatedAt   time.Time
-
-	// Dirty tracking - which fields changed since last save/load
-	dirtyTimeSecs       bool // time_secs changed
-	dirtyDataMb         bool // data_mb changed
-	dirtyTimeCons       bool // time_secs_consumed changed
-	dirtyDataCons       bool // data_mb_consumed changed
-	dirtyDownMbits      bool // down_speed_mbits changed
-	dirtyUpMbits        bool // up_speed_mbits changed
-	dirtyUseGlobalSpeed bool // use_global_speed changed
-	dirtyExpDays        bool // exp_days changed
-	dirtyStartedAt      bool // started_at changed
-	dirtyResumedAt      bool // resumed_at changed
-}
-
-// copyTimePtr creates a deep copy of a time pointer to avoid shared state
-func copyTimePtr(t *time.Time) *time.Time {
-	if t == nil {
-		return nil
-	}
-	copied := *t
-	return &copied
-}
-
-// copyIntPtr creates a deep copy of an int pointer to avoid shared state
-func copyIntPtr(i *int) *int {
-	if i == nil {
-		return nil
-	}
-	copied := *i
-	return &copied
-}
-
-// copy creates a deep copy of sessionData for modification
-func (d *sessionData) copy() sessionData {
-	return sessionData{
-		id:          d.id,
-		uuid:        d.uuid,
-		providerPkg: d.providerPkg,
-		devId:       d.devId,
-		sessionType: d.sessionType,
-		timeSecs:    d.timeSecs,
-		dataMb:      d.dataMb,
-		timeCons:    d.timeCons,
-		dataCons:    d.dataCons,
-		startedAt:   copyTimePtr(d.startedAt),
-		resumedAt:   copyTimePtr(d.resumedAt),
-		expDays:     copyIntPtr(d.expDays),
-		downMbits:   d.downMbits,
-		upMbits:     d.upMbits,
-		useGlobal:   d.useGlobal,
-		createdAt:   d.createdAt,
-		updatedAt:   d.updatedAt,
-		// Preserve dirty flags during copy
-		dirtyTimeSecs:       d.dirtyTimeSecs,
-		dirtyDataMb:         d.dirtyDataMb,
-		dirtyTimeCons:       d.dirtyTimeCons,
-		dirtyDataCons:       d.dirtyDataCons,
-		dirtyDownMbits:      d.dirtyDownMbits,
-		dirtyUpMbits:        d.dirtyUpMbits,
-		dirtyUseGlobalSpeed: d.dirtyUseGlobalSpeed,
-		dirtyExpDays:        d.dirtyExpDays,
-		dirtyStartedAt:      d.dirtyStartedAt,
-		dirtyResumedAt:      d.dirtyResumedAt,
-	}
-}
-
-func NewClientSession(dtb *db.Database, mdls *models.Models, pluginsMgr sdkapi.IPluginsMgrApi, s *models.Session) *ClientSession {
-	cs := &ClientSession{
-		db:         dtb,
-		mdls:       mdls,
-		pluginsMgr: pluginsMgr,
-	}
-	cs.loadFromModel(s)
-	return cs
-}
-
-// SetOnSave sets the callback function for session save events.
-func (self *ClientSession) SetOnSave(fn sdkapi.SessionSaveCallback) {
-	self.onSave = fn
-}
+// =============================================================================
+// TYPES
+// =============================================================================
 
 // ClientSession wraps session data with lock-free reads and synchronized writes.
 // Reads use atomic.Pointer for zero-lock access.
@@ -120,10 +25,7 @@ type ClientSession struct {
 	db         *db.Database
 	mdls       *models.Models
 	pluginsMgr sdkapi.IPluginsMgrApi
-
-	// Callback for save notifications (set by SessionsMgr)
-	// Called after Save() to apply side effects to running sessions
-	onSave sdkapi.SessionSaveCallback
+	sessMgr    *SessionsMgr
 
 	// Session data - atomic pointer for lock-free reads
 	data atomic.Pointer[sessionData]
@@ -132,7 +34,26 @@ type ClientSession struct {
 	writeMu sync.Mutex
 }
 
-func (self *ClientSession) Save(ctx context.Context) error {
+// =============================================================================
+// CONSTRUCTOR
+// =============================================================================
+
+func NewClientSession(dtb *db.Database, mdls *models.Models, pluginsMgr sdkapi.IPluginsMgrApi, sessMgr *SessionsMgr, s *models.Session) *ClientSession {
+	cs := &ClientSession{
+		db:         dtb,
+		mdls:       mdls,
+		pluginsMgr: pluginsMgr,
+		sessMgr:    sessMgr,
+	}
+	cs.loadFromModel(s)
+	return cs
+}
+
+// =============================================================================
+// PUBLIC METHODS - Persistence
+// =============================================================================
+
+func (self *ClientSession) Save(ctx context.Context, opts *sdkapi.SessionSaveOpts) error {
 	// Take a consistent snapshot and clear dirty flags atomically.
 	// This ensures no writes are lost between reading flags and clearing them.
 	self.writeMu.Lock()
@@ -176,33 +97,29 @@ func (self *ClientSession) Save(ctx context.Context) error {
 
 	// Save to database (outside lock - DB operations can be slow)
 	err := self.mdls.Session().Update(ctx, models.UpdateSessionParams{
-		ID:          d.id,
-		UUID:        d.uuid,
-		ProviderPkg: d.providerPkg,
-		DeviceID:    d.devId,
-		SessionType: sdkapi.SessionType(d.sessionType),
-		TimeSecs:    d.timeSecs,
-		DataMbytes:  d.dataMb,
-		TimeCons:    d.timeCons,
-		DataCons:    d.dataCons,
-		StartedAt:   d.startedAt,
-		ResumedAt:   d.resumedAt,
-		ExpDays:     d.expDays,
-		DownMbits:   d.downMbits,
-		UpMbits:     d.upMbits,
-		UseGlobal:   d.useGlobal,
+		ID:             d.id,
+		UUID:           d.uuid,
+		ProviderPkg:    d.providerPkg,
+		DeviceID:       d.devId,
+		Type:           sdkapi.SessionType(d.sessionType),
+		TimeSecs:       d.timeSecs,
+		DataMb:         d.dataMb,
+		TimeCons:       d.timeCons,
+		DataCons:       d.dataCons,
+		StartedAt:      d.startedAt,
+		ResumedAt:      d.resumedAt,
+		ExpDays:        d.expDays,
+		DownMbits:      d.downMbits,
+		UpMbits:        d.upMbits,
+		UseGlobalSpeed: d.useGlobal,
 	})
 	if err != nil {
 		return err
 	}
 
-	// Notify callback if any fields changed and callback is set
-	if self.onSave != nil && hasChanges {
-		return self.onSave(sdkapi.SessionSaveParams{
-			Ctx:           ctx,
-			Session:       self,
-			ChangedFields: changedFields,
-		})
+	// Apply side effects if any fields changed
+	if hasChanges {
+		return self.handleSave(ctx, changedFields, opts)
 	}
 
 	return nil
@@ -222,8 +139,47 @@ func (self *ClientSession) Reload(ctx context.Context) (err error) {
 	return nil
 }
 
-// loadFromModel creates a new sessionData snapshot from a models.Session
-func (self *ClientSession) loadFromModel(s *models.Session) {
+// PersistToDB saves the current session state directly to the database.
+// Unlike Save(), this does NOT trigger the onSave callback and does NOT clear dirty flags.
+// Used for internal bookkeeping operations (periodic saves, stop operations).
+func (self *ClientSession) PersistToDB(ctx context.Context) error {
+	d := self.data.Load()
+	return self.mdls.Session().Update(ctx, models.UpdateSessionParams{
+		ID:             d.id,
+		UUID:           d.uuid,
+		ProviderPkg:    d.providerPkg,
+		DeviceID:       d.devId,
+		Type:           sdkapi.SessionType(d.sessionType),
+		TimeSecs:       d.timeSecs,
+		DataMb:         d.dataMb,
+		TimeCons:       d.timeCons,
+		DataCons:       d.dataCons,
+		StartedAt:      d.startedAt,
+		ResumedAt:      d.resumedAt,
+		ExpDays:        d.expDays,
+		DownMbits:      d.downMbits,
+		UpMbits:        d.upMbits,
+		UseGlobalSpeed: d.useGlobal,
+	})
+}
+
+// Sync reloads session data from the database and applies any changes to the running session.
+// This compares old vs new data to determine what changed, then triggers the save callback
+// to apply side effects (timer reset, TC rule updates) for running sessions.
+func (self *ClientSession) Sync(ctx context.Context) error {
+	self.writeMu.Lock()
+
+	// Capture old data for comparison
+	oldData := self.data.Load()
+
+	// Load fresh data from database
+	s, err := self.mdls.Session().Find(ctx, oldData.id)
+	if err != nil {
+		self.writeMu.Unlock()
+		return err
+	}
+
+	// Create new data snapshot from database
 	newData := &sessionData{
 		id:          s.ID(),
 		uuid:        s.UUID(),
@@ -237,18 +193,77 @@ func (self *ClientSession) loadFromModel(s *models.Session) {
 		downMbits:   s.DownMbits(),
 		upMbits:     s.UpMbits(),
 		useGlobal:   s.UseGlobal(),
-		expDays:     copyIntPtr(s.ExpDays()),
-		startedAt:   copyTimePtr(s.StartedAt()),
-		resumedAt:   copyTimePtr(s.ResumedAt()),
+		expDays:     sdkutils.CopyIntPtr(s.ExpDays()),
+		startedAt:   sdkutils.CopyTimePtr(s.StartedAt()),
+		resumedAt:   sdkutils.CopyTimePtr(s.ResumedAt()),
 		createdAt:   s.CreatedAt(),
 		updatedAt:   s.UpdatedAt(),
 	}
+
+	// Determine what changed by comparing old vs new
+	changedFields := sdkapi.SessionChangedFields{
+		TimeSecs:       oldData.timeSecs != newData.timeSecs,
+		DataMb:         oldData.dataMb != newData.dataMb,
+		TimeCons:       oldData.timeCons != newData.timeCons,
+		DataCons:       oldData.dataCons != newData.dataCons,
+		DownMbits:      oldData.downMbits != newData.downMbits,
+		UpMbits:        oldData.upMbits != newData.upMbits,
+		UseGlobalSpeed: oldData.useGlobal != newData.useGlobal,
+		ExpDays:        !sdkutils.IntPtrEqual(oldData.expDays, newData.expDays),
+		StartedAt:      !sdkutils.TimePtrEqual(oldData.startedAt, newData.startedAt),
+		ResumedAt:      !sdkutils.TimePtrEqual(oldData.resumedAt, newData.resumedAt),
+	}
+
+	// Store the new data
 	self.data.Store(newData)
+	self.writeMu.Unlock()
+
+	// Check if anything changed
+	hasChanges := changedFields.TimeSecs || changedFields.DataMb || changedFields.TimeCons ||
+		changedFields.DataCons || changedFields.DownMbits || changedFields.UpMbits ||
+		changedFields.UseGlobalSpeed || changedFields.ExpDays || changedFields.StartedAt ||
+		changedFields.ResumedAt
+
+	// Apply side effects (timer reset, TC update, event emission)
+	if hasChanges {
+		return self.handleSave(ctx, changedFields, nil) // nil opts = default behavior (emit events)
+	}
+
+	return nil
 }
 
-// ============================================================================
-// LOCK-FREE GETTERS - All reads use atomic.Load(), no locks needed
-// ============================================================================
+// SnapshotTimeCons atomically bakes elapsed time into timeCons and resets resumedAt.
+// If clearResumed is true, sets resumedAt to nil (session stopping).
+// If clearResumed is false, resets resumedAt to now (checkpoint for continued tracking).
+// Returns elapsed seconds for logging purposes.
+// Does NOT set dirty flags (internal bookkeeping operation).
+func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
+	self.writeMu.Lock()
+	defer self.writeMu.Unlock()
+
+	d := self.data.Load()
+	if d.resumedAt == nil {
+		return 0
+	}
+
+	elapsed := int(time.Since(*d.resumedAt).Seconds())
+	newData := d.copy()
+	newData.timeCons = d.timeCons + elapsed
+
+	if clearResumed {
+		newData.resumedAt = nil
+	} else {
+		now := time.Now().UTC()
+		newData.resumedAt = &now
+	}
+
+	self.data.Store(&newData)
+	return elapsed
+}
+
+// =============================================================================
+// PUBLIC METHODS - Getters (Lock-free reads via atomic.Load())
+// =============================================================================
 
 // ID returns the session's ID.
 func (self *ClientSession) ID() int64 {
@@ -334,101 +349,6 @@ func (self *ClientSession) RemainingData() (mbytes float64) {
 		return 0
 	}
 	return mb
-}
-
-// ============================================================================
-// INTERNAL HELPERS - Use provided data snapshot for consistent calculations
-// ============================================================================
-
-// isExpiredWithData checks expiration using provided data snapshot.
-func (self *ClientSession) isExpiredWithData(d *sessionData) bool {
-	if d.startedAt != nil && d.expDays != nil {
-		exp := d.startedAt.Add(time.Hour * 24 * time.Duration(*d.expDays))
-		return !time.Now().Before(exp)
-	}
-	return false
-}
-
-// remainingTimeWithData calculates remaining time using provided data snapshot.
-func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
-	// If session has no consumption and was never started, return full allocated time
-	hasConsumption := d.timeCons > 0 || d.dataCons > 0
-	if d.startedAt == nil && d.resumedAt == nil && !hasConsumption {
-		return d.timeSecs
-	}
-
-	remaining := d.timeSecs - d.timeCons
-
-	// If session is running, subtract elapsed time since resumed_at
-	if d.resumedAt != nil {
-		elapsed := int(time.Since(*d.resumedAt).Seconds())
-		remaining -= elapsed
-	}
-
-	if remaining < 0 {
-		remaining = 0
-	}
-
-	return remaining
-}
-
-// remainingDataWithData calculates remaining data using provided data snapshot.
-func (self *ClientSession) remainingDataWithData(d *sessionData) float64 {
-	// If session has no consumption and was never started, return full allocated data
-	hasConsumption := d.timeCons > 0 || d.dataCons > 0
-	if d.startedAt == nil && d.resumedAt == nil && !hasConsumption {
-		return d.dataMb
-	}
-
-	remaining := d.dataMb - d.dataCons
-	if remaining < 0 {
-		return 0
-	}
-	return remaining
-}
-
-// expiresAtWithData calculates expiration time using provided data snapshot.
-func (self *ClientSession) expiresAtWithData(d *sessionData) *time.Time {
-	if d.startedAt != nil && d.expDays != nil {
-		exp := d.startedAt.Add(time.Hour * 24 * time.Duration(*d.expDays))
-		return &exp
-	}
-	return nil
-}
-
-// isAvailableWithData checks if session is available using provided data snapshot.
-func (self *ClientSession) isAvailableWithData(d *sessionData) bool {
-	if self.isExpiredWithData(d) {
-		return false
-	}
-	hasConsumption := d.timeCons > 0 || d.dataCons > 0
-	return d.startedAt == nil && d.resumedAt == nil && !hasConsumption
-}
-
-// isConsumedWithData checks if session is consumed using pre-computed values.
-func (self *ClientSession) isConsumedWithData(d *sessionData, sessionType sdkapi.SessionType, remainingTime int, remainingData float64, isAvailable bool, isExpired bool) bool {
-	// Available sessions are not consumed
-	if isAvailable {
-		return false
-	}
-
-	if isExpired {
-		return true
-	}
-
-	if sessionType == sdkapi.SessionTypeTime || sessionType == sdkapi.SessionTypeTimeOrData {
-		if remainingTime <= 0 {
-			return true
-		}
-	}
-
-	if sessionType == sdkapi.SessionTypeData || sessionType == sdkapi.SessionTypeTimeOrData {
-		if remainingData <= 0 {
-			return true
-		}
-	}
-
-	return false
 }
 
 // IsConsumed returns true if the session resources are fully consumed.
@@ -568,9 +488,9 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 		DownMbits:      d.downMbits,
 		UpMbits:        d.upMbits,
 		UseGlobalSpeed: d.useGlobal,
-		ExpDays:        copyIntPtr(d.expDays),
-		StartedAt:      copyTimePtr(d.startedAt),
-		ResumedAt:      copyTimePtr(d.resumedAt),
+		ExpDays:        sdkutils.CopyIntPtr(d.expDays),
+		StartedAt:      sdkutils.CopyTimePtr(d.startedAt),
+		ResumedAt:      sdkutils.CopyTimePtr(d.resumedAt),
 		CreatedAt:      d.createdAt,
 		UpdatedAt:      d.updatedAt,
 		// Pre-computed values
@@ -584,9 +504,35 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 	}
 }
 
-// ============================================================================
-// SETTERS - Use copy-modify-swap pattern with mutex protection
-// ============================================================================
+// RawData returns a snapshot of raw session data fields as stored in the database.
+// TimeCons does NOT include elapsed time - it's the raw stored value.
+// Use this for syncing/persistence where you need exact stored values.
+func (self *ClientSession) RawData() sdkapi.SessionRawData {
+	d := self.data.Load()
+
+	return sdkapi.SessionRawData{
+		ID:             d.id,
+		UUID:           d.uuid,
+		DeviceID:       d.devId,
+		Type:           sdkapi.SessionType(d.sessionType),
+		TimeSecs:       d.timeSecs,
+		DataMb:         d.dataMb,
+		TimeCons:       d.timeCons,
+		DataCons:       d.dataCons,
+		DownMbits:      d.downMbits,
+		UpMbits:        d.upMbits,
+		UseGlobalSpeed: d.useGlobal,
+		ExpDays:        sdkutils.CopyIntPtr(d.expDays),
+		StartedAt:      sdkutils.CopyTimePtr(d.startedAt),
+		ResumedAt:      sdkutils.CopyTimePtr(d.resumedAt),
+		CreatedAt:      d.createdAt,
+		UpdatedAt:      d.updatedAt,
+	}
+}
+
+// =============================================================================
+// PUBLIC METHODS - Setters (copy-modify-swap pattern with mutex protection)
+// =============================================================================
 
 // IncTimeCons increases the session's time consumption in seconds.
 // This value is not saved until Save() method is called.
@@ -659,74 +605,175 @@ func (self *ClientSession) SetData(data sdkapi.SessionUpdateData) {
 
 	// Update timestamps
 	if data.StartedAt != nil {
-		newData.startedAt = copyTimePtr(data.StartedAt)
+		newData.startedAt = sdkutils.CopyTimePtr(data.StartedAt)
 		newData.dirtyStartedAt = true
 	}
 	if data.ResumedAt != nil {
-		newData.resumedAt = copyTimePtr(data.ResumedAt)
+		newData.resumedAt = sdkutils.CopyTimePtr(data.ResumedAt)
 		newData.dirtyResumedAt = true
 	}
 	if data.ExpDays != nil {
-		newData.expDays = copyIntPtr(data.ExpDays)
+		newData.expDays = sdkutils.CopyIntPtr(data.ExpDays)
 		newData.dirtyExpDays = true
 	}
 
 	self.data.Store(&newData)
 }
 
-// ============================================================================
-// INTERNAL PERSISTENCE METHODS - For bookkeeping operations
-// ============================================================================
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
 
-// PersistToDB saves the current session state directly to the database.
-// Unlike Save(), this does NOT trigger the onSave callback and does NOT clear dirty flags.
-// Used for internal bookkeeping operations (periodic saves, stop operations).
-func (self *ClientSession) PersistToDB(ctx context.Context) error {
-	d := self.data.Load()
-	return self.mdls.Session().Update(ctx, models.UpdateSessionParams{
-		ID:          d.id,
-		UUID:        d.uuid,
-		ProviderPkg: d.providerPkg,
-		DeviceID:    d.devId,
-		SessionType: sdkapi.SessionType(d.sessionType),
-		TimeSecs:    d.timeSecs,
-		DataMbytes:  d.dataMb,
-		TimeCons:    d.timeCons,
-		DataCons:    d.dataCons,
-		StartedAt:   d.startedAt,
-		ResumedAt:   d.resumedAt,
-		ExpDays:     d.expDays,
-		DownMbits:   d.downMbits,
-		UpMbits:     d.upMbits,
-		UseGlobal:   d.useGlobal,
-	})
+// copy creates a deep copy of sessionData for modification
+func (d *sessionData) copy() sessionData {
+	return sessionData{
+		id:          d.id,
+		uuid:        d.uuid,
+		providerPkg: d.providerPkg,
+		devId:       d.devId,
+		sessionType: d.sessionType,
+		timeSecs:    d.timeSecs,
+		dataMb:      d.dataMb,
+		timeCons:    d.timeCons,
+		dataCons:    d.dataCons,
+		startedAt:   sdkutils.CopyTimePtr(d.startedAt),
+		resumedAt:   sdkutils.CopyTimePtr(d.resumedAt),
+		expDays:     sdkutils.CopyIntPtr(d.expDays),
+		downMbits:   d.downMbits,
+		upMbits:     d.upMbits,
+		useGlobal:   d.useGlobal,
+		createdAt:   d.createdAt,
+		updatedAt:   d.updatedAt,
+		// Preserve dirty flags during copy
+		dirtyTimeSecs:       d.dirtyTimeSecs,
+		dirtyDataMb:         d.dirtyDataMb,
+		dirtyTimeCons:       d.dirtyTimeCons,
+		dirtyDataCons:       d.dirtyDataCons,
+		dirtyDownMbits:      d.dirtyDownMbits,
+		dirtyUpMbits:        d.dirtyUpMbits,
+		dirtyUseGlobalSpeed: d.dirtyUseGlobalSpeed,
+		dirtyExpDays:        d.dirtyExpDays,
+		dirtyStartedAt:      d.dirtyStartedAt,
+		dirtyResumedAt:      d.dirtyResumedAt,
+	}
 }
 
-// SnapshotTimeCons atomically bakes elapsed time into timeCons and resets resumedAt.
-// If clearResumed is true, sets resumedAt to nil (session stopping).
-// If clearResumed is false, resets resumedAt to now (checkpoint for continued tracking).
-// Returns elapsed seconds for logging purposes.
-// Does NOT set dirty flags (internal bookkeeping operation).
-func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
-	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
+// loadFromModel creates a new sessionData snapshot from a models.Session
+func (self *ClientSession) loadFromModel(s *models.Session) {
+	newData := &sessionData{
+		id:          s.ID(),
+		uuid:        s.UUID(),
+		providerPkg: s.ProviderPkg(),
+		devId:       s.DeviceID(),
+		sessionType: s.SessionType(),
+		timeSecs:    s.TimeSecs(),
+		dataMb:      s.DataMbyte(),
+		timeCons:    s.TimeConsumed(),
+		dataCons:    s.DataConsumed(),
+		downMbits:   s.DownMbits(),
+		upMbits:     s.UpMbits(),
+		useGlobal:   s.UseGlobal(),
+		expDays:     sdkutils.CopyIntPtr(s.ExpDays()),
+		startedAt:   sdkutils.CopyTimePtr(s.StartedAt()),
+		resumedAt:   sdkutils.CopyTimePtr(s.ResumedAt()),
+		createdAt:   s.CreatedAt(),
+		updatedAt:   s.UpdatedAt(),
+	}
+	self.data.Store(newData)
+}
 
-	d := self.data.Load()
-	if d.resumedAt == nil {
+// isExpiredWithData checks expiration using provided data snapshot.
+func (self *ClientSession) isExpiredWithData(d *sessionData) bool {
+	if d.startedAt != nil && d.expDays != nil {
+		exp := d.startedAt.Add(time.Hour * 24 * time.Duration(*d.expDays))
+		return !time.Now().Before(exp)
+	}
+	return false
+}
+
+// remainingTimeWithData calculates remaining time using provided data snapshot.
+func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
+	// If session has no consumption and was never started, return full allocated time
+	hasConsumption := d.timeCons > 0 || d.dataCons > 0
+	if d.startedAt == nil && d.resumedAt == nil && !hasConsumption {
+		return d.timeSecs
+	}
+
+	remaining := d.timeSecs - d.timeCons
+
+	// If session is running, subtract elapsed time since resumed_at
+	if d.resumedAt != nil {
+		elapsed := int(time.Since(*d.resumedAt).Seconds())
+		remaining -= elapsed
+	}
+
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	return remaining
+}
+
+// remainingDataWithData calculates remaining data using provided data snapshot.
+func (self *ClientSession) remainingDataWithData(d *sessionData) float64 {
+	// If session has no consumption and was never started, return full allocated data
+	hasConsumption := d.timeCons > 0 || d.dataCons > 0
+	if d.startedAt == nil && d.resumedAt == nil && !hasConsumption {
+		return d.dataMb
+	}
+
+	remaining := d.dataMb - d.dataCons
+	if remaining < 0 {
 		return 0
 	}
+	return remaining
+}
 
-	elapsed := int(time.Since(*d.resumedAt).Seconds())
-	newData := d.copy()
-	newData.timeCons = d.timeCons + elapsed
+// expiresAtWithData calculates expiration time using provided data snapshot.
+func (self *ClientSession) expiresAtWithData(d *sessionData) *time.Time {
+	if d.startedAt != nil && d.expDays != nil {
+		exp := d.startedAt.Add(time.Hour * 24 * time.Duration(*d.expDays))
+		return &exp
+	}
+	return nil
+}
 
-	if clearResumed {
-		newData.resumedAt = nil
-	} else {
-		now := time.Now().UTC()
-		newData.resumedAt = &now
+// isAvailableWithData checks if session is available using provided data snapshot.
+func (self *ClientSession) isAvailableWithData(d *sessionData) bool {
+	if self.isExpiredWithData(d) {
+		return false
+	}
+	hasConsumption := d.timeCons > 0 || d.dataCons > 0
+	return d.startedAt == nil && d.resumedAt == nil && !hasConsumption
+}
+
+// isConsumedWithData checks if session is consumed using pre-computed values.
+func (self *ClientSession) isConsumedWithData(d *sessionData, sessionType sdkapi.SessionType, remainingTime int, remainingData float64, isAvailable bool, isExpired bool) bool {
+	// Available sessions are not consumed
+	if isAvailable {
+		return false
 	}
 
-	self.data.Store(&newData)
-	return elapsed
+	if isExpired {
+		return true
+	}
+
+	if sessionType == sdkapi.SessionTypeTime || sessionType == sdkapi.SessionTypeTimeOrData {
+		if remainingTime <= 0 {
+			return true
+		}
+	}
+
+	if sessionType == sdkapi.SessionTypeData || sessionType == sdkapi.SessionTypeTimeOrData {
+		if remainingData <= 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// handleSave is called after Save()/Sync() to apply side effects to running sessions.
+func (self *ClientSession) handleSave(ctx context.Context, changed sdkapi.SessionChangedFields, opts *sdkapi.SessionSaveOpts) error {
+	return self.sessMgr.handleSessionSaved(ctx, self, changed, opts)
 }

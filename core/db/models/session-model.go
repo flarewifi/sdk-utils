@@ -21,35 +21,35 @@ type SessionModel struct {
 
 // CreateSessionParams holds parameters for creating a new session
 type CreateSessionParams struct {
-	UUID        string
-	PluginPkg   string
-	DeviceID    int64
-	SessionType sdkapi.SessionType
-	TimeSecs    int
-	DataMbytes  float64
-	ExpDays     *int
-	DownMbits   int
-	UpMbits     int
-	UseGlobal   bool
+	UUID           string
+	PluginPkg      string
+	DeviceID       int64
+	Type           sdkapi.SessionType
+	TimeSecs       int
+	DataMb         float64
+	ExpDays        *int
+	DownMbits      int
+	UpMbits        int
+	UseGlobalSpeed bool
 }
 
 // UpdateSessionParams holds parameters for updating a session
 type UpdateSessionParams struct {
-	ID          int64
-	UUID        string
-	ProviderPkg string
-	DeviceID    int64
-	SessionType sdkapi.SessionType
-	TimeSecs    int
-	DataMbytes  float64
-	TimeCons    int
-	DataCons    float64
-	StartedAt   *time.Time
-	ResumedAt   *time.Time
-	ExpDays     *int
-	DownMbits   int
-	UpMbits     int
-	UseGlobal   bool
+	ID             int64
+	UUID           string
+	ProviderPkg    string
+	DeviceID       int64
+	Type           sdkapi.SessionType
+	TimeSecs       int
+	DataMb         float64
+	TimeCons       int
+	DataCons       float64
+	StartedAt      *time.Time
+	ResumedAt      *time.Time
+	ExpDays        *int
+	DownMbits      int
+	UpMbits        int
+	UseGlobalSpeed bool
 }
 
 func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
@@ -63,7 +63,7 @@ func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams
 	}
 
 	// Validate bandwidth speeds
-	if !params.UseGlobal {
+	if !params.UseGlobalSpeed {
 		if params.DownMbits <= 0 {
 			return nil, errors.New("download speed must be greater than zero")
 		}
@@ -81,13 +81,13 @@ func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams
 		DeviceID:    params.DeviceID,
 		Uuid:        params.UUID,
 		ProviderPkg: params.PluginPkg,
-		SessionType: string(params.SessionType),
+		SessionType: string(params.Type),
 		TimeSecs:    int64(params.TimeSecs),
-		DataMbytes:  params.DataMbytes,
+		DataMbytes:  params.DataMb,
 		ExpDays:     expDays,
 		DownMbits:   int64(params.DownMbits),
 		UpMbits:     int64(params.UpMbits),
-		UseGlobal:   params.UseGlobal,
+		UseGlobal:   params.UseGlobalSpeed,
 	})
 	if err != nil {
 		log.Println("error creating session:", err)
@@ -119,7 +119,7 @@ func (self *SessionModel) FindByUUID(ctx context.Context, uuid string) (*Session
 
 func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams) error {
 	// Validate bandwidth speeds
-	if !params.UseGlobal {
+	if !params.UseGlobalSpeed {
 		if params.DownMbits <= 0 {
 			return errors.New("download speed must be greater than zero")
 		}
@@ -149,16 +149,16 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 		sdkapi.SessionTypeTimeOrData,
 	}
 
-	if !sdkutils.SliceContains(types, params.SessionType) {
+	if !sdkutils.SliceContains(types, params.Type) {
 		return errors.New("invalid session type")
 	}
 
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		ProviderPkg:     params.ProviderPkg,
 		DeviceID:        params.DeviceID,
-		SessionType:     string(params.SessionType),
+		SessionType:     string(params.Type),
 		TimeSecs:        int64(params.TimeSecs),
-		DataMbytes:      params.DataMbytes,
+		DataMbytes:      params.DataMb,
 		ConsumptionSecs: int64(params.TimeCons),
 		ConsumptionMb:   params.DataCons,
 		StartedAt:       startedAtTime,
@@ -166,7 +166,7 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 		ExpDays:         expDays,
 		DownMbits:       int64(params.DownMbits),
 		UpMbits:         int64(params.UpMbits),
-		UseGlobal:       params.UseGlobal,
+		UseGlobal:       params.UseGlobalSpeed,
 		ID:              params.ID,
 	})
 	if err != nil {
@@ -251,8 +251,8 @@ func (self *SessionModel) Summary(ctx context.Context, deviceID int64) (*sdkapi.
 	}
 
 	return &sdkapi.ClientSessionSummary{
-		RemainingTimeSecs:   remainingSecs,
-		RemainingDataMbytes: remainingDataMb,
+		RemainingTimeSecs: remainingSecs,
+		RemainingDataMb:   remainingDataMb,
 	}, nil
 }
 

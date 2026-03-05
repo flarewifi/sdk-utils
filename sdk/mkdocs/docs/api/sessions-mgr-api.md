@@ -129,13 +129,15 @@ It creates a [IClientSession](./client-session.md) for the [IClientDevice](./cli
 The `CreateSessionParams` struct contains:
 
 - `DevId int64` - the [IClientDevice](./client-device.md) ID
-- `SessionType SessionType` - the [type of session](./client-session.md#type) to create (`"time"`, `"data"`, or `"time-or-data"`)
+- `Type SessionType` - the [type of session](./client-session.md#type) to create (`"time"`, `"data"`, or `"time-or-data"`)
 - `TimeSecs int` - the duration of the session in seconds, applicable only for `time` and `time-or-data` session types
-- `DataMbytes float64` - the data in megabytes, applicable only for `data` and `time-or-data` session types
+- `DataMb float64` - the data in megabytes, applicable only for `data` and `time-or-data` session types
 - `ExpDays *int` - the expiration in days after the session is started
 - `DownMbits int` - the download speed of the session in megabits per second (mbps)
 - `UpMbits int` - the upload speed of the session in megabits per second (mbps)
-- `UseGlobal bool` - whether to use the global download and upload speed limit
+- `UseGlobalSpeed bool` - whether to use the global download and upload speed limit
+- `TimeCons int` - (optional) initial time consumption in seconds
+- `DataCons float64` - (optional) initial data consumption in megabytes
 
 Below is an example of how to use the `CreateSession` method:
 
@@ -143,15 +145,19 @@ Below is an example of how to use the `CreateSession` method:
 func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
 
-    params := CreateSessionParams{
-        DevId:       clnt.ID(),
-        SessionType: "time-or-data",
-        TimeSecs:    3600,     // 1 hour
-        DataMbytes:  100.0,    // 100 MB
-        ExpDays:     &[]int{30}[0], // 30 days
-        DownMbits:   5,        // 5 mbps
-        UpMbits:     3,        // 3 mbps
-        UseGlobal:   false,
+    // Helper to create *int pointer
+    expDays := 30
+
+    params := sdkapi.CreateSessionParams{
+        UUID:           sdkutils.NewUUID(), // Required: generate unique ID
+        DevId:          clnt.ID(),
+        Type:           sdkapi.SessionTypeTimeOrData,
+        TimeSecs:       3600,     // 1 hour
+        DataMb:         100.0,    // 100 MB
+        ExpDays:        &expDays, // 30 days (use nil for no expiration)
+        DownMbits:      5,        // 5 mbps
+        UpMbits:        3,        // 3 mbps
+        UseGlobalSpeed: false,
     }
 
     session, err := api.SessionsMgr().CreateSession(r.Context(), params)
@@ -166,6 +172,54 @@ Returns the current running [IClientSession](./client-session.md) of the [IClien
 func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
     session, ok := api.SessionsMgr().RunningSession(clnt)
+}
+```
+
+### ListRunningSessions
+
+Returns all currently active (running) sessions across all devices. These are sessions that are actively connected and consuming time/data. The returned sessions have real-time consumption data (`RemainingTime()` and `RemainingData()` account for elapsed time since the session started).
+
+This is useful for:
+
+- Building admin dashboards showing all active connections
+- Monitoring system-wide session usage
+- Implementing session management features
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    sessions, err := api.SessionsMgr().ListRunningSessions()
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Currently %d active sessions\n", len(sessions))
+    for _, session := range sessions {
+        fmt.Printf("Session %d: %s, remaining time: %d secs, remaining data: %.2f MB\n", 
+            session.ID(), session.Type(), session.RemainingTime(), session.RemainingData())
+    }
+}
+```
+
+**Example: Display active sessions with device information**
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    sessions, err := api.SessionsMgr().ListRunningSessions()
+    if err != nil {
+        // handle error
+    }
+    
+    for _, session := range sessions {
+        // Get the device for each session
+        device, err := api.SessionsMgr().FindClientById(ctx, session.DeviceID())
+        if err != nil {
+            continue
+        }
+        
+        fmt.Printf("Device %s (%s) - Session %d: %d secs remaining\n",
+            device.MacAddr(), device.IpAddr(), session.ID(), session.RemainingTime())
+    }
 }
 ```
 
@@ -221,17 +275,17 @@ The `NewClientSessionParams` struct contains all session fields:
 | `UUID` | `string` | Session unique identifier |
 | `ProviderPkg` | `string` | Package name of the plugin that created the session |
 | `DeviceID` | `int64` | ID of the device that owns this session |
-| `SessionType` | `SessionType` | Type of session: `"time"`, `"data"`, or `"time-or-data"` |
+| `Type` | `SessionType` | Type of session: `"time"`, `"data"`, or `"time-or-data"` |
 | `TimeSecs` | `int` | Allocated time in seconds |
-| `DataMbytes` | `float64` | Allocated data in megabytes |
-| `ConsumptionSecs` | `int` | Time consumed in seconds |
-| `ConsumptionMb` | `float64` | Data consumed in megabytes |
+| `DataMb` | `float64` | Allocated data in megabytes |
+| `TimeCons` | `int` | Time consumed in seconds |
+| `DataCons` | `float64` | Data consumed in megabytes |
 | `StartedAt` | `*time.Time` | When the session was first started |
 | `ResumedAt` | `*time.Time` | When the session was last resumed (nil if not running) |
 | `ExpDays` | `*int` | Expiration days after session start |
 | `DownMbits` | `int` | Download speed limit in Mbps |
 | `UpMbits` | `int` | Upload speed limit in Mbps |
-| `UseGlobal` | `bool` | Whether to use global bandwidth settings |
+| `UseGlobalSpeed` | `bool` | Whether to use global bandwidth settings |
 | `CreatedAt` | `time.Time` | When the session was created |
 | `UpdatedAt` | `time.Time` | When the session was last updated |
 
@@ -239,23 +293,23 @@ The `NewClientSessionParams` struct contains all session fields:
 // Example: Wrap session data from external source
 func wrapSessionData(data SessionData) sdkapi.IClientSession {
     return api.SessionsMgr().NewClientSession(sdkapi.NewClientSessionParams{
-        ID:              data.ID,
-        UUID:            data.UUID,
-        ProviderPkg:     data.ProviderPkg,
-        DeviceID:        data.DeviceID,
-        SessionType:     sdkapi.SessionType(data.Type),
-        TimeSecs:        data.TimeSecs,
-        DataMbytes:      data.DataMb,
-        ConsumptionSecs: data.ConsumedSecs,
-        ConsumptionMb:   data.ConsumedMb,
-        StartedAt:       data.StartedAt,
-        ResumedAt:       data.ResumedAt,
-        ExpDays:         data.ExpDays,
-        DownMbits:       data.DownMbits,
-        UpMbits:         data.UpMbits,
-        UseGlobal:       data.UseGlobal,
-        CreatedAt:       data.CreatedAt,
-        UpdatedAt:       data.UpdatedAt,
+        ID:             data.ID,
+        UUID:           data.UUID,
+        ProviderPkg:    data.ProviderPkg,
+        DeviceID:       data.DeviceID,
+        Type:           sdkapi.SessionType(data.Type),
+        TimeSecs:       data.TimeSecs,
+        DataMb:         data.DataMb,
+        TimeCons:       data.ConsumedSecs,
+        DataCons:       data.ConsumedMb,
+        StartedAt:      data.StartedAt,
+        ResumedAt:      data.ResumedAt,
+        ExpDays:        data.ExpDays,
+        DownMbits:      data.DownMbits,
+        UpMbits:        data.UpMbits,
+        UseGlobalSpeed: data.UseGlobalSpeed,
+        CreatedAt:      data.CreatedAt,
+        UpdatedAt:      data.UpdatedAt,
     })
 }
 ```
@@ -470,17 +524,26 @@ func addTimeToSession(ctx context.Context, sessionID int64, additionalSecs int) 
 }
 ```
 
-**Change tracking:** The `SessionChangedFields` struct passed to the callback indicates exactly which fields were modified:
+**Change tracking:** The `ChangedFields` field in `SessionEventData` indicates exactly which fields were modified:
 
 ```go
 api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionEventData) error {
     session := data.Session
+    changed := data.ChangedFields
     
-    // Note: ChangedFields is only available in the internal save callback
-    // Plugin callbacks receive the full updated session
-    
-    log.Printf("Session %d changed - Time: %d, Data: %.2f MB", 
-        session.ID(), session.RemainingTime(), session.RemainingData())
+    // Check what changed
+    if changed.TimeSecs || changed.TimeCons {
+        log.Printf("Session %d time changed - Remaining: %d secs", 
+            session.ID(), session.RemainingTime())
+    }
+    if changed.DataMb || changed.DataCons {
+        log.Printf("Session %d data changed - Remaining: %.2f MB", 
+            session.ID(), session.RemainingData())
+    }
+    if changed.DownMbits || changed.UpMbits || changed.UseGlobalSpeed {
+        log.Printf("Session %d bandwidth changed - Down: %d, Up: %d Mbps", 
+            session.ID(), session.DownMbits(), session.UpMbits())
+    }
     
     return nil
 })
@@ -515,7 +578,7 @@ session.Save(ctx) // ✅ Emits EventSessionChanged
 - Does NOT emit `EventSessionChanged` event
 - Does NOT clear dirty flags (used for periodic snapshots)
 - Does NOT trigger automatic side effects
-- Use this for internal operations like cloud sync, periodic saves, or state transitions
+- Use this for internal operations like periodic saves or state transitions
 
 **Example:**
 ```go
@@ -545,10 +608,13 @@ All session event callbacks receive a `SessionEventData` struct:
 
 ```go
 type SessionEventData struct {
-    Session IClientSession  // The session that triggered the event
-    Device  IClientDevice   // The device that owns the session
+    Session       IClientSession       // The session that triggered the event
+    Device        IClientDevice        // The device that owns the session
+    ChangedFields SessionChangedFields // Which fields changed (only set for EventSessionChanged)
 }
 ```
+
+**ChangedFields** is only populated for `EventSessionChanged` events. For other events, all fields will be `false`. See [SessionChangedFields](./client-session.md#sessionchangedfields) for the full list of trackable fields.
 
 **Available methods on `Session`:**
 

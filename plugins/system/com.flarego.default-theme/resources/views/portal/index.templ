@@ -84,9 +84,9 @@ templ SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) {
 				</span>
 			</div>
 		}
-		if data.SessionType != sdkapi.SessionTypeTime && data.SessionSummary.RemainingDataMbytes > 0{
+		if data.SessionType != sdkapi.SessionTypeTime && data.SessionSummary.RemainingDataMb > 0{
 			<div class="data-remaining">
-				<span>{ api.Translate("label", "Remaining Data") }</span>: <strong>{ sdkutils.FormatByteData(data.SessionSummary.RemainingDataMbytes) }</strong>
+				<span>{ api.Translate("label", "Remaining Data") }</span>: <strong>{ sdkutils.FormatByteData(data.SessionSummary.RemainingDataMb) }</strong>
 			</div>
 		}
 	</div>

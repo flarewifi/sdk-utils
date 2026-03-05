@@ -330,7 +330,7 @@ func SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) templ.Compon
 				return templ_7745c5c3_Err
 			}
 		}
-		if data.SessionType != sdkapi.SessionTypeTime && data.SessionSummary.RemainingDataMbytes > 0 {
+		if data.SessionType != sdkapi.SessionTypeTime && data.SessionSummary.RemainingDataMb > 0 {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"data-remaining\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -349,9 +349,9 @@ func SessionSummary(api sdkapi.IPluginApi, data SessionSummaryData) templ.Compon
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(sdkutils.FormatByteData(data.SessionSummary.RemainingDataMbytes))
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(sdkutils.FormatByteData(data.SessionSummary.RemainingDataMb))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/index.templ`, Line: 89, Col: 137}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/index.templ`, Line: 89, Col: 133}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {

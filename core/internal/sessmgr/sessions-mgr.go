@@ -17,18 +17,9 @@ import (
 	sdkapi "sdk/api"
 )
 
-var (
-// Removed hardcoded error messages - now translated at runtime
-)
-
-func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
-	sessionMgr := &SessionsMgr{
-		db:       dtb,
-		mdl:      mdl,
-		sessions: sync.Map{},
-	}
-	return sessionMgr
-}
+// =============================================================================
+// TYPES
+// =============================================================================
 
 type SessionsMgr struct {
 	coreAPI    sdkapi.IPluginApi
@@ -42,6 +33,23 @@ type SessionsMgr struct {
 	sessionEventCallbacks map[sdkapi.SessionEvent][]func(data sdkapi.SessionEventData) error
 	clientEventCallbacks  map[sdkapi.ClientEvent][]func(clnt sdkapi.IClientDevice) error
 }
+
+// =============================================================================
+// CONSTRUCTOR
+// =============================================================================
+
+func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
+	sessionMgr := &SessionsMgr{
+		db:       dtb,
+		mdl:      mdl,
+		sessions: sync.Map{},
+	}
+	return sessionMgr
+}
+
+// =============================================================================
+// PUBLIC METHODS - Initialization
+// =============================================================================
 
 func (self *SessionsMgr) SetCoreAPI(api sdkapi.IPluginApi) {
 	self.coreAPI = api
@@ -72,6 +80,10 @@ func (self *SessionsMgr) Init(ctx context.Context) error {
 	return nil
 }
 
+// =============================================================================
+// PUBLIC METHODS - Event Handling
+// =============================================================================
+
 func (self *SessionsMgr) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData) error) {
 	self.eventMu.Lock()
 	defer self.eventMu.Unlock()
@@ -92,47 +104,14 @@ func (self *SessionsMgr) OnClientEvent(event sdkapi.ClientEvent, callback func(c
 	self.clientEventCallbacks[event] = append(self.clientEventCallbacks[event], callback)
 }
 
-func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice) error {
-	// Take a snapshot of callbacks under lock to avoid holding lock during callback execution
-	self.eventMu.Lock()
-	callbacks := self.sessionEventCallbacks[event]
-	// Copy slice header so we don't hold the lock during callbacks
-	callbacksCopy := make([]func(data sdkapi.SessionEventData) error, len(callbacks))
-	copy(callbacksCopy, callbacks)
-	self.eventMu.Unlock()
-
-	data := sdkapi.SessionEventData{
-		Session: session,
-		Device:  device,
-	}
-	for _, callback := range callbacksCopy {
-		if err := callback(data); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // EmitSessionEvent is a public wrapper for emitSessionEvent to allow API layer to trigger events
-func (self *SessionsMgr) EmitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, device sdkapi.IClientDevice) error {
-	return self.emitSessionEvent(event, session, device)
+func (self *SessionsMgr) EmitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession) error {
+	return self.emitSessionEvent(event, session)
 }
 
-func (self *SessionsMgr) emitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
-	// Take a snapshot of callbacks under lock to avoid holding lock during callback execution
-	self.eventMu.Lock()
-	callbacks := self.clientEventCallbacks[event]
-	callbacksCopy := make([]func(clnt sdkapi.IClientDevice) error, len(callbacks))
-	copy(callbacksCopy, callbacks)
-	self.eventMu.Unlock()
-
-	for _, callback := range callbacksCopy {
-		if err := callback(clnt); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// =============================================================================
+// PUBLIC METHODS - Traffic and Session Management
+// =============================================================================
 
 func (self *SessionsMgr) ListenTraffic(trfk *network.TrafficMgr) {
 	// Use a single goroutine to process traffic updates sequentially.
@@ -231,6 +210,10 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 	})
 }
 
+// =============================================================================
+// PUBLIC METHODS - Connection Management
+// =============================================================================
+
 func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
 	if clnt.Status() == sdkapi.DeviceStatusBlocked {
 		return errors.New(self.coreAPI.Translate("error", "Device is blocked"))
@@ -288,6 +271,10 @@ func (self *SessionsMgr) IsConnected(clnt sdkapi.IClientDevice) (connected bool)
 	return nftables.IsConnected(clnt.MacAddr())
 }
 
+// =============================================================================
+// PUBLIC METHODS - Session Queries
+// =============================================================================
+
 func (self *SessionsMgr) CurrSession(clnt sdkapi.IClientDevice) (cs sdkapi.IClientSession, ok bool) {
 	v, ok := self.sessions.Load(clnt.ID())
 	if !ok {
@@ -300,6 +287,357 @@ func (self *SessionsMgr) CurrSession(clnt sdkapi.IClientDevice) (cs sdkapi.IClie
 	}
 
 	return rs.GetSession(), true
+}
+
+// GetRunningSession returns the running session for a client device (public wrapper)
+func (self *SessionsMgr) GetRunningSession(clnt sdkapi.IClientDevice) (rs *RunningSession, ok bool) {
+	return self.getRunningSession(clnt)
+}
+
+func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevice) (sdkapi.IClientSession, error) {
+	localClient := clnt.(*ClientDevice)
+	s, err := self.mdl.Session().AvailableForDevice(ctx, localClient.id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New(self.coreAPI.Translate("error", "No more available sessions"))
+		}
+		return nil, err
+	}
+
+	return self.wrapModelSession(s), nil
+}
+
+// SessionSummary returns the total remaining time/data from ALL sessions for a client device.
+// The database queries return the total based on saved consumption values.
+// We need to subtract both elapsed time and unsaved data consumption for running sessions.
+func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
+	summary, err := self.mdl.Session().Summary(ctx, clnt.ID())
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if there's a running session
+	rs, ok := self.getRunningSession(clnt)
+	if !ok {
+		// No running session, return database totals as-is
+		return summary, nil
+	}
+
+	// Calculate elapsed time for the running session since resumed_at.
+	// Use a single GetSession() call and a single ResumedAt() snapshot to avoid
+	// a race where SnapshotTimeCons sets resumedAt to nil between the nil check
+	// and the dereference, which would cause a nil pointer panic.
+	var elapsedSecs int = 0
+	session := rs.GetSession()
+	resumedAt := session.ResumedAt()
+	if resumedAt != nil {
+		elapsedSecs = int(time.Since(*resumedAt).Seconds())
+	}
+
+	// Get unsaved data consumption diff (data consumed but not yet written to DB)
+	mbDiff := rs.DiffMb()
+
+	// Subtract both elapsed time and unsaved data consumption
+	remainingTime := summary.RemainingTimeSecs - elapsedSecs
+	remainingData := summary.RemainingDataMb - mbDiff
+
+	// Ensure we don't go below zero
+	remainingTime = max(remainingTime, 0)
+	remainingData = max(remainingData, 0)
+
+	return &sdkapi.ClientSessionSummary{
+		RemainingTimeSecs: remainingTime,
+		RemainingDataMb:   remainingData,
+	}, nil
+}
+
+// ListRunningSessions returns all currently active (running) sessions.
+// These are sessions that are actively connected and consuming time/data.
+func (self *SessionsMgr) ListRunningSessions() ([]sdkapi.IClientSession, error) {
+	var sessions []sdkapi.IClientSession
+
+	self.sessions.Range(func(key, value any) bool {
+		rs := value.(*RunningSession)
+		// Skip sessions that are stopped or in the process of stopping
+		if rs.IsStopped() {
+			return true // Continue iteration
+		}
+		session := rs.GetSession()
+		if session != nil {
+			sessions = append(sessions, session)
+		}
+		return true // Continue iteration
+	})
+
+	return sessions, nil
+}
+
+// FindRunningSessionByUUID finds a currently running session by its UUID.
+// Returns the session and true if found, or nil and false if no running session
+// exists with the given UUID.
+func (self *SessionsMgr) FindRunningSessionByUUID(uuid string) (sdkapi.IClientSession, bool) {
+	var foundSession sdkapi.IClientSession
+
+	self.sessions.Range(func(key, value any) bool {
+		rs := value.(*RunningSession)
+		// Skip sessions that are stopped or in the process of stopping
+		if rs.IsStopped() {
+			return true // Continue iteration
+		}
+		session := rs.GetSession()
+		if session != nil && session.UUID() == uuid {
+			foundSession = session
+			return false // Stop iteration
+		}
+		return true // Continue iteration
+	})
+
+	if foundSession != nil {
+		return foundSession, true
+	}
+	return nil, false
+}
+
+// =============================================================================
+// PUBLIC METHODS - Device/Session Finders
+// =============================================================================
+
+// FindDeviceByID finds a device by its database ID and wraps it into an IClientDevice object.
+func (self *SessionsMgr) FindDeviceByID(ctx context.Context, deviceID int64) (sdkapi.IClientDevice, error) {
+	d, err := self.mdl.Device().Find(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	return self.wrapModelDevice(d), nil
+}
+
+// FindDeviceByUUID finds a device by its UUID and wraps it into an IClientDevice object.
+func (self *SessionsMgr) FindDeviceByUUID(ctx context.Context, uuid string) (sdkapi.IClientDevice, error) {
+	d, err := self.mdl.Device().FindByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	return self.wrapModelDevice(d), nil
+}
+
+// FindSessionByID finds a session by its database ID and wraps it into an IClientSession object.
+func (self *SessionsMgr) FindSessionByID(ctx context.Context, sessionID int64) (sdkapi.IClientSession, error) {
+	s, err := self.mdl.Session().Find(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return self.wrapModelSession(s), nil
+}
+
+// FindSessionByUUID finds a session by its UUID and wraps it into an IClientSession object.
+func (self *SessionsMgr) FindSessionByUUID(ctx context.Context, uuid string) (sdkapi.IClientSession, error) {
+	s, err := self.mdl.Session().FindByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	return self.wrapModelSession(s), nil
+}
+
+// FindClientById finds a client device by its database ID.
+func (self *SessionsMgr) FindClientById(ctx context.Context, devId int64) (sdkapi.IClientDevice, error) {
+	device, err := self.mdl.Device().Find(ctx, devId)
+	if err != nil {
+		return nil, fmt.Errorf("device not found: %w", err)
+	}
+
+	clnt := NewClientDevice(self.db, self.mdl, device)
+	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
+		return self.IsConnected(clnt)
+	})
+
+	return clnt, nil
+}
+
+// FindClientByMac finds a client device by its MAC address.
+func (self *SessionsMgr) FindClientByMac(ctx context.Context, mac string) (sdkapi.IClientDevice, error) {
+	device, err := self.mdl.Device().FindByMac(ctx, mac)
+	if err != nil {
+		return nil, fmt.Errorf("device not found by MAC %s: %w", mac, err)
+	}
+
+	clnt := NewClientDevice(self.db, self.mdl, device)
+	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
+		return self.IsConnected(clnt)
+	})
+
+	return clnt, nil
+}
+
+// FindClientByIp finds a client device by its IP address.
+func (self *SessionsMgr) FindClientByIp(ctx context.Context, ip string) (sdkapi.IClientDevice, error) {
+	device, err := self.mdl.Device().FindByIp(ctx, ip)
+	if err != nil {
+		return nil, fmt.Errorf("device not found by IP %s: %w", ip, err)
+	}
+
+	clnt := NewClientDevice(self.db, self.mdl, device)
+	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
+		return self.IsConnected(clnt)
+	})
+
+	return clnt, nil
+}
+
+// =============================================================================
+// PUBLIC METHODS - Factory Methods
+// =============================================================================
+
+// NewClientSession wraps session data into an IClientSession object without performing
+// additional database queries.
+func (self *SessionsMgr) NewClientSession(params sdkapi.NewClientSessionParams) sdkapi.IClientSession {
+	// Create a models.Session from the params using BuildSession
+	s := models.BuildSession(models.BuildSessionParams{
+		DB:             self.db,
+		Models:         self.mdl,
+		ID:             params.ID,
+		UUID:           params.UUID,
+		ProviderPkg:    params.ProviderPkg,
+		DeviceID:       params.DeviceID,
+		Type:           string(params.Type),
+		TimeSecs:       params.TimeSecs,
+		DataMb:         params.DataMb,
+		TimeCons:       params.TimeCons,
+		DataCons:       params.DataCons,
+		StartedAt:      params.StartedAt,
+		ResumedAt:      params.ResumedAt,
+		ExpDays:        params.ExpDays,
+		DownMbits:      params.DownMbits,
+		UpMbits:        params.UpMbits,
+		UseGlobalSpeed: params.UseGlobalSpeed,
+		CreatedAt:      params.CreatedAt,
+		UpdatedAt:      params.UpdatedAt,
+	})
+	return self.wrapModelSession(s)
+}
+
+// NewClientDevice wraps device data into an IClientDevice object without performing
+// additional database queries.
+func (self *SessionsMgr) NewClientDevice(params sdkapi.NewDeviceParams) sdkapi.IClientDevice {
+	// Create a models.Device from the params using BuildDevice
+	d := models.BuildDevice(models.BuildDeviceParams{
+		DB:        self.db,
+		Models:    self.mdl,
+		ID:        params.ID,
+		UUID:      params.UUID,
+		MacAddr:   params.MacAddress,
+		IpAddr:    params.IpAddress,
+		Hostname:  params.Hostname,
+		Status:    params.Status,
+		CreatedAt: params.CreatedAt,
+		UpdatedAt: params.UpdatedAt,
+	})
+	return self.wrapModelDevice(d)
+}
+
+// =============================================================================
+// PUBLIC METHODS - Bandwidth Updates
+// =============================================================================
+
+// UpdateInterfaceBandwidth updates the bandwidth settings for all running sessions on the specified interface.
+// This is called when bandwidth settings are saved via Config().Bandwidth().Save().
+// It iterates all running sessions, and for each session on the specified interface:
+// - Updates bandwidth based on UseGlobal setting
+// - Saves the session (which triggers ApplyBandwidthUpdate via the save callback)
+func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname string, cfg sdkapi.IBandwdCfg) {
+	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: updating sessions on interface %s", ifname)
+
+	self.sessions.Range(func(key, value any) bool {
+		rs := value.(*RunningSession)
+		lan := rs.Lan()
+
+		if lan == nil || lan.Name() != ifname {
+			return true // Continue to next session
+		}
+
+		// Skip stopped sessions
+		if rs.IsStopped() {
+			log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: skipping stopped session for device %d", rs.ClientId())
+			return true
+		}
+
+		session := rs.GetSession()
+		if session == nil {
+			return true
+		}
+
+		// Determine bandwidth based on UseGlobal setting
+		var downMbits, upMbits int
+		if cfg.UseGlobal {
+			downMbits = cfg.GlobalDownMbits
+			upMbits = cfg.GlobalUpMbits
+		} else {
+			downMbits = cfg.UserDownMbits
+			upMbits = cfg.UserUpMbits
+		}
+
+		log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: updating session %d - Down=%d, Up=%d, UseGlobal=%v",
+			session.ID(), downMbits, upMbits, cfg.UseGlobal)
+
+		// Update session bandwidth settings
+		session.SetData(sdkapi.SessionUpdateData{
+			DownMbits:      &downMbits,
+			UpMbits:        &upMbits,
+			UseGlobalSpeed: &cfg.UseGlobal,
+		})
+
+		// Save triggers the save callback which calls ApplyBandwidthUpdate
+		if err := session.Save(ctx, nil); err != nil {
+			log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: failed to save session %d: %v", session.ID(), err)
+			// Continue updating other sessions
+		}
+
+		return true // Continue to next session
+	})
+
+	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: completed for interface %s", ifname)
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, changedFields ...sdkapi.SessionChangedFields) error {
+	// Take a snapshot of callbacks under lock to avoid holding lock during callback execution
+	self.eventMu.Lock()
+	callbacks := self.sessionEventCallbacks[event]
+	// Copy slice header so we don't hold the lock during callbacks
+	callbacksCopy := make([]func(data sdkapi.SessionEventData) error, len(callbacks))
+	copy(callbacksCopy, callbacks)
+	self.eventMu.Unlock()
+
+	data := sdkapi.SessionEventData{
+		Session: session,
+	}
+	if len(changedFields) > 0 {
+		data.ChangedFields = changedFields[0]
+	}
+	for _, callback := range callbacksCopy {
+		if err := callback(data); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *SessionsMgr) emitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
+	// Take a snapshot of callbacks under lock to avoid holding lock during callback execution
+	self.eventMu.Lock()
+	callbacks := self.clientEventCallbacks[event]
+	callbacksCopy := make([]func(clnt sdkapi.IClientDevice) error, len(callbacks))
+	copy(callbacksCopy, callbacks)
+	self.eventMu.Unlock()
+
+	for _, callback := range callbacksCopy {
+		if err := callback(clnt); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClientDevice, notify string) {
@@ -369,7 +707,7 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 			// Emit connection events
 			clnt.Emit(string(sdkapi.EventSessionConnected), []byte(notify))
 			if session, ok := self.CurrSession(clnt); ok {
-				self.emitSessionEvent(sdkapi.EventSessionConnected, session, clnt)
+				self.emitSessionEvent(sdkapi.EventSessionConnected, session)
 			}
 			self.emitClientEvent(sdkapi.EventClientConnected, clnt)
 
@@ -427,11 +765,6 @@ func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *Runni
 	return rs, true
 }
 
-// GetRunningSession returns the running session for a client device (public wrapper)
-func (self *SessionsMgr) GetRunningSession(clnt sdkapi.IClientDevice) (rs *RunningSession, ok bool) {
-	return self.getRunningSession(clnt)
-}
-
 func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevice) error {
 	if nftables.IsConnected(clnt.MacAddr()) {
 		if err := nftables.Disconnect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
@@ -454,133 +787,10 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 	return nil
 }
 
-func (self *SessionsMgr) GetSession(ctx context.Context, clnt sdkapi.IClientDevice) (sdkapi.IClientSession, error) {
-	localClient := clnt.(*ClientDevice)
-	s, err := self.mdl.Session().AvailableForDevice(ctx, localClient.id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New(self.coreAPI.Translate("error", "No more available sessions"))
-		}
-		return nil, err
-	}
-
-	return self.wrapModelSession(s), nil
-}
-
-// SessionSummary returns the total remaining time/data from ALL sessions for a client device.
-// The database queries return the total based on saved consumption values.
-// We need to subtract both elapsed time and unsaved data consumption for running sessions.
-func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClientDevice) (*sdkapi.ClientSessionSummary, error) {
-	summary, err := self.mdl.Session().Summary(ctx, clnt.ID())
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if there's a running session
-	rs, ok := self.getRunningSession(clnt)
-	if !ok {
-		// No running session, return database totals as-is
-		return summary, nil
-	}
-
-	// Calculate elapsed time for the running session since resumed_at.
-	// Use a single GetSession() call and a single ResumedAt() snapshot to avoid
-	// a race where SnapshotTimeCons sets resumedAt to nil between the nil check
-	// and the dereference, which would cause a nil pointer panic.
-	var elapsedSecs int = 0
-	session := rs.GetSession()
-	resumedAt := session.ResumedAt()
-	if resumedAt != nil {
-		elapsedSecs = int(time.Since(*resumedAt).Seconds())
-	}
-
-	// Get unsaved data consumption diff (data consumed but not yet written to DB)
-	mbDiff := rs.DiffMb()
-
-	// Subtract both elapsed time and unsaved data consumption
-	remainingTime := summary.RemainingTimeSecs - elapsedSecs
-	remainingData := summary.RemainingDataMbytes - mbDiff
-
-	// Ensure we don't go below zero
-	remainingTime = max(remainingTime, 0)
-	remainingData = max(remainingData, 0)
-
-	return &sdkapi.ClientSessionSummary{
-		RemainingTimeSecs:   remainingTime,
-		RemainingDataMbytes: remainingData,
-	}, nil
-}
-
-// FindDeviceByID finds a device by its database ID and wraps it into an IClientDevice object.
-func (self *SessionsMgr) FindDeviceByID(ctx context.Context, deviceID int64) (sdkapi.IClientDevice, error) {
-	d, err := self.mdl.Device().Find(ctx, deviceID)
-	if err != nil {
-		return nil, err
-	}
-	return self.wrapModelDevice(d), nil
-}
-
-// FindDeviceByUUID finds a device by its UUID and wraps it into an IClientDevice object.
-func (self *SessionsMgr) FindDeviceByUUID(ctx context.Context, uuid string) (sdkapi.IClientDevice, error) {
-	d, err := self.mdl.Device().FindByUUID(ctx, uuid)
-	if err != nil {
-		return nil, err
-	}
-	return self.wrapModelDevice(d), nil
-}
-
-// FindSessionByID finds a session by its database ID and wraps it into an IClientSession object.
-func (self *SessionsMgr) FindSessionByID(ctx context.Context, sessionID int64) (sdkapi.IClientSession, error) {
-	s, err := self.mdl.Session().Find(ctx, sessionID)
-	if err != nil {
-		return nil, err
-	}
-	return self.wrapModelSession(s), nil
-}
-
-// FindSessionByUUID finds a session by its UUID and wraps it into an IClientSession object.
-func (self *SessionsMgr) FindSessionByUUID(ctx context.Context, uuid string) (sdkapi.IClientSession, error) {
-	s, err := self.mdl.Session().FindByUUID(ctx, uuid)
-	if err != nil {
-		return nil, err
-	}
-	return self.wrapModelSession(s), nil
-}
-
-// NewClientSession wraps session data into an IClientSession object without performing
-// additional database queries.
-func (self *SessionsMgr) NewClientSession(params sdkapi.NewClientSessionParams) sdkapi.IClientSession {
-	// Create a models.Session from the params using BuildSession
-	s := models.BuildSession(models.BuildSessionParams{
-		DB:          self.db,
-		Models:      self.mdl,
-		ID:          params.ID,
-		UUID:        params.UUID,
-		ProviderPkg: params.ProviderPkg,
-		DeviceID:    params.DeviceID,
-		SessionType: string(params.SessionType),
-		TimeSecs:    params.TimeSecs,
-		DataMbytes:  params.DataMbytes,
-		TimeCons:    params.ConsumptionSecs,
-		DataCons:    params.ConsumptionMb,
-		StartedAt:   params.StartedAt,
-		ResumedAt:   params.ResumedAt,
-		ExpDays:     params.ExpDays,
-		DownMbits:   params.DownMbits,
-		UpMbits:     params.UpMbits,
-		UseGlobal:   params.UseGlobal,
-		CreatedAt:   params.CreatedAt,
-		UpdatedAt:   params.UpdatedAt,
-	})
-	return self.wrapModelSession(s)
-}
-
-// wrapModelSession wraps a models.Session into an IClientSession with save callback.
+// wrapModelSession wraps a models.Session into an IClientSession.
 // This is the internal helper used by all session-wrapping methods.
 func (self *SessionsMgr) wrapModelSession(s *models.Session) *ClientSession {
-	cs := NewClientSession(self.db, self.mdl, self.coreAPI.PluginsMgr(), s)
-	cs.SetOnSave(self.createSessionSaveCallback())
-	return cs
+	return NewClientSession(self.db, self.mdl, self.coreAPI.PluginsMgr(), self, s)
 }
 
 // wrapModelDevice wraps a models.Device into an IClientDevice.
@@ -599,96 +809,6 @@ func (self *SessionsMgr) isDeviceConnected(deviceID int64) bool {
 	}
 	return false
 }
-
-// NewClientDevice wraps device data into an IClientDevice object without performing
-// additional database queries.
-func (self *SessionsMgr) NewClientDevice(params sdkapi.NewDeviceParams) sdkapi.IClientDevice {
-	// Create a models.Device from the params using BuildDevice
-	d := models.BuildDevice(models.BuildDeviceParams{
-		DB:        self.db,
-		Models:    self.mdl,
-		ID:        params.ID,
-		UUID:      params.UUID,
-		MacAddr:   params.MacAddress,
-		IpAddr:    params.IpAddress,
-		Hostname:  params.Hostname,
-		Status:    params.Status,
-		CreatedAt: params.CreatedAt,
-		UpdatedAt: params.UpdatedAt,
-	})
-	return self.wrapModelDevice(d)
-}
-
-// ============================================================================
-// SESSION SAVE CALLBACK - Handles side effects when session.Save() is called
-// ============================================================================
-
-// createSessionSaveCallback creates a callback for ClientSession.Save() to notify about changes.
-// This callback applies side effects to running sessions and emits events.
-func (self *SessionsMgr) createSessionSaveCallback() sdkapi.SessionSaveCallback {
-	return func(params sdkapi.SessionSaveParams) error {
-		return self.handleSessionSaved(params)
-	}
-}
-
-// handleSessionSaved applies side effects after a session is saved.
-// For running sessions: resets timer (if time changed), updates TC rules (if bandwidth changed).
-// For all sessions: emits EventSessionUpdated.
-func (self *SessionsMgr) handleSessionSaved(params sdkapi.SessionSaveParams) error {
-	session := params.Session
-	changed := params.ChangedFields
-	sessionID := session.ID()
-
-	// Check if this is a running session
-	rs, clnt, isRunning := self.getRunningSessionBySessionID(sessionID)
-
-	if isRunning {
-		// Apply side effects to running session
-		// Time changed: timeSecs or timeCons
-		if changed.TimeSecs || changed.TimeCons {
-			remainingSecs := session.RemainingTime()
-			if err := rs.ApplyTimeUpdate(ApplyTimeUpdateParams{
-				Ctx:           params.Ctx,
-				RemainingSecs: remainingSecs,
-			}); err != nil {
-				return err
-			}
-		}
-		// Data changed: dataMb or dataCons
-		if changed.DataMb || changed.DataCons {
-			// Check if session is now consumed after data update
-			if err := rs.ApplyDataUpdate(params.Ctx); err != nil {
-				return err
-			}
-		}
-		// Bandwidth changed: downMbits, upMbits, or useGlobalSpeed
-		if changed.DownMbits || changed.UpMbits || changed.UseGlobalSpeed {
-			if err := rs.ApplyBandwidthUpdate(ApplyBandwidthUpdateParams{
-				Ctx:       params.Ctx,
-				DownMbits: session.DownMbits(),
-				UpMbits:   session.UpMbits(),
-				UseGlobal: session.UseGlobalSpeed(),
-			}); err != nil {
-				return err
-			}
-		}
-	} else {
-		// Not running - find device for event emission
-		device, err := self.mdl.Device().Find(params.Ctx, session.DeviceID())
-		if err != nil {
-			return fmt.Errorf("failed to find device for session: %w", err)
-		}
-		clnt = self.wrapModelDevice(device)
-	}
-
-	// Emit event
-	self.emitSessionEvent(sdkapi.EventSessionChanged, session, clnt)
-	return nil
-}
-
-// ============================================================================
-// SESSION UPDATE METHODS
-// ============================================================================
 
 // getRunningSessionBySessionID finds a running session by its session ID.
 // Returns the running session, the client device, and whether it was found.
@@ -713,106 +833,51 @@ func (self *SessionsMgr) getRunningSessionBySessionID(sessionID int64) (*Running
 	return nil, nil, false
 }
 
-// UpdateInterfaceBandwidth updates the bandwidth settings for all running sessions on the specified interface.
-// This is called when bandwidth settings are saved via Config().Bandwidth().Save().
-// It iterates all running sessions, and for each session on the specified interface:
-// - Updates bandwidth based on UseGlobal setting
-// - Saves the session (which triggers ApplyBandwidthUpdate via the save callback)
-func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname string, cfg sdkapi.IBandwdCfg) {
-	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: updating sessions on interface %s", ifname)
+// handleSessionSaved applies side effects after a session is saved.
+// For running sessions: resets timer (if time changed), updates TC rules (if bandwidth changed).
+// For all sessions: emits EventSessionChanged (unless opts.IgnoreCallbacks is true).
+func (self *SessionsMgr) handleSessionSaved(ctx context.Context, session sdkapi.IClientSession, changed sdkapi.SessionChangedFields, opts *sdkapi.SessionSaveOpts) error {
+	// Get all session data in a single atomic snapshot to avoid multiple getter calls
+	sessionData := session.Data()
 
-	self.sessions.Range(func(key, value any) bool {
-		rs := value.(*RunningSession)
-		lan := rs.Lan()
+	// Check if this is a running session
+	rs, _, isRunning := self.getRunningSessionBySessionID(sessionData.ID)
 
-		if lan == nil || lan.Name() != ifname {
-			return true // Continue to next session
+	if isRunning {
+		// Apply side effects to running session
+		// Time changed: timeSecs or timeCons
+		if changed.TimeSecs || changed.TimeCons {
+			if err := rs.ApplyTimeUpdate(ApplyTimeUpdateParams{
+				Ctx:           ctx,
+				RemainingSecs: sessionData.RemainingTime,
+			}); err != nil {
+				return err
+			}
 		}
-
-		// Skip stopped sessions
-		if rs.IsStopped() {
-			log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: skipping stopped session for device %d", rs.ClientId())
-			return true
+		// Data changed: dataMb or dataCons
+		if changed.DataMb || changed.DataCons {
+			// Check if session is now consumed after data update
+			if err := rs.ApplyDataUpdate(ctx); err != nil {
+				return err
+			}
 		}
-
-		session := rs.GetSession()
-		if session == nil {
-			return true
+		// Bandwidth changed: downMbits, upMbits, or useGlobalSpeed
+		if changed.DownMbits || changed.UpMbits || changed.UseGlobalSpeed {
+			if err := rs.ApplyBandwidthUpdate(ApplyBandwidthUpdateParams{
+				Ctx:       ctx,
+				DownMbits: sessionData.DownMbits,
+				UpMbits:   sessionData.UpMbits,
+				UseGlobal: sessionData.UseGlobalSpeed,
+			}); err != nil {
+				return err
+			}
 		}
-
-		// Determine bandwidth based on UseGlobal setting
-		var downMbits, upMbits int
-		if cfg.UseGlobal {
-			downMbits = cfg.GlobalDownMbits
-			upMbits = cfg.GlobalUpMbits
-		} else {
-			downMbits = cfg.UserDownMbits
-			upMbits = cfg.UserUpMbits
-		}
-
-		log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: updating session %d - Down=%d, Up=%d, UseGlobal=%v",
-			session.ID(), downMbits, upMbits, cfg.UseGlobal)
-
-		// Update session bandwidth settings
-		session.SetData(sdkapi.SessionUpdateData{
-			DownMbits:      &downMbits,
-			UpMbits:        &upMbits,
-			UseGlobalSpeed: &cfg.UseGlobal,
-		})
-
-		// Save triggers the save callback which calls ApplyBandwidthUpdate
-		if err := session.Save(ctx); err != nil {
-			log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: failed to save session %d: %v", session.ID(), err)
-			// Continue updating other sessions
-		}
-
-		return true // Continue to next session
-	})
-
-	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: completed for interface %s", ifname)
-}
-
-// FindClientById finds a client device by its database ID.
-func (self *SessionsMgr) FindClientById(ctx context.Context, devId int64) (sdkapi.IClientDevice, error) {
-	device, err := self.mdl.Device().Find(ctx, devId)
-	if err != nil {
-		return nil, fmt.Errorf("device not found: %w", err)
 	}
 
-	clnt := NewClientDevice(self.db, self.mdl, device)
-	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
-		return self.IsConnected(clnt)
-	})
-
-	return clnt, nil
-}
-
-// FindClientByMac finds a client device by its MAC address.
-func (self *SessionsMgr) FindClientByMac(ctx context.Context, mac string) (sdkapi.IClientDevice, error) {
-	device, err := self.mdl.Device().FindByMac(ctx, mac)
-	if err != nil {
-		return nil, fmt.Errorf("device not found by MAC %s: %w", mac, err)
+	// Emit event (unless IgnoreCallbacks is set)
+	if opts == nil || !opts.IgnoreCallbacks {
+		self.emitSessionEvent(sdkapi.EventSessionChanged, session, changed)
 	}
 
-	clnt := NewClientDevice(self.db, self.mdl, device)
-	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
-		return self.IsConnected(clnt)
-	})
-
-	return clnt, nil
-}
-
-// FindClientByIp finds a client device by its IP address.
-func (self *SessionsMgr) FindClientByIp(ctx context.Context, ip string) (sdkapi.IClientDevice, error) {
-	device, err := self.mdl.Device().FindByIp(ctx, ip)
-	if err != nil {
-		return nil, fmt.Errorf("device not found by IP %s: %w", ip, err)
-	}
-
-	clnt := NewClientDevice(self.db, self.mdl, device)
-	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
-		return self.IsConnected(clnt)
-	})
-
-	return clnt, nil
+	return nil
 }

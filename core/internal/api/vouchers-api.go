@@ -414,15 +414,15 @@ func (self *VouchersApi) Activate(ctx context.Context, params sdkapi.ActivateVou
 
 	// Create the session based on voucher settings
 	session, err := self.pluginApi.SessionsMgrAPI.CreateSession(ctx, sdkapi.CreateSessionParams{
-		UUID:        sessionUUID,
-		DevId:       params.Device.ID(),
-		SessionType: voucher.Type(),
-		TimeSecs:    int(voucher.TimeSecs()),
-		DataMbytes:  float64(voucher.DataMb()),
-		ExpDays:     voucher.SessionExpDays(),
-		DownMbits:   downMbits,
-		UpMbits:     upMbits,
-		UseGlobal:   useGlobal,
+		UUID:           sessionUUID,
+		DevId:          params.Device.ID(),
+		Type:           voucher.Type(),
+		TimeSecs:       int(voucher.TimeSecs()),
+		DataMb:         float64(voucher.DataMb()),
+		ExpDays:        voucher.SessionExpDays(),
+		DownMbits:      downMbits,
+		UpMbits:        upMbits,
+		UseGlobalSpeed: useGlobal,
 	})
 	if err != nil {
 		return sdkapi.VoucherActivateResult{}, fmt.Errorf("unable to create session from voucher: %w", err)

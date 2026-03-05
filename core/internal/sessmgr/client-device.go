@@ -14,9 +14,6 @@ import (
 	sdkapi "sdk/api"
 )
 
-// IsConnectedFunc is a callback to check if a device is connected.
-type IsConnectedFunc func(deviceID int64) bool
-
 type ClientDevice struct {
 	// === IMMUTABLE after creation (no lock needed) ===
 	db          *db.Database

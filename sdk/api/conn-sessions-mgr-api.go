@@ -42,51 +42,51 @@ const (
 
 // SessionEventData represents the data associated with a session event.
 type SessionEventData struct {
-	Session IClientSession
-	Device  IClientDevice
+	Session       IClientSession
+	ChangedFields SessionChangedFields // Which fields changed (only set for EventSessionChanged)
 }
 
 // ClientSessionSummary represents a summary of a client's session.
 type ClientSessionSummary struct {
-	RemainingTimeSecs   int
-	RemainingDataMbytes float64
+	RemainingTimeSecs int
+	RemainingDataMb   float64
 }
 
 // CreateSessionParams holds parameters for creating a new client session.
 type CreateSessionParams struct {
-	UUID            string // Required: Session UUID (use sdkutils.NewUUID() to generate)
-	DevId           int64
-	SessionType     SessionType
-	TimeSecs        int
-	DataMbytes      float64
-	ExpDays         *int
-	DownMbits       int
-	UpMbits         int
-	UseGlobal       bool
-	ConsumptionSecs int     // Optional: Time consumption in seconds (for cloud sync)
-	ConsumptionMb   float64 // Optional: Data consumption in megabytes (for cloud sync)
+	UUID           string // Required: Session UUID (use sdkutils.NewUUID() to generate)
+	DevId          int64
+	Type           SessionType
+	TimeSecs       int
+	DataMb         float64
+	ExpDays        *int
+	DownMbits      int
+	UpMbits        int
+	UseGlobalSpeed bool
+	TimeCons       int     // Optional: Time consumption in seconds
+	DataCons       float64 // Optional: Data consumption in megabytes
 }
 
 // NewClientSessionParams holds session data fields for wrapping an existing session row
 // into an IClientSession object without performing database queries.
 type NewClientSessionParams struct {
-	ID              int64
-	UUID            string
-	ProviderPkg     string
-	DeviceID        int64
-	SessionType     SessionType
-	TimeSecs        int
-	DataMbytes      float64
-	ConsumptionSecs int
-	ConsumptionMb   float64
-	StartedAt       *time.Time
-	ResumedAt       *time.Time
-	ExpDays         *int
-	DownMbits       int
-	UpMbits         int
-	UseGlobal       bool
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID             int64
+	UUID           string
+	ProviderPkg    string
+	DeviceID       int64
+	Type           SessionType
+	TimeSecs       int
+	DataMb         float64
+	TimeCons       int
+	DataCons       float64
+	StartedAt      *time.Time
+	ResumedAt      *time.Time
+	ExpDays        *int
+	DownMbits      int
+	UpMbits        int
+	UseGlobalSpeed bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // NewDeviceParams holds device data fields for wrapping an existing device row
@@ -159,13 +159,11 @@ type ISessionsMgrApi interface {
 	FindClientByIp(ctx context.Context, ip string) (IClientDevice, error)
 
 	// FindDeviceByUUID finds a client device by its globally unique identifier.
-	// This is useful for cloud sync scenarios where the cloud server needs to
-	// reference devices by their UUID rather than local database ID.
+	// This is useful for referencing devices by their UUID rather than local database ID.
 	FindDeviceByUUID(ctx context.Context, uuid string) (IClientDevice, error)
 
 	// FindSessionByUUID finds a session by its globally unique identifier.
-	// This is useful for cloud sync scenarios where the cloud server needs to
-	// terminate or query sessions by their UUID.
+	// This is useful for querying or terminating sessions by their UUID.
 	FindSessionByUUID(ctx context.Context, uuid string) (IClientSession, error)
 
 	// Connects a client device to the internet.
@@ -227,4 +225,17 @@ type ISessionsMgrApi interface {
 	// DeleteSession deletes a session by ID. If the session is currently running,
 	// it disconnects the device first. Emits EventSessionDeleted after deletion.
 	DeleteSession(ctx context.Context, sessionID int64) error
+
+	// ListRunningSessions returns all currently active (running) sessions.
+	// These are sessions that are actively connected and consuming time/data.
+	// The returned sessions have real-time consumption data (RemainingTime/RemainingData
+	// account for elapsed time since the session started).
+	ListRunningSessions() ([]IClientSession, error)
+
+	// FindRunningSessionByUUID finds a currently running session by its UUID.
+	// Returns the session and true if found, or nil and false if no running session
+	// exists with the given UUID. Unlike FindSessionByUUID which queries the database,
+	// this method only checks in-memory running sessions for better performance when
+	// you only need to know if a session is actively connected.
+	FindRunningSessionByUUID(uuid string) (IClientSession, bool)
 }
