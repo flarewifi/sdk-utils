@@ -119,7 +119,7 @@ func (self *ClientSession) Save(ctx context.Context, opts *sdkapi.SessionSaveOpt
 
 	// Apply side effects if any fields changed
 	if hasChanges {
-		return self.handleSave(ctx, changedFields, opts)
+		return self.handleChanges(ctx, changedFields, opts)
 	}
 
 	return nil
@@ -226,7 +226,7 @@ func (self *ClientSession) Sync(ctx context.Context) error {
 
 	// Apply side effects (timer reset, TC update, event emission)
 	if hasChanges {
-		return self.handleSave(ctx, changedFields, nil) // nil opts = default behavior (emit events)
+		return self.handleChanges(ctx, changedFields, nil) // nil opts = default behavior (emit events)
 	}
 
 	return nil
@@ -773,7 +773,7 @@ func (self *ClientSession) isConsumedWithData(d *sessionData, sessionType sdkapi
 	return false
 }
 
-// handleSave is called after Save()/Sync() to apply side effects to running sessions.
-func (self *ClientSession) handleSave(ctx context.Context, changed sdkapi.SessionChangedFields, opts *sdkapi.SessionSaveOpts) error {
+// handleChanges is called after Save()/Sync() to apply side effects to running sessions.
+func (self *ClientSession) handleChanges(ctx context.Context, changed sdkapi.SessionChangedFields, opts *sdkapi.SessionSaveOpts) error {
 	return self.sessMgr.handleSessionSaved(ctx, self, changed, opts)
 }
