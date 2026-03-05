@@ -169,6 +169,54 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### ListRunningSessions
+
+Returns all currently active (running) sessions across all devices. These are sessions that are actively connected and consuming time/data. The returned sessions have real-time consumption data (`RemainingTime()` and `RemainingData()` account for elapsed time since the session started).
+
+This is useful for:
+
+- Building admin dashboards showing all active connections
+- Monitoring system-wide session usage
+- Implementing session management features
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    sessions, err := api.SessionsMgr().ListRunningSessions()
+    if err != nil {
+        // handle error
+    }
+    
+    fmt.Printf("Currently %d active sessions\n", len(sessions))
+    for _, session := range sessions {
+        fmt.Printf("Session %d: %s, remaining time: %d secs, remaining data: %.2f MB\n", 
+            session.ID(), session.Type(), session.RemainingTime(), session.RemainingData())
+    }
+}
+```
+
+**Example: Display active sessions with device information**
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    sessions, err := api.SessionsMgr().ListRunningSessions()
+    if err != nil {
+        // handle error
+    }
+    
+    for _, session := range sessions {
+        // Get the device for each session
+        device, err := api.SessionsMgr().FindClientById(ctx, session.DeviceID())
+        if err != nil {
+            continue
+        }
+        
+        fmt.Printf("Device %s (%s) - Session %d: %d secs remaining\n",
+            device.MacAddr(), device.IpAddr(), session.ID(), session.RemainingTime())
+    }
+}
+```
+
 ### AvailableSession
 
 Returns any available [IClientSession](./client-session.md) for the given [IClientDevice](./client-device.md). This may include the current running session or any paused session.
@@ -515,7 +563,7 @@ session.Save(ctx) // ✅ Emits EventSessionChanged
 - Does NOT emit `EventSessionChanged` event
 - Does NOT clear dirty flags (used for periodic snapshots)
 - Does NOT trigger automatic side effects
-- Use this for internal operations like cloud sync, periodic saves, or state transitions
+- Use this for internal operations like periodic saves or state transitions
 
 **Example:**
 ```go

@@ -38,8 +38,30 @@ type SessionSaveParams struct {
 // and emit events when session.Save() is called.
 type SessionSaveCallback func(params SessionSaveParams) error
 
-// SessionData holds all session fields including raw values and pre-computed values.
-// This struct has no methods - all values are already computed at creation time.
+// SessionRawData holds raw session fields as stored in the database.
+// Use this for syncing/persistence where you need exact stored values.
+type SessionRawData struct {
+	ID             int64
+	UUID           string
+	DeviceID       int64
+	Type           SessionType
+	TimeSecs       int        // Allocated time in seconds
+	DataMb         float64    // Allocated data in megabytes
+	TimeCons       int        // Time consumption in seconds (raw stored value)
+	DataCons       float64    // Data consumption in megabytes (raw stored value)
+	DownMbits      int        // Download speed limit in Mbps
+	UpMbits        int        // Upload speed limit in Mbps
+	UseGlobalSpeed bool       // Whether to use global speed settings
+	ExpDays        *int       // Expiration days (nil if no expiration)
+	StartedAt      *time.Time // When session was first started
+	ResumedAt      *time.Time // When session was last resumed (nil if not running)
+	CreatedAt      time.Time  // Creation timestamp
+	UpdatedAt      time.Time  // Last update timestamp
+}
+
+// SessionData holds all session fields with pre-computed values.
+// TimeCons includes elapsed time for running sessions.
+// Use this for display/logic where you need current state.
 type SessionData struct {
 	// Raw database values
 	ID             int64
@@ -177,6 +199,11 @@ type IClientSession interface {
 	// Pre-computed fields: RemainingTime, RemainingData, ExpiresAt, IsExpired, IsAvailable, IsConsumed, IsRunning.
 	Data() SessionData
 
+	// Returns a snapshot of raw session data fields as stored in the database.
+	// Use this for syncing/persistence where you need exact stored values.
+	// TimeCons does NOT include elapsed time - it's the raw stored value.
+	RawData() SessionRawData
+
 	// Increases the session's time consumption in seconds.
 	// This value is not saved until Save() method is called.
 	IncTimeCons(sec int)
@@ -207,4 +234,14 @@ type IClientSession interface {
 	// Returns elapsed seconds for logging purposes.
 	// Does NOT set dirty flags (internal bookkeeping operation).
 	SnapshotTimeCons(clearResumed bool) int
+
+	// Sync reloads session data from the database and applies any changes to the running session.
+	// This is useful when session data has been modified externally (e.g., by another process or
+	// direct database update) and you need to synchronize the in-memory state.
+	// For running sessions, this will:
+	// - Reset the timer if time allocation changed
+	// - Update TC (traffic control) rules if bandwidth settings changed
+	// - Stop the session if resources are now consumed
+	// Emits EventSessionChanged after syncing.
+	Sync(ctx context.Context) error
 }

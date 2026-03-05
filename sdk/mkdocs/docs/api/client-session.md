@@ -478,3 +478,64 @@ Returns the elapsed seconds for logging purposes.
 elapsed := session.SnapshotTimeCons(true)  // Session stopping
 elapsed := session.SnapshotTimeCons(false) // Checkpoint, continue tracking
 ```
+
+### Sync
+
+Reloads session data from the database and applies any changes to the running session. This is useful when session data has been modified externally (e.g., by another process or direct database update) and you need to synchronize the in-memory state with the database.
+
+For running sessions, `Sync()` will automatically:
+
+- **Reset the timer** if time allocation (`TimeSecs`) or consumption (`TimeCons`) changed
+- **Update TC (traffic control) rules** if bandwidth settings (`DownMbits`, `UpMbits`, `UseGlobalSpeed`) changed
+- **Stop the session** if resources are now consumed (time/data exhausted)
+
+After syncing, `EventSessionChanged` is emitted if any fields changed.
+
+```go
+// Sync a running session after external modification
+sessions, _ := api.SessionsMgr().ListRunningSessions()
+for _, session := range sessions {
+    err := session.Sync(ctx)
+    if err != nil {
+        log.Printf("Failed to sync session %d: %v", session.ID(), err)
+    }
+}
+```
+
+**Example: Sync after direct database update**
+
+```go
+// Scenario: Admin adds time via direct database query
+// UPDATE sessions SET time_secs = time_secs + 3600 WHERE id = 123;
+
+// Get the running session and sync to apply the change
+runningSession, ok := api.SessionsMgr().RunningSession(device)
+if ok {
+    // Sync reloads from DB and resets the timer with new time
+    err := runningSession.Sync(ctx)
+    if err != nil {
+        log.Printf("Sync failed: %v", err)
+    }
+    // Timer is now reset with the additional hour
+}
+```
+
+**Example: Sync after external updates**
+
+```go
+// After external process writes new consumption values to database
+for _, session := range updatedSessions {
+    // Find if this session is currently running
+    runningSessions, _ := api.SessionsMgr().ListRunningSessions()
+    for _, rs := range runningSessions {
+        if rs.ID() == session.ID() {
+            // Sync to apply external updates to running session
+            rs.Sync(ctx)
+            break
+        }
+    }
+}
+```
+
+!!! tip "Sync vs Reload"
+    Use `Sync()` when you need the changes to take effect immediately on running sessions (timer reset, bandwidth update). Use `Reload()` when you just need to refresh the in-memory data without applying side effects.

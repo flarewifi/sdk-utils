@@ -637,19 +637,20 @@ func (self *SessionsMgr) createSessionSaveCallback() sdkapi.SessionSaveCallback 
 func (self *SessionsMgr) handleSessionSaved(params sdkapi.SessionSaveParams) error {
 	session := params.Session
 	changed := params.ChangedFields
-	sessionID := session.ID()
+
+	// Get all session data in a single atomic snapshot to avoid multiple getter calls
+	sessionData := session.Data()
 
 	// Check if this is a running session
-	rs, clnt, isRunning := self.getRunningSessionBySessionID(sessionID)
+	rs, clnt, isRunning := self.getRunningSessionBySessionID(sessionData.ID)
 
 	if isRunning {
 		// Apply side effects to running session
 		// Time changed: timeSecs or timeCons
 		if changed.TimeSecs || changed.TimeCons {
-			remainingSecs := session.RemainingTime()
 			if err := rs.ApplyTimeUpdate(ApplyTimeUpdateParams{
 				Ctx:           params.Ctx,
-				RemainingSecs: remainingSecs,
+				RemainingSecs: sessionData.RemainingTime,
 			}); err != nil {
 				return err
 			}
@@ -665,16 +666,16 @@ func (self *SessionsMgr) handleSessionSaved(params sdkapi.SessionSaveParams) err
 		if changed.DownMbits || changed.UpMbits || changed.UseGlobalSpeed {
 			if err := rs.ApplyBandwidthUpdate(ApplyBandwidthUpdateParams{
 				Ctx:       params.Ctx,
-				DownMbits: session.DownMbits(),
-				UpMbits:   session.UpMbits(),
-				UseGlobal: session.UseGlobalSpeed(),
+				DownMbits: sessionData.DownMbits,
+				UpMbits:   sessionData.UpMbits,
+				UseGlobal: sessionData.UseGlobalSpeed,
 			}); err != nil {
 				return err
 			}
 		}
 	} else {
 		// Not running - find device for event emission
-		device, err := self.mdl.Device().Find(params.Ctx, session.DeviceID())
+		device, err := self.mdl.Device().Find(params.Ctx, sessionData.DeviceID)
 		if err != nil {
 			return fmt.Errorf("failed to find device for session: %w", err)
 		}
@@ -711,6 +712,53 @@ func (self *SessionsMgr) getRunningSessionBySessionID(sessionID int64) (*Running
 		return foundRs, foundClnt, true
 	}
 	return nil, nil, false
+}
+
+// ListRunningSessions returns all currently active (running) sessions.
+// These are sessions that are actively connected and consuming time/data.
+func (self *SessionsMgr) ListRunningSessions() ([]sdkapi.IClientSession, error) {
+	var sessions []sdkapi.IClientSession
+
+	self.sessions.Range(func(key, value any) bool {
+		rs := value.(*RunningSession)
+		// Skip sessions that are stopped or in the process of stopping
+		if rs.IsStopped() {
+			return true // Continue iteration
+		}
+		session := rs.GetSession()
+		if session != nil {
+			sessions = append(sessions, session)
+		}
+		return true // Continue iteration
+	})
+
+	return sessions, nil
+}
+
+// FindRunningSessionByUUID finds a currently running session by its UUID.
+// Returns the session and true if found, or nil and false if no running session
+// exists with the given UUID.
+func (self *SessionsMgr) FindRunningSessionByUUID(uuid string) (sdkapi.IClientSession, bool) {
+	var foundSession sdkapi.IClientSession
+
+	self.sessions.Range(func(key, value any) bool {
+		rs := value.(*RunningSession)
+		// Skip sessions that are stopped or in the process of stopping
+		if rs.IsStopped() {
+			return true // Continue iteration
+		}
+		session := rs.GetSession()
+		if session != nil && session.UUID() == uuid {
+			foundSession = session
+			return false // Stop iteration
+		}
+		return true // Continue iteration
+	})
+
+	if foundSession != nil {
+		return foundSession, true
+	}
+	return nil, false
 }
 
 // UpdateInterfaceBandwidth updates the bandwidth settings for all running sessions on the specified interface.

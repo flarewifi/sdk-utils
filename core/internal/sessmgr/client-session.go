@@ -584,6 +584,32 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 	}
 }
 
+// RawData returns a snapshot of raw session data fields as stored in the database.
+// TimeCons does NOT include elapsed time - it's the raw stored value.
+// Use this for syncing/persistence where you need exact stored values.
+func (self *ClientSession) RawData() sdkapi.SessionRawData {
+	d := self.data.Load()
+
+	return sdkapi.SessionRawData{
+		ID:             d.id,
+		UUID:           d.uuid,
+		DeviceID:       d.devId,
+		Type:           sdkapi.SessionType(d.sessionType),
+		TimeSecs:       d.timeSecs,
+		DataMb:         d.dataMb,
+		TimeCons:       d.timeCons,
+		DataCons:       d.dataCons,
+		DownMbits:      d.downMbits,
+		UpMbits:        d.upMbits,
+		UseGlobalSpeed: d.useGlobal,
+		ExpDays:        copyIntPtr(d.expDays),
+		StartedAt:      copyTimePtr(d.startedAt),
+		ResumedAt:      copyTimePtr(d.resumedAt),
+		CreatedAt:      d.createdAt,
+		UpdatedAt:      d.updatedAt,
+	}
+}
+
 // ============================================================================
 // SETTERS - Use copy-modify-swap pattern with mutex protection
 // ============================================================================
@@ -729,4 +755,99 @@ func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
 
 	self.data.Store(&newData)
 	return elapsed
+}
+
+// Sync reloads session data from the database and applies any changes to the running session.
+// This compares old vs new data to determine what changed, then triggers the save callback
+// to apply side effects (timer reset, TC rule updates) for running sessions.
+func (self *ClientSession) Sync(ctx context.Context) error {
+	self.writeMu.Lock()
+
+	// Capture old data for comparison
+	oldData := self.data.Load()
+
+	// Load fresh data from database
+	s, err := self.mdls.Session().Find(ctx, oldData.id)
+	if err != nil {
+		self.writeMu.Unlock()
+		return err
+	}
+
+	// Create new data snapshot from database
+	newData := &sessionData{
+		id:          s.ID(),
+		uuid:        s.UUID(),
+		providerPkg: s.ProviderPkg(),
+		devId:       s.DeviceID(),
+		sessionType: s.SessionType(),
+		timeSecs:    s.TimeSecs(),
+		dataMb:      s.DataMbyte(),
+		timeCons:    s.TimeConsumed(),
+		dataCons:    s.DataConsumed(),
+		downMbits:   s.DownMbits(),
+		upMbits:     s.UpMbits(),
+		useGlobal:   s.UseGlobal(),
+		expDays:     copyIntPtr(s.ExpDays()),
+		startedAt:   copyTimePtr(s.StartedAt()),
+		resumedAt:   copyTimePtr(s.ResumedAt()),
+		createdAt:   s.CreatedAt(),
+		updatedAt:   s.UpdatedAt(),
+	}
+
+	// Determine what changed by comparing old vs new
+	changedFields := sdkapi.SessionChangedFields{
+		TimeSecs:       oldData.timeSecs != newData.timeSecs,
+		DataMb:         oldData.dataMb != newData.dataMb,
+		TimeCons:       oldData.timeCons != newData.timeCons,
+		DataCons:       oldData.dataCons != newData.dataCons,
+		DownMbits:      oldData.downMbits != newData.downMbits,
+		UpMbits:        oldData.upMbits != newData.upMbits,
+		UseGlobalSpeed: oldData.useGlobal != newData.useGlobal,
+		ExpDays:        !intPtrEqual(oldData.expDays, newData.expDays),
+		StartedAt:      !timePtrEqual(oldData.startedAt, newData.startedAt),
+		ResumedAt:      !timePtrEqual(oldData.resumedAt, newData.resumedAt),
+	}
+
+	// Store the new data
+	self.data.Store(newData)
+	self.writeMu.Unlock()
+
+	// Check if anything changed
+	hasChanges := changedFields.TimeSecs || changedFields.DataMb || changedFields.TimeCons ||
+		changedFields.DataCons || changedFields.DownMbits || changedFields.UpMbits ||
+		changedFields.UseGlobalSpeed || changedFields.ExpDays || changedFields.StartedAt ||
+		changedFields.ResumedAt
+
+	// Notify callback to apply side effects (timer reset, TC update, event emission)
+	if self.onSave != nil && hasChanges {
+		return self.onSave(sdkapi.SessionSaveParams{
+			Ctx:           ctx,
+			Session:       self,
+			ChangedFields: changedFields,
+		})
+	}
+
+	return nil
+}
+
+// intPtrEqual compares two int pointers for equality.
+func intPtrEqual(a, b *int) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+// timePtrEqual compares two time pointers for equality.
+func timePtrEqual(a, b *time.Time) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Equal(*b)
 }

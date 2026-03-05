@@ -375,18 +375,21 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	self.stopped = false // Clear stopped flag for new session
 	self.session = s
 
+	// Get session data in a single atomic snapshot to check timestamps
+	sessionData := s.Data()
+
 	// Set first start time if this is the first time session is starting
 	// and set resumed time to track current running period
 	timeNow := time.Now().UTC()
 	updateData := sdkapi.SessionUpdateData{}
 	hasUpdates := false
 
-	if s.StartedAt() == nil {
+	if sessionData.StartedAt == nil {
 		updateData.StartedAt = &timeNow
 		hasUpdates = true
 	}
 
-	if s.ResumedAt() == nil {
+	if sessionData.ResumedAt == nil {
 		updateData.ResumedAt = &timeNow
 		hasUpdates = true
 	}
@@ -604,8 +607,11 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 
 // initTimeTimer initializes the session timer. Must be called with mu held.
 func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
+	// Get session data in a single atomic snapshot
+	data := s.Data()
+
 	// Check if session is already consumed or expired
-	if s.IsConsumed() {
+	if data.IsConsumed {
 		log.Println("Session already consumed or expired, stopping immediately")
 		// Use goroutine to avoid calling StopWithReason while mu is held.
 		// StopWithReason has its own stopped guard so concurrent calls are safe.
@@ -614,8 +620,7 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
 	}
 
 	// Calculate remaining time and start timer
-	remainingSecs := s.RemainingTime()
-	self.startTimer(remainingSecs)
+	self.startTimer(data.RemainingTime)
 }
 
 // startTimer creates and starts a new timer with the specified duration.
@@ -757,9 +762,11 @@ func (self *RunningSession) initTc() error {
 	defer classid.Cancel()
 
 	net := self.network.Load()
-	s := self.session
 
-	err := net.lan.CreateClass(classid.Uint(), s.DownMbits(), s.UpMbits())
+	// Get session data in a single atomic snapshot
+	data := self.session.Data()
+
+	err := net.lan.CreateClass(classid.Uint(), data.DownMbits, data.UpMbits)
 	if err != nil {
 		return err
 	}
@@ -779,12 +786,14 @@ func (self *RunningSession) initTc() error {
 // updateTc updates TC class settings. Must be called with mu AND tcNftMu held.
 func (self *RunningSession) updateTc() error {
 	net := self.network.Load()
-	s := self.session
 
-	downMbits := s.DownMbits()
-	upMbits := s.UpMbits()
+	// Get session data in a single atomic snapshot
+	data := self.session.Data()
 
-	if s.UseGlobalSpeed() {
+	downMbits := data.DownMbits
+	upMbits := data.UpMbits
+
+	if data.UseGlobalSpeed {
 		d, u := net.lan.Bandwidth()
 		downMbits, upMbits = int(d), int(u)
 	}

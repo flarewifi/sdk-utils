@@ -369,3 +369,15 @@ func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) 
 
 	return nil
 }
+
+// ListRunningSessions returns all currently active (running) sessions.
+func (self *SessionsMgrApi) ListRunningSessions() ([]sdkapi.IClientSession, error) {
+	return self.pluginApi.SessionMgr.ListRunningSessions()
+}
+
+// FindRunningSessionByUUID finds a currently running session by its UUID.
+// Returns the session and true if found, or nil and false if no running session
+// exists with the given UUID.
+func (self *SessionsMgrApi) FindRunningSessionByUUID(uuid string) (sdkapi.IClientSession, bool) {
+	return self.pluginApi.SessionMgr.FindRunningSessionByUUID(uuid)
+}
