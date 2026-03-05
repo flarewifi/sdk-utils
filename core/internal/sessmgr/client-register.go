@@ -15,12 +15,9 @@ import (
 	sdkapi "sdk/api"
 )
 
-func NewClientRegister(dtb *db.Database, mdls *models.Models) *ClientRegister {
-	return &ClientRegister{
-		db:   dtb,
-		mdls: mdls,
-	}
-}
+// =============================================================================
+// TYPES
+// =============================================================================
 
 type ClientRegister struct {
 	db          *db.Database
@@ -28,17 +25,23 @@ type ClientRegister struct {
 	sessionsMgr *SessionsMgr
 }
 
-func (reg *ClientRegister) SetSessionsMgr(mgr *SessionsMgr) {
-	reg.sessionsMgr = mgr
+// =============================================================================
+// CONSTRUCTOR
+// =============================================================================
+
+func NewClientRegister(dtb *db.Database, mdls *models.Models) *ClientRegister {
+	return &ClientRegister{
+		db:   dtb,
+		mdls: mdls,
+	}
 }
 
-// wrapDevice wraps a models.Device into a ClientDevice with IsConnected callback.
-func (reg *ClientRegister) wrapDevice(d *models.Device) *ClientDevice {
-	clnt := NewClientDevice(reg.db, reg.mdls, d)
-	if reg.sessionsMgr != nil {
-		clnt.SetIsConnectedFunc(reg.sessionsMgr.isDeviceConnected)
-	}
-	return clnt
+// =============================================================================
+// PUBLIC METHODS
+// =============================================================================
+
+func (reg *ClientRegister) SetSessionsMgr(mgr *SessionsMgr) {
+	reg.sessionsMgr = mgr
 }
 
 // FindByID finds a client device by its database ID
@@ -126,18 +129,6 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 	}
 
 	return nil
-}
-
-type ClientRegisterParams struct {
-	CookieDeviceID *int64
-	MacAddr        string
-	IpAddr         string
-	Hostname       string
-	// Fingerprint data
-	UserAgent string
-	ScreenRes string
-	Language  string
-	Timezone  string
 }
 
 // Register registers or identifies a device based on cookie, MAC address, or creates a new device.
@@ -379,6 +370,19 @@ STEP_3_CREATE_NEW:
 	}
 
 	return nil, false, err
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+// wrapDevice wraps a models.Device into a ClientDevice with IsConnected callback.
+func (reg *ClientRegister) wrapDevice(d *models.Device) *ClientDevice {
+	clnt := NewClientDevice(reg.db, reg.mdls, d)
+	if reg.sessionsMgr != nil {
+		clnt.SetIsConnectedFunc(reg.sessionsMgr.isDeviceConnected)
+	}
+	return clnt
 }
 
 // validateDeviceFingerprint checks if current fingerprint matches any stored fingerprints.

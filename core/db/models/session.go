@@ -12,25 +12,25 @@ import (
 
 // BuildSessionParams holds parameters for building a Session object from existing data.
 type BuildSessionParams struct {
-	DB          *db.Database
-	Models      *Models
-	ID          int64
-	UUID        string
-	ProviderPkg string
-	DeviceID    int64
-	SessionType string
-	TimeSecs    int
-	DataMbytes  float64
-	TimeCons    int
-	DataCons    float64
-	StartedAt   *time.Time
-	ResumedAt   *time.Time
-	ExpDays     *int
-	DownMbits   int
-	UpMbits     int
-	UseGlobal   bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	DB             *db.Database
+	Models         *Models
+	ID             int64
+	UUID           string
+	ProviderPkg    string
+	DeviceID       int64
+	Type           string
+	TimeSecs       int
+	DataMb         float64
+	TimeCons       int
+	DataCons       float64
+	StartedAt      *time.Time
+	ResumedAt      *time.Time
+	ExpDays        *int
+	DownMbits      int
+	UpMbits        int
+	UseGlobalSpeed bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type Session struct {
@@ -117,9 +117,9 @@ func BuildSession(params BuildSessionParams) *Session {
 		uuid:        params.UUID,
 		providerPkg: params.ProviderPkg,
 		deviceId:    params.DeviceID,
-		sessionType: params.SessionType,
+		sessionType: params.Type,
 		timeSecs:    params.TimeSecs,
-		dataMb:      params.DataMbytes,
+		dataMb:      params.DataMb,
 		timeCons:    params.TimeCons,
 		dataCons:    params.DataCons,
 		startedAt:   params.StartedAt,
@@ -127,7 +127,7 @@ func BuildSession(params BuildSessionParams) *Session {
 		expDays:     params.ExpDays,
 		downMbits:   params.DownMbits,
 		upMbits:     params.UpMbits,
-		useGlobal:   params.UseGlobal,
+		useGlobal:   params.UseGlobalSpeed,
 		createdAt:   params.CreatedAt,
 		updatedAt:   params.UpdatedAt,
 	}

@@ -74,6 +74,44 @@ if err := RecordUsage(); err != nil {
 - Add DB constraints (UNIQUE, FOREIGN KEY) for business rules
 - Check docker logs for `Listening on port :3000`
 
+## Go File Organization
+
+**Standard ordering for Go files:**
+```
+1. package declaration
+2. imports
+3. constants
+4. variables
+5. types/structs
+6. constructor (New*) functions
+7. PUBLIC methods (exported, capitalized)
+8. HELPER functions (unexported, lowercase) at BOTTOM
+```
+
+**Example:**
+```go
+package example
+
+import "context"
+
+const maxItems = 100
+
+type Service struct { ... }
+
+func NewService() *Service { ... }
+
+// PUBLIC METHODS (exported)
+func (s *Service) DoSomething(ctx context.Context) error { ... }
+func (s *Service) GetData() []Item { ... }
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+func (s *Service) validateInput(input string) bool { ... }
+func (s *Service) formatOutput(data []byte) string { ... }
+```
+
 ## Build/Dev & Auto-Rebuild System
 
 ### Development Workflow
@@ -251,6 +289,11 @@ Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural l
 - Pagination, validators, file system operations
 - Payment utilities, translations, retry logic
 - Database utilities, system info (OpenWRT, OS release)
+- **Pointer helpers** (`sdk/utils/valconv.go`):
+  - Creation: `IntPtr()`, `Int64Ptr()`, `Float64Ptr()`, `BoolPtr()`, `StringPtr()`, `TimePtr()`
+  - Deep copy: `CopyIntPtr()`, `CopyInt64Ptr()`, `CopyFloat64Ptr()`, `CopyBoolPtr()`, `CopyStringPtr()`, `CopyTimePtr()`
+  - Equality: `IntPtrEqual()`, `Int64PtrEqual()`, `Float64PtrEqual()`, `BoolPtrEqual()`, `StringPtrEqual()`, `TimePtrEqual()`
+  - Value extraction: `IntPtrVal()`, `Int64PtrVal()`, `Float64PtrVal()`, `BoolPtrVal()`, `StringPtrVal()`
 
 Only create custom functions if needed functionality doesn't exist in `sdk/utils/`
 

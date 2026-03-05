@@ -26,17 +26,9 @@ type SessionChangedFields struct {
 	ResumedAt      bool // resumed_at: When session was last resumed (nullable)
 }
 
-// SessionSaveParams contains parameters for the session save callback.
-type SessionSaveParams struct {
-	Ctx           context.Context
-	Session       IClientSession
-	ChangedFields SessionChangedFields
+type SessionSaveOpts struct {
+	IgnoreCallbacks bool // Skip event emission (TC updates and timer resets still apply)
 }
-
-// SessionSaveCallback is called after a session is saved to apply side effects.
-// This allows the SessionsMgr to update running sessions (reset timers, update TC rules)
-// and emit events when session.Save() is called.
-type SessionSaveCallback func(params SessionSaveParams) error
 
 // SessionRawData holds raw session fields as stored in the database.
 // Use this for syncing/persistence where you need exact stored values.
@@ -218,7 +210,7 @@ type IClientSession interface {
 	SetData(data SessionUpdateData)
 
 	// Saves the session's changes.
-	Save(ctx context.Context) error
+	Save(ctx context.Context, opts *SessionSaveOpts) error
 
 	// Reloads the session's data from the database.
 	Reload(ctx context.Context) error

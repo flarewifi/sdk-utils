@@ -40,25 +40,19 @@ type SessionChangedFields struct {
 }
 ```
 
-### SessionSaveParams
+### SessionSaveOpts
 
-Contains parameters passed to the session save callback.
+Options for the `Save()` method.
 
 ```go
-type SessionSaveParams struct {
-    Ctx           context.Context
-    Session       IClientSession
-    ChangedFields SessionChangedFields
+type SessionSaveOpts struct {
+    IgnoreCallbacks bool // Skip event emission (TC updates and timer resets still apply)
 }
 ```
 
-### SessionSaveCallback
-
-A callback function type that is called after a session is saved. This allows the `SessionsMgr` to update running sessions (reset timers, update traffic control rules) and emit events when `session.Save()` is called.
-
-```go
-type SessionSaveCallback func(params SessionSaveParams) error
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `IgnoreCallbacks` | `bool` | When `true`, skips `EventSessionChanged` emission after saving. TC updates and timer resets for running sessions still apply. Default is `false`. |
 
 ## IClientSession Methods
 
@@ -371,7 +365,7 @@ Increments the consumed session time by `n` seconds. The new value is not saved 
 
 ```go
 session.IncTimeCons(60)
-session.Save()
+session.Save(ctx, nil)
 ```
 
 ### IncDataCons
@@ -380,7 +374,7 @@ Increments the consumed session data by `n` Megabytes. The new value is not save
 
 ```go
 session.IncDataCons(10)
-session.Save()
+session.Save(ctx, nil)
 ```
 
 ### SetData
@@ -429,7 +423,7 @@ session.SetData(sdkapi.SessionUpdateData{
 })
 
 // Don't forget to save
-err := session.Save(ctx)
+err := session.Save(ctx, nil)
 ```
 
 !!! tip "Performance Optimization"
@@ -437,10 +431,33 @@ err := session.Save(ctx)
 
 ### Save
 
-Save the session changes to the database.
+Save the session changes to the database. After saving, side effects are applied for running sessions:
+
+- **Timer reset** if time allocation or consumption changed
+- **TC (traffic control) update** if bandwidth settings changed
+- **Event emission** (`EventSessionChanged`) unless `IgnoreCallbacks` is set
+
+**Signature:**
 
 ```go
-err := session.Save(ctx)
+func (s *ClientSession) Save(ctx context.Context, opts *SessionSaveOpts) error
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ctx` | `context.Context` | Context for the operation |
+| `opts` | `*SessionSaveOpts` | Optional settings. Pass `nil` for default behavior. |
+
+**Examples:**
+
+```go
+// Default behavior - applies all side effects and emits events
+err := session.Save(ctx, nil)
+
+// Skip event emission (useful for batch updates)
+err := session.Save(ctx, &sdkapi.SessionSaveOpts{IgnoreCallbacks: true})
 ```
 
 ### Reload
@@ -453,7 +470,7 @@ err := session.Reload(ctx)
 
 ### PersistToDB
 
-Saves the session state directly to the database without triggering save callbacks. Unlike `Save()`, this does NOT trigger the `onSave` callback and does NOT clear dirty flags. This is used for internal bookkeeping operations such as periodic saves and stop operations.
+Saves the session state directly to the database without triggering side effects. Unlike `Save()`, this does NOT apply TC updates, timer resets, or emit events, and does NOT clear dirty flags. This is used for internal bookkeeping operations such as periodic saves and stop operations.
 
 !!! warning "Internal Use"
     This method is primarily intended for internal system operations. For normal session updates, use [Save](#save) instead.

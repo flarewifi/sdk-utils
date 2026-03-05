@@ -71,28 +71,22 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 		return nil, errors.New("session UUID is required")
 	}
 
-	// Fetch device for event emission
-	device, err := self.FindClientById(ctx, params.DevId)
-	if err != nil {
-		return nil, err
-	}
-
 	// Use provided UUID and get plugin package
 	sessionUUID := params.UUID
 	pkg := self.pluginApi.Info().Package
 
 	// Create session in database
 	session, err := self.pluginApi.models.Session().Create(ctx, models.CreateSessionParams{
-		UUID:        sessionUUID,
-		PluginPkg:   pkg,
-		DeviceID:    params.DevId,
-		SessionType: params.SessionType,
-		TimeSecs:    params.TimeSecs,
-		DataMbytes:  params.DataMbytes,
-		ExpDays:     params.ExpDays,
-		DownMbits:   params.DownMbits,
-		UpMbits:     params.UpMbits,
-		UseGlobal:   params.UseGlobal,
+		UUID:           sessionUUID,
+		PluginPkg:      pkg,
+		DeviceID:       params.DevId,
+		Type:           params.Type,
+		TimeSecs:       params.TimeSecs,
+		DataMb:         params.DataMb,
+		ExpDays:        params.ExpDays,
+		DownMbits:      params.DownMbits,
+		UpMbits:        params.UpMbits,
+		UseGlobalSpeed: params.UseGlobalSpeed,
 	})
 	if err != nil {
 		return nil, err
@@ -100,31 +94,31 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 
 	// Wrap session in IClientSession interface with save callback
 	cs := self.pluginApi.SessionMgr.NewClientSession(sdkapi.NewClientSessionParams{
-		ID:              session.ID(),
-		UUID:            session.UUID(),
-		ProviderPkg:     session.ProviderPkg(),
-		DeviceID:        session.DeviceID(),
-		SessionType:     sdkapi.SessionType(session.SessionType()),
-		TimeSecs:        session.TimeSecs(),
-		DataMbytes:      session.DataMbyte(),
-		ConsumptionSecs: session.TimeConsumed(),
-		ConsumptionMb:   session.DataConsumed(),
-		StartedAt:       session.StartedAt(),
-		ResumedAt:       session.ResumedAt(),
-		ExpDays:         session.ExpDays(),
-		DownMbits:       session.DownMbits(),
-		UpMbits:         session.UpMbits(),
-		UseGlobal:       session.UseGlobal(),
-		CreatedAt:       session.CreatedAt(),
-		UpdatedAt:       session.UpdatedAt(),
+		ID:             session.ID(),
+		UUID:           session.UUID(),
+		ProviderPkg:    session.ProviderPkg(),
+		DeviceID:       session.DeviceID(),
+		Type:           sdkapi.SessionType(session.SessionType()),
+		TimeSecs:       session.TimeSecs(),
+		DataMb:         session.DataMbyte(),
+		TimeCons:       session.TimeConsumed(),
+		DataCons:       session.DataConsumed(),
+		StartedAt:      session.StartedAt(),
+		ResumedAt:      session.ResumedAt(),
+		ExpDays:        session.ExpDays(),
+		DownMbits:      session.DownMbits(),
+		UpMbits:        session.UpMbits(),
+		UseGlobalSpeed: session.UseGlobal(),
+		CreatedAt:      session.CreatedAt(),
+		UpdatedAt:      session.UpdatedAt(),
 	})
 
 	// Set consumption values if provided (for cloud sync)
 	// Use PersistToDB to avoid triggering EventSessionChanged during creation
-	if params.ConsumptionSecs > 0 || params.ConsumptionMb > 0 {
+	if params.TimeCons > 0 || params.DataCons > 0 {
 		cs.SetData(sdkapi.SessionUpdateData{
-			TimeCons: &params.ConsumptionSecs,
-			DataCons: &params.ConsumptionMb,
+			TimeCons: &params.TimeCons,
+			DataCons: &params.DataCons,
 		})
 		// Type assert to access internal PersistToDB method
 		if internal, ok := cs.(*sessmgr.ClientSession); ok {
@@ -133,14 +127,14 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 			}
 		} else {
 			// Fallback - should never happen in practice
-			if err = cs.Save(ctx); err != nil {
+			if err = cs.Save(ctx, nil); err != nil {
 				return nil, err
 			}
 		}
 	}
 
 	// Emit EventSessionCreated - notify plugins that session was created
-	self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionCreated, cs, device)
+	self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionCreated, cs)
 
 	return cs, nil
 }
@@ -315,23 +309,23 @@ func (self *SessionsMgrApi) wrapSession(row coreQueries.Session) sdkapi.IClientS
 	}
 
 	return self.pluginApi.SessionMgr.NewClientSession(sdkapi.NewClientSessionParams{
-		ID:              row.ID,
-		UUID:            row.Uuid,
-		ProviderPkg:     row.ProviderPkg,
-		DeviceID:        row.DeviceID,
-		SessionType:     sdkapi.SessionType(row.SessionType),
-		TimeSecs:        int(row.TimeSecs),
-		DataMbytes:      row.DataMbytes,
-		ConsumptionSecs: int(row.ConsumptionSecs),
-		ConsumptionMb:   row.ConsumptionMb,
-		StartedAt:       startedAt,
-		ResumedAt:       resumedAt,
-		ExpDays:         expDays,
-		DownMbits:       int(row.DownMbits),
-		UpMbits:         int(row.UpMbits),
-		UseGlobal:       row.UseGlobal,
-		CreatedAt:       row.CreatedAt,
-		UpdatedAt:       row.UpdatedAt,
+		ID:             row.ID,
+		UUID:           row.Uuid,
+		ProviderPkg:    row.ProviderPkg,
+		DeviceID:       row.DeviceID,
+		Type:           sdkapi.SessionType(row.SessionType),
+		TimeSecs:       int(row.TimeSecs),
+		DataMb:         row.DataMbytes,
+		TimeCons:       int(row.ConsumptionSecs),
+		DataCons:       row.ConsumptionMb,
+		StartedAt:      startedAt,
+		ResumedAt:      resumedAt,
+		ExpDays:        expDays,
+		DownMbits:      int(row.DownMbits),
+		UpMbits:        int(row.UpMbits),
+		UseGlobalSpeed: row.UseGlobal,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
 	})
 }
 
@@ -365,7 +359,7 @@ func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) 
 
 	// Emit EventSessionDeleted AFTER deletion
 	// The session object still has all the data needed (UUID, etc.)
-	self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionDeleted, session, device)
+	self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionDeleted, session)
 
 	return nil
 }

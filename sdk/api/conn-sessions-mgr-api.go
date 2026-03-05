@@ -42,51 +42,51 @@ const (
 
 // SessionEventData represents the data associated with a session event.
 type SessionEventData struct {
-	Session IClientSession
-	Device  IClientDevice
+	Session       IClientSession
+	ChangedFields SessionChangedFields // Which fields changed (only set for EventSessionChanged)
 }
 
 // ClientSessionSummary represents a summary of a client's session.
 type ClientSessionSummary struct {
-	RemainingTimeSecs   int
-	RemainingDataMbytes float64
+	RemainingTimeSecs int
+	RemainingDataMb   float64
 }
 
 // CreateSessionParams holds parameters for creating a new client session.
 type CreateSessionParams struct {
-	UUID            string // Required: Session UUID (use sdkutils.NewUUID() to generate)
-	DevId           int64
-	SessionType     SessionType
-	TimeSecs        int
-	DataMbytes      float64
-	ExpDays         *int
-	DownMbits       int
-	UpMbits         int
-	UseGlobal       bool
-	ConsumptionSecs int     // Optional: Time consumption in seconds
-	ConsumptionMb   float64 // Optional: Data consumption in megabytes
+	UUID           string // Required: Session UUID (use sdkutils.NewUUID() to generate)
+	DevId          int64
+	Type           SessionType
+	TimeSecs       int
+	DataMb         float64
+	ExpDays        *int
+	DownMbits      int
+	UpMbits        int
+	UseGlobalSpeed bool
+	TimeCons       int     // Optional: Time consumption in seconds
+	DataCons       float64 // Optional: Data consumption in megabytes
 }
 
 // NewClientSessionParams holds session data fields for wrapping an existing session row
 // into an IClientSession object without performing database queries.
 type NewClientSessionParams struct {
-	ID              int64
-	UUID            string
-	ProviderPkg     string
-	DeviceID        int64
-	SessionType     SessionType
-	TimeSecs        int
-	DataMbytes      float64
-	ConsumptionSecs int
-	ConsumptionMb   float64
-	StartedAt       *time.Time
-	ResumedAt       *time.Time
-	ExpDays         *int
-	DownMbits       int
-	UpMbits         int
-	UseGlobal       bool
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID             int64
+	UUID           string
+	ProviderPkg    string
+	DeviceID       int64
+	Type           SessionType
+	TimeSecs       int
+	DataMb         float64
+	TimeCons       int
+	DataCons       float64
+	StartedAt      *time.Time
+	ResumedAt      *time.Time
+	ExpDays        *int
+	DownMbits      int
+	UpMbits        int
+	UseGlobalSpeed bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // NewDeviceParams holds device data fields for wrapping an existing device row
