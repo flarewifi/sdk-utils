@@ -18,6 +18,7 @@ type ThemeCard struct {
 	Name        string
 	Description string
 	IsCurrent   bool
+	PreviewMeta *sdkapi.ThemePreviewMeta
 }
 
 func styleAttr(css string) templ.Attributes {
@@ -56,7 +57,7 @@ func AdminThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentAdminPkg s
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{ selected: '%s', current: '%s' }", currentAdminPkg, currentAdminPkg))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 24, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 25, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -69,7 +70,7 @@ func AdminThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentAdminPkg s
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Admin Dashboard Theme"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 28, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 29, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -82,7 +83,7 @@ func AdminThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentAdminPkg s
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Select a theme for the admin dashboard"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 29, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 30, Col: 111}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -122,7 +123,7 @@ func AdminThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentAdminPkg s
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(currentPortalPkg)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 45, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 46, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -135,7 +136,7 @@ func AdminThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentAdminPkg s
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Switch Theme"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 49, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 50, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -177,7 +178,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{ 'fw-theme-card-selected': selected === '%s' }", card.Package))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 59, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 60, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -190,7 +191,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("selected = '%s'", card.Package))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 60, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 61, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -200,7 +201,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("height: 12px; width: 60%%; background-color: %s", adminPreviewColor(card.Package, "primary"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("height: 12px; width: 60%%; background-color: %s", getPreviewColor(card.PreviewMeta, "primary"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -208,7 +209,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("height: 8px; width: 80%%; background-color: %s", adminPreviewColor(card.Package, "secondary"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("height: 8px; width: 80%%; background-color: %s", getPreviewColor(card.PreviewMeta, "secondary"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -216,7 +217,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("height: 8px; width: 40%%; background-color: %s", adminPreviewColor(card.Package, "accent"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("height: 8px; width: 40%%; background-color: %s", getPreviewColor(card.PreviewMeta, "accent"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -224,7 +225,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", adminPreviewColor(card.Package, "primary"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "primary"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -235,7 +236,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("selected === '%s'", card.Package))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 77, Col: 105}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 78, Col: 105}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -258,7 +259,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(card.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 91, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 92, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -271,7 +272,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(card.Description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 92, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 93, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -281,7 +282,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", adminPreviewColor(card.Package, "primary"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "primary"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -289,7 +290,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", adminPreviewColor(card.Package, "secondary"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "secondary"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -297,7 +298,7 @@ func adminThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", adminPreviewColor(card.Package, "accent"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "accent"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -338,7 +339,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{ selected: '%s', current: '%s' }", currentPortalPkg, currentPortalPkg))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 105, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 106, Col: 99}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -351,7 +352,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Captive Portal Theme"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 109, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 110, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -364,7 +365,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Select a theme for the captive portal login page"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 110, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 111, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -404,7 +405,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(currentAdminPkg)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 126, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 127, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -417,7 +418,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Switch Theme"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 130, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 131, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -459,7 +460,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{ 'fw-theme-card-selected': selected === '%s' }", card.Package))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 140, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 141, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -472,7 +473,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("selected = '%s'", card.Package))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 141, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 142, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -482,7 +483,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background: %s", portalPreviewBg(card.Package))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background: %s", getPreviewBg(card.PreviewMeta))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -490,12 +491,12 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if portalLogoPosition(card.Package) == "top" {
+		if getLogoPosition(card.PreviewMeta) == "top" {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"position-absolute top-0 start-50 translate-middle-x mt-3\"><div class=\"fw-portal-logo-circle d-flex align-items-center justify-content-center\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", portalPreviewColor(card.Package, "primary"))))
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "card"))))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -503,7 +504,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("color: %s", portalPreviewColor(card.Package, "button"))))
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("color: %s", getPreviewColor(card.PreviewMeta, "button"))))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -516,7 +517,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", portalPreviewColor(card.Package, "primary"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "card"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -524,12 +525,12 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if portalLogoPosition(card.Package) == "center" {
+		if getLogoPosition(card.PreviewMeta) == "center" {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"text-center mb-2\"><div class=\"fw-portal-logo-sm rounded-circle d-inline-flex align-items-center justify-content-center\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s20", portalPreviewColor(card.Package, "button"))))
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s20", getPreviewColor(card.PreviewMeta, "button"))))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -537,7 +538,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("color: %s", portalPreviewColor(card.Package, "button"))))
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("color: %s", getPreviewColor(card.PreviewMeta, "button"))))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -550,7 +551,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("height: 20px; font-size: 10px; line-height: 20px; background-color: %s", portalPreviewColor(card.Package, "button"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("height: 20px; font-size: 10px; line-height: 20px; background-color: %s", getPreviewColor(card.PreviewMeta, "button"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -561,7 +562,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("selected === '%s'", card.Package))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 172, Col: 105}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 173, Col: 105}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -584,7 +585,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(card.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 186, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 187, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -597,7 +598,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(card.Description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 187, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 188, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -608,9 +609,9 @@ func portalThemeCard(card ThemeCard) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(portalLogoPositionLabel(card.Package))
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(getLogoPositionLabel(card.PreviewMeta))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 191, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes.templ`, Line: 192, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -620,7 +621,7 @@ func portalThemeCard(card ThemeCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", portalPreviewColor(card.Package, "button"))))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, styleAttr(fmt.Sprintf("background-color: %s", getPreviewColor(card.PreviewMeta, "button"))))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -632,25 +633,46 @@ func portalThemeCard(card ThemeCard) templ.Component {
 	})
 }
 
-// ---- Color helpers ----
-// These return preview colors for known theme plugins.
-// Unknown plugins get a gray fallback.
+// ---- Preview helpers ----
+// These read from ThemePreviewMeta with sensible gray fallbacks
+// for themes that don't provide preview metadata.
 
-func adminPreviewColor(pkg string, role string) string {
-	switch pkg {
-	case "com.flarego.default-theme":
+func getPreviewBg(meta *sdkapi.ThemePreviewMeta) string {
+	if meta != nil && meta.Background != "" {
+		return meta.Background
+	}
+	return "linear-gradient(135deg, #6b7280 0%, #9ca3af 100%)"
+}
+
+func getPreviewColor(meta *sdkapi.ThemePreviewMeta, role string) string {
+	if meta != nil {
 		switch role {
 		case "primary":
-			return "#2563eb"
+			if meta.PrimaryColor != "" {
+				return meta.PrimaryColor
+			}
 		case "secondary":
-			return "#3b82f6"
+			if meta.SecondaryColor != "" {
+				return meta.SecondaryColor
+			}
 		case "accent":
-			return "#60a5fa"
-		case "background":
-			return "#f9fafb"
+			if meta.AccentColor != "" {
+				return meta.AccentColor
+			}
+		case "button":
+			if meta.ButtonColor != "" {
+				return meta.ButtonColor
+			}
+		case "text":
+			if meta.TextColor != "" {
+				return meta.TextColor
+			}
+		case "card":
+			if meta.CardColor != "" {
+				return meta.CardColor
+			}
 		}
 	}
-	// Fallback for unknown themes
 	switch role {
 	case "primary":
 		return "#6b7280"
@@ -658,54 +680,25 @@ func adminPreviewColor(pkg string, role string) string {
 		return "#9ca3af"
 	case "accent":
 		return "#d1d5db"
-	case "background":
-		return "#f3f4f6"
-	}
-	return "#6b7280"
-}
-
-func portalPreviewBg(pkg string) string {
-	switch pkg {
-	case "com.flarego.default-theme":
-		return "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-	}
-	return "linear-gradient(135deg, #6b7280 0%, #9ca3af 100%)"
-}
-
-func portalPreviewColor(pkg string, role string) string {
-	switch pkg {
-	case "com.flarego.default-theme":
-		switch role {
-		case "primary":
-			return "#ffffff"
-		case "button":
-			return "#4f46e5"
-		case "text":
-			return "#ffffff"
-		}
-	}
-	switch role {
-	case "primary":
-		return "#ffffff"
 	case "button":
 		return "#6b7280"
 	case "text":
 		return "#ffffff"
+	case "card":
+		return "#ffffff"
 	}
 	return "#6b7280"
 }
 
-func portalLogoPosition(pkg string) string {
-	switch pkg {
-	case "com.flarego.default-theme":
-		return "top"
+func getLogoPosition(meta *sdkapi.ThemePreviewMeta) string {
+	if meta != nil && meta.LogoPosition != "" {
+		return meta.LogoPosition
 	}
 	return "top"
 }
 
-func portalLogoPositionLabel(pkg string) string {
-	pos := portalLogoPosition(pkg)
-	if pos == "center" {
+func getLogoPositionLabel(meta *sdkapi.ThemePreviewMeta) string {
+	if getLogoPosition(meta) == "center" {
 		return "Center"
 	}
 	return "Top"

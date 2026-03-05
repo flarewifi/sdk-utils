@@ -76,10 +76,10 @@ if themePlugin != nil {
     // Access theme plugin information
     info := themePlugin.Info()
     fmt.Printf("Portal theme: %s v%s\n", info.Name, info.Version)
-    
+
     // Get theme-specific configuration
     themeConfig, err := themePlugin.Config().Plugin().Read("theme_settings")
-    
+
     // Access theme assets
     assetPath := themePlugin.Http().Helpers().PublicPath("logo.png")
 }
@@ -88,6 +88,37 @@ if themePlugin != nil {
 **Returns:**
 - The `IPluginApi` for the portal theme plugin if configured and found
 - `nil` if no portal theme is configured or the plugin is not installed
+
+### AdminPreviewMeta
+
+Returns the preview metadata registered by this plugin's admin theme. Used by the admin theme selector to render accurate visual preview cards.
+
+```go
+meta := api.Themes().AdminPreviewMeta()
+if meta != nil {
+    fmt.Printf("Primary color: %s\n", meta.PrimaryColor)
+}
+```
+
+**Returns:**
+- `*ThemePreviewMeta` if this plugin registered an admin theme with preview metadata
+- `nil` if no admin theme was registered or no preview metadata was provided
+
+### PortalPreviewMeta
+
+Returns the preview metadata registered by this plugin's portal theme. Used by the admin theme selector to render accurate visual preview cards.
+
+```go
+meta := api.Themes().PortalPreviewMeta()
+if meta != nil {
+    fmt.Printf("Background: %s\n", meta.Background)
+    fmt.Printf("Logo position: %s\n", meta.LogoPosition)
+}
+```
+
+**Returns:**
+- `*ThemePreviewMeta` if this plugin registered a portal theme with preview metadata
+- `nil` if no portal theme was registered or no preview metadata was provided
 
 ---
 
@@ -110,6 +141,36 @@ const (
     - **Admin themes** must use `CssLibBootstrap5`
     - **Portal themes** typically use `CssLibBootstrap3` for maximum device compatibility
 
+### ThemePreviewMeta
+
+Visual metadata for rendering theme preview cards in the admin theme selector. Theme plugins provide this so the admin UI can display an accurate visual preview without hardcoded colors.
+
+```go
+type ThemePreviewMeta struct {
+    Background     string // CSS background value (color, gradient, or image URL)
+    CardColor      string // Card/surface background color
+    PrimaryColor   string // Primary brand color
+    SecondaryColor string // Secondary color
+    AccentColor    string // Accent color
+    ButtonColor    string // CTA/button color
+    TextColor      string // Main text color
+    LogoPosition   string // "top" or "center" (portal themes only)
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `Background` | CSS background value — can be a color (`#0d0d1a`), gradient, or image URL |
+| `CardColor` | Card/surface background color used in the preview |
+| `PrimaryColor` | Primary brand color |
+| `SecondaryColor` | Secondary color |
+| `AccentColor` | Accent color |
+| `ButtonColor` | CTA/button color |
+| `TextColor` | Main text color |
+| `LogoPosition` | Logo position in portal preview: `"top"` or `"center"` (portal themes only) |
+
+All fields are optional. If a field is empty, the admin theme selector will use a gray fallback color.
+
 ### AdminThemeOpts
 
 Options for registering an admin theme:
@@ -119,6 +180,7 @@ type AdminThemeOpts struct {
     CssLib           CSSLib
     JsFile           string
     CssFile          string
+    PreviewMeta      *ThemePreviewMeta
     LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IThemeComponents)
     IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
 }
@@ -129,6 +191,7 @@ type AdminThemeOpts struct {
 | `CssLib` | CSS framework to use (must be `CssLibBootstrap5` for admin) |
 | `JsFile` | Main JavaScript file from assets manifest |
 | `CssFile` | Main CSS file from assets manifest |
+| `PreviewMeta` | Optional visual metadata for the admin theme selector preview card |
 | `LayoutBuilder` | Function that renders the page layout |
 | `IndexPageFactory` | Function that returns the admin dashboard page |
 
@@ -141,6 +204,7 @@ type PortalThemeOpts struct {
     JsFile           string
     CssFile          string
     CssLib           CSSLib
+    PreviewMeta      *ThemePreviewMeta
     LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IThemeComponents)
     LoginPageFactory func(w http.ResponseWriter, r *http.Request, data LoginPageData) ViewPage
     IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
@@ -152,6 +216,7 @@ type PortalThemeOpts struct {
 | `JsFile` | Main JavaScript file from assets manifest |
 | `CssFile` | Main CSS file from assets manifest |
 | `CssLib` | CSS framework to use |
+| `PreviewMeta` | Optional visual metadata for the portal theme selector preview card |
 | `LayoutBuilder` | Function that renders the page layout |
 | `LoginPageFactory` | Function that returns the admin login page |
 | `IndexPageFactory` | Function that returns the portal home page |
@@ -340,6 +405,14 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
         JsFile:  "theme.js",
         CssFile: "theme.css",
         CssLib:  sdkapi.CssLibBootstrap5,
+        PreviewMeta: &sdkapi.ThemePreviewMeta{
+            Background:     "#f9fafb",
+            PrimaryColor:   "#2563eb",
+            SecondaryColor: "#3b82f6",
+            AccentColor:    "#60a5fa",
+            ButtonColor:    "#2563eb",
+            TextColor:      "#1f2937",
+        },
         LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
             // Get navigation items for sidebar
             navs := api.Http().Navs().GetAdminNavs(r)
@@ -400,6 +473,16 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
         JsFile:  "theme.js",
         CssFile: "theme.css",
         CssLib:  sdkapi.CssLibBootstrap3,
+        PreviewMeta: &sdkapi.ThemePreviewMeta{
+            Background:     "#0d0d1a",
+            CardColor:      "rgba(255, 255, 255, 0.15)",
+            PrimaryColor:   "#b535ff",
+            SecondaryColor: "#00bfff",
+            AccentColor:    "#2F2EC7",
+            ButtonColor:    "#000000",
+            TextColor:      "#ffffff",
+            LogoPosition:   "top",
+        },
         LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
             data := portal.PortalLayoutData{Components: c}
             layout := portal.PortalLayout(data)
