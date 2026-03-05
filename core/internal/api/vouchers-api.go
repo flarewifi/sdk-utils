@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"slices"
 	"sync"
+	"time"
 
 	coreQueries "core/db/queries"
 	sdkapi "sdk/api"
@@ -388,6 +389,11 @@ func (self *VouchersApi) Activate(ctx context.Context, params sdkapi.ActivateVou
 	voucher, err := self.FindByID(ctx, params.ID)
 	if err != nil {
 		return sdkapi.VoucherActivateResult{}, fmt.Errorf("unable to find voucher: %w", err)
+	}
+
+	// Reject expired vouchers
+	if exp := voucher.ExpiresAt(); exp != nil && exp.Before(time.Now().UTC()) {
+		return sdkapi.VoucherActivateResult{}, fmt.Errorf("voucher has expired")
 	}
 
 	// Determine bandwidth settings
