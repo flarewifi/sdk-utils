@@ -63,8 +63,8 @@ func (a *CloudflareAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	// JWT secret is Machine-Id + MD5 of request body
 	jwtSecret := machineID + bodyMD5
 
-	// Create JWT token with 5-minute expiration
-	now := time.Now()
+	// Create JWT token with 5-minute expiration (use UTC for consistency)
+	now := time.Now().UTC()
 	claims := jwt.RegisteredClaims{
 		IssuedAt:  jwt.NewNumericDate(now),
 		ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),

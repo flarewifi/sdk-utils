@@ -63,7 +63,7 @@ func GetDeviceTokenKey() string {
 func GenerateDeviceToken(deviceID int64, machineID string) (string, error) {
 	claims := jwt.MapClaims{
 		"device_id": deviceID,
-		"exp":       time.Now().Add(10 * 365 * 24 * time.Hour).Unix(), // 10 years
+		"exp":       time.Now().UTC().Add(10 * 365 * 24 * time.Hour).Unix(), // 10 years
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -128,8 +128,8 @@ func SetDeviceCookie(w http.ResponseWriter, deviceID int64) error {
 		Name:     getCookieName(),
 		Value:    token,
 		Path:     "/",
-		MaxAge:   315360000,                                 // 10 years in seconds
-		Expires:  time.Now().Add(10 * 365 * 24 * time.Hour), // 10 years
+		MaxAge:   315360000,                                       // 10 years in seconds
+		Expires:  time.Now().UTC().Add(10 * 365 * 24 * time.Hour), // 10 years
 		SameSite: http.SameSiteStrictMode,
 	}
 	http.SetCookie(w, cookie)

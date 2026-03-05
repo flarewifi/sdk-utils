@@ -16,11 +16,11 @@ import (
 
 type ClientDevice struct {
 	// === IMMUTABLE after creation (no lock needed) ===
-	db          *db.Database
-	mdls        *models.Models
-	id          int64
-	createdAt   time.Time
-	isConnected IsConnectedFunc // Callback to check connection status
+	db        *db.Database
+	mdls      *models.Models
+	sessMgr   *SessionsMgr
+	id        int64
+	createdAt time.Time
 
 	// === MUTABLE (protected by mu) ===
 	mu        sync.RWMutex
@@ -32,10 +32,11 @@ type ClientDevice struct {
 	updatedAt time.Time
 }
 
-func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *ClientDevice {
+func NewClientDevice(dtb *db.Database, mdls *models.Models, sessMgr *SessionsMgr, d *models.Device) *ClientDevice {
 	return &ClientDevice{
 		db:        dtb,
 		mdls:      mdls,
+		sessMgr:   sessMgr,
 		id:        d.ID(),
 		createdAt: d.CreatedAt(),
 		uuid:      d.UUID(),
@@ -45,11 +46,6 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, d *models.Device) *C
 		status:    d.Status(),
 		updatedAt: d.UpdatedAt(),
 	}
-}
-
-// SetIsConnectedFunc sets the callback function for checking connection status.
-func (self *ClientDevice) SetIsConnectedFunc(fn IsConnectedFunc) {
-	self.isConnected = fn
 }
 
 // ID returns the device's database ID (immutable, no lock needed).
@@ -106,10 +102,10 @@ func (self *ClientDevice) Data() sdkapi.DeviceData {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
-	// Compute IsConnected using the callback
+	// Compute IsConnected using SessionsMgr
 	isConnected := false
-	if self.isConnected != nil {
-		isConnected = self.isConnected(self.id)
+	if self.sessMgr != nil {
+		isConnected = self.sessMgr.isDeviceConnected(self.id)
 	}
 
 	return sdkapi.DeviceData{

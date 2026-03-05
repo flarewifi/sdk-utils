@@ -309,10 +309,6 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
-		// Emit WiFi connect event - portal access confirms the client is connected
-		// This serves as redundancy for hostapd_cli events and cancels any pending auto-pause
-		api.EmitWifiEvent(sdkapi.WifiEventClientConnected, clnt.MacAddr())
-
 		// Get redirect URL
 		redirectUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("portal:index")
 
