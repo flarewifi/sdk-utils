@@ -26,7 +26,7 @@ func CreatePurchaseToken(deviceID int64, purchaseUUID string) (string, error) {
 		return "", fmt.Errorf("failed to read application config: %w", err)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	claims := PurchaseClaims{
 		DeviceID:    deviceID,
 		PurchaseUID: purchaseUUID,
