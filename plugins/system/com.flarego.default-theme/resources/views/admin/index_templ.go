@@ -72,7 +72,7 @@ func AdminIndexPage(api sdkapi.IPluginApi, data AdminData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = RevenueChartCard(api, data.ChartData).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = RevenueChartCardLoading(api).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

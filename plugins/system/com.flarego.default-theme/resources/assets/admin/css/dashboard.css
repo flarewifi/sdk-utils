@@ -1,5 +1,14 @@
 /* dashboard.css — Dashboard-specific styles (shared utils in fw-utils.css) */
 
+.htmx-indicator {
+  opacity: 0;
+  transition: opacity 200ms ease-in;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  opacity: 1;
+}
+
 /* Animated pulse dot for internet status */
 .fw-pulse-dot {
   display: inline-block;

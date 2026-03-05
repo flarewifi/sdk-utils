@@ -418,7 +418,11 @@
         }
       }
     }
-    return Math.ceil(max / 100) * 100 || 100;
+    if(max==0){
+      return 100
+    }
+    var interval = niceStep(max)
+    return Math.ceil(max/interval)*interval
   }
 
   function niceStep(range) {
