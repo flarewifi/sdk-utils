@@ -107,7 +107,7 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 		return fmt.Errorf("could not update device: %w", err)
 	}
 
-	reg.sessionsMgr.emitClientEvent(sdkapi.EventClientUpdated, clnt)
+	reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientUpdated, clnt)
 
 	// Reconnect if was previously running a session
 	if hasRunningSession {
@@ -218,7 +218,7 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 				}
 			}
 
-			reg.sessionsMgr.emitClientEvent(sdkapi.EventClientRegistered, clnt)
+			reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
 			return clnt, true, nil
 		}
 		// Failed to find device by cookie, fall through to MAC match
@@ -287,7 +287,7 @@ STEP_2_MAC_MATCH:
 			}
 		}
 
-		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientRegistered, clnt)
+		reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
 		return clnt, true, nil
 	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Printf("[ClientRegister] ERROR: Database error searching by MAC: %v", err)
@@ -338,7 +338,7 @@ STEP_2_5_MAC_HISTORY:
 			return nil, false, err
 		}
 
-		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientRegistered, clnt)
+		reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
 		return clnt, true, nil
 	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Printf("[ClientRegister] ERROR: Database error searching MAC history: %v", err)
@@ -358,8 +358,8 @@ STEP_3_CREATE_NEW:
 
 		clnt = reg.wrapDevice(dev)
 
-		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientCreated, clnt)
-		reg.sessionsMgr.emitClientEvent(sdkapi.EventClientRegistered, clnt)
+		reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientCreated, clnt)
+		reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
 
 		// Add first fingerprint for new device (full, partial/CNA, or minimal/JS-disabled)
 		if hasFingerprintData && fpHash != "" {
@@ -376,13 +376,9 @@ STEP_3_CREATE_NEW:
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
-// wrapDevice wraps a models.Device into a ClientDevice with IsConnected callback.
+// wrapDevice wraps a models.Device into a ClientDevice.
 func (reg *ClientRegister) wrapDevice(d *models.Device) *ClientDevice {
-	clnt := NewClientDevice(reg.db, reg.mdls, d)
-	if reg.sessionsMgr != nil {
-		clnt.SetIsConnectedFunc(reg.sessionsMgr.isDeviceConnected)
-	}
-	return clnt
+	return NewClientDevice(reg.db, reg.mdls, reg.sessionsMgr, d)
 }
 
 // validateDeviceFingerprint checks if current fingerprint matches any stored fingerprints.

@@ -256,7 +256,7 @@ func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevi
 	}
 
 	clnt.Emit(string(sdkapi.EventSessionDisconnected), []byte(notify))
-	self.emitClientEvent(sdkapi.EventClientDisconnected, clnt)
+	self.EmitClientEvent(sdkapi.EventClientDisconnected, clnt)
 
 	return clnt.Update(ctx, sdkapi.UpdateDeviceParams{
 		UUID:     clnt.UUID(),
@@ -445,12 +445,7 @@ func (self *SessionsMgr) FindClientById(ctx context.Context, devId int64) (sdkap
 		return nil, fmt.Errorf("device not found: %w", err)
 	}
 
-	clnt := NewClientDevice(self.db, self.mdl, device)
-	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
-		return self.IsConnected(clnt)
-	})
-
-	return clnt, nil
+	return NewClientDevice(self.db, self.mdl, self, device), nil
 }
 
 // FindClientByMac finds a client device by its MAC address.
@@ -460,12 +455,7 @@ func (self *SessionsMgr) FindClientByMac(ctx context.Context, mac string) (sdkap
 		return nil, fmt.Errorf("device not found by MAC %s: %w", mac, err)
 	}
 
-	clnt := NewClientDevice(self.db, self.mdl, device)
-	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
-		return self.IsConnected(clnt)
-	})
-
-	return clnt, nil
+	return NewClientDevice(self.db, self.mdl, self, device), nil
 }
 
 // FindClientByIp finds a client device by its IP address.
@@ -475,12 +465,7 @@ func (self *SessionsMgr) FindClientByIp(ctx context.Context, ip string) (sdkapi.
 		return nil, fmt.Errorf("device not found by IP %s: %w", ip, err)
 	}
 
-	clnt := NewClientDevice(self.db, self.mdl, device)
-	clnt.SetIsConnectedFunc(func(deviceID int64) bool {
-		return self.IsConnected(clnt)
-	})
-
-	return clnt, nil
+	return NewClientDevice(self.db, self.mdl, self, device), nil
 }
 
 // =============================================================================
@@ -624,7 +609,7 @@ func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdk
 	return nil
 }
 
-func (self *SessionsMgr) emitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
+func (self *SessionsMgr) EmitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
 	// Take a snapshot of callbacks under lock to avoid holding lock during callback execution
 	self.eventMu.Lock()
 	callbacks := self.clientEventCallbacks[event]
@@ -709,7 +694,7 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 			if session, ok := self.CurrSession(clnt); ok {
 				self.emitSessionEvent(sdkapi.EventSessionConnected, session)
 			}
-			self.emitClientEvent(sdkapi.EventClientConnected, clnt)
+			self.EmitClientEvent(sdkapi.EventClientConnected, clnt)
 
 			// Signal success to Connect()
 			resultCh <- nil
@@ -796,9 +781,7 @@ func (self *SessionsMgr) wrapModelSession(s *models.Session) *ClientSession {
 // wrapModelDevice wraps a models.Device into an IClientDevice.
 // This is the internal helper used by all device-wrapping methods.
 func (self *SessionsMgr) wrapModelDevice(d *models.Device) *ClientDevice {
-	clnt := NewClientDevice(self.db, self.mdl, d)
-	clnt.SetIsConnectedFunc(self.isDeviceConnected)
-	return clnt
+	return NewClientDevice(self.db, self.mdl, self, d)
 }
 
 // isDeviceConnected checks if a device has a running session (resumed_at IS NOT NULL).
