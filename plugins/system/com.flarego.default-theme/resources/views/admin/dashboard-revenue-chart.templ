@@ -1,23 +1,34 @@
 package admin
 
 import (
-	"fmt"
-	"strings"
 	"com.flarego.default-theme/app/dashboard"
 	sdkapi "sdk/api"
+	"fmt"
 )
 
 // revenueChartJSON serialises []RevenueChartPoint to the JSON format expected
 // by $flare.ui.line_chart: [{"label":"...","values":{"coinslot":0,"voucher":0}}]
-func revenueChartJSON(points []dashboard.RevenueChartPoint) string {
-	parts := make([]string, len(points))
+func revenueChartJSON(points []dashboard.RevenueChartPoint) *sdkapi.LineChartOpts {
+	parts := make([]sdkapi.LineChartDataPoint, len(points))
 	for i, p := range points {
-		parts[i] = fmt.Sprintf(
-			`{"label":%q,"values":{"coinslot":%.2f,"voucher":%.2f}}`,
-			p.Label, p.Coinslot, p.Voucher,
-		)
+	    parts[i]=sdkapi.LineChartDataPoint{
+	        Label: p.Label,
+	        Values: map[string]float64{
+	            "coinslot": p.Coinslot,
+	            "voucher": p.Voucher,
+	        },
+	    }
 	}
-	return "[" + strings.Join(parts, ",") + "]"
+
+	fmt.Println(parts)
+
+	return &sdkapi.LineChartOpts{
+	    Data: parts,
+	    Series: []sdkapi.LineChartSeries{
+	        { Key: "coinslot", Color: "#3b82f6", Label: "Coinslot" },
+	        { Key: "voucher", Color: "#a855f7", Label: "Voucher" },
+	    },
+	}
 }
 
 templ RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint) {
@@ -47,10 +58,7 @@ templ RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint
 		</div>
 		<div class="card-body border-top pt-3">
 			<div class="fw-chart-container">
-				<div
-					id="revenueChart"
-					data-chart={ revenueChartJSON(data) }
-				></div>
+				@api.UI().LineChart(revenueChartJSON(data))
 			</div>
 		</div>
 	</div>

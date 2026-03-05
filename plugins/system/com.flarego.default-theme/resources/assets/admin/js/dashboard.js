@@ -1,35 +1,6 @@
 (function () {
   "use strict";
 
-  // Revenue chart initialization using $flare.ui.line_chart
-  function initRevenueChart() {
-    var el = document.getElementById("revenueChart");
-    if (!el) return;
-
-    var dataAttr = el.getAttribute("data-chart");
-    var chartData = [];
-    try {
-      chartData = JSON.parse(dataAttr || "[]");
-    } catch (e) {
-      chartData = [];
-    }
-
-    $flare.ui.line_chart.create(el, {
-      data: chartData,
-      series: [
-        { key: "coinslot", color: "#3b82f6", label: "Coinslot" },
-        { key: "voucher",  color: "#a855f7", label: "Voucher" }
-      ],
-      yAxis: { min: 0, max: 600, stepSize: 150 },
-      tension: 0.4,
-      fillOpacity: [0.35, 0.05],
-      padding: { right: 30 },
-      tooltipFormat: function (label, value) {
-        return label + ": \u20B1" + value.toFixed(2);
-      }
-    });
-  }
-
   // Copy device ID to clipboard
   function initCopyButtons() {
     var btns = document.querySelectorAll("[data-fw-copy]");
@@ -104,22 +75,16 @@
   // Re-initialize chart after htmx settles new content into the DOM.
   // htmx:afterSettle fires after the swap is complete and new elements are live.
   document.addEventListener("htmx:afterSettle", function () {
-    var el = document.getElementById("revenueChart");
-    if (el && !el.querySelector("svg")) {
-      initRevenueChart();
-    }
     updateLastUpdated();
   });
 
   // Initialize on DOM ready
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
-      initRevenueChart();
       initCopyButtons();
       updateLastUpdated();
     });
   } else {
-    initRevenueChart();
     initCopyButtons();
     updateLastUpdated();
   }

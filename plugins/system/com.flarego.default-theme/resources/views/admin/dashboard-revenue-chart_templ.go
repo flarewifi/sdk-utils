@@ -12,20 +12,31 @@ import (
 	"com.flarego.default-theme/app/dashboard"
 	"fmt"
 	sdkapi "sdk/api"
-	"strings"
 )
 
 // revenueChartJSON serialises []RevenueChartPoint to the JSON format expected
 // by $flare.ui.line_chart: [{"label":"...","values":{"coinslot":0,"voucher":0}}]
-func revenueChartJSON(points []dashboard.RevenueChartPoint) string {
-	parts := make([]string, len(points))
+func revenueChartJSON(points []dashboard.RevenueChartPoint) *sdkapi.LineChartOpts {
+	parts := make([]sdkapi.LineChartDataPoint, len(points))
 	for i, p := range points {
-		parts[i] = fmt.Sprintf(
-			`{"label":%q,"values":{"coinslot":%.2f,"voucher":%.2f}}`,
-			p.Label, p.Coinslot, p.Voucher,
-		)
+		parts[i] = sdkapi.LineChartDataPoint{
+			Label: p.Label,
+			Values: map[string]float64{
+				"coinslot": p.Coinslot,
+				"voucher":  p.Voucher,
+			},
+		}
 	}
-	return "[" + strings.Join(parts, ",") + "]"
+
+	fmt.Println(parts)
+
+	return &sdkapi.LineChartOpts{
+		Data: parts,
+		Series: []sdkapi.LineChartSeries{
+			{Key: "coinslot", Color: "#3b82f6", Label: "Coinslot"},
+			{Key: "voucher", Color: "#a855f7", Label: "Voucher"},
+		},
+	}
 }
 
 func RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint) templ.Component {
@@ -56,7 +67,7 @@ func RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint)
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin:dashboard:revenue-chart"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 26, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 37, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -69,7 +80,7 @@ func RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint)
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Revenue Summary"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 33, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 44, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -82,7 +93,7 @@ func RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint)
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Last 7 days revenue breakdown"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 34, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 45, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -95,7 +106,7 @@ func RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint)
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Coinslot"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 39, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 50, Col: 94}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -108,26 +119,21 @@ func RevenueChartCard(api sdkapi.IPluginApi, data []dashboard.RevenueChartPoint)
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Voucher"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 43, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 54, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></div></div></div></div><div class=\"card-body border-top pt-3\"><div class=\"fw-chart-container\"><div id=\"revenueChart\" data-chart=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></div></div></div></div><div class=\"card-body border-top pt-3\"><div class=\"fw-chart-container\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(revenueChartJSON(data))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/dashboard-revenue-chart.templ`, Line: 52, Col: 40}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		templ_7745c5c3_Err = api.UI().LineChart(revenueChartJSON(data)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></div></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
