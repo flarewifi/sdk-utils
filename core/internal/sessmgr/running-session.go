@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -12,6 +13,7 @@ import (
 
 	"core/internal/modules/tc"
 	"core/internal/network"
+	jobque "core/utils/job-que"
 	sdkapi "sdk/api"
 )
 
@@ -25,9 +27,6 @@ const (
 )
 
 var (
-	// tcNftMu serializes all TC and NFT commands globally.
-	// TC/NFT subsystem can only handle one command at a time.
-	tcNftMu           sync.Mutex
 	ErrSessionExpired = errors.New("session expired")
 	ErrSessionStopped = errors.New("session already stopped")
 )
@@ -39,20 +38,26 @@ var (
 // RunningSession manages an active client session with bandwidth control.
 //
 // Field categories:
-//   - IMMUTABLE: clnt, clntId, emitter - set at creation, never change, no lock needed
-//   - ATOMIC: network - rarely changes, uses atomic.Pointer for lock-free reads
+//   - IMMUTABLE: clnt, clntId, emitter, tcQueue - set at creation, never change, no lock needed
+//   - ATOMIC: network, stopped - lock-free reads/writes via sync/atomic primitives
 //   - MUTABLE: everything else - protected by mu
 type RunningSession struct {
 	// === IMMUTABLE after creation (no lock needed) ===
 	clnt    sdkapi.IClientDevice
 	clntId  int64
 	emitter SessionEventEmitter
+	tcQueue *jobque.JobQueue[struct{}] // reference to SessionsMgr's global TC serialization queue
 
-	// === RARELY CHANGES (atomic pointer for lock-free reads) ===
+	// === ATOMIC (lock-free) ===
 	network atomic.Pointer[networkState]
+	// stopped uses atomic.Bool so hot paths (UpdateDataConsumption, timerLoop,
+	// handlePeriodicSave, IsStopped) can read it without acquiring mu.
+	// StopWithReason uses CompareAndSwap to guarantee only one caller transitions
+	// false→true (the one that "wins" proceeds; all others return immediately).
+	stopped atomic.Bool
 
 	// === MUTABLE STATE (protected by mu) ===
-	mu            sync.Mutex // Changed from RWMutex - simpler, less error-prone
+	mu            sync.Mutex
 	tcClassId     *tc.TcClassId
 	timeTimer     *time.Timer
 	timerCancel   context.CancelFunc
@@ -60,16 +65,15 @@ type RunningSession struct {
 	timerGen      uint64 // Generation counter to prevent stale timer goroutines from acting
 	session       sdkapi.IClientSession
 	diffMb        float64
-	callbacks     []chan error
-	stopped       bool // Prevents duplicate Stop() operations; cleared only by Start()
-	saveFailCount int  // Consecutive periodic save failures; reset on success
+	doneCh        chan error // Single buffered channel for session completion; reset by PrepareForChain()
+	saveFailCount int        // Consecutive periodic save failures; reset on success
 }
 
 // =============================================================================
 // CONSTRUCTOR
 // =============================================================================
 
-func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitter SessionEventEmitter) (*RunningSession, error) {
+func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitter SessionEventEmitter, tcQueue *jobque.JobQueue[struct{}]) (*RunningSession, error) {
 	log.Printf("[Running Session] Creating new running session - DeviceID=%d, MAC=%s, IP=%s",
 		clnt.ID(), clnt.MacAddr(), clnt.IpAddr())
 
@@ -84,10 +88,11 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitt
 		clnt:    clnt,
 		clntId:  clnt.ID(),
 		emitter: emitter,
+		tcQueue: tcQueue,
 
 		// Mutable state initialized
-		session:   s,
-		callbacks: []chan error{},
+		session: s,
+		doneCh:  make(chan error, 1),
 	}
 
 	// Initialize network state atomically
@@ -143,22 +148,12 @@ func (self *RunningSession) GetSession() sdkapi.IClientSession {
 }
 
 // Done returns a channel that receives when the session ends.
-// Safe to call multiple times - each caller gets their own channel.
+// The channel is buffered (size 1) so StopWithReason never blocks.
+// Call PrepareForChain() to reset the channel for the next session iteration.
 func (self *RunningSession) Done() <-chan error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
-
-	// Use buffered channel to prevent StopWithReason() from blocking
-	ch := make(chan error, 1)
-
-	// If already stopped, return immediately with appropriate error
-	if self.stopped {
-		ch <- ErrSessionStopped
-		return ch
-	}
-
-	self.callbacks = append(self.callbacks, ch)
-	return ch
+	return self.doneCh
 }
 
 // DiffMb returns the unsaved data consumption difference.
@@ -168,30 +163,31 @@ func (self *RunningSession) DiffMb() (mb float64) {
 	return self.diffMb
 }
 
-// IsStopped returns whether the session has been stopped.
+// IsStopped returns whether the session has been stopped (atomic, no lock needed).
 func (self *RunningSession) IsStopped() bool {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	return self.stopped
+	return self.stopped.Load()
 }
 
 // =============================================================================
 // PUBLIC METHODS - Session Lifecycle
 // =============================================================================
 
-// Reset prepares the RunningSession for reuse with a new session.
-// Preserves TC class/filter to avoid teardown/recreation overhead.
-// Must be called after StopWithReason() and before Start() with new session.
+// PrepareForChain prepares the RunningSession for reuse with a new session.
+// This enables session chaining: when one session expires, loopSessions calls
+// PrepareForChain() then Start() with the next available session.
+//
+// Preserves: TC class/filter (avoids teardown/recreation overhead), network state, session reference.
+// Resets: doneCh (new buffered channel), diffMb, saveFailCount.
 //
 // NOTE: stopped flag remains true until Start() successfully loads a new session.
-// This ensures that if Stop() is called after Reset() but before Start() (e.g., when
-// no more sessions are available), it's a no-op since the session was already stopped.
-func (self *RunningSession) Reset() {
+// This ensures that if Stop() is called after PrepareForChain() but before Start()
+// (e.g., when no more sessions are available), it's a no-op.
+func (self *RunningSession) PrepareForChain() {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
 	// Note: stopped remains true - only Start() clears it when new session loads
-	self.callbacks = []chan error{}
+	self.doneCh = make(chan error, 1) // Fresh channel for next session
 	self.diffMb = 0
 	self.saveFailCount = 0
 	// Note: session is intentionally preserved until Start() sets a new one
@@ -207,23 +203,20 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	log.Printf("[Running Session] Start - %s", contextInfo)
 
 	// 1. DB reload - no lock needed (session has its own synchronization)
-	dbStart := time.Now()
 	if err := s.Reload(ctx); err != nil {
 		return fmt.Errorf("failed to reload session: %w", err)
 	}
-	logSlowOperation("DB Reload", dbStart, 2*time.Second, contextInfo)
 
-	// 2. Update session state atomically
-	// Note: We allow Start() even if stopped=true (after Reset()) to enable session chaining
+	// 2. Store session reference and clear stopped flag under mu.
+	// Note: We allow Start() even if stopped=true (after PrepareForChain()) to enable session chaining.
 	self.mu.Lock()
-	self.stopped = false // Clear stopped flag for new session
+	self.stopped.Store(false)
 	self.session = s
+	self.mu.Unlock()
 
-	// Get session data in a single atomic snapshot to check timestamps
+	// Build timestamp update outside mu — s.SetData() acquires ClientSession.writeMu
+	// internally, so calling it while mu is held would create a mu→writeMu nesting.
 	sessionData := s.Data()
-
-	// Set first start time if this is the first time session is starting
-	// and set resumed time to track current running period
 	timeNow := time.Now().UTC()
 	updateData := sdkapi.SessionUpdateData{}
 	hasUpdates := false
@@ -232,84 +225,90 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 		updateData.StartedAt = &timeNow
 		hasUpdates = true
 	}
-
 	if sessionData.ResumedAt == nil {
 		updateData.ResumedAt = &timeNow
 		hasUpdates = true
 	}
 
-	// Apply timestamp updates in batch if needed
+	// Apply timestamp updates with no lock held (writeMu acquired internally).
 	if hasUpdates {
 		s.SetData(updateData)
 	}
-	self.mu.Unlock()
 
 	// 3. Save to DB - no lock needed
 	// Use PersistToDB() instead of Save() to avoid emitting EventSessionChanged.
 	// EventSessionConnected is already emitted in loopSessions() when the session starts,
 	// so we don't need a duplicate event here. This is an internal state transition (setting
 	// started_at/resumed_at timestamps), not a user-initiated modification.
-	dbStart = time.Now()
 	if err := s.PersistToDB(ctx); err != nil {
 		return fmt.Errorf("failed to save session: %w", err)
 	}
-	logSlowOperation("DB Save", dbStart, 2*time.Second, contextInfo)
 
-	// 4. TC operations - check and init/update inside single lock acquisition
-	err := withTcNftLock("TC Init/Update", contextInfo, func() error {
+	// 4. TC operations - check and init/update inside single lock acquisition.
+	// Pass session explicitly so initTc/updateTc don't implicitly rely on self.session
+	// being readable under mu — the contract is now explicit in the signature.
+	err := self.execTc("TC Init/Update", func() error {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
 		if self.tcClassId == nil {
-			return self.initTc()
+			return self.initTc(s)
 		}
-		return self.updateTc()
+		return self.updateTc(s)
 	})
 	if err != nil {
 		return fmt.Errorf("failed to setup TC: %w", err)
 	}
 
-	// 5. Start timer if not already running
+	// 5. Start timer if not already running.
+	// initTimeTimer returns true when the session is already consumed and needs
+	// an immediate stop. We dispatch StopWithReason AFTER releasing mu to avoid
+	// calling it while mu is held (StopWithReason acquires mu internally via CAS).
 	self.mu.Lock()
+	stopImmediately := false
 	if self.timeTimer == nil {
-		self.initTimeTimer(s)
-		log.Println("Session timer has started...")
+		stopImmediately = self.initTimeTimer(s)
+		if !stopImmediately {
+			log.Println("Session timer has started...")
+		}
 	}
 	self.mu.Unlock()
+
+	if stopImmediately {
+		go self.StopWithReason(StopReasonConsumed)
+	}
 
 	log.Printf("[Running Session] Start completed - %s", contextInfo)
 	return nil
 }
 
-func (self *RunningSession) Stop(ctx context.Context) error {
-	return self.StopWithReason(ctx, false)
+func (self *RunningSession) Stop() error {
+	return self.StopWithReason(StopReasonManual)
 }
 
-func (self *RunningSession) StopWithReason(ctx context.Context, isConsumed bool) error {
-	// First, mark as stopped and collect state atomically
-	self.mu.Lock()
-	if self.stopped {
-		self.mu.Unlock()
+func (self *RunningSession) StopWithReason(reason StopReason) error {
+	// Use CAS to guarantee only one caller transitions stopped false→true.
+	// All concurrent callers that lose the race return immediately without
+	// acquiring mu, eliminating contention on the hot "already stopped" path.
+	if !self.stopped.CompareAndSwap(false, true) {
 		log.Printf("[Running Session] StopWithReason - already stopped, DeviceID=%d", self.clntId)
 		return nil
 	}
-	self.stopped = true
 
+	// Won the CAS — collect mutable state and clean up timer under mu.
+	self.mu.Lock()
 	session := self.session
-	callbacks := self.callbacks
-	self.callbacks = nil // Clear callbacks
-
-	// Clean up timer while holding lock
+	doneCh := self.doneCh
 	self.cleanUpTimer()
 	self.mu.Unlock()
 
-	// Build context info for logging (after releasing lock)
+	// Build context info for logging
 	var sessionID int64
 	if session != nil {
 		sessionID = session.ID()
 	}
-	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Expired=%v",
-		self.clntId, sessionID, isConsumed)
+	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Reason=%s",
+		self.clntId, sessionID, reason)
 
 	log.Printf("[Running Session] StopWithReason - %s", contextInfo)
 
@@ -321,51 +320,54 @@ func (self *RunningSession) StopWithReason(ctx context.Context, isConsumed bool)
 	}
 
 	// DB save - no lock needed (session has its own synchronization)
-	dbStart := time.Now()
-	saveErr := self.persistSession(ctx, session)
-	logSlowOperation("DB Save (Stop)", dbStart, 2*time.Second, contextInfo)
+	saveErr := self.persistSession(session)
 
-	// Emit events (emitter is immutable, no lock needed)
-	// Only emit events if we have a valid session - session can be nil if Stop() is called
-	// before Start() completes or if the session was never properly initialized
-	if self.emitter != nil && self.clnt != nil && session != nil {
-		if isConsumed {
+	// Emit events - only emit if we have a valid session.
+	// Session can be nil if Stop() is called before Start() completes
+	// or if the session was never properly initialized.
+	// Note: emitter and clnt are immutable fields set at construction.
+	if session != nil {
+		if reason == StopReasonConsumed {
 			// Session was consumed (time/data exhausted) - emit both consumed and disconnected
-			self.emitter.emitSessionEvent(sdkapi.EventSessionConsumed, session)
+			self.emitter.EmitSessionEvent(sdkapi.EventSessionConsumed, sdkapi.SessionEventData{Session: session})
 		}
 		// Always emit disconnected event when session stops
-		self.emitter.emitSessionEvent(sdkapi.EventSessionDisconnected, session)
+		self.emitter.EmitSessionEvent(sdkapi.EventSessionDisconnected, sdkapi.SessionEventData{Session: session})
 	}
 
-	// Determine the error to return to callbacks
+	// Determine the error to signal to Done() waiters.
+	// For consumed sessions, always return ErrSessionExpired but include saveErr context if present.
+	// For manual stops, propagate saveErr directly (nil on success).
 	var callbackErr error
-	if isConsumed {
-		callbackErr = ErrSessionExpired
-		// Log save error if it occurred during consumed stop
-		// (data loss is already mitigated by periodic saves - at most 1 minute lost)
+	if reason == StopReasonConsumed {
 		if saveErr != nil {
-			log.Printf("[Running Session] WARNING - Save failed during consumed stop, consumption data may be lost: %v", saveErr)
+			// Wrap both errors - session expired AND save failed.
+			// Data loss is mitigated by periodic saves (at most 1 minute lost).
+			callbackErr = fmt.Errorf("%w (save failed: %v)", ErrSessionExpired, saveErr)
+			log.Printf("[Running Session] WARNING - Save failed during consumed stop: %v", saveErr)
+		} else {
+			callbackErr = ErrSessionExpired
 		}
 	} else {
 		callbackErr = saveErr
 	}
 
-	// Send to callbacks - no lock needed (we own the slice)
-	for _, cb := range callbacks {
-		select {
-		case cb <- callbackErr:
-		default:
-			// Channel full or closed, skip
-		}
+	// Signal completion to Done() waiter - non-blocking send since channel is buffered
+	select {
+	case doneCh <- callbackErr:
+	default:
+		// This should never happen with a properly managed buffered channel.
+		// If it does, it indicates a bug (double-stop or channel misuse).
+		log.Printf("[Running Session] WARNING - doneCh full, could not signal completion - DeviceID=%d", self.clntId)
 	}
-	log.Println("Done running callbacks.")
+	log.Println("Session stop signaled.")
 
 	log.Printf("[Running Session] StopWithReason completed - %s", contextInfo)
 	return callbackErr
 }
 
 func (self *RunningSession) CleanupTc() error {
-	return withTcNftLock("CleanupTc", fmt.Sprintf("DeviceID=%d", self.clntId), func() error {
+	return self.execTc("CleanupTc", func() error {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
@@ -423,10 +425,10 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 		}
 	}
 
-	// All TC operations and network state updates happen inside tcNftMu+mu.
+	// All TC operations and network state updates happen inside execTc+mu.
 	// Re-read network state inside the lock to handle concurrent UpdateNetworkDetails calls.
 	// If another call already updated the state, we detect it and adjust accordingly.
-	return withTcNftLock("TC Network Update", contextInfo, func() error {
+	return self.execTc("TC Network Update", func() error {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
@@ -484,7 +486,7 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 
 			// Recreate TC rules on new interface
 			log.Printf("[Running Session] Creating new TC rules on interface %s", newLan.Name())
-			if err := self.initTc(); err != nil {
+			if err := self.initTc(self.session); err != nil {
 				log.Printf("[Running Session] ERROR - Failed to create TC rules: %v", err)
 				return err
 			}
@@ -526,18 +528,19 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 // =============================================================================
 
 func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
-	// Check if stopped first and grab session reference atomically
+	// Fast atomic check — no lock needed for stopped.
+	if self.stopped.Load() {
+		return
+	}
+
+	// Grab session reference under lock (session pointer is mu-protected).
 	self.mu.Lock()
-	if self.stopped {
-		self.mu.Unlock()
-		return
-	}
 	session := self.session
+	self.mu.Unlock()
+
 	if session == nil {
-		self.mu.Unlock()
 		return
 	}
-	self.mu.Unlock()
 
 	// Get network state atomically (no lock needed)
 	net := self.network.Load()
@@ -557,12 +560,12 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	session.IncDataCons(dataconMb)
 
 	// Update diffMb and check if we should trigger stop.
-	// Check stopped again under lock to prevent spawning multiple StopWithReason goroutines.
-	self.mu.Lock()
-	if self.stopped {
-		self.mu.Unlock()
+	// Check stopped again (atomic) — if StopWithReason won the CAS between
+	// the first check and here, we skip the diffMb update and shouldStop path.
+	if self.stopped.Load() {
 		return
 	}
+	self.mu.Lock()
 	self.diffMb += dataconMb
 	shouldStop := session.IsConsumed()
 	self.mu.Unlock()
@@ -570,7 +573,7 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	if shouldStop {
 		log.Println("Session data is consumed!!!")
 		// StopWithReason has its own stopped guard, so concurrent calls are safe (only first wins)
-		go self.StopWithReason(context.Background(), true)
+		go self.StopWithReason(StopReasonConsumed)
 	}
 }
 
@@ -584,34 +587,41 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 // Returns ErrSessionStopped if the session is already stopped.
 // Note: Session values are already updated by the caller; this only applies runtime effects.
 func (self *RunningSession) ApplyTimeUpdate(params ApplyTimeUpdateParams) error {
-	self.mu.Lock()
-
-	if self.stopped {
-		self.mu.Unlock()
+	// Phase 1: capture state under lock, then release before calling session methods.
+	// snapshotTimeConsumption acquires ClientSession.writeMu internally; holding RunningSession.mu
+	// at the same time creates a nested-lock ordering risk (mu → writeMu). Release mu first
+	// to eliminate the nesting entirely.
+	if self.stopped.Load() {
 		return ErrSessionStopped
 	}
 
+	self.mu.Lock()
 	session := self.session
+	self.mu.Unlock()
+
 	if session == nil {
-		self.mu.Unlock()
 		return errors.New("no active session")
 	}
 
-	// Persist current consumption to the session before resetting timer
-	// This ensures TimeConsumption() returns the stored value without elapsed calculation
+	sessionType := session.Type()
+
+	// Phase 2: persist current consumption — no lock held (writeMu acquired internally).
+	// This ensures TimeConsumption() returns the stored value without elapsed calculation.
 	self.snapshotTimeConsumption(session, false)
 
 	// Check if session should be stopped as consumed
-	sessionType := session.Type()
 	if params.RemainingSecs == 0 && (sessionType == sdkapi.SessionTypeTime || sessionType == sdkapi.SessionTypeTimeOrData) {
-		self.mu.Unlock()
-		return self.StopWithReason(params.Ctx, true)
+		return self.StopWithReason(StopReasonConsumed)
 	}
 
-	// Reset the timer to the new remaining time
+	// Phase 3: re-acquire lock only for the timer reset (pure RunningSession state).
+	if self.stopped.Load() {
+		return ErrSessionStopped
+	}
+	self.mu.Lock()
 	self.resetTimer(params.RemainingSecs)
-
 	self.mu.Unlock()
+
 	return nil
 }
 
@@ -619,28 +629,24 @@ func (self *RunningSession) ApplyTimeUpdate(params ApplyTimeUpdateParams) error 
 // If the session is consumed, it stops the session.
 // Returns ErrSessionStopped if the session is already stopped.
 // Note: Session values are already updated by the caller; this only checks consumption.
-func (self *RunningSession) ApplyDataUpdate(ctx context.Context) error {
-	self.mu.Lock()
-
-	if self.stopped {
-		self.mu.Unlock()
+func (self *RunningSession) ApplyDataUpdate() error {
+	if self.stopped.Load() {
 		return ErrSessionStopped
 	}
 
+	self.mu.Lock()
 	session := self.session
 	if session == nil {
 		self.mu.Unlock()
 		return errors.New("no active session")
 	}
-
 	// Reset diffMb since the caller has already accounted for consumption
 	self.diffMb = 0
-
 	self.mu.Unlock()
 
 	// Check if session is now consumed
 	if session.IsConsumed() {
-		return self.StopWithReason(ctx, true)
+		return self.StopWithReason(StopReasonConsumed)
 	}
 
 	return nil
@@ -651,29 +657,37 @@ func (self *RunningSession) ApplyDataUpdate(ctx context.Context) error {
 // Returns ErrSessionStopped if the session is already stopped.
 // Note: Session values are already saved to DB by the caller; this applies runtime effects.
 func (self *RunningSession) ApplyBandwidthUpdate(params ApplyBandwidthUpdateParams) error {
-	contextInfo := fmt.Sprintf("DeviceID=%d, Down=%d, Up=%d, UseGlobal=%v", self.clntId, params.DownMbits, params.UpMbits, params.UseGlobal)
+	// Phase 1: capture session reference under lock, then release before calling SetData.
+	// session.SetData() acquires ClientSession.writeMu internally; holding RunningSession.mu
+	// at the same time creates a nested-lock ordering risk (mu → writeMu). Release mu first.
+	if self.stopped.Load() {
+		return ErrSessionStopped
+	}
+	self.mu.Lock()
+	session := self.session
+	self.mu.Unlock()
 
-	// Update TC rules
-	return withTcNftLock("TC Bandwidth Update", contextInfo, func() error {
+	if session == nil {
+		return errors.New("no active session")
+	}
+
+	// Phase 2: update in-memory session — no lock held (writeMu acquired internally).
+	// This ensures self.session stays in sync with the database so that
+	// future calls to updateTc() or initTc() use the correct values.
+	session.SetData(sdkapi.SessionUpdateData{
+		DownMbits:      &params.DownMbits,
+		UpMbits:        &params.UpMbits,
+		UseGlobalSpeed: &params.UseGlobal,
+	})
+
+	// Phase 3: update TC rules — re-acquires mu inside execTc callback.
+	return self.execTc("TC Bandwidth Update", func() error {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
-		if self.stopped {
+		if self.stopped.Load() {
 			return ErrSessionStopped
 		}
-
-		if self.session == nil {
-			return errors.New("no active session")
-		}
-
-		// Update the in-memory session with the new bandwidth values.
-		// This ensures self.session stays in sync with the database so that
-		// future calls to updateTc() or initTc() use the correct values.
-		self.session.SetData(sdkapi.SessionUpdateData{
-			DownMbits:      &params.DownMbits,
-			UpMbits:        &params.UpMbits,
-			UseGlobalSpeed: &params.UseGlobal,
-		})
 
 		// Read network state inside lock to ensure consistency with UpdateNetworkDetails
 		net := self.network.Load()
@@ -701,48 +715,39 @@ func (self *RunningSession) ApplyBandwidthUpdate(params ApplyBandwidthUpdatePara
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
-// logSlowOperation logs a warning if an operation exceeds the threshold duration.
-func logSlowOperation(operation string, start time.Time, threshold time.Duration, context string) {
-	elapsed := time.Since(start)
-	if elapsed > threshold {
-		log.Printf("[SLOW] %s took %v (threshold: %v) - %s", operation, elapsed, threshold, context)
-	}
-}
-
-// withTcNftLock executes a function while holding the global TC/NFT lock.
-// Logs debug info about lock acquisition and operation duration.
-func withTcNftLock(operation string, context string, fn func() error) error {
-	lockStart := time.Now()
-	tcNftMu.Lock()
-	lockWait := time.Since(lockStart)
-	if lockWait > 500*time.Millisecond {
-		log.Printf("[SLOW] Waiting for tcNftMu took %v - %s - %s", lockWait, operation, context)
-	}
-
-	opStart := time.Now()
-	err := fn()
-	tcNftMu.Unlock()
-
-	logSlowOperation(operation, opStart, 1*time.Second, context)
+// execTc submits a TC/NFT operation to the global serialization queue and waits for the result.
+// This ensures all TC/NFT commands execute one at a time across all sessions.
+// Uses JobQueue for automatic panic recovery, queue-wait logging, and context support.
+func (self *RunningSession) execTc(operation string, fn func() error) error {
+	contextInfo := fmt.Sprintf("DeviceID=%d", self.clntId)
+	_, err := self.tcQueue.ExecWithContext(
+		context.Background(),
+		operation,
+		contextInfo,
+		func() (struct{}, error) {
+			return struct{}{}, fn()
+		},
+	)
 	return err
 }
 
 // initTimeTimer initializes the session timer. Must be called with mu held.
-func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) {
+// Returns true if the session is already consumed and the caller should trigger
+// an immediate stop AFTER releasing mu (to avoid calling StopWithReason while mu is held).
+func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) bool {
 	// Get session data in a single atomic snapshot
 	data := s.Data()
 
-	// Check if session is already consumed or expired
+	// If session is already consumed, signal the caller to stop after releasing mu.
+	// We never dispatch goroutines while holding mu — that is fragile and hard to reason about.
 	if data.IsConsumed {
 		log.Println("Session already consumed or expired, stopping immediately")
-		// Use goroutine to avoid calling StopWithReason while mu is held.
-		// StopWithReason has its own stopped guard so concurrent calls are safe.
-		go self.StopWithReason(context.Background(), true)
-		return
+		return true
 	}
 
-	// Calculate remaining time and start timer
+	// Start the timer for the remaining time
 	self.startTimer(data.RemainingTime)
+	return false
 }
 
 // startTimer creates and starts a new timer with the specified duration.
@@ -770,6 +775,16 @@ func (self *RunningSession) startTimer(remainingSecs int) {
 // Runs in a separate goroutine. The gen parameter ensures stale goroutines
 // (from a previous timer that was cancelled and replaced) become no-ops.
 func (self *RunningSession) timerLoop(ctx context.Context, timer *time.Timer, gen uint64) {
+	// Add a random jitter of 0–15 seconds before the first tick so that all
+	// active sessions don't write to the database simultaneously every minute.
+	// This spreads the write load and reduces "database is locked" contention.
+	jitter := time.Duration(rand.Int63n(int64(15 * time.Second)))
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(jitter):
+	}
+
 	saveTicker := time.NewTicker(1 * time.Minute)
 	defer saveTicker.Stop()
 
@@ -780,17 +795,18 @@ func (self *RunningSession) timerLoop(ctx context.Context, timer *time.Timer, ge
 			return
 
 		case <-timer.C:
-			// Verify this timer goroutine is still current before acting
+			// Verify this timer goroutine is still current before acting.
+			// stopped is atomic — read it without mu. timerGen still needs mu.
 			self.mu.Lock()
-			if self.timerGen != gen || self.stopped {
-				self.mu.Unlock()
-				log.Printf("[Running Session] Stale timer expired (gen=%d, current=%d), ignoring", gen, self.timerGen)
+			currentGen := self.timerGen
+			self.mu.Unlock()
+			if currentGen != gen || self.stopped.Load() {
+				log.Printf("[Running Session] Stale timer expired (gen=%d, current=%d), ignoring", gen, currentGen)
 				return
 			}
-			self.mu.Unlock()
 
 			log.Println("Session timer expired - time consumed!")
-			self.StopWithReason(context.Background(), true)
+			self.StopWithReason(StopReasonConsumed)
 			return
 
 		case <-saveTicker.C:
@@ -805,8 +821,12 @@ func (self *RunningSession) timerLoop(ctx context.Context, timer *time.Timer, ge
 // The gen parameter is the timer generation that spawned this periodic save.
 // Returns true to continue the timer loop, false to exit.
 func (self *RunningSession) handlePeriodicSave(gen uint64) bool {
+	// stopped is atomic — check it before acquiring mu to short-circuit fast.
+	if self.stopped.Load() {
+		return false
+	}
 	self.mu.Lock()
-	if self.stopped || self.timerGen != gen {
+	if self.timerGen != gen {
 		self.mu.Unlock()
 		return false
 	}
@@ -823,16 +843,11 @@ func (self *RunningSession) handlePeriodicSave(gen uint64) bool {
 	// Persist time consumption to protect against crashes
 	// This ensures at most 1 minute of time tracking is lost on crash
 	// instead of all time since session start
-	elapsed := self.snapshotTimeConsumption(currentSession, false)
+	self.snapshotTimeConsumption(currentSession, false)
 	log.Printf("Periodic save: persisting %d seconds consumed, %d remaining\n",
 		currentSession.ConsumedTimeSecs(), currentSession.RemainingTime())
 
-	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Elapsed=%ds",
-		self.clntId, currentSession.ID(), elapsed)
-
-	dbStart := time.Now()
-	saveErr := self.persistSession(context.Background(), currentSession)
-	logSlowOperation("Periodic Save", dbStart, 2*time.Second, contextInfo)
+	saveErr := self.persistSession(currentSession)
 
 	if saveErr != nil {
 		// Tolerate transient DB errors - only stop after consecutive failures.
@@ -846,47 +861,46 @@ func (self *RunningSession) handlePeriodicSave(gen uint64) bool {
 		const maxConsecutiveFailures = 3
 		if failCount >= maxConsecutiveFailures {
 			log.Printf("[ERROR] Periodic save failed %d consecutive times: %v - STOPPING SESSION", failCount, saveErr)
-			go self.Stop(context.Background())
+			go self.Stop()
 			return false
 		}
 		log.Printf("[WARN] Periodic save failed (%d/%d): %v - will retry next period", failCount, maxConsecutiveFailures, saveErr)
 		return true
 	}
 
-	// Save succeeded - reset failure counter
+	// Save succeeded - reset failure counter and check for stale/consumed state.
+	// stopped is atomic — read it outside mu; timerGen still needs mu.
 	self.mu.Lock()
 	self.saveFailCount = 0
-	self.mu.Unlock()
-
-	// Check if session is now consumed or expired (e.g., expiration date passed)
-	self.mu.Lock()
 	freshSession := self.session
-	stale := self.stopped || self.timerGen != gen
+	staleGen := self.timerGen != gen
 	self.mu.Unlock()
 
-	if stale {
+	if self.stopped.Load() || staleGen {
 		return false
 	}
 
 	if freshSession != nil && freshSession.IsConsumed() {
 		log.Println("Session consumed or expired during periodic check")
 		// StopWithReason has its own stopped guard so concurrent calls are safe
-		go self.StopWithReason(context.Background(), true)
+		go self.StopWithReason(StopReasonConsumed)
 		return false
 	}
 
 	return true
 }
 
-// initTc initializes TC class and filter. Must be called with mu AND tcNftMu held.
-func (self *RunningSession) initTc() error {
+// initTc initializes TC class and filter. Must be called from within execTc with mu held.
+// Session is passed explicitly rather than read from self.session to make the
+// dependency on mu-protected state visible at the call site.
+func (self *RunningSession) initTc(s sdkapi.IClientSession) error {
 	classid := tc.GetAvailableId()
 	defer classid.Cancel()
 
 	net := self.network.Load()
 
 	// Get session data in a single atomic snapshot
-	data := self.session.Data()
+	data := s.Data()
 
 	err := net.lan.CreateClass(classid.Uint(), data.DownMbits, data.UpMbits)
 	if err != nil {
@@ -905,12 +919,14 @@ func (self *RunningSession) initTc() error {
 	return nil
 }
 
-// updateTc updates TC class settings. Must be called with mu AND tcNftMu held.
-func (self *RunningSession) updateTc() error {
+// updateTc updates TC class settings. Must be called from within execTc with mu held.
+// Session is passed explicitly rather than read from self.session to make the
+// dependency on mu-protected state visible at the call site.
+func (self *RunningSession) updateTc(s sdkapi.IClientSession) error {
 	net := self.network.Load()
 
 	// Get session data in a single atomic snapshot
-	data := self.session.Data()
+	data := s.Data()
 
 	downMbits := data.DownMbits
 	upMbits := data.UpMbits
@@ -958,11 +974,11 @@ func (self *RunningSession) snapshotTimeConsumption(session sdkapi.IClientSessio
 // Used for internal bookkeeping operations (periodic saves, stop operations).
 // Does NOT reload from DB - the in-memory state is already correct.
 // Does NOT trigger the onSave callback - these are internal operations, not user-initiated changes.
-func (self *RunningSession) persistSession(ctx context.Context, session sdkapi.IClientSession) error {
+func (self *RunningSession) persistSession(session sdkapi.IClientSession) error {
 	if session == nil {
 		return nil
 	}
-	return session.PersistToDB(ctx)
+	return session.PersistToDB(context.Background())
 }
 
 // resetTimer cancels the existing timer and creates a new one with the specified duration.

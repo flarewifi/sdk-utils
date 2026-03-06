@@ -17,7 +17,7 @@ const (
 var (
 	usedClassIds []TcClassId
 	tmpClassIds  []TcClassId
-	classQue     = jobque.NewJobQue[interface{}]()
+	classQue     = jobque.NewJobQueue[interface{}]()
 )
 
 type TcClassId uint
@@ -31,14 +31,14 @@ func (self TcClassId) Uint() uint {
 }
 
 func (self TcClassId) Cancel() {
-	classQue.Exec(func() (interface{}, error) {
+	classQue.Exec("TcClassId.Cancel", func() (interface{}, error) {
 		tmpClassIds = removeClassId(tmpClassIds, self)
 		return nil, nil
 	})
 }
 
 func (self TcClassId) Commit() {
-	classQue.Exec(func() (interface{}, error) {
+	classQue.Exec("TcClassId.Commit", func() (interface{}, error) {
 		tmpClassIds = removeClassId(tmpClassIds, self)
 		usedClassIds = append(usedClassIds, self)
 		return nil, nil
@@ -46,14 +46,14 @@ func (self TcClassId) Commit() {
 }
 
 func (self TcClassId) Restore() {
-	classQue.Exec(func() (interface{}, error) {
+	classQue.Exec("TcClassId.Restore", func() (interface{}, error) {
 		usedClassIds = removeClassId(usedClassIds, self)
 		return nil, nil
 	})
 }
 
 func GetAvailableId() TcClassId {
-	result, _ := classQue.Exec(func() (interface{}, error) {
+	result, _ := classQue.Exec("GetAvailableId", func() (interface{}, error) {
 		classids := orderedIds()
 
 		for i := 0; i < len(classids); i++ {

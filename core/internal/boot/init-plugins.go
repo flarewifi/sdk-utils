@@ -16,7 +16,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func InitPlugins(g *api.CoreGlobals) {
+func InitPlugins(g *api.CoreGlobals) error {
 	db := g.CoreAPI.SqlDB()
 	localPlugins := plugins.LocalPluginSrcDefs()
 	systemPlugins := plugins.SystemPluginSrcDefs()
@@ -25,7 +25,7 @@ func InitPlugins(g *api.CoreGlobals) {
 		for _, def := range append(systemPlugins, localPlugins...) {
 			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
 			if err != nil {
-				panic(fmt.Sprintf("Error installing plugin %s: %v", def.LocalPath, err))
+				return fmt.Errorf("error installing plugin %s: %w", def.LocalPath, err)
 			}
 		}
 	}
@@ -77,6 +77,8 @@ func InitPlugins(g *api.CoreGlobals) {
 			log.Printf("Error in running migration for plugin %s: %+v\n", migdir, err)
 		}
 	}
+
+	return nil
 }
 
 func LoadFromBackup(g *api.CoreGlobals, pkg string) error {

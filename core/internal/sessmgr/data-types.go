@@ -1,12 +1,38 @@
 package sessmgr
 
 import (
-	"context"
 	"time"
 
 	"core/internal/network"
 	sdkapi "sdk/api"
 )
+
+// =============================================================================
+// ENUM TYPES
+// =============================================================================
+
+// StopReason indicates why a session was stopped.
+type StopReason int
+
+const (
+	// StopReasonManual indicates the session was stopped by user/admin action (e.g., Disconnect).
+	StopReasonManual StopReason = iota
+
+	// StopReasonConsumed indicates the session's time or data allowance was exhausted.
+	StopReasonConsumed
+)
+
+// String returns a human-readable representation of the stop reason.
+func (r StopReason) String() string {
+	switch r {
+	case StopReasonManual:
+		return "manual"
+	case StopReasonConsumed:
+		return "consumed"
+	default:
+		return "unknown"
+	}
+}
 
 // =============================================================================
 // FUNCTION TYPES
@@ -19,9 +45,10 @@ type IsConnectedFunc func(deviceID int64) bool
 // INTERFACES
 // =============================================================================
 
-// SessionEventEmitter interface for emitting session events
+// SessionEventEmitter is the narrow interface that RunningSession uses to emit session events.
+// It is satisfied by *events.EventsManager, keeping RunningSession decoupled from the full manager.
 type SessionEventEmitter interface {
-	emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, changedFields ...sdkapi.SessionChangedFields) error
+	EmitSessionEvent(event sdkapi.SessionEvent, data sdkapi.SessionEventData)
 }
 
 // =============================================================================
@@ -43,13 +70,11 @@ type ClientRegisterParams struct {
 
 // ApplyTimeUpdateParams contains parameters for applying a time update.
 type ApplyTimeUpdateParams struct {
-	Ctx           context.Context
 	RemainingSecs int
 }
 
 // ApplyBandwidthUpdateParams contains parameters for applying a bandwidth update.
 type ApplyBandwidthUpdateParams struct {
-	Ctx       context.Context
 	DownMbits int
 	UpMbits   int
 	UseGlobal bool

@@ -58,6 +58,12 @@ func GetHostFromRequest(r *http.Request) (*HostData, error) {
 		}, nil
 	}
 
+	// Sentinel: "0.0.0.0" simulates a complete ARP failure (no MAC resolvable).
+	// This allows UI testing of the fingerprint-hash fallback path in portal registration.
+	if ipAddr == "0.0.0.0" {
+		return &HostData{IpAddr: ipAddr, MacAddr: "", Hostname: ""}, nil
+	}
+
 	// Fallback to defaults if IP not found in hosts.json
 	return &HostData{
 		IpAddr:   ipAddr,

@@ -170,7 +170,7 @@ func (self *PaymentsApi) ExtractPurchaseData(r *http.Request) (sdkapi.IPurchaseR
 }
 
 func (self *PaymentsApi) OnPurchaseEvent(event sdkapi.PurchaseEvent, callback func(data sdkapi.PurchaseEventData) error) {
-	self.paymentsMgr.OnPurchaseEvent(event, callback)
+	self.api.EventsMgr.OnPurchaseEvent(event, callback)
 }
 
 // CreatePurchase creates a purchase record programmatically without HTTP checkout flow.

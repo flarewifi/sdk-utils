@@ -113,18 +113,24 @@ ORDER BY last_seen_at DESC
 LIMIT 1;
 
 -- name: FindSharedMacAddresses :many
--- Finds MAC addresses that exist on multiple devices (within 30 days)
--- Used by device merge job to identify potential duplicates
+-- Finds MAC addresses that exist on multiple devices since the given UTC timestamp.
+-- Used by device merge job to identify potential duplicates.
+-- Caller should pass time.Now().UTC().AddDate(0, 0, -30) for 30-day lookback.
 SELECT mac_address
 FROM device_macs
-WHERE last_seen_at >= datetime('now', '-30 days')
+WHERE last_seen_at >= @since_utc
 GROUP BY mac_address
 HAVING COUNT(DISTINCT device_id) > 1;
 
 -- name: FindDeviceIDsByMacAddress :many
--- Gets all device IDs that have a specific MAC address, ordered by most recent
--- Used by device merge job to find devices sharing a MAC
-SELECT DISTINCT device_id
-FROM device_macs
-WHERE mac_address = @mac_address
-ORDER BY last_seen_at DESC;
+-- Gets all device IDs that have a specific MAC address, ordered by most recently seen.
+-- Uses a subquery to pre-aggregate MAX(last_seen_at) per device so that the ORDER BY
+-- is deterministic. SELECT DISTINCT with ORDER BY on a non-selected column is undefined.
+SELECT dm.device_id
+FROM (
+    SELECT device_id, MAX(last_seen_at) AS max_seen
+    FROM device_macs
+    WHERE mac_address = @mac_address
+    GROUP BY device_id
+) dm
+ORDER BY dm.max_seen DESC;

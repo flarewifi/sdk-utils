@@ -9,7 +9,7 @@ import (
 	cmd "core/utils/shell"
 )
 
-var que = jobque.NewJobQue[any]()
+var que = jobque.NewJobQueue[any]()
 var interfaceListeners map[string][]chan InterfaceEvent
 
 func init() {
@@ -22,7 +22,7 @@ type ifEvent map[string]struct {
 }
 
 func parseEvent(b []byte) {
-	que.Exec(func() (any, error) {
+	que.Exec("parseEvent", func() (any, error) {
 		eventStr := string(b)
 		if strings.HasPrefix(eventStr, `{ "network.interface":`) {
 			var evt ifEvent
@@ -60,7 +60,7 @@ func Listen() {
 
 func ListenInterface(name string) <-chan InterfaceEvent {
 	ch := make(chan InterfaceEvent)
-	que.Exec(func() (any, error) {
+	que.Exec("ListenInterface", func() (any, error) {
 		_, ok := interfaceListeners[name]
 		if !ok {
 			interfaceListeners[name] = []chan InterfaceEvent{}

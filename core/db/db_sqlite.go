@@ -52,7 +52,13 @@ func newSQLiteDatabase(dbpath string) *Database {
 		// Use WAL journal mode for better concurrency (multiple readers + 1 writer)
 		// WAL allows reads and writes to proceed concurrently without blocking
 		// Trade-off: Higher write amplification vs DELETE mode, but fewer SQLITE_BUSY errors
-		dburl := fmt.Sprintf("file:%s?_busy_timeout=10000&_journal_mode=WAL&_sync=NORMAL&_loc=UTC", dbpath)
+		// Single connection eliminates write contention entirely.
+		// SQLite only supports 1 writer at a time; with multiple connections,
+		// concurrent writes (cloud sync + session saves + HTTP handlers) cause
+		// "database is locked" errors even in WAL mode.
+		// _txlock=immediate: acquire write lock at transaction start (fail-fast + retry via busy_timeout)
+		// _busy_timeout=30000: allow up to 30s for external processes holding a lock
+		dburl := fmt.Sprintf("file:%s?_busy_timeout=30000&_journal_mode=WAL&_sync=NORMAL&_loc=UTC&_txlock=immediate", dbpath)
 		sqlDB, err := sql.Open(SqliteDriverName, dburl)
 		if err != nil {
 			log.Println("Error opening SQLite DB:", err)
@@ -61,14 +67,8 @@ func newSQLiteDatabase(dbpath string) *Database {
 		}
 
 		sqlDB.SetConnMaxLifetime(0)
-		// Increase connection pool to handle concurrent operations:
-		// - Session traffic updates (every 5s)
-		// - Periodic session saves (every 1min per session)
-		// - HTTP request handlers (vouchers, payments, admin)
-		// - Cloud sync operations (event-driven)
-		// - Background jobs (log cleanup, etc)
-		sqlDB.SetMaxOpenConns(5) // Allow up to 5 concurrent database operations
-		sqlDB.SetMaxIdleConns(2) // Keep 2 connections ready for immediate reuse
+		sqlDB.SetMaxOpenConns(1) // Single connection: all DB ops serialize, no write contention
+		sqlDB.SetMaxIdleConns(1) // Keep the single connection warm
 
 		for retries := 0; retries < 5; retries++ {
 			if err = sqlDB.PingContext(context.Background()); err == nil {

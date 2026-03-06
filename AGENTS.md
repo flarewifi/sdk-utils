@@ -254,40 +254,11 @@ docker cp ./database.sqlite-shm flarewifi-app-1:/opt/flarehotspot/app/data/db/
 - ❌ NEVER store local time in the database
 
 **Queries:**
-- ✅ Convert local time boundaries to UTC in Go, then query DB
+- ✅ Calculate time bounds in Go, pass as params: `time.Now().UTC().AddDate(0, 0, -30)`
 - ✅ Use range queries: `WHERE timestamp >= @start_utc AND timestamp <= @end_utc`
-- ❌ NEVER use `DATE(column) = DATE('now', 'localtime')` in SQL
+- ❌ NEVER use SQLite date functions (`datetime('now')`, `datetime('now', '-30 days')`)
 
-**Display:**
-- ✅ Convert UTC timestamps to local time in Go for display
-- ✅ Use Go's `time.Time` with proper timezone handling
-
-**Example - Daily Limit Check:**
-```go
-// ✅ GOOD: Calculate local day boundaries, convert to UTC for query
-now := time.Now()
-startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-endOfDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
-
-count, err := db.GetTodayCount(ctx, GetTodayCountParams{
-    DeviceID:      deviceID,
-    StartOfDayUtc: startOfDay.UTC(),  // Convert to UTC
-    EndOfDayUtc:   endOfDay.UTC(),    // Convert to UTC
-})
-```
-
-```sql
--- ✅ GOOD: Query with UTC range
-SELECT COUNT(*) FROM table 
-WHERE device_id = @device_id 
-  AND timestamp >= @start_of_day_utc
-  AND timestamp <= @end_of_day_utc;
-```
-
-```go
-// ❌ BAD: Using SQLite's localtime functions
-// SELECT COUNT(*) FROM table WHERE DATE(timestamp) = DATE('now', 'localtime')
-```
+**Display:** Convert UTC → local in Go for display
 
 **Cloud-Sync Architecture:**
 - ⚠️ Sessions may only exist in cloud, not locally with stable IDs
@@ -352,8 +323,6 @@ Only create custom functions if needed functionality doesn't exist in `sdk/utils
 | **Race condition in check-then-act** | **Add DB unique constraints; re-validate before action** |
 | **Inclusive time range bug** | **Use `endTime.Add(59s, 999ms)` or `<=` comparison** |
 | **Skipping implementation review** | **Review EVERY implementation before completion** |
-| **Storing local time in database** | **ALWAYS store UTC; convert to/from local in Go** |
-| **Using SQLite localtime functions** | **Never use `datetime('now', 'localtime')`; use Go timezone handling** |
 | **Foreign key to sessions.id from plugin** | **Use session_uuid (VARCHAR) instead; cloud-sync may not have local IDs** |
 | **Editing generated files** | **Only edit source files: `.templ`, `.sql`, not `*_templ.go` or `db/queries/*.go`** |
 | **Changes not appearing** | **Wait for `Listening on port :3000` in logs, then hard refresh browser** |

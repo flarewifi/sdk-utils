@@ -41,7 +41,14 @@ func Emit(event string, data []byte) error {
 	if ok {
 		channels := v.([]chan []byte)
 		for _, ch := range channels {
-			ch <- data
+			// Non-blocking send: if the subscriber is not reading (e.g., the HTTP
+			// connection was dropped without calling Unsubscribe), skip it rather
+			// than blocking the caller indefinitely. A blocked caller can prevent
+			// Connect/Disconnect from ever completing.
+			select {
+			case ch <- data:
+			default:
+			}
 		}
 	}
 

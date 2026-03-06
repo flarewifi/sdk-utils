@@ -87,6 +87,10 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 			if err := reg.mdls.Device().MergeDevices(ctx, clnt.ID(), existingDev.ID()); err != nil {
 				return fmt.Errorf("could not merge devices: %w", err)
 			}
+
+			// Note: We don't disconnect the current device here. The regular UpdateDevice flow below
+			// (lines 112-154) will handle the disconnect-update-reconnect sequence properly, preserving
+			// any active session on the current (target) device.
 		}
 	}
 

@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	filterQue = jobque.NewJobQue[any]()
+	filterQue = jobque.NewJobQueue[any]()
 )
 
 type TcIpField string
@@ -132,7 +132,7 @@ func (self *TcFilter) delete(clientIp string) (err error) {
 }
 
 func (self *TcFilter) Setup() error {
-	_, err := filterQue.Exec(func() (any, error) {
+	_, err := filterQue.Exec("TcFilter.Setup", func() (any, error) {
 		for _, dev := range self.devs() {
 			cmds := []string{}
 			count := len(self.ipsegmt.segments)
@@ -197,7 +197,7 @@ func (self *TcFilter) Reset() (err error) {
 		return err
 	}
 
-	_, err = filterQue.Exec(func() (any, error) {
+	_, err = filterQue.Exec("TcFilter.Reset.restoreFilters", func() (any, error) {
 		self.mu.RLock()
 		filterListCopy := make(map[string]string, len(self.filterList))
 		for ip, classid := range self.filterList {
@@ -218,7 +218,7 @@ func (self *TcFilter) Reset() (err error) {
 
 // Create a tc filter for client ip and classid
 func (self *TcFilter) CreateFilter(clientIp string, classid string) error {
-	_, err := filterQue.Exec(func() (any, error) {
+	_, err := filterQue.Exec("TcFilter.CreateFilter", func() (any, error) {
 		err := self.create(clientIp, classid)
 		if err != nil {
 			return nil, err
@@ -231,7 +231,7 @@ func (self *TcFilter) CreateFilter(clientIp string, classid string) error {
 
 // Delete a tc filter
 func (self *TcFilter) DeleteFilter(clientIp string) error {
-	_, err := filterQue.Exec(func() (any, error) {
+	_, err := filterQue.Exec("TcFilter.DeleteFilter", func() (any, error) {
 		err := self.delete(clientIp)
 		if err != nil {
 			return nil, err
@@ -243,7 +243,7 @@ func (self *TcFilter) DeleteFilter(clientIp string) error {
 }
 
 func (self *TcFilter) CleanUp() error {
-	_, err := filterQue.Exec(func() (any, error) {
+	_, err := filterQue.Exec("TcFilter.CleanUp", func() (any, error) {
 		// Ignore errors during cleanup - filters may not exist yet
 		cmd.Exec(fmt.Sprintf("tc filter del dev %s parent 1:0 prio 10 protocol ip u32", self.dev), nil)
 

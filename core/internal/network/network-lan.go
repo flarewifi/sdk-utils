@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	networkQue = jobque.NewJobQue[any]()
+	networkQue = jobque.NewJobQueue[any]()
 )
 
 type NetworkLan struct {
@@ -46,7 +46,7 @@ func (self *NetworkLan) Bandwidth() (download tc.Mbit, upload tc.Mbit) {
 }
 
 func (self *NetworkLan) ResetTc() (err error) {
-	_, err = networkQue.Exec(func() (any, error) {
+	_, err = networkQue.Exec("ResetTc", func() (any, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 
@@ -75,7 +75,7 @@ func (self *NetworkLan) ResetTc() (err error) {
 // This is used when the network interface comes back up after being down
 // IMPORTANT: Preserves all active session TC classes and filters
 func (self *NetworkLan) ReinitializeTc() (err error) {
-	_, err = networkQue.Exec(func() (any, error) {
+	_, err = networkQue.Exec("ReinitializeTc", func() (any, error) {
 		log.Printf("Reinitializing TC for LAN '%s'...", self.name)
 
 		// Get reference to existing TC managers to preserve session data.
@@ -202,7 +202,7 @@ func (self *NetworkLan) ReinitializeTc() (err error) {
 }
 
 func (self *NetworkLan) SetupCaptivePortal() (err error) {
-	_, err = networkQue.Exec(func() (interface{}, error) {
+	_, err = networkQue.Exec("SetupCaptivePortal", func() (interface{}, error) {
 		iface := self.GetInterface()
 		info, err := iface.getInfo()
 		if err != nil {
@@ -220,7 +220,7 @@ func (self *NetworkLan) SetupCaptivePortal() (err error) {
 }
 
 func (self *NetworkLan) SetupTrafficControl() (err error) {
-	_, err = networkQue.Exec(func() (interface{}, error) {
+	_, err = networkQue.Exec("SetupTrafficControl", func() (interface{}, error) {
 		cfg, err := config.ReadBandwidthConfig()
 		if err != nil {
 			return nil, err
@@ -314,7 +314,7 @@ func (self *NetworkLan) GetInterface() *NetworkInterface {
 }
 
 func (self *NetworkLan) CreateClass(classid uint, downMbit int, upMbit int) error {
-	_, err := networkQue.Exec(func() (interface{}, error) {
+	_, err := networkQue.Exec("CreateClass", func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 
@@ -327,7 +327,7 @@ func (self *NetworkLan) CreateClass(classid uint, downMbit int, upMbit int) erro
 }
 
 func (self *NetworkLan) ChangeClass(classid uint, downMbit int, upMbit int) error {
-	_, err := networkQue.Exec(func() (interface{}, error) {
+	_, err := networkQue.Exec("ChangeClass", func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 
@@ -340,7 +340,7 @@ func (self *NetworkLan) ChangeClass(classid uint, downMbit int, upMbit int) erro
 }
 
 func (self *NetworkLan) DelClass(classid uint) error {
-	_, err := networkQue.Exec(func() (interface{}, error) {
+	_, err := networkQue.Exec("DelClass", func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 		return nil, self.tcClassMgr.DeleteClass(tc.TcClassId(classid))
@@ -349,7 +349,7 @@ func (self *NetworkLan) DelClass(classid uint) error {
 }
 
 func (self *NetworkLan) CreateFilter(ip string, classid uint) error {
-	_, err := networkQue.Exec(func() (interface{}, error) {
+	_, err := networkQue.Exec("CreateFilter", func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 		return nil, self.tcFilterMgr.CreateFilter(ip, tc.TcClassId(classid))
@@ -358,7 +358,7 @@ func (self *NetworkLan) CreateFilter(ip string, classid uint) error {
 }
 
 func (self *NetworkLan) DelFilter(ip string, classid uint) error {
-	_, err := networkQue.Exec(func() (interface{}, error) {
+	_, err := networkQue.Exec("DelFilter", func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 		return nil, self.tcFilterMgr.DeleteFilter(ip)
@@ -367,7 +367,7 @@ func (self *NetworkLan) DelFilter(ip string, classid uint) error {
 }
 
 func (self *NetworkLan) UpdateBandwidth(downMbits int, upMbits int) error {
-	_, err := networkQue.Exec(func() (any, error) {
+	_, err := networkQue.Exec("UpdateBandwidth", func() (any, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 

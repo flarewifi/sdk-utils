@@ -1,6 +1,9 @@
 package shell
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 func ExecAll(commands []string) error {
 	for _, c := range commands {
@@ -8,6 +11,7 @@ func ExecAll(commands []string) error {
 		if err != nil {
 			return err
 		}
+		time.Sleep(50 * time.Millisecond) // add delay between commands to prevent potential issues
 	}
 	return nil
 }
@@ -23,6 +27,7 @@ func ExecAllWithContext(ctx context.Context, commands []string) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		time.Sleep(50 * time.Millisecond) // add delay between commands to prevent potential issues
 	}
 	return nil
 }

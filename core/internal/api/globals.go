@@ -1,12 +1,14 @@
 package api
 
 import (
+	"sync/atomic"
+
 	"core/db"
 	"core/db/models"
+	"core/internal/events"
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/sessmgr"
-	"sync/atomic"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -27,6 +29,7 @@ type CoreGlobals struct {
 	Models         *models.Models
 	PluginMgr      *PluginsMgr
 	PaymentsMgr    *PaymentsMgr
+	EventsMgr      *events.EventsManager
 }
 
 func NewGlobals() *CoreGlobals {
@@ -40,8 +43,9 @@ func NewGlobals() *CoreGlobals {
 	assets := &GlobalAssets{}
 	db := db.NewDatabase()
 	mdls := models.New(db)
+	eventsMgr := events.NewEventsManager()
 	clntReg := sessmgr.NewClientRegister(db, mdls)
-	sessionMgr := sessmgr.NewSessionsMgr(db, mdls)
+	sessionMgr := sessmgr.NewSessionsMgr(db, mdls, eventsMgr)
 	trfcMgr := network.NewTrafficMgr()
 	wifiMgr := ubus.NewWifiMgr()
 	pmtMgr := NewPaymentMgr()
@@ -54,7 +58,7 @@ func NewGlobals() *CoreGlobals {
 
 	sessionMgr.ListenTraffic(trfcMgr)
 
-	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, sessionMgr, trfcMgr)
+	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, sessionMgr, trfcMgr, eventsMgr)
 	coreApi := NewPluginApi(sdkutils.PathCoreDir, info, assets, plgnMgr, trfcMgr, wifiMgr)
 	plgnMgr.InitCoreApi(coreApi)
 	sessionMgr.SetCoreAPI(coreApi)
@@ -71,6 +75,7 @@ func NewGlobals() *CoreGlobals {
 		Models:         mdls,
 		PluginMgr:      plgnMgr,
 		PaymentsMgr:    pmtMgr,
+		EventsMgr:      eventsMgr,
 	}
 
 	return g

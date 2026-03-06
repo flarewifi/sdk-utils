@@ -59,7 +59,7 @@ type LogLine struct {
 }
 
 var (
-	queId       = jobque.NewJobQue[any]()
+	queId       = jobque.NewJobQueue[any]()
 	LineCount   atomic.Int64
 	logFilePath = filepath.Join(sdkutils.PathTmpDir, "logs", logFilename)
 )
@@ -91,7 +91,7 @@ func GetCallerFileLine(calldepth int) (file string, line int) {
 
 // Returns the total number of lines of the current log file
 func GetLogLines(logFile string) int {
-	result, err := queId.Exec(func() (any, error) {
+	result, err := queId.Exec("GetLogLines", func() (any, error) {
 		logFilePathToRead := filepath.Join(sdkutils.PathTmpDir, "logs", logFile)
 
 		file, err := os.Open(logFilePathToRead)
@@ -122,7 +122,7 @@ func GetLogLines(logFile string) int {
 // and an error. Logs returned will be in the range of start to end,
 // inclusive. Starts at index 0.
 func ReadLogs(start int, end int) ([]*LogLine, error) {
-	result, err := queId.Exec(func() (any, error) {
+	result, err := queId.Exec("ReadLogs", func() (any, error) {
 		logs := []*LogLine{}
 
 		// open logs
@@ -189,7 +189,7 @@ func ReadLogs(start int, end int) ([]*LogLine, error) {
 }
 
 func ClearLogs() error {
-	_, err := queId.Exec(func() (any, error) {
+	_, err := queId.Exec("ClearLogs", func() (any, error) {
 		err := os.WriteFile(logFilePath, []byte(""), sdkutils.PermFile)
 		return nil, err
 	})
@@ -343,7 +343,7 @@ func LogToConsole(file string, line int, level int, title string, body ...any) {
 
 // Logs the log info to the specified file path
 func LogToFile(file string, line int, level int, title string, body ...any) error {
-	_, err := queId.Exec(func() (any, error) {
+	_, err := queId.Exec("LogToFile", func() (any, error) {
 		logFile, err := openLogFile()
 		if err != nil {
 			log.Println(err)

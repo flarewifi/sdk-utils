@@ -344,8 +344,8 @@ func (self *Purchase) emitPurchaseEvent(ctx context.Context, event sdkapi.Purcha
 		Reason:   reason,
 	}
 
-	// Emit through the payments manager
-	_ = self.api.PaymentsAPI.paymentsMgr.EmitPurchaseEvent(event, data)
+	// Emit through the global EventsManager (async, non-blocking)
+	self.api.EventsMgr.EmitPurchaseEvent(event, data)
 }
 
 func (self *Purchase) UpdateMetadata(ctx context.Context, metadata map[string]string) error {

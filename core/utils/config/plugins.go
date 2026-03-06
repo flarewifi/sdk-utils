@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	readQue  jobque.JobQue[PluginsConfig]
-	writeQue jobque.JobQue[struct{}]
+	readQue  = jobque.NewJobQueue[PluginsConfig]()
+	writeQue = jobque.NewJobQueue[struct{}]()
 	jsonFile = "plugins.json"
 )
 
@@ -19,7 +19,7 @@ type PluginsConfig struct {
 
 func ReadPluginsConfig() (PluginsConfig, error) {
 	empTyCfg := PluginsConfig{Recompile: []string{}, Metadata: []sdkutils.PluginMetadata{}}
-	cfg, err := readQue.Exec(func() (PluginsConfig, error) {
+	cfg, err := readQue.Exec("ReadPluginsConfig", func() (PluginsConfig, error) {
 		var cfg PluginsConfig
 		err := readConfigFile(jsonFile, &cfg)
 		if err != nil {
@@ -41,7 +41,7 @@ func ReadPluginsConfig() (PluginsConfig, error) {
 }
 
 func WritePluginsConfig(cfg PluginsConfig) error {
-	_, err := writeQue.Exec(func() (struct{}, error) {
+	_, err := writeQue.Exec("WritePluginsConfig", func() (struct{}, error) {
 		return struct{}{}, writeConfigFile(jsonFile, cfg)
 	})
 
@@ -50,7 +50,7 @@ func WritePluginsConfig(cfg PluginsConfig) error {
 
 func ResetPluginsConfig() error {
 	cfg := PluginsConfig{Recompile: []string{}, Metadata: []sdkutils.PluginMetadata{}}
-	_, err := writeQue.Exec(func() (struct{}, error) {
+	_, err := writeQue.Exec("ResetPluginsConfig", func() (struct{}, error) {
 		return struct{}{}, writeConfigFile(jsonFile, cfg)
 	})
 

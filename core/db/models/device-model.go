@@ -254,8 +254,11 @@ func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourceDeviceID int64) error {
 	log.Printf("[DeviceModel.MergeDevices] Starting merge: source=%d -> target=%d", sourceDeviceID, targetDeviceID)
 
-	// Start a transaction
-	tx, err := self.db.DB.BeginTx(ctx, nil)
+	// Start a transaction with IMMEDIATE mode (LevelSerializable maps to BEGIN
+	// IMMEDIATE in the SQLite drivers).  MergeDevices is an exclusively write
+	// operation, so acquiring the write lock upfront avoids the DEFERRED
+	// read→write upgrade race that causes "database is locked" (SQLITE_BUSY).
+	tx, err := self.db.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to begin transaction: %v", err)
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -380,8 +383,11 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 
 	log.Printf("[DeviceModel.MergeDevices] SUCCESS: Merged device %d into device %d", sourceDeviceID, targetDeviceID)
 
-	// Reclaim disk space after merge (deletes device, wallet, transfers data)
-	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+	// VACUUM is intentionally omitted here. The database operates in WAL mode,
+	// which reclaims space automatically via periodic checkpointing. Calling
+	// VACUUM in WAL mode forces a full database rewrite and blocks all concurrent
+	// readers and writers for its duration — unacceptable in a merge job that may
+	// process many pairs per run.
 
 	return nil
 }

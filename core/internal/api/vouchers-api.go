@@ -5,36 +5,35 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"fmt"
-	"log"
 	"math/big"
 	"slices"
-	"sync"
 	"time"
 
 	coreQueries "core/db/queries"
 	sdkapi "sdk/api"
 )
 
-// Global voucher event handlers shared across all plugin instances
-var (
-	globalVoucherMu            sync.Mutex
-	globalVoucherHandlers      = make(map[sdkapi.VoucherEvent][]func(sdkapi.IVoucher) error)
-	globalVoucherBatchHandlers = make(map[sdkapi.VoucherEvent][]func(sdkapi.IVoucherBatch) error)
-	globalBeforeCreateHandlers []func(context.Context, *sdkapi.CreateVouchersParams) error
-)
-
 func NewVouchersApi(pluginApi *PluginApi) *VouchersApi {
 	v := &VouchersApi{
 		pluginApi: pluginApi,
+		eventsMgr: pluginApi.EventsMgr,
 	}
 	pluginApi.VouchersAPI = v
 	return v
 }
 
 // VouchersApi implements sdkapi.IVouchersApi, scoped per plugin package.
-// Event handlers are stored globally to enable cross-plugin event delivery.
+// Event callbacks are stored in the global EventsManager to enable cross-plugin delivery.
 type VouchersApi struct {
 	pluginApi *PluginApi
+	eventsMgr interface {
+		OnVoucherEvent(event sdkapi.VoucherEvent, cb func(sdkapi.IVoucher) error)
+		OnVoucherBatchEvent(event sdkapi.VoucherEvent, cb func(sdkapi.IVoucherBatch) error)
+		OnBeforeCreate(cb func(context.Context, *sdkapi.CreateVouchersParams) error)
+		RunBeforeCreate(ctx context.Context, params *sdkapi.CreateVouchersParams) error
+		EmitVoucherEvent(event sdkapi.VoucherEvent, v sdkapi.IVoucher)
+		EmitVoucherBatchEvent(event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch)
+	}
 }
 
 // wrapWithRelations wraps a voucher row and eagerly loads device/session for activated vouchers.
@@ -71,49 +70,12 @@ func (self *VouchersApi) providerPkg() string {
 	return self.pluginApi.Info().Package
 }
 
-func (self *VouchersApi) emitSingle(event sdkapi.VoucherEvent, v sdkapi.IVoucher) {
-	// Use global handlers to ensure cross-plugin event delivery
-	globalVoucherMu.Lock()
-	callbacks := globalVoucherHandlers[event]
-	callbacksCopy := make([]func(sdkapi.IVoucher) error, len(callbacks))
-	copy(callbacksCopy, callbacks)
-	globalVoucherMu.Unlock()
-
-	for _, cb := range callbacksCopy {
-		if err := cb(v); err != nil {
-			log.Printf("[VouchersApi] Error in %s handler: %v", event, err)
-		}
-	}
-}
-
-func (self *VouchersApi) emitBatch(event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch) {
-	// Use global handlers to ensure cross-plugin event delivery
-	globalVoucherMu.Lock()
-	callbacks := globalVoucherBatchHandlers[event]
-	callbacksCopy := make([]func(sdkapi.IVoucherBatch) error, len(callbacks))
-	copy(callbacksCopy, callbacks)
-	globalVoucherMu.Unlock()
-
-	for _, cb := range callbacksCopy {
-		if err := cb(batch); err != nil {
-			log.Printf("[VouchersApi] Error in %s batch handler: %v", event, err)
-		}
-	}
-}
-
 // CreateVouchers creates a batch of vouchers and emits EventVoucherGenerated.
 // Automatically creates a voucher batch record before creating vouchers.
 func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.CreateVouchersParams) ([]sdkapi.IVoucher, error) {
-	// Run before-create hooks (can modify params or return error to block)
-	globalVoucherMu.Lock()
-	handlers := make([]func(context.Context, *sdkapi.CreateVouchersParams) error, len(globalBeforeCreateHandlers))
-	copy(handlers, globalBeforeCreateHandlers)
-	globalVoucherMu.Unlock()
-
-	for _, hook := range handlers {
-		if err := hook(ctx, &params); err != nil {
-			return nil, err
-		}
+	// Run before-create hooks synchronously (can modify params or return error to block creation).
+	if err := self.eventsMgr.RunBeforeCreate(ctx, &params); err != nil {
+		return nil, err
 	}
 
 	db := self.pluginApi.db
@@ -192,7 +154,7 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 		// Fetch the batch to emit the event
 		batch, err := self.FindBatchByUUID(ctx, batchUUID)
 		if err == nil {
-			self.emitBatch(sdkapi.EventVoucherGenerated, batch)
+			self.eventsMgr.EmitVoucherBatchEvent(sdkapi.EventVoucherGenerated, batch)
 		}
 	}
 
@@ -375,7 +337,7 @@ func (self *VouchersApi) Update(ctx context.Context, params sdkapi.UpdateVoucher
 		return nil, err
 	}
 
-	self.emitSingle(sdkapi.EventVoucherUpdated, updated)
+	self.eventsMgr.EmitVoucherEvent(sdkapi.EventVoucherUpdated, updated)
 	return updated, nil
 }
 
@@ -449,7 +411,7 @@ func (self *VouchersApi) Activate(ctx context.Context, params sdkapi.ActivateVou
 		session: session,
 	}
 
-	self.emitSingle(sdkapi.EventVoucherActivated, activated)
+	self.eventsMgr.EmitVoucherEvent(sdkapi.EventVoucherActivated, activated)
 	return sdkapi.VoucherActivateResult{
 		Voucher: activated,
 		Session: session,
@@ -489,7 +451,7 @@ func (self *VouchersApi) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("unable to delete voucher: %w", err)
 	}
 
-	self.emitSingle(sdkapi.EventVoucherDeleted, voucher)
+	self.eventsMgr.EmitVoucherEvent(sdkapi.EventVoucherDeleted, voucher)
 	return nil
 }
 
@@ -507,7 +469,7 @@ func (self *VouchersApi) DeleteActivated(ctx context.Context) error {
 	}
 
 	for _, v := range activated {
-		self.emitSingle(sdkapi.EventVoucherDeleted, v)
+		self.eventsMgr.EmitVoucherEvent(sdkapi.EventVoucherDeleted, v)
 	}
 	return nil
 }
@@ -532,30 +494,20 @@ func (self *VouchersApi) getActivated(ctx context.Context) ([]sdkapi.IVoucher, e
 	return self.wrapManyWithRelations(ctx, rows), nil
 }
 
-// OnVoucherEvent registers a callback for a single-voucher event (Activated, Updated, Deleted).
-// Handlers are registered globally to allow cross-plugin event delivery.
+// OnVoucherEvent registers a callback for a single-voucher event (delegates to global EventsManager).
 func (self *VouchersApi) OnVoucherEvent(event sdkapi.VoucherEvent, callback func(sdkapi.IVoucher) error) {
-	globalVoucherMu.Lock()
-	defer globalVoucherMu.Unlock()
-	globalVoucherHandlers[event] = append(globalVoucherHandlers[event], callback)
+	self.eventsMgr.OnVoucherEvent(event, callback)
 }
 
-// OnVoucherBatchEvent registers a callback for a batch voucher event (Generated).
-// Handlers are registered globally to allow cross-plugin event delivery.
+// OnVoucherBatchEvent registers a callback for a batch voucher event (delegates to global EventsManager).
 func (self *VouchersApi) OnVoucherBatchEvent(event sdkapi.VoucherEvent, callback func(sdkapi.IVoucherBatch) error) {
-	globalVoucherMu.Lock()
-	defer globalVoucherMu.Unlock()
-	globalVoucherBatchHandlers[event] = append(globalVoucherBatchHandlers[event], callback)
+	self.eventsMgr.OnVoucherBatchEvent(event, callback)
 }
 
-// OnBeforeCreate registers a hook called before voucher creation.
-// The hook receives a pointer to params and can modify them.
+// OnBeforeCreate registers a synchronous hook called before voucher creation (delegates to global EventsManager).
 // Return an error to block creation.
-// Handlers are registered globally to allow cross-plugin hook delivery.
 func (self *VouchersApi) OnBeforeCreate(callback func(context.Context, *sdkapi.CreateVouchersParams) error) {
-	globalVoucherMu.Lock()
-	defer globalVoucherMu.Unlock()
-	globalBeforeCreateHandlers = append(globalBeforeCreateHandlers, callback)
+	self.eventsMgr.OnBeforeCreate(callback)
 }
 
 // FindBatchByUUID finds a voucher batch by its UUID.
@@ -702,7 +654,7 @@ func (self *VouchersApi) DeleteBatch(ctx context.Context, batchUUID string) erro
 	}
 
 	// Emit batch deleted event
-	self.emitBatch(sdkapi.EventVoucherBatchDeleted, batch)
+	self.eventsMgr.EmitVoucherBatchEvent(sdkapi.EventVoucherBatchDeleted, batch)
 
 	return nil
 }

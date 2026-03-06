@@ -9,6 +9,7 @@ import (
 
 	"core/db"
 	"core/db/models"
+	"core/internal/events"
 	"core/internal/network"
 	"core/internal/sessmgr"
 	"core/utils/config"
@@ -17,28 +18,30 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr) *PluginsMgr {
+func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr, eventsMgr *events.EventsManager) *PluginsMgr {
 	pmgr := &PluginsMgr{
-		db:      d,
-		models:  m,
-		paymgr:  paymgr,
-		clntReg: clntReg,
-		clntMgr: clntMgr,
-		trfkMgr: trfkMgr,
-		plugins: []*PluginApi{},
+		db:        d,
+		models:    m,
+		paymgr:    paymgr,
+		clntReg:   clntReg,
+		clntMgr:   clntMgr,
+		trfkMgr:   trfkMgr,
+		eventsMgr: eventsMgr,
+		plugins:   []*PluginApi{},
 	}
 	return pmgr
 }
 
 type PluginsMgr struct {
-	CoreAPI *PluginApi
-	db      *db.Database
-	models  *models.Models
-	paymgr  *PaymentsMgr
-	clntReg *sessmgr.ClientRegister
-	clntMgr *sessmgr.SessionsMgr
-	trfkMgr *network.TrafficMgr
-	plugins []*PluginApi
+	CoreAPI   *PluginApi
+	db        *db.Database
+	models    *models.Models
+	paymgr    *PaymentsMgr
+	clntReg   *sessmgr.ClientRegister
+	clntMgr   *sessmgr.SessionsMgr
+	trfkMgr   *network.TrafficMgr
+	eventsMgr *events.EventsManager
+	plugins   []*PluginApi
 }
 
 func (self *PluginsMgr) InitCoreApi(coreApi *PluginApi) {

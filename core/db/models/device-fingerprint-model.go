@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"core/db"
 	"core/db/queries"
@@ -93,8 +94,36 @@ func (self *DeviceFingerprintModel) DeleteOldFingerprints(ctx context.Context) e
 		return err
 	}
 
-	// Reclaim disk space after deletion
-	_, _ = self.db.DB.ExecContext(ctx, "VACUUM")
+	// VACUUM is intentionally omitted — WAL mode reclaims space via checkpointing.
 
 	return nil
+}
+
+// FindSharedFingerprintHashes returns non-CNA fingerprint hashes seen on multiple distinct
+// devices since the given UTC timestamp. Used by the merge job to detect duplicate device records.
+func (self *DeviceFingerprintModel) FindSharedFingerprintHashes(ctx context.Context, sinceUtc time.Time) ([]string, error) {
+	return self.db.Queries.FindSharedFingerprintHashes(ctx, sql.NullTime{Time: sinceUtc, Valid: true})
+}
+
+// FindDeviceIDsByFingerprintHash returns all device IDs that have the given non-CNA fingerprint
+// hash since the given UTC timestamp, ordered by most recently seen. Used by the merge job.
+func (self *DeviceFingerprintModel) FindDeviceIDsByFingerprintHash(ctx context.Context, hash string, sinceUtc time.Time) ([]int64, error) {
+	return self.db.Queries.FindDeviceIDsByFingerprintHash(ctx, queries.FindDeviceIDsByFingerprintHashParams{
+		FingerprintHash: hash,
+		SinceUtc:        sql.NullTime{Time: sinceUtc, Valid: true},
+	})
+}
+
+// FindDeviceByFingerprintHash returns the ID of the most recently seen device with the given
+// non-CNA fingerprint hash. Returns 0, nil when no match is found.
+// Used as a MAC-address fallback in portal registration when ARP lookup fails.
+func (self *DeviceFingerprintModel) FindDeviceByFingerprintHash(ctx context.Context, hash string) (int64, error) {
+	deviceID, err := self.db.Queries.FindDeviceByFingerprintHash(ctx, hash)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return deviceID, nil
 }
