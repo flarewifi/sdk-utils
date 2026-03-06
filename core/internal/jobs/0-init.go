@@ -21,6 +21,6 @@ func Init(g *api.CoreGlobals) {
 	// Start ubus listener for network interface events
 	StartUbusListener()
 
-	// Start WiFi event listener to bridge WifiMgr events to legacy callbacks
-	StartWifiEventListener(g.WifiMgr)
+	// Initialize WiFi state tracker and start WiFi event detection
+	InitAndStartWifiMgr(g.WifiMgr)
 }

@@ -49,9 +49,8 @@ func NewGlobals() *CoreGlobals {
 	clntReg.SetSessionsMgr(sessionMgr)
 	trfcMgr.Start()
 
-	// Set traffic channel for WiFi fallback detection before starting
+	// Set traffic channel for WiFi fallback detection (Start() called in jobs.Init())
 	wifiMgr.SetTrafficChannel(trfcMgr.Listen())
-	wifiMgr.Start()
 
 	sessionMgr.ListenTraffic(trfcMgr)
 

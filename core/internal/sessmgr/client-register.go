@@ -345,7 +345,16 @@ STEP_2_5_MAC_HISTORY:
 	}
 
 STEP_3_CREATE_NEW:
-	// Step 3: Not found by cookie or MAC - create new device
+	// Step 3: Not found by cookie or MAC - check for MAC collision before creating new device
+	// This handles cases where fingerprint validation failed but the MAC belongs to another device
+	if clnt, shouldSetCookie, handled, handleErr := reg.handleMacCollision(ctx, params, browserInfo, fpHash, hasFingerprintData); handled {
+		if handleErr != nil {
+			return nil, false, handleErr
+		}
+		return clnt, shouldSetCookie, nil
+	}
+
+	// No MAC collision - create new device
 	if errors.Is(err, sql.ErrNoRows) || dev == nil {
 		dev, err = reg.mdls.Device().Create(ctx, models.CreateDeviceParams{
 			MacAddress: params.MacAddr,
@@ -452,6 +461,52 @@ func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, device
 
 	// No match found - different device
 	return false, nil, nil
+}
+
+// handleMacCollision checks if a MAC address already belongs to an existing device.
+// If found, it reuses that device instead of creating a new one.
+// This prevents duplicate device records for the same MAC address.
+// Returns (device, shouldSetCookie, handled, error) where handled=true means caller should return immediately.
+func (reg *ClientRegister) handleMacCollision(ctx context.Context, params ClientRegisterParams, browserInfo browserdetect.BrowserInfo, fpHash string, hasFingerprintData bool) (sdkapi.IClientDevice, bool, bool, error) {
+	// Check if MAC already belongs to another device
+	existingDevID, err := reg.mdls.DeviceMac().FindDeviceByMac(ctx, params.MacAddr)
+	if err != nil {
+		// No existing device with this MAC - not a collision
+		return nil, false, false, nil
+	}
+
+	if existingDevID <= 0 {
+		// No existing device with this MAC - not a collision
+		return nil, false, false, nil
+	}
+
+	// MAC collision detected - another device already has this MAC
+	log.Printf("[ClientRegister.handleMacCollision] MAC %s already exists on device %d, reusing instead of creating new", params.MacAddr, existingDevID)
+
+	existingDev, err := reg.mdls.Device().Find(ctx, existingDevID)
+	if err != nil {
+		log.Printf("[ClientRegister.handleMacCollision] ERROR: Failed to find existing device %d: %v", existingDevID, err)
+		return nil, false, false, nil // Fall through to create new
+	}
+
+	clnt := reg.wrapDevice(existingDev)
+
+	// Update network details if changed
+	if existingDev.IpAddr() != params.IpAddr || existingDev.Hostname() != params.Hostname {
+		err = reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
+		if err != nil {
+			log.Printf("[ClientRegister.handleMacCollision] ERROR: Failed to update device: %v", err)
+			return nil, false, false, err
+		}
+	}
+
+	// Add fingerprint if we have data (this device may have been created without fingerprints)
+	if hasFingerprintData && fpHash != "" {
+		reg.addFingerprint(ctx, existingDev.ID(), params, browserInfo, fpHash)
+	}
+
+	reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
+	return clnt, true, true, nil
 }
 
 // addFingerprint creates a new fingerprint record for device

@@ -5,7 +5,6 @@ package ubus
 import (
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	sdkapi "sdk/api"
@@ -14,29 +13,25 @@ import (
 const (
 	// fallbackInactivityTimeout is the duration after which a client is considered disconnected
 	// if no traffic is observed. This serves as a fallback when hostapd_cli misses events.
-	fallbackInactivityTimeout = 2 * time.Minute
+	fallbackInactivityTimeout = 15 * time.Minute
 
 	// fallbackCheckInterval is how often we check for inactive clients
 	fallbackCheckInterval = 30 * time.Second
 )
 
-// clientState tracks the state of a WiFi client for fallback detection
-type clientState struct {
-	lastActivity      time.Time
-	disconnectEmitted bool // whether we've emitted a disconnect event for this inactivity period
-}
+// =============================================================================
+// FALLBACK DETECTOR
+// =============================================================================
 
-// FallbackDetector detects WiFi client disconnect events based on traffic data.
-// This runs in parallel with hostapd_cli to catch missed disconnect events.
-// It only emits DISCONNECT events - connect events are handled by hostapd_cli.
+// FallbackDetector detects WiFi client events based on traffic data.
+// This runs in parallel with hostapd_cli to:
+// 1. Catch missed disconnect events (when hostapd_cli fails)
+// 2. Emit reconnect events when traffic resumes after fallback-detected disconnect
+// It uses the shared ClientStateTracker in WifiMgr for state management.
 type FallbackDetector struct {
 	wifiMgr   *WifiMgr
 	trafficCh <-chan sdkapi.TrafficData
-
-	mu      sync.Mutex
-	clients map[string]*clientState // MAC (uppercase) -> state
-
-	stopCh chan struct{}
+	stopCh    chan struct{}
 }
 
 // NewFallbackDetector creates a new fallback detector
@@ -44,14 +39,13 @@ func NewFallbackDetector(wifiMgr *WifiMgr, trafficCh <-chan sdkapi.TrafficData) 
 	return &FallbackDetector{
 		wifiMgr:   wifiMgr,
 		trafficCh: trafficCh,
-		clients:   make(map[string]*clientState),
 		stopCh:    make(chan struct{}),
 	}
 }
 
 // Start begins the fallback detection loop
 func (d *FallbackDetector) Start() {
-	log.Println("[WifiMgr-Fallback] Starting traffic-based disconnect detection (parallel with hostapd_cli)")
+	log.Println("[WifiMgr-Fallback] Starting traffic-based event detection (parallel with hostapd_cli)")
 	go d.run()
 }
 
@@ -68,7 +62,7 @@ func (d *FallbackDetector) run() {
 	for {
 		select {
 		case <-d.stopCh:
-			log.Println("[WifiMgr-Fallback] Stopping traffic-based disconnect detection")
+			log.Println("[WifiMgr-Fallback] Stopping traffic-based event detection")
 			return
 
 		case traffic, ok := <-d.trafficCh:
@@ -84,58 +78,45 @@ func (d *FallbackDetector) run() {
 	}
 }
 
-// processTraffic updates client activity based on traffic data
+// processTraffic updates client activity based on traffic data and emits reconnect events
 func (d *FallbackDetector) processTraffic(traffic sdkapi.TrafficData) {
-	now := time.Now()
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	stateTracker := d.wifiMgr.stateTracker
+	if stateTracker == nil {
+		return // State tracker not initialized yet
+	}
 
 	// Process upload traffic (keyed by MAC address)
 	for mac, stat := range traffic.Upload {
 		if stat.Bytes > 0 || stat.Packets > 0 {
 			mac = strings.ToUpper(mac)
-			d.updateClientActivity(mac, now)
+
+			// Check if this traffic indicates a reconnection
+			shouldEmitConnect := stateTracker.OnTrafficDetected(mac)
+
+			if shouldEmitConnect {
+				// Client was disconnected, now has traffic - emit connect event
+				log.Printf("[WifiMgr-Fallback] Client resumed activity after disconnect, emitting connect: %s", mac)
+				d.emitConnect(mac)
+			}
 		}
 	}
-}
-
-// updateClientActivity updates the activity time for a client
-func (d *FallbackDetector) updateClientActivity(mac string, now time.Time) {
-	state, exists := d.clients[mac]
-
-	if !exists {
-		// New client - just start tracking, don't emit connect
-		// (hostapd_cli handles connect events)
-		d.clients[mac] = &clientState{
-			lastActivity:      now,
-			disconnectEmitted: false,
-		}
-		return
-	}
-
-	// Existing client - update activity and reset disconnect flag
-	state.lastActivity = now
-	state.disconnectEmitted = false
 }
 
 // checkInactiveClients checks for clients that have been inactive and emits disconnect events
 func (d *FallbackDetector) checkInactiveClients() {
-	now := time.Now()
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	stateTracker := d.wifiMgr.stateTracker
+	if stateTracker == nil {
+		return // State tracker not initialized yet
+	}
 
-	for mac, state := range d.clients {
-		if state.disconnectEmitted {
-			// Already emitted disconnect for this inactivity period
-			continue
-		}
+	// Get list of MACs that should be marked inactive
+	inactiveMACs := stateTracker.CheckInactivity(fallbackInactivityTimeout)
 
-		inactiveDuration := now.Sub(state.lastActivity)
-		if inactiveDuration >= fallbackInactivityTimeout {
-			// Client has been inactive too long - emit disconnect
-			state.disconnectEmitted = true
+	for _, mac := range inactiveMACs {
+		// Attempt to mark as inactive (returns true if state changed)
+		if stateTracker.MarkInactive(mac) {
 			log.Printf("[WifiMgr-Fallback] Client inactive for %v, emitting disconnect: %s",
-				inactiveDuration.Round(time.Second), mac)
+				fallbackInactivityTimeout, mac)
 			d.emitDisconnect(mac)
 		}
 	}
@@ -147,5 +128,14 @@ func (d *FallbackDetector) emitDisconnect(mac string) {
 		Interface: "fallback",
 		Mac:       mac,
 		Event:     sdkapi.WifiEventClientDisconnected,
+	})
+}
+
+// emitConnect emits a WiFi connect event through the WifiMgr
+func (d *FallbackDetector) emitConnect(mac string) {
+	d.wifiMgr.emit(WifiEvent{
+		Interface: "fallback",
+		Mac:       mac,
+		Event:     sdkapi.WifiEventClientConnected,
 	})
 }

@@ -277,7 +277,9 @@ func (self *WifiMgr) scanHostapdInterfaces() ([]string, error) {
 	return interfaces, nil
 }
 
-// parseAndEmitEvent parses a line from the FIFO and emits WiFi events
+// parseAndEmitEvent parses a line from the FIFO and emits WiFi events.
+// Uses the shared state tracker to prevent duplicate events when both
+// hostapd and fallback detection are active.
 func (self *WifiMgr) parseAndEmitEvent(line string) {
 	// Skip non-event lines
 	if !strings.Contains(line, "AP-STA-") {
@@ -295,21 +297,49 @@ func (self *WifiMgr) parseAndEmitEvent(line string) {
 	eventType := matches[2]
 	mac := strings.ToUpper(matches[3])
 
+	var shouldEmit bool
 	var event sdkapi.WifiClientEvent
+
+	// Get state tracker (may be nil during early startup)
+	stateTracker := self.stateTracker
+
 	switch eventType {
 	case "AP-STA-CONNECTED":
+		if stateTracker != nil {
+			shouldEmit = stateTracker.OnHostapdConnect(mac)
+		} else {
+			shouldEmit = true // No tracker yet, emit event
+		}
 		event = sdkapi.WifiEventClientConnected
-		log.Printf("[WifiMgr] Client CONNECTED on %s: %s", interfaceName, mac)
+		if shouldEmit {
+			log.Printf("[WifiMgr-hostapd] Client CONNECTED on %s: %s", interfaceName, mac)
+		} else {
+			log.Printf("[WifiMgr-hostapd] Client CONNECTED on %s: %s (duplicate, suppressed)", interfaceName, mac)
+		}
+
 	case "AP-STA-DISCONNECTED":
+		if stateTracker != nil {
+			shouldEmit = stateTracker.OnHostapdDisconnect(mac)
+		} else {
+			shouldEmit = true // No tracker yet, emit event
+		}
 		event = sdkapi.WifiEventClientDisconnected
-		log.Printf("[WifiMgr] Client DISCONNECTED on %s: %s", interfaceName, mac)
+		if shouldEmit {
+			log.Printf("[WifiMgr-hostapd] Client DISCONNECTED on %s: %s", interfaceName, mac)
+		} else {
+			log.Printf("[WifiMgr-hostapd] Client DISCONNECTED on %s: %s (already disconnected, suppressed)", interfaceName, mac)
+		}
+
 	default:
 		return
 	}
 
-	self.emit(WifiEvent{
-		Interface: interfaceName,
-		Mac:       mac,
-		Event:     event,
-	})
+	// Only emit if state actually changed
+	if shouldEmit {
+		self.emit(WifiEvent{
+			Interface: interfaceName,
+			Mac:       mac,
+			Event:     event,
+		})
+	}
 }
