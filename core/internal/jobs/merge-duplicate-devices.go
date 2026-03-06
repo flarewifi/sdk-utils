@@ -10,6 +10,21 @@ import (
 	"core/internal/modules/fingerprint"
 )
 
+// MergeCandidate represents a device being evaluated for merging
+type MergeCandidate struct {
+	DeviceID     int64
+	Fingerprints []queries.DeviceFingerprint
+	LastActivity time.Time
+}
+
+// MergeDecision contains the result of evaluating two devices for merging
+type MergeDecision struct {
+	ShouldMerge bool
+	TargetID    int64  // Device to keep
+	SourceID    int64  // Device to merge into target
+	Reason      string // Explanation for the decision
+}
+
 // StartDeviceMergeScheduler starts a background goroutine that merges
 // duplicate devices. Devices are identified by shared MAC addresses in their
 // history, and merged only if their fingerprints match (same physical device).
@@ -95,7 +110,11 @@ func performDeviceMerge(g *api.CoreGlobals) {
 }
 
 // mergeMatchingDevices compares fingerprints for a group of devices and merges matches.
-// The device with most recent session activity is kept, the other is merged into it.
+// Rules:
+// - If both devices have fingerprints: merge only if fingerprints match
+// - If one device has no fingerprints: merge it into the device with fingerprints
+// - If neither device has fingerprints: merge based on activity (keep most recent)
+// The device with most recent session activity is kept when both are equal candidates.
 // Returns the number of merges performed.
 func mergeMatchingDevices(ctx context.Context, g *api.CoreGlobals, deviceIDs []int64) int {
 	mergeCount := 0
@@ -149,53 +168,117 @@ func mergeMatchingDevices(ctx context.Context, g *api.CoreGlobals, deviceIDs []i
 				continue
 			}
 
-			fpsA := deviceFPs[devA]
-			fpsB := deviceFPs[devB]
+			// Determine if we should merge and which device to keep
+			decision := shouldMergeDevices(
+				MergeCandidate{
+					DeviceID:     devA,
+					Fingerprints: deviceFPs[devA],
+					LastActivity: deviceActivity[devA],
+				},
+				MergeCandidate{
+					DeviceID:     devB,
+					Fingerprints: deviceFPs[devB],
+					LastActivity: deviceActivity[devB],
+				},
+			)
 
-			// Skip if either device has no fingerprints
-			if len(fpsA) == 0 || len(fpsB) == 0 {
+			if !decision.ShouldMerge {
 				continue
 			}
 
-			if !fingerprintsMatch(fpsA, fpsB) {
-				continue
-			}
-
-			// Determine which device to keep (most recent activity wins)
-			targetID, sourceID := devA, devB
-			if deviceActivity[devB].After(deviceActivity[devA]) {
-				targetID, sourceID = devB, devA
-			}
-
-			log.Printf("[DeviceMerge] Merging device %d into %d (fingerprint match on shared MAC)", sourceID, targetID)
+			log.Printf("[DeviceMerge] Merging device %d into %d (%s)", decision.SourceID, decision.TargetID, decision.Reason)
 
 			// Disconnect source device if it has active session
-			sourceClnt, err := g.ClientMgr.FindClientById(ctx, sourceID)
+			sourceClnt, err := g.ClientMgr.FindClientById(ctx, decision.SourceID)
 			if err != nil {
-				log.Printf("[DeviceMerge] WARN: Failed to find source device %d: %v", sourceID, err)
+				log.Printf("[DeviceMerge] WARN: Failed to find source device %d: %v", decision.SourceID, err)
 				continue
 			}
 
 			if _, hasSession := g.ClientMgr.GetRunningSession(sourceClnt); hasSession {
 				if err := g.ClientMgr.Disconnect(ctx, sourceClnt, ""); err != nil {
-					log.Printf("[DeviceMerge] WARN: Failed to disconnect session on device %d: %v", sourceID, err)
+					log.Printf("[DeviceMerge] WARN: Failed to disconnect session on device %d: %v", decision.SourceID, err)
 					// Continue with merge anyway
 				}
 			}
 
 			// Perform merge
-			if err := g.Models.Device().MergeDevices(ctx, targetID, sourceID); err != nil {
-				log.Printf("[DeviceMerge] ERROR: Failed to merge device %d into %d: %v", sourceID, targetID, err)
+			if err := g.Models.Device().MergeDevices(ctx, decision.TargetID, decision.SourceID); err != nil {
+				log.Printf("[DeviceMerge] ERROR: Failed to merge device %d into %d: %v", decision.SourceID, decision.TargetID, err)
 				continue
 			}
 
-			merged[sourceID] = true
+			merged[decision.SourceID] = true
 			mergeCount++
-			log.Printf("[DeviceMerge] Successfully merged device %d into %d", sourceID, targetID)
+			log.Printf("[DeviceMerge] Successfully merged device %d into %d", decision.SourceID, decision.TargetID)
 		}
 	}
 
 	return mergeCount
+}
+
+// shouldMergeDevices determines if two devices should be merged based on fingerprints.
+func shouldMergeDevices(deviceA, deviceB MergeCandidate) MergeDecision {
+	hasA := len(deviceA.Fingerprints) > 0
+	hasB := len(deviceB.Fingerprints) > 0
+
+	// Case 1: Both have fingerprints - only merge if they match
+	if hasA && hasB {
+		if !fingerprintsMatch(deviceA.Fingerprints, deviceB.Fingerprints) {
+			return MergeDecision{ShouldMerge: false}
+		}
+		// Keep device with most recent activity
+		if deviceB.LastActivity.After(deviceA.LastActivity) {
+			return MergeDecision{
+				ShouldMerge: true,
+				TargetID:    deviceB.DeviceID,
+				SourceID:    deviceA.DeviceID,
+				Reason:      "fingerprint match",
+			}
+		}
+		return MergeDecision{
+			ShouldMerge: true,
+			TargetID:    deviceA.DeviceID,
+			SourceID:    deviceB.DeviceID,
+			Reason:      "fingerprint match",
+		}
+	}
+
+	// Case 2: Only A has fingerprints - merge B into A
+	if hasA && !hasB {
+		return MergeDecision{
+			ShouldMerge: true,
+			TargetID:    deviceA.DeviceID,
+			SourceID:    deviceB.DeviceID,
+			Reason:      "no fingerprint on source, merging into device with fingerprint",
+		}
+	}
+
+	// Case 3: Only B has fingerprints - merge A into B
+	if !hasA && hasB {
+		return MergeDecision{
+			ShouldMerge: true,
+			TargetID:    deviceB.DeviceID,
+			SourceID:    deviceA.DeviceID,
+			Reason:      "no fingerprint on source, merging into device with fingerprint",
+		}
+	}
+
+	// Case 4: Neither has fingerprints - merge based on activity (keep most recent)
+	if deviceB.LastActivity.After(deviceA.LastActivity) {
+		return MergeDecision{
+			ShouldMerge: true,
+			TargetID:    deviceB.DeviceID,
+			SourceID:    deviceA.DeviceID,
+			Reason:      "no fingerprints on either, keeping device with recent activity",
+		}
+	}
+	return MergeDecision{
+		ShouldMerge: true,
+		TargetID:    deviceA.DeviceID,
+		SourceID:    deviceB.DeviceID,
+		Reason:      "no fingerprints on either, keeping device with recent activity",
+	}
 }
 
 // fingerprintsMatch checks if two devices have matching fingerprints.
