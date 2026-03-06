@@ -12,6 +12,10 @@ func Init(g *api.CoreGlobals) {
 	// Start fingerprint cleanup scheduler (runs at 3AM daily)
 	StartFingerprintCleanupScheduler(g.Database, g.Models)
 
+	// Start device merge scheduler (runs at 3:30AM daily, merges duplicate devices)
+	// To enable dev mode (run every N seconds), set: DevModeInterval = 5 * time.Second
+	StartDeviceMergeScheduler(g)
+
 	// Start log cleanup scheduler (runs at 4AM daily, deletes logs older than 7 days)
 	StartLogCleanupScheduler(g.Database, g.Models)
 
@@ -21,6 +25,6 @@ func Init(g *api.CoreGlobals) {
 	// Start ubus listener for network interface events
 	StartUbusListener()
 
-	// Start WiFi event listener to bridge WifiMgr events to legacy callbacks
-	StartWifiEventListener(g.WifiMgr)
+	// Initialize WiFi state tracker and start WiFi event detection
+	InitAndStartWifiMgr(g.WifiMgr)
 }

@@ -211,6 +211,38 @@ data/plugins/local/      # Custom plugins (safe to modify)
 - Plugins: Create own tables with foreign keys to core, never alter core tables
 - MCP SQLite tools available: `db_info`, `list_tables`, `read_records`, `query`, etc.
 
+### ⚠️ CRITICAL: SQLite WAL Mode
+
+**The database uses WAL (Write-Ahead Logging) mode. This affects file handling:**
+
+**WAL Files:**
+- `database.sqlite` - Main database file
+- `database.sqlite-wal` - Write-ahead log (uncommitted transactions)
+- `database.sqlite-shm` - Shared memory file (index for WAL)
+
+**When copying/backing up the database:**
+- ✅ Copy ALL THREE files together (`database.sqlite`, `-wal`, `-shm`)
+- ✅ Run `PRAGMA wal_checkpoint(TRUNCATE);` before copying to flush WAL to main file
+- ❌ NEVER copy just `database.sqlite` - you'll lose uncommitted data
+
+**When working with database outside container:**
+```bash
+# 1. Checkpoint to flush WAL
+docker exec flarewifi-app-1 sqlite3 /opt/flarehotspot/app/data/db/database.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
+
+# 2. Copy all three files
+docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite ./
+docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite-wal ./
+docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite-shm ./
+
+# 3. After modifications, copy all three back
+docker cp ./database.sqlite flarewifi-app-1:/opt/flarehotspot/app/data/db/
+docker cp ./database.sqlite-wal flarewifi-app-1:/opt/flarehotspot/app/data/db/
+docker cp ./database.sqlite-shm flarewifi-app-1:/opt/flarehotspot/app/data/db/
+```
+
+**Note:** The Docker container may not have `sqlite3` installed. Work with database files locally after copying them out.
+
 ### ⚠️ CRITICAL: Timestamps and Timezones
 
 **SQLite has NO timezone support. Follow these rules strictly:**
@@ -314,6 +346,7 @@ Only create custom functions if needed functionality doesn't exist in `sdk/utils
 | ES6 syntax error | Convert to ES5: `var`, `function() {}` |
 | 2+ templ edit failures | Stop and consult @frontend |
 | Creating custom helper function | Check `sdk/utils/` first (UUID, strings, validators, pagination, etc.) |
+| **Copying only database.sqlite** | **Copy ALL 3 WAL files; checkpoint first: `PRAGMA wal_checkpoint(TRUNCATE);`** |
 | **Silent error in critical path** | **ALWAYS handle errors; rollback on failure** |
 | **Data inconsistency** | **Implement transaction-like behavior with rollback** |
 | **Race condition in check-then-act** | **Add DB unique constraints; re-validate before action** |

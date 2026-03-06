@@ -37,7 +37,6 @@ SELECT
     last_seen_at
 FROM device_fingerprints
 WHERE device_id = @device_id
-    AND created_at >= datetime('now', '-6 months')
 ORDER BY last_seen_at DESC;
 
 -- name: CheckFingerprintExactMatch :one
@@ -57,7 +56,6 @@ SELECT
 FROM device_fingerprints
 WHERE device_id = @device_id
     AND fingerprint_hash = @fingerprint_hash
-    AND created_at >= datetime('now', '-6 months')
 LIMIT 1;
 
 -- name: UpdateFingerprintLastSeen :exec
@@ -66,5 +64,27 @@ SET last_seen_at = datetime('now')
 WHERE id = @id;
 
 -- name: DeleteOldFingerprints :exec
+-- DEPRECATED: Use DeleteExcessFingerprintsForDevice instead
 DELETE FROM device_fingerprints
 WHERE created_at < datetime('now', '-6 months');
+
+-- name: GetDevicesWithExcessFingerprints :many
+-- Returns device IDs that have more than 10 fingerprints (max allowed per device)
+SELECT device_id, COUNT(*) as fingerprint_count
+FROM device_fingerprints
+GROUP BY device_id
+HAVING COUNT(*) > 10;
+
+-- name: DeleteExcessFingerprintsForDevice :exec
+-- Keeps only the 10 most recent fingerprints for a device (by last_seen_at)
+-- Deletes older fingerprints beyond the limit
+DELETE FROM device_fingerprints WHERE id IN (
+    SELECT df_old.id FROM device_fingerprints df_old
+    WHERE df_old.device_id = @device_id
+      AND df_old.id NOT IN (
+        SELECT df_keep.id FROM device_fingerprints df_keep
+        WHERE df_keep.device_id = @device_id
+        ORDER BY df_keep.last_seen_at DESC
+        LIMIT 10
+      )
+);

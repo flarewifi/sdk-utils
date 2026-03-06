@@ -41,14 +41,14 @@ func HTTPSRedirect() func(http.Handler) http.Handler {
 					httpsURL = fmt.Sprintf("https://%s:%d%s", host, env.HTTPS_PORT, r.URL.RequestURI())
 				}
 
-				http.Redirect(w, r, httpsURL, http.StatusMovedPermanently)
+				http.Redirect(w, r, httpsURL, http.StatusSeeOther)
 				return
 			}
 
 			if !useHttps && isHTTPS {
 				var httpURL string
 				httpURL = fmt.Sprintf("http://%s:%d%s", host, env.HTTPS_PORT, r.URL.RequestURI())
-				http.Redirect(w, r, httpURL, http.StatusMovedPermanently)
+				http.Redirect(w, r, httpURL, http.StatusSeeOther)
 				return
 			}
 

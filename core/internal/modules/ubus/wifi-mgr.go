@@ -20,10 +20,25 @@ type WifiMgr struct {
 
 	// trafficCh is used for fallback detection when hostapd_cli is unavailable
 	trafficCh <-chan sdkapi.TrafficData
+
+	// stateTracker provides shared state management across hostapd and fallback detection.
+	// This ensures consistent connection state and prevents duplicate events.
+	stateTracker *ClientStateTracker
 }
 
 func NewWifiMgr() *WifiMgr {
 	return &WifiMgr{}
+}
+
+// SetStateTracker sets the shared client state tracker.
+// This must be called before Start() to enable state tracking.
+func (self *WifiMgr) SetStateTracker(tracker *ClientStateTracker) {
+	self.stateTracker = tracker
+}
+
+// StateTracker returns the shared client state tracker
+func (self *WifiMgr) StateTracker() *ClientStateTracker {
+	return self.stateTracker
 }
 
 // SetTrafficChannel sets the traffic data channel for fallback detection.

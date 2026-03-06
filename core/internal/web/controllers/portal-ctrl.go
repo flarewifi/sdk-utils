@@ -328,6 +328,24 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 func PortalIndexPage(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Note: The ensureDeviceMw middleware already verified the device is registered
+
+		// Treat portal page access as client activity (similar to traffic detection)
+		// This triggers auto-resume if client was previously disconnected
+		clnt, err := g.CoreAPI.HttpAPI.GetClientDevice(r)
+		if err == nil && clnt != nil {
+			mac := clnt.MacAddr()
+			if mac != "" {
+				// Use shared state tracker to check if this should trigger a connect event
+				// This prevents duplicate events if traffic detection already fired
+				stateTracker := g.WifiMgr.StateTracker()
+				if stateTracker != nil && stateTracker.OnTrafficDetected(mac) {
+					// Client was disconnected, now accessing portal - emit connect event
+					g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("[Portal] Client activity detected after disconnect, emitting connect: %s", mac))
+					api.EmitWifiEvent(sdkapi.WifiEventClientConnected, mac)
+				}
+			}
+		}
+
 		p, t, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "Unable to Get Portal Theme")

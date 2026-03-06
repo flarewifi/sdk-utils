@@ -385,3 +385,10 @@ AND (
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = @id;
 
+-- name: GetMostRecentSessionTimeForDevice :one
+-- Gets the most recent session activity time for a device
+-- Used by device merge job to determine which device to keep
+SELECT MAX(COALESCE(started_at, created_at)) as last_activity
+FROM sessions
+WHERE device_id = @device_id;
+

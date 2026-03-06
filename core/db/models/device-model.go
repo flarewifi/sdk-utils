@@ -298,6 +298,18 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 	}
 
 	// 4. Transfer MAC address records from source to target
+	// First, delete any conflicting MAC records on target that also exist on source
+	// This prevents unique constraint violations during transfer
+	log.Printf("[DeviceModel.MergeDevices] Deleting conflicting MAC addresses...")
+	err = qtx.DeleteConflictingMacsBeforeTransfer(ctx, queries.DeleteConflictingMacsBeforeTransferParams{
+		TargetDeviceID: targetDeviceID,
+		SourceDeviceID: sourceDeviceID,
+	})
+	if err != nil {
+		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to delete conflicting MAC addresses: %v", err)
+		return fmt.Errorf("failed to delete conflicting MAC addresses: %w", err)
+	}
+
 	log.Printf("[DeviceModel.MergeDevices] Transferring MAC addresses...")
 	err = qtx.TransferMacs(ctx, queries.TransferMacsParams{
 		TargetDeviceID: targetDeviceID,

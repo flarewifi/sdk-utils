@@ -9,15 +9,22 @@ import (
 )
 
 // StartMachinePingScheduler starts a background goroutine that pings
-// the server every hour to update last_ping_at for online status
+// the server to update last_ping_at for online status.
+// In dev mode: pings every 5 seconds. In prod: pings every hour.
 func StartMachinePingScheduler() {
 	go func() {
-		// Initial ping on startup (with small delay to allow system to stabilize)
-		time.Sleep(30 * time.Second)
+		if MachinePingInterval < time.Hour {
+			log.Printf("[MachinePing] DEV MODE: Pinging every %v", MachinePingInterval)
+		} else {
+			log.Println("[MachinePing] Scheduler started - will ping every hour")
+		}
+
+		// Initial ping on startup (with delay to allow system to stabilize)
+		time.Sleep(MachinePingInitialDelay)
 		performMachinePing()
 
-		// Then ping every hour
-		ticker := time.NewTicker(1 * time.Hour)
+		// Then ping at configured interval
+		ticker := time.NewTicker(MachinePingInterval)
 		defer ticker.Stop()
 
 		for range ticker.C {
