@@ -68,6 +68,13 @@ UPDATE device_macs
 SET last_seen_at = CURRENT_TIMESTAMP
 WHERE id = @id;
 
+-- name: DeleteConflictingMacsBeforeTransfer :exec
+-- Deletes target device MAC records that would conflict with source device records
+-- Must be called before TransferMacs to avoid unique constraint violations
+DELETE FROM device_macs AS target
+WHERE target.device_id = @target_device_id
+  AND target.mac_address IN (SELECT source.mac_address FROM device_macs source WHERE source.device_id = @source_device_id);
+
 -- name: TransferMacs :exec
 UPDATE device_macs
 SET device_id = @target_device_id
@@ -104,3 +111,20 @@ FROM device_macs
 WHERE mac_address = @mac_address
 ORDER BY last_seen_at DESC
 LIMIT 1;
+
+-- name: FindSharedMacAddresses :many
+-- Finds MAC addresses that exist on multiple devices (within 30 days)
+-- Used by device merge job to identify potential duplicates
+SELECT mac_address
+FROM device_macs
+WHERE last_seen_at >= datetime('now', '-30 days')
+GROUP BY mac_address
+HAVING COUNT(DISTINCT device_id) > 1;
+
+-- name: FindDeviceIDsByMacAddress :many
+-- Gets all device IDs that have a specific MAC address, ordered by most recent
+-- Used by device merge job to find devices sharing a MAC
+SELECT DISTINCT device_id
+FROM device_macs
+WHERE mac_address = @mac_address
+ORDER BY last_seen_at DESC;

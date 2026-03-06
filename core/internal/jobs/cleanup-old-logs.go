@@ -25,17 +25,19 @@ const (
 )
 
 // StartLogCleanupScheduler starts a background goroutine that cleans up
-// old logs based on configured retention period every hour
+// old logs based on configured retention period.
+// In dev mode: runs every 5 seconds. In prod: runs every hour.
 func StartLogCleanupScheduler(database *db.Database, mdls *models.Models) {
 	go func() {
-		log.Println("[LogCleanup] Scheduler started - will run every hour")
+		if LogCleanupInterval < time.Hour {
+			log.Printf("[LogCleanup] DEV MODE: Running every %v", LogCleanupInterval)
+		} else {
+			log.Printf("[LogCleanup] Scheduler started - will run every %v", LogCleanupInterval)
+		}
 
 		for {
-			// Wait for 1 hour
-			waitDuration := time.Hour
-			log.Printf("[LogCleanup] Next cleanup scheduled in %v", waitDuration)
-
-			time.Sleep(waitDuration)
+			log.Printf("[LogCleanup] Next cleanup scheduled in %v", LogCleanupInterval)
+			time.Sleep(LogCleanupInterval)
 
 			// Read retention days from application config
 			retentionDays := defaultLogRetentionDays
