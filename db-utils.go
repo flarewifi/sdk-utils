@@ -66,7 +66,11 @@ func Int64ToNullInt64(i *int64) sql.NullInt64 {
 }
 
 func RunInTx(db *sql.DB, ctx context.Context, fn func(tx *sql.Tx) error) error {
-	tx, err := db.BeginTx(ctx, nil)
+	// Use LevelSerializable so the SQLite driver issues BEGIN IMMEDIATE instead
+	// of BEGIN DEFERRED.  IMMEDIATE acquires the write lock upfront, eliminating
+	// the read→write upgrade race that causes "database is locked" (SQLITE_BUSY)
+	// when multiple goroutines start deferred transactions simultaneously.
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
