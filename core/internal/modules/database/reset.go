@@ -15,6 +15,13 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
+// sqliteFullDSN builds the SQLite connection URI with all required pragmas.
+// Must match the DSN used in newSQLiteDatabase so the post-reset connection
+// has the same WAL mode, busy timeout, and pool settings as the original.
+func sqliteFullDSN(path string) string {
+	return fmt.Sprintf("file:%s?_busy_timeout=10000&_journal_mode=WAL&_sync=NORMAL&_loc=UTC", path)
+}
+
 // ResetDatabase drops all tables and re-runs migrations
 // For SQLite: deletes the database file and recreates it
 // Returns the new database connection that should replace the old one
@@ -42,11 +49,24 @@ func ResetDatabase(sqldb *sql.DB, pluginMigrationsFn func(*sql.DB) error) (*sql.
 
 	log.Println("Database file deleted successfully")
 
-	// Reconnect to the database (this will create a new empty database)
+	// Reconnect to the database (this will create a new empty database).
+	// Use the full URI DSN with WAL mode and busy timeout so the post-reset
+	// connection has the same tuning as the original (prevents 0 ms busy
+	// timeout and DELETE journal mode on the freshly-opened connection).
 	log.Println("Reconnecting to database...")
-	newDB, err := sql.Open(db.SqliteDriverName, dbCfg.SqlitePath)
+	newDB, err := sql.Open(db.SqliteDriverName, sqliteFullDSN(dbCfg.SqlitePath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconnect to database: %w", err)
+	}
+
+	// Mirror the connection-pool settings from newSQLiteDatabase.
+	newDB.SetConnMaxLifetime(0)
+	newDB.SetMaxOpenConns(5)
+	newDB.SetMaxIdleConns(2)
+
+	// Re-apply WAL autocheckpoint (PRAGMA is per-connection in some drivers).
+	if _, pragmaErr := newDB.Exec("PRAGMA wal_autocheckpoint = 1000"); pragmaErr != nil {
+		log.Println("Warning: Failed to set WAL autocheckpoint after reset:", pragmaErr)
 	}
 
 	// Initialize migrations table

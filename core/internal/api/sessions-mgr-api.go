@@ -134,7 +134,7 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 	}
 
 	// Emit EventSessionCreated - notify plugins that session was created
-	self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionCreated, cs)
+	self.pluginApi.EventsMgr.EmitSessionEvent(sdkapi.EventSessionCreated, sdkapi.SessionEventData{Session: cs})
 
 	return cs, nil
 }
@@ -171,14 +171,14 @@ func (self *SessionsMgrApi) NewClientDevice(params sdkapi.NewDeviceParams) sdkap
 	return self.pluginApi.SessionMgr.NewClientDevice(params)
 }
 
-// OnSessionEvent registers a callback for session events.
+// OnSessionEvent registers a callback for session events (delegates to global EventsManager).
 func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData) error) {
-	self.pluginApi.SessionMgr.OnSessionEvent(event, callback)
+	self.pluginApi.EventsMgr.OnSessionEvent(event, callback)
 }
 
-// OnClientEvent registers a callback for client device events.
+// OnClientEvent registers a callback for client device events (delegates to global EventsManager).
 func (self *SessionsMgrApi) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice) error) {
-	self.pluginApi.SessionMgr.OnClientEvent(event, callback)
+	self.pluginApi.EventsMgr.OnClientEvent(event, callback)
 }
 
 // ListSessions returns a paginated list of sessions with optional search and filters.
@@ -344,8 +344,13 @@ func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) 
 		return fmt.Errorf("device not found: %w", err)
 	}
 
-	// If session is running, disconnect first
-	if session.IsRunning() && self.IsConnected(device) {
+	// Disconnect the device if it is currently connected.
+	// Do NOT pre-check session.IsRunning() first — that check races with the timer goroutine
+	// (StopWithReason), which can stop the session between the check and the Disconnect call,
+	// causing duplicate nftables calls and spurious error logs.
+	// endSession() and StopWithReason() are both idempotent (stopped guard), so it is safe
+	// to call Disconnect unconditionally; it becomes a no-op when already disconnected.
+	if self.IsConnected(device) {
 		if disconnectErr := self.Disconnect(ctx, device, "Session deleted"); disconnectErr != nil {
 			// Log but don't fail - we still want to delete
 			self.pluginApi.Logger().Error(fmt.Sprintf("Failed to disconnect device before session deletion: %v", disconnectErr))
@@ -359,7 +364,7 @@ func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) 
 
 	// Emit EventSessionDeleted AFTER deletion
 	// The session object still has all the data needed (UUID, etc.)
-	self.pluginApi.SessionMgr.EmitSessionEvent(sdkapi.EventSessionDeleted, session)
+	self.pluginApi.EventsMgr.EmitSessionEvent(sdkapi.EventSessionDeleted, sdkapi.SessionEventData{Session: session})
 
 	return nil
 }

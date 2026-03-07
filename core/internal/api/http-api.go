@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"core/db"
 	"core/db/models"
 	devicetoken "core/internal/modules/device-token"
 	"core/internal/sessmgr"
+	"core/utils/hostfinder"
 	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
@@ -78,6 +80,27 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 			return nil, fmt.Errorf("device lookup timed out")
 		}
 		return nil, fmt.Errorf("device not found: %w", err)
+	}
+
+	// Security: Cross-validate current request's MAC/IP against stored device record
+	// This detects potential token theft or spoofing attempts
+	// Log-only mode: do not reject to avoid breaking legitimate cases (DHCP reassignment, MAC randomization)
+	// Skip ARP check for SSE and other high-frequency endpoints to reduce DHCP/ARP lookup overhead
+	shouldCheckMAC := !strings.HasSuffix(r.URL.Path, "/events") && !strings.Contains(r.URL.Path, "/sse")
+	if shouldCheckMAC {
+		if h, arpErr := hostfinder.GetHostFromRequest(r); arpErr == nil && h != nil && h.MacAddr != "" {
+			storedMAC := strings.ToUpper(clnt.MacAddr())
+			currentMAC := strings.ToUpper(h.MacAddr)
+			if storedMAC != "" && currentMAC != storedMAC {
+				log.Printf("[SECURITY] GetClientDevice: MAC mismatch - token claims device %d (MAC: %s) but ARP shows MAC: %s (IP: %s, RemoteAddr: %s)",
+					deviceID, storedMAC, currentMAC, h.IpAddr, r.RemoteAddr)
+			}
+			// Also check IP mismatch (less critical but useful for logging)
+			if clnt.IpAddr() != "" && h.IpAddr != "" && clnt.IpAddr() != h.IpAddr {
+				log.Printf("[SECURITY] GetClientDevice: IP mismatch - device %d stored IP: %s but request from IP: %s (MAC: %s)",
+					deviceID, clnt.IpAddr(), h.IpAddr, currentMAC)
+			}
+		}
 	}
 
 	return clnt, nil

@@ -8,6 +8,7 @@ import (
 
 	"core/internal/api"
 	devicetoken "core/internal/modules/device-token"
+	"core/internal/modules/fingerprint"
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/sessmgr"
 	"core/internal/web/helpers"
@@ -171,17 +172,79 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Get device MAC/IP/hostname from request
 		h, err := hostfinder.GetHostFromRequest(r)
-		if err != nil {
-			// Check if error is DHCP-related (we still have MAC/IP) or ARP failure (critical)
-			if h != nil && h.MacAddr != "" {
-				// Got MAC/IP but DHCP lease read failed - continue with empty hostname
+
+		// MAC is unavailable when either:
+		//   (a) GetHostFromRequest returned an error with no usable HostData, or
+		//   (b) it returned successfully but the MAC is empty (e.g. dev sentinel IP)
+		macUnavailable := (err != nil && (h == nil || h.MacAddr == "")) || (h != nil && h.MacAddr == "")
+
+		if err != nil && !macUnavailable {
+			// DHCP-related error but we still have MAC/IP — continue with empty hostname
+		}
+
+		if macUnavailable {
+			// ARP lookup failed; try to identify the device by its fingerprint hash
+			// (non-CNA only, requires full JS fingerprint: user_agent + screen_res + language).
+			// SECURITY: Use HTTP header User-Agent as canonical source (server-side, not client JSON body)
+			// This prevents attackers from spoofing User-Agent in the request body to impersonate other devices
+			canonicalUA := r.Header.Get("User-Agent")
+			if canonicalUA != "" && reqBody.ScreenRes != "" && reqBody.Language != "" {
+				fpHash := fingerprint.GenerateHash(fingerprint.FingerprintData{
+					UserAgent: canonicalUA, // Use server-side User-Agent, not reqBody.UserAgent
+					ScreenRes: reqBody.ScreenRes,
+					Language:  reqBody.Language,
+					Timezone:  reqBody.Timezone,
+				})
+				deviceID, fpErr := g.Models.DeviceFingerprint().FindDeviceByFingerprintHash(ctx, fpHash)
+				if fpErr == nil && deviceID > 0 {
+					dev, devErr := g.Models.Device().Find(ctx, deviceID)
+					if devErr == nil && dev != nil && dev.MacAddr() != "" {
+						g.CoreAPI.LoggerAPI.Info(fmt.Sprintf(
+							"PortalRegisterAjax: ARP failed, identified device %d via fingerprint hash (RemoteAddr: %s)",
+							deviceID, r.RemoteAddr,
+						))
+						// Preserve the device's stored IP since ARP failed and we have no current IP.
+						h = &hostfinder.HostData{MacAddr: dev.MacAddr(), IpAddr: dev.IpAddr()}
+					} else {
+						// Device found by hash but stored MAC is empty — cannot proceed (option b)
+						errMsg := g.CoreAPI.Translate("error", "Unable to identify device")
+						g.CoreAPI.LoggerAPI.Error(fmt.Sprintf(
+							"PortalRegisterAjax: Fingerprint fallback found device %d but MAC is empty - RemoteAddr: %s",
+							deviceID, r.RemoteAddr,
+						))
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusBadRequest)
+						json.NewEncoder(w).Encode(map[string]interface{}{
+							"success": false,
+							"error":   errMsg,
+						})
+						return
+					}
+				} else {
+					// No device found by fingerprint hash — cannot identify device
+					errMsg := g.CoreAPI.Translate("error", "Unable to identify device")
+					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf(
+						"PortalRegisterAjax: ARP failed and no device found by fingerprint hash - RemoteAddr: %s, ARP error: %v",
+						r.RemoteAddr, err,
+					))
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusBadRequest)
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"success": false,
+						"error":   errMsg,
+					})
+					return
+				}
 			} else {
-				// Critical error - couldn't identify device at all
+				// Insufficient fingerprint data for fallback
 				errMsg := g.CoreAPI.Translate("error", "Unable to identify device")
-				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Failed to get host from request - RemoteAddr: %s, Error: %v", r.RemoteAddr, err))
+				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf(
+					"PortalRegisterAjax: ARP failed and no fingerprint data for fallback - RemoteAddr: %s, ARP error: %v",
+					r.RemoteAddr, err,
+				))
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]any{
+				json.NewEncoder(w).Encode(map[string]interface{}{
 					"success": false,
 					"error":   errMsg,
 				})
@@ -190,43 +253,37 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		// Determine device ID from token or cookie
+		// Priority: localStorage token > HTTP cookie > MAC-based identification
 		var cookieDeviceID *int64
 
-		// SCENARIO 1: Token provided - validate and extract device ID
+		// Try localStorage token first (if provided)
 		if reqBody.DeviceToken != "" {
-			// Verify token signature
 			_, machineID := machineuid.GetMachineUID()
 			deviceID, err := devicetoken.VerifyDeviceToken(reqBody.DeviceToken, machineID)
 			if err != nil {
-				// Check if it's an expired token error
-				errorCode := "invalid_token"
-				if err.Error() == "token is expired" || err.Error() == "Token is expired" {
-					errorCode = "expired_token"
-				}
-				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Token verification failed - Error: %v", err))
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"success": false,
-					"error":   errorCode,
-				})
-				return
-			}
-
-			cookieDeviceID = &deviceID
-		} else {
-			// SCENARIO 2: No token - check for cookie fallback
-			deviceID, cookieErr := devicetoken.GetDeviceCookie(r)
-			if cookieErr == nil && deviceID > 0 {
+				// Token invalid/expired — log and fall through to cookie check
+				// This allows graceful recovery when localStorage has stale token but cookie is valid
+				g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Token verification failed, falling back to cookie - Error: %v", err))
+				// Fall through to cookie check below
+			} else {
 				cookieDeviceID = &deviceID
 			}
 		}
 
-		// Fallback to HTTP header for User-Agent if JavaScript collection failed
-		// This ensures we always have User-Agent even if JS fingerprinting fails silently
-		userAgent := reqBody.UserAgent
+		// If no valid token, try HTTP cookie
+		if cookieDeviceID == nil {
+			deviceID, cookieErr := devicetoken.GetDeviceCookie(r)
+			if cookieErr == nil && deviceID > 0 {
+				cookieDeviceID = &deviceID
+			}
+			// If cookie also fails, cookieDeviceID stays nil — Register() will use MAC-based identification
+		}
+
+		// SECURITY: Use HTTP header User-Agent as the canonical source (server-side, cannot be spoofed via JSON body)
+		// Fall back to reqBody.UserAgent only if header is missing (rare edge case)
+		userAgent := r.Header.Get("User-Agent")
 		if userAgent == "" {
-			userAgent = r.Header.Get("User-Agent")
+			userAgent = reqBody.UserAgent
 		}
 
 		// Use ClientRegister.Register() for all scenarios

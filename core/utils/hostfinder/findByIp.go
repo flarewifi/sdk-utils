@@ -47,9 +47,21 @@ func GetHostFromRequest(r *http.Request) (*HostData, error) {
 
 		// If found in DHCP leases, use that data (authoritative)
 		if leaseInfo != nil {
-			log.Printf("[HostFinder] SUCCESS: Found in DHCP leases - IP=%s, MAC=%s, Hostname=%s", ip, leaseInfo.Mac, leaseInfo.Hostname)
+			dhcpMAC := strings.ToUpper(leaseInfo.Mac)
+			log.Printf("[HostFinder] SUCCESS: Found in DHCP leases - IP=%s, MAC=%s, Hostname=%s", ip, dhcpMAC, leaseInfo.Hostname)
+
+			// SECURITY: Cross-validate DHCP MAC with ARP table
+			// If they disagree, it could indicate DHCP spoofing or stale lease
+			// Log the discrepancy but trust DHCP as the authoritative source
+			if arpMAC, ok := arp.Search(ip); ok {
+				arpMACUpper := strings.ToUpper(arpMAC)
+				if arpMACUpper != dhcpMAC {
+					log.Printf("[SECURITY] HostFinder: DHCP/ARP MAC mismatch for IP=%s - DHCP=%s, ARP=%s (possible DHCP spoof or stale lease)", ip, dhcpMAC, arpMACUpper)
+				}
+			}
+
 			return &HostData{
-				MacAddr:  strings.ToUpper(leaseInfo.Mac),
+				MacAddr:  dhcpMAC,
 				IpAddr:   ip,
 				Hostname: leaseInfo.Hostname,
 			}, nil

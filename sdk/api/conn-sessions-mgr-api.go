@@ -167,10 +167,12 @@ type ISessionsMgrApi interface {
 	FindSessionByUUID(ctx context.Context, uuid string) (IClientSession, error)
 
 	// Connects a client device to the internet.
+	// Note: ctx is accepted for API compatibility but ignored internally.
 	Connect(ctx context.Context, clnt IClientDevice, notify string) error
 
 	// Disconnects a client device from the internet.
 	// If notify is not nil, then the client device will be notified of the disconnection.
+	// Note: ctx is accepted for API compatibility but ignored internally.
 	Disconnect(ctx context.Context, clnt IClientDevice, notify string) error
 
 	// Checks if a client device is connected to the internet.

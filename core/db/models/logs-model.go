@@ -2,9 +2,11 @@ package models
 
 import (
 	"context"
+	"log"
+	"strconv"
+
 	"core/db"
 	"core/db/queries"
-	"strconv"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -55,15 +57,17 @@ func (self *LogModel) Create(ctx context.Context, params CreateLogParams) error 
 }
 
 func (self *LogModel) Clear(ctx context.Context) error {
-	// Use TRUNCATE-style approach for faster clearing
-	// For SQLite, DELETE is the only option but we can optimize with VACUUM
+	// For SQLite, DELETE is the only truncation option.
 	_, err := self.db.DB.ExecContext(ctx, "DELETE FROM logs")
 	if err != nil {
 		return err
 	}
 
-	// Reclaim disk space immediately after clearing logs
-	_ = self.models.Vacuum(ctx)
+	// Reclaim disk space immediately after a full log clear (user-triggered,
+	// so blocking is acceptable). Log any error — don't swallow it silently.
+	if err := self.models.Vacuum(ctx); err != nil {
+		log.Printf("[LogModel.Clear] WARN: VACUUM failed after log clear: %v", err)
+	}
 
 	return nil
 }
@@ -87,8 +91,9 @@ func (self *LogModel) DeleteOlderThan(ctx context.Context, days int) error {
 		return err
 	}
 
-	// Reclaim disk space after deletion
-	_ = self.models.Vacuum(ctx)
+	// VACUUM is intentionally omitted — this runs every hour in production and
+	// VACUUM in WAL mode would block all concurrent readers/writers each time.
+	// WAL checkpointing handles space reclamation automatically.
 
 	return nil
 }

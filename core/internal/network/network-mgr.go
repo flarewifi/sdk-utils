@@ -16,7 +16,7 @@ import (
 const defaultSpeed int = DefaultLinkSpeed // fallback speed in Mbps when link speed cannot be detected
 
 var lanMap = sync.Map{}
-var netQue = jobque.NewJobQue[any]()
+var netQueue = jobque.NewJobQueue[any]()
 
 func addLan(lan *NetworkLan) {
 	lanMap.Store(lan.Name(), lan)
@@ -25,7 +25,7 @@ func addLan(lan *NetworkLan) {
 func listenLanEvents(lan *NetworkLan) {
 	ch := ubus.ListenInterface(lan.Name())
 	for evt := range ch {
-		netQue.Exec(func() (any, error) {
+		netQueue.Exec("listenLanEvents", func() (any, error) {
 			if evt.Event == ubus.IfEventDown && lan.Up() {
 				log.Printf("LAN interface '%s' went DOWN", lan.Name())
 				lan.SetStatus(false)

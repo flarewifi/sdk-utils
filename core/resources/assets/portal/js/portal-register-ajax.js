@@ -50,28 +50,34 @@
    * @param {string} redirectUrl
    * @param {string} fallbackUrl
    * @param {boolean} isRetry - Whether this is a retry after token validation failure
+   * @param {boolean} tokenAvailable - Whether localStorage/deviceToken manager is available
    */
-  function performRegistration(registerUrl, redirectUrl, fallbackUrl, isRetry) {
+  function performRegistration(registerUrl, redirectUrl, fallbackUrl, isRetry, tokenAvailable) {
     try {
       // Prepare request data
       var requestData = {};
       var hasToken = false;
       
       // Check if device token exists and include it in request
-      try {
-        hasToken = window.$flare.deviceToken.has();
-        if (hasToken) {
-          var token = window.$flare.deviceToken.get();
-          if (token) {
-            requestData.device_token = token;
-            console.log('[PortalRegister] Sending request with existing token for validation');
+      // Only attempt if tokenAvailable (localStorage works)
+      if (tokenAvailable) {
+        try {
+          hasToken = window.$flare.deviceToken.has();
+          if (hasToken) {
+            var token = window.$flare.deviceToken.get();
+            if (token) {
+              requestData.device_token = token;
+              console.log('[PortalRegister] Sending request with existing token for validation');
+            }
+          } else {
+            console.log('[PortalRegister] No token found, registering new device');
           }
-        } else {
-          console.log('[PortalRegister] No token found, registering new device');
+        } catch (e) {
+          console.error('[PortalRegister] Error checking device token:', e);
+          // Continue without token — server will use cookie or MAC-based identification
         }
-      } catch (e) {
-        console.error('[PortalRegister] Error checking device token:', e);
-        // Continue without token
+      } else {
+        console.log('[PortalRegister] localStorage not available, proceeding without token (server will use cookie)');
       }
 
       // Collect fingerprint data
@@ -113,7 +119,9 @@
               console.error('[PortalRegister] Registration failed:', errorType);
 
               // Check if this is a token validation error
-              if ((errorType === 'invalid_token' || errorType === 'expired_token') && !isRetry) {
+              // Note: Server now falls back to cookie automatically, but we keep this
+              // client-side retry as belt-and-suspenders for edge cases
+              if ((errorType === 'invalid_token' || errorType === 'expired_token') && !isRetry && tokenAvailable) {
                 console.log('[PortalRegister] Token validation failed, clearing localStorage and retrying');
                 
                 // Clear invalid token
@@ -124,7 +132,7 @@
                 }
 
                 // Retry registration without token
-                performRegistration(registerUrl, redirectUrl, fallbackUrl, true);
+                performRegistration(registerUrl, redirectUrl, fallbackUrl, true, tokenAvailable);
                 return;
               }
 
@@ -133,19 +141,23 @@
               return;
             }
 
-            // Validate device_token
+            // Validate device_token in response
             if (!response.device_token || typeof response.device_token !== 'string') {
               console.error('[PortalRegister] Invalid device_token in response');
               safeRedirect(fallbackUrl);
               return;
             }
 
-            // Store/update token
-            var stored = window.$flare.deviceToken.set(response.device_token);
-            if (!stored) {
-              console.error('[PortalRegister] Failed to store device token');
-              safeRedirect(fallbackUrl);
-              return;
+            // Store/update token in localStorage (if available)
+            // If localStorage is not available, that's OK — the server set a cookie as fallback
+            if (tokenAvailable) {
+              var stored = window.$flare.deviceToken.set(response.device_token);
+              if (!stored) {
+                console.warn('[PortalRegister] Failed to store device token in localStorage, continuing with cookie fallback');
+                // Don't redirect to fallback — cookie was set by server, proceed to portal
+              }
+            } else {
+              console.log('[PortalRegister] localStorage not available, relying on cookie set by server');
             }
 
             // Log success with details
@@ -202,29 +214,37 @@
         return;
       }
 
-      if (typeof window.$flare === 'undefined' || typeof window.$flare.deviceToken === 'undefined') {
-        console.error('[PortalRegister] deviceToken manager not available');
-        safeRedirect(fallbackUrl);
-        return;
+      // Determine if localStorage/deviceToken is available
+      // If not available, we still proceed with AJAX — server will use cookie or MAC-based identification
+      var tokenAvailable = false;
+      try {
+        tokenAvailable = (
+          typeof window.$flare !== 'undefined' &&
+          typeof window.$flare.deviceToken !== 'undefined' &&
+          window.$flare.deviceToken.isAvailable()
+        );
+      } catch (e) {
+        console.warn('[PortalRegister] Error checking deviceToken availability:', e);
+        tokenAvailable = false;
       }
 
-      if (!window.$flare.deviceToken.isAvailable()) {
-        console.error('[PortalRegister] localStorage not available');
-        safeRedirect(fallbackUrl);
-        return;
+      if (!tokenAvailable) {
+        console.warn('[PortalRegister] localStorage/deviceToken not available, proceeding without token (server will use cookie)');
+        // Continue with AJAX — do NOT redirect to fallback
       }
 
       // Check if storage key is available (injected by backend)
+      // This is only needed for localStorage — if not available, proceed anyway
       var storageKeyAttr = getDataAttribute('data-storage-key');
-      if (!storageKeyAttr) {
-        console.error('[PortalRegister] Storage key not found in container, falling back to non-AJAX registration');
-        safeRedirect(fallbackUrl);
-        return;
+      if (!storageKeyAttr && tokenAvailable) {
+        console.warn('[PortalRegister] Storage key not found but deviceToken available, proceeding without storage key');
+        // Continue with AJAX — the deviceToken manager may have its own key
       }
 
       // Always perform AJAX registration (validates existing token or registers new device)
-      console.log('[PortalRegister] Starting registration flow');
-      performRegistration(registerUrl, redirectUrl, fallbackUrl, false);
+      // Server handles fallback to cookie or MAC-based identification when no token provided
+      console.log('[PortalRegister] Starting registration flow (tokenAvailable:', tokenAvailable, ')');
+      performRegistration(registerUrl, redirectUrl, fallbackUrl, false, tokenAvailable);
 
     } catch (e) {
       console.error('[PortalRegister] Initialization error:', e);

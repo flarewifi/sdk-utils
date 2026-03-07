@@ -9,8 +9,9 @@ import (
 
 	jobque "core/utils/job-que"
 	"core/utils/shell"
-	sdkutils "github.com/flarehotspot/sdk-utils"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
@@ -22,7 +23,7 @@ func NewFirewallApi(api *PluginApi) {
 	firewallApi := &FirewallApi{
 		activeTimers:  make(map[string]*time.Timer),
 		firewallMutex: &sync.RWMutex{},
-		firewallQue:   jobque.NewJobQue[any](),
+		firewallQue:   jobque.NewJobQueue[any](),
 		createdGroups: make(map[string]bool),
 		groupIPs:      make(map[string]map[string]time.Time),
 	}
@@ -32,7 +33,7 @@ func NewFirewallApi(api *PluginApi) {
 type FirewallApi struct {
 	activeTimers  map[string]*time.Timer          // Track active removal timers by "destIP:mac" key
 	firewallMutex *sync.RWMutex                   // Protect concurrent access to activeTimers, createdGroups, and groupIPs
-	firewallQue   *jobque.JobQue[any]             // Serialize firewall operations to prevent race conditions
+	firewallQue   *jobque.JobQueue[any]           // Serialize firewall operations to prevent race conditions
 	createdGroups map[string]bool                 // Track created destination IP groups by slugified name
 	groupIPs      map[string]map[string]time.Time // Track IPs per group with timestamp when added (slugName -> IP -> addedAt)
 }

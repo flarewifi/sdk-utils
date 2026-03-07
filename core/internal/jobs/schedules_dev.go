@@ -8,19 +8,19 @@ import "time"
 
 var (
 	// FingerprintCleanupInterval - how often to run fingerprint cleanup
-	FingerprintCleanupInterval = 5 * time.Second
+	FingerprintCleanupInterval = 500 * time.Second
 
 	// DeviceMergeInterval - how often to run device merge
-	DeviceMergeInterval = 5 * time.Second
+	DeviceMergeInterval = 500 * time.Second
 
 	// LogCleanupInterval - how often to run log cleanup
-	LogCleanupInterval = 5 * time.Second
+	LogCleanupInterval = 500 * time.Second
 
 	// MachinePingInterval - how often to ping the server
-	MachinePingInterval = 5 * time.Second
+	MachinePingInterval = 500 * time.Second
 
 	// MachinePingInitialDelay - delay before first ping after startup
-	MachinePingInitialDelay = 2 * time.Second
+	MachinePingInitialDelay = 200 * time.Second
 )
 
 // Schedule times (not used in dev mode, but needed for compilation)

@@ -35,7 +35,7 @@ type StatResult struct {
 // It simulates realistic data consumption by generating random traffic between 50KB-500KB per 5-second interval.
 // Uses nftQue for serialization (same queue as Connect/Disconnect/IsConnected).
 func GetStats() (stat StatResult, err error) {
-	result, err := nftQue.Exec(func() (any, error) {
+	result, err := nftQue.Exec("GetStats", func() (any, error) {
 		now := time.Now()
 		macStats := make(map[string]StatData)
 		ipStats := make(map[string]StatData)

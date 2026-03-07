@@ -9,18 +9,19 @@ import (
 	"time"
 
 	jobque "core/utils/job-que"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
-	fw4Table        string = "fw4"      // OpenWrt default table (for jump rules)
-	internetTable   string = "internet" // Our custom table
-	tableFamily     string = "inet"     // inet family (handles both ipv4 and ipv6)
-	forwardChain    string = "forward"
-	preroutingChain string = "prerouting"
-	connMacMap      string = "connected_macs_map"
-	connIpMap       string = "connected_ips_map"
-	connMacSet      string = "connected_macs_set"
+	internetTable    string = "internet" // Our custom table
+	tableFamily      string = "inet"     // inet family (handles both ipv4 and ipv6)
+	forwardChain     string = "forward"
+	preroutingChain  string = "prerouting"
+	postroutingChain string = "postrouting"
+	connMacMap       string = "connected_macs_map"
+	connIpMap        string = "connected_ips_map"
+	connMacSet       string = "connected_macs_set"
 )
 
 type connectedClient struct {
@@ -28,15 +29,90 @@ type connectedClient struct {
 	mac string
 }
 
-var nftQue = jobque.NewJobQue[any]()
-var nftMu sync.RWMutex
-var initCallbacks []func() error = []func() error{}
-var connTable map[string]bool
-var connClients map[string]*connectedClient // mac -> client info
+var (
+	nftMu         sync.RWMutex
+	initCallbacks []func() error = []func() error{}
+	nftQue                       = jobque.NewJobQueue[any]()
+	connTable                    = map[string]bool{}
+	connClients                  = make(map[string]*connectedClient) // mac -> client info
+)
 
-func init() {
-	connTable = map[string]bool{}
-	connClients = make(map[string]*connectedClient)
+func AddInitCallback(cb func() error) {
+	nftMu.Lock()
+	defer nftMu.Unlock()
+	initCallbacks = append(initCallbacks, cb)
+}
+
+func Cleanup() {}
+
+func Setup() (err error) {
+	Cleanup()
+	runInitCallbacks()
+	return nil
+}
+
+func SetupCaptivePortal(dev string, routerIp string) (err error) {
+	contextInfo := fmt.Sprintf("Device=%s, RouterIP=%s", dev, routerIp)
+
+	_, err = nftQue.ExecWithTimeout(
+		4*time.Second,
+		"Setup Captive Portal",
+		contextInfo,
+		func() (any, error) {
+			return nil, nil
+		},
+	)
+	return err
+}
+
+func Connect(ip string, mac string) error {
+	contextInfo := fmt.Sprintf("IP=%s, MAC=%s", ip, mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Connect Device",
+		contextInfo,
+		func() (any, error) {
+			err := doConnect(ip, mac)
+			return nil, err
+		},
+	)
+	return err
+}
+
+func Disconnect(ip string, mac string) error {
+	contextInfo := fmt.Sprintf("IP=%s, MAC=%s", ip, mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Disconnect Device",
+		contextInfo,
+		func() (any, error) {
+			err := doDisconnect(ip, mac)
+			return nil, err
+		},
+	)
+	return err
+}
+
+func IsConnected(mac string) bool {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	result, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Check Connection Status",
+		contextInfo,
+		func() (any, error) {
+			return isConnected(mac), nil
+		},
+	)
+
+	if err != nil {
+		log.Printf("[ERROR] IsConnected check failed for %s: %v", mac, err)
+		return false
+	}
+
+	return result.(bool)
 }
 
 func runInitCallbacks() {
@@ -95,7 +171,7 @@ func doConnect(ip string, mac string) error {
 }
 
 func doDisconnect(ip string, mac string) error {
-	// Validate IP address (even though not used in dev mode)
+	// Validate IP address
 	if _, err := sdkutils.ValidateIPAddress(ip); err != nil {
 		return fmt.Errorf("invalid IP address: %v", err)
 	}
@@ -113,84 +189,4 @@ func doDisconnect(ip string, mac string) error {
 	}
 	log.Println("nftables disconnected: " + normalizedMAC)
 	return nil
-}
-
-func Cleanup() {}
-
-func Setup() (err error) {
-	Cleanup()
-	runInitCallbacks()
-	return nil
-}
-
-func SetupCaptivePortal(dev string, routerIp string) (err error) {
-	contextInfo := fmt.Sprintf("Device=%s, RouterIP=%s", dev, routerIp)
-
-	_, err = nftQue.ExecWithTimeout(
-		4*time.Second,
-		"Setup Captive Portal",
-		contextInfo,
-		func() (any, error) {
-			return nil, nil
-		},
-	)
-	return err
-}
-
-func Connect(ip string, mac string) error {
-	contextInfo := fmt.Sprintf("IP=%s, MAC=%s", ip, mac)
-
-	// nftQue serializes all Connect/Disconnect/IsConnected/GetStats operations,
-	// so no additional mutex is needed here.
-	_, err := nftQue.ExecWithTimeout(
-		3*time.Second,
-		"Connect Device",
-		contextInfo,
-		func() (any, error) {
-			err := doConnect(ip, mac)
-			return nil, err
-		},
-	)
-	return err
-}
-
-func Disconnect(ip string, mac string) error {
-	contextInfo := fmt.Sprintf("IP=%s, MAC=%s", ip, mac)
-
-	_, err := nftQue.ExecWithTimeout(
-		3*time.Second,
-		"Disconnect Device",
-		contextInfo,
-		func() (any, error) {
-			err := doDisconnect(ip, mac)
-			return nil, err
-		},
-	)
-	return err
-}
-
-func IsConnected(mac string) bool {
-	contextInfo := fmt.Sprintf("MAC=%s", mac)
-
-	result, err := nftQue.ExecWithTimeout(
-		1*time.Second,
-		"Check Connection Status",
-		contextInfo,
-		func() (any, error) {
-			return isConnected(mac), nil
-		},
-	)
-
-	if err != nil {
-		log.Printf("[ERROR] IsConnected check failed for %s: %v", mac, err)
-		return false
-	}
-
-	return result.(bool)
-}
-
-func AddInitCallback(cb func() error) {
-	nftMu.Lock()
-	defer nftMu.Unlock()
-	initCallbacks = append(initCallbacks, cb)
 }

@@ -10,7 +10,7 @@ import (
 	cmd "core/utils/shell"
 )
 
-var tcClassQue = jobque.NewJobQue[any]()
+var tcClassQue = jobque.NewJobQueue[any]()
 
 type TcClassMgr struct {
 	mu        sync.RWMutex
@@ -36,7 +36,7 @@ func (self *TcClassMgr) Bandwidth() (download Kbit, upload Kbit) {
 }
 
 func (self *TcClassMgr) Setup() error {
-	_, err := tcClassQue.Exec(func() (any, error) {
+	_, err := tcClassQue.Exec("TcClassMgr.Setup", func() (any, error) {
 		var err error
 		dev := self.dev
 		ifb := ifbName(dev)
@@ -100,7 +100,7 @@ func (self *TcClassMgr) Reset() (err error) {
 		return err
 	}
 
-	_, err = tcClassQue.Exec(func() (any, error) {
+	_, err = tcClassQue.Exec("TcClassMgr.Reset.restoreClasses", func() (any, error) {
 		for _, c := range self.classList {
 			err = self.tcAddOrChange(tcActionAdd, TcClassIdUser, c)
 			if err != nil {
@@ -115,7 +115,7 @@ func (self *TcClassMgr) Reset() (err error) {
 }
 
 func (self *TcClassMgr) UpdateBandwidth(down Kbit, up Kbit) error {
-	_, err := tcClassQue.Exec(func() (any, error) {
+	_, err := tcClassQue.Exec("TcClassMgr.UpdateBandwidth", func() (any, error) {
 		self.mu.Lock()
 		self.download = down
 		self.upload = up
@@ -137,7 +137,7 @@ func (self *TcClassMgr) UpdateBandwidth(down Kbit, up Kbit) error {
 }
 
 func (self *TcClassMgr) CreateClass(parent *TcClass, classid TcClassId, down Kbit, up Kbit, ceilDown Kbit, ceilUp Kbit) error {
-	_, err := tcClassQue.Exec(func() (any, error) {
+	_, err := tcClassQue.Exec("TcClassMgr.CreateClass", func() (any, error) {
 		klass := NewTcClass(parent, classid, down, up, ceilDown, ceilUp)
 		klass.Sanitize()
 
@@ -160,7 +160,7 @@ func (self *TcClassMgr) CreateClass(parent *TcClass, classid TcClassId, down Kbi
 }
 
 func (self *TcClassMgr) ChangeClass(parent *TcClass, classid TcClassId, down Kbit, up Kbit, ceilDown Kbit, ceilUp Kbit) error {
-	_, err := tcClassQue.Exec(func() (any, error) {
+	_, err := tcClassQue.Exec("TcClassMgr.ChangeClass", func() (any, error) {
 		for _, klass := range self.classList {
 			if klass.ClassId == classid {
 				klass.MinDown = down
@@ -179,7 +179,7 @@ func (self *TcClassMgr) ChangeClass(parent *TcClass, classid TcClassId, down Kbi
 }
 
 func (self *TcClassMgr) DeleteClass(classid TcClassId) error {
-	_, err := tcClassQue.Exec(func() (any, error) {
+	_, err := tcClassQue.Exec("TcClassMgr.DeleteClass", func() (any, error) {
 		for i, klass := range self.classList {
 			if klass.ClassId == classid {
 				// Remove fq_codel leaf qdisc before deleting class

@@ -6,6 +6,7 @@ import (
 
 	"core/db"
 	"core/db/models"
+	"core/internal/events"
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/sessmgr"
@@ -22,6 +23,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pm
 		PluginsMgrApi:  pmgr,
 		ClientRegister: pmgr.clntReg,
 		SessionMgr:     pmgr.clntMgr,
+		EventsMgr:      pmgr.eventsMgr,
 	}
 
 	pluginApi.info = info
@@ -82,6 +84,7 @@ type PluginApi struct {
 	VouchersAPI      *VouchersApi
 	WifiAPI          *WifiApi
 	StorageAPI       *StorageApi
+	EventsMgr        *events.EventsManager
 }
 
 func (self *PluginApi) Initialize(coreApi *PluginApi) {

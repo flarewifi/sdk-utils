@@ -1,6 +1,7 @@
 {
   "author": "Flarego Technologies Corporation",
   "dependencies": {
+    "@idletoaster/ssh-mcp-server": "^2.1.9",
     "@octokit/core": "^5.1.0",
     "fs-extra": "^11.2.0"
   },

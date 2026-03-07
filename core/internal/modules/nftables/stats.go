@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	nftStatsQue = jobque.NewJobQue[StatResult]()
+	nftStatsQue = jobque.NewJobQueue[StatResult]()
 )
 
 type NftListMapResult struct {
@@ -53,7 +53,7 @@ type StatResult struct {
 }
 
 func GetStats() (stat StatResult, err error) {
-	result, err := nftStatsQue.Exec(func() (result StatResult, err error) {
+	result, err := nftStatsQue.Exec("GetStats", func() (result StatResult, err error) {
 		nftlistmac, err := nftListMap(connMacMap)
 		if err != nil {
 			return result, err

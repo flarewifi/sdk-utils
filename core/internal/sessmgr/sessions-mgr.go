@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"core/db"
 	"core/db/models"
+	"core/internal/events"
 	"core/internal/modules/nftables"
 	"core/internal/network"
+	jobque "core/utils/job-que"
 	sdkapi "sdk/api"
 )
 
@@ -27,22 +28,24 @@ type SessionsMgr struct {
 	db         *db.Database
 	mdl        *models.Models
 	sessions   sync.Map
+	eventsMgr  *events.EventsManager
 
-	// Event callbacks - protected by dedicated mutex to prevent race on Load-Modify-Store
-	eventMu               sync.Mutex
-	sessionEventCallbacks map[sdkapi.SessionEvent][]func(data sdkapi.SessionEventData) error
-	clientEventCallbacks  map[sdkapi.ClientEvent][]func(clnt sdkapi.IClientDevice) error
+	// tcQueue serializes all TC/NFT commands globally.
+	// Uses JobQueue for automatic panic recovery, queue-wait logging, and context support.
+	tcQueue *jobque.JobQueue[struct{}]
 }
 
 // =============================================================================
 // CONSTRUCTOR
 // =============================================================================
 
-func NewSessionsMgr(dtb *db.Database, mdl *models.Models) *SessionsMgr {
+func NewSessionsMgr(dtb *db.Database, mdl *models.Models, eventsMgr *events.EventsManager) *SessionsMgr {
 	sessionMgr := &SessionsMgr{
-		db:       dtb,
-		mdl:      mdl,
-		sessions: sync.Map{},
+		db:        dtb,
+		mdl:       mdl,
+		sessions:  sync.Map{},
+		eventsMgr: eventsMgr,
+		tcQueue:   jobque.NewJobQueue[struct{}](),
 	}
 	return sessionMgr
 }
@@ -84,29 +87,24 @@ func (self *SessionsMgr) Init(ctx context.Context) error {
 // PUBLIC METHODS - Event Handling
 // =============================================================================
 
+// OnSessionEvent registers a callback for a session event (delegates to EventsManager).
 func (self *SessionsMgr) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData) error) {
-	self.eventMu.Lock()
-	defer self.eventMu.Unlock()
-
-	if self.sessionEventCallbacks == nil {
-		self.sessionEventCallbacks = make(map[sdkapi.SessionEvent][]func(data sdkapi.SessionEventData) error)
-	}
-	self.sessionEventCallbacks[event] = append(self.sessionEventCallbacks[event], callback)
+	self.eventsMgr.OnSessionEvent(event, callback)
 }
 
+// OnClientEvent registers a callback for a client event (delegates to EventsManager).
 func (self *SessionsMgr) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice) error) {
-	self.eventMu.Lock()
-	defer self.eventMu.Unlock()
-
-	if self.clientEventCallbacks == nil {
-		self.clientEventCallbacks = make(map[sdkapi.ClientEvent][]func(clnt sdkapi.IClientDevice) error)
-	}
-	self.clientEventCallbacks[event] = append(self.clientEventCallbacks[event], callback)
+	self.eventsMgr.OnClientEvent(event, callback)
 }
 
-// EmitSessionEvent is a public wrapper for emitSessionEvent to allow API layer to trigger events
-func (self *SessionsMgr) EmitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession) error {
-	return self.emitSessionEvent(event, session)
+// EmitSessionEvent dispatches a session event asynchronously via EventsManager.
+func (self *SessionsMgr) EmitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession) {
+	self.eventsMgr.EmitSessionEvent(event, sdkapi.SessionEventData{Session: session})
+}
+
+// EmitClientEvent dispatches a client event asynchronously via EventsManager.
+func (self *SessionsMgr) EmitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) {
+	self.eventsMgr.EmitClientEvent(event, clnt)
 }
 
 // =============================================================================
@@ -176,7 +174,7 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 		rs := value.(*RunningSession)
 
 		// Read network state atomically from the RunningSession.
-		// This is the authoritative state (updated inside tcNftMu+mu by UpdateNetworkDetails).
+		// This is the authoritative state (updated inside execTc+mu by UpdateNetworkDetails).
 		lan := rs.Lan()
 		if lan == nil {
 			return true
@@ -193,7 +191,7 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 				log.Printf("[SessionsMgr] StopSessions: failed to disconnect device IP=%s MAC=%s: %v", ip, mac, err)
 			}
 
-			if err := rs.Stop(ctx); err != nil {
+			if err := rs.Stop(); err != nil {
 				log.Printf("[SessionsMgr] StopSessions: failed to stop session for device IP=%s: %v", ip, err)
 			}
 
@@ -214,27 +212,23 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 // PUBLIC METHODS - Connection Management
 // =============================================================================
 
-func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
+// Connect connects a client device to the internet.
+// Note: ctx is accepted for API compatibility but ignored internally to avoid
+// complexity from context cancellation mid-operation.
+func (self *SessionsMgr) Connect(_ context.Context, clnt sdkapi.IClientDevice, notify string) error {
 	if clnt.Status() == sdkapi.DeviceStatusBlocked {
 		return errors.New(self.coreAPI.Translate("error", "Device is blocked"))
 	}
 
-	// Launch session loop - handles nftables, session start, events, and chaining
-	resultCh := make(chan error, 1)
-	go self.loopSessions(resultCh, clnt, notify)
+	// Launch session loop - handles nftables, session start, events, and chaining.
+	startCh := make(chan error, 1)
+	go self.loopSessions(startCh, clnt, notify)
 
-	// Wait for result with context cancellation support
-	var err error
-	select {
-	case err = <-resultCh:
-		// Normal case - received result from loopSessions
-	case <-ctx.Done():
-		// Context cancelled (e.g., HTTP timeout) - loopSessions continues in background
-		return ctx.Err()
-	}
+	// Wait for result from loopSessions
+	err := <-startCh
 
 	if err == nil {
-		err = clnt.Update(ctx, sdkapi.UpdateDeviceParams{
+		err = clnt.Update(context.Background(), sdkapi.UpdateDeviceParams{
 			UUID:     clnt.UUID(),
 			Mac:      clnt.MacAddr(),
 			Ip:       clnt.IpAddr(),
@@ -248,17 +242,51 @@ func (self *SessionsMgr) Connect(ctx context.Context, clnt sdkapi.IClientDevice,
 	return err
 }
 
-func (self *SessionsMgr) Disconnect(ctx context.Context, clnt sdkapi.IClientDevice, notify string) error {
+// Disconnect disconnects a client device from the internet.
+// Note: ctx is accepted for API compatibility but ignored internally to avoid
+// complexity from context cancellation mid-operation.
+func (self *SessionsMgr) Disconnect(_ context.Context, clnt sdkapi.IClientDevice, notify string) error {
 	// Session events (EventSessionDisconnected) are emitted by StopWithReason() inside endSession().
-	err := self.endSession(ctx, clnt)
+	err := self.endSession(clnt)
 	if err != nil {
 		return err
 	}
 
+	// Emit disconnect events asynchronously so cloud sync RPC calls don't block
+	// the HTTP handler. nftables/TC cleanup already happened in endSession() above.
+	go func() {
+		clnt.Emit(string(sdkapi.EventSessionDisconnected), []byte(notify))
+		self.EmitClientEvent(sdkapi.EventClientDisconnected, clnt)
+	}()
+
+	return clnt.Update(context.Background(), sdkapi.UpdateDeviceParams{
+		UUID:     clnt.UUID(),
+		Mac:      clnt.MacAddr(),
+		Ip:       clnt.IpAddr(),
+		Hostname: clnt.Hostname(),
+		Status:   sdkapi.DeviceStatusDisconnected,
+	})
+}
+
+// disconnectInternal is called from loopSessions when the session already ended via
+// StopWithReason (which already emitted EventSessionDisconnected to plugin callbacks).
+// It performs the same cleanup as Disconnect but:
+// - Still sends SSE notification to browser (clnt.Emit) so the UI updates
+// - Emits EventClientDisconnected for client-level tracking
+// - Does NOT re-emit EventSessionDisconnected to plugin callbacks (already done by StopWithReason)
+func (self *SessionsMgr) disconnectInternal(clnt sdkapi.IClientDevice, notify string) error {
+	err := self.endSession(clnt)
+	if err != nil {
+		return err
+	}
+
+	// Send SSE notification to browser so the UI updates.
+	// Note: This only fires SSE + events.Emit, NOT plugin callbacks (emitSessionEvent).
+	// StopWithReason already fired plugin callbacks, so we don't duplicate those.
 	clnt.Emit(string(sdkapi.EventSessionDisconnected), []byte(notify))
 	self.EmitClientEvent(sdkapi.EventClientDisconnected, clnt)
 
-	return clnt.Update(ctx, sdkapi.UpdateDeviceParams{
+	return clnt.Update(context.Background(), sdkapi.UpdateDeviceParams{
 		UUID:     clnt.UUID(),
 		Mac:      clnt.MacAddr(),
 		Ip:       clnt.IpAddr(),
@@ -586,62 +614,42 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
-func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, changedFields ...sdkapi.SessionChangedFields) error {
-	// Take a snapshot of callbacks under lock to avoid holding lock during callback execution
-	self.eventMu.Lock()
-	callbacks := self.sessionEventCallbacks[event]
-	// Copy slice header so we don't hold the lock during callbacks
-	callbacksCopy := make([]func(data sdkapi.SessionEventData) error, len(callbacks))
-	copy(callbacksCopy, callbacks)
-	self.eventMu.Unlock()
-
-	data := sdkapi.SessionEventData{
-		Session: session,
-	}
+// emitSessionEvent dispatches a session event with optional changed-fields data.
+// It is an internal helper for call sites that pass changedFields (e.g. handleSessionSaved).
+func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, changedFields ...sdkapi.SessionChangedFields) {
+	data := sdkapi.SessionEventData{Session: session}
 	if len(changedFields) > 0 {
 		data.ChangedFields = changedFields[0]
 	}
-	for _, callback := range callbacksCopy {
-		if err := callback(data); err != nil {
-			return err
-		}
-	}
-	return nil
+	self.eventsMgr.EmitSessionEvent(event, data)
 }
 
-func (self *SessionsMgr) EmitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
-	// Take a snapshot of callbacks under lock to avoid holding lock during callback execution
-	self.eventMu.Lock()
-	callbacks := self.clientEventCallbacks[event]
-	callbacksCopy := make([]func(clnt sdkapi.IClientDevice) error, len(callbacks))
-	copy(callbacksCopy, callbacks)
-	self.eventMu.Unlock()
-
-	for _, callback := range callbacksCopy {
-		if err := callback(clnt); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClientDevice, notify string) {
-	var callbackDone atomic.Bool
+func (self *SessionsMgr) loopSessions(startedCh chan<- error, clnt sdkapi.IClientDevice, notify string) {
+	var startOnce sync.Once
+	var started bool // tracks whether first session started successfully
 	ctx := context.Background()
+
+	// signalStart sends err to startedCh exactly once (first session result)
+	signalStart := func(err error) {
+		startOnce.Do(func() {
+			startedCh <- err
+			started = (err == nil)
+		})
+	}
 
 	// Loop condition: continue while connected OR until first session starts
 	// This allows the first iteration to run before nftables rules are added
-	for nftables.IsConnected(clnt.MacAddr()) || !callbackDone.Load() {
+	for nftables.IsConnected(clnt.MacAddr()) || !started {
 		// Get next available session
 		cs, err := self.GetSession(ctx, clnt)
 		if err != nil {
-			if !callbackDone.Load() {
+			if !started {
 				// First attempt failed - user sees error immediately
-				resultCh <- err
-				callbackDone.Store(true)
+				signalStart(err)
 			} else {
-				// Session chaining failed - no more sessions available
-				self.Disconnect(ctx, clnt, self.coreAPI.Translate("info", "No more sessions available"))
+				// Session chaining failed - no more sessions available.
+				// StopWithReason already emitted EventSessionDisconnected; use internal helper.
+				self.disconnectInternal(clnt, self.coreAPI.Translate("info", "No more sessions available"))
 			}
 			return
 		}
@@ -649,13 +657,13 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 		// Get or create running session
 		rs, ok := self.getRunningSession(clnt)
 		if !ok {
-			rs, err = NewRunningSession(clnt, cs, self)
+			rs, err = NewRunningSession(clnt, cs, self.eventsMgr, self.tcQueue)
 			if err != nil {
-				if !callbackDone.Load() {
-					resultCh <- err
-					callbackDone.Store(true)
+				if !started {
+					signalStart(err)
 				} else {
-					self.Disconnect(ctx, clnt, err.Error())
+					// StopWithReason already emitted EventSessionDisconnected.
+					self.disconnectInternal(clnt, self.coreAPI.Translate("error", "Failed to create session"))
 				}
 				return
 			}
@@ -665,40 +673,40 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 		// Start the session (this also sets up TC classes/filters)
 		err = rs.Start(ctx, cs)
 		if err != nil {
-			if !callbackDone.Load() {
+			if !started {
 				// First session start failed - user sees error immediately
-				resultCh <- err
-				callbackDone.Store(true)
+				signalStart(err)
 			} else {
-				// Chained session start failed - disconnect
-				self.Disconnect(ctx, clnt, err.Error())
+				// Chained session start failed - disconnect.
+				// StopWithReason already emitted EventSessionDisconnected.
+				self.disconnectInternal(clnt, self.coreAPI.Translate("error", "Failed to start session"))
 			}
 			return
 		}
 
 		// First successful start - add firewall rules and emit events
-		if !callbackDone.Load() {
+		if !started {
 			// Add firewall rules to allow internet access
 			if err := nftables.Connect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
 				// nftables failed - stop the session, cleanup TC, and return error
-				rs.Stop(ctx)
+				rs.Stop()
 				rs.CleanupTc()
 				self.sessions.Delete(clnt.ID())
-				resultCh <- err
-				callbackDone.Store(true)
+				signalStart(err)
 				return
 			}
 
-			// Emit connection events
+			// Signal success to Connect() immediately after nftables rules are in place.
+			// Event callbacks (cloud sync RPC calls) run after this in the loopSessions
+			// goroutine so they don't block the HTTP handler.
+			signalStart(nil)
+
+			// Emit connection events (runs in this goroutine after unblocking the HTTP handler)
 			clnt.Emit(string(sdkapi.EventSessionConnected), []byte(notify))
 			if session, ok := self.CurrSession(clnt); ok {
 				self.emitSessionEvent(sdkapi.EventSessionConnected, session)
 			}
 			self.EmitClientEvent(sdkapi.EventClientConnected, clnt)
-
-			// Signal success to Connect()
-			resultCh <- nil
-			callbackDone.Store(true)
 		}
 
 		// Wait for session to end
@@ -707,10 +715,10 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 		// Handle session end
 		if err != nil {
 			if errors.Is(err, ErrSessionExpired) || errors.Is(err, ErrSessionStopped) {
-				// Session expired or was stopped (e.g., via UpdateTime(0)) - reset state and continue to try next session
+				// Session expired or was stopped (e.g., via UpdateTime(0)) - prepare for next session
 				// TC class/filter are preserved for reuse with the next session
 				log.Printf("Session ended for device %s (reason: %v), checking for next available session...", clnt.MacAddr(), err)
-				rs.Reset()
+				rs.PrepareForChain()
 
 				// Check if this loop has been superseded by a new Connect() call.
 				// UpdateDevice calls Disconnect (which deletes from sessions map and stops rs),
@@ -724,8 +732,8 @@ func (self *SessionsMgr) loopSessions(resultCh chan<- error, clnt sdkapi.IClient
 
 				continue
 			}
-			// Other error - disconnect
-			self.Disconnect(ctx, clnt, err.Error())
+			// Other error from rs.Done() - StopWithReason already emitted EventSessionDisconnected.
+			self.disconnectInternal(clnt, self.coreAPI.Translate("error", "Session ended unexpectedly"))
 			return
 		}
 
@@ -750,7 +758,7 @@ func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *Runni
 	return rs, true
 }
 
-func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevice) error {
+func (self *SessionsMgr) endSession(clnt sdkapi.IClientDevice) error {
 	if nftables.IsConnected(clnt.MacAddr()) {
 		if err := nftables.Disconnect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
 			return err
@@ -759,7 +767,7 @@ func (self *SessionsMgr) endSession(ctx context.Context, clnt sdkapi.IClientDevi
 
 	rs, ok := self.getRunningSession(clnt)
 	if ok {
-		if err := rs.Stop(ctx); err != nil {
+		if err := rs.Stop(); err != nil {
 			return err
 		}
 
@@ -831,7 +839,6 @@ func (self *SessionsMgr) handleSessionSaved(ctx context.Context, session sdkapi.
 		// Time changed: timeSecs or timeCons
 		if changed.TimeSecs || changed.TimeCons {
 			if err := rs.ApplyTimeUpdate(ApplyTimeUpdateParams{
-				Ctx:           ctx,
 				RemainingSecs: sessionData.RemainingTime,
 			}); err != nil {
 				return err
@@ -840,14 +847,13 @@ func (self *SessionsMgr) handleSessionSaved(ctx context.Context, session sdkapi.
 		// Data changed: dataMb or dataCons
 		if changed.DataMb || changed.DataCons {
 			// Check if session is now consumed after data update
-			if err := rs.ApplyDataUpdate(ctx); err != nil {
+			if err := rs.ApplyDataUpdate(); err != nil {
 				return err
 			}
 		}
 		// Bandwidth changed: downMbits, upMbits, or useGlobalSpeed
 		if changed.DownMbits || changed.UpMbits || changed.UseGlobalSpeed {
 			if err := rs.ApplyBandwidthUpdate(ApplyBandwidthUpdateParams{
-				Ctx:       ctx,
 				DownMbits: sessionData.DownMbits,
 				UpMbits:   sessionData.UpMbits,
 				UseGlobal: sessionData.UseGlobalSpeed,
