@@ -246,7 +246,7 @@ func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
 		return 0
 	}
 
-	elapsed := int(time.Since(*d.resumedAt).Seconds())
+	elapsed := int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
 	newData := d.copy()
 	newData.timeCons = d.timeCons + elapsed
 
@@ -312,7 +312,7 @@ func (self *ClientSession) TimeConsumption() (sec int) {
 
 	// If session is running, add elapsed time since resumed_at
 	if d.resumedAt != nil {
-		elapsed := int(time.Since(*d.resumedAt).Seconds())
+		elapsed := int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
 		consumption += elapsed
 	}
 
@@ -462,7 +462,7 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 	// Calculate time consumption including elapsed time for running sessions
 	timeCons := d.timeCons
 	if d.resumedAt != nil {
-		elapsed := int(time.Since(*d.resumedAt).Seconds())
+		elapsed := int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
 		timeCons += elapsed
 	}
 
@@ -703,7 +703,7 @@ func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
 
 	// If session is running, subtract elapsed time since resumed_at
 	if d.resumedAt != nil {
-		elapsed := int(time.Since(*d.resumedAt).Seconds())
+		elapsed := int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
 		remaining -= elapsed
 	}
 

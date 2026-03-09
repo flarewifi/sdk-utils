@@ -190,7 +190,7 @@ WHERE
 UPDATE
   sessions
 SET
-  consumption_secs = consumption_secs + CAST((julianday('now') - julianday(resumed_at)) * 86400 AS INTEGER)
+  consumption_secs = consumption_secs + CAST(ROUND((julianday('now') - julianday(resumed_at)) * 86400) AS INTEGER)
 WHERE
   resumed_at IS NOT NULL;
 
