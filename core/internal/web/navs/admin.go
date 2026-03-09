@@ -27,6 +27,9 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Home"),
 					g.CoreAPI.Translate("label", "Main"),
 					g.CoreAPI.Translate("label", "Overview"),
+					g.CoreAPI.Translate("label", "control"),
+					g.CoreAPI.Translate("label", "panel"),
+					g.CoreAPI.Translate("label", "status"),
 				},
 				Order: 1000,
 				Icon:  "<i class='bi bi-columns-gap'></i>",
@@ -45,6 +48,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Currency"),
 					g.CoreAPI.Translate("label", "Software Version"),
 					g.CoreAPI.Translate("label", "Machine ID"),
+					g.CoreAPI.Translate("label", "network"),
 				},
 				Order: 1000, // First item in System category
 				Icon:  "<i class='bi bi-gear'></i>",
@@ -58,6 +62,9 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Updates"),
 					g.CoreAPI.Translate("label", "Upgrade"),
 					g.CoreAPI.Translate("label", "Software"),
+					g.CoreAPI.Translate("label", "firmware"),
+					g.CoreAPI.Translate("label", "patch"),
+					g.CoreAPI.Translate("label", "version"),
 				},
 				Order: 2000, // Second item in System category
 				Icon:  "<i class='bi bi-cloud-arrow-down'></i>",
@@ -70,6 +77,10 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Database"),
 					g.CoreAPI.Translate("label", "Database Settings"),
 					g.CoreAPI.Translate("label", "Reset Database"),
+					g.CoreAPI.Translate("label", "backup"),
+					g.CoreAPI.Translate("label", "restore"),
+					g.CoreAPI.Translate("label", "sql"),
+					g.CoreAPI.Translate("label", "storage"),
 				},
 				Order: 3000, // Third item in System category
 				Icon:  "<i class='bi bi-database'></i>",
@@ -83,6 +94,9 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Password"),
 					g.CoreAPI.Translate("label", "Change Password"),
 					g.CoreAPI.Translate("label", "Account"),
+					g.CoreAPI.Translate("label", "security"),
+					g.CoreAPI.Translate("label", "credentials"),
+					g.CoreAPI.Translate("label", "login"),
 				},
 				Order: 4000, // After Database, before Logs
 				Icon:  "<i class='bi bi-person-gear'></i>",
@@ -95,6 +109,10 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Log"),
 					g.CoreAPI.Translate("label", "Logs"),
 					g.CoreAPI.Translate("label", "Audit"),
+					g.CoreAPI.Translate("label", "debug"),
+					g.CoreAPI.Translate("label", "trace"),
+					g.CoreAPI.Translate("label", "events"),
+					g.CoreAPI.Translate("label", "monitoring"),
 				},
 				Order: 5000, // Default position (after plugin items with Order < 5000)
 				Icon:  "<i class='bi bi-file-earmark-text'></i>",
@@ -106,6 +124,11 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Keywords: []string{
 					g.CoreAPI.Translate("label", "Reboot"),
 					g.CoreAPI.Translate("label", "Restart"),
+					g.CoreAPI.Translate("label", "restart"),
+					g.CoreAPI.Translate("label", "service"),
+					g.CoreAPI.Translate("label", "reload"),
+					g.CoreAPI.Translate("label", "reset"),
+					g.CoreAPI.Translate("label", "boot"),
 				},
 				Order: 9000, // Last items in System category
 				Icon:  "<i class='bi bi-arrow-clockwise'></i>",
@@ -118,6 +141,10 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "Shutdown"),
 					g.CoreAPI.Translate("label", "Power Off"),
 					g.CoreAPI.Translate("label", "Turn Off"),
+					g.CoreAPI.Translate("label", "halt"),
+					g.CoreAPI.Translate("label", "stop"),
+					g.CoreAPI.Translate("label", "poweroff"),
+					g.CoreAPI.Translate("label", "terminate"),
 				},
 				Order: 9100, // Very last item
 				Icon:  "<i class='bi bi-power'></i>",
