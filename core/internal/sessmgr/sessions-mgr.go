@@ -107,6 +107,94 @@ func (self *SessionsMgr) EmitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.I
 	self.eventsMgr.EmitClientEvent(event, clnt)
 }
 
+// EmitClientMerge dispatches a client-merge event asynchronously via EventsManager.
+// Internal use only — called by ClientRegister and the merge-duplicate-devices job.
+func (self *SessionsMgr) EmitClientMerge(data sdkapi.EventClientMergeData) {
+	self.eventsMgr.EmitClientMerge(data)
+}
+
+// MergeClientDevices merges sourceID into targetID: transfers all data, deletes source,
+// disconnects/reconnects active sessions around the merge, and emits OnClientMerge.
+func (self *SessionsMgr) MergeClientDevices(ctx context.Context, targetID, sourceID int64) error {
+	if targetID == sourceID {
+		return fmt.Errorf("cannot merge device into itself (id=%d)", targetID)
+	}
+
+	targetClnt, err := self.FindDeviceByID(ctx, targetID)
+	if err != nil {
+		return fmt.Errorf("target device %d not found: %w", targetID, err)
+	}
+
+	sourceClnt, err := self.FindDeviceByID(ctx, sourceID)
+	if err != nil {
+		return fmt.Errorf("source device %d not found: %w", sourceID, err)
+	}
+
+	// Disconnect source if it has an active session.
+	if _, hasSession := self.GetRunningSession(sourceClnt); hasSession {
+		log.Printf("[SessionsMgr.MergeClientDevices] Disconnecting active session on source device %d before merge", sourceID)
+		if err := self.Disconnect(ctx, sourceClnt, ""); err != nil {
+			log.Printf("[SessionsMgr.MergeClientDevices] WARN: Failed to disconnect source device %d: %v", sourceID, err)
+			// Continue with merge anyway.
+		}
+	}
+
+	// Disconnect target if it has an active session; remember so we can reconnect.
+	var targetHadSession bool
+	if _, hasSession := self.GetRunningSession(targetClnt); hasSession {
+		targetHadSession = true
+		disconnectMsg := self.coreAPI.Translate("info", "Device merge in progress, reconnecting")
+		if err := self.Disconnect(ctx, targetClnt, disconnectMsg); err != nil {
+			log.Printf("[SessionsMgr.MergeClientDevices] WARN: Failed to disconnect target device %d: %v", targetID, err)
+			// Continue with merge anyway.
+		}
+	}
+
+	// Capture source UUID before deletion.
+	sourceDeviceUUID := sourceClnt.UUID()
+
+	// Perform the DB merge (transfers sessions, purchases, fingerprints, wallet; deletes source).
+	if err := self.mdl.Device().MergeDevices(ctx, targetID, sourceID); err != nil {
+		return fmt.Errorf("failed to merge device %d into %d: %w", sourceID, targetID, err)
+	}
+
+	log.Printf("[SessionsMgr.MergeClientDevices] Successfully merged device %d into %d", sourceID, targetID)
+
+	// Reload target to get updated state after merge, then emit event.
+	if reloaded, err := self.FindDeviceByID(ctx, targetID); err == nil {
+		self.eventsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+			Target:           reloaded,
+			SourceDeviceID:   sourceID,
+			SourceDeviceUUID: sourceDeviceUUID,
+		})
+	} else {
+		log.Printf("[SessionsMgr.MergeClientDevices] WARN: Failed to reload target device %d for merge event: %v", targetID, err)
+		// Still emit with original target reference so callbacks receive something.
+		self.eventsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+			Target:           targetClnt,
+			SourceDeviceID:   sourceID,
+			SourceDeviceUUID: sourceDeviceUUID,
+		})
+	}
+
+	// Reconnect target if it was active before the merge.
+	if targetHadSession {
+		reloaded, err := self.FindDeviceByID(ctx, targetID)
+		if err != nil {
+			log.Printf("[SessionsMgr.MergeClientDevices] ERROR: Failed to reload target device %d for reconnect: %v", targetID, err)
+			return nil // Merge succeeded; reconnect failure is non-fatal from caller's perspective.
+		}
+		reconnectMsg := self.coreAPI.Translate("success", "Device merge completed, reconnected successfully")
+		if err := self.Connect(ctx, reloaded, reconnectMsg); err != nil {
+			log.Printf("[SessionsMgr.MergeClientDevices] ERROR: Failed to reconnect target device %d after merge: %v", targetID, err)
+		} else {
+			log.Printf("[SessionsMgr.MergeClientDevices] Target device %d reconnected successfully after merge", targetID)
+		}
+	}
+
+	return nil
+}
+
 // =============================================================================
 // PUBLIC METHODS - Traffic and Session Management
 // =============================================================================

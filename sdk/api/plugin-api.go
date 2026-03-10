@@ -92,4 +92,10 @@ type IPluginApi interface {
 
 	// Returns an instance of storage API.
 	Storage() IStorageApi
+
+	// Events returns the unified event subscription API.
+	// Use this to register callbacks for session, client, purchase, and voucher events.
+	// Prefer this over the individual On* methods on ISessionsMgrApi, IVouchersApi,
+	// and IPaymentsApi, which are deprecated.
+	Events() IEventsApi
 }

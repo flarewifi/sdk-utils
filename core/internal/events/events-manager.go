@@ -33,6 +33,7 @@ type EventsManager struct {
 
 	sessionCallbacks      map[sdkapi.SessionEvent][]func(sdkapi.SessionEventData) error
 	clientCallbacks       map[sdkapi.ClientEvent][]func(sdkapi.IClientDevice) error
+	clientMergeCallbacks  []func(sdkapi.EventClientMergeData) error
 	purchaseCallbacks     map[sdkapi.PurchaseEvent][]func(sdkapi.PurchaseEventData) error
 	voucherCallbacks      map[sdkapi.VoucherEvent][]func(sdkapi.IVoucher) error
 	voucherBatchCallbacks map[sdkapi.VoucherEvent][]func(sdkapi.IVoucherBatch) error
@@ -95,6 +96,14 @@ func (em *EventsManager) OnBeforeCreate(cb func(context.Context, *sdkapi.CreateV
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.beforeCreateCallbacks = append(em.beforeCreateCallbacks, cb)
+}
+
+// OnClientMerge registers a callback that fires after two device records have been
+// successfully merged. The source device is deleted before callbacks are invoked.
+func (em *EventsManager) OnClientMerge(cb func(sdkapi.EventClientMergeData) error) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	em.clientMergeCallbacks = append(em.clientMergeCallbacks, cb)
 }
 
 // =============================================================================
@@ -181,6 +190,28 @@ func (em *EventsManager) EmitVoucherEvent(event sdkapi.VoucherEvent, v sdkapi.IV
 			_ = ctx
 			if err := cb(v); err != nil {
 				log.Printf("[EventsManager] %s handler error: %v", event, err)
+			}
+		}()
+	}
+}
+
+// EmitClientMerge dispatches a client-merge event to all registered callbacks asynchronously.
+// The source device is already deleted from the database when this is called.
+func (em *EventsManager) EmitClientMerge(data sdkapi.EventClientMergeData) {
+	em.mu.RLock()
+	cbs := em.clientMergeCallbacks
+	snapshot := make([]func(sdkapi.EventClientMergeData) error, len(cbs))
+	copy(snapshot, cbs)
+	em.mu.RUnlock()
+
+	for _, cb := range snapshot {
+		cb := cb
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			defer cancel()
+			_ = ctx
+			if err := cb(data); err != nil {
+				log.Printf("[EventsManager] client:merged handler error: %v", err)
 			}
 		}()
 	}

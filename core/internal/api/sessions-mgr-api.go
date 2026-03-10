@@ -380,3 +380,8 @@ func (self *SessionsMgrApi) ListRunningSessions() ([]sdkapi.IClientSession, erro
 func (self *SessionsMgrApi) FindRunningSessionByUUID(uuid string) (sdkapi.IClientSession, bool) {
 	return self.pluginApi.SessionMgr.FindRunningSessionByUUID(uuid)
 }
+
+// MergeClientDevices merges the source device into the target device.
+func (self *SessionsMgrApi) MergeClientDevices(ctx context.Context, targetID, sourceID int64) error {
+	return self.pluginApi.SessionMgr.MergeClientDevices(ctx, targetID, sourceID)
+}

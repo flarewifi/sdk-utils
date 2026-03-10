@@ -38,7 +38,27 @@ const (
 	EventClientUpdated      ClientEvent = "client:updated"
 	EventClientConnected    ClientEvent = "client:connected"
 	EventClientDisconnected ClientEvent = "client:disconnected"
+
+	// EventClientMerge is emitted after two device records are successfully merged.
+	// The source device (identified by Source) is deleted; the target device
+	// (available as Target) is the one that was kept and received all transferred data.
+	EventClientMerge ClientEvent = "client:merged"
 )
+
+// EventClientMergeData carries the context of a device-merge event.
+type EventClientMergeData struct {
+	// Target is the device that was kept after the merge. All sessions, purchases,
+	// fingerprints, and wallet balance from the source device have been transferred to it.
+	Target IClientDevice
+
+	// SourceDeviceID is the database ID of the device that was deleted during the merge.
+	// The source device no longer exists in the database when callbacks are invoked.
+	SourceDeviceID int64
+
+	// SourceDeviceUUID is the local UUID of the device that was deleted during the merge.
+	// Captured before deletion so plugins can notify external systems (e.g. cloud sync).
+	SourceDeviceUUID string
+}
 
 // SessionEventData represents the data associated with a session event.
 type SessionEventData struct {
@@ -209,9 +229,13 @@ type ISessionsMgrApi interface {
 	NewClientDevice(params NewDeviceParams) IClientDevice
 
 	// OnSessionEvent registers a callback for session events.
+	//
+	// Deprecated: Use api.Events().OnSessionEvent(...) instead.
 	OnSessionEvent(event SessionEvent, callback func(data SessionEventData) error)
 
 	// OnClientEvent registers a callback for client device events.
+	//
+	// Deprecated: Use api.Events().OnClientEvent(...) instead.
 	OnClientEvent(event ClientEvent, callback func(clnt IClientDevice) error)
 
 	// ListSessions returns a paginated list of sessions with optional search and filters.
@@ -240,4 +264,17 @@ type ISessionsMgrApi interface {
 	// this method only checks in-memory running sessions for better performance when
 	// you only need to know if a session is actively connected.
 	FindRunningSessionByUUID(uuid string) (IClientSession, bool)
+
+	// MergeClientDevices merges the source device into the target device.
+	// All sessions, purchases, fingerprints, and wallet balance are transferred from
+	// source to target. The source device is deleted after the merge.
+	//
+	// Active sessions on either device are disconnected before the merge. If the
+	// target device had an active session it is reconnected afterward.
+	//
+	// The OnClientMerge event is emitted after a successful merge so all registered
+	// callbacks (e.g. cloud sync) are notified.
+	//
+	// Returns an error if the merge fails; the state is rolled back on partial failure.
+	MergeClientDevices(ctx context.Context, targetID, sourceID int64) error
 }

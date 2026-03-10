@@ -10,6 +10,7 @@ import (
 	"core/internal/api"
 	"core/internal/modules/fingerprint"
 	jobque "core/utils/job-que"
+	sdkapi "sdk/api"
 )
 
 // mergeQueue serializes concurrent merge runs (queue size 1 — second run
@@ -362,6 +363,12 @@ func mergeMatchingDevicesTracked(ctx context.Context, g *api.CoreGlobals, device
 				}
 			}
 
+			// Capture source UUID before merge (source device is deleted by MergeDevices).
+			var sourceDeviceUUID string
+			if sourceClnt != nil && sourceErr == nil {
+				sourceDeviceUUID = sourceClnt.UUID()
+			}
+
 			// Perform merge — MergeDevices uses BEGIN IMMEDIATE transaction internally.
 			if err := g.Models.Device().MergeDevices(ctx, decision.TargetID, decision.SourceID); err != nil {
 				log.Printf("[DeviceMerge] ERROR: Failed to merge device %d into %d: %v", decision.SourceID, decision.TargetID, err)
@@ -371,6 +378,21 @@ func mergeMatchingDevicesTracked(ctx context.Context, g *api.CoreGlobals, device
 			newlyMergedSources[decision.SourceID] = true
 			mergeCount++
 			log.Printf("[DeviceMerge] Successfully merged device %d into %d", decision.SourceID, decision.TargetID)
+
+			// Emit merge event — use already-loaded targetClnt if available, otherwise reload.
+			mergeTarget := targetClnt
+			if mergeTarget == nil {
+				if reloaded, err := g.ClientMgr.FindClientById(ctx, decision.TargetID); err == nil {
+					mergeTarget = reloaded
+				}
+			}
+			if mergeTarget != nil {
+				g.EventsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+					Target:           mergeTarget,
+					SourceDeviceID:   decision.SourceID,
+					SourceDeviceUUID: sourceDeviceUUID,
+				})
+			}
 
 			// Reconnect target device if it had an active session
 			if targetHadSession && targetErr == nil {
