@@ -1,7 +1,5 @@
-'use strict';
-
 /**
- * Device Fingerprint Collector (ES5 compatible)
+ * Device Fingerprint Collector (ES3 compatible)
  * Collects browser fingerprint data for device identification
  */
 

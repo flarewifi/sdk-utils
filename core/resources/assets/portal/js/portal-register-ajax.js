@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Portal AJAX Registration
  * Handles device registration via AJAX with localStorage token management
@@ -7,6 +5,31 @@
  */
 
 (function() {
+  /**
+   * Serialize a flat object of string/number values to a JSON string.
+   * ES3-safe replacement for JSON.stringify for simple flat objects.
+   * @param {Object} obj
+   * @returns {string}
+   */
+  function serializeObject(obj) {
+    var parts = [];
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        var val = obj[key];
+        var valStr;
+        if (val === null || val === undefined) {
+          valStr = 'null';
+        } else if (typeof val === 'boolean' || typeof val === 'number') {
+          valStr = String(val);
+        } else {
+          valStr = '"' + String(val).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
+        }
+        parts.push('"' + key + '":' + valStr);
+      }
+    }
+    return '{' + parts.join(',') + '}';
+  }
+
   /**
    * Redirect to a URL (with error handling)
    * @param {string} url
@@ -100,7 +123,7 @@
       $.ajax({
         url: registerUrl,
         type: 'POST',
-        data: JSON.stringify(requestData),
+        data: serializeObject(requestData),
         contentType: 'application/json',
         dataType: 'json',
         timeout: 10000, // 10 second timeout
