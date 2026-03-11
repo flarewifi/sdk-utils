@@ -183,13 +183,19 @@ type IVouchersApi interface {
 	DeleteBatch(ctx context.Context, batchUUID string) error
 
 	// OnVoucherEvent registers a callback to be called when a voucher event occurs.
+	//
+	// Deprecated: Use api.Events().OnVoucherEvent(...) instead.
 	OnVoucherEvent(event VoucherEvent, callback func(IVoucher) error)
 
 	// OnVoucherBatchEvent registers a callback to be called when vouchers are generated.
+	//
+	// Deprecated: Use api.Events().OnVoucherBatchEvent(...) instead.
 	OnVoucherBatchEvent(event VoucherEvent, callback func(IVoucherBatch) error)
 
 	// OnBeforeCreate registers a hook called before voucher creation.
 	// The hook receives a pointer to params and can modify them.
 	// Return an error to block creation.
+	//
+	// Deprecated: Use api.Events().OnBeforeCreate(...) instead.
 	OnBeforeCreate(callback func(ctx context.Context, params *CreateVouchersParams) error)
 }

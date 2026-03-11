@@ -84,9 +84,17 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 
 			// Merge the conflicting device into the current device
 			// This transfers all sessions, purchases, fingerprints, and wallet balance
-			if err := reg.mdls.Device().MergeDevices(ctx, clnt.ID(), existingDev.ID()); err != nil {
+			sourceDeviceID := existingDev.ID()
+			sourceDeviceUUID := existingDev.UUID()
+			if err := reg.mdls.Device().MergeDevices(ctx, clnt.ID(), sourceDeviceID); err != nil {
 				return fmt.Errorf("could not merge devices: %w", err)
 			}
+
+			reg.sessionsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+				Target:           clnt,
+				SourceDeviceID:   sourceDeviceID,
+				SourceDeviceUUID: sourceDeviceUUID,
+			})
 
 			// Note: We don't disconnect the current device here. The regular UpdateDevice flow below
 			// (lines 112-154) will handle the disconnect-update-reconnect sequence properly, preserving

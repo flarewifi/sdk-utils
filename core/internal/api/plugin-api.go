@@ -199,6 +199,10 @@ func (self *PluginApi) Storage() sdkapi.IStorageApi {
 	return self.StorageAPI
 }
 
+func (self *PluginApi) Events() sdkapi.IEventsApi {
+	return self.EventsMgr
+}
+
 func (self *PluginApi) LoadAssetsManifest() {
 	self.AssetsManifest = plugins.GetAssetManifest(self.dir)
 }

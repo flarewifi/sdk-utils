@@ -56,6 +56,8 @@ type IPaymentsApi interface {
 	//   - EventPurchaseSuccess: Emitted after purchase.Confirm() succeeds
 	//   - EventPurchaseFailed: Emitted when purchase.Confirm() or purchase.Execute() fails
 	//   - EventPurchaseCancelled: Emitted after purchase.Cancel() completes
+	//
+	// Deprecated: Use api.Events().OnPurchaseEvent(...) instead.
 	OnPurchaseEvent(event PurchaseEvent, callback func(data PurchaseEventData) error)
 
 	// CreatePurchase creates a purchase record programmatically without HTTP checkout flow.

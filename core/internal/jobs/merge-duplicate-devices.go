@@ -331,64 +331,13 @@ func mergeMatchingDevicesTracked(ctx context.Context, g *api.CoreGlobals, device
 
 			log.Printf("[DeviceMerge] Merging device %d into %d (%s)", decision.SourceID, decision.TargetID, decision.Reason)
 
-			// Attempt to look up active sessions and disconnect them before merging.
-			// FindClientById failure only skips session management — the DB merge
-			// proceeds regardless, since MergeDevices does not need the ClientDevice wrapper.
-			sourceClnt, sourceErr := g.ClientMgr.FindClientById(ctx, decision.SourceID)
-			if sourceErr != nil {
-				log.Printf("[DeviceMerge] WARN: Could not look up source device %d for session management (proceeding with merge): %v", decision.SourceID, sourceErr)
-			} else {
-				if _, hasSession := g.ClientMgr.GetRunningSession(sourceClnt); hasSession {
-					log.Printf("[DeviceMerge] Disconnecting active session on source device %d before merge", decision.SourceID)
-					if err := g.ClientMgr.Disconnect(ctx, sourceClnt, ""); err != nil {
-						log.Printf("[DeviceMerge] WARN: Failed to disconnect session on source device %d: %v", decision.SourceID, err)
-						// Continue with merge anyway
-					}
-				}
-			}
-
-			var targetHadSession bool
-			targetClnt, targetErr := g.ClientMgr.FindClientById(ctx, decision.TargetID)
-			if targetErr != nil {
-				log.Printf("[DeviceMerge] WARN: Could not look up target device %d for session management (proceeding with merge): %v", decision.TargetID, targetErr)
-			} else {
-				if _, hasSession := g.ClientMgr.GetRunningSession(targetClnt); hasSession {
-					targetHadSession = true
-					disconnectMsg := g.CoreAPI.Translate("info", "Device merge in progress, reconnecting")
-					if err := g.ClientMgr.Disconnect(ctx, targetClnt, disconnectMsg); err != nil {
-						log.Printf("[DeviceMerge] WARN: Failed to disconnect session on target device %d: %v", decision.TargetID, err)
-						// Continue with merge anyway
-					}
-				}
-			}
-
-			// Perform merge — MergeDevices uses BEGIN IMMEDIATE transaction internally.
-			if err := g.Models.Device().MergeDevices(ctx, decision.TargetID, decision.SourceID); err != nil {
+			if err := g.ClientMgr.MergeClientDevices(ctx, decision.TargetID, decision.SourceID); err != nil {
 				log.Printf("[DeviceMerge] ERROR: Failed to merge device %d into %d: %v", decision.SourceID, decision.TargetID, err)
 				continue
 			}
 
 			newlyMergedSources[decision.SourceID] = true
 			mergeCount++
-			log.Printf("[DeviceMerge] Successfully merged device %d into %d", decision.SourceID, decision.TargetID)
-
-			// Reconnect target device if it had an active session
-			if targetHadSession && targetErr == nil {
-				// Reload target device to get updated state after merge
-				reloadedTarget, err := g.ClientMgr.FindClientById(ctx, decision.TargetID)
-				if err != nil {
-					log.Printf("[DeviceMerge] ERROR: Failed to reload target device %d after merge: %v", decision.TargetID, err)
-					continue
-				}
-
-				reconnectMsg := g.CoreAPI.Translate("success", "Device merge completed, reconnected successfully")
-				if err := g.ClientMgr.Connect(ctx, reloadedTarget, reconnectMsg); err != nil {
-					log.Printf("[DeviceMerge] ERROR: Failed to reconnect target device %d after merge: %v", decision.TargetID, err)
-					// Don't continue - merge succeeded, just log reconnection failure
-				} else {
-					log.Printf("[DeviceMerge] Target device %d reconnected successfully after merge", decision.TargetID)
-				}
-			}
 		}
 	}
 
