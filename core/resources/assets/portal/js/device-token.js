@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Device Token Manager
  * Manages device authentication tokens in localStorage
