@@ -275,6 +275,7 @@ type ISessionsMgrApi interface {
 	// The OnClientMerge event is emitted after a successful merge so all registered
 	// callbacks (e.g. cloud sync) are notified.
 	//
-	// Returns an error if the merge fails; the state is rolled back on partial failure.
+	// Returns an error if the DB merge fails. Session disconnect/reconnect failures
+	// are logged but do not abort the merge.
 	MergeClientDevices(ctx context.Context, targetID, sourceID int64) error
 }

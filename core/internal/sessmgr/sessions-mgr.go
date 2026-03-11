@@ -108,7 +108,8 @@ func (self *SessionsMgr) EmitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.I
 }
 
 // EmitClientMerge dispatches a client-merge event asynchronously via EventsManager.
-// Internal use only — called by ClientRegister and the merge-duplicate-devices job.
+// Internal use only — called by ClientRegister for MAC-collision merges that must
+// defer the target reconnect to the surrounding UpdateDevice flow.
 func (self *SessionsMgr) EmitClientMerge(data sdkapi.EventClientMergeData) {
 	self.eventsMgr.EmitClientMerge(data)
 }
@@ -160,32 +161,25 @@ func (self *SessionsMgr) MergeClientDevices(ctx context.Context, targetID, sourc
 
 	log.Printf("[SessionsMgr.MergeClientDevices] Successfully merged device %d into %d", sourceID, targetID)
 
-	// Reload target to get updated state after merge, then emit event.
-	if reloaded, err := self.FindDeviceByID(ctx, targetID); err == nil {
-		self.eventsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
-			Target:           reloaded,
-			SourceDeviceID:   sourceID,
-			SourceDeviceUUID: sourceDeviceUUID,
-		})
-	} else {
-		log.Printf("[SessionsMgr.MergeClientDevices] WARN: Failed to reload target device %d for merge event: %v", targetID, err)
-		// Still emit with original target reference so callbacks receive something.
-		self.eventsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
-			Target:           targetClnt,
-			SourceDeviceID:   sourceID,
-			SourceDeviceUUID: sourceDeviceUUID,
-		})
+	// Reload target once to get updated state after merge.
+	// Reused for both the event emit and the optional reconnect below.
+	reloadedTarget, reloadErr := self.FindDeviceByID(ctx, targetID)
+	if reloadErr != nil {
+		log.Printf("[SessionsMgr.MergeClientDevices] WARN: Failed to reload target device %d after merge: %v", targetID, reloadErr)
+		// Fall back to original reference so the event is still emitted.
+		reloadedTarget = targetClnt
 	}
+
+	self.eventsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+		Target:           reloadedTarget,
+		SourceDeviceID:   sourceID,
+		SourceDeviceUUID: sourceDeviceUUID,
+	})
 
 	// Reconnect target if it was active before the merge.
 	if targetHadSession {
-		reloaded, err := self.FindDeviceByID(ctx, targetID)
-		if err != nil {
-			log.Printf("[SessionsMgr.MergeClientDevices] ERROR: Failed to reload target device %d for reconnect: %v", targetID, err)
-			return nil // Merge succeeded; reconnect failure is non-fatal from caller's perspective.
-		}
 		reconnectMsg := self.coreAPI.Translate("success", "Device merge completed, reconnected successfully")
-		if err := self.Connect(ctx, reloaded, reconnectMsg); err != nil {
+		if err := self.Connect(ctx, reloadedTarget, reconnectMsg); err != nil {
 			log.Printf("[SessionsMgr.MergeClientDevices] ERROR: Failed to reconnect target device %d after merge: %v", targetID, err)
 		} else {
 			log.Printf("[SessionsMgr.MergeClientDevices] Target device %d reconnected successfully after merge", targetID)
