@@ -1,8 +1,10 @@
 # IHttpRouterApi
-The `IHttpRouterApi` is the backend for http routing in Flare Hotspot. There are two (2) kinds of http routers:
+The `IHttpRouterApi` is the backend for http routing in Flare Hotspot. There are four (4) kinds of http routers:
 
 - `AdminRouter` - a router for the admin pages of the plugin that requires admin authentication.
-- `PluginRouter` - a router for general purpose routing within the plugin
+- `PluginRouter` - a router for general purpose routing within the plugin.
+- `StaticAdminRouter` - a version-independent admin router whose paths persist across plugin version updates.
+- `StaticPluginRouter` - a version-independent plugin router whose paths persist across plugin version updates.
 
 ---
 
@@ -113,17 +115,34 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 }
 ```
 
-### UrlForRoute
+### Static Admin Router {#static-admin-router}
 
-This method is used to generate the url for the given plugin route name. This method accepts two arguments, the first argument is the route name and the second argument is a map of route parameters. The route parameters are key-value pairs. The example below generates a URL for the route name `portal.welcome` with a route path `/welcome/{name}`:
+This method returns the [static admin router](#router-instance) for the plugin. Routes registered here are accessible at `/admin/static/{package}/{path}` and **persist across plugin version updates**. Like the regular admin router, these routes require admin authentication. Use static routes for URLs you want to remain stable even after bumping the plugin version — for example, webhook endpoints or external integrations.
 
 ```go
-url := api.Http().Router().UrlForRoute("portal.welcome", "name", "John")
+staticAdminRouter := api.Http().Router().StaticAdminRouter()
+```
+
+### Static Plugin Router {#static-plugin-router}
+
+This method returns the [static plugin router](#router-instance) for the plugin. Routes registered here are accessible at `/p/static/{package}/{path}` and **persist across plugin version updates**. Use static routes for public-facing URLs that must remain stable, such as payment callbacks or QR code links.
+
+```go
+staticPluginRouter := api.Http().Router().StaticPluginRouter()
+```
+
+### UrlForRoute
+
+This method generates the URL for a route by name. It automatically resolves the correct URL whether the route was registered on a versioned or static router — no separate method needed for static routes.
+
+```go
+// Works for both versioned and static routes:
+url := api.Http().Router().UrlForRoute("purchase:wifi", "plan", "basic")
 ```
 
 ### UrlForPkgRoute
 
-This method is used to generate the url for third-party plugin route name. This method accepts three arguments, the first argument is the plugin package name (e.g `com.mydomain.myplugin`) in which the route name belongs to, the second argument is the route name and the third argument is the route parameters, similar to [UrlForRoute](#urlforroute) method.
+This method generates the URL for a route registered in a different plugin. It accepts the target plugin's package name, the route name, and optional route parameters. Like `UrlForRoute`, it automatically resolves versioned or static routes.
 
 ```go
 url := api.Http().Router().UrlForPkgRoute("com.mydomain.myplugin", "portal.welcome", "name", "John")
@@ -133,7 +152,7 @@ url := api.Http().Router().UrlForPkgRoute("com.mydomain.myplugin", "portal.welco
 
 ## IHttpRouterInstance {#router-instance}
 
-`IHttpRouterInstance` is a router instance used to generate routes for the plugin. Routes can be generated using a [PluginRouter](#plugin-router) or an [AdminRouter](#admin-router). Below are the methods available in the router instance:
+`IHttpRouterInstance` is a router instance used to generate routes for the plugin. Routes can be generated using a [PluginRouter](#plugin-router), an [AdminRouter](#admin-router), a [StaticPluginRouter](#static-plugin-router), or a [StaticAdminRouter](#static-admin-router). Below are the methods available in the router instance:
 
 ### Group
 
@@ -178,6 +197,46 @@ router.Post("/settings/save", func(w http.ResponseWriter, r *http.Request) {
 
 This method is used to add a [middleware](#middlewares) to the router. It accepts a list of middlewares.
 All routes defined after the `Use` method will use the middleware.
+
+---
+
+## IHttpRoute {#http-route}
+
+`IHttpRoute` is returned by `Get()` and `Post()` and allows you to configure the route after registration.
+
+### Name {#name}
+
+Sets the name of the route. Route names for admin routes must be prefixed with `admin:`. Named routes can be resolved to URLs using [UrlForRoute](#urlforroute) regardless of whether they are versioned or static.
+
+The same `Name()` method is used for both versioned and static routes — the correct URL namespace is applied automatically based on whether the route was registered on a static or versioned router.
+
+```go
+// Versioned route
+router := api.Http().Router().PluginRouter()
+router.Get("/purchase/wifi", handler).Name("purchase:wifi")
+
+adminRouter := api.Http().Router().AdminRouter()
+adminRouter.Get("/sessions", handler).Name("admin:sessions:list")
+
+// Static route — same Name() method
+staticRouter := api.Http().Router().StaticPluginRouter()
+staticRouter.Get("/purchase/wifi", handler).Name("purchase:wifi")
+// accessible at: /p/static/com.mydomain.myplugin/purchase/wifi
+
+staticAdminRouter := api.Http().Router().StaticAdminRouter()
+staticAdminRouter.Get("/sessions/export", handler).Name("admin:sessions:export")
+// accessible at: /admin/static/com.mydomain.myplugin/sessions/export
+```
+
+### Queries
+
+Adds URL query parameter constraints to the route. Only requests that include the specified query parameters will match this route.
+
+```go
+router.Get("/search", handler).
+    Queries("q", "{query}").
+    Name("portal:search")
+```
 
 ---
 
@@ -242,3 +301,65 @@ api.Http().Router().AdminRouter().Group("/settings", func (subrouter IHttpRouter
 ```
 
 In the examples above, the middleware is used to perform operations on the request before it reaches the handler function inside the sub-router. But it can also be used directly on the [PluginRouter](#plugin-router) or the [AdminRouter](#admin-router).
+
+---
+
+## Static Routers {#static-routers}
+
+Static routers provide version-independent URLs that persist across plugin version updates. Use them for any URL that must remain stable over time — payment callbacks, QR code links, webhook endpoints, or bookmarkable admin pages.
+
+### Path structure
+
+| Router | Path pattern |
+|--------|-------------|
+| `PluginRouter` | `/p/{package}/{version}/{path}` |
+| `AdminRouter` | `/admin/{package}/{version}/{path}` |
+| `StaticPluginRouter` | `/p/static/{package}/{path}` |
+| `StaticAdminRouter` | `/admin/static/{package}/{path}` |
+
+### Example — stable payment callback
+
+```go
+func Init(api sdkapi.IPluginApi) error {
+    // This URL stays the same even after a plugin version bump:
+    // /p/static/com.mydomain.myplugin/payments/callback
+    api.Http().Router().StaticPluginRouter().
+        Post("/payments/callback", handlePaymentCallback).
+        Name("payments:callback")
+
+    return nil
+}
+
+func handlePaymentCallback(w http.ResponseWriter, r *http.Request) {
+    // Handle payment gateway POST notification
+}
+```
+
+### Example — stable admin export endpoint
+
+```go
+func Init(api sdkapi.IPluginApi) error {
+    // /admin/static/com.mydomain.myplugin/sessions/export
+    api.Http().Router().StaticAdminRouter().
+        Get("/sessions/export", handleExport).
+        Name("admin:sessions:export")
+
+    return nil
+}
+```
+
+### Generating static URLs
+
+Use the same `UrlForRoute` / `UrlForPkgRoute` you already use for versioned routes — the correct static URL is resolved automatically:
+
+```go
+// In a handler:
+url := api.Http().Router().UrlForRoute("payments:callback")
+// → /p/static/com.mydomain.myplugin/payments/callback
+
+// In a templ template:
+templ.SafeURL(api.Http().Helpers().UrlForRoute("payments:callback"))
+
+// Linking to another plugin's static route:
+templ.SafeURL(api.Http().Helpers().UrlForPkgRoute("com.other.plugin", "payments:callback"))
+```

@@ -20,10 +20,12 @@ const (
 )
 
 type HttpRouterApi struct {
-	api               *PluginApi
-	adminRouter       *HttpRouterInstance
-	pluginRouter      *HttpRouterInstance
-	portalMiddlewares []func(http.Handler) http.Handler
+	api                *PluginApi
+	adminRouter        *HttpRouterInstance
+	pluginRouter       *HttpRouterInstance
+	staticAdminRouter  *HttpRouterInstance
+	staticPluginRouter *HttpRouterInstance
+	portalMiddlewares  []func(http.Handler) http.Handler
 }
 
 func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegister) *HttpRouterApi {
@@ -31,20 +33,30 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegis
 	pluginMux := router.PluginRouter.PathPrefix(prefix).Subrouter()
 	adminMux := router.AdminRouter.PathPrefix(prefix).Subrouter()
 
-	pluginRouter := &HttpRouterInstance{api, pluginMux, false}
-	adminRouter := &HttpRouterInstance{api, adminMux, true}
+	staticPrefix := fmt.Sprintf("/%s", api.info.Package)
+	staticPluginMux := router.StaticPluginRouter.PathPrefix(staticPrefix).Subrouter()
+	staticAdminMux := router.StaticAdminRouter.PathPrefix(staticPrefix).Subrouter()
+
+	pluginRouter := NewHttpRouterInstance(api, pluginMux, false)
+	adminRouter := NewHttpRouterInstance(api, adminMux, true)
+	staticPluginRouter := NewStaticHttpRouterInstance(api, staticPluginMux, false)
+	staticAdminRouter := NewStaticHttpRouterInstance(api, staticAdminMux, true)
 
 	return &HttpRouterApi{
-		api:               api,
-		adminRouter:       adminRouter,
-		pluginRouter:      pluginRouter,
-		portalMiddlewares: []func(http.Handler) http.Handler{},
+		api:                api,
+		adminRouter:        adminRouter,
+		pluginRouter:       pluginRouter,
+		staticAdminRouter:  staticAdminRouter,
+		staticPluginRouter: staticPluginRouter,
+		portalMiddlewares:  []func(http.Handler) http.Handler{},
 	}
 }
 
 func (self *HttpRouterApi) Initialize() {
 	self.adminRouter.Use(middlewares.HTTPSRedirect())
 	self.adminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
+	self.staticAdminRouter.Use(middlewares.HTTPSRedirect())
+	self.staticAdminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
 }
 
 func (self *HttpRouterApi) AdminRouter() sdkapi.IHttpRouterInstance {
@@ -53,6 +65,14 @@ func (self *HttpRouterApi) AdminRouter() sdkapi.IHttpRouterInstance {
 
 func (self *HttpRouterApi) PluginRouter() sdkapi.IHttpRouterInstance {
 	return self.pluginRouter
+}
+
+func (self *HttpRouterApi) StaticAdminRouter() sdkapi.IHttpRouterInstance {
+	return self.staticAdminRouter
+}
+
+func (self *HttpRouterApi) StaticPluginRouter() sdkapi.IHttpRouterInstance {
+	return self.staticPluginRouter
 }
 
 func (self *HttpRouterApi) Use(middleware ...func(http.Handler) http.Handler) {
@@ -66,8 +86,13 @@ func (self *HttpRouterApi) MuxRouteName(name sdkapi.PluginRouteName) sdkapi.MuxR
 	return sdkapi.MuxRouteName(muxname)
 }
 
+func (self *HttpRouterApi) staticMuxRouteName(name sdkapi.PluginRouteName) sdkapi.MuxRouteName {
+	muxname := fmt.Sprintf("%s#static#%s", self.api.info.Package, string(name))
+	return sdkapi.MuxRouteName(muxname)
+}
+
 func (self *HttpRouterApi) UrlForMuxRoute(muxname sdkapi.MuxRouteName, pairs ...string) string {
-	route := router.RootRouter.Get(string(muxname))
+	route := router.FindRoute(muxname)
 	if route == nil {
 		log.Println("Error: route not found for " + string(muxname))
 		return "Error: route not found for " + string(muxname)
@@ -83,8 +108,12 @@ func (self *HttpRouterApi) UrlForMuxRoute(muxname sdkapi.MuxRouteName, pairs ...
 }
 
 func (self *HttpRouterApi) UrlForRoute(name sdkapi.PluginRouteName, pairs ...string) string {
+	// Try versioned route first, fall back to static route automatically.
 	muxname := self.MuxRouteName(name)
-	return self.UrlForMuxRoute(muxname, pairs...)
+	if router.FindRoute(muxname) != nil {
+		return self.UrlForMuxRoute(muxname, pairs...)
+	}
+	return self.UrlForMuxRoute(self.staticMuxRouteName(name), pairs...)
 }
 
 func (self *HttpRouterApi) UrlForPkgRoute(pkg string, name string, pairs ...string) string {

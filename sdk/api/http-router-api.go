@@ -19,15 +19,24 @@ type IHttpRouterApi interface {
 	// Returns a generic plugin router.
 	PluginRouter() IHttpRouterInstance
 
+	// Returns a static admin router. Routes registered here are accessible at
+	// /admin/static/{package}/{path} and persist across plugin version updates.
+	StaticAdminRouter() IHttpRouterInstance
+
+	// Returns a static plugin router. Routes registered here are accessible at
+	// /p/static/{package}/{path} and persist across plugin version updates.
+	StaticPluginRouter() IHttpRouterInstance
+
 	// Register middlewares for captive portal page.
 	// This middlewares are used to wrap the captive portal index page handler.
 	UseForPortal(middlewares ...func(http.Handler) http.Handler)
 
 	// Returns the url for the given route name.
+	// If the route was registered on a static router, the static URL is returned automatically.
 	UrlForRoute(name PluginRouteName, pairs ...string) (url string)
 
 	// Returns the url for the route from third-party plugins.
-	// This is used create links to routes from other plugins.
+	// This is used to create links to routes from other plugins.
 	UrlForPkgRoute(pkg string, name string, pairs ...string) (url string)
 }
 

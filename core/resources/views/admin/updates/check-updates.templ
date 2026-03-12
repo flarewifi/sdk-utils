@@ -196,45 +196,49 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 		</div>
 	</div>
 	<div id="update-info" hx-swap-oob="true">
-		<div class="my-4">
-			<h5 class="fw-bold">Version { update.NewVersion } Available</h5>
-			<p>Released on <span>2026-02-05</span> • <span>24.5 MB</span></p>
-		</div>
-		if update.ReleaseNotes != "" {
-			<div class="accordion mb-4">
-				<div class="accordion-item">
-					<p class="accordion-header">
-						<button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#whatsNew" aria-expanded="true" aria-controls="whatsNew">
-							What's New
-						</button>
-					</p>
-					<div class="accordion-collapse collapse show" id="whatsNew">
-						<div class="accordion-body">
-							<div class="d-flex align-items-center gap-2 mb-2">
-								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00a63e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check">
-									<circle cx="12" cy="12" r="10"></circle>
-									<path d="m9 12 2 2 4-4"></path>
-								</svg>
-								@update.ReleaseNotesHTML
+		<div class="card border-success mt-4">
+			<div class="card-body">
+				<div class="mb-3">
+					<h5 class="fw-bold text-success">Version { update.NewVersion } Available</h5>
+					<p class="mb-0">Released on <span>2026-02-05</span> • <span>24.5 MB</span></p>
+				</div>
+				if update.ReleaseNotes != "" {
+					<div class="accordion mb-4">
+						<div class="accordion-item">
+							<p class="accordion-header">
+								<button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#whatsNew" aria-expanded="true" aria-controls="whatsNew">
+									What's New
+								</button>
+							</p>
+							<div class="accordion-collapse collapse show" id="whatsNew">
+								<div class="accordion-body">
+									<div class="d-flex align-items-center gap-2 mb-2">
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00a63e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check">
+											<circle cx="12" cy="12" r="10"></circle>
+											<path d="m9 12 2 2 4-4"></path>
+										</svg>
+										@update.ReleaseNotesHTML
+									</div>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
+				}
+				<a
+					class="btn btn-success w-full"
+					href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:download")) }
+				>
+					<span class="d-flex align-items-center gap-2 fw-semibold justify-content-center">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download">
+							<path d="M12 15V3"></path>
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+							<path d="m7 10 5 5 5-5"></path>
+						</svg>
+						{ api.Translate("label", "Download and Install Update") }
+					</span>
+				</a>
 			</div>
-		}
-		<a
-			class="btn btn-primary w-full"
-			href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:download")) }
-		>
-			<span class="d-flex align-items-center gap-2 fw-semibold justify-content-center">
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download">
-					<path d="M12 15V3"></path>
-					<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-					<path d="m7 10 5 5 5-5"></path>
-				</svg>
-				{ api.Translate("label", "Download and Install Update") }
-			</span>
-		</a>
+		</div>
 	</div>
 }
 

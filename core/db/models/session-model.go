@@ -10,8 +10,7 @@ import (
 
 	"core/db"
 	"core/db/queries"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	"core/internal/modules/validation"
 )
 
 type SessionModel struct {
@@ -62,14 +61,9 @@ func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams
 		return nil, errors.New("session UUID cannot be empty")
 	}
 
-	// Validate bandwidth speeds
-	if !params.UseGlobalSpeed {
-		if params.DownMbits <= 0 {
-			return nil, errors.New("download speed must be greater than zero")
-		}
-		if params.UpMbits <= 0 {
-			return nil, errors.New("upload speed must be greater than zero")
-		}
+	// Validate session type and bandwidth speeds
+	if err := validation.ValidateSessionData(params.Type, params.DownMbits, params.UpMbits, params.UseGlobalSpeed); err != nil {
+		return nil, err
 	}
 
 	var expDays sql.NullInt64
@@ -118,14 +112,9 @@ func (self *SessionModel) FindByUUID(ctx context.Context, uuid string) (*Session
 }
 
 func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams) error {
-	// Validate bandwidth speeds
-	if !params.UseGlobalSpeed {
-		if params.DownMbits <= 0 {
-			return errors.New("download speed must be greater than zero")
-		}
-		if params.UpMbits <= 0 {
-			return errors.New("upload speed must be greater than zero")
-		}
+	// Validate session type and bandwidth speeds
+	if err := validation.ValidateSessionData(params.Type, params.DownMbits, params.UpMbits, params.UseGlobalSpeed); err != nil {
+		return err
 	}
 
 	var expDays sql.NullInt64
@@ -141,16 +130,6 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 	var resumedAtTime sql.NullTime
 	if params.ResumedAt != nil {
 		resumedAtTime = sql.NullTime{Time: *params.ResumedAt, Valid: true}
-	}
-
-	types := []sdkapi.SessionType{
-		sdkapi.SessionTypeTime,
-		sdkapi.SessionTypeData,
-		sdkapi.SessionTypeTimeOrData,
-	}
-
-	if !sdkutils.SliceContains(types, params.Type) {
-		return errors.New("invalid session type")
 	}
 
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
@@ -205,14 +184,8 @@ func (self *SessionModel) SessionsForDev(ctx context.Context, devId int64) ([]*S
 }
 
 func (self *SessionModel) UpdateAllBandwidth(ctx context.Context, downMbit int, upMbit int, g bool) error {
-	// Validate bandwidth speeds
-	if !g {
-		if downMbit <= 0 {
-			return errors.New("download speed must be greater than zero")
-		}
-		if upMbit <= 0 {
-			return errors.New("upload speed must be greater than zero")
-		}
+	if err := validation.ValidateSessionBandwidth(downMbit, upMbit, g); err != nil {
+		return err
 	}
 
 	err := self.db.Queries.UpdateAllBandwidth(ctx, queries.UpdateAllBandwidthParams{
