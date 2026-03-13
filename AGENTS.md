@@ -29,6 +29,7 @@
 4. **Confirm** - Get user approval before implementing
 5. **Implement** - Code the solution
 6. **Review** - Check for errors, logic bugs, security issues (see checklist below)
+7. **Document** - Update `sdk/mkdocs/docs/api/` when adding or changing SDK API methods
 
 ### Implementation Review Checklist (MANDATORY)
 
@@ -328,6 +329,7 @@ Only create custom functions if needed functionality doesn't exist in `sdk/utils
 | **Changes not appearing** | **Wait for `Listening on port :3000` in logs, then hard refresh browser** |
 | **Build stuck/looping** | **Restart container: `docker restart flarewifi-app-1`** |
 | **sqlc errors after SQL edit** | **Check SQL syntax, ensure `@param` names match Go struct fields** |
+| **Adding/changing SDK API methods** | **Update `sdk/mkdocs/docs/api/` docs immediately after implementation** |
 
 ## UI Testing
 

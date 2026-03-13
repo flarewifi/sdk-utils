@@ -738,6 +738,7 @@ func (self *SessionsMgr) loopSessions(startedCh chan<- error, clnt sdkapi.IClien
 
 		// Get or create running session
 		rs, ok := self.getRunningSession(clnt)
+		newlyCreated := !ok
 		if !ok {
 			rs, err = NewRunningSession(clnt, cs, self.eventsMgr, self.tcQueue)
 			if err != nil {
@@ -755,6 +756,11 @@ func (self *SessionsMgr) loopSessions(startedCh chan<- error, clnt sdkapi.IClien
 		// Start the session (this also sets up TC classes/filters)
 		err = rs.Start(ctx, cs)
 		if err != nil {
+			// If we just created and stored this RunningSession in this iteration,
+			// remove it — Start() failed so it never became active.
+			if newlyCreated {
+				self.sessions.Delete(clnt.ID())
+			}
 			if !started {
 				// First session start failed - user sees error immediately
 				signalStart(err)

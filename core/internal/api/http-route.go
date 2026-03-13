@@ -2,20 +2,23 @@ package api
 
 import (
 	"log"
-	sdkapi "sdk/api"
 	"strings"
+
+	"core/internal/web/router"
+	sdkapi "sdk/api"
 
 	"github.com/gorilla/mux"
 )
 
-func NewHttpRoute(api *PluginApi, r *mux.Route, admin bool) *HttpRoute {
-	return &HttpRoute{api, r, admin}
+func NewHttpRoute(api *PluginApi, r *mux.Route, admin bool, static bool) *HttpRoute {
+	return &HttpRoute{api: api, mux: r, admin: admin, static: static}
 }
 
 type HttpRoute struct {
-	api   *PluginApi
-	mux   *mux.Route
-	admin bool
+	api    *PluginApi
+	mux    *mux.Route
+	admin  bool
+	static bool
 }
 
 func (self *HttpRoute) Queries(pairs ...string) sdkapi.IHttpRoute {
@@ -34,7 +37,13 @@ func (self *HttpRoute) Name(name sdkapi.PluginRouteName) sdkapi.IHttpRoute {
 		}
 	}
 
-	muxname := self.api.HttpAPI.httpRouter.MuxRouteName(name)
+	var muxname sdkapi.MuxRouteName
+	if self.static {
+		muxname = self.api.HttpAPI.httpRouter.staticMuxRouteName(name)
+	} else {
+		muxname = self.api.HttpAPI.httpRouter.MuxRouteName(name)
+	}
 	self.mux.Name(string(muxname))
+	router.RegisterRoute(muxname, self.mux)
 	return self
 }

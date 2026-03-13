@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"core/internal/modules/tc"
+	"core/internal/modules/validation"
 	"core/internal/network"
 	jobque "core/utils/job-que"
 	sdkapi "sdk/api"
@@ -207,7 +208,13 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 		return fmt.Errorf("failed to reload session: %w", err)
 	}
 
-	// 2. Store session reference and clear stopped flag under mu.
+	// 2. Validate session fields against freshly reloaded data before touching DB or TC.
+	sessionData := s.Data()
+	if err := validation.ValidateSessionData(sessionData.Type, sessionData.DownMbits, sessionData.UpMbits, sessionData.UseGlobalSpeed); err != nil {
+		return fmt.Errorf("invalid session %d: %w", sessionData.ID, err)
+	}
+
+	// 3. Store session reference and clear stopped flag under mu.
 	// Note: We allow Start() even if stopped=true (after PrepareForChain()) to enable session chaining.
 	self.mu.Lock()
 	self.stopped.Store(false)
@@ -216,7 +223,7 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 
 	// Build timestamp update outside mu — s.SetData() acquires ClientSession.writeMu
 	// internally, so calling it while mu is held would create a mu→writeMu nesting.
-	sessionData := s.Data()
+	// sessionData was already fetched above for validation; reuse it here.
 	timeNow := time.Now().UTC()
 	updateData := sdkapi.SessionUpdateData{}
 	hasUpdates := false

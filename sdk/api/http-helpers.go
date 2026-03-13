@@ -39,6 +39,7 @@ type IHttpHelpers interface {
 	Translate(msgtype string, msgk string, pairs ...any) string
 
 	// Returns the url for the route.
+	// If the route was registered on a static router, the static URL is returned automatically.
 	UrlForRoute(name string, pairs ...string) (uri string)
 
 	// Returns the url from other plugins.
