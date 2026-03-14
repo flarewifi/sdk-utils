@@ -17,25 +17,39 @@ import (
 const (
 	// DstIpGroupMaxAge is the maximum age for IPs in a destination group before they're flushed
 	DstIpGroupMaxAge = 12 * time.Hour
+	// dnsResolveCacheTTL is how long to keep cached DNS resolution results fresh
+	dnsResolveCacheTTL = 30 * time.Minute
+	// dnsResolveCacheStaleMax is the max age before refusing to use stale cached DNS data
+	dnsResolveCacheStaleMax = 24 * time.Hour
 )
+
+// dnsResolveEntry stores cached DNS resolution results with a timestamp
+type dnsResolveEntry struct {
+	ips       []string
+	timestamp time.Time
+}
 
 func NewFirewallApi(api *PluginApi) {
 	firewallApi := &FirewallApi{
-		activeTimers:  make(map[string]*time.Timer),
-		firewallMutex: &sync.RWMutex{},
-		firewallQue:   jobque.NewJobQueue[any](),
-		createdGroups: make(map[string]bool),
-		groupIPs:      make(map[string]map[string]time.Time),
+		activeTimers:    make(map[string]*time.Timer),
+		firewallMutex:   &sync.RWMutex{},
+		firewallQue:     jobque.NewJobQueue[any](),
+		createdGroups:   make(map[string]bool),
+		groupIPs:        make(map[string]map[string]time.Time),
+		dnsResolveCache: make(map[string]dnsResolveEntry),
+		dnsCacheMutex:   &sync.RWMutex{},
 	}
 	api.FirewallAPI = firewallApi
 }
 
 type FirewallApi struct {
-	activeTimers  map[string]*time.Timer          // Track active removal timers by "destIP:mac" key
-	firewallMutex *sync.RWMutex                   // Protect concurrent access to activeTimers, createdGroups, and groupIPs
-	firewallQue   *jobque.JobQueue[any]           // Serialize firewall operations to prevent race conditions
-	createdGroups map[string]bool                 // Track created destination IP groups by slugified name
-	groupIPs      map[string]map[string]time.Time // Track IPs per group with timestamp when added (slugName -> IP -> addedAt)
+	activeTimers    map[string]*time.Timer          // Track active removal timers by "destIP:mac" key
+	firewallMutex   *sync.RWMutex                   // Protect concurrent access to activeTimers, createdGroups, and groupIPs
+	firewallQue     *jobque.JobQueue[any]           // Serialize firewall operations to prevent race conditions
+	createdGroups   map[string]bool                 // Track created destination IP groups by slugified name
+	groupIPs        map[string]map[string]time.Time // Track IPs per group with timestamp when added (slugName -> IP -> addedAt)
+	dnsResolveCache map[string]dnsResolveEntry      // Cache DNS resolution results by hostname
+	dnsCacheMutex   *sync.RWMutex                   // Protect concurrent access to dnsResolveCache
 }
 
 // ResolveHostnameToIps is implemented in firewall-api-resolve.go and firewall-api-resolve_dev.go

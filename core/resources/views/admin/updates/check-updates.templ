@@ -224,19 +224,21 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 						</div>
 					</div>
 				}
-				<a
-					class="btn btn-success w-full"
-					href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:download")) }
-				>
-					<span class="d-flex align-items-center gap-2 fw-semibold justify-content-center">
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download">
-							<path d="M12 15V3"></path>
-							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-							<path d="m7 10 5 5 5-5"></path>
-						</svg>
-						{ api.Translate("label", "Download and Install Update") }
-					</span>
-				</a>
+				<div class="d-grid d-sm-block">
+					<a
+						class="btn btn-success"
+						href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:download")) }
+					>
+						<span class="d-flex align-items-center gap-2 fw-semibold justify-content-center">
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download">
+								<path d="M12 15V3"></path>
+								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+								<path d="m7 10 5 5 5-5"></path>
+							</svg>
+							{ api.Translate("label", "Download and Install Update") }
+						</span>
+					</a>
+				</div>
 			</div>
 		</div>
 	</div>
