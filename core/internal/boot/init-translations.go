@@ -9,7 +9,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func InitCoreTranslations() {
+func InitTranslations() {
 	currentLang := "en"
 	cfg, err := config.ReadApplicationConfig()
 	if err != nil {
