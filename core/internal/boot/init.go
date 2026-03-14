@@ -20,6 +20,7 @@ func Init(g *api.CoreGlobals) {
 
 		InitOpkg()
 		RunCoreMigrations(g)
+		InitTranslations()
 		InitPlugins(g)
 		InitAssets(g)
 		InitAccounts()
