@@ -30,6 +30,11 @@ var (
 	nftMu         sync.RWMutex
 	initCallbacks []func() error = []func() error{}
 	nftQue                       = jobque.NewJobQueue[any]()
+
+	// ipToMac maps connected IPv4 address → uppercase normalized MAC.
+	// Populated on Connect, evicted on Disconnect.
+	// Guarded by nftMu.
+	ipToMac = make(map[string]string)
 )
 
 func AddInitCallback(cb func() error) {
@@ -164,6 +169,16 @@ func IsConnected(mac string) bool {
 	return result.(bool)
 }
 
+// GetMacByIp returns the normalized uppercase MAC address for a currently
+// connected IPv4 address, or an empty string if the IP is not in the cache.
+// The cache is populated on Connect and evicted on Disconnect, so it only
+// contains entries for devices that are actively allowed through the firewall.
+func GetMacByIp(ip string) string {
+	nftMu.RLock()
+	defer nftMu.RUnlock()
+	return ipToMac[ip]
+}
+
 func runInitCallbacks() {
 	// Copy the callbacks slice while holding the lock, then release
 	// before executing. This prevents deadlock if a callback tries
@@ -216,7 +231,13 @@ func doConnect(ip string, mac string) error {
 
 		// Execute batch command using nft -f - with heredoc for atomic execution
 		nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
-		return cmd.Exec(nftCmd, nil)
+		if err := cmd.Exec(nftCmd, nil); err != nil {
+			return err
+		}
+
+		nftMu.Lock()
+		ipToMac[ip] = normalizedMAC
+		nftMu.Unlock()
 	}
 
 	return nil
@@ -244,7 +265,13 @@ func doDisconnect(ip string, mac string) error {
 
 		// Execute batch command using nft -f - with heredoc for atomic execution
 		nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
-		return cmd.Exec(nftCmd, nil)
+		if err := cmd.Exec(nftCmd, nil); err != nil {
+			return err
+		}
+
+		nftMu.Lock()
+		delete(ipToMac, ip)
+		nftMu.Unlock()
 	}
 	return nil
 }
