@@ -35,6 +35,11 @@ var (
 	nftQue                       = jobque.NewJobQueue[any]()
 	connTable                    = map[string]bool{}
 	connClients                  = make(map[string]*connectedClient) // mac -> client info
+
+	// ipToMac maps connected IPv4 address → uppercase normalized MAC.
+	// Populated on Connect, evicted on Disconnect.
+	// Guarded by nftMu.
+	ipToMac = make(map[string]string)
 )
 
 func AddInitCallback(cb func() error) {
@@ -115,6 +120,14 @@ func IsConnected(mac string) bool {
 	return result.(bool)
 }
 
+// GetMacByIp returns the normalized uppercase MAC address for a currently
+// connected IPv4 address, or an empty string if the IP is not in the cache.
+func GetMacByIp(ip string) string {
+	nftMu.RLock()
+	defer nftMu.RUnlock()
+	return ipToMac[ip]
+}
+
 func runInitCallbacks() {
 	// Copy the callbacks slice while holding the lock, then release
 	// before executing. This prevents deadlock if a callback tries
@@ -164,6 +177,7 @@ func doConnect(ip string, mac string) error {
 			ip:  ip,
 			mac: normalizedMAC,
 		}
+		ipToMac[ip] = normalizedMAC
 	}
 
 	log.Println("nftables connected: " + normalizedMAC + " (" + ip + ")")
@@ -185,6 +199,9 @@ func doDisconnect(ip string, mac string) error {
 	connected := isConnected(normalizedMAC)
 	if connected {
 		delete(connTable, normalizedMAC)
+		if client, ok := connClients[normalizedMAC]; ok {
+			delete(ipToMac, client.ip)
+		}
 		delete(connClients, normalizedMAC)
 	}
 	log.Println("nftables disconnected: " + normalizedMAC)
