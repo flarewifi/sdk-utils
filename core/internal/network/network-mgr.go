@@ -15,12 +15,105 @@ import (
 
 const defaultSpeed int = DefaultLinkSpeed // fallback speed in Mbps when link speed cannot be detected
 
-var lanMap = sync.Map{}
+// =============================================================================
+// LAN REGISTRY — replaces sync.Map for O(1) count, fast reads, cached CIDRs
+// =============================================================================
+
+// lanEntry caches all data needed for IP matching so FindByIp() never
+// calls UBUS or parses CIDR strings at lookup time.
+type lanEntry struct {
+	name       string
+	lan        *NetworkLan
+	cidr       *net.IPNet // pre-parsed once during addLan()
+	ipv4Addr   string     // e.g. "192.168.1.1"
+	cidrString string     // e.g. "192.168.1.0/24"
+}
+
+// lanRegistry is the optimized replacement for sync.Map.
+// It uses a RWMutex instead of sync.Map because reads vastly outnumber writes
+// (LANs are added once at startup, then only read).
+type lanRegistry struct {
+	mu     sync.RWMutex
+	byName map[string]*lanEntry // O(1) name lookup
+	byIp   []*lanEntry          // ordered slice for linear scan (fast for 1-10 LANs)
+	count  int                  // cached length — O(1) GetLanCount()
+}
+
+var registry = &lanRegistry{
+	byName: make(map[string]*lanEntry),
+	byIp:   make([]*lanEntry, 0, 4), // pre-allocate for typical 1-3 LAN setups
+}
+
 var netQueue = jobque.NewJobQueue[any]()
 
-func addLan(lan *NetworkLan) {
-	lanMap.Store(lan.Name(), lan)
+// =============================================================================
+// INTERNAL HELPERS
+// =============================================================================
+
+// addLan fetches the LAN's IPv4 address, parses its CIDR once, and stores the
+// pre-built entry in the registry. Called once per LAN at startup.
+func addLan(lan *NetworkLan) error {
+	ipv4, err := lan.GetInterface().IpV4Addr()
+	if err != nil {
+		return fmt.Errorf("failed to get IPv4 for LAN '%s': %w", lan.Name(), err)
+	}
+
+	cidrStr := fmt.Sprintf("%s/%d", ipv4.Addr, ipv4.Netmask)
+	_, cidr, err := net.ParseCIDR(cidrStr)
+	if err != nil {
+		return fmt.Errorf("invalid CIDR '%s' for LAN '%s': %w", cidrStr, lan.Name(), err)
+	}
+
+	entry := &lanEntry{
+		name:       lan.Name(),
+		lan:        lan,
+		cidr:       cidr,
+		ipv4Addr:   ipv4.Addr,
+		cidrString: cidrStr,
+	}
+
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+
+	registry.byName[lan.Name()] = entry
+	registry.byIp = append(registry.byIp, entry)
+	registry.count++
+
+	return nil
 }
+
+// updateLanCidr rebuilds the cached CIDR for a LAN whose IP may have changed
+// (e.g. after an interface reinit). Called from listenLanEvents on IfEventUp.
+func updateLanCidr(lanName string, lan *NetworkLan) error {
+	ipv4, err := lan.GetInterface().IpV4Addr()
+	if err != nil {
+		return fmt.Errorf("failed to get IPv4 for LAN '%s': %w", lanName, err)
+	}
+
+	cidrStr := fmt.Sprintf("%s/%d", ipv4.Addr, ipv4.Netmask)
+	_, cidr, err := net.ParseCIDR(cidrStr)
+	if err != nil {
+		return fmt.Errorf("invalid CIDR '%s' for LAN '%s': %w", cidrStr, lanName, err)
+	}
+
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+
+	entry, ok := registry.byName[lanName]
+	if !ok {
+		return fmt.Errorf("LAN '%s' not found in registry", lanName)
+	}
+
+	entry.cidr = cidr
+	entry.ipv4Addr = ipv4.Addr
+	entry.cidrString = cidrStr
+
+	return nil
+}
+
+// =============================================================================
+// LAN SETUP
+// =============================================================================
 
 func listenLanEvents(lan *NetworkLan) {
 	ch := ubus.ListenInterface(lan.Name())
@@ -39,6 +132,12 @@ func listenLanEvents(lan *NetworkLan) {
 				err := lan.ReinitializeTc()
 				if err != nil {
 					log.Printf("ERROR: Failed to reinitialize TC for LAN '%s': %v", lan.Name(), err)
+					return nil, err
+				}
+
+				// Rebuild CIDR cache — IP may have changed after reinit
+				if err := updateLanCidr(lan.Name(), lan); err != nil {
+					log.Printf("ERROR: Failed to update CIDR cache for LAN '%s': %v", lan.Name(), err)
 					return nil, err
 				}
 
@@ -83,9 +182,12 @@ func SetupLanInterfaces() (err error) {
 			}
 			go listenLanEvents(lan)
 
-			addLan(lan)
+			if err = addLan(lan); err != nil {
+				log.Printf("ERROR: Failed to add LAN '%s' to registry: %v", ifname, err)
+				return err
+			}
 			lanCount++
-			log.Printf("LAN interface '%s' added to lanMap", ifname)
+			log.Printf("LAN interface '%s' added to registry", ifname)
 		} else {
 			log.Printf("Interface '%s' not found in bandwidth config, skipping", ifname)
 		}
@@ -108,93 +210,58 @@ func getConfiguredLanNames(cfg config.BandwdCfg) []string {
 	return names
 }
 
-// FindByIp returns the lan instance from lanMap if the given ip is in the subnet of lan ip.
+// =============================================================================
+// PUBLIC API
+// =============================================================================
+
+// FindByIp returns the LAN whose subnet contains clientIp.
+// Optimized: parses the client IP once, then scans pre-parsed CIDRs under a
+// read lock — no UBUS calls, no CIDR parsing, zero allocations on hit.
 func FindByIp(clientIp string) (*NetworkLan, error) {
-	var result *NetworkLan
-	var lastError error
-	var checkedLans []string
-
-	lanCount := GetLanCount()
-	log.Printf("Finding LAN for client IP: %s (total LANs in map: %d)", clientIp, lanCount)
-
-	lanMap.Range(func(key, value any) bool {
-		lan := value.(*NetworkLan)
-		lanName := lan.Name()
-
-		// get lan subnet net.CIDR
-		lanIpV4, err := lan.GetInterface().IpV4Addr()
-		if err != nil {
-			log.Printf("Failed to get IPv4 address for LAN '%s': %v", lanName, err)
-			lastError = fmt.Errorf("LAN '%s': %w", lanName, err)
-			checkedLans = append(checkedLans, fmt.Sprintf("%s (error: %v)", lanName, err))
-			return true
-		}
-
-		cidrStr := fmt.Sprintf("%s/%d", lanIpV4.Addr, lanIpV4.Netmask)
-		_, lanCidr, err := net.ParseCIDR(cidrStr)
-		if err != nil {
-			log.Printf("Failed to parse CIDR '%s' for LAN '%s': %v", cidrStr, lanName, err)
-			lastError = fmt.Errorf("LAN '%s': invalid CIDR %s: %w", lanName, cidrStr, err)
-			checkedLans = append(checkedLans, fmt.Sprintf("%s (invalid CIDR: %s)", lanName, cidrStr))
-			return true
-		}
-
-		ip := net.ParseIP(clientIp)
-		if ip == nil {
-			log.Printf("Invalid client IP address: %s", clientIp)
-			lastError = fmt.Errorf("invalid client IP: %s", clientIp)
-			return false
-		}
-
-		log.Printf("Checking if %s is in %s (LAN: %s)", clientIp, cidrStr, lanName)
-		checkedLans = append(checkedLans, fmt.Sprintf("%s (%s)", lanName, cidrStr))
-
-		if lanCidr.Contains(ip) {
-			log.Printf("Client IP %s matched LAN '%s' (%s)", clientIp, lanName, cidrStr)
-			result = lan
-			return false // stop the iteration
-		}
-
-		return true
-	})
-
-	if result == nil {
-		log.Printf("No matching LAN found for IP %s. Checked LANs: %v", clientIp, checkedLans)
-		if lastError != nil {
-			return nil, fmt.Errorf("no matching LAN found for IP %s: %w", clientIp, lastError)
-		}
-		return nil, fmt.Errorf("no matching LAN found for IP %s (checked: %v)", clientIp, checkedLans)
+	ip := net.ParseIP(clientIp)
+	if ip == nil {
+		return nil, fmt.Errorf("invalid client IP: %s", clientIp)
 	}
 
-	return result, nil
+	registry.mu.RLock()
+	defer registry.mu.RUnlock()
+
+	for _, entry := range registry.byIp {
+		if entry.cidr.Contains(ip) {
+			return entry.lan, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no matching LAN found for IP %s", clientIp)
 }
 
-// FindByName returns the lan instance from lanMap if the given name is in the lanMap.
+// FindByName returns the LAN with the given interface name.
 func FindByName(ifname string) (*NetworkLan, error) {
-	lan, ok := lanMap.Load(ifname)
+	registry.mu.RLock()
+	defer registry.mu.RUnlock()
+
+	entry, ok := registry.byName[ifname]
 	if !ok {
 		return nil, errors.New("lan not found")
 	}
-	return lan.(*NetworkLan), nil
+	return entry.lan, nil
 }
 
-// FindAll returns all lan instances from lanMap.
+// FindAll returns all registered LAN instances.
 func FindAll() []*NetworkLan {
-	lans := []*NetworkLan{}
-	lanMap.Range(func(key, value any) bool {
-		lan := value.(*NetworkLan)
-		lans = append(lans, lan)
-		return true
-	})
+	registry.mu.RLock()
+	defer registry.mu.RUnlock()
+
+	lans := make([]*NetworkLan, 0, registry.count)
+	for _, entry := range registry.byIp {
+		lans = append(lans, entry.lan)
+	}
 	return lans
 }
 
-// GetLanCount returns the number of LANs in lanMap (for debugging)
+// GetLanCount returns the number of registered LANs. O(1) — reads cached count.
 func GetLanCount() int {
-	count := 0
-	lanMap.Range(func(key, value any) bool {
-		count++
-		return true
-	})
-	return count
+	registry.mu.RLock()
+	defer registry.mu.RUnlock()
+	return registry.count
 }
