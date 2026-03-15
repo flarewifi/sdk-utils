@@ -5,6 +5,7 @@ package nftables
 import (
 	"fmt"
 	"log"
+	"net"
 	"sync"
 	"time"
 
@@ -21,43 +22,38 @@ const (
 	postroutingChain string = "postrouting"
 	connMacMap       string = "connected_macs_map"
 	connIpMap        string = "connected_ips_map"
+	connIp6Map       string = "connected_ips6_map"
 	connMacSet       string = "connected_macs_set"
 )
 
-type connectedClient struct {
-	ip  string
-	mac string
-}
-
 var (
-	nftMu         sync.RWMutex
-	initCallbacks []func() error = []func() error{}
-	nftQue                       = jobque.NewJobQueue[any]()
-	connTable                    = map[string]bool{}
-	connClients                  = make(map[string]*connectedClient) // mac -> client info
+	nftMu  sync.RWMutex
+	nftQue = jobque.NewJobQueue[any]()
+	// connTable tracks connected MACs (MAC → true).
+	connTable = map[string]bool{}
 
-	// ipToMac maps connected IPv4 address → uppercase normalized MAC.
+	// ipToMac maps connected IP address (IPv4 or IPv6) → uppercase normalized MAC.
 	// Populated on Connect, evicted on Disconnect.
 	// Guarded by nftMu.
 	ipToMac = make(map[string]string)
-)
 
-func AddInitCallback(cb func() error) {
-	nftMu.Lock()
-	defer nftMu.Unlock()
-	initCallbacks = append(initCallbacks, cb)
-}
+	// macToIps maps connected MAC → set of IPs registered for that device.
+	// Guarded by nftMu.
+	macToIps = make(map[string]map[string]bool)
+)
 
 func Cleanup() {}
 
 func Setup() (err error) {
 	Cleanup()
-	runInitCallbacks()
 	return nil
 }
 
-func SetupCaptivePortal(dev string, routerIp string) (err error) {
-	contextInfo := fmt.Sprintf("Device=%s, RouterIP=%s", dev, routerIp)
+// SetupCaptivePortal installs prerouting DNAT rules for a LAN interface.
+// routerIp4 is the LAN-facing IPv4 address; routerIp6 is the LAN-facing IPv6
+// address (may be empty if the interface has no IPv6 address yet).
+func SetupCaptivePortal(dev string, routerIp4 string, routerIp6 string) (err error) {
+	contextInfo := fmt.Sprintf("Device=%s, RouterIPv4=%s, RouterIPv6=%s", dev, routerIp4, routerIp6)
 
 	_, err = nftQue.ExecWithTimeout(
 		4*time.Second,
@@ -121,28 +117,37 @@ func IsConnected(mac string) bool {
 }
 
 // GetMacByIp returns the normalized uppercase MAC address for a currently
-// connected IPv4 address, or an empty string if the IP is not in the cache.
+// connected IP address (IPv4 or IPv6), or an empty string if the IP is not
+// in the cache.
 func GetMacByIp(ip string) string {
 	nftMu.RLock()
 	defer nftMu.RUnlock()
 	return ipToMac[ip]
 }
 
-func runInitCallbacks() {
-	// Copy the callbacks slice while holding the lock, then release
-	// before executing. This prevents deadlock if a callback tries
-	// to call AddInitCallback.
+// GetMacsByIps returns a map of IP→MAC for a batch of IP addresses, acquiring
+// the lock only once. This is more efficient than calling GetMacByIp in a loop.
+// IPs not found in the cache are omitted from the result map.
+func GetMacsByIps(ips []string) map[string]string {
 	nftMu.RLock()
-	callbacks := make([]func() error, len(initCallbacks))
-	copy(callbacks, initCallbacks)
-	nftMu.RUnlock()
+	defer nftMu.RUnlock()
 
-	for _, cb := range callbacks {
-		err := cb()
-		if err != nil {
-			log.Println(err)
+	result := make(map[string]string, len(ips))
+	for _, ip := range ips {
+		if mac := ipToMac[ip]; mac != "" {
+			result[ip] = mac
 		}
 	}
+	return result
+}
+
+// isIPv6 returns true if ip is a valid IPv6 address (not IPv4 or IPv4-mapped).
+func isIPv6(ip string) bool {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return false
+	}
+	return parsed.To4() == nil
 }
 
 func isConnected(mac string) bool {
@@ -169,16 +174,17 @@ func doConnect(ip string, mac string) error {
 		return fmt.Errorf("invalid MAC address: %v", err)
 	}
 
-	connected := isConnected(normalizedMAC)
+	// Mark MAC as connected (idempotent for dual-stack second call).
+	connTable[normalizedMAC] = true
 
-	if !connected {
-		connTable[normalizedMAC] = true
-		connClients[normalizedMAC] = &connectedClient{
-			ip:  ip,
-			mac: normalizedMAC,
-		}
-		ipToMac[ip] = normalizedMAC
+	// Record IP→MAC and MAC→IPs mappings for traffic accounting and GetMacByIp().
+	nftMu.Lock()
+	ipToMac[ip] = normalizedMAC
+	if macToIps[normalizedMAC] == nil {
+		macToIps[normalizedMAC] = make(map[string]bool)
 	}
+	macToIps[normalizedMAC][ip] = true
+	nftMu.Unlock()
 
 	log.Println("nftables connected: " + normalizedMAC + " (" + ip + ")")
 	return nil
@@ -196,14 +202,24 @@ func doDisconnect(ip string, mac string) error {
 		return fmt.Errorf("invalid MAC address: %v", err)
 	}
 
-	connected := isConnected(normalizedMAC)
-	if connected {
-		delete(connTable, normalizedMAC)
-		if client, ok := connClients[normalizedMAC]; ok {
-			delete(ipToMac, client.ip)
+	// Remove this IP from both lookup maps.  Only remove the MAC from connTable
+	// when all its IPs have been disconnected (handles dual-stack correctly).
+	nftMu.Lock()
+	delete(ipToMac, ip)
+	remainingIPs := 0
+	if ips, ok := macToIps[normalizedMAC]; ok {
+		delete(ips, ip)
+		remainingIPs = len(ips)
+		if remainingIPs == 0 {
+			delete(macToIps, normalizedMAC)
 		}
-		delete(connClients, normalizedMAC)
 	}
-	log.Println("nftables disconnected: " + normalizedMAC)
+	nftMu.Unlock()
+
+	if remainingIPs == 0 {
+		delete(connTable, normalizedMAC)
+	}
+
+	log.Println("nftables disconnected IP: " + ip + " (" + normalizedMAC + ")")
 	return nil
 }

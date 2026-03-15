@@ -257,29 +257,33 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 
 		// Read network state atomically from the RunningSession.
 		// This is the authoritative state (updated inside execTc+mu by UpdateNetworkDetails).
-		lan := rs.Lan()
-		if lan == nil {
+		net := rs.network.Load()
+		if net == nil || net.lan == nil {
 			return true
 		}
 
-		if lan.Name() == iface {
-			// Re-read IP/MAC at point of use to minimize staleness window.
-			// These are atomic reads from the RunningSession's network state.
-			ip := rs.IpAddr()
-			mac := rs.MacAddr()
+		if net.lan.Name() == iface {
+			mac := net.mac
 
-			err := nftables.Disconnect(ip, mac)
-			if err != nil {
-				log.Printf("[SessionsMgr] StopSessions: failed to disconnect device IP=%s MAC=%s: %v", ip, mac, err)
+			// Disconnect both IPv4 and IPv6 from their respective verdict maps.
+			if net.ipv4 != "" {
+				if err := nftables.Disconnect(net.ipv4, mac); err != nil {
+					log.Printf("[SessionsMgr] StopSessions: failed to disconnect IPv4=%s MAC=%s: %v", net.ipv4, mac, err)
+				}
+			}
+			if net.ipv6 != "" {
+				if err := nftables.Disconnect(net.ipv6, mac); err != nil {
+					log.Printf("[SessionsMgr] StopSessions: failed to disconnect IPv6=%s MAC=%s: %v", net.ipv6, mac, err)
+				}
 			}
 
 			if err := rs.Stop(); err != nil {
-				log.Printf("[SessionsMgr] StopSessions: failed to stop session for device IP=%s: %v", ip, err)
+				log.Printf("[SessionsMgr] StopSessions: failed to stop session for device MAC=%s: %v", mac, err)
 			}
 
 			// Clean up TC classes/filters and restore class ID to pool
 			if err := rs.CleanupTc(); err != nil {
-				log.Printf("[SessionsMgr] StopSessions: failed to cleanup TC for device IP=%s: %v", ip, err)
+				log.Printf("[SessionsMgr] StopSessions: failed to cleanup TC for device MAC=%s: %v", mac, err)
 			}
 
 			// Remove from sessions map
@@ -313,7 +317,8 @@ func (self *SessionsMgr) Connect(_ context.Context, clnt sdkapi.IClientDevice, n
 		err = clnt.Update(context.Background(), sdkapi.UpdateDeviceParams{
 			UUID:     clnt.UUID(),
 			Mac:      clnt.MacAddr(),
-			Ip:       clnt.IpAddr(),
+			Ipv4:     clnt.Ipv4Addr(),
+			Ipv6:     clnt.Ipv6Addr(),
 			Hostname: clnt.Hostname(),
 			Status:   sdkapi.DeviceStatusConnected,
 		})
@@ -344,7 +349,8 @@ func (self *SessionsMgr) Disconnect(_ context.Context, clnt sdkapi.IClientDevice
 	return clnt.Update(context.Background(), sdkapi.UpdateDeviceParams{
 		UUID:     clnt.UUID(),
 		Mac:      clnt.MacAddr(),
-		Ip:       clnt.IpAddr(),
+		Ipv4:     clnt.Ipv4Addr(),
+		Ipv6:     clnt.Ipv6Addr(),
 		Hostname: clnt.Hostname(),
 		Status:   sdkapi.DeviceStatusDisconnected,
 	})
@@ -371,7 +377,8 @@ func (self *SessionsMgr) disconnectInternal(clnt sdkapi.IClientDevice, notify st
 	return clnt.Update(context.Background(), sdkapi.UpdateDeviceParams{
 		UUID:     clnt.UUID(),
 		Mac:      clnt.MacAddr(),
-		Ip:       clnt.IpAddr(),
+		Ipv4:     clnt.Ipv4Addr(),
+		Ipv6:     clnt.Ipv6Addr(),
 		Hostname: clnt.Hostname(),
 		Status:   sdkapi.DeviceStatusDisconnected,
 	})
@@ -620,7 +627,8 @@ func (self *SessionsMgr) NewClientDevice(params sdkapi.NewDeviceParams) sdkapi.I
 		ID:        params.ID,
 		UUID:      params.UUID,
 		MacAddr:   params.MacAddress,
-		IpAddr:    params.IpAddress,
+		Ipv4Addr:  params.Ipv4Address,
+		Ipv6Addr:  params.Ipv6Address,
 		Hostname:  params.Hostname,
 		Status:    params.Status,
 		CreatedAt: params.CreatedAt,
@@ -774,14 +782,31 @@ func (self *SessionsMgr) loopSessions(startedCh chan<- error, clnt sdkapi.IClien
 
 		// First successful start - add firewall rules and emit events
 		if !started {
-			// Add firewall rules to allow internet access
-			if err := nftables.Connect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
-				// nftables failed - stop the session, cleanup TC, and return error
-				rs.Stop()
-				rs.CleanupTc()
-				self.sessions.Delete(clnt.ID())
-				signalStart(err)
-				return
+			// Add firewall rules for each IP the device has (IPv4 and/or IPv6).
+			// nftables.Connect is idempotent for the MAC entry: the second call
+			// adds only the missing IP map entry, MAC rules are only added once.
+			mac := clnt.MacAddr()
+			if ipv4 := clnt.Ipv4Addr(); ipv4 != "" {
+				if err := nftables.Connect(ipv4, mac); err != nil {
+					rs.Stop()
+					rs.CleanupTc()
+					self.sessions.Delete(clnt.ID())
+					signalStart(err)
+					return
+				}
+			}
+			if ipv6 := clnt.Ipv6Addr(); ipv6 != "" {
+				if err := nftables.Connect(ipv6, mac); err != nil {
+					// Rollback IPv4 if it was already connected
+					if ipv4 := clnt.Ipv4Addr(); ipv4 != "" {
+						nftables.Disconnect(ipv4, mac)
+					}
+					rs.Stop()
+					rs.CleanupTc()
+					self.sessions.Delete(clnt.ID())
+					signalStart(err)
+					return
+				}
 			}
 
 			// Signal success to Connect() immediately after nftables rules are in place.
@@ -847,13 +872,42 @@ func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *Runni
 }
 
 func (self *SessionsMgr) endSession(clnt sdkapi.IClientDevice) error {
-	if nftables.IsConnected(clnt.MacAddr()) {
-		if err := nftables.Disconnect(clnt.IpAddr(), clnt.MacAddr()); err != nil {
-			return err
+	rs, ok := self.getRunningSession(clnt)
+
+	// C1: Read IPs/MAC from the RunningSession's authoritative network snapshot,
+	// not from clnt which may be a stale wrapper object.
+	// Fall back to clnt only when there is no RunningSession (session was never started).
+	var ipv4, ipv6, mac string
+	if ok {
+		net := rs.network.Load()
+		ipv4, ipv6, mac = net.ipv4, net.ipv6, net.mac
+	} else {
+		ipv4, ipv6, mac = clnt.Ipv4Addr(), clnt.Ipv6Addr(), clnt.MacAddr()
+	}
+
+	if nftables.IsConnected(mac) {
+		// C2: Disconnect both IPs independently. Collect errors but always attempt
+		// both so a failure on IPv4 never leaves IPv6 stranded in the verdict map.
+		var firstErr error
+		if ipv4 != "" {
+			if err := nftables.Disconnect(ipv4, mac); err != nil {
+				log.Printf("[SessionsMgr] endSession: failed to disconnect IPv4=%s MAC=%s: %v", ipv4, mac, err)
+				firstErr = err
+			}
+		}
+		if ipv6 != "" {
+			if err := nftables.Disconnect(ipv6, mac); err != nil {
+				log.Printf("[SessionsMgr] endSession: failed to disconnect IPv6=%s MAC=%s: %v", ipv6, mac, err)
+				if firstErr == nil {
+					firstErr = err
+				}
+			}
+		}
+		if firstErr != nil {
+			return firstErr
 		}
 	}
 
-	rs, ok := self.getRunningSession(clnt)
 	if ok {
 		if err := rs.Stop(); err != nil {
 			return err

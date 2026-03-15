@@ -26,7 +26,8 @@ type ClientDevice struct {
 	mu        sync.RWMutex
 	uuid      string
 	mac       string
-	ip        string
+	ipv4      string
+	ipv6      string
 	hostname  string
 	status    sdkapi.DeviceStatus
 	updatedAt time.Time
@@ -41,7 +42,8 @@ func NewClientDevice(dtb *db.Database, mdls *models.Models, sessMgr *SessionsMgr
 		createdAt: d.CreatedAt(),
 		uuid:      d.UUID(),
 		mac:       d.MacAddr(),
-		ip:        d.IpAddr(),
+		ipv4:      d.Ipv4Addr(),
+		ipv6:      d.Ipv6Addr(),
 		hostname:  d.Hostname(),
 		status:    d.Status(),
 		updatedAt: d.UpdatedAt(),
@@ -71,10 +73,29 @@ func (self *ClientDevice) MacAddr() string {
 	return self.mac
 }
 
+// Ipv4Addr returns the device's IPv4 address (empty if not available).
+func (self *ClientDevice) Ipv4Addr() string {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.ipv4
+}
+
+// Ipv6Addr returns the device's IPv6 address (empty if not available).
+func (self *ClientDevice) Ipv6Addr() string {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.ipv6
+}
+
+// IpAddr returns the primary IP for backward compatibility.
+// Returns IPv4 if available, otherwise IPv6.
 func (self *ClientDevice) IpAddr() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
-	return self.ip
+	if self.ipv4 != "" {
+		return self.ipv4
+	}
+	return self.ipv6
 }
 
 func (self *ClientDevice) Status() sdkapi.DeviceStatus {
@@ -112,7 +133,8 @@ func (self *ClientDevice) Data() sdkapi.DeviceData {
 		ID:          self.id,
 		UUID:        self.uuid,
 		MacAddr:     self.mac,
-		IpAddr:      self.ip,
+		Ipv4Addr:    self.ipv4,
+		Ipv6Addr:    self.ipv6,
 		Hostname:    self.hostname,
 		Status:      self.status,
 		CreatedAt:   self.createdAt,
@@ -131,12 +153,13 @@ func (self *ClientDevice) Update(ctx context.Context, params sdkapi.UpdateDevice
 	}
 
 	err := self.mdls.Device().Update(ctx, models.UpdateDeviceParams{
-		ID:         self.id,
-		MacAddress: params.Mac,
-		IpAddress:  params.Ip,
-		Hostname:   params.Hostname,
-		UUID:       params.UUID,
-		Status:     int(params.Status),
+		ID:          self.id,
+		MacAddress:  params.Mac,
+		Ipv4Address: params.Ipv4,
+		Ipv6Address: params.Ipv6,
+		Hostname:    params.Hostname,
+		UUID:        params.UUID,
+		Status:      int(params.Status),
 	})
 	if err != nil {
 		return err
@@ -144,7 +167,8 @@ func (self *ClientDevice) Update(ctx context.Context, params sdkapi.UpdateDevice
 
 	self.hostname = params.Hostname
 	self.mac = params.Mac
-	self.ip = params.Ip
+	self.ipv4 = params.Ipv4
+	self.ipv6 = params.Ipv6
 	self.uuid = params.UUID
 	self.status = sdkapi.DeviceStatus(params.Status)
 	self.updatedAt = time.Now()

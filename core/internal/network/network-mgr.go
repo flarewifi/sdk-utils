@@ -24,8 +24,10 @@ const defaultSpeed int = DefaultLinkSpeed // fallback speed in Mbps when link sp
 type lanEntry struct {
 	name       string
 	lan        *NetworkLan
-	cidr       *net.IPNet // pre-parsed once during addLan()
+	cidr       *net.IPNet // pre-parsed IPv4 CIDR — may be nil if no IPv4 address
+	cidr6      *net.IPNet // pre-parsed IPv6 CIDR — may be nil if no IPv6 address
 	ipv4Addr   string     // e.g. "192.168.1.1"
+	ipv6Addr   string     // e.g. "2001:db8::1"
 	cidrString string     // e.g. "192.168.1.0/24"
 }
 
@@ -50,10 +52,13 @@ var netQueue = jobque.NewJobQueue[any]()
 // INTERNAL HELPERS
 // =============================================================================
 
-// addLan fetches the LAN's IPv4 address, parses its CIDR once, and stores the
-// pre-built entry in the registry. Called once per LAN at startup.
+// addLan fetches the LAN's IPv4 (and optionally IPv6) address, parses its
+// CIDR once, and stores the pre-built entry in the registry.
+// Called once per LAN at startup.
 func addLan(lan *NetworkLan) error {
-	ipv4, err := lan.GetInterface().IpV4Addr()
+	iface := lan.GetInterface()
+
+	ipv4, err := iface.IpV4Addr()
 	if err != nil {
 		return fmt.Errorf("failed to get IPv4 for LAN '%s': %w", lan.Name(), err)
 	}
@@ -72,6 +77,19 @@ func addLan(lan *NetworkLan) error {
 		cidrString: cidrStr,
 	}
 
+	// IPv6 is optional — log a warning but don't fail if absent
+	if ipv6, err := iface.IpV6Addr(); err == nil {
+		cidr6Str := fmt.Sprintf("%s/%d", ipv6.Addr, ipv6.PrefixLen)
+		if _, cidr6, err := net.ParseCIDR(cidr6Str); err == nil {
+			entry.cidr6 = cidr6
+			entry.ipv6Addr = ipv6.Addr
+		} else {
+			log.Printf("WARNING: Invalid IPv6 CIDR '%s' for LAN '%s': %v", cidr6Str, lan.Name(), err)
+		}
+	} else {
+		log.Printf("INFO: No IPv6 address found for LAN '%s': %v", lan.Name(), err)
+	}
+
 	registry.mu.Lock()
 	defer registry.mu.Unlock()
 
@@ -82,10 +100,13 @@ func addLan(lan *NetworkLan) error {
 	return nil
 }
 
-// updateLanCidr rebuilds the cached CIDR for a LAN whose IP may have changed
-// (e.g. after an interface reinit). Called from listenLanEvents on IfEventUp.
+// updateLanCidr rebuilds the cached IPv4 (and optionally IPv6) CIDR for a
+// LAN whose IP may have changed (e.g. after an interface reinit).
+// Called from listenLanEvents on IfEventUp.
 func updateLanCidr(lanName string, lan *NetworkLan) error {
-	ipv4, err := lan.GetInterface().IpV4Addr()
+	iface := lan.GetInterface()
+
+	ipv4, err := iface.IpV4Addr()
 	if err != nil {
 		return fmt.Errorf("failed to get IPv4 for LAN '%s': %w", lanName, err)
 	}
@@ -107,6 +128,17 @@ func updateLanCidr(lanName string, lan *NetworkLan) error {
 	entry.cidr = cidr
 	entry.ipv4Addr = ipv4.Addr
 	entry.cidrString = cidrStr
+
+	// Update IPv6 CIDR if available (non-fatal if absent)
+	if ipv6, err := iface.IpV6Addr(); err == nil {
+		cidr6Str := fmt.Sprintf("%s/%d", ipv6.Addr, ipv6.PrefixLen)
+		if _, cidr6, err := net.ParseCIDR(cidr6Str); err == nil {
+			entry.cidr6 = cidr6
+			entry.ipv6Addr = ipv6.Addr
+		} else {
+			log.Printf("WARNING: Invalid IPv6 CIDR '%s' for LAN '%s': %v", cidr6Str, lanName, err)
+		}
+	}
 
 	return nil
 }
@@ -214,7 +246,7 @@ func getConfiguredLanNames(cfg config.BandwdCfg) []string {
 // PUBLIC API
 // =============================================================================
 
-// FindByIp returns the LAN whose subnet contains clientIp.
+// FindByIp returns the LAN whose subnet contains clientIp (IPv4 or IPv6).
 // Optimized: parses the client IP once, then scans pre-parsed CIDRs under a
 // read lock — no UBUS calls, no CIDR parsing, zero allocations on hit.
 func FindByIp(clientIp string) (*NetworkLan, error) {
@@ -227,7 +259,12 @@ func FindByIp(clientIp string) (*NetworkLan, error) {
 	defer registry.mu.RUnlock()
 
 	for _, entry := range registry.byIp {
-		if entry.cidr.Contains(ip) {
+		// Check IPv4 CIDR
+		if entry.cidr != nil && entry.cidr.Contains(ip) {
+			return entry.lan, nil
+		}
+		// Check IPv6 CIDR
+		if entry.cidr6 != nil && entry.cidr6.Contains(ip) {
 			return entry.lan, nil
 		}
 	}

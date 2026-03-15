@@ -5,6 +5,7 @@ package nftables
 import (
 	"bytes"
 	"fmt"
+	"log"
 
 	"github.com/goccy/go-json"
 
@@ -59,6 +60,7 @@ func GetStats() (stat StatResult, err error) {
 			return result, err
 		}
 
+		// IPv4 IP stats
 		nftlistip, err := nftListMap(connIpMap)
 		if err != nil {
 			return result, err
@@ -66,6 +68,16 @@ func GetStats() (stat StatResult, err error) {
 
 		macstat := resultMap(nftlistmac)
 		ipstat := resultMap(nftlistip)
+
+		// IPv6 IP stats — merge into the same ipstat map
+		nftlistip6, ip6Err := nftListMap(connIp6Map)
+		if ip6Err != nil {
+			log.Printf("[WARN] GetStats: failed to list IPv6 map %s: %v", connIp6Map, ip6Err)
+		} else {
+			for ip, data := range resultMap(nftlistip6) {
+				ipstat[ip] = data
+			}
+		}
 
 		result = StatResult{
 			MacStats: macstat,
@@ -108,7 +120,7 @@ func resultMap(data *NftListMapResult) map[string]StatData {
 			if m.Elem != nil {
 				for _, elems := range m.Elem {
 					for _, elem := range elems {
-						if elem.Elem != nil {
+						if elem.Elem != nil && elem.Elem.Counter != nil {
 							stat := StatData{
 								Packets: elem.Elem.Counter.Packets,
 								Bytes:   elem.Elem.Counter.Bytes,

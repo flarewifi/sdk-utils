@@ -23,6 +23,10 @@ type INetworkInterface interface {
 	// Returns the IPv4 address of the network interface.
 	IpV4Addr() (*NetworkIpv4, error)
 
+	// Returns the IPv6 address of the network interface.
+	// Returns an error if no IPv6 address is assigned.
+	IpV6Addr() (*NetworkIpv6, error)
+
 	// Returns the ip net value of the network interface.
 	IPNet() (*net.IPNet, error)
 }

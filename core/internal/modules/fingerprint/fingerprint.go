@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type FingerprintData struct {
@@ -13,11 +15,49 @@ type FingerprintData struct {
 	Timezone  string
 }
 
+// normalizeScreenResolution normalizes screen resolution by ensuring width <= height
+// This treats portrait and landscape orientations as equivalent (e.g., 360x800 and 800x360)
+func normalizeScreenResolution(res string) string {
+	if res == "" {
+		return ""
+	}
+
+	parts := strings.Split(res, "x")
+	if len(parts) != 2 {
+		return res // Invalid format, return as-is
+	}
+
+	w, err1 := strconv.Atoi(parts[0])
+	h, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil {
+		return res // Parse error, return as-is
+	}
+
+	// Always return smaller dimension first (portrait orientation)
+	if w > h {
+		return fmt.Sprintf("%dx%d", h, w)
+	}
+	return res
+}
+
+// extractPrimaryLanguage extracts the primary language code from a locale string
+// Examples: "en-US" -> "en", "en-GB" -> "en", "fr-FR" -> "fr", "en" -> "en"
+func extractPrimaryLanguage(lang string) string {
+	if lang == "" {
+		return ""
+	}
+	// Split on hyphen and take the first part
+	parts := strings.Split(lang, "-")
+	return strings.ToLower(strings.TrimSpace(parts[0]))
+}
+
 // GenerateHash creates SHA256 hash from fingerprint data
+// Screen resolution is normalized to handle device rotation
 func GenerateHash(data FingerprintData) string {
+	normalizedScreen := normalizeScreenResolution(data.ScreenRes)
 	combined := fmt.Sprintf("%s|%s|%s|%s",
 		data.UserAgent,
-		data.ScreenRes,
+		normalizedScreen,
 		data.Language,
 		data.Timezone,
 	)
@@ -72,13 +112,22 @@ func ValidateFingerprint(stored StoredFingerprint, currentHash string, currentOS
 	}
 
 	// Regular browser-to-browser smart match
-	// Smart match: Same OS + Screen + Language (+ Timezone if both available)
-	// This allows multiple browsers per device while maintaining security
+	// Smart match: Same OS + Screen + Primary Language (+ Timezone if both available)
+	// This allows multiple browsers per device and language locale changes while maintaining security
 	if !stored.IsCna && !currentIsCNA {
-		// Base validation: OS + Screen + Language must match
+		// Normalize screen resolutions for comparison (handles device rotation)
+		normalizedStoredScreen := normalizeScreenResolution(stored.ScreenResolution)
+		normalizedCurrentScreen := normalizeScreenResolution(currentScreen)
+
+		// Extract primary language codes for comparison (e.g., "en-US" -> "en", "en-GB" -> "en")
+		// This allows language locale changes (en-US <-> en-GB) without breaking validation
+		storedPrimaryLang := extractPrimaryLanguage(stored.Language)
+		currentPrimaryLang := extractPrimaryLanguage(currentLang)
+
+		// Base validation: OS + Screen + Primary Language must match
 		if stored.OSFamily != "" && stored.OSFamily == currentOS &&
-			stored.ScreenResolution != "" && stored.ScreenResolution == currentScreen &&
-			stored.Language != "" && stored.Language == currentLang {
+			normalizedStoredScreen != "" && normalizedStoredScreen == normalizedCurrentScreen &&
+			storedPrimaryLang != "" && storedPrimaryLang == currentPrimaryLang {
 
 			// Timezone validation (optional - only if both sides have it)
 			// This provides backward compatibility for existing fingerprints without timezone

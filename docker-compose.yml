@@ -14,9 +14,11 @@ services:
       - ./data/openwrt-files/etc/openwrt_release:/etc/openwrt_release
       - ./data/openwrt-files/etc/os_release.json:/etc/os_release.json
       - gocache:/var/cache/go
+      - /etc/localtime:/etc/localtime:ro
     environment:
       - GOCACHE=/var/cache/go/cache
       - GOMODCACHE=/var/cache/go/mod
+      - TZ=${TZ:-UTC}
     ports:
       - 3000:3000
       - 3333:3333

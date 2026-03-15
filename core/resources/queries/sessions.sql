@@ -187,10 +187,19 @@ WHERE
 
 
 -- name: BulkUpdateTimeConsumption :exec
+-- Strip Go's timezone suffix (e.g. " +0000 UTC") from resumed_at before passing to julianday(),
+-- since modernc.org/sqlite stores time.Time as Go's String() format which SQLite cannot parse.
 UPDATE
   sessions
 SET
-  consumption_secs = consumption_secs + CAST(ROUND((julianday('now') - julianday(resumed_at)) * 86400) AS INTEGER)
+  consumption_secs = consumption_secs + CAST(ROUND(
+    (julianday('now') - julianday(
+      CASE
+        WHEN INSTR(resumed_at, ' +') > 0 THEN SUBSTR(resumed_at, 1, INSTR(resumed_at, ' +') - 1)
+        ELSE resumed_at
+      END
+    )) * 86400
+  ) AS INTEGER)
 WHERE
   resumed_at IS NOT NULL;
 
@@ -218,7 +227,8 @@ WHERE (
     OR d.uuid LIKE '%' || @search || '%'
     OR dm.mac_address LIKE '%' || @search || '%'
     OR d.hostname LIKE '%' || @search || '%'
-    OR d.ip_address LIKE '%' || @search || '%'
+    OR d.ipv4_addr LIKE '%' || @search || '%'
+    OR d.ipv6_addr LIKE '%' || @search || '%'
     OR v.code LIKE '%' || @search || '%'
 )
 AND (
@@ -307,7 +317,8 @@ WHERE (
     OR d.uuid LIKE '%' || @search || '%'
     OR dm.mac_address LIKE '%' || @search || '%'
     OR d.hostname LIKE '%' || @search || '%'
-    OR d.ip_address LIKE '%' || @search || '%'
+    OR d.ipv4_addr LIKE '%' || @search || '%'
+    OR d.ipv6_addr LIKE '%' || @search || '%'
     OR v.code LIKE '%' || @search || '%'
 )
 AND (
