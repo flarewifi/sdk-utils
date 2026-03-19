@@ -25,6 +25,10 @@ func CreateGoWorkspace() {
 		}
 	}
 
+	if toolchainLine == "" {
+		panic("must add toolchain version to go.work.default")
+	}
+
 	goWork := fmt.Sprintf(`go %s%s
 
 use (
