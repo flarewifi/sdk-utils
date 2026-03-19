@@ -13,6 +13,8 @@ func CreateGoWorkspace() {
 	goVersion := sdkutils.GO_SHORT_VERSION
 	goWork := fmt.Sprintf(`go %s
 
+toolchain go1.21.13
+
 use (
     ./core
     ./sdk/api
