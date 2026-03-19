@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 
+export GOTOOLCHAIN=go1.21.13
 GO_TAGS="dev"
 
 # Build everything

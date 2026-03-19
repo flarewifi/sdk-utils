@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+export GOTOOLCHAIN=go1.21.13
 CGO_ENABLED=1
 OS_CONFIG="wan-lan-mono"
 GO_TAGS="dev mono"
