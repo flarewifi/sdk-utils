@@ -5,20 +5,32 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func CreateGoWorkspace() {
 	goVersion := sdkutils.GO_SHORT_VERSION
-	goWork := fmt.Sprintf(`go %s
 
-toolchain go1.21.13
+	// Read toolchain directive from go.work.default if it exists
+	toolchainLine := ""
+	if content, err := os.ReadFile("go.work.default"); err == nil {
+		for _, line := range strings.Split(string(content), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "toolchain ") {
+				toolchainLine = "\n" + line
+				break
+			}
+		}
+	}
+
+	goWork := fmt.Sprintf(`go %s%s
 
 use (
     ./core
     ./sdk/api
-    ./sdk/utils`, goVersion)
+    ./sdk/utils`, goVersion, toolchainLine)
 
 	// Insert plugin paths
 	pluginSearchPaths := []string{
