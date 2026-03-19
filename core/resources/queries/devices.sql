@@ -1,10 +1,11 @@
 -- name: CreateDevice :one
 INSERT INTO devices (
-  ip_address, hostname, uuid
+  ipv4_addr, ipv6_addr, hostname, uuid
 )
 VALUES
   (
-    @ip_address,
+    @ipv4_addr,
+    @ipv6_addr,
     @hostname,
     @uuid
   ) RETURNING id;
@@ -13,7 +14,8 @@ VALUES
 -- name: FindDevice :one
 SELECT
   d.id,
-  d.ip_address,
+  d.ipv4_addr,
+  d.ipv6_addr,
   d.hostname,
   d.uuid,
   d.created_at,
@@ -33,7 +35,8 @@ LIMIT
 SELECT
   d.id,
   d.hostname,
-  d.ip_address,
+  d.ipv4_addr,
+  d.ipv6_addr,
   d.uuid,
   d.created_at,
   d.updated_at,
@@ -52,7 +55,8 @@ LIMIT
 SELECT
   d.id,
   d.hostname,
-  d.ip_address,
+  d.ipv4_addr,
+  d.ipv6_addr,
   d.uuid,
   d.created_at,
   d.updated_at,
@@ -62,7 +66,8 @@ FROM
   devices d
   LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 WHERE
-  d.ip_address = @ip_address
+  (d.ipv4_addr = @ip_address AND d.ipv4_addr != '')
+  OR (d.ipv6_addr = @ip_address AND d.ipv6_addr != '')
 LIMIT
   1;
 
@@ -71,10 +76,11 @@ LIMIT
 UPDATE
   devices
 SET
-  hostname = @hostname,
-  ip_address = @ip_address,
-  uuid = @uuid,
-  status = @status,
+  hostname  = @hostname,
+  ipv4_addr = @ipv4_addr,
+  ipv6_addr = @ipv6_addr,
+  uuid      = @uuid,
+  status    = @status,
   updated_at = CURRENT_TIMESTAMP
 WHERE
   id = @id;
@@ -84,7 +90,8 @@ WHERE
 SELECT
   d.id,
   d.hostname,
-  d.ip_address,
+  d.ipv4_addr,
+  d.ipv6_addr,
   COALESCE(dm.mac_address, '') as mac_address,
   d.uuid,
   d.created_at,

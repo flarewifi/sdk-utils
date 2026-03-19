@@ -21,19 +21,21 @@ type DeviceModel struct {
 
 // CreateDeviceParams holds parameters for creating a new device
 type CreateDeviceParams struct {
-	MacAddress string
-	IpAddress  string
-	Hostname   string
+	MacAddress  string
+	Ipv4Address string
+	Ipv6Address string
+	Hostname    string
 }
 
 // UpdateDeviceParams holds parameters for updating a device
 type UpdateDeviceParams struct {
-	ID         int64
-	MacAddress string
-	IpAddress  string
-	Hostname   string
-	UUID       string
-	Status     int
+	ID          int64
+	MacAddress  string
+	Ipv4Address string
+	Ipv6Address string
+	Hostname    string
+	UUID        string
+	Status      int
 }
 
 func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
@@ -41,12 +43,12 @@ func NewDeviceModel(database *db.Database, mdls *Models) *DeviceModel {
 }
 
 // validateDeviceFields checks that required device fields are not blank
-func validateDeviceFields(uuid, ip, mac string) error {
+func validateDeviceFields(uuid, ipv4, ipv6, mac string) error {
 	if strings.TrimSpace(uuid) == "" {
 		return fmt.Errorf("uuid cannot be blank")
 	}
-	if strings.TrimSpace(ip) == "" {
-		return fmt.Errorf("ip address cannot be blank")
+	if strings.TrimSpace(ipv4) == "" && strings.TrimSpace(ipv6) == "" {
+		return fmt.Errorf("at least one IP address (IPv4 or IPv6) is required")
 	}
 	if strings.TrimSpace(mac) == "" {
 		return fmt.Errorf("mac address cannot be blank")
@@ -58,15 +60,23 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 	uid := sdkutils.NewUUID()
 
 	// Validate required fields
-	if err := validateDeviceFields(uid, params.IpAddress, params.MacAddress); err != nil {
+	if err := validateDeviceFields(uid, params.Ipv4Address, params.Ipv6Address, params.MacAddress); err != nil {
 		log.Printf("device validation failed: %v", err)
 		return nil, err
 	}
 
+	// CRITICAL: Check if this MAC is already marked as current for another device
+	// This prevents creating duplicate devices for the same MAC address
+	existingDeviceID, err := self.models.DeviceMac().FindDeviceByMac(ctx, params.MacAddress)
+	if err == nil && existingDeviceID > 0 {
+		return nil, fmt.Errorf("MAC address %s is already registered to device %d (cannot create duplicate device)", params.MacAddress, existingDeviceID)
+	}
+
 	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
-		IpAddress: params.IpAddress,
-		Hostname:  params.Hostname,
-		Uuid:      uid,
+		Ipv4Addr: params.Ipv4Address,
+		Ipv6Addr: params.Ipv6Address,
+		Hostname: params.Hostname,
+		Uuid:     uid,
 	})
 	if err != nil {
 		log.Println("error creating new device:", err)
@@ -85,7 +95,8 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		id:        d.ID,
 		uuid:      d.Uuid,
 		macaddr:   params.MacAddress, // Store in memory for now
-		ipaddr:    d.IpAddress,
+		ipv4addr:  d.Ipv4Addr,
+		ipv6addr:  d.Ipv6Addr,
 		hostname:  d.Hostname,
 		createdAt: d.CreatedAt.Time,
 		updatedAt: d.UpdatedAt.Time,
@@ -99,8 +110,13 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		IsCurrent:  true,
 	})
 	if err != nil {
-		log.Printf("[DeviceModel.Create] ERROR: Failed to record initial MAC address: %v", err)
-		// Don't fail device creation, but this is serious
+		// CRITICAL: If MAC recording fails, delete the device to maintain consistency
+		log.Printf("[DeviceModel.Create] ERROR: Failed to record initial MAC address for device %d: %v", dId, err)
+		log.Printf("[DeviceModel.Create] Rolling back device creation (deleting device %d)", dId)
+		if delErr := self.db.Queries.DeleteDevice(ctx, dId); delErr != nil {
+			log.Printf("[DeviceModel.Create] ERROR: Failed to rollback device %d after MAC record failure: %v", dId, delErr)
+		}
+		return nil, fmt.Errorf("failed to record MAC address for new device: %w", err)
 	}
 
 	_, err = self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
@@ -125,13 +141,13 @@ func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
 	device.id = d.ID
 	device.uuid = d.Uuid
 	device.macaddr = d.MacAddress // Now comes from JOIN
-	device.ipaddr = d.IpAddress
+	device.ipv4addr = d.Ipv4Addr
+	device.ipv6addr = d.Ipv6Addr
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
 	device.updatedAt = d.UpdatedAt.Time
 	device.status = sdkapi.DeviceStatus(d.Status)
 
-	// log.Printf("Found device: %+v", device)
 	return device, nil
 }
 
@@ -158,7 +174,8 @@ func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, e
 	device.id = d.ID
 	device.uuid = d.Uuid
 	device.macaddr = d.MacAddress // Now comes from JOIN
-	device.ipaddr = d.IpAddress
+	device.ipv4addr = d.Ipv4Addr
+	device.ipv6addr = d.Ipv6Addr
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
 	device.updatedAt = d.UpdatedAt.Time
@@ -178,7 +195,8 @@ func (self *DeviceModel) FindByIp(ctx context.Context, ip string) (*Device, erro
 	device.id = d.ID
 	device.uuid = d.Uuid
 	device.macaddr = d.MacAddress // Now comes from JOIN
-	device.ipaddr = d.IpAddress
+	device.ipv4addr = d.Ipv4Addr
+	device.ipv6addr = d.Ipv6Addr
 	device.hostname = d.Hostname
 	device.createdAt = d.CreatedAt.Time
 	device.updatedAt = d.UpdatedAt.Time
@@ -189,17 +207,18 @@ func (self *DeviceModel) FindByIp(ctx context.Context, ip string) (*Device, erro
 
 func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) error {
 	// Validate required fields
-	if err := validateDeviceFields(params.UUID, params.IpAddress, params.MacAddress); err != nil {
+	if err := validateDeviceFields(params.UUID, params.Ipv4Address, params.Ipv6Address, params.MacAddress); err != nil {
 		log.Printf("device validation failed: %v", err)
 		return err
 	}
 
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
-		ID:        params.ID,
-		IpAddress: params.IpAddress,
-		Hostname:  params.Hostname,
-		Uuid:      params.UUID,
-		Status:    int64(params.Status),
+		ID:       params.ID,
+		Ipv4Addr: params.Ipv4Address,
+		Ipv6Addr: params.Ipv6Address,
+		Hostname: params.Hostname,
+		Uuid:     params.UUID,
+		Status:   int64(params.Status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", params.ID, err)

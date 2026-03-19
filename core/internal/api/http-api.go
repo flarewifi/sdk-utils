@@ -96,9 +96,15 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 					deviceID, storedMAC, currentMAC, h.IpAddr, r.RemoteAddr)
 			}
 			// Also check IP mismatch (less critical but useful for logging)
-			if clnt.IpAddr() != "" && h.IpAddr != "" && clnt.IpAddr() != h.IpAddr {
-				log.Printf("[SECURITY] GetClientDevice: IP mismatch - device %d stored IP: %s but request from IP: %s (MAC: %s)",
-					deviceID, clnt.IpAddr(), h.IpAddr, currentMAC)
+			// Accept if request IP matches either stored IPv4 or IPv6 (dual-stack device).
+			requestIP := h.IpAddr
+			storedIPv4 := clnt.Ipv4Addr()
+			storedIPv6 := clnt.Ipv6Addr()
+			if requestIP != "" && storedIPv4 == "" && storedIPv6 == "" {
+				// No stored IPs yet - skip check
+			} else if requestIP != "" && requestIP != storedIPv4 && requestIP != storedIPv6 {
+				log.Printf("[SECURITY] GetClientDevice: IP mismatch - device %d stored IPv4: %s, IPv6: %s but request from IP: %s (MAC: %s)",
+					deviceID, storedIPv4, storedIPv6, requestIP, currentMAC)
 			}
 		}
 	}

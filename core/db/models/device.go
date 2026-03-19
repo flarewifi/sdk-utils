@@ -18,7 +18,8 @@ type Device struct {
 	models    *Models
 	id        int64
 	uuid      string
-	ipaddr    string
+	ipv4addr  string
+	ipv6addr  string
 	macaddr   string
 	hostname  string
 	status    sdkapi.DeviceStatus
@@ -37,7 +38,8 @@ type BuildDeviceParams struct {
 	ID        int64
 	UUID      string
 	MacAddr   string
-	IpAddr    string
+	Ipv4Addr  string
+	Ipv6Addr  string
 	Hostname  string
 	Status    sdkapi.DeviceStatus
 	CreatedAt time.Time
@@ -51,7 +53,8 @@ func BuildDevice(params BuildDeviceParams) *Device {
 		models:    params.Models,
 		id:        params.ID,
 		uuid:      params.UUID,
-		ipaddr:    params.IpAddr,
+		ipv4addr:  params.Ipv4Addr,
+		ipv6addr:  params.Ipv6Addr,
 		macaddr:   params.MacAddr,
 		hostname:  params.Hostname,
 		status:    params.Status,
@@ -72,8 +75,23 @@ func (self *Device) Hostname() string {
 	return self.hostname
 }
 
+// Ipv4Addr returns the device's IPv4 address (empty if not available).
+func (self *Device) Ipv4Addr() string {
+	return self.ipv4addr
+}
+
+// Ipv6Addr returns the device's IPv6 address (empty if not available).
+func (self *Device) Ipv6Addr() string {
+	return self.ipv6addr
+}
+
+// IpAddr returns the primary IP address for backward compatibility.
+// Returns IPv4 if available, otherwise IPv6.
 func (self *Device) IpAddr() string {
-	return self.ipaddr
+	if self.ipv4addr != "" {
+		return self.ipv4addr
+	}
+	return self.ipv6addr
 }
 
 func (self *Device) MacAddr() string {
@@ -93,12 +111,12 @@ func (self *Device) UpdatedAt() time.Time {
 }
 
 // validateDeviceUpdateFields checks that required device fields are not blank
-func validateDeviceUpdateFields(uuid, ip, mac string) error {
+func validateDeviceUpdateFields(uuid, ipv4, ipv6, mac string) error {
 	if strings.TrimSpace(uuid) == "" {
 		return fmt.Errorf("uuid cannot be blank")
 	}
-	if strings.TrimSpace(ip) == "" {
-		return fmt.Errorf("ip address cannot be blank")
+	if strings.TrimSpace(ipv4) == "" && strings.TrimSpace(ipv6) == "" {
+		return fmt.Errorf("at least one IP address (IPv4 or IPv6) is required")
 	}
 	if strings.TrimSpace(mac) == "" {
 		return fmt.Errorf("mac address cannot be blank")
@@ -114,8 +132,9 @@ func (self *Device) Reload(ctx context.Context) error {
 	}
 
 	self.hostname = dRow.Hostname
-	self.macaddr = dRow.MacAddress // Now comes from JOIN
-	self.ipaddr = dRow.IpAddress
+	self.macaddr = dRow.MacAddress // comes from JOIN
+	self.ipv4addr = dRow.Ipv4Addr
+	self.ipv6addr = dRow.Ipv6Addr
 	self.uuid = dRow.Uuid
 	self.status = sdkapi.DeviceStatus(dRow.Status)
 
@@ -124,18 +143,19 @@ func (self *Device) Reload(ctx context.Context) error {
 
 func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams) error {
 	// Validate required fields
-	if err := validateDeviceUpdateFields(params.UUID, params.Ip, params.Mac); err != nil {
+	if err := validateDeviceUpdateFields(params.UUID, params.Ipv4, params.Ipv6, params.Mac); err != nil {
 		log.Printf("device validation failed: %v", err)
 		return err
 	}
 
 	// Update device record (without MAC address)
 	err := self.db.Queries.UpdateDevice(ctx, queries.UpdateDeviceParams{
-		Hostname:  params.Hostname,
-		IpAddress: params.Ip,
-		Uuid:      params.UUID,
-		ID:        self.id,
-		Status:    int64(params.Status),
+		Hostname: params.Hostname,
+		Ipv4Addr: params.Ipv4,
+		Ipv6Addr: params.Ipv6,
+		Uuid:     params.UUID,
+		ID:       self.id,
+		Status:   int64(params.Status),
 	})
 	if err != nil {
 		log.Printf("error updating device %v: %v", self.id, err)
@@ -156,7 +176,8 @@ func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams
 	}
 
 	self.hostname = params.Hostname
-	self.ipaddr = params.Ip
+	self.ipv4addr = params.Ipv4
+	self.ipv6addr = params.Ipv6
 	self.macaddr = params.Mac
 	self.uuid = params.UUID
 	self.status = sdkapi.DeviceStatus(params.Status)
@@ -213,7 +234,8 @@ func (self *Device) Clone() *Device {
 		models:    self.models,
 		id:        self.id,
 		uuid:      self.uuid,
-		ipaddr:    self.ipaddr,
+		ipv4addr:  self.ipv4addr,
+		ipv6addr:  self.ipv6addr,
 		macaddr:   self.macaddr,
 		hostname:  self.hostname,
 		status:    self.status,

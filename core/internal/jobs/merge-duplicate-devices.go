@@ -146,10 +146,14 @@ func runMerge(g *api.CoreGlobals) {
 				continue
 			}
 
+			log.Printf("[DeviceMerge] DEBUG: Found %d device(s) sharing MAC %s: %v", len(deviceIDs), mac, deviceIDs)
+
 			if len(deviceIDs) < 2 {
+				log.Printf("[DeviceMerge] DEBUG: Skipping MAC %s - only %d device(s)", mac, len(deviceIDs))
 				continue
 			}
 
+			log.Printf("[DeviceMerge] DEBUG: Calling mergeMatchingDevicesTracked for devices: %v", deviceIDs)
 			merged, sources := mergeMatchingDevicesTracked(ctx, g, deviceIDs, mergedSources)
 			mergeCount += merged
 			for id := range sources {
@@ -326,6 +330,7 @@ func mergeMatchingDevicesTracked(ctx context.Context, g *api.CoreGlobals, device
 			)
 
 			if !decision.ShouldMerge {
+				log.Printf("[DeviceMerge] DEBUG: Not merging devices %d and %d (reason: fingerprints don't match or other criteria)", devA, devB)
 				continue
 			}
 
@@ -352,7 +357,9 @@ func shouldMergeDevices(deviceA, deviceB MergeCandidate) MergeDecision {
 	// Case 1: Both have fingerprints - only merge if they match
 	if hasA && hasB {
 		kind := fingerprintsMatchKind(deviceA.Fingerprints, deviceB.Fingerprints)
+		log.Printf("[DeviceMerge] DEBUG: fingerprintsMatchKind for devices %d and %d returned: %d (MatchNone=0, MatchCNA=1, MatchBrowser=2)", deviceA.DeviceID, deviceB.DeviceID, kind)
 		if kind == MatchNone {
+			log.Printf("[DeviceMerge] DEBUG: Devices %d and %d have fingerprints but they don't match", deviceA.DeviceID, deviceB.DeviceID)
 			return MergeDecision{ShouldMerge: false}
 		}
 
@@ -516,10 +523,11 @@ func cnaMACIPMatch(a, b MergeCandidate) bool {
 // trying multiple formats to handle fractional seconds and RFC3339 variants.
 func parseSQLiteTime(s string) time.Time {
 	formats := []string{
-		"2006-01-02 15:04:05.999999999", // fractional seconds (space separator)
-		"2006-01-02 15:04:05",           // standard SQLite format
-		time.RFC3339Nano,                // "2006-01-02T15:04:05.999999999Z07:00"
-		time.RFC3339,                    // "2006-01-02T15:04:05Z07:00"
+		"2006-01-02 15:04:05.999999999-07:00", // fractional seconds with timezone (space separator)
+		"2006-01-02 15:04:05.999999999",       // fractional seconds (space separator)
+		"2006-01-02 15:04:05",                 // standard SQLite format
+		time.RFC3339Nano,                      // "2006-01-02T15:04:05.999999999Z07:00"
+		time.RFC3339,                          // "2006-01-02T15:04:05Z07:00"
 	}
 	for _, format := range formats {
 		if t, err := time.Parse(format, s); err == nil {

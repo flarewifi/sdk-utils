@@ -39,7 +39,7 @@ Finds a client device by its IP address. This is useful when you have an IP addr
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
-    ip := "10.0.0.25"
+    ip := "10.0.0.25" // can be an IPv4 or IPv6 address
     clnt, err := api.SessionsMgr().FindClientByIp(r.Context(), ip)
     if err != nil {
         // handle error - device not found
@@ -48,7 +48,8 @@ func (w http.ResponseWriter, r *http.Request) {
     // Access device information
     mac := clnt.MacAddr()
     hostname := clnt.Hostname()
-    fmt.Printf("Device at %s has MAC %s (hostname: %s)\n", ip, mac, hostname)
+    fmt.Printf("Device MAC %s (hostname: %s) IPv4=%s IPv6=%s\n",
+        mac, hostname, clnt.Ipv4Addr(), clnt.Ipv6Addr())
 }
 ```
 
@@ -217,8 +218,9 @@ func (w http.ResponseWriter, r *http.Request) {
             continue
         }
         
-        fmt.Printf("Device %s (%s) - Session %d: %d secs remaining\n",
-            device.MacAddr(), device.IpAddr(), session.ID(), session.RemainingTime())
+        fmt.Printf("Device %s (IPv4=%s IPv6=%s) - Session %d: %d secs remaining\n",
+            device.MacAddr(), device.Ipv4Addr(), device.Ipv6Addr(),
+            session.ID(), session.RemainingTime())
     }
 }
 ```
@@ -325,7 +327,8 @@ The `NewDeviceParams` struct contains all device fields:
 | `ID` | `int64` | Device database ID |
 | `UUID` | `string` | Device unique identifier |
 | `MacAddress` | `string` | Device MAC address |
-| `IpAddress` | `string` | Device IP address |
+| `Ipv4Address` | `string` | Device IPv4 address (empty string if device has no IPv4) |
+| `Ipv6Address` | `string` | Device IPv6 address (empty string if device has no IPv6) |
 | `Hostname` | `string` | Device hostname |
 | `Status` | `DeviceStatus` | Device status: `DeviceStatusConnected`, `DeviceStatusDisconnected`, or `DeviceStatusBlocked` |
 | `CreatedAt` | `time.Time` | When the device was created |
@@ -335,28 +338,30 @@ The `NewDeviceParams` struct contains all device fields:
 // Example: Wrap device data for use with SDK methods
 func wrapDeviceData(data DeviceRow) sdkapi.IClientDevice {
     return api.SessionsMgr().NewClientDevice(sdkapi.NewDeviceParams{
-        ID:         data.ID,
-        UUID:       data.UUID,
-        MacAddress: data.Mac,
-        IpAddress:  data.IP,
-        Hostname:   data.Hostname,
-        Status:     sdkapi.DeviceStatus(data.Status),
-        CreatedAt:  data.CreatedAt,
-        UpdatedAt:  data.UpdatedAt,
+        ID:          data.ID,
+        UUID:        data.UUID,
+        MacAddress:  data.Mac,
+        Ipv4Address: data.Ipv4,  // empty string if device has no IPv4
+        Ipv6Address: data.Ipv6,  // empty string if device has no IPv6
+        Hostname:    data.Hostname,
+        Status:      sdkapi.DeviceStatus(data.Status),
+        CreatedAt:   data.CreatedAt,
+        UpdatedAt:   data.UpdatedAt,
     })
 }
 
 // Example: Create device from external data and emit event
 func processDeviceData(deviceData ExternalDeviceData) {
     device := api.SessionsMgr().NewClientDevice(sdkapi.NewDeviceParams{
-        ID:         deviceData.ID,
-        UUID:       deviceData.UUID,
-        MacAddress: deviceData.Mac,
-        IpAddress:  deviceData.IP,
-        Hostname:   deviceData.Hostname,
-        Status:     sdkapi.DeviceStatusConnected,
-        CreatedAt:  deviceData.CreatedAt,
-        UpdatedAt:  time.Now(),
+        ID:          deviceData.ID,
+        UUID:        deviceData.UUID,
+        MacAddress:  deviceData.Mac,
+        Ipv4Address: deviceData.Ipv4,
+        Ipv6Address: deviceData.Ipv6,
+        Hostname:    deviceData.Hostname,
+        Status:      sdkapi.DeviceStatusConnected,
+        CreatedAt:   deviceData.CreatedAt,
+        UpdatedAt:   time.Now(),
     })
     
     // Use SDK methods on the wrapped device
@@ -650,10 +655,11 @@ type SessionEventData struct {
 | `ID()` | `int64` | Device database ID |
 | `UUID()` | `string` | Device unique identifier (globally unique) |
 | `MacAddr()` | `string` | Device MAC address |
-| `IpAddr()` | `string` | Device IP address |
+| `Ipv4Addr()` | `string` | Device IPv4 address (empty if device has no IPv4) |
+| `Ipv6Addr()` | `string` | Device IPv6 address (empty if device has no IPv6) |
+| `IpAddr()` | `string` | Primary IP address: IPv4 if available, otherwise IPv6 |
 | `Hostname()` | `string` | Device hostname |
 | `Status()` | `DeviceStatus` | Connection status: connected/disconnected/blocked |
-| `IsConnected()` | `bool` | True if device has an active session |
 | `Emit()` | - | Send SSE message to device browser |
 
 #### Complete Plugin Examples
@@ -715,7 +721,8 @@ func (plugin *AuditPlugin) Init(api sdkapi.IPluginApi) error {
             DeviceID:      device.ID(),
             DeviceUUID:    device.UUID(),
             DeviceMAC:     device.MacAddr(),
-            DeviceIP:      device.IpAddr(),
+            DeviceIPv4:    device.Ipv4Addr(),
+            DeviceIPv6:    device.Ipv6Addr(),
             SessionType:   string(session.Type()),
             TimeSecs:      session.TimeSecs(),
             TimeConsumed:  session.ConsumedTimeSecs(),

@@ -24,7 +24,8 @@ const (
 type UpdateDeviceParams struct {
 	UUID     string
 	Mac      string
-	Ip       string
+	Ipv4     string
+	Ipv6     string
 	Hostname string
 	Status   DeviceStatus
 }
@@ -36,7 +37,8 @@ type DeviceData struct {
 	ID        int64
 	UUID      string
 	MacAddr   string
-	IpAddr    string
+	Ipv4Addr  string
+	Ipv6Addr  string
 	Hostname  string
 	Status    DeviceStatus
 	CreatedAt time.Time
@@ -58,7 +60,14 @@ type IClientDevice interface {
 	// Returns the hostname of the device.
 	Hostname() string
 
-	// Returns the IP address of the device.
+	// Returns the IPv4 address of the device (empty if not available).
+	Ipv4Addr() string
+
+	// Returns the IPv6 address of the device (empty if not available).
+	Ipv6Addr() string
+
+	// IpAddr returns the primary IP address for backward compatibility.
+	// Returns IPv4 if available, otherwise IPv6.
 	IpAddr() string
 
 	// Returns the MAC address of the device.

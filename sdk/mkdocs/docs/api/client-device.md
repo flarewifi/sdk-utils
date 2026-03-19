@@ -41,13 +41,32 @@ Returns a `string` value of the client device hostname.
 h := clnt.Hostname()
 ```
 
-### IpAddr
+### Ipv4Addr
 
-Returns a `string` value of the client device IP address.
+Returns the IPv4 address of the device as a `string`. Returns an empty string if the device has no IPv4 address (e.g., IPv6-only device).
 
 ```go
-ip := clnt.IpAddr()
+ipv4 := clnt.Ipv4Addr()
 ```
+
+### Ipv6Addr
+
+Returns the IPv6 address of the device as a `string`. Returns an empty string if the device has no IPv6 address.
+
+```go
+ipv6 := clnt.Ipv6Addr()
+```
+
+### IpAddr
+
+Returns the primary IP address of the device as a `string` for backward compatibility. Returns the IPv4 address if available, otherwise the IPv6 address.
+
+```go
+ip := clnt.IpAddr() // IPv4 preferred, fallback to IPv6
+```
+
+!!! note "Dual-Stack Devices"
+    For dual-stack devices, `IpAddr()` returns only the IPv4 address. Use `Ipv4Addr()` and `Ipv6Addr()` explicitly when you need to handle both protocols, for example when configuring firewall rules or bandwidth shaping.
 
 ### MacAddr
 
@@ -97,7 +116,8 @@ Returns a snapshot of all device data fields as a `DeviceData` struct. This meth
 
 ```go
 data := clnt.Data()
-fmt.Printf("Device: %s (%s) - Status: %d\n", data.MacAddr, data.IpAddr, data.Status)
+fmt.Printf("Device: %s (IPv4: %s, IPv6: %s) - Status: %d\n",
+    data.MacAddr, data.Ipv4Addr, data.Ipv6Addr, data.Status)
 ```
 
 The `DeviceData` struct contains:
@@ -107,9 +127,11 @@ The `DeviceData` struct contains:
 | `ID` | `int64` | Database ID |
 | `UUID` | `string` | Device UUID |
 | `MacAddr` | `string` | MAC address |
-| `IpAddr` | `string` | IP address |
+| `Ipv4Addr` | `string` | IPv4 address (empty if device has no IPv4) |
+| `Ipv6Addr` | `string` | IPv6 address (empty if device has no IPv6) |
 | `Hostname` | `string` | Device hostname |
 | `Status` | `DeviceStatus` | Device status |
+| `IsConnected` | `bool` | True if device has an active internet session |
 | `CreatedAt` | `time.Time` | Creation timestamp |
 | `UpdatedAt` | `time.Time` | Last update timestamp |
 
@@ -121,7 +143,8 @@ The `UpdateDeviceParams` struct contains:
 
 - `UUID string` - the device UUID
 - `Mac string` - the new MAC address
-- `Ip string` - the new IP address
+- `Ipv4 string` - the new IPv4 address (empty string if device has no IPv4)
+- `Ipv6 string` - the new IPv6 address (empty string if device has no IPv6)
 - `Hostname string` - the new hostname
 - `Status DeviceStatus` - the new device status (`DeviceStatusConnected`, `DeviceStatusDisconnected`, `DeviceStatusBlocked`)
 
@@ -132,7 +155,8 @@ func (w http.ResponseWriter, r *http.Request) {
     params := sdkapi.UpdateDeviceParams{
         UUID:     clnt.UUID(),
         Mac:      "00:11:22:33:44:55",
-        Ip:       "192.168.1.123",
+        Ipv4:     "192.168.1.123",
+        Ipv6:     "2001:db8::1",  // empty string if IPv4-only
         Hostname: "new-hostname",
         Status:   sdkapi.DeviceStatusConnected,
     }

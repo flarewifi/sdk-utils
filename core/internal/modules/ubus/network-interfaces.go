@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"log"
+	"net"
 	"strings"
 
 	"github.com/goccy/go-json"
@@ -17,10 +18,17 @@ type IpV4Addr struct {
 	Netmask int    `json:"mask"`
 }
 
+// IpV6Addr holds a single IPv6 address and its prefix length as reported by UBUS.
+type IpV6Addr struct {
+	Addr      string `json:"address"`
+	PrefixLen int    `json:"mask"`
+}
+
 type NetworkInterface struct {
 	Device        string     `json:"device"`
 	Up            bool       `json:"up"`
 	IpV4Addresses []IpV4Addr `json:"ipv4-address"`
+	IpV6Addresses []IpV6Addr `json:"ipv6-address"`
 	DnsServers    []string   `json:"dns-server"`
 }
 
@@ -33,6 +41,27 @@ func (iface *NetworkInterface) IpV4Addr() (ip IpV4Addr, err error) {
 		return iface.IpV4Addresses[0], nil
 	}
 	return ip, errors.New("no IPv4 addresses found")
+}
+
+// IpV6Addr returns the preferred global-scope IPv6 address on the interface.
+// Link-local addresses (fe80::/10) are skipped in favour of routable ones.
+// Returns an error if no addresses are available or if only link-local
+// addresses are present (link-locals are not usable for DNAT or routing).
+func (iface *NetworkInterface) IpV6Addr() (ip IpV6Addr, err error) {
+	if len(iface.IpV6Addresses) == 0 {
+		return ip, errors.New("no IPv6 addresses found")
+	}
+
+	// Prefer global unicast addresses over link-local / other scopes.
+	// Use net.ParseIP for correct, case-insensitive classification.
+	for _, addr := range iface.IpV6Addresses {
+		parsed := net.ParseIP(addr.Addr)
+		if parsed != nil && !parsed.IsLinkLocalUnicast() {
+			return addr, nil
+		}
+	}
+
+	return ip, errors.New("only link-local IPv6 addresses found on interface")
 }
 
 func GetInterfaceNames() (names []string, err error) {

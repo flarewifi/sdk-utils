@@ -131,6 +131,10 @@ func (self *NetworkLan) ReinitializeTc() (err error) {
 			return nil, err
 		}
 
+		// Declared here so both branches of the if/else below can populate it,
+		// and the captive portal setup after the block can read it.
+		var reinitIPv6Addr string
+
 		// If TC managers exist, use Reset() to preserve session data
 		// Otherwise, create new managers
 		if oldClassMgr != nil && oldFilterMgr != nil {
@@ -172,7 +176,7 @@ func (self *NetworkLan) ReinitializeTc() (err error) {
 			self.tcClassMgr = classMgr
 			self.mu.Unlock()
 
-			// Setup TC Filter Manager
+			// Setup TC Filter Manager (IPv4)
 			log.Printf("Setting up TC filters for LAN '%s' with IP %s/%d", self.name, ipv4.Addr, ipv4.Netmask)
 			filterMgr := tc.NewTcFilterMgr(i.Device)
 			err = filterMgr.Setup(ipv4.Addr, ipv4.Netmask)
@@ -181,14 +185,31 @@ func (self *NetworkLan) ReinitializeTc() (err error) {
 				return nil, err
 			}
 
+			// Setup TC Filter Manager (IPv6) — optional, non-fatal.
+			// Fetch IPv6 once; reuse for captive portal below.
+			if ipv6, err := NewNetworkInterface(self.name).IpV6Addr(); err == nil {
+				reinitIPv6Addr = ipv6.Addr
+				log.Printf("Setting up IPv6 TC filters for LAN '%s' with IP %s/%d", self.name, ipv6.Addr, ipv6.PrefixLen)
+				if err := filterMgr.Setup6(ipv6.Addr, ipv6.PrefixLen); err != nil {
+					log.Printf("WARNING: IPv6 TC filter setup failed for LAN '%s': %v (continuing without IPv6 shaping)", self.name, err)
+				}
+			}
+
 			self.mu.Lock()
 			self.tcFilterMgr = filterMgr
 			self.mu.Unlock()
 		}
 
-		// Setup Captive Portal
+		// Setup Captive Portal (IPv4 + optional IPv6).
+		// reinitIPv6Addr is populated in the "new managers" branch above;
+		// in the "reset existing managers" branch we fetch it here.
+		if reinitIPv6Addr == "" {
+			if ipv6, err := NewNetworkInterface(self.name).IpV6Addr(); err == nil {
+				reinitIPv6Addr = ipv6.Addr
+			}
+		}
 		log.Printf("Setting up captive portal for LAN '%s' on device '%s' with IP %s", self.name, i.Device, ipv4.Addr)
-		err = nftables.SetupCaptivePortal(i.Device, ipv4.Addr)
+		err = nftables.SetupCaptivePortal(i.Device, ipv4.Addr, reinitIPv6Addr)
 		if err != nil {
 			log.Printf("ERROR: Captive portal setup failed for LAN '%s': %v", self.name, err)
 			return nil, err
@@ -212,7 +233,12 @@ func (self *NetworkLan) SetupCaptivePortal() (err error) {
 		if err != nil {
 			return nil, err
 		}
-		err = nftables.SetupCaptivePortal(info.Device, ipv4.Addr)
+		// IPv6 router address is optional — captive portal still works with IPv4 only
+		routerIp6 := ""
+		if ipv6, err := iface.IpV6Addr(); err == nil {
+			routerIp6 = ipv6.Addr
+		}
+		err = nftables.SetupCaptivePortal(info.Device, ipv4.Addr, routerIp6)
 		return nil, err
 	})
 
@@ -276,11 +302,20 @@ func (self *NetworkLan) SetupTrafficControl() (err error) {
 				return nil, err
 			}
 
+			// Set up IPv6 TC filter if interface has an IPv6 address.
+			// Fetch once and reuse for the captive portal call below.
+			routerIp6setup := ""
+			if ipv6, err := NewNetworkInterface(self.name).IpV6Addr(); err == nil {
+				routerIp6setup = ipv6.Addr
+				if err := filterMgr.Setup6(ipv6.Addr, ipv6.PrefixLen); err != nil {
+					log.Printf("WARNING: IPv6 TC filter setup failed for LAN '%s': %v (continuing without IPv6 shaping)", self.name, err)
+				}
+			}
+
 			self.mu.Lock()
 			self.tcFilterMgr = filterMgr
 			self.mu.Unlock()
-
-			err = nftables.SetupCaptivePortal(i.Device, ipv4.Addr)
+			err = nftables.SetupCaptivePortal(i.Device, ipv4.Addr, routerIp6setup)
 			if err != nil {
 				return nil, err
 			}

@@ -6,10 +6,17 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+
+	jobque "core/utils/job-que"
 )
 
 var (
-	// mockStatsTracker is protected by nftQue serialization (same queue as Connect/Disconnect)
+	// nftStatsQue serializes GetStats calls, mirroring the production stats.go queue.
+	// Using a separate queue (not nftQue) prevents GetStats from blocking behind
+	// Connect/Disconnect operations, matching the production code path.
+	nftStatsQue = jobque.NewJobQueue[StatResult]()
+
+	// mockStatsTracker is protected by nftStatsQue serialization.
 	mockStatsTracker = make(map[string]*mockClientStats)
 	mockRand         = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
@@ -33,22 +40,42 @@ type StatResult struct {
 
 // GetStats generates mock traffic statistics for connected clients in dev mode.
 // It simulates realistic data consumption by generating random traffic between 50KB-500KB per 5-second interval.
-// Uses nftQue for serialization (same queue as Connect/Disconnect/IsConnected).
+// Uses nftStatsQue for serialization, matching production behavior (separate from nftQue so
+// GetStats does not block behind Connect/Disconnect operations).
+// For dual-stack devices both IPv4 and IPv6 IPs receive the same simulated traffic totals.
 func GetStats() (stat StatResult, err error) {
-	result, err := nftQue.Exec("GetStats", func() (any, error) {
+	return nftStatsQue.Exec("GetStats", func() (StatResult, error) {
 		now := time.Now()
 		macStats := make(map[string]StatData)
 		ipStats := make(map[string]StatData)
 
+		// mockStatsTracker and connTable are only ever accessed from within
+		// nftStatsQue or nftQue jobs. Since these are separate single-worker
+		// queues, both maps require a snapshot of connTable under nftMu before
+		// iterating, so we don't race with doConnect/doDisconnect.
+		nftMu.RLock()
+		connectedMACs := make([]string, 0, len(macToIps))
+		for mac := range macToIps {
+			connectedMACs = append(connectedMACs, mac)
+		}
+		nftMu.RUnlock()
+
 		// Clean up disconnected clients from tracker
 		for mac := range mockStatsTracker {
-			if _, exists := connClients[mac]; !exists {
+			found := false
+			for _, m := range connectedMACs {
+				if m == mac {
+					found = true
+					break
+				}
+			}
+			if !found {
 				delete(mockStatsTracker, mac)
 			}
 		}
 
 		// Generate mock stats for each connected client
-		for mac, client := range connClients {
+		for _, mac := range connectedMACs {
 			// Initialize tracker if new client
 			if _, exists := mockStatsTracker[mac]; !exists {
 				mockStatsTracker[mac] = &mockClientStats{
@@ -77,17 +104,39 @@ func GetStats() (stat StatResult, err error) {
 			tracker.totalPackets += randomPackets
 			tracker.lastUpdate = now
 
-			// Add to result maps
+			// MAC stats (upload is keyed by uppercase MAC)
 			macUpper := strings.ToUpper(mac)
 			macStats[macUpper] = StatData{
 				Bytes:   tracker.totalBytes,
 				Packets: tracker.totalPackets,
 			}
 
-			// Use the actual IP from the connected client
-			ipStats[client.ip] = StatData{
-				Bytes:   tracker.totalBytes,
-				Packets: tracker.totalPackets,
+			// IP stats — emit an entry only for the primary IP (IPv4 preferred, else IPv6).
+			// TrafficMgr aggregates download bytes by MAC, so emitting the same total on
+			// multiple IPs would not double-count, but a single IP is sufficient here.
+			nftMu.RLock()
+			ips := macToIps[mac]
+			nftMu.RUnlock()
+
+			primaryAddr := ""
+			for ip := range ips {
+				if !strings.Contains(ip, ":") { // IPv4 has no colon
+					primaryAddr = ip
+					break
+				}
+			}
+			if primaryAddr == "" {
+				// IPv6-only device — use whichever IP is registered
+				for ip := range ips {
+					primaryAddr = ip
+					break
+				}
+			}
+			if primaryAddr != "" {
+				ipStats[primaryAddr] = StatData{
+					Bytes:   tracker.totalBytes,
+					Packets: tracker.totalPackets,
+				}
 			}
 		}
 
@@ -96,10 +145,4 @@ func GetStats() (stat StatResult, err error) {
 			IpStats:  ipStats,
 		}, nil
 	})
-
-	if err != nil {
-		return StatResult{}, err
-	}
-
-	return result.(StatResult), nil
 }

@@ -106,22 +106,28 @@ func (d *FallbackDetector) processTraffic(traffic sdkapi.TrafficData) {
 	// A device waking from WiFi power saving may receive download traffic before
 	// it sends any upload, so we resolve IP→MAC via the nftables connected-device
 	// cache and treat download activity as a reconnect signal too.
+
+	// Collect IPs with active download traffic for batch MAC resolution
+	activeIPs := make([]string, 0, len(traffic.Download))
 	for ip, stat := range traffic.Download {
 		if stat.Bytes > 0 || stat.Packets > 0 {
-			mac := nftables.GetMacByIp(ip)
-			if mac == "" {
-				continue // IP not in nftables cache – device not connected
-			}
-			mac = strings.ToUpper(mac)
-			if processedMACs[mac] {
-				continue // Already handled via upload traffic this tick
-			}
-			processedMACs[mac] = true
+			activeIPs = append(activeIPs, ip)
+		}
+	}
 
-			if stateTracker.OnTrafficDetected(mac) {
-				log.Printf("[WifiMgr-Fallback] Client resumed activity (download) after disconnect, emitting connect: %s", mac)
-				d.emitConnect(mac)
-			}
+	// Batch-resolve IP→MAC (single mutex acquisition)
+	ipToMacMap := nftables.GetMacsByIps(activeIPs)
+
+	for ip, mac := range ipToMacMap {
+		mac = strings.ToUpper(mac)
+		if processedMACs[mac] {
+			continue // Already handled via upload traffic this tick
+		}
+		processedMACs[mac] = true
+
+		if stateTracker.OnTrafficDetected(mac) {
+			log.Printf("[WifiMgr-Fallback] Client resumed activity (download, ip=%s) after disconnect, emitting connect: %s", ip, mac)
+			d.emitConnect(mac)
 		}
 	}
 }

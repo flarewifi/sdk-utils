@@ -9,7 +9,7 @@ import (
 // It accepts various MAC address formats (e.g., "AA:BB:CC:DD:EE:FF", "aa-bb-cc-dd-ee-ff", "aabbccddeeff")
 // and returns a normalized lowercase colon-separated format (e.g., "aa:bb:cc:dd:ee:ff").
 //
-// Returns an error if the MAC address is empty or invalid.
+// Returns an error if the MAC address is empty, invalid, or consists of all zeroes.
 func ValidateAndNormalizeMAC(mac string) (string, error) {
 	if mac == "" {
 		return "", fmt.Errorf("MAC address is empty")
@@ -19,6 +19,18 @@ func ValidateAndNormalizeMAC(mac string) (string, error) {
 	hwAddr, err := net.ParseMAC(mac)
 	if err != nil {
 		return "", fmt.Errorf("invalid MAC address format '%s': %v", mac, err)
+	}
+
+	// Check for all-zero MAC address (00:00:00:00:00:00)
+	isAllZeroes := true
+	for _, b := range hwAddr {
+		if b != 0 {
+			isAllZeroes = false
+			break
+		}
+	}
+	if isAllZeroes {
+		return "", fmt.Errorf("MAC address cannot be all zeroes (00:00:00:00:00:00)")
 	}
 
 	// Return normalized lowercase colon-separated format (e.g., "aa:bb:cc:dd:ee:ff")

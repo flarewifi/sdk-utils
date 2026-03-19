@@ -112,14 +112,15 @@ type NewClientSessionParams struct {
 // NewDeviceParams holds device data fields for wrapping an existing device row
 // into an IClientDevice object without performing database queries.
 type NewDeviceParams struct {
-	ID         int64
-	UUID       string
-	MacAddress string
-	IpAddress  string
-	Hostname   string
-	Status     DeviceStatus
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID          int64
+	UUID        string
+	MacAddress  string
+	Ipv4Address string
+	Ipv6Address string
+	Hostname    string
+	Status      DeviceStatus
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // SessionFilterAvailability represents the availability filter for listing sessions.

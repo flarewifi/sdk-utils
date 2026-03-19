@@ -59,7 +59,8 @@ type SessionEventEmitter interface {
 type ClientRegisterParams struct {
 	CookieDeviceID *int64
 	MacAddr        string
-	IpAddr         string
+	Ipv4Addr       string
+	Ipv6Addr       string
 	Hostname       string
 	// Fingerprint data
 	UserAgent string
@@ -121,7 +122,8 @@ type sessionData struct {
 // networkState holds network-related fields that rarely change.
 // Uses atomic pointer for lock-free reads.
 type networkState struct {
-	ip  string
-	mac string
-	lan *network.NetworkLan
+	ipv4 string
+	ipv6 string
+	mac  string
+	lan  *network.NetworkLan
 }

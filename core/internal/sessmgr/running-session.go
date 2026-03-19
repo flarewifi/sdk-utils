@@ -75,12 +75,16 @@ type RunningSession struct {
 // =============================================================================
 
 func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitter SessionEventEmitter, tcQueue *jobque.JobQueue[struct{}]) (*RunningSession, error) {
-	log.Printf("[Running Session] Creating new running session - DeviceID=%d, MAC=%s, IP=%s",
-		clnt.ID(), clnt.MacAddr(), clnt.IpAddr())
+	log.Printf("[Running Session] Creating new running session - DeviceID=%d, MAC=%s, IPv4=%s, IPv6=%s",
+		clnt.ID(), clnt.MacAddr(), clnt.Ipv4Addr(), clnt.Ipv6Addr())
 
-	lan, err := network.FindByIp(clnt.IpAddr())
+	// Use whichever IP is available for LAN lookup (IPv4 preferred).
+	// Build a temporary networkState so we can reuse the primaryIP() helper.
+	initNet := &networkState{ipv4: clnt.Ipv4Addr(), ipv6: clnt.Ipv6Addr()}
+	primaryAddr := primaryIP(initNet)
+	lan, err := network.FindByIp(primaryAddr)
 	if err != nil {
-		log.Printf("[Running Session] ERROR - Failed to find LAN for IP %s: %v", clnt.IpAddr(), err)
+		log.Printf("[Running Session] ERROR - Failed to find LAN for IP %s: %v", primaryAddr, err)
 		return nil, err
 	}
 
@@ -98,13 +102,14 @@ func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitt
 
 	// Initialize network state atomically
 	rs.network.Store(&networkState{
-		ip:  clnt.IpAddr(),
-		mac: clnt.MacAddr(),
-		lan: lan,
+		ipv4: clnt.Ipv4Addr(),
+		ipv6: clnt.Ipv6Addr(),
+		mac:  clnt.MacAddr(),
+		lan:  lan,
 	})
 
-	log.Printf("[Running Session] Running session created successfully - DeviceID=%d, MAC=%s, IP=%s, LAN=%s",
-		rs.clntId, clnt.MacAddr(), clnt.IpAddr(), lan.Name())
+	log.Printf("[Running Session] Running session created successfully - DeviceID=%d, MAC=%s, IPv4=%s, IPv6=%s, LAN=%s",
+		rs.clntId, clnt.MacAddr(), clnt.Ipv4Addr(), clnt.Ipv6Addr(), lan.Name())
 
 	return rs, nil
 }
@@ -122,9 +127,14 @@ func (self *RunningSession) ClientId() int64 {
 // PUBLIC METHODS - Atomic Accessors (network state)
 // =============================================================================
 
-// IpAddr returns the current IP address (atomic read, no lock needed).
+// IpAddr returns the primary IP address (IPv4 if available, else IPv6).
+// Atomic read, no lock needed.
 func (self *RunningSession) IpAddr() string {
-	return self.network.Load().ip
+	n := self.network.Load()
+	if n.ipv4 != "" {
+		return n.ipv4
+	}
+	return n.ipv6
 }
 
 // MacAddr returns the current MAC address (atomic read, no lock needed).
@@ -198,8 +208,8 @@ func (self *RunningSession) PrepareForChain() {
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
 	net := self.network.Load()
-	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, MAC=%s, IP=%s",
-		self.clntId, s.ID(), net.mac, net.ip)
+	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, MAC=%s, IPv4=%s, IPv6=%s",
+		self.clntId, s.ID(), net.mac, net.ipv4, net.ipv6)
 
 	log.Printf("[Running Session] Start - %s", contextInfo)
 
@@ -382,11 +392,18 @@ func (self *RunningSession) CleanupTc() error {
 		net := self.network.Load()
 
 		if self.tcClassId != nil {
-			log.Printf("Clean up TC... DeviceID=%d, IP=%s", self.clntId, net.ip)
+			log.Printf("Clean up TC... DeviceID=%d, IPv4=%s, IPv6=%s", self.clntId, net.ipv4, net.ipv6)
 			classid := *self.tcClassId
 
-			if err := net.lan.DelFilter(net.ip, classid.Uint()); err != nil {
-				return err
+			if net.ipv4 != "" {
+				if err := net.lan.DelFilter(net.ipv4, classid.Uint()); err != nil {
+					log.Printf("[Running Session] WARNING - Failed to delete IPv4 filter: %v", err)
+				}
+			}
+			if net.ipv6 != "" {
+				if err := net.lan.DelFilter(net.ipv6, classid.Uint()); err != nil {
+					log.Printf("[Running Session] WARNING - Failed to delete IPv6 filter: %v", err)
+				}
 			}
 
 			if err := net.lan.DelClass(classid.Uint()); err != nil {
@@ -405,29 +422,33 @@ func (self *RunningSession) CleanupTc() error {
 // PUBLIC METHODS - Network Update
 // =============================================================================
 
-// UpdateNetworkDetails updates the MAC and IP address when device network details change.
-func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, newIP string) error {
-	contextInfo := fmt.Sprintf("DeviceID=%d, NewMAC=%s, NewIP=%s",
-		self.clntId, newMac, newIP)
+// UpdateNetworkDetails updates the MAC, IPv4, and IPv6 addresses when device network details change.
+func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, newIpv4, newIpv6 string) error {
+	contextInfo := fmt.Sprintf("DeviceID=%d, NewMAC=%s, NewIPv4=%s, NewIPv6=%s",
+		self.clntId, newMac, newIpv4, newIpv6)
 
 	log.Printf("[Running Session] UpdateNetworkDetails - %s", contextInfo)
 
 	// Quick check outside lock - if nothing changed, skip entirely.
 	// This is an optimization; the authoritative check happens inside the lock.
 	quickNet := self.network.Load()
-	if quickNet.ip == newIP && quickNet.mac == newMac {
+	if quickNet.ipv4 == newIpv4 && quickNet.ipv6 == newIpv6 && quickNet.mac == newMac {
 		log.Printf("[Running Session] No network changes detected for device %d", self.clntId)
 		return nil
 	}
 
+	// Use primary IP (IPv4 preferred, fallback to IPv6) for LAN lookup.
+	newPrimaryAddr := primaryIP(&networkState{ipv4: newIpv4, ipv6: newIpv6})
+	quickPrimaryAddr := primaryIP(quickNet)
+
 	// Determine new LAN outside lock (network.FindByIp is read-only and safe)
 	var newLan *network.NetworkLan
-	if quickNet.ip != newIP {
-		log.Printf("[Running Session] IP changed, checking if LAN changed...")
+	if quickPrimaryAddr != newPrimaryAddr {
+		log.Printf("[Running Session] Primary IP changed, checking if LAN changed...")
 		var err error
-		newLan, err = network.FindByIp(newIP)
+		newLan, err = network.FindByIp(newPrimaryAddr)
 		if err != nil {
-			log.Printf("[Running Session] ERROR - Failed to find LAN for new IP %s: %v", newIP, err)
+			log.Printf("[Running Session] ERROR - Failed to find LAN for new IP %s: %v", newPrimaryAddr, err)
 			return err
 		}
 	}
@@ -443,23 +464,24 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 		currentNet := self.network.Load()
 
 		// Check if update is still needed (another concurrent call may have already done it)
-		if currentNet.ip == newIP && currentNet.mac == newMac {
+		if currentNet.ipv4 == newIpv4 && currentNet.ipv6 == newIpv6 && currentNet.mac == newMac {
 			log.Printf("[Running Session] Network already updated by concurrent call for device %d, skipping", self.clntId)
 			return nil
 		}
 
-		// If IP hasn't changed (only MAC), just update network state
-		if currentNet.ip == newIP {
+		// If IPs haven't changed (only MAC), just update network state
+		if currentNet.ipv4 == newIpv4 && currentNet.ipv6 == newIpv6 {
 			self.network.Store(&networkState{
-				ip:  newIP,
-				mac: newMac,
-				lan: currentNet.lan,
+				ipv4: newIpv4,
+				ipv6: newIpv6,
+				mac:  newMac,
+				lan:  currentNet.lan,
 			})
 			return nil
 		}
 
 		// IP changed - need to update TC rules
-		// Use newLan computed above (or fall back to current LAN if IP didn't change relative to quickNet)
+		// Use newLan computed above (or fall back to current LAN if primary IP didn't change relative to quickNet)
 		if newLan == nil {
 			newLan = currentNet.lan
 		}
@@ -469,12 +491,19 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 			log.Printf("[Running Session] LAN changed from %s to %s, recreating TC rules...",
 				currentNet.lan.Name(), newLan.Name())
 
-			// Clean up old TC rules on current (old) LAN
+			// Clean up old TC filters on current (old) LAN (both IPs)
 			if self.tcClassId != nil {
 				classid := self.tcClassId.Uint()
-				log.Printf("[Running Session] Removing old TC filter for IP %s", currentNet.ip)
-				if err := currentNet.lan.DelFilter(currentNet.ip, classid); err != nil {
-					log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
+				log.Printf("[Running Session] Removing old TC filters for IPv4=%s, IPv6=%s", currentNet.ipv4, currentNet.ipv6)
+				if currentNet.ipv4 != "" {
+					if err := currentNet.lan.DelFilter(currentNet.ipv4, classid); err != nil {
+						log.Printf("[Running Session] WARNING - Failed to delete old IPv4 filter: %v", err)
+					}
+				}
+				if currentNet.ipv6 != "" {
+					if err := currentNet.lan.DelFilter(currentNet.ipv6, classid); err != nil {
+						log.Printf("[Running Session] WARNING - Failed to delete old IPv6 filter: %v", err)
+					}
 				}
 
 				log.Printf("[Running Session] Removing old TC class %d", classid)
@@ -486,9 +515,10 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 
 			// Update network state BEFORE initTc so it reads the new LAN
 			self.network.Store(&networkState{
-				ip:  newIP,
-				mac: newMac,
-				lan: newLan,
+				ipv4: newIpv4,
+				ipv6: newIpv6,
+				mac:  newMac,
+				lan:  newLan,
 			})
 
 			// Recreate TC rules on new interface
@@ -499,35 +529,62 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 			}
 			log.Printf("[Running Session] TC rules recreated successfully")
 		} else {
-			// Same LAN, just update the filter
-			log.Printf("[Running Session] Same LAN, updating TC filter from IP %s to %s", currentNet.ip, newIP)
+			// Same LAN, just update the filters
+			log.Printf("[Running Session] Same LAN, updating TC filters from IPv4=%s,IPv6=%s to IPv4=%s,IPv6=%s",
+				currentNet.ipv4, currentNet.ipv6, newIpv4, newIpv6)
 
 			if self.tcClassId != nil {
 				classid := self.tcClassId.Uint()
 
-				// Remove old filter using current (authoritative) IP
-				if err := currentNet.lan.DelFilter(currentNet.ip, classid); err != nil {
-					log.Printf("[Running Session] WARNING - Failed to delete old filter: %v", err)
+				// Remove old filters using current (authoritative) IPs
+				if currentNet.ipv4 != "" {
+					if err := currentNet.lan.DelFilter(currentNet.ipv4, classid); err != nil {
+						log.Printf("[Running Session] WARNING - Failed to delete old IPv4 filter: %v", err)
+					}
+				}
+				if currentNet.ipv6 != "" {
+					if err := currentNet.lan.DelFilter(currentNet.ipv6, classid); err != nil {
+						log.Printf("[Running Session] WARNING - Failed to delete old IPv6 filter: %v", err)
+					}
 				}
 
-				// Create new filter with new IP
-				if err := newLan.CreateFilter(newIP, classid); err != nil {
-					log.Printf("[Running Session] ERROR - Failed to create new filter: %v", err)
-					return err
+				// Create new filter for IPv4 (required if present)
+				if newIpv4 != "" {
+					if err := newLan.CreateFilter(newIpv4, classid); err != nil {
+						log.Printf("[Running Session] ERROR - Failed to create new IPv4 filter: %v", err)
+						return err
+					}
 				}
-				log.Printf("[Running Session] TC filter updated successfully")
+				// Create new filter for IPv6 (required if present — silent failure
+				// would let IPv6 traffic bypass bandwidth quota).
+				if newIpv6 != "" {
+					if err := newLan.CreateFilter(newIpv6, classid); err != nil {
+						log.Printf("[Running Session] ERROR - Failed to create new IPv6 filter: %v", err)
+						return err
+					}
+				}
+				log.Printf("[Running Session] TC filters updated successfully")
 			}
 
-			// Update network state AFTER TC filter is ready
+			// Update network state AFTER TC filters are ready
 			self.network.Store(&networkState{
-				ip:  newIP,
-				mac: newMac,
-				lan: newLan,
+				ipv4: newIpv4,
+				ipv6: newIpv6,
+				mac:  newMac,
+				lan:  newLan,
 			})
 		}
 
 		return nil
 	})
+}
+
+// primaryIP returns the primary IP from a networkState (IPv4 preferred, fallback IPv6).
+func primaryIP(net *networkState) string {
+	if net.ipv4 != "" {
+		return net.ipv4
+	}
+	return net.ipv6
 }
 
 // =============================================================================
@@ -552,15 +609,18 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	// Get network state atomically (no lock needed)
 	net := self.network.Load()
 
-	// Look up traffic stats
-	download, dlOK := stats.Download[net.ip]
-	upload, upOK := stats.Upload[strings.ToUpper(net.mac)]
+	// Both Download and Upload are now keyed by MAC address.
+	// Only record consumption if at least one direction has data this tick;
+	// requiring both risks discarding valid partial ticks (e.g. download-only).
+	macUpper := strings.ToUpper(net.mac)
+	dl, dlOK := stats.Download[macUpper]
+	upload, upOK := stats.Upload[macUpper]
 
-	if !dlOK || !upOK {
+	if !dlOK && !upOK {
 		return
 	}
 
-	dataconMb := float64(download.Bytes+upload.Bytes) / bytesPerMiB
+	dataconMb := float64(dl.Bytes+upload.Bytes) / bytesPerMiB
 	log.Println("CONSUMPTION MiB: ", dataconMb)
 
 	// Update session data consumption (session has its own synchronization)
@@ -914,10 +974,25 @@ func (self *RunningSession) initTc(s sdkapi.IClientSession) error {
 		return err
 	}
 
-	err = net.lan.CreateFilter(net.ip, classid.Uint())
-	if err != nil {
-		net.lan.DelClass(classid.Uint())
-		return err
+	// Create filter for IPv4 (primary, required if present)
+	if net.ipv4 != "" {
+		err = net.lan.CreateFilter(net.ipv4, classid.Uint())
+		if err != nil {
+			net.lan.DelClass(classid.Uint())
+			return err
+		}
+	}
+
+	// Create filter for IPv6 (required if present — silent failure would let IPv6 traffic bypass bandwidth quota).
+	if net.ipv6 != "" {
+		if err := net.lan.CreateFilter(net.ipv6, classid.Uint()); err != nil {
+			// Roll back: remove IPv4 filter and class before returning error.
+			if net.ipv4 != "" {
+				net.lan.DelFilter(net.ipv4, classid.Uint())
+			}
+			net.lan.DelClass(classid.Uint())
+			return fmt.Errorf("failed to create IPv6 TC filter: %w", err)
+		}
 	}
 
 	classid.Commit()

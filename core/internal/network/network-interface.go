@@ -50,7 +50,25 @@ func (self *NetworkInterface) IpV4Addr() (*sdkapi.NetworkIpv4, error) {
 		}, nil
 	}
 
-	return nil, errors.New("Cannot determine network interface IP.")
+	return nil, errors.New("Cannot determine network interface IPv4 address.")
+}
+
+func (self *NetworkInterface) IpV6Addr() (*sdkapi.NetworkIpv6, error) {
+	info, err := self.getInfo()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	addr, err := info.IpV6Addr()
+	if err != nil {
+		return nil, err
+	}
+
+	return &sdkapi.NetworkIpv6{
+		Addr:      addr.Addr,
+		PrefixLen: addr.PrefixLen,
+	}, nil
 }
 
 func (self *NetworkInterface) IPNet() (*net.IPNet, error) {

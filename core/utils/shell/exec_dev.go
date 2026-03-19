@@ -96,6 +96,11 @@ func ExecOutput(command string, out io.Writer) error {
 		return nil
 	}
 
+	if strings.Contains(command, "nft -j -a list chain inet internet forward") {
+		out.Write([]byte(getFakeForwardChainJSON()))
+		return nil
+	}
+
 	if strings.Contains(command, "nft -a list chain inet internet forward") {
 		out.Write([]byte(getFakeForwardChain()))
 		return nil
@@ -308,12 +313,80 @@ func getFakePreroutingChain() string {
 }`
 }
 
-// getFakeForwardChain returns a fake response for forward chain listing
+// getFakeForwardChain returns a fake response for forward chain listing (text format)
 func getFakeForwardChain() string {
 	return `table inet internet {
 	chain forward {
 		type filter hook forward priority 0; policy accept;
 		counter packets 0 bytes 0 jump open_ip_forward # handle 200
 	}
+}`
+}
+
+// getFakeForwardChainJSON returns a fake JSON response for forward chain listing
+// This includes the core firewall rules (ct state invalid, IP/MAC vmaps, etc.)
+func getFakeForwardChainJSON() string {
+	return `{
+  "nftables": [
+    {"metainfo": {"version": "1.0.2", "release_name": "Lester Gooch", "json_schema_version": 1}},
+    {"rule": {
+      "family": "inet",
+      "table": "internet",
+      "chain": "forward",
+      "handle": 1,
+      "expr": [
+        {"match": {"op": "==", "left": {"ct": {"key": "state"}}, "right": "invalid"}},
+        {"counter": {"packets": 0, "bytes": 0}},
+        {"drop": null}
+      ]
+    }},
+    {"rule": {
+      "family": "inet",
+      "table": "internet",
+      "chain": "forward",
+      "handle": 2,
+      "expr": [
+        {"vmap": {
+          "key": {"payload": {"protocol": "ip", "field": "daddr"}},
+          "data": "@connected_ips_map"
+        }}
+      ]
+    }},
+    {"rule": {
+      "family": "inet",
+      "table": "internet",
+      "chain": "forward",
+      "handle": 3,
+      "expr": [
+        {"vmap": {
+          "key": {"payload": {"protocol": "ip6", "field": "daddr"}},
+          "data": "@connected_ips6_map"
+        }}
+      ]
+    }},
+    {"rule": {
+      "family": "inet",
+      "table": "internet",
+      "chain": "forward",
+      "handle": 4,
+      "expr": [
+        {"match": {"op": "in", "left": {"ct": {"key": "state"}}, "right": ["established", "related"]}},
+        {"counter": {"packets": 0, "bytes": 0}},
+        {"accept": null}
+      ]
+    }},
+    {"rule": {
+      "family": "inet",
+      "table": "internet",
+      "chain": "forward",
+      "handle": 5,
+      "expr": [
+        {"vmap": {
+          "key": {"payload": {"protocol": "ether", "field": "saddr"}},
+          "data": "@connected_macs_map"
+        }}
+      ]
+    }}
+  ]
 }`
 }

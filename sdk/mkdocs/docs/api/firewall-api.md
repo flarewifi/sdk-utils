@@ -49,14 +49,19 @@ Destination IP Groups provide an efficient way to manage firewall access for mul
 
 #### DstIpGroupClient
 
-Represents a client device for group operations.
+Represents a client device for group operations. Supports dual-stack (IPv4 + IPv6) devices — populate whichever address fields are present and both will be registered in the firewall.
 
 ```go
 type DstIpGroupClient struct {
-    MacAddr string // Client device MAC address
-    IpAddr  string // Client device IP address (for return traffic filtering)
+    MacAddr  string // Client device MAC address
+    IpAddr   string // Primary IP – backward-compatible fallback (prefer Ipv4Addr/Ipv6Addr)
+    Ipv4Addr string // IPv4 address for return traffic filtering (empty if IPv6-only)
+    Ipv6Addr string // IPv6 address for return traffic filtering (empty if IPv4-only)
 }
 ```
+
+!!! note "Dual-Stack Usage"
+    For dual-stack devices, always populate both `Ipv4Addr` and `Ipv6Addr` so that return traffic from the destination back to the client is correctly permitted for both protocols. Use `clnt.Ipv4Addr()` and `clnt.Ipv6Addr()` from `IClientDevice`.
 
 ### CreateDstIpGroup
 
@@ -186,11 +191,13 @@ Allows a specific client device to access all IPs in a named destination IP grou
 ```go
 clnt, _ := api.Http().GetClientDevice(r)
 
-// Allow client to access all IPs in the my-api-service group for 5 minutes
+// Allow client to access all IPs in the my-api-service group for 5 minutes.
+// Populate both Ipv4Addr and Ipv6Addr for dual-stack devices.
 err := api.Firewall().AllowClientToDstIpGroup(
     sdkapi.DstIpGroupClient{
-        MacAddr: clnt.MacAddr(),
-        IpAddr:  clnt.IpAddr(),
+        MacAddr:  clnt.MacAddr(),
+        Ipv4Addr: clnt.Ipv4Addr(), // empty string if device has no IPv4
+        Ipv6Addr: clnt.Ipv6Addr(), // empty string if device has no IPv6
     },
     "my-api-service",
     300, // 5 minutes
@@ -204,6 +211,7 @@ if err != nil {
 - If client is already in the group, the timeout is reset
 - Client automatically has access to all current and future IPs in the group
 - Single operation grants access to all IPs in the group
+- Both IPv4 and IPv6 return-traffic rules are created when the respective address fields are non-empty
 
 ### RemoveClientFromDstIpGroup
 
@@ -219,11 +227,12 @@ Removes access for a specific client device from a named destination IP group. T
 ```go
 clnt, _ := api.Http().GetClientDevice(r)
 
-// Remove client from my-api-service group
+// Remove client from my-api-service group (both IPv4 and IPv6 entries are removed).
 err := api.Firewall().RemoveClientFromDstIpGroup(
     sdkapi.DstIpGroupClient{
-        MacAddr: clnt.MacAddr(),
-        IpAddr:  clnt.IpAddr(),
+        MacAddr:  clnt.MacAddr(),
+        Ipv4Addr: clnt.Ipv4Addr(),
+        Ipv6Addr: clnt.Ipv6Addr(),
     },
     "my-api-service",
 )
@@ -236,6 +245,278 @@ if err != nil {
 - Cancels any active timeout timer for this client
 - Safe to call even if client is not in the group (no error)
 - Client immediately loses access to all IPs in the group
+
+### DeleteDstIpGroup
+
+Removes a named destination IP group and all its nftables infrastructure. All clients currently allowed access through this group will immediately lose access.
+
+**Parameters:**
+- `name` (string) - Name of the group to delete
+
+**Returns:**
+- `error` - Error if group doesn't exist or operation fails
+
+```go
+// Delete a destination IP group and cleanup all resources
+err := api.Firewall().DeleteDstIpGroup("my-api-service")
+if err != nil {
+    api.Logger().Error("Failed to delete group: " + err.Error())
+}
+```
+
+**Notes:**
+- Cancels all scheduled automatic removals for clients in this group
+- Removes all nftables sets, chains, and jump rules for the group
+- All clients in the group immediately lose access
+- Cannot be undone - group must be recreated with `CreateDstIpGroup`
+- Safe to call even if no clients are in the group
+
+## Service Port Management
+
+Service Port methods allow you to create named service definitions (protocol + port) and then grant/revoke client access to those services. This follows the same pattern as Destination IP Groups, providing efficient firewall management for services. This is particularly useful for allowing pre-authentication access to essential services like NTP (time sync) and DNS.
+
+### CreateServicePort
+
+Creates a named service port definition with dedicated nftables infrastructure. The service port must be created before clients can be granted access to it.
+
+**Parameters:**
+- `name` (string) - Unique name for the service port (will be slugified for nftables compatibility)
+- `protocols` ([]string) - Array of protocols: "tcp", "udp", or both (at least one required)
+- `port` (int) - Destination port number (1-65535)
+- `dstIPs` (...string) - Optional destination IPs to restrict access (empty = any destination)
+
+**Returns:**
+- `error` - Error if service port already exists or validation fails
+
+```go
+// Create an NTP service port (UDP/123, any destination)
+err := api.Firewall().CreateServicePort("ntp", []string{"udp"}, 123)
+if err != nil {
+    api.Logger().Error("Failed to create NTP service port: " + err.Error())
+}
+
+// Create a DNS service port with specific servers (TCP+UDP/53)
+err = api.Firewall().CreateServicePort(
+    "dns",
+    []string{"tcp", "udp"},
+    53,
+    "8.8.8.8", "8.8.4.4", "1.1.1.1", "1.0.0.1",
+)
+if err != nil {
+    api.Logger().Error("Failed to create DNS service port: " + err.Error())
+}
+```
+
+**Notes:**
+- Service port names are slugified (e.g., "my-service" becomes "my_service" in nftables)
+- Returns error if service port with same name already exists
+- Creates nftables sets and chains atomically
+- IPv4 and IPv6 addresses are automatically separated
+- Once created, any number of clients can be added/removed efficiently
+
+### ServicePortExists
+
+Checks if a named service port exists. Useful for conditionally creating service ports or verifying availability before operations.
+
+**Parameters:**
+- `name` (string) - Name of the service port to check
+
+**Returns:**
+- `bool` - True if service port exists, false otherwise
+- `error` - Error only if service port name is invalid
+
+```go
+// Check if service port exists before creating
+exists, err := api.Firewall().ServicePortExists("ntp")
+if err != nil {
+    api.Logger().Error("Invalid service port name: " + err.Error())
+    return
+}
+
+if !exists {
+    // Create the service port
+    err := api.Firewall().CreateServicePort("ntp", []string{"udp"}, 123)
+    if err != nil {
+        api.Logger().Error("Failed to create service port: " + err.Error())
+    }
+}
+```
+
+**Notes:**
+- Only validates the service port name - does not query nftables
+- Uses in-memory tracking, so very fast (no shell commands)
+- Returns false for service ports that were never created
+
+### DeleteServicePort
+
+Removes a named service port and all its nftables infrastructure. All clients currently allowed access through this service port will immediately lose access.
+
+**Parameters:**
+- `name` (string) - Name of the service port to delete
+
+**Returns:**
+- `error` - Error if service port doesn't exist or operation fails
+
+```go
+// Delete a service port and cleanup all resources
+err := api.Firewall().DeleteServicePort("ntp")
+if err != nil {
+    api.Logger().Error("Failed to delete service port: " + err.Error())
+}
+```
+
+**Notes:**
+- Cancels all scheduled automatic removals for clients using this service port
+- Removes all nftables sets, chains, and jump rules for the service port
+- All clients immediately lose access to this service
+- Cannot be undone - service port must be recreated with `CreateServicePort`
+- Safe to call even if no clients are using the service port
+
+### AllowClientToServicePort
+
+Allows a specific client device to access a named service port. The client's MAC and IP are added to the service port's client sets.
+
+**Parameters:**
+- `clnt` (DstIpGroupClient) - Client device information
+- `servicePortName` (string) - Name of the service port
+- `timeoutSecs` (int) - Timeout in seconds (0 = permanent, >0 = auto-remove)
+
+**Returns:**
+- `error` - Error if service port doesn't exist or operation fails
+
+```go
+clnt, _ := api.Http().GetClientDevice(r)
+
+// Allow client to access NTP service for 60 seconds
+err := api.Firewall().AllowClientToServicePort(
+    sdkapi.DstIpGroupClient{
+        MacAddr:  clnt.MacAddr(),
+        Ipv4Addr: clnt.Ipv4Addr(),
+        Ipv6Addr: clnt.Ipv6Addr(),
+    },
+    "ntp",
+    60, // 1 minute
+)
+if err != nil {
+    api.Logger().Error("Failed to allow NTP access: " + err.Error())
+}
+```
+
+**Notes:**
+- Service port must exist before calling this method
+- If client is already allowed, the timeout is reset (idempotent)
+- Client automatically has access to all destination IPs defined in the service port
+- Both IPv4 and IPv6 return-traffic rules are created when the respective address fields are non-empty
+
+### RemoveClientFromServicePort
+
+Removes access for a specific client device from a named service port. The client's MAC and IP are removed from the service port's client sets.
+
+**Parameters:**
+- `clnt` (DstIpGroupClient) - Client device information
+- `servicePortName` (string) - Name of the service port
+
+**Returns:**
+- `error` - Error if service port doesn't exist or operation fails
+
+```go
+clnt, _ := api.Http().GetClientDevice(r)
+
+// Remove client from NTP service
+err := api.Firewall().RemoveClientFromServicePort(
+    sdkapi.DstIpGroupClient{
+        MacAddr:  clnt.MacAddr(),
+        Ipv4Addr: clnt.Ipv4Addr(),
+        Ipv6Addr: clnt.Ipv6Addr(),
+    },
+    "ntp",
+)
+if err != nil {
+    api.Logger().Error("Failed to remove NTP access: " + err.Error())
+}
+```
+
+**Notes:**
+- Cancels any active timeout timer for this client
+- Safe to call even if client is not using the service port (no error)
+- Client immediately loses access to the service
+
+### Common Service Port Definitions
+
+Here are some commonly used service port definitions:
+
+```go
+// At plugin initialization - create service ports
+
+// NTP - Network Time Protocol (for clock sync)
+api.Firewall().CreateServicePort("ntp", []string{"udp"}, 123)
+
+// DNS - Domain Name System (for name resolution, any server)
+api.Firewall().CreateServicePort("dns", []string{"tcp", "udp"}, 53)
+
+// DNS to specific servers (Google and Cloudflare)
+api.Firewall().CreateServicePort(
+    "dns-restricted",
+    []string{"tcp", "udp"},
+    53,
+    "8.8.8.8", "8.8.4.4", "1.1.1.1", "1.0.0.1",
+)
+
+// DHCP - Dynamic Host Configuration Protocol
+api.Firewall().CreateServicePort("dhcp", []string{"udp"}, 67)
+```
+
+### Pre-Authentication Service Access Example
+
+This example shows how to set up and allow essential services for clients before they authenticate:
+
+```go
+// At plugin Init() - create service ports once
+func Init(api sdkapi.IPluginApi) error {
+    // Create NTP service port (required for HTTPS certificate validation)
+    if err := api.Firewall().CreateServicePort("ntp", []string{"udp"}, 123); err != nil {
+        return fmt.Errorf("failed to create NTP service port: %w", err)
+    }
+    
+    // Create DNS service port with specific servers
+    if err := api.Firewall().CreateServicePort(
+        "dns-preauth",
+        []string{"tcp", "udp"},
+        53,
+        "8.8.8.8", "1.1.1.1",
+    ); err != nil {
+        return fmt.Errorf("failed to create DNS service port: %w", err)
+    }
+    
+    return nil
+}
+
+// Middleware to grant pre-auth service access
+func PreAuthMiddleware(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            clnt, _ := api.Http().GetClientDevice(r)
+            
+            client := sdkapi.DstIpGroupClient{
+                MacAddr:  clnt.MacAddr(),
+                Ipv4Addr: clnt.Ipv4Addr(),
+                Ipv6Addr: clnt.Ipv6Addr(),
+            }
+            
+            // Grant access to pre-auth services with 5 minute timeout
+            if err := api.Firewall().AllowClientToServicePort(client, "ntp", 300); err != nil {
+                api.Logger().Error("Failed to allow NTP access: " + err.Error())
+            }
+            
+            if err := api.Firewall().AllowClientToServicePort(client, "dns-preauth", 300); err != nil {
+                api.Logger().Error("Failed to allow DNS access: " + err.Error())
+            }
+            
+            next.ServeHTTP(w, r)
+        })
+    }
+}
+```
 
 ## Common Use Cases
 
@@ -261,11 +542,12 @@ func PortalRedirectHandler(api sdkapi.IPluginApi) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         clnt, _ := api.Http().GetClientDevice(r)
         
-        // Allow client to access portal for 5 minutes
+        // Allow client to access portal for 5 minutes (dual-stack: both IPv4 and IPv6)
         err := api.Firewall().AllowClientToDstIpGroup(
             sdkapi.DstIpGroupClient{
-                MacAddr: clnt.MacAddr(),
-                IpAddr:  clnt.IpAddr(),
+                MacAddr:  clnt.MacAddr(),
+                Ipv4Addr: clnt.Ipv4Addr(),
+                Ipv6Addr: clnt.Ipv6Addr(),
             },
             portalGroupName,
             300, // 5 minutes
@@ -332,11 +614,12 @@ func PortalMiddleware(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
             clnt, _ := api.Http().GetClientDevice(r)
 
-            // Single call to allow client to access all service IPs
+            // Single call to allow client to access all service IPs (dual-stack)
             err := api.Firewall().AllowClientToDstIpGroup(
                 sdkapi.DstIpGroupClient{
-                    MacAddr: clnt.MacAddr(),
-                    IpAddr:  clnt.IpAddr(),
+                    MacAddr:  clnt.MacAddr(),
+                    Ipv4Addr: clnt.Ipv4Addr(),
+                    Ipv6Addr: clnt.Ipv6Addr(),
                 },
                 externalServiceGroup,
                 300, // 5 minute timeout
@@ -355,11 +638,12 @@ func CallbackHandler(api sdkapi.IPluginApi) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         clnt, _ := api.Http().GetClientDevice(r)
 
-        // Single call to remove client from all service IPs
+        // Single call to remove client from all service IPs (dual-stack)
         api.Firewall().RemoveClientFromDstIpGroup(
             sdkapi.DstIpGroupClient{
-                MacAddr: clnt.MacAddr(),
-                IpAddr:  clnt.IpAddr(),
+                MacAddr:  clnt.MacAddr(),
+                Ipv4Addr: clnt.Ipv4Addr(),
+                Ipv6Addr: clnt.Ipv6Addr(),
             },
             externalServiceGroup,
         )
@@ -432,11 +716,12 @@ if !exists {
     }
 }
 
-// Allow client access
+// Allow client access (dual-stack: both IPv4 and IPv6)
 err = api.Firewall().AllowClientToDstIpGroup(
     sdkapi.DstIpGroupClient{
-        MacAddr: clnt.MacAddr(),
-        IpAddr:  clnt.IpAddr(),
+        MacAddr:  clnt.MacAddr(),
+        Ipv4Addr: clnt.Ipv4Addr(),
+        Ipv6Addr: clnt.Ipv6Addr(),
     },
     "my-service",
     300,

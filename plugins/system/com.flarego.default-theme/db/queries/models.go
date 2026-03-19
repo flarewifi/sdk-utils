@@ -12,7 +12,8 @@ import (
 type Device struct {
 	ID        int64
 	Uuid      string
-	IpAddress string
+	Ipv4Addr  string
+	Ipv6Addr  string
 	Hostname  string
 	Status    int64
 	CreatedAt sql.NullTime

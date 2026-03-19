@@ -5,6 +5,7 @@ package nftables
 import (
 	"fmt"
 	"log"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -23,25 +24,24 @@ const (
 	postroutingChain string = "postrouting"
 	connMacMap       string = "connected_macs_map"
 	connIpMap        string = "connected_ips_map"
+	connIp6Map       string = "connected_ips6_map"
 	connMacSet       string = "connected_macs_set"
 )
 
 var (
-	nftMu         sync.RWMutex
-	initCallbacks []func() error = []func() error{}
-	nftQue                       = jobque.NewJobQueue[any]()
+	nftMu  sync.RWMutex
+	nftQue = jobque.NewJobQueue[any]()
 
-	// ipToMac maps connected IPv4 address → uppercase normalized MAC.
+	// ipToMac maps connected IP address (IPv4 or IPv6) → uppercase normalized MAC.
 	// Populated on Connect, evicted on Disconnect.
 	// Guarded by nftMu.
 	ipToMac = make(map[string]string)
-)
 
-func AddInitCallback(cb func() error) {
-	nftMu.Lock()
-	defer nftMu.Unlock()
-	initCallbacks = append(initCallbacks, cb)
-}
+	// macToIps maps connected MAC → set of IPs registered for that device.
+	// Populated on Connect, evicted on Disconnect.
+	// Guarded by nftMu.
+	macToIps = make(map[string]map[string]bool)
+)
 
 func Cleanup() {
 	cmds := []string{
@@ -65,7 +65,11 @@ func Setup() (err error) {
 	batch.WriteString(fmt.Sprintf("add chain %s %s %s { type nat hook prerouting priority -1; policy accept; }\n", tableFamily, internetTable, preroutingChain))
 
 	// Create maps and sets in our custom table
+	// IPv4 verdict map (kept for download traffic accounting only, not for allow/deny)
 	batch.WriteString(fmt.Sprintf("add map %s %s %s { type ipv4_addr : verdict ; counter; }\n", tableFamily, internetTable, connIpMap))
+	// IPv6 verdict map (kept for download traffic accounting only, not for allow/deny)
+	batch.WriteString(fmt.Sprintf("add map %s %s %s { type ipv6_addr : verdict ; counter; }\n", tableFamily, internetTable, connIp6Map))
+	// MAC verdict map and set (protocol-agnostic)
 	batch.WriteString(fmt.Sprintf("add map %s %s %s { type ether_addr : verdict ; counter; }\n", tableFamily, internetTable, connMacMap))
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ether_addr; }\n", tableFamily, internetTable, connMacSet))
 
@@ -73,10 +77,39 @@ func Setup() (err error) {
 	// Sets outgoing TTL to 1 so tethered devices cannot forward packets (TTL drops to 0)
 	batch.WriteString(fmt.Sprintf("add chain %s %s %s { type filter hook postrouting priority 0; policy accept; }\n", tableFamily, internetTable, postroutingChain))
 
-	// Add rules to our custom forward chain
-	// Verdict maps will accept if MAC/IP is in the map, otherwise continue to drop rule
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, connMacMap))
+	// Add rules to our custom forward chain.
+	//
+	// Stateful design: outbound is gated by source MAC; conntrack handles all
+	// return traffic automatically, covering every IPv6 address the client uses.
+	//
+	// Accounting approach:
+	//   - Upload:   counted by the MAC verdict map (fires on new outbound connections).
+	//               The MAC map counter increments once per NEW flow initiation, but
+	//               upload bytes are accumulated via nftables per-element counters.
+	//   - Download: counted by the IP verdict maps (fires on return traffic where
+	//               daddr = the registered client IP).  The IP maps sit BEFORE the
+	//               ct established rule so they see every inbound packet.
+	//               Only the one registered IP per protocol is counted; traffic
+	//               arriving at other IPv6 addresses is still allowed (ct rule) but
+	//               not individually counted — it is aggregated via the MAC upload
+	//               counter on the next outbound tick.
+	//
+	// Rule order (first terminal verdict wins):
+	//   1. Drop invalid conntrack states (security).
+	//   2. Download accounting: IP verdict maps — match registered client IPs,
+	//      count, and accept.  Placed before ct so they fire on every packet.
+	//   3. Accept established/related — catches return traffic to any client IP
+	//      that is NOT in the IP maps (e.g. additional IPv6 addresses).
+	//   4. Accept new outbound by source MAC (upload accounting + allow gate).
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ct state invalid drop\n", tableFamily, internetTable, forwardChain))
+	// Download accounting: count bytes arriving at registered client IPs.
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIpMap))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIp6Map))
+	// Allow return traffic to client IPs NOT in the IP maps (additional IPv6 addrs).
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ct state established,related accept\n", tableFamily, internetTable, forwardChain))
+	// Upload accounting + allow gate: new outbound connections from allowed MACs.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, connMacMap))
+	// Service port jumps will be appended after this rule for unauthenticated clients.
 
 	// Execute batch command using nft -f - with heredoc for atomic execution
 	nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
@@ -85,12 +118,26 @@ func Setup() (err error) {
 		return err
 	}
 
-	runInitCallbacks()
 	return nil
 }
 
-func SetupCaptivePortal(dev string, routerIp string) (err error) {
-	contextInfo := fmt.Sprintf("Device=%s, RouterIP=%s", dev, routerIp)
+// SetupCaptivePortal installs prerouting DNAT rules for a LAN interface.
+// routerIp4 is the LAN-facing IPv4 address; routerIp6 is the LAN-facing IPv6
+// address (may be empty if the interface has no global IPv6 address yet).
+// Link-local IPv6 addresses must NOT be passed as routerIp6 — they require
+// interface-scoped routing that nftables DNAT does not support directly.
+func SetupCaptivePortal(dev string, routerIp4 string, routerIp6 string) (err error) {
+	// Guard: reject link-local IPv6 addresses — DNAT to link-local requires
+	// an interface scope that nftables cannot represent in the rule syntax.
+	if routerIp6 != "" {
+		parsed := net.ParseIP(routerIp6)
+		if parsed == nil || parsed.IsLinkLocalUnicast() {
+			log.Printf("[WARN] SetupCaptivePortal: ignoring link-local/invalid IPv6 address %q for dev %s", routerIp6, dev)
+			routerIp6 = ""
+		}
+	}
+
+	contextInfo := fmt.Sprintf("Device=%s, RouterIPv4=%s, RouterIPv6=%s", dev, routerIp4, routerIp6)
 
 	_, err = nftQue.ExecWithTimeout(
 		30*time.Second,
@@ -100,16 +147,28 @@ func SetupCaptivePortal(dev string, routerIp string) (err error) {
 			// Build nft batch script for atomic execution
 			var batch strings.Builder
 
-			// Add rules to our custom prerouting chain
 			// Allow already authenticated devices to bypass captive portal
 			batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, connMacSet))
-			// Redirect HTTP/HTTPS traffic to captive portal
-			batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80, 443 } counter dnat ip to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp))
 
-			// Anti-tethering: set TTL=1 on packets going out through this LAN device
-			// Direct clients receive TTL=1 and process it normally
-			// Tethered devices try to forward, TTL drops to 0, packet is dropped
-			batch.WriteString(fmt.Sprintf("add rule %s %s %s oifname %s ip ttl set 1\n", tableFamily, internetTable, postroutingChain, dev))
+			// Redirect HTTP/HTTPS traffic to captive portal (IPv4)
+			if routerIp4 != "" {
+				batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80, 443 } counter dnat ip to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp4))
+			}
+
+			// Redirect HTTP/HTTPS traffic to captive portal (IPv6)
+			if routerIp6 != "" {
+				batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80, 443 } counter dnat ip6 to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp6))
+			}
+
+			// Anti-tethering: set TTL=1 on IPv4 packets going out through this LAN device
+			if routerIp4 != "" {
+				batch.WriteString(fmt.Sprintf("add rule %s %s %s oifname %s ip ttl set 1\n", tableFamily, internetTable, postroutingChain, dev))
+			}
+
+			// Anti-tethering: set hop limit=1 on IPv6 packets going out through this LAN device
+			if routerIp6 != "" {
+				batch.WriteString(fmt.Sprintf("add rule %s %s %s oifname %s ip6 hoplimit set 1\n", tableFamily, internetTable, postroutingChain, dev))
+			}
 
 			// Execute batch command using nft -f - with heredoc for atomic execution
 			nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
@@ -170,30 +229,38 @@ func IsConnected(mac string) bool {
 }
 
 // GetMacByIp returns the normalized uppercase MAC address for a currently
-// connected IPv4 address, or an empty string if the IP is not in the cache.
-// The cache is populated on Connect and evicted on Disconnect, so it only
-// contains entries for devices that are actively allowed through the firewall.
+// connected IP address (IPv4 or IPv6), or an empty string if the IP is not
+// in the cache. The cache is populated on Connect and evicted on Disconnect,
+// so it only contains entries for devices actively allowed through the firewall.
 func GetMacByIp(ip string) string {
 	nftMu.RLock()
 	defer nftMu.RUnlock()
 	return ipToMac[ip]
 }
 
-func runInitCallbacks() {
-	// Copy the callbacks slice while holding the lock, then release
-	// before executing. This prevents deadlock if a callback tries
-	// to call AddInitCallback.
+// GetMacsByIps returns a map of IP→MAC for a batch of IP addresses, acquiring
+// the lock only once. This is more efficient than calling GetMacByIp in a loop.
+// IPs not found in the cache are omitted from the result map.
+func GetMacsByIps(ips []string) map[string]string {
 	nftMu.RLock()
-	callbacks := make([]func() error, len(initCallbacks))
-	copy(callbacks, initCallbacks)
-	nftMu.RUnlock()
+	defer nftMu.RUnlock()
 
-	for _, cb := range callbacks {
-		err := cb()
-		if err != nil {
-			log.Println(err)
+	result := make(map[string]string, len(ips))
+	for _, ip := range ips {
+		if mac := ipToMac[ip]; mac != "" {
+			result[ip] = mac
 		}
 	}
+	return result
+}
+
+// isIPv6 returns true if ip is a valid IPv6 address (not IPv4 or IPv4-mapped).
+func isIPv6(ip string) bool {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return false
+	}
+	return parsed.To4() == nil
 }
 
 func isConnected(mac string) bool {
@@ -220,25 +287,31 @@ func doConnect(ip string, mac string) error {
 		return fmt.Errorf("invalid MAC address: %v", err)
 	}
 
-	connected := isConnected(normalizedMAC)
-
-	if !connected {
-		// Build nft batch script for atomic execution
-		var batch strings.Builder
-		batch.WriteString(fmt.Sprintf("add element %s %s %s { %s : accept }\n", tableFamily, internetTable, connIpMap, ip))
-		batch.WriteString(fmt.Sprintf("add element %s %s %s { %s : accept }\n", tableFamily, internetTable, connMacMap, normalizedMAC))
-		batch.WriteString(fmt.Sprintf("add element %s %s %s { %s }\n", tableFamily, internetTable, connMacSet, normalizedMAC))
-
-		// Execute batch command using nft -f - with heredoc for atomic execution
-		nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
-		if err := cmd.Exec(nftCmd, nil); err != nil {
-			return err
-		}
-
-		nftMu.Lock()
-		ipToMac[ip] = normalizedMAC
-		nftMu.Unlock()
+	// Choose the correct IP verdict map based on IP version (used for download accounting only).
+	ipMap := connIpMap
+	if isIPv6(ip) {
+		ipMap = connIp6Map
 	}
+
+	// Step 1: Add this IP to the download-accounting verdict map.
+	// Idempotent via || true — safe if called twice for the same IP.
+	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, ipMap, ip), nil)
+
+	// Step 2: Add MAC to the upload-accounting verdict map and the allow set.
+	// These are idempotent — the second call for a dual-stack device is a no-op.
+	// The conntrack rules in the forward chain handle return traffic automatically,
+	// so no per-IP firewall entry is needed for inbound traffic.
+	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, connMacMap, normalizedMAC), nil)
+	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, connMacSet, normalizedMAC), nil)
+
+	// Record IP→MAC and MAC→IPs mappings for traffic accounting and GetMacByIp().
+	nftMu.Lock()
+	ipToMac[ip] = normalizedMAC
+	if macToIps[normalizedMAC] == nil {
+		macToIps[normalizedMAC] = make(map[string]bool)
+	}
+	macToIps[normalizedMAC][ip] = true
+	nftMu.Unlock()
 
 	return nil
 }
@@ -255,23 +328,40 @@ func doDisconnect(ip string, mac string) error {
 		return fmt.Errorf("invalid MAC address: %v", err)
 	}
 
-	connected := isConnected(normalizedMAC)
-	if connected {
-		// Build nft batch script for atomic execution
-		var batch strings.Builder
-		batch.WriteString(fmt.Sprintf("delete element %s %s %s { %s : accept }\n", tableFamily, internetTable, connIpMap, ip))
-		batch.WriteString(fmt.Sprintf("delete element %s %s %s { %s : accept }\n", tableFamily, internetTable, connMacMap, normalizedMAC))
-		batch.WriteString(fmt.Sprintf("delete element %s %s %s { %s }\n", tableFamily, internetTable, connMacSet, normalizedMAC))
-
-		// Execute batch command using nft -f - with heredoc for atomic execution
-		nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
-		if err := cmd.Exec(nftCmd, nil); err != nil {
-			return err
-		}
-
-		nftMu.Lock()
-		delete(ipToMac, ip)
-		nftMu.Unlock()
+	// Choose the correct IP verdict map based on IP version.
+	ipMap := connIpMap
+	if isIPv6(ip) {
+		ipMap = connIp6Map
 	}
+
+	// Step 1: Remove this IP from the download-accounting verdict map.
+	// Best-effort — if it was never added (e.g. partial connect failure), swallow.
+	cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, ipMap, ip), nil)
+
+	// Step 2: Update in-memory maps.  Only remove MAC-level entries when all
+	// IPs for this device have been disconnected (handles dual-stack correctly).
+	nftMu.Lock()
+	delete(ipToMac, ip)
+	remainingIPs := 0
+	if ips, ok := macToIps[normalizedMAC]; ok {
+		delete(ips, ip)
+		remainingIPs = len(ips)
+		if remainingIPs == 0 {
+			delete(macToIps, normalizedMAC)
+		}
+	}
+	nftMu.Unlock()
+
+	// Step 3: Once all IPs for this MAC are gone, remove the MAC from the
+	// nftables allow set/map and flush conntrack entries so existing connections
+	// are cut immediately rather than left alive until they time out naturally.
+	if remainingIPs == 0 {
+		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, connMacMap, normalizedMAC), nil)
+		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, connMacSet, normalizedMAC), nil)
+		// Flush conntrack entries so the session cutoff is immediate.
+		// conntrack may not be present on all OpenWRT images; ignore errors.
+		cmd.Exec(fmt.Sprintf("conntrack -D --orig-mac-src %s 2>/dev/null || true", normalizedMAC), nil)
+	}
+
 	return nil
 }

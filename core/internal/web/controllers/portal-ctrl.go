@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 
 	"core/internal/api"
@@ -94,11 +95,25 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get User-Agent from request headers
 		userAgent := r.Header.Get("User-Agent")
 
+		// Split the request IP into its IPv4/IPv6 slot.
+		// IPv4-mapped IPv6 addresses (e.g. "::ffff:192.168.1.1") are normalized to
+		// plain IPv4 form so they are stored consistently in the ipv4_addr column.
+		// discoverBothIPs inside Register() will fill in the other protocol via ARP/NDP.
+		var reqIpv4, reqIpv6 string
+		if parsed := net.ParseIP(h.IpAddr); parsed != nil {
+			if v4 := parsed.To4(); v4 != nil {
+				reqIpv4 = v4.String()
+			} else {
+				reqIpv6 = parsed.String()
+			}
+		}
+
 		// Register/identify device with cookie validation and MAC randomization support
 		clnt, shouldSetCookie, err := clntMgr.Register(r.Context(), sessmgr.ClientRegisterParams{
 			CookieDeviceID: cookieDeviceID,
 			MacAddr:        h.MacAddr,
-			IpAddr:         h.IpAddr,
+			Ipv4Addr:       reqIpv4,
+			Ipv6Addr:       reqIpv6,
 			Hostname:       h.Hostname,
 			UserAgent:      userAgent,
 		})
@@ -295,10 +310,23 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// - Update IP/hostname if changed
 		// - Disconnect/reconnect sessions if device was active
 		// - Create new device if not found
+		// Split the request IP into its IPv4/IPv6 slot.
+		// IPv4-mapped IPv6 addresses (e.g. "::ffff:192.168.1.1") are normalized to
+		// plain IPv4 form so they are stored consistently in the ipv4_addr column.
+		var ajaxIpv4, ajaxIpv6 string
+		if parsed := net.ParseIP(h.IpAddr); parsed != nil {
+			if v4 := parsed.To4(); v4 != nil {
+				ajaxIpv4 = v4.String()
+			} else {
+				ajaxIpv6 = parsed.String()
+			}
+		}
+
 		clnt, shouldSetCookie, err := clntMgr.Register(ctx, sessmgr.ClientRegisterParams{
 			CookieDeviceID: cookieDeviceID,
 			MacAddr:        h.MacAddr,
-			IpAddr:         h.IpAddr,
+			Ipv4Addr:       ajaxIpv4,
+			Ipv6Addr:       ajaxIpv6,
 			Hostname:       h.Hostname,
 			UserAgent:      userAgent,
 			ScreenRes:      reqBody.ScreenRes,

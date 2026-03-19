@@ -12,6 +12,8 @@ import (
 	"core/db/queries"
 	browserdetect "core/internal/modules/browser-detect"
 	"core/internal/modules/fingerprint"
+	"core/utils/arp"
+	"core/utils/ndp"
 	sdkapi "sdk/api"
 )
 
@@ -58,7 +60,7 @@ func (reg *ClientRegister) FindByID(ctx context.Context, deviceID int64) (sdkapi
 // If the new MAC address belongs to another device, this function will merge the devices
 // (transferring sessions, purchases, fingerprints, and wallet balance) since fingerprint
 // validation has already passed before this function is called.
-func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClientDevice, newMac, newIP, newHostname string) error {
+func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClientDevice, newMac, newIpv4, newIpv6, newHostname string) error {
 	// Check for MAC collision - if new MAC belongs to another device (current or historical), we need to merge
 	// This happens when MAC randomization creates a new device record, but fingerprint
 	// validation proves it's the same physical device
@@ -116,7 +118,8 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 	// Update device in database with new network details
 	err := clnt.Update(ctx, sdkapi.UpdateDeviceParams{
 		Mac:      newMac,
-		Ip:       newIP,
+		Ipv4:     newIpv4,
+		Ipv6:     newIpv6,
 		Hostname: newHostname,
 		UUID:     clnt.UUID(),                     // Preserve existing UUID
 		Status:   sdkapi.DeviceStatusDisconnected, // Set to disconnected during update
@@ -137,7 +140,8 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 		// Update device status to connected
 		if err := clnt.Update(ctx, sdkapi.UpdateDeviceParams{
 			Mac:      newMac,
-			Ip:       newIP,
+			Ipv4:     newIpv4,
+			Ipv6:     newIpv6,
 			Hostname: newHostname,
 			UUID:     clnt.UUID(),
 			Status:   sdkapi.DeviceStatusConnected,
@@ -153,6 +157,11 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 // It validates device fingerprints to prevent cookie sharing and MAC collision attacks.
 // Returns (device, shouldSetCookie, error)
 func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterParams) (sdkapi.IClientDevice, bool, error) {
+	// Discover both IPv4 and IPv6 addresses for this MAC.
+	// The caller may have supplied only one (the one the HTTP request arrived on);
+	// we use ARP/NDP to fill in the other so both are stored and connected.
+	params.Ipv4Addr, params.Ipv6Addr = discoverBothIPs(params.MacAddr, params.Ipv4Addr, params.Ipv6Addr)
+
 	// Parse browser info and generate fingerprint hash
 	browserInfo := browserdetect.DetectBrowser(params.UserAgent)
 	fpHash := ""
@@ -229,8 +238,8 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 			}
 
 			// Update network details if changed
-			if clnt.MacAddr() != params.MacAddr || clnt.IpAddr() != params.IpAddr || clnt.Hostname() != params.Hostname {
-				err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
+			if clnt.MacAddr() != params.MacAddr || clnt.Ipv4Addr() != params.Ipv4Addr || clnt.Ipv6Addr() != params.Ipv6Addr || clnt.Hostname() != params.Hostname {
+				err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.Ipv4Addr, params.Ipv6Addr, params.Hostname)
 				if err != nil {
 					return nil, false, err
 				}
@@ -298,8 +307,8 @@ STEP_2_MAC_MATCH:
 		}
 
 		// Update network details if changed (MAC change will be recorded by UpdateDevice)
-		if dev.IpAddr() != params.IpAddr || dev.Hostname() != params.Hostname || dev.MacAddr() != params.MacAddr {
-			err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
+		if dev.Ipv4Addr() != params.Ipv4Addr || dev.Ipv6Addr() != params.Ipv6Addr || dev.Hostname() != params.Hostname || dev.MacAddr() != params.MacAddr {
+			err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.Ipv4Addr, params.Ipv6Addr, params.Hostname)
 			if err != nil {
 				return nil, false, err
 			}
@@ -351,7 +360,7 @@ STEP_2_5_MAC_HISTORY:
 		}
 
 		// Update device to use this old MAC as current (MAC rotation back)
-		err = reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
+		err = reg.UpdateDevice(ctx, clnt, params.MacAddr, params.Ipv4Addr, params.Ipv6Addr, params.Hostname)
 		if err != nil {
 			return nil, false, err
 		}
@@ -375,9 +384,10 @@ STEP_3_CREATE_NEW:
 	// No MAC collision - create new device
 	if errors.Is(err, sql.ErrNoRows) || dev == nil {
 		dev, err = reg.mdls.Device().Create(ctx, models.CreateDeviceParams{
-			MacAddress: params.MacAddr,
-			IpAddress:  params.IpAddr,
-			Hostname:   params.Hostname,
+			MacAddress:  params.MacAddr,
+			Ipv4Address: params.Ipv4Addr,
+			Ipv6Address: params.Ipv6Addr,
+			Hostname:    params.Hostname,
 		})
 		if err != nil {
 			return nil, false, err
@@ -406,6 +416,35 @@ STEP_3_CREATE_NEW:
 // wrapDevice wraps a models.Device into a ClientDevice.
 func (reg *ClientRegister) wrapDevice(d *models.Device) *ClientDevice {
 	return NewClientDevice(reg.db, reg.mdls, reg.sessionsMgr, d)
+}
+
+// discoverBothIPs looks up both the IPv4 (via ARP) and IPv6 (via NDP) addresses
+// for a device identified by its MAC address.  The seed IPs from the HTTP request
+// are used as a starting point: if the request IP already tells us one protocol,
+// we only do a kernel lookup for the other one.
+//
+// Parameters:
+//
+//	mac        – normalized MAC address of the device
+//	reqIpv4    – IPv4 from the HTTP request (may be empty if client came via IPv6)
+//	reqIpv6    – IPv6 from the HTTP request (may be empty if client came via IPv4)
+//
+// Returns (ipv4, ipv6) — either or both may be empty.
+func discoverBothIPs(mac, reqIpv4, reqIpv6 string) (ipv4, ipv6 string) {
+	ipv4 = reqIpv4
+	ipv6 = reqIpv6
+
+	// Fill in missing IPv4 from ARP table
+	if ipv4 == "" {
+		ipv4 = arp.FindIpByMac(mac)
+	}
+
+	// Fill in missing IPv6 from NDP table
+	if ipv6 == "" {
+		ipv6 = ndp.FindIpv6ByMac(mac)
+	}
+
+	return ipv4, ipv6
 }
 
 // validateDeviceFingerprint checks if current fingerprint matches any stored fingerprints.
@@ -512,11 +551,19 @@ func (reg *ClientRegister) handleMacCollision(ctx context.Context, params Client
 		isValid, _, err := reg.validateDeviceFingerprint(ctx, existingDev.ID(), fpHash, params.ScreenRes, browserInfo.OSFamily, params.Language, params.Timezone, browserInfo.IsCNA)
 		if err != nil {
 			log.Printf("[ClientRegister.handleMacCollision] WARN: fingerprint validation error: %v", err)
-			return nil, false, false, nil // Fall through to create new
+			// SECURITY: Cannot create new device - MAC already claimed
+			// Return error instead of falling through to device creation
+			return nil, false, true, fmt.Errorf("MAC %s already registered but fingerprint validation error: %w", params.MacAddr, err)
 		}
 		if !isValid {
-			log.Printf("[ClientRegister.handleMacCollision] Fingerprint mismatch for MAC %s on device %d, creating new device", params.MacAddr, existingDevID)
-			return nil, false, false, nil // Fall through to create new
+			log.Printf("[ClientRegister.handleMacCollision] CRITICAL: Fingerprint mismatch for MAC %s on device %d", params.MacAddr, existingDevID)
+			// SECURITY: This MAC is already claimed by another device with different fingerprint
+			// This could be:
+			// 1. MAC address reuse by router (different physical device)
+			// 2. Potential security attack (MAC spoofing)
+			// 3. Screen rotation issue (should be fixed by normalization, but log for monitoring)
+			log.Printf("[ClientRegister.handleMacCollision] Refusing to create duplicate device - MAC %s belongs to device %d", params.MacAddr, existingDevID)
+			return nil, false, true, fmt.Errorf("MAC address %s is already registered to a different device", params.MacAddr)
 		}
 		log.Printf("[ClientRegister.handleMacCollision] Fingerprint validated, reusing device %d", existingDevID)
 	} else {
@@ -524,8 +571,9 @@ func (reg *ClientRegister) handleMacCollision(ctx context.Context, params Client
 		storedFPs, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, existingDev.ID())
 		if err == nil && len(storedFPs) > 0 {
 			// Device has fingerprints but we can't validate - reject for security
-			log.Printf("[ClientRegister.handleMacCollision] Device %d has fingerprints but no data to validate, creating new device", existingDevID)
-			return nil, false, false, nil // Fall through to create new
+			log.Printf("[ClientRegister.handleMacCollision] Device %d has fingerprints but no data to validate", existingDevID)
+			// SECURITY: Cannot create new device - MAC already claimed
+			return nil, false, true, fmt.Errorf("MAC %s already registered but cannot validate identity", params.MacAddr)
 		}
 		// No stored fingerprints - accept (backward compatibility)
 		log.Printf("[ClientRegister.handleMacCollision] No fingerprints to validate, reusing device %d (backward compatibility)", existingDevID)
@@ -534,8 +582,8 @@ func (reg *ClientRegister) handleMacCollision(ctx context.Context, params Client
 	clnt := reg.wrapDevice(existingDev)
 
 	// Update network details if changed
-	if existingDev.IpAddr() != params.IpAddr || existingDev.Hostname() != params.Hostname {
-		err = reg.UpdateDevice(ctx, clnt, params.MacAddr, params.IpAddr, params.Hostname)
+	if existingDev.Ipv4Addr() != params.Ipv4Addr || existingDev.Ipv6Addr() != params.Ipv6Addr || existingDev.Hostname() != params.Hostname {
+		err = reg.UpdateDevice(ctx, clnt, params.MacAddr, params.Ipv4Addr, params.Ipv6Addr, params.Hostname)
 		if err != nil {
 			log.Printf("[ClientRegister.handleMacCollision] ERROR: Failed to update device: %v", err)
 			return nil, false, false, err
