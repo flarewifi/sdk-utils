@@ -3,27 +3,27 @@
 package machineuid
 
 import (
+	"crypto/sha1"
 	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
 	machineIDCacheFile = "/etc/.mid"
-	maxRetries         = 10
-	retryDelay         = 3 * time.Second
+
+	// readableAlphabet excludes ambiguous chars: 0/O, 1/I/l
+	readableAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 )
 
 var (
 	mu         sync.Mutex
 	machineUID string
-	verified   bool
 )
 
 // readCachedMachineID reads the cached machine ID from /etc/.mid
@@ -35,12 +35,21 @@ func readCachedMachineID() string {
 	return strings.TrimSpace(string(data))
 }
 
-// writeCachedMachineID writes the machine ID to /etc/.mid
-func writeCachedMachineID(uid string) {
+// WriteCachedMachineID writes the machine ID to /etc/.mid
+// Called after successful cloud sync when machine ID changes
+func WriteCachedMachineID(uid string) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	err := os.WriteFile(machineIDCacheFile, []byte(uid), 0644)
 	if err != nil {
 		log.Printf("Warning: Failed to write machine ID cache to %s: %v", machineIDCacheFile, err)
+		return
 	}
+
+	// Update in-memory state
+	machineUID = uid
+	log.Printf("Machine ID cached: %s", uid)
 }
 
 // calculateMachineUID calculates the machine UID from system identifiers
@@ -62,80 +71,91 @@ func calculateMachineUID() string {
 		return ""
 	}
 
-	// Hash the combined identifiers
-	return strings.ToUpper(sdkutils.Sha1Hash(identifiers...))
+	// Hash the combined identifiers and encode to readable 16-char string
+	hash := sha1.Sum([]byte(strings.Join(identifiers, "")))
+	return encodeReadable(hash[:], 16)
 }
 
-// GetMachineUID returns a unique identifier for the OpenWRT device.
-// It uses:
-// 1. CPU serial from /proc/cpuinfo (if available)
-// 2. MAC addresses from accepted physical network interfaces (wan, lan, lan1-9, eth0-9, eth*, lan*)
-// 3. The combined identifiers are hashed using SHA-1
-// 4. Caches the result to /etc/.mid for consistency
+// GetMachineUIDWithChange detects if the machine ID has changed.
+// Returns (cachedID, calculatedID):
+// - If no cached ID (new machine): returns ("", newID)
+// - If cached == calculated: returns ("", cachedID) - no change
+// - If cached != calculated: returns (cachedID, newID) - machine ID changed!
 //
-// Returns (oldMachineID, newMachineID):
-// - If machine ID hasn't changed: returns ("", currentID)
-// - If machine ID changed: returns (cachedID, newID)
+// This function does NOT update the cache - caller must handle that after cloud sync.
+func GetMachineUIDWithChange() (string, string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Read cached machine ID from file
+	cachedID := readCachedMachineID()
+
+	// Calculate current machine ID from hardware
+	calculatedID := calculateMachineUID()
+	if calculatedID == "" {
+		log.Printf("Warning: Could not calculate machine ID (no identifiers found)")
+		return "", ""
+	}
+
+	// No cached ID - this is a new machine
+	if cachedID == "" {
+		return "", calculatedID
+	}
+
+	// Check if IDs match
+	if cachedID == calculatedID {
+		return "", cachedID
+	}
+
+	// Machine ID has changed
+	return cachedID, calculatedID
+}
+
+// GetMachineUID returns the current machine ID.
+// If already resolved, returns cached value.
+// Otherwise reads from /etc/.mid or calculates for new machines.
+//
+// Returns ("", machineID) - first value is always empty for backward compatibility.
 func GetMachineUID() (string, string) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if machineUID != "" && verified {
+	// Return cached in-memory value if available
+	if machineUID != "" {
 		return "", machineUID
 	}
 
-	// Read cached machine ID
+	// Read cached machine ID from file
 	cachedID := readCachedMachineID()
 
-	// Calculate current machine ID
-	currentID := calculateMachineUID()
-	if currentID == "" {
+	// If cached ID exists, use it
+	if cachedID != "" {
+		machineUID = cachedID
+		return "", cachedID
+	}
+
+	// No cached ID - this is a new machine
+	// Calculate and cache the new 16-char format ID
+	newID := calculateMachineUID()
+	if newID == "" {
+		log.Printf("Warning: Could not calculate machine ID (no identifiers found)")
 		return "", ""
 	}
 
-	// If no cached ID exists, this is first run
-	if cachedID == "" {
-		machineUID = currentID
-		verified = true
-		writeCachedMachineID(currentID)
-		return "", currentID
+	// Write to cache file
+	err := os.WriteFile(machineIDCacheFile, []byte(newID), 0644)
+	if err != nil {
+		log.Printf("Warning: Failed to write machine ID cache to %s: %v", machineIDCacheFile, err)
 	}
 
-	// If cached ID matches current ID, we're done
-	if cachedID == currentID {
-		machineUID = currentID
-		verified = true
-		return "", currentID
-	}
-
-	// Machine ID mismatch - retry with delays
-	log.Printf("Machine ID mismatch: cached=%s, current=%s. Retrying...", cachedID, currentID)
-
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		time.Sleep(retryDelay)
-
-		retryID := calculateMachineUID()
-		if retryID == cachedID {
-			log.Printf("Machine ID matched cached value after %d attempts", attempt)
-			machineUID = cachedID
-			verified = true
-			return "", cachedID
-		}
-
-		log.Printf("Retry %d/%d: Machine ID still %s (expected %s)", attempt, maxRetries, retryID, cachedID)
-		currentID = retryID
-	}
-
-	// After all retries, machine ID has changed
-	log.Printf("Machine ID changed after %d retries: %s -> %s", maxRetries, cachedID, currentID)
-
-	// Update cache with new ID
-	machineUID = currentID
-	verified = true
-	writeCachedMachineID(currentID)
-
-	return cachedID, currentID
+	machineUID = newID
+	log.Printf("New machine ID generated: %s", newID)
+	return "", newID
 }
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
 
 // readInterfaceMAC reads the MAC address of a specific network interface
 func readInterfaceMAC(iface string) string {
@@ -287,4 +307,20 @@ func isVirtualInterface(ifaceName string) bool {
 	}
 
 	return false
+}
+
+// encodeReadable encodes bytes to a readable string using the readable alphabet
+// Uses all 20 bytes of SHA-1 hash to generate 16 unique characters
+func encodeReadable(data []byte, length int) string {
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		// Use different byte combinations for each position to avoid repetition
+		// Mix bytes from different parts of the hash
+		byteIdx := i % len(data)
+		nextIdx := (i + 7) % len(data)   // Prime offset for better mixing
+		thirdIdx := (i + 13) % len(data) // Another prime offset
+		combined := int(data[byteIdx]) + int(data[nextIdx])*256 + int(data[thirdIdx])*17
+		result[i] = readableAlphabet[combined%len(readableAlphabet)]
+	}
+	return string(result)
 }
