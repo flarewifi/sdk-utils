@@ -1,13 +1,14 @@
 -- name: CreateDevice :one
 INSERT INTO devices (
-  ipv4_addr, ipv6_addr, hostname, uuid
+  ipv4_addr, ipv6_addr, hostname, uuid, cookie_token
 )
 VALUES
   (
     @ipv4_addr,
     @ipv6_addr,
     @hostname,
-    @uuid
+    @uuid,
+    @cookie_token
   ) RETURNING id;
 
 
@@ -18,6 +19,7 @@ SELECT
   d.ipv6_addr,
   d.hostname,
   d.uuid,
+  d.cookie_token,
   d.created_at,
   d.updated_at,
   d.status,
@@ -38,6 +40,7 @@ SELECT
   d.ipv4_addr,
   d.ipv6_addr,
   d.uuid,
+  d.cookie_token,
   d.created_at,
   d.updated_at,
   d.status,
@@ -58,6 +61,7 @@ SELECT
   d.ipv4_addr,
   d.ipv6_addr,
   d.uuid,
+  d.cookie_token,
   d.created_at,
   d.updated_at,
   d.status,
@@ -81,6 +85,16 @@ SET
   ipv6_addr = @ipv6_addr,
   uuid      = @uuid,
   status    = @status,
+  updated_at = CURRENT_TIMESTAMP
+WHERE
+  id = @id;
+
+
+-- name: UpdateDeviceCookieToken :exec
+UPDATE
+  devices
+SET
+  cookie_token = @cookie_token,
   updated_at = CURRENT_TIMESTAMP
 WHERE
   id = @id;

@@ -65,9 +65,9 @@ func Setup() (err error) {
 	batch.WriteString(fmt.Sprintf("add chain %s %s %s { type nat hook prerouting priority -1; policy accept; }\n", tableFamily, internetTable, preroutingChain))
 
 	// Create maps and sets in our custom table
-	// IPv4 verdict map (kept for download traffic accounting only, not for allow/deny)
+	// IPv4 verdict map (download traffic: accept + accounting)
 	batch.WriteString(fmt.Sprintf("add map %s %s %s { type ipv4_addr : verdict ; counter; }\n", tableFamily, internetTable, connIpMap))
-	// IPv6 verdict map (kept for download traffic accounting only, not for allow/deny)
+	// IPv6 verdict map (download traffic: accept + accounting)
 	batch.WriteString(fmt.Sprintf("add map %s %s %s { type ipv6_addr : verdict ; counter; }\n", tableFamily, internetTable, connIp6Map))
 	// MAC verdict map and set (protocol-agnostic)
 	batch.WriteString(fmt.Sprintf("add map %s %s %s { type ether_addr : verdict ; counter; }\n", tableFamily, internetTable, connMacMap))
@@ -79,36 +79,17 @@ func Setup() (err error) {
 
 	// Add rules to our custom forward chain.
 	//
-	// Stateful design: outbound is gated by source MAC; conntrack handles all
-	// return traffic automatically, covering every IPv6 address the client uses.
-	//
-	// Accounting approach:
-	//   - Upload:   counted by the MAC verdict map (fires on new outbound connections).
-	//               The MAC map counter increments once per NEW flow initiation, but
-	//               upload bytes are accumulated via nftables per-element counters.
-	//   - Download: counted by the IP verdict maps (fires on return traffic where
-	//               daddr = the registered client IP).  The IP maps sit BEFORE the
-	//               ct established rule so they see every inbound packet.
-	//               Only the one registered IP per protocol is counted; traffic
-	//               arriving at other IPv6 addresses is still allowed (ct rule) but
-	//               not individually counted — it is aggregated via the MAC upload
-	//               counter on the next outbound tick.
+	// Verdict-map-only design: no conntrack lookups, O(1) hash table matches.
+	// This avoids per-packet conntrack overhead that causes latency for gaming.
 	//
 	// Rule order (first terminal verdict wins):
-	//   1. Drop invalid conntrack states (security).
-	//   2. Download accounting: IP verdict maps — match registered client IPs,
-	//      count, and accept.  Placed before ct so they fire on every packet.
-	//   3. Accept established/related — catches return traffic to any client IP
-	//      that is NOT in the IP maps (e.g. additional IPv6 addresses).
-	//   4. Accept new outbound by source MAC (upload accounting + allow gate).
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ct state invalid drop\n", tableFamily, internetTable, forwardChain))
-	// Download accounting: count bytes arriving at registered client IPs.
+	//   1. Upload: source MAC verdict map — accept if MAC is registered.
+	//   2. Download (IPv4): destination IP verdict map — accept + count.
+	//   3. Download (IPv6): destination IP6 verdict map — accept + count.
+	//   4. (implicit) chain policy drop — everything else is blocked.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, connMacMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIpMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIp6Map))
-	// Allow return traffic to client IPs NOT in the IP maps (additional IPv6 addrs).
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ct state established,related accept\n", tableFamily, internetTable, forwardChain))
-	// Upload accounting + allow gate: new outbound connections from allowed MACs.
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, connMacMap))
 	// Service port jumps will be appended after this rule for unauthenticated clients.
 
 	// Execute batch command using nft -f - with heredoc for atomic execution
@@ -299,8 +280,6 @@ func doConnect(ip string, mac string) error {
 
 	// Step 2: Add MAC to the upload-accounting verdict map and the allow set.
 	// These are idempotent — the second call for a dual-stack device is a no-op.
-	// The conntrack rules in the forward chain handle return traffic automatically,
-	// so no per-IP firewall entry is needed for inbound traffic.
 	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, connMacMap, normalizedMAC), nil)
 	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, connMacSet, normalizedMAC), nil)
 

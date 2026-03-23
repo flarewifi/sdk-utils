@@ -622,17 +622,18 @@ func (self *SessionsMgr) NewClientSession(params sdkapi.NewClientSessionParams) 
 func (self *SessionsMgr) NewClientDevice(params sdkapi.NewDeviceParams) sdkapi.IClientDevice {
 	// Create a models.Device from the params using BuildDevice
 	d := models.BuildDevice(models.BuildDeviceParams{
-		DB:        self.db,
-		Models:    self.mdl,
-		ID:        params.ID,
-		UUID:      params.UUID,
-		MacAddr:   params.MacAddress,
-		Ipv4Addr:  params.Ipv4Address,
-		Ipv6Addr:  params.Ipv6Address,
-		Hostname:  params.Hostname,
-		Status:    params.Status,
-		CreatedAt: params.CreatedAt,
-		UpdatedAt: params.UpdatedAt,
+		DB:          self.db,
+		Models:      self.mdl,
+		ID:          params.ID,
+		UUID:        params.UUID,
+		CookieToken: params.CookieToken,
+		MacAddr:     params.MacAddress,
+		Ipv4Addr:    params.Ipv4Address,
+		Ipv6Addr:    params.Ipv6Address,
+		Hostname:    params.Hostname,
+		Status:      params.Status,
+		CreatedAt:   params.CreatedAt,
+		UpdatedAt:   params.UpdatedAt,
 	})
 	return self.wrapModelDevice(d)
 }

@@ -128,6 +128,20 @@ func (self *DeviceMacModel) TransferMacs(ctx context.Context, targetDeviceID, so
 	})
 }
 
+// DeleteNonCurrent deletes all non-current MAC address records across all devices.
+func (self *DeviceMacModel) DeleteNonCurrent(ctx context.Context) error {
+	return self.db.Queries.DeleteNonCurrentMacs(ctx)
+}
+
+// UnsetCurrentMac unmarks a specific MAC as current on a specific device.
+// Used when a MAC collision is detected but merge is rejected.
+func (self *DeviceMacModel) UnsetCurrentMac(ctx context.Context, deviceID int64, macAddress string) error {
+	_, err := self.db.DB.ExecContext(ctx,
+		"UPDATE device_macs SET is_current = FALSE WHERE device_id = ? AND mac_address = ? AND is_current = TRUE",
+		deviceID, macAddress)
+	return err
+}
+
 // FindDeviceByMac finds a device ID by MAC address (current MACs only)
 func (self *DeviceMacModel) FindDeviceByMac(ctx context.Context, macAddress string) (int64, error) {
 	deviceID, err := self.db.Queries.FindDeviceByMacAddress(ctx, macAddress)

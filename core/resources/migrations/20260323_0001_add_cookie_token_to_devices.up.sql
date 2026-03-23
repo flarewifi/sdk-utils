@@ -1,0 +1,1 @@
+ALTER TABLE devices ADD COLUMN cookie_token TEXT NOT NULL DEFAULT '';

@@ -175,9 +175,11 @@ func (self *FirewallApi) doCreateDstIpGroup(slugName string, ips sdkutils.Separa
 		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setV6, ipList))
 	}
 
-	// Add jump rules from main chains to group chains
+	// Add jump rules from main chains to group chains.
+	// Prerouting: insert (must run before captive portal DNAT rules).
+	// Forward: append (runs after MAC/IP verdict maps so connected clients have lowest latency).
 	batch.WriteString(fmt.Sprintf("insert rule inet internet prerouting counter jump %s\n", chainPrerouting))
-	batch.WriteString(fmt.Sprintf("insert rule inet internet forward counter jump %s\n", chainForward))
+	batch.WriteString(fmt.Sprintf("add rule inet internet forward counter jump %s\n", chainForward))
 
 	// Prepare new IP map with current timestamps (before executing nftables)
 	now := time.Now()
@@ -786,6 +788,8 @@ func (self *FirewallApi) doCreateServicePort(slugName string, protocols []string
 
 	// Define nftables resource names
 	setMacs := fmt.Sprintf("svc_port_%s_macs", slugName)
+	setClientIpsV4 := fmt.Sprintf("svc_port_%s_client_ips_v4", slugName)
+	setClientIpsV6 := fmt.Sprintf("svc_port_%s_client_ips_v6", slugName)
 	setDstV4 := fmt.Sprintf("svc_port_%s_dst_v4", slugName)
 	setDstV6 := fmt.Sprintf("svc_port_%s_dst_v6", slugName)
 	chainForward := fmt.Sprintf("svc_port_%s_forward", slugName)
@@ -794,8 +798,10 @@ func (self *FirewallApi) doCreateServicePort(slugName string, protocols []string
 	var batch strings.Builder
 	batch.WriteString("table inet internet {\n")
 
-	// Create set for client MACs
+	// Create sets for client MACs and IPs (for return traffic)
 	batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ether_addr\n\t}\n", setMacs))
+	batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ipv4_addr\n\t}\n", setClientIpsV4))
+	batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ipv6_addr\n\t}\n", setClientIpsV6))
 
 	// Create sets for destination IPs if provided
 	hasDstIPs := len(dstIPs.IPv4) > 0 || len(dstIPs.IPv6) > 0
@@ -804,8 +810,9 @@ func (self *FirewallApi) doCreateServicePort(slugName string, protocols []string
 		batch.WriteString(fmt.Sprintf("\tset %s {\n\t\ttype ipv6_addr\n\t}\n", setDstV6))
 	}
 
-	// Create forward chain with simplified rules (no marks needed)
-	// Return traffic is handled by base chain's ct state established,related rule
+	// Create forward chain with outbound + return rules.
+	// Uses explicit client IP sets for return traffic (no conntrack).
+	// Same pattern as DstIpGroup for consistency and zero ct overhead.
 	batch.WriteString(fmt.Sprintf("\tchain %s {\n", chainForward))
 	for _, proto := range protocols {
 		proto = strings.ToLower(proto)
@@ -815,10 +822,20 @@ func (self *FirewallApi) doCreateServicePort(slugName string, protocols []string
 				setMacs, setDstV4, proto, port))
 			batch.WriteString(fmt.Sprintf("\t\tether saddr @%s ip6 daddr @%s %s dport %d counter accept\n",
 				setMacs, setDstV6, proto, port))
+			// Return: destination -> client from service port (with source IP restrictions)
+			batch.WriteString(fmt.Sprintf("\t\tip saddr @%s ip daddr @%s %s sport %d counter accept\n",
+				setDstV4, setClientIpsV4, proto, port))
+			batch.WriteString(fmt.Sprintf("\t\tip6 saddr @%s ip6 daddr @%s %s sport %d counter accept\n",
+				setDstV6, setClientIpsV6, proto, port))
 		} else {
 			// Outbound: client -> any destination on service port (no destination IP restrictions)
 			batch.WriteString(fmt.Sprintf("\t\tether saddr @%s %s dport %d counter accept\n",
 				setMacs, proto, port))
+			// Return: any source -> client from service port (no source IP restrictions)
+			batch.WriteString(fmt.Sprintf("\t\tip daddr @%s %s sport %d counter accept\n",
+				setClientIpsV4, proto, port))
+			batch.WriteString(fmt.Sprintf("\t\tip6 daddr @%s %s sport %d counter accept\n",
+				setClientIpsV6, proto, port))
 		}
 	}
 	batch.WriteString("\t}\n")
@@ -922,6 +939,8 @@ func (self *FirewallApi) doDeleteServicePort(slugName string) error {
 	// Define nftables resource names
 	chainForward := fmt.Sprintf("svc_port_%s_forward", slugName)
 	setMacs := fmt.Sprintf("svc_port_%s_macs", slugName)
+	setClientIpsV4 := fmt.Sprintf("svc_port_%s_client_ips_v4", slugName)
+	setClientIpsV6 := fmt.Sprintf("svc_port_%s_client_ips_v6", slugName)
 	setDstV4 := fmt.Sprintf("svc_port_%s_dst_v4", slugName)
 	setDstV6 := fmt.Sprintf("svc_port_%s_dst_v6", slugName)
 
@@ -937,6 +956,8 @@ func (self *FirewallApi) doDeleteServicePort(slugName string) error {
 
 	// Delete sets
 	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setMacs))
+	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setClientIpsV4))
+	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setClientIpsV6))
 	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setDstV4))
 	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setDstV6))
 
@@ -993,8 +1014,35 @@ func (self *FirewallApi) doAllowClientToServicePort(clnt sdkapi.DstIpGroupClient
 	}
 	clnt.MacAddr = normalizedMAC
 
-	// Define nftables set name
+	// Resolve effective IPv4/IPv6 addresses (same logic as DstIpGroup)
+	ipv4, ipv6 := clnt.Ipv4Addr, clnt.Ipv6Addr
+	if ipv4 == "" && ipv6 == "" && clnt.IpAddr != "" {
+		ver, verErr := sdkutils.GetIPVersion(clnt.IpAddr)
+		if verErr == nil {
+			if ver == "ip" {
+				ipv4 = clnt.IpAddr
+			} else {
+				ipv6 = clnt.IpAddr
+			}
+		}
+	}
+
+	// Validate each IP address that is present
+	if ipv4 != "" {
+		if _, err := sdkutils.ValidateIPAddress(ipv4); err != nil {
+			return fmt.Errorf("client IPv4 validation failed: %v", err)
+		}
+	}
+	if ipv6 != "" {
+		if _, err := sdkutils.ValidateIPAddress(ipv6); err != nil {
+			return fmt.Errorf("client IPv6 validation failed: %v", err)
+		}
+	}
+
+	// Define nftables set names
 	setMacs := fmt.Sprintf("svc_port_%s_macs", slugName)
+	setClientIpsV4 := fmt.Sprintf("svc_port_%s_client_ips_v4", slugName)
+	setClientIpsV6 := fmt.Sprintf("svc_port_%s_client_ips_v6", slugName)
 
 	// Cancel any existing timer for this client in this service port
 	cacheKey := fmt.Sprintf("svc:%s:%s", slugName, clnt.MacAddr)
@@ -1005,8 +1053,18 @@ func (self *FirewallApi) doAllowClientToServicePort(clnt sdkapi.DstIpGroupClient
 	}
 	self.firewallMutex.Unlock()
 
-	// Add client MAC to the set (idempotent)
-	nftCmd := fmt.Sprintf("nft add element inet internet %s '{ %s }' 2>/dev/null || true", setMacs, clnt.MacAddr)
+	// Build nft batch script to add client MAC and both IP addresses (where present)
+	var batch strings.Builder
+	batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setMacs, clnt.MacAddr))
+	if ipv4 != "" {
+		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setClientIpsV4, ipv4))
+	}
+	if ipv6 != "" {
+		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setClientIpsV6, ipv6))
+	}
+
+	// Execute batch command using heredoc for safe shell escaping
+	nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
 	if err := shell.Exec(nftCmd, nil); err != nil {
 		return fmt.Errorf("failed to add client to service port: %v", err)
 	}
@@ -1057,6 +1115,19 @@ func (self *FirewallApi) doRemoveClientFromServicePort(clnt sdkapi.DstIpGroupCli
 	}
 	clnt.MacAddr = normalizedMAC
 
+	// Resolve effective IPv4/IPv6 addresses (same logic as DstIpGroup)
+	ipv4, ipv6 := clnt.Ipv4Addr, clnt.Ipv6Addr
+	if ipv4 == "" && ipv6 == "" && clnt.IpAddr != "" {
+		ver, verErr := sdkutils.GetIPVersion(clnt.IpAddr)
+		if verErr == nil {
+			if ver == "ip" {
+				ipv4 = clnt.IpAddr
+			} else {
+				ipv6 = clnt.IpAddr
+			}
+		}
+	}
+
 	// Cancel any active timer for this client in this service port
 	cacheKey := fmt.Sprintf("svc:%s:%s", slugName, clnt.MacAddr)
 	self.firewallMutex.Lock()
@@ -1066,12 +1137,19 @@ func (self *FirewallApi) doRemoveClientFromServicePort(clnt sdkapi.DstIpGroupCli
 	}
 	self.firewallMutex.Unlock()
 
-	// Define nftables set name
+	// Define nftables set names
 	setMacs := fmt.Sprintf("svc_port_%s_macs", slugName)
+	setClientIpsV4 := fmt.Sprintf("svc_port_%s_client_ips_v4", slugName)
+	setClientIpsV6 := fmt.Sprintf("svc_port_%s_client_ips_v6", slugName)
 
-	// Remove client MAC from the set (best-effort)
-	nftCmd := fmt.Sprintf("nft delete element inet internet %s '{ %s }' 2>/dev/null || true", setMacs, clnt.MacAddr)
-	shell.Exec(nftCmd, nil)
+	// Remove MAC and both IP addresses (best-effort — elements may already be absent).
+	shell.Exec(fmt.Sprintf("nft delete element inet internet %s '{ %s }' 2>/dev/null || true", setMacs, clnt.MacAddr), nil)
+	if ipv4 != "" {
+		shell.Exec(fmt.Sprintf("nft delete element inet internet %s '{ %s }' 2>/dev/null || true", setClientIpsV4, ipv4), nil)
+	}
+	if ipv6 != "" {
+		shell.Exec(fmt.Sprintf("nft delete element inet internet %s '{ %s }' 2>/dev/null || true", setClientIpsV6, ipv6), nil)
+	}
 
 	return nil
 }

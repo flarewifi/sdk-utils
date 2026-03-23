@@ -99,6 +99,11 @@ func (self *DeviceFingerprintModel) DeleteOldFingerprints(ctx context.Context) e
 	return nil
 }
 
+// DeleteAll deletes all device fingerprint records.
+func (self *DeviceFingerprintModel) DeleteAll(ctx context.Context) error {
+	return self.db.Queries.DeleteAllFingerprints(ctx)
+}
+
 // FindSharedFingerprintHashes returns non-CNA fingerprint hashes seen on multiple distinct
 // devices since the given UTC timestamp. Used by the merge job to detect duplicate device records.
 func (self *DeviceFingerprintModel) FindSharedFingerprintHashes(ctx context.Context, sinceUtc time.Time) ([]string, error) {

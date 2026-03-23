@@ -134,3 +134,9 @@ FROM (
     GROUP BY device_id
 ) dm
 ORDER BY dm.max_seen DESC;
+
+-- name: DeleteNonCurrentMacs :exec
+-- Deletes all non-current MAC address records across all devices.
+-- Keeps only the current (is_current=TRUE) MAC for each device.
+DELETE FROM device_macs
+WHERE is_current = FALSE;

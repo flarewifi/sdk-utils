@@ -62,5 +62,17 @@ templ AdminUserIndex(api sdkapi.IPluginApi, params AdminUserIndexParams) {
 				</form>
 			</div>
 		</div>
+		<!-- Clear Device History Card -->
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">{ api.Translate("label", "Device History") }</h5>
+			</div>
+			<div class="card-body">
+				<p class="text-muted mb-3">{ api.Translate("info", "Clear all device fingerprints and old MAC address records. The current MAC address for each device will be kept.") }</p>
+				<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:user:clear-history")) } onsubmit="return confirm('Are you sure you want to clear device history?');">
+					<button type="submit" class="btn btn-danger">{ api.Translate("label", "Clear History") }</button>
+				</form>
+			</div>
+		</div>
 	</div>
 }

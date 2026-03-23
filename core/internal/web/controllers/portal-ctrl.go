@@ -73,9 +73,11 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Get device ID from JWT cookie (if exists)
 		var cookieDeviceID *int64
-		deviceID, cookieErr := devicetoken.GetDeviceCookie(r)
-		if cookieErr == nil && deviceID > 0 {
-			cookieDeviceID = &deviceID
+		var cookieCookieToken string
+		cookieClaims, cookieErr := devicetoken.GetDeviceCookie(r)
+		if cookieErr == nil && cookieClaims.DeviceID > 0 {
+			cookieDeviceID = &cookieClaims.DeviceID
+			cookieCookieToken = cookieClaims.CookieToken
 		}
 
 		h, err := hostfinder.GetHostFromRequest(r)
@@ -110,12 +112,13 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Register/identify device with cookie validation and MAC randomization support
 		clnt, shouldSetCookie, err := clntMgr.Register(r.Context(), sessmgr.ClientRegisterParams{
-			CookieDeviceID: cookieDeviceID,
-			MacAddr:        h.MacAddr,
-			Ipv4Addr:       reqIpv4,
-			Ipv6Addr:       reqIpv6,
-			Hostname:       h.Hostname,
-			UserAgent:      userAgent,
+			CookieDeviceID:    cookieDeviceID,
+			CookieCookieToken: cookieCookieToken,
+			MacAddr:           h.MacAddr,
+			Ipv4Addr:          reqIpv4,
+			Ipv6Addr:          reqIpv6,
+			Hostname:          h.Hostname,
+			UserAgent:         userAgent,
 		})
 		if err != nil {
 			userMsg := g.CoreAPI.Translate("error", "Failed to register your device")
@@ -142,7 +145,7 @@ func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Only set cookie if validation passed
 		if shouldSetCookie {
-			if err := devicetoken.SetDeviceCookie(w, clnt.ID()); err != nil {
+			if err := devicetoken.SetDeviceCookie(w, clnt.ID(), clnt.CookieToken()); err != nil {
 				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterCtrl: Failed to set device cookie - DeviceID: %d, Error: %v", clnt.ID(), err))
 			}
 		}
@@ -270,26 +273,29 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Determine device ID from token or cookie
 		// Priority: localStorage token > HTTP cookie > MAC-based identification
 		var cookieDeviceID *int64
+		var cookieCookieToken string
 
 		// Try localStorage token first (if provided)
 		if reqBody.DeviceToken != "" {
 			_, machineID := machineuid.GetMachineUID()
-			deviceID, err := devicetoken.VerifyDeviceToken(reqBody.DeviceToken, machineID)
+			tokenClaims, err := devicetoken.VerifyDeviceToken(reqBody.DeviceToken, machineID)
 			if err != nil {
 				// Token invalid/expired — log and fall through to cookie check
 				// This allows graceful recovery when localStorage has stale token but cookie is valid
 				g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Token verification failed, falling back to cookie - Error: %v", err))
 				// Fall through to cookie check below
 			} else {
-				cookieDeviceID = &deviceID
+				cookieDeviceID = &tokenClaims.DeviceID
+				cookieCookieToken = tokenClaims.CookieToken
 			}
 		}
 
 		// If no valid token, try HTTP cookie
 		if cookieDeviceID == nil {
-			deviceID, cookieErr := devicetoken.GetDeviceCookie(r)
-			if cookieErr == nil && deviceID > 0 {
-				cookieDeviceID = &deviceID
+			cookieClaims, cookieErr := devicetoken.GetDeviceCookie(r)
+			if cookieErr == nil && cookieClaims.DeviceID > 0 {
+				cookieDeviceID = &cookieClaims.DeviceID
+				cookieCookieToken = cookieClaims.CookieToken
 			}
 			// If cookie also fails, cookieDeviceID stays nil — Register() will use MAC-based identification
 		}
@@ -323,15 +329,16 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		clnt, shouldSetCookie, err := clntMgr.Register(ctx, sessmgr.ClientRegisterParams{
-			CookieDeviceID: cookieDeviceID,
-			MacAddr:        h.MacAddr,
-			Ipv4Addr:       ajaxIpv4,
-			Ipv6Addr:       ajaxIpv6,
-			Hostname:       h.Hostname,
-			UserAgent:      userAgent,
-			ScreenRes:      reqBody.ScreenRes,
-			Language:       reqBody.Language,
-			Timezone:       reqBody.Timezone,
+			CookieDeviceID:    cookieDeviceID,
+			CookieCookieToken: cookieCookieToken,
+			MacAddr:           h.MacAddr,
+			Ipv4Addr:          ajaxIpv4,
+			Ipv6Addr:          ajaxIpv6,
+			Hostname:          h.Hostname,
+			UserAgent:         userAgent,
+			ScreenRes:         reqBody.ScreenRes,
+			Language:          reqBody.Language,
+			Timezone:          reqBody.Timezone,
 		})
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "Failed to register device")
@@ -374,7 +381,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Generate JWT device token for localStorage
 		_, machineID := machineuid.GetMachineUID()
-		deviceToken, err := devicetoken.GenerateDeviceToken(clnt.ID(), machineID)
+		deviceToken, err := devicetoken.GenerateDeviceToken(clnt.ID(), clnt.CookieToken(), machineID)
 		if err != nil {
 			errMsg := g.CoreAPI.Translate("error", "Failed to generate device token")
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Failed to generate device token - DeviceID: %d, Error: %v", clnt.ID(), err))
@@ -389,7 +396,7 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Set cookie as fallback (only if validation passed)
 		if shouldSetCookie {
-			if err := devicetoken.SetDeviceCookie(w, clnt.ID()); err != nil {
+			if err := devicetoken.SetDeviceCookie(w, clnt.ID(), clnt.CookieToken()); err != nil {
 				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Failed to set device cookie - DeviceID: %d, Error: %v", clnt.ID(), err))
 			}
 		}

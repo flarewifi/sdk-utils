@@ -2,225 +2,335 @@
 
 ## About this project
 
-- This is a Go application that runs in OpenWRT routers
-- Uses SQLite as the database (lightweight, embedded, perfect for edge devices)
-- Plugin-based architecture allows third-party developers to extend functionality
-- Core should remain minimal and stable - new features should be plugins when possible
+- Go application for OpenWRT routers using SQLite (embedded, lightweight)
+- Plugin-based architecture - core remains minimal, features go in plugins
 
 ## ⚠️ CRITICAL: Core vs Plugin Development
 
-### Default Strategy: Prefer Plugin Development
+**DEFAULT: Plugin Development** (unless user explicitly requests core modification)
 
-**ALWAYS assume the user wants plugin-specific features unless explicitly told otherwise.**
-
-- ✅ **New features** → Create as plugins
-- ✅ **Custom functionality** → Develop in plugins
-- ✅ **Optional features** → Plugin architecture
-- ❌ **Core modifications** → Only with explicit user confirmation
-
-### When to Modify Core
-
-Only modify core files when:
-- User **explicitly requests** core modification
-- User **explicitly confirms** your plan to modify core
-- Fixing bugs in existing core functionality
-- Adding foundational APIs that plugins will use
-- Modifying shared infrastructure (HTTP server, database layer, plugin system)
-
-### Core File Protection
-
-**NEVER modify without explicit permission:**
-- `core/resources/migrations/` - **CRITICAL**: Core database schema
-- `core/resources/queries/` - Core SQL queries
+### Protected Core Files (NEVER modify without explicit permission):
+- `core/resources/migrations/` - Core database schema
+- `core/resources/queries/` - Core SQL queries  
 - `core/resources/views/` - Core view templates
 - `core/internal/api/` - Core API implementation
 - `sdk/` - Plugin API and utilities
 - `tools/` - Build tools
 
-**Safe to modify (plugin development):**
+### Safe to Modify:
 - `data/plugins/local/{plugin-name}/` - Plugin-specific code
-- `plugins/system/{plugin-name}/` - System plugins (when explicitly developing that plugin)
+- `plugins/system/{plugin-name}/` - System plugins
+
+## Workflow
+
+1. **Research** - Use Read/Glob/Grep to understand existing patterns
+2. **Consult** specialists: @frontend (templates/CSS/JS), @backend (routing/auth), @translator (i18n)
+3. **Plan** - Detailed implementation plan with specific file changes
+4. **Confirm** - Get user approval before implementing
+5. **Implement** - Code the solution
+6. **Review** - Check for errors, logic bugs, security issues (see checklist below)
+7. **Document** - Update `sdk/mkdocs/docs/api/` when adding or changing SDK API methods
+
+### Implementation Review Checklist (MANDATORY)
+
+**Error Handling:**
+- ✅ Catch ALL errors, no silent failures
+- ✅ Rollback on partial failures (e.g., `CreateSession()` → `RecordUsage()` fails → `DeleteSession()`)
+- ❌ NEVER `_ = functionThatCanError()` or log-and-continue for critical operations
+
+**Logic & Security:**
+- ✅ Race conditions (add DB unique constraints)
+- ✅ Data consistency (transaction-like behavior)
+- ✅ Boundary conditions (time ranges: use `endTime.Add(59s, 999ms)`)
+- ✅ Authorization & input validation
+- ✅ Re-validate before actions (not just at UI)
+
+**Example:**
+```go
+// ❌ BAD: Silent error, data inconsistency
+session := CreateSession()
+RecordUsage()  // If fails, inconsistent state!
+
+// ✅ GOOD: Rollback on failure
+session, err := CreateSession()
+if err := RecordUsage(); err != nil {
+    DeleteSession(session.ID())  // Rollback
+    return err
+}
+```
 
 ## Critical Rules
 
-### DO NOT
+**DO NOT:**
+- Import `sdk/api` into `sdk/utils` (import cycle)
+- Use ES6+ JavaScript (ES5 only: `var`, `function() {}`)
+- Hardcode text/URLs (use `api.Translate()` / `api.Http().Helpers().UrlForRoute()`)
+- Modify core files without permission
+- Discard errors or create resources without rollback
 
-- Do not run docker container to check if the build succeeds - docker is already running and watching files
-- NEVER import `sdk/api` into `sdk/utils` - this creates import cycles. `sdk/utils` should only contain basic utilities and types, while `sdk/api` can import from `sdk/utils`
-- NEVER modify core migrations when building plugin features - each plugin must have its own migrations
-- NEVER hardcode user-facing text - always use the translations API (`api.Translate()`)
-- NEVER modify `go.work` or `go.mod` files without explicit permission - these control critical dependencies
-- NEVER create any `SOME_RANDOM_SUMMARY.md` files after performing file modifications
+**ALWAYS:**
+- Use `int64` for IDs, named params (`@param`) for SQL
+- Wrap URLs with `templ.SafeURL()`
+- Handle ALL errors, implement rollback for multi-step ops
+- Add DB constraints (UNIQUE, FOREIGN KEY) for business rules
+- Check docker logs for `Listening on port :3000`
 
-### ALWAYS
+## Go File Organization
 
-- Use translations API for ALL user-facing text
-- Use SQLite-compatible SQL syntax in all queries
-- Use `int64` for database IDs
-- Use ES5 JavaScript syntax (no ES6+)
-- Check docker logs to verify builds (`Listening on port :3000` = success)
-- Prefer plugin development over core modifications
-- Use named parameters in SQL queries (`@parameter_name`)
-- **Update SDK documentation** (`sdk/mkdocs/docs/`) when modifying core code that affects the plugin API (interfaces in `sdk/api/`, implementations in `core/internal/api/`)
+**Standard ordering for Go files:**
+```
+1. package declaration
+2. imports
+3. constants
+4. variables
+5. types/structs
+6. constructor (New*) functions
+7. PUBLIC methods (exported, capitalized)
+8. HELPER functions (unexported, lowercase) at BOTTOM
+```
 
-## Build/Dev/Test
+**Example:**
+```go
+package example
 
-- `make` Runs the development app with Go build tags "dev"
-- We only use `ES5` syntax in our javascript assets for maximum browser compatibility
-- We don't implement or create test files and unit tests
-- The `go`, `templ`, and `sqlc` files are being watched and built by the running docker container
-- We don't build go, templ and sqlc files. Instead, we watch for the docker logs to see if the build succeeds
-- Watch docker logs but don't run them. When it prints `Listening on port :3000 ` it means the build is successful
-- When building the source, we use build tags "dev" for development or "prod" for production
-- Sample Go build command: `go build -tags="dev" -o flare ./core/internal/cli/main.go`
+import "context"
 
-## Project Structure
+const maxItems = 100
 
-- `go.work.default` - Copied to `go.work`, to be able to work on multiple Go modules
-- `scripts/` - Scripts that need to run outside of Go context
-- `sdk/utils/` Go utilities that can be reused in the core and plugins
-- `sdk/api/` Go interfaces and structs API to build a plugin
-- `sdk/mkdocs/` Documentation for the `sdk/api/` usage
-- `core/` The core of the system, it initializes the application and all the installed plugins
-- `core/internal/api/` Contains the implementation of `sdk/api/`
-- `core/db/` Contains the Go database queries generated from `core/resources/queries/`
-- `core/resources/assets/` Contains the javascript and css
-- `core/resources/views/` Contains the `templ` files for our views
-- `core/internal/web/` Contains routing, navigation, middlewares and controllers/handlers
-- Each plugin has a corresponding `resources` directory similar to `core/resources/`
+type Service struct { ... }
+
+func NewService() *Service { ... }
+
+// PUBLIC METHODS (exported)
+func (s *Service) DoSomething(ctx context.Context) error { ... }
+func (s *Service) GetData() []Item { ... }
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+func (s *Service) validateInput(input string) bool { ... }
+func (s *Service) formatOutput(data []byte) string { ... }
+```
+
+## Build/Dev & Auto-Rebuild System
+
+### Development Workflow
+
+The development environment uses **reflex** to watch for file changes and automatically rebuild:
+
+**Watched file types:**
+- `.go` - Go source files
+- `.templ` - Template files (generates `*_templ.go`)
+- `.sql` - SQL query files (generates `db/queries/*.go` via sqlc)
+- `.js`, `.css` - Frontend assets
+- `.json` - Config files (except plugin.json, package.json)
+- `.sh` - Shell scripts
+
+**Excluded from watch** (to prevent rebuild loops):
+- `*_templ.go` - Generated by templ
+- `db/queries/*` - Generated by sqlc
+- `node_modules/`, `data/config/`, `data/storage/`
+- `plugin.json`, `package.json`, `package-lock.json`
+
+### Build Process (Automatic)
+
+When you edit a watched file, reflex triggers this sequence:
+
+1. **Copy workspace:** `go.work.default` → `go.work`
+2. **Clean generated files:** Remove old `*_templ.go` files
+3. **Fix workspace:** Run `flare fix-workspace` (updates module references)
+4. **Build plugins:** Run `flare build-plugins` (compiles all plugins)
+5. **Start server:** Run `flare server`
+6. **Wait for:** `Listening on port :3000` in logs
+
+**Typical rebuild time:** 5-15 seconds depending on changes
+
+### What Gets Auto-Generated
+
+| You Edit | Auto-Generated | Tool |
+|----------|----------------|------|
+| `*.templ` | `*_templ.go` | templ |
+| `resources/queries/*.sql` | `db/queries/*.sql.go` | sqlc |
+| `resources/queries/*.sql` | `db/queries/models.go` | sqlc |
+| Plugin files | Plugin binaries | Go build |
+
+### Troubleshooting Rebuilds
+
+**No rebuild triggered:**
+- ✅ File is in excluded list (e.g., `plugin.json`)
+- ✅ Check file extension is watched
+- ✅ Ensure file is not in ignored directory
+
+**Build fails after edit:**
+- ✅ Check docker logs: `docker logs flarewifi-app-1 --tail 50`
+- ✅ Look for syntax errors, import issues, sqlc errors
+- ✅ Fix errors and save file again (triggers new rebuild)
+
+**Build succeeds but changes not reflected:**
+- ✅ Wait for `Listening on port :3000` in logs
+- ✅ Hard refresh browser (Cmd+Shift+R / Ctrl+Shift+R)
+- ✅ Check if file is in excluded list
+
+**Stuck in rebuild loop:**
+- ✅ Check if you're editing generated files (`*_templ.go`, `db/queries/*.go`)
+- ✅ Only edit source files (`.templ`, `.sql`), never generated files
+
+**Complete rebuild needed:**
+- ✅ Restart container: `docker restart flarewifi-app-1`
+- ✅ Check logs for successful startup
+
+### Key Points for AI Agents
+
+1. **Never edit generated files** - Edit source files (`.templ`, `.sql`) only
+2. **Don't manually build** - Reflex handles all builds automatically
+3. **Wait for rebuild** - Check logs for `Listening on port :3000` before testing
+4. **sqlc regeneration** - Editing `.sql` files triggers sqlc to regenerate queries
+5. **templ regeneration** - Editing `.templ` files triggers templ to regenerate Go code
+
+## Structure
+
+```
+core/internal/api/       # SDK implementation (protected)
+core/resources/          # Migrations, queries, views (protected)
+sdk/api/                 # Plugin interfaces
+sdk/utils/               # Shared utilities (NEVER imports sdk/api)
+data/plugins/local/      # Custom plugins (safe to modify)
+```
 
 ## Tech Stack
 
-- Using `Go` as primary programming language
-
-- We are not allowed to exceed the go tool chain version defined in `go.work.default` when installing new libraries
-
-- `docker compose` to run the app and database for easy development setup
-
-- `gorilla/mux` for handling the routes
-
-- `templ` for our views
-
-- `sqlc` for our database queries
-
-- `esbuild` Go API for bundling our assets
-
-- `@Makefile` To run common commands
+- **Go**, **SQLite**, **templ**, **sqlc**, **gorilla/mux**
+- **Bootstrap 3.4.1** - Portal/login (`PortalView`)
+- **Bootstrap 5.3.3** - Admin/dashboard (`AdminView`)
+- **htmx v1.9.12**, **Alpine.js**, **jQuery**
 
 ## Database
 
-- Database queries are generated using `sqlc` in `./scripts/sqlc-gen.sh`
-- We use SQLite as our database (embedded, lightweight, perfect for edge devices)
-- We use `sqlc` named params in our sql queries. For example: `select * from devices where mac_address = @mac_address`
-- All queries must use SQLite-compatible syntax
-- Column overrides are configured in `core/sqlc.yml`
-- For IDs, we use `int64` type
+- SQLite with sqlc-generated queries
+- Migrations: `YYYYMMDD_NNNN_description.{up,down}.sql`
+- Plugins: Create own tables with foreign keys to core, never alter core tables
+- MCP SQLite tools available: `db_info`, `list_tables`, `read_records`, `query`, etc.
 
-### Plugin-Specific Migrations
+### ⚠️ CRITICAL: SQLite WAL Mode
 
-- **CRITICAL**: Each plugin must have its own migrations directory (e.g., `data/plugins/local/{plugin-name}/resources/migrations/`)
-- Plugin migrations should **only** create tables/schemas specific to that plugin
-- Use proper foreign key constraints to reference core tables, but **never alter core tables**
-- If a plugin needs data from core tables, use JOIN queries instead of modifying core schema
-- Plugin queries should be in the plugin's own `resources/queries/` directory
+**The database uses WAL (Write-Ahead Logging) mode. This affects file handling:**
 
-## Translations & Internationalization
+**WAL Files:**
+- `database.sqlite` - Main database file
+- `database.sqlite-wal` - Write-ahead log (uncommitted transactions)
+- `database.sqlite-shm` - Shared memory file (index for WAL)
 
-### Critical Rule: Always Use Translations API
+**When copying/backing up the database:**
+- ✅ Copy ALL THREE files together (`database.sqlite`, `-wal`, `-shm`)
+- ✅ Run `PRAGMA wal_checkpoint(TRUNCATE);` before copying to flush WAL to main file
+- ❌ NEVER copy just `database.sqlite` - you'll lose uncommitted data
 
-**ALL user-facing text must use the translations API** - no hardcoded strings allowed.
+**When working with database outside container:**
+```bash
+# 1. Checkpoint to flush WAL
+docker exec flarewifi-app-1 sqlite3 /opt/flarehotspot/app/data/db/database.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
 
-### In Go Code
-```go
-// Flash messages
-api.Http().Response().FlashMsg(
-    w, r,
-    api.Translate("error", "Failed to create session"),
-    sdkapi.FlashMsgError,
-)
+# 2. Copy all three files
+docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite ./
+docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite-wal ./
+docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite-shm ./
 
-// Error messages
-errorMsg := api.Translate("error", "Invalid input", "field", "email")
-
-// Labels and UI text
-label := api.Translate("label", "Username")
+# 3. After modifications, copy all three back
+docker cp ./database.sqlite flarewifi-app-1:/opt/flarehotspot/app/data/db/
+docker cp ./database.sqlite-wal flarewifi-app-1:/opt/flarehotspot/app/data/db/
+docker cp ./database.sqlite-shm flarewifi-app-1:/opt/flarehotspot/app/data/db/
 ```
 
-### In Templ Templates
-```templ
-// Page titles
-<h1>{ api.Translate("label", "Sessions") }</h1>
+**Note:** The Docker container may not have `sqlite3` installed. Work with database files locally after copying them out.
 
-// Table headers
-<th>{ api.Translate("label", "Device") }</th>
+### ⚠️ CRITICAL: Timestamps and Timezones
 
-// Buttons and links
-<button>{ api.Translate("label", "Save") }</button>
+**SQLite has NO timezone support. Follow these rules strictly:**
 
-// Form placeholders
-<input placeholder={ api.Translate("label", "Enter name") }/>
-```
+**Storage:**
+- ✅ Store ALL timestamps in UTC using `CURRENT_TIMESTAMP` or `time.Now().UTC()`
+- ✅ Use `DATETIME NOT NULL` (no DEFAULT for application-set timestamps)
+- ❌ NEVER use SQLite's `datetime('now', 'localtime')` functions
+- ❌ NEVER store local time in the database
 
-### In JavaScript
-- User-facing strings (alerts, notifications, UI labels) must be translated
-- Pass translated strings from backend or use translation endpoint
-- Debug/console logs can remain in English (not user-facing)
+**Queries:**
+- ✅ Calculate time bounds in Go, pass as params: `time.Now().UTC().AddDate(0, 0, -30)`
+- ✅ Use range queries: `WHERE timestamp >= @start_utc AND timestamp <= @end_utc`
+- ❌ NEVER use SQLite date functions (`datetime('now')`, `datetime('now', '-30 days')`)
 
-### Translation Types
-- `"label"` - UI labels, buttons, navigation, form fields
-- `"error"` - Error messages shown to users
-- `"success"` - Success messages
-- `"info"` - Informational messages
-- `"warning"` - Warning messages
-- Custom types as needed for your plugin
+**Display:** Convert UTC → local in Go for display
 
-### Translation Key Rules
+**Cloud-Sync Architecture:**
+- ⚠️ Sessions may only exist in cloud, not locally with stable IDs
+- ✅ Use `session_uuid` (VARCHAR) instead of `session_id` (INTEGER) for references
+- ❌ NEVER add foreign key constraints to `sessions.id` from plugin tables
 
-**1. No Snake_case**
-- ❌ `api.Translate("error", "invalid_form_values")`
-- ✅ `api.Translate("error", "Invalid form values")`
+## Translations
 
-**2. Key Length Limit: 120 Characters**
-- Keys with >120 characters are automatically truncated to 120 chars + " (truncated)"
-- Build warnings: 100-120 chars = INFO, 121+ chars = WARNING
-- Shorter keys preferred for readability
+**ALL user-facing text:** `api.Translate("label", "Username")` or `api.Translate("error", "Invalid input")`
 
-**3. Punctuation Allowed in Keys**
-- ✅ `api.Translate("info", "You are connected.")` - Punctuation is fine
-- ✅ `api.Translate("error", "Are you sure?")` - Question marks are fine
-- Translation filenames will match the key exactly (no `.txt` extension)
+Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural language (no snake_case)
 
-### Exception: Debug Logs
-- Internal debug logs and development console output can remain in English
-- Anything displayed to end users **must** be translated
+## Frontend
 
-## Frontend Development
+**CSS:** Bootstrap 3 (portal) vs Bootstrap 5 (admin) - never mix  
+**JavaScript:** ES5 only (`var`, `function() {}`, no template literals)  
+**Interactivity:** Use htmx and Alpine.js - avoid custom JavaScript when possible  
+**Real-time Updates:** Use Server-Sent Events (SSE) for live UI updates, not polling  
+**URLs:** `templ.SafeURL(api.Http().Helpers().UrlForRoute("route:name"))`
 
-### CSS Frameworks
-- **Bootstrap 3.4.1** - Portal/login pages only (captive portal for end users) — rendered via `PortalView`
-- **Bootstrap 5.3.3** - Admin dashboard and all post-login pages — rendered via `AdminView`
-- Never mix versions — check which Go view function renders the page (`PortalView` = BS3, `AdminView` = BS5)
+## Plugin Development
 
-### JavaScript
-- **ES5 syntax only** - Maximum browser compatibility for embedded devices
-- Use `var` instead of `let`/`const`
-- Use `function() {}` instead of arrow functions `() => {}`
-- No template literals - use string concatenation
-- No modern ES6+ features
+**Entry:** `func Init(api sdkapi.IPluginApi) error` in `main.go`  
+**Structure:** `data/plugins/local/{plugin}/` → `main.go`, `plugin.json`, `resources/{migrations,queries,views,assets,translations}`  
+**APIs:** `api.SqlDB()`, `api.Http()`, `api.Translate()`, `api.SessionsMgr()`, etc. (see `sdk/mkdocs/docs/`)
 
-### Libraries
-- **htmx v1.9.12** - Primary dynamic HTML framework
-- **Alpine.js** - Reactive components (admin dashboard)
-- **jQuery** - v1.12.4 (core), v3.7.1 (theme)
+### Common Functions & Helpers
 
-### Asset Loading
-- Assets defined in `manifest.admin.json` and `manifest.portal.json`
-- Use `ViewAssets` struct to specify JS/CSS per page
-- Global assets (`global.js`, `global.css`) load automatically
-- Docker watch mode auto-rebuilds assets
+**ALWAYS check `sdk/utils/` first before creating custom functions:**
+- UUID generation, string/slice helpers, formatters
+- Pagination, validators, file system operations
+- Payment utilities, translations, retry logic
+- Database utilities, system info (OpenWRT, OS release)
+- **Pointer helpers** (`sdk/utils/valconv.go`):
+  - Creation: `IntPtr()`, `Int64Ptr()`, `Float64Ptr()`, `BoolPtr()`, `StringPtr()`, `TimePtr()`
+  - Deep copy: `CopyIntPtr()`, `CopyInt64Ptr()`, `CopyFloat64Ptr()`, `CopyBoolPtr()`, `CopyStringPtr()`, `CopyTimePtr()`
+  - Equality: `IntPtrEqual()`, `Int64PtrEqual()`, `Float64PtrEqual()`, `BoolPtrEqual()`, `StringPtrEqual()`, `TimePtrEqual()`
+  - Value extraction: `IntPtrVal()`, `Int64PtrVal()`, `Float64PtrVal()`, `BoolPtrVal()`, `StringPtrVal()`
 
-### URL Generation
-- **NEVER hardcode URLs** - always use `api.Http().Helpers().UrlForRoute()`
-- Route naming: `section:subsection:action` (e.g., `"admin:plugins:install"`)
-- Parameters as key-value pairs: `UrlForRoute("admin:device:info", "id", deviceID)`
-- Wrap with `templ.SafeURL()` for href/action attributes
+Only create custom functions if needed functionality doesn't exist in `sdk/utils/`
+
+
+
+## Common Pitfalls
+
+| Problem | Solution |
+|---------|----------|
+| Import cycle `sdk/api` → `sdk/utils` | Move types to `sdk/utils`, keep interfaces in `sdk/api` |
+| Build failure after edit | Check docker logs, fix syntax, wait for auto-rebuild |
+| Hardcoded text showing English | Use `api.Translate()` for ALL user-facing text |
+| 404 on plugin route | Check route registration in `Init()` function |
+| ID type errors | Always use `int64` for IDs |
+| Plugin modifying core tables | Create plugin tables with foreign keys, use JOINs |
+| URL not working in templ | Wrap with `templ.SafeURL()` |
+| Asset not loading | Check manifest.json matches `ViewAssets{JsFile: "key"}` |
+| ES6 syntax error | Convert to ES5: `var`, `function() {}` |
+| 2+ templ edit failures | Stop and consult @frontend |
+| Creating custom helper function | Check `sdk/utils/` first (UUID, strings, validators, pagination, etc.) |
+| **Copying only database.sqlite** | **Copy ALL 3 WAL files; checkpoint first: `PRAGMA wal_checkpoint(TRUNCATE);`** |
+| **Silent error in critical path** | **ALWAYS handle errors; rollback on failure** |
+| **Data inconsistency** | **Implement transaction-like behavior with rollback** |
+| **Race condition in check-then-act** | **Add DB unique constraints; re-validate before action** |
+| **Inclusive time range bug** | **Use `endTime.Add(59s, 999ms)` or `<=` comparison** |
+| **Skipping implementation review** | **Review EVERY implementation before completion** |
+| **Foreign key to sessions.id from plugin** | **Use session_uuid (VARCHAR) instead; cloud-sync may not have local IDs** |
+| **Editing generated files** | **Only edit source files: `.templ`, `.sql`, not `*_templ.go` or `db/queries/*.go`** |
+| **Changes not appearing** | **Wait for `Listening on port :3000` in logs, then hard refresh browser** |
+| **Build stuck/looping** | **Restart container: `docker restart flarewifi-app-1`** |
+| **sqlc errors after SQL edit** | **Check SQL syntax, ensure `@param` names match Go struct fields** |
+| **Adding/changing SDK API methods** | **Update `sdk/mkdocs/docs/api/` docs immediately after implementation** |
+
+## UI Testing
+
+Playwright MCP (`http://localhost:3000`): `browser_navigate` → `browser_snapshot` → test → verify both admin/portal

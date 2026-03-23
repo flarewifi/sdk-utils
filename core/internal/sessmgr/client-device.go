@@ -23,30 +23,32 @@ type ClientDevice struct {
 	createdAt time.Time
 
 	// === MUTABLE (protected by mu) ===
-	mu        sync.RWMutex
-	uuid      string
-	mac       string
-	ipv4      string
-	ipv6      string
-	hostname  string
-	status    sdkapi.DeviceStatus
-	updatedAt time.Time
+	mu          sync.RWMutex
+	uuid        string
+	cookieToken string
+	mac         string
+	ipv4        string
+	ipv6        string
+	hostname    string
+	status      sdkapi.DeviceStatus
+	updatedAt   time.Time
 }
 
 func NewClientDevice(dtb *db.Database, mdls *models.Models, sessMgr *SessionsMgr, d *models.Device) *ClientDevice {
 	return &ClientDevice{
-		db:        dtb,
-		mdls:      mdls,
-		sessMgr:   sessMgr,
-		id:        d.ID(),
-		createdAt: d.CreatedAt(),
-		uuid:      d.UUID(),
-		mac:       d.MacAddr(),
-		ipv4:      d.Ipv4Addr(),
-		ipv6:      d.Ipv6Addr(),
-		hostname:  d.Hostname(),
-		status:    d.Status(),
-		updatedAt: d.UpdatedAt(),
+		db:          dtb,
+		mdls:        mdls,
+		sessMgr:     sessMgr,
+		id:          d.ID(),
+		createdAt:   d.CreatedAt(),
+		uuid:        d.UUID(),
+		cookieToken: d.CookieToken(),
+		mac:         d.MacAddr(),
+		ipv4:        d.Ipv4Addr(),
+		ipv6:        d.Ipv6Addr(),
+		hostname:    d.Hostname(),
+		status:      d.Status(),
+		updatedAt:   d.UpdatedAt(),
 	}
 }
 
@@ -59,6 +61,12 @@ func (self *ClientDevice) UUID() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	return self.uuid
+}
+
+func (self *ClientDevice) CookieToken() string {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.cookieToken
 }
 
 func (self *ClientDevice) Hostname() string {
@@ -132,6 +140,7 @@ func (self *ClientDevice) Data() sdkapi.DeviceData {
 	return sdkapi.DeviceData{
 		ID:          self.id,
 		UUID:        self.uuid,
+		CookieToken: self.cookieToken,
 		MacAddr:     self.mac,
 		Ipv4Addr:    self.ipv4,
 		Ipv6Addr:    self.ipv6,
