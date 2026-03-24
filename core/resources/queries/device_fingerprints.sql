@@ -89,39 +89,6 @@ DELETE FROM device_fingerprints WHERE id IN (
       )
 );
 
--- name: FindSharedFingerprintHashes :many
--- Finds non-CNA fingerprint hashes that appear on multiple distinct devices since the given UTC timestamp.
--- Used by the merge job to detect duplicate device records for the same physical device.
--- Caller should pass time.Now().UTC().AddDate(0, 0, -30) for 30-day lookback.
-SELECT fingerprint_hash
-FROM device_fingerprints
-WHERE last_seen_at >= @since_utc
-  AND fingerprint_hash != ''
-  AND is_cna = FALSE
-GROUP BY fingerprint_hash
-HAVING COUNT(DISTINCT device_id) > 1;
-
--- name: FindDeviceIDsByFingerprintHash :many
--- Returns all device IDs that have a given non-CNA fingerprint hash since the given UTC timestamp,
--- ordered by most recently seen. Used by the merge job.
--- Caller should pass time.Now().UTC().AddDate(0, 0, -30) for 30-day lookback.
-SELECT DISTINCT df.device_id
-FROM device_fingerprints df
-WHERE df.fingerprint_hash = @fingerprint_hash
-  AND df.is_cna = FALSE
-  AND df.last_seen_at >= @since_utc
-ORDER BY df.last_seen_at DESC;
-
--- name: FindDeviceByFingerprintHash :one
--- Finds the most recently seen device with a given non-CNA fingerprint hash.
--- Used as a MAC-address fallback in portal registration when ARP lookup fails.
-SELECT df.device_id
-FROM device_fingerprints df
-WHERE df.fingerprint_hash = @fingerprint_hash
-  AND df.is_cna = FALSE
-ORDER BY df.last_seen_at DESC
-LIMIT 1;
-
 -- name: DeleteAllFingerprints :exec
 -- Deletes all device fingerprint records.
 DELETE FROM device_fingerprints;

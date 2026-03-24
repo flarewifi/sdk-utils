@@ -74,61 +74,66 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 
 	cookieToken := sdkutils.NewUUID()
 
-	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
-		Ipv4Addr:    params.Ipv4Address,
-		Ipv6Addr:    params.Ipv6Address,
-		Hostname:    params.Hostname,
-		Uuid:        uid,
-		CookieToken: cookieToken,
-	})
-	if err != nil {
-		log.Println("error creating new device:", err)
-		return nil, err
-	}
+	// Wrap device + MAC + wallet creation in a single transaction.
+	// If any step fails, the entire operation is rolled back automatically.
+	var dev *Device
+	txErr := sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
+		q := queries.New(tx)
 
-	d, err := self.db.Queries.FindDevice(ctx, dId)
-	if err != nil {
-		log.Printf("error finding device %v: %v\n", dId, err)
-		return nil, err
-	}
-
-	dev := &Device{
-		db:          self.db,
-		models:      self.models,
-		id:          d.ID,
-		uuid:        d.Uuid,
-		cookieToken: d.CookieToken,
-		macaddr:     params.MacAddress, // Store in memory for now
-		ipv4addr:    d.Ipv4Addr,
-		ipv6addr:    d.Ipv6Addr,
-		hostname:    d.Hostname,
-		createdAt:   d.CreatedAt.Time,
-		updatedAt:   d.UpdatedAt.Time,
-		status:      sdkapi.DeviceStatus(d.Status),
-	}
-
-	// Record initial MAC address in device_macs table
-	_, err = self.models.DeviceMac().Create(ctx, queries.CreateDeviceMacParams{
-		DeviceID:   dId,
-		MacAddress: params.MacAddress,
-		IsCurrent:  true,
-	})
-	if err != nil {
-		// CRITICAL: If MAC recording fails, delete the device to maintain consistency
-		log.Printf("[DeviceModel.Create] ERROR: Failed to record initial MAC address for device %d: %v", dId, err)
-		log.Printf("[DeviceModel.Create] Rolling back device creation (deleting device %d)", dId)
-		if delErr := self.db.Queries.DeleteDevice(ctx, dId); delErr != nil {
-			log.Printf("[DeviceModel.Create] ERROR: Failed to rollback device %d after MAC record failure: %v", dId, delErr)
+		dId, err := q.CreateDevice(ctx, queries.CreateDeviceParams{
+			Ipv4Addr:    params.Ipv4Address,
+			Ipv6Addr:    params.Ipv6Address,
+			Hostname:    params.Hostname,
+			Uuid:        uid,
+			CookieToken: cookieToken,
+		})
+		if err != nil {
+			log.Println("error creating new device:", err)
+			return err
 		}
-		return nil, fmt.Errorf("failed to record MAC address for new device: %w", err)
-	}
 
-	_, err = self.db.Queries.CreateWallet(ctx, queries.CreateWalletParams{
-		DeviceID: dId,
-		Balance:  0.0,
+		d, err := q.FindDevice(ctx, dId)
+		if err != nil {
+			log.Printf("error finding device %v: %v\n", dId, err)
+			return err
+		}
+
+		dev = &Device{
+			db:          self.db,
+			models:      self.models,
+			id:          d.ID,
+			uuid:        d.Uuid,
+			cookieToken: d.CookieToken,
+			macaddr:     params.MacAddress,
+			ipv4addr:    d.Ipv4Addr,
+			ipv6addr:    d.Ipv6Addr,
+			hostname:    d.Hostname,
+			createdAt:   d.CreatedAt.Time,
+			updatedAt:   d.UpdatedAt.Time,
+			status:      sdkapi.DeviceStatus(d.Status),
+		}
+
+		_, err = q.CreateDeviceMac(ctx, queries.CreateDeviceMacParams{
+			DeviceID:   dId,
+			MacAddress: params.MacAddress,
+			IsCurrent:  true,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to record MAC address for new device: %w", err)
+		}
+
+		_, err = q.CreateWallet(ctx, queries.CreateWalletParams{
+			DeviceID: dId,
+			Balance:  0.0,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create wallet for new device: %w", err)
+		}
+
+		return nil
 	})
-	if err != nil {
-		return nil, err
+	if txErr != nil {
+		return nil, txErr
 	}
 
 	return dev, nil

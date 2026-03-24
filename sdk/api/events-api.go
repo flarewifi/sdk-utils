@@ -37,6 +37,12 @@ type IEventsApi interface {
 	// EventSessionDeleted.
 	OnSessionEvent(event SessionEvent, callback func(data SessionEventData) error)
 
+	// OnSessionBatchEvent registers a callback that fires whenever a batch of
+	// sessions is updated at once. The callback runs asynchronously.
+	//
+	// Available events: EventSessionBatchUpdated.
+	OnSessionBatchEvent(event SessionEvent, callback func(sessions []IClientSession) error)
+
 	// OnClientEvent registers a callback that fires whenever the given client
 	// device event occurs. The callback runs asynchronously.
 	//

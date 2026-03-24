@@ -11,6 +11,8 @@ import (
 
 	coreQueries "core/db/queries"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NewVouchersApi(pluginApi *PluginApi) *VouchersApi {
@@ -79,7 +81,6 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 	}
 
 	db := self.pluginApi.db
-	q := coreQueries.New(db.DB)
 
 	// Apply default bandwidth if not specified
 	downSpeedMbps := params.DownSpeedMbps
@@ -98,60 +99,71 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 		params.BatchUUID = batchUUID // Update params so hooks can access it
 	}
 
-	// Automatically create a voucher batch record
-	amount := sql.NullFloat64{}
-	if params.Amount != nil {
-		amount = sql.NullFloat64{Float64: *params.Amount, Valid: true}
-	}
-	_, err := q.CreateVoucherBatch(ctx, coreQueries.CreateVoucherBatchParams{
-		Uuid:        batchUUID,
-		Amount:      amount,
-		Metadata:    sql.NullString{},
-		ProviderPkg: self.providerPkg(), // Track which plugin generated this batch
-	})
-	if err != nil {
-		return nil, fmt.Errorf("unable to create voucher batch: %w", err)
-	}
-
+	// Wrap batch + voucher creation in a single transaction for atomicity.
+	// If any voucher INSERT fails, the entire batch (including the batch record) is rolled back.
 	var created []sdkapi.IVoucher
-	for i := 0; i < params.Count; i++ {
-		code := generateVoucherCode()
-		uuid := generateVoucherUUID()
-		expiresAt := sql.NullTime{}
-		if params.ExpiresAt != nil {
-			expiresAt = sql.NullTime{Time: *params.ExpiresAt, Valid: true}
+	err := sdkutils.RunInTx(db.DB, ctx, func(tx *sql.Tx) error {
+		q := coreQueries.New(tx)
+
+		// Create voucher batch record
+		amount := sql.NullFloat64{}
+		if params.Amount != nil {
+			amount = sql.NullFloat64{Float64: *params.Amount, Valid: true}
 		}
-		sessionExpDays := sql.NullInt64{}
-		if params.SessionExpDays != nil {
-			sessionExpDays = sql.NullInt64{Int64: int64(*params.SessionExpDays), Valid: true}
-		}
-		useGlobal := int64(0)
-		if params.UseGlobal {
-			useGlobal = 1
-		}
-		batchUUIDParam := sql.NullString{String: batchUUID, Valid: true}
-		row, err := q.CreateVoucher(ctx, coreQueries.CreateVoucherParams{
-			Uuid:           uuid,
-			Code:           code,
-			ProviderPkg:    self.providerPkg(),
-			SessionType:    string(params.Type),
-			TimeSecs:       params.TimeSecs,
-			DataMb:         params.DataMb,
-			DownSpeedMbps:  downSpeedMbps,
-			UpSpeedMbps:    upSpeedMbps,
-			SessionExpDays: sessionExpDays,
-			UseGlobal:      useGlobal,
-			ExpiresAt:      expiresAt,
-			BatchUuid:      batchUUIDParam,
+		_, err := q.CreateVoucherBatch(ctx, coreQueries.CreateVoucherBatchParams{
+			Uuid:        batchUUID,
+			Amount:      amount,
+			Metadata:    sql.NullString{},
+			ProviderPkg: self.providerPkg(),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("unable to create voucher: %w", err)
+			return fmt.Errorf("unable to create voucher batch: %w", err)
 		}
-		created = append(created, wrapVoucher(row))
+
+		for i := 0; i < params.Count; i++ {
+			code := generateVoucherCode()
+			uuid := generateVoucherUUID()
+			expiresAt := sql.NullTime{}
+			if params.ExpiresAt != nil {
+				expiresAt = sql.NullTime{Time: *params.ExpiresAt, Valid: true}
+			}
+			sessionExpDays := sql.NullInt64{}
+			if params.SessionExpDays != nil {
+				sessionExpDays = sql.NullInt64{Int64: int64(*params.SessionExpDays), Valid: true}
+			}
+			useGlobal := int64(0)
+			if params.UseGlobal {
+				useGlobal = 1
+			}
+			batchUUIDParam := sql.NullString{String: batchUUID, Valid: true}
+			row, err := q.CreateVoucher(ctx, coreQueries.CreateVoucherParams{
+				Uuid:           uuid,
+				Code:           code,
+				ProviderPkg:    self.providerPkg(),
+				SessionType:    string(params.Type),
+				TimeSecs:       params.TimeSecs,
+				DataMb:         params.DataMb,
+				DownSpeedMbps:  downSpeedMbps,
+				UpSpeedMbps:    upSpeedMbps,
+				SessionExpDays: sessionExpDays,
+				UseGlobal:      useGlobal,
+				ExpiresAt:      expiresAt,
+				BatchUuid:      batchUUIDParam,
+			})
+			if err != nil {
+				return fmt.Errorf("unable to create voucher: %w", err)
+			}
+			created = append(created, wrapVoucher(row))
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	// Emit event after successful commit (outside transaction)
 	if len(created) > 0 {
-		// Fetch the batch to emit the event
 		batch, err := self.FindBatchByUUID(ctx, batchUUID)
 		if err == nil {
 			self.eventsMgr.EmitVoucherBatchEvent(sdkapi.EventVoucherGenerated, batch)
