@@ -56,14 +56,14 @@ func (self *HttpApi) Initialize() {
 }
 
 func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, error) {
-	var deviceID int64
+	var claims devicetoken.DeviceTokenClaims
 	var err error
 
 	// Priority 1: Check X-Device-Token header (localStorage-based AJAX auth)
-	deviceID, err = devicetoken.GetDeviceFromHeader(r)
+	claims, err = devicetoken.GetDeviceFromHeader(r)
 	if err != nil {
 		// Priority 2: Fallback to cookie (traditional auth)
-		deviceID, err = devicetoken.GetDeviceCookie(r)
+		claims, err = devicetoken.GetDeviceCookie(r)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get device from header or cookie: %w", err)
 		}
@@ -73,13 +73,18 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 
-	clnt, err := self.clientRegister.FindByID(ctx, deviceID)
+	clnt, err := self.clientRegister.FindByID(ctx, claims.DeviceID)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			log.Printf("[TIMEOUT] GetClientDevice exceeded 2s timeout for DeviceID=%d", deviceID)
+			log.Printf("[TIMEOUT] GetClientDevice exceeded 2s timeout for DeviceID=%d", claims.DeviceID)
 			return nil, fmt.Errorf("device lookup timed out")
 		}
 		return nil, fmt.Errorf("device not found: %w", err)
+	}
+
+	// Validate cookie_token if the device has one set
+	if clnt.CookieToken() != "" && claims.CookieToken != clnt.CookieToken() {
+		return nil, fmt.Errorf("cookie token mismatch for device %d", claims.DeviceID)
 	}
 
 	// Security: Cross-validate current request's MAC/IP against stored device record
@@ -93,7 +98,7 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 			currentMAC := strings.ToUpper(h.MacAddr)
 			if storedMAC != "" && currentMAC != storedMAC {
 				log.Printf("[SECURITY] GetClientDevice: MAC mismatch - token claims device %d (MAC: %s) but ARP shows MAC: %s (IP: %s, RemoteAddr: %s)",
-					deviceID, storedMAC, currentMAC, h.IpAddr, r.RemoteAddr)
+					claims.DeviceID, storedMAC, currentMAC, h.IpAddr, r.RemoteAddr)
 			}
 			// Also check IP mismatch (less critical but useful for logging)
 			// Accept if request IP matches either stored IPv4 or IPv6 (dual-stack device).
@@ -104,7 +109,7 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 				// No stored IPs yet - skip check
 			} else if requestIP != "" && requestIP != storedIPv4 && requestIP != storedIPv6 {
 				log.Printf("[SECURITY] GetClientDevice: IP mismatch - device %d stored IPv4: %s, IPv6: %s but request from IP: %s (MAC: %s)",
-					deviceID, storedIPv4, storedIPv6, requestIP, currentMAC)
+					claims.DeviceID, storedIPv4, storedIPv6, requestIP, currentMAC)
 			}
 		}
 	}

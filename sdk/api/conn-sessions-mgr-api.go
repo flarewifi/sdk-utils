@@ -114,6 +114,7 @@ type NewClientSessionParams struct {
 type NewDeviceParams struct {
 	ID          int64
 	UUID        string
+	CookieToken string
 	MacAddress  string
 	Ipv4Address string
 	Ipv6Address string

@@ -72,11 +72,14 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		return nil, fmt.Errorf("MAC address %s is already registered to device %d (cannot create duplicate device)", params.MacAddress, existingDeviceID)
 	}
 
+	cookieToken := sdkutils.NewUUID()
+
 	dId, err := self.db.Queries.CreateDevice(ctx, queries.CreateDeviceParams{
-		Ipv4Addr: params.Ipv4Address,
-		Ipv6Addr: params.Ipv6Address,
-		Hostname: params.Hostname,
-		Uuid:     uid,
+		Ipv4Addr:    params.Ipv4Address,
+		Ipv6Addr:    params.Ipv6Address,
+		Hostname:    params.Hostname,
+		Uuid:        uid,
+		CookieToken: cookieToken,
 	})
 	if err != nil {
 		log.Println("error creating new device:", err)
@@ -90,17 +93,18 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 	}
 
 	dev := &Device{
-		db:        self.db,
-		models:    self.models,
-		id:        d.ID,
-		uuid:      d.Uuid,
-		macaddr:   params.MacAddress, // Store in memory for now
-		ipv4addr:  d.Ipv4Addr,
-		ipv6addr:  d.Ipv6Addr,
-		hostname:  d.Hostname,
-		createdAt: d.CreatedAt.Time,
-		updatedAt: d.UpdatedAt.Time,
-		status:    sdkapi.DeviceStatus(d.Status),
+		db:          self.db,
+		models:      self.models,
+		id:          d.ID,
+		uuid:        d.Uuid,
+		cookieToken: d.CookieToken,
+		macaddr:     params.MacAddress, // Store in memory for now
+		ipv4addr:    d.Ipv4Addr,
+		ipv6addr:    d.Ipv6Addr,
+		hostname:    d.Hostname,
+		createdAt:   d.CreatedAt.Time,
+		updatedAt:   d.UpdatedAt.Time,
+		status:      sdkapi.DeviceStatus(d.Status),
 	}
 
 	// Record initial MAC address in device_macs table
@@ -140,6 +144,7 @@ func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
 	device := NewDevice(self.db, self.models)
 	device.id = d.ID
 	device.uuid = d.Uuid
+	device.cookieToken = d.CookieToken
 	device.macaddr = d.MacAddress // Now comes from JOIN
 	device.ipv4addr = d.Ipv4Addr
 	device.ipv6addr = d.Ipv6Addr
@@ -173,6 +178,7 @@ func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, e
 	device := NewDevice(self.db, self.models)
 	device.id = d.ID
 	device.uuid = d.Uuid
+	device.cookieToken = d.CookieToken
 	device.macaddr = d.MacAddress // Now comes from JOIN
 	device.ipv4addr = d.Ipv4Addr
 	device.ipv6addr = d.Ipv6Addr
@@ -194,6 +200,7 @@ func (self *DeviceModel) FindByIp(ctx context.Context, ip string) (*Device, erro
 	device := NewDevice(self.db, self.models)
 	device.id = d.ID
 	device.uuid = d.Uuid
+	device.cookieToken = d.CookieToken
 	device.macaddr = d.MacAddress // Now comes from JOIN
 	device.ipv4addr = d.Ipv4Addr
 	device.ipv6addr = d.Ipv6Addr

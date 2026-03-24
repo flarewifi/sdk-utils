@@ -57,11 +57,12 @@ type SessionEventEmitter interface {
 
 // ClientRegisterParams contains parameters for device registration.
 type ClientRegisterParams struct {
-	CookieDeviceID *int64
-	MacAddr        string
-	Ipv4Addr       string
-	Ipv6Addr       string
-	Hostname       string
+	CookieDeviceID    *int64
+	CookieCookieToken string // cookie_token from the JWT cookie, used for additional validation
+	MacAddr           string
+	Ipv4Addr          string
+	Ipv6Addr          string
+	Hostname          string
 	// Fingerprint data
 	UserAgent string
 	ScreenRes string

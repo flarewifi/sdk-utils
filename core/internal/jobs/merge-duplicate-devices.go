@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"core/db/queries"
 	"core/internal/api"
 	"core/internal/modules/fingerprint"
 	jobque "core/utils/job-que"
@@ -16,32 +15,10 @@ import (
 // waits for the first to finish rather than running in parallel).
 var mergeQueue = jobque.NewJobQueue[struct{}](1)
 
-// MergeCandidate represents a device being evaluated for merging
-type MergeCandidate struct {
-	DeviceID     int64
-	Fingerprints []queries.DeviceFingerprint
-	LastActivity time.Time
-	CurrentMAC   string // current MAC address (is_current=TRUE in device_macs)
-	CurrentIP    string // current IP address (devices.ip_address)
-	Hostname     string // hostname (devices.hostname), may be empty
-}
-
-// MergeDecision contains the result of evaluating two devices for merging
-type MergeDecision struct {
-	ShouldMerge bool
-	TargetID    int64  // Device to keep
-	SourceID    int64  // Device to merge into target
-	Reason      string // Explanation for the decision
-}
-
-// MatchKind describes how two fingerprint sets matched.
-type MatchKind int
-
-const (
-	MatchNone    MatchKind = iota // fingerprints do not match
-	MatchBrowser                  // ExactMatch or browser SmartMatch (OS+screen+lang)
-	MatchCNA                      // CNA-CNA SmartMatch (OS-family only — weaker signal)
-)
+// Type aliases for convenience — merge decision types live in the fingerprint package
+// so they can be reused by the registration flow (UpdateDevice inline merge).
+type MergeCandidate = fingerprint.MergeCandidate
+type MergeDecision = fingerprint.MergeDecision
 
 // StartDeviceMergeScheduler starts a background goroutine that merges
 // duplicate devices. Devices are identified by shared MAC addresses or identical
@@ -208,16 +185,7 @@ func runMerge(g *api.CoreGlobals) {
 }
 
 // mergeMatchingDevicesTracked compares fingerprints for a group of devices and merges matches.
-// Rules:
-// - If both devices have fingerprints: merge only if fingerprints match
-// - If one device has no fingerprints: merge it into the device with fingerprints
-// - If neither device has fingerprints: merge based on activity (keep most recent)
-// The device with most recent session activity is kept when both are equal candidates.
-//
-// For CNA fingerprint matches (OS-family-only SmartMatch), the merge is only approved
-// when both devices currently share the same MAC address and IP address. If both devices
-// have a non-empty hostname, those must also match. This prevents merging two different
-// physical devices that happen to share an OS family.
+// Uses fingerprint.ShouldMergeDevices for the merge decision (shared with UpdateDevice inline merge).
 //
 // The externalMerged set contains source device IDs already consumed by a prior pass;
 // pairs involving those IDs are skipped.
@@ -227,11 +195,11 @@ func mergeMatchingDevicesTracked(ctx context.Context, g *api.CoreGlobals, device
 	mergeCount := 0
 	newlyMergedSources := make(map[int64]bool)
 
-	// Load fingerprints for all devices.
+	// Load fingerprints for all devices and convert to StoredFingerprint for merge comparison.
 	// If loading fails for a device, mark it with a sentinel so we can skip pairs
 	// involving it rather than treating it as fingerprint-less (which would cause
 	// wrong merge decisions).
-	deviceFPs := make(map[int64][]queries.DeviceFingerprint)
+	deviceFPs := make(map[int64][]fingerprint.StoredFingerprint)
 	fpLoadFailed := make(map[int64]bool)
 	for _, devID := range deviceIDs {
 		fps, err := g.Models.DeviceFingerprint().FindByDeviceID(ctx, devID)
@@ -240,7 +208,18 @@ func mergeMatchingDevicesTracked(ctx context.Context, g *api.CoreGlobals, device
 			fpLoadFailed[devID] = true
 			continue
 		}
-		deviceFPs[devID] = fps
+		records := make([]fingerprint.FingerprintRecord, len(fps))
+		for i, fp := range fps {
+			records[i] = fingerprint.FingerprintRecord{
+				FingerprintHash:  fp.FingerprintHash,
+				OsFamily:         fp.OsFamily,
+				ScreenResolution: fp.ScreenResolution,
+				Language:         fp.Language,
+				Timezone:         fp.Timezone,
+				IsCna:            fp.IsCna,
+			}
+		}
+		deviceFPs[devID] = fingerprint.ToStoredFingerprints(records)
 	}
 
 	// Get most recent activity for each device (for determining which to keep)
@@ -310,7 +289,7 @@ func mergeMatchingDevicesTracked(ctx context.Context, g *api.CoreGlobals, device
 			netB := deviceNetID[devB]
 
 			// Determine if we should merge and which device to keep
-			decision := shouldMergeDevices(
+			decision := fingerprint.ShouldMergeDevices(
 				MergeCandidate{
 					DeviceID:     devA,
 					Fingerprints: deviceFPs[devA],
@@ -347,176 +326,6 @@ func mergeMatchingDevicesTracked(ctx context.Context, g *api.CoreGlobals, device
 	}
 
 	return mergeCount, newlyMergedSources
-}
-
-// shouldMergeDevices determines if two devices should be merged based on fingerprints.
-func shouldMergeDevices(deviceA, deviceB MergeCandidate) MergeDecision {
-	hasA := len(deviceA.Fingerprints) > 0
-	hasB := len(deviceB.Fingerprints) > 0
-
-	// Case 1: Both have fingerprints - only merge if they match
-	if hasA && hasB {
-		kind := fingerprintsMatchKind(deviceA.Fingerprints, deviceB.Fingerprints)
-		log.Printf("[DeviceMerge] DEBUG: fingerprintsMatchKind for devices %d and %d returned: %d (MatchNone=0, MatchCNA=1, MatchBrowser=2)", deviceA.DeviceID, deviceB.DeviceID, kind)
-		if kind == MatchNone {
-			log.Printf("[DeviceMerge] DEBUG: Devices %d and %d have fingerprints but they don't match", deviceA.DeviceID, deviceB.DeviceID)
-			return MergeDecision{ShouldMerge: false}
-		}
-
-		// CNA-CNA SmartMatch is OS-family-only — require same current MAC and IP
-		// (and hostname when both non-empty) to guard against false positives.
-		if kind == MatchCNA && !cnaMACIPMatch(deviceA, deviceB) {
-			log.Printf("[DeviceMerge] Skipping CNA pair (%d, %d): MAC/IP/hostname mismatch (mac: %q vs %q, ip: %q vs %q, hostname: %q vs %q)",
-				deviceA.DeviceID, deviceB.DeviceID,
-				deviceA.CurrentMAC, deviceB.CurrentMAC,
-				deviceA.CurrentIP, deviceB.CurrentIP,
-				deviceA.Hostname, deviceB.Hostname,
-			)
-			return MergeDecision{ShouldMerge: false}
-		}
-
-		reason := "fingerprint match"
-		if kind == MatchCNA {
-			reason = "CNA fingerprint match with same MAC, IP, and hostname"
-		}
-
-		// Keep device with most recent activity
-		if deviceB.LastActivity.After(deviceA.LastActivity) {
-			return MergeDecision{
-				ShouldMerge: true,
-				TargetID:    deviceB.DeviceID,
-				SourceID:    deviceA.DeviceID,
-				Reason:      reason,
-			}
-		}
-		return MergeDecision{
-			ShouldMerge: true,
-			TargetID:    deviceA.DeviceID,
-			SourceID:    deviceB.DeviceID,
-			Reason:      reason,
-		}
-	}
-
-	// Case 2: Only A has fingerprints - merge B into A
-	if hasA && !hasB {
-		return MergeDecision{
-			ShouldMerge: true,
-			TargetID:    deviceA.DeviceID,
-			SourceID:    deviceB.DeviceID,
-			Reason:      "no fingerprint on source, merging into device with fingerprint",
-		}
-	}
-
-	// Case 3: Only B has fingerprints - merge A into B
-	if !hasA && hasB {
-		return MergeDecision{
-			ShouldMerge: true,
-			TargetID:    deviceB.DeviceID,
-			SourceID:    deviceA.DeviceID,
-			Reason:      "no fingerprint on source, merging into device with fingerprint",
-		}
-	}
-
-	// Case 4: Neither has fingerprints - merge based on activity (keep most recent).
-	// When both have zero/equal activity, keep deviceA (lower index, deterministic).
-	if deviceB.LastActivity.After(deviceA.LastActivity) {
-		return MergeDecision{
-			ShouldMerge: true,
-			TargetID:    deviceB.DeviceID,
-			SourceID:    deviceA.DeviceID,
-			Reason:      "no fingerprints on either, keeping device with more recent activity",
-		}
-	}
-	reason := "no fingerprints on either, keeping device with more recent activity"
-	if deviceA.LastActivity.Equal(deviceB.LastActivity) {
-		reason = "no fingerprints or session activity on either, keeping device by insertion order"
-	}
-	return MergeDecision{
-		ShouldMerge: true,
-		TargetID:    deviceA.DeviceID,
-		SourceID:    deviceB.DeviceID,
-		Reason:      reason,
-	}
-}
-
-// fingerprintsMatchKind checks if two devices have matching fingerprints and returns
-// the kind of match found.
-//
-// CNA guard: when either fingerprint is a CNA fingerprint, ValidateFingerprint
-// may return SmartMatch based solely on OS family — which is too permissive for
-// a destructive merge operation. In that case we require either an ExactMatch
-// (hash collision unlikely but correct) or that BOTH fingerprints are CNA with
-// the same OS family (same device class, acceptable risk — caller must additionally
-// verify MAC+IP identity via cnaMACIPMatch).
-func fingerprintsMatchKind(fpsA, fpsB []queries.DeviceFingerprint) MatchKind {
-	best := MatchNone
-	for _, a := range fpsA {
-		for _, b := range fpsB {
-			result := fingerprint.ValidateFingerprint(
-				fingerprint.StoredFingerprint{
-					FingerprintHash:  a.FingerprintHash,
-					OSFamily:         a.OsFamily,
-					ScreenResolution: a.ScreenResolution,
-					Language:         a.Language,
-					Timezone:         a.Timezone,
-					IsCna:            a.IsCna,
-				},
-				b.FingerprintHash,
-				b.OsFamily,
-				b.ScreenResolution,
-				b.Language,
-				b.Timezone,
-				b.IsCna,
-			)
-
-			if result == fingerprint.ExactMatch {
-				return MatchBrowser // ExactMatch is always definitive
-			}
-
-			if result == fingerprint.SmartMatch {
-				if a.IsCna && b.IsCna {
-					// CNA-CNA SmartMatch: OS-family-only — weaker signal.
-					// Caller must verify MAC+IP before acting on this.
-					if best < MatchCNA {
-						best = MatchCNA
-					}
-				} else if !a.IsCna && !b.IsCna {
-					// Regular browser SmartMatch (OS + screen + language) is acceptable.
-					return MatchBrowser
-				} else {
-					// One CNA, one browser: SmartMatch is OS-only — too weak for a merge.
-					log.Printf("[DeviceMerge] Skipping CNA↔browser SmartMatch (too permissive for merge): isCNA=(%v,%v) os=(%s,%s)", a.IsCna, b.IsCna, a.OsFamily, b.OsFamily)
-				}
-			}
-		}
-	}
-	return best
-}
-
-// cnaMACIPMatch returns true when two CNA-matched candidates share the same
-// current MAC address and IP address. If both devices have a non-empty hostname,
-// those must also match.
-//
-// An empty MAC or IP on either side causes an automatic false — a device with no
-// current MAC/IP record cannot be safely merged on CNA evidence alone.
-func cnaMACIPMatch(a, b MergeCandidate) bool {
-	if a.CurrentMAC == "" || b.CurrentMAC == "" {
-		return false
-	}
-	if a.CurrentIP == "" || b.CurrentIP == "" {
-		return false
-	}
-	if a.CurrentMAC != b.CurrentMAC {
-		return false
-	}
-	if a.CurrentIP != b.CurrentIP {
-		return false
-	}
-	// If both devices have a non-empty hostname, they must match.
-	if a.Hostname != "" && b.Hostname != "" && a.Hostname != b.Hostname {
-		return false
-	}
-	return true
 }
 
 // parseSQLiteTime attempts to parse a timestamp string returned by SQLite,

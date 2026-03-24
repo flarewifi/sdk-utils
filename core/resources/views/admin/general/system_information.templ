@@ -25,7 +25,7 @@ templ SystemInformation(api sdkapi.IPluginApi, params AdminGeneralSettingsIndexP
                         <h6 class="fw-semibold">{ api.Translate("label", "Machine ID") }</h6>
                     </div>
                     <div class="d-flex align-items-center gap-3 ms-4">
-                        <p class="font-monospace">{ truncate(params.MachineID) }</p>
+                        <p class="font-monospace">{ params.MachineID }</p>
                         <button type="button" class="fw-copy-btn" data-fw-copy={ params.MachineID } title={ api.Translate("label", "Copy Machine ID") }>
                             <i class="bi bi-clipboard fw-copy-icon-default" style="font-size:0.875rem;"></i>
                             <i class="bi bi-check-lg fw-copy-icon-check" style="font-size:0.875rem; display:none;"></i>
@@ -73,12 +73,4 @@ func getStatus(params AdminGeneralSettingsIndexParams) (string, string){
             statusText = "Not Activated"
     }
     return class, statusText
-}
-
-func truncate(machineId string) string {
-    if len(machineId) < 16{
-        return machineId
-    }
-
-    return machineId[:8] + "..." + machineId[len(machineId)-8:]
 }

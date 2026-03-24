@@ -14,17 +14,18 @@ import (
 )
 
 type Device struct {
-	db        *db.Database
-	models    *Models
-	id        int64
-	uuid      string
-	ipv4addr  string
-	ipv6addr  string
-	macaddr   string
-	hostname  string
-	status    sdkapi.DeviceStatus
-	createdAt time.Time
-	updatedAt time.Time
+	db          *db.Database
+	models      *Models
+	id          int64
+	uuid        string
+	cookieToken string
+	ipv4addr    string
+	ipv6addr    string
+	macaddr     string
+	hostname    string
+	status      sdkapi.DeviceStatus
+	createdAt   time.Time
+	updatedAt   time.Time
 }
 
 func NewDevice(d *db.Database, m *Models) *Device {
@@ -33,33 +34,35 @@ func NewDevice(d *db.Database, m *Models) *Device {
 
 // BuildDeviceParams holds parameters for building a Device object.
 type BuildDeviceParams struct {
-	DB        *db.Database
-	Models    *Models
-	ID        int64
-	UUID      string
-	MacAddr   string
-	Ipv4Addr  string
-	Ipv6Addr  string
-	Hostname  string
-	Status    sdkapi.DeviceStatus
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	DB          *db.Database
+	Models      *Models
+	ID          int64
+	UUID        string
+	CookieToken string
+	MacAddr     string
+	Ipv4Addr    string
+	Ipv6Addr    string
+	Hostname    string
+	Status      sdkapi.DeviceStatus
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // BuildDevice creates a Device object from the provided parameters.
 func BuildDevice(params BuildDeviceParams) *Device {
 	return &Device{
-		db:        params.DB,
-		models:    params.Models,
-		id:        params.ID,
-		uuid:      params.UUID,
-		ipv4addr:  params.Ipv4Addr,
-		ipv6addr:  params.Ipv6Addr,
-		macaddr:   params.MacAddr,
-		hostname:  params.Hostname,
-		status:    params.Status,
-		createdAt: params.CreatedAt,
-		updatedAt: params.UpdatedAt,
+		db:          params.DB,
+		models:      params.Models,
+		id:          params.ID,
+		uuid:        params.UUID,
+		cookieToken: params.CookieToken,
+		ipv4addr:    params.Ipv4Addr,
+		ipv6addr:    params.Ipv6Addr,
+		macaddr:     params.MacAddr,
+		hostname:    params.Hostname,
+		status:      params.Status,
+		createdAt:   params.CreatedAt,
+		updatedAt:   params.UpdatedAt,
 	}
 }
 
@@ -69,6 +72,10 @@ func (self *Device) ID() int64 {
 
 func (self *Device) UUID() string {
 	return self.uuid
+}
+
+func (self *Device) CookieToken() string {
+	return self.cookieToken
 }
 
 func (self *Device) Hostname() string {
@@ -136,6 +143,7 @@ func (self *Device) Reload(ctx context.Context) error {
 	self.ipv4addr = dRow.Ipv4Addr
 	self.ipv6addr = dRow.Ipv6Addr
 	self.uuid = dRow.Uuid
+	self.cookieToken = dRow.CookieToken
 	self.status = sdkapi.DeviceStatus(dRow.Status)
 
 	return nil
@@ -230,16 +238,17 @@ func (self *Device) Sessions(ctx context.Context) ([]*Session, error) {
 
 func (self *Device) Clone() *Device {
 	return &Device{
-		db:        self.db,
-		models:    self.models,
-		id:        self.id,
-		uuid:      self.uuid,
-		ipv4addr:  self.ipv4addr,
-		ipv6addr:  self.ipv6addr,
-		macaddr:   self.macaddr,
-		hostname:  self.hostname,
-		status:    self.status,
-		createdAt: self.createdAt,
-		updatedAt: self.updatedAt,
+		db:          self.db,
+		models:      self.models,
+		id:          self.id,
+		uuid:        self.uuid,
+		cookieToken: self.cookieToken,
+		ipv4addr:    self.ipv4addr,
+		ipv6addr:    self.ipv6addr,
+		macaddr:     self.macaddr,
+		hostname:    self.hostname,
+		status:      self.status,
+		createdAt:   self.createdAt,
+		updatedAt:   self.updatedAt,
 	}
 }

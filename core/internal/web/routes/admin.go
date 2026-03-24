@@ -56,6 +56,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Group("/user", func(subrouter sdkapi.IHttpRouterInstance) {
 			subrouter.Get("/index", adminctrl.AdminUserIndexCtrl(g)).Name("admin:user:index")
 			subrouter.Post("/change-password", adminctrl.AdminUserChangePasswordCtrl(g)).Name("admin:user:change-password")
+			subrouter.Post("/clear-history", adminctrl.AdminUserClearHistoryCtrl(g)).Name("admin:user:clear-history")
 		})
 	})
 

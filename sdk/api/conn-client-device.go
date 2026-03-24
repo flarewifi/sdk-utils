@@ -34,15 +34,16 @@ type UpdateDeviceParams struct {
 // This struct is returned as a snapshot to minimize mutex usage.
 type DeviceData struct {
 	// Raw database values
-	ID        int64
-	UUID      string
-	MacAddr   string
-	Ipv4Addr  string
-	Ipv6Addr  string
-	Hostname  string
-	Status    DeviceStatus
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID          int64
+	UUID        string
+	CookieToken string
+	MacAddr     string
+	Ipv4Addr    string
+	Ipv6Addr    string
+	Hostname    string
+	Status      DeviceStatus
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 
 	// Pre-computed values
 	IsConnected bool // True if device has an active internet session
@@ -56,6 +57,10 @@ type IClientDevice interface {
 
 	// Returns the UUID of the device.
 	UUID() string
+
+	// Returns the cookie token used for cookie validation.
+	// An empty string means no cookie token validation is enforced.
+	CookieToken() string
 
 	// Returns the hostname of the device.
 	Hostname() string

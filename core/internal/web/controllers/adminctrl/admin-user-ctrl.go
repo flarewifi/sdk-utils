@@ -30,6 +30,34 @@ func AdminUserIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
+func AdminUserClearHistoryCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res := g.CoreAPI.HttpAPI.Response()
+		indexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:user:index")
+
+		ctx := r.Context()
+
+		// Delete all fingerprints
+		if err := g.Models.DeviceFingerprint().DeleteAll(ctx); err != nil {
+			res.FlashMsg(w, r, g.CoreAPI.Translate("error", "Failed to clear device history"), sdkapi.FlashMsgError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			http.Redirect(w, r, indexUrl, http.StatusSeeOther)
+			return
+		}
+
+		// Delete non-current MACs (keep only the latest in use)
+		if err := g.Models.DeviceMac().DeleteNonCurrent(ctx); err != nil {
+			res.FlashMsg(w, r, g.CoreAPI.Translate("error", "Failed to clear device history"), sdkapi.FlashMsgError)
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			http.Redirect(w, r, indexUrl, http.StatusSeeOther)
+			return
+		}
+
+		res.FlashMsg(w, r, g.CoreAPI.Translate("success", "Device history cleared successfully"), sdkapi.FlashMsgSuccess)
+		http.Redirect(w, r, indexUrl, http.StatusSeeOther)
+	}
+}
+
 func AdminUserChangePasswordCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()

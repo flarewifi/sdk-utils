@@ -58,21 +58,28 @@ func GetDeviceTokenKey() string {
 	return getCookieName()
 }
 
-// GenerateDeviceToken creates a JWT token containing the device ID
+// GenerateDeviceToken creates a JWT token containing the device ID and cookie token
 // The token is signed with the machine ID and expires in 10 years
-func GenerateDeviceToken(deviceID int64, machineID string) (string, error) {
+func GenerateDeviceToken(deviceID int64, cookieToken string, machineID string) (string, error) {
 	claims := jwt.MapClaims{
-		"device_id": deviceID,
-		"exp":       time.Now().UTC().Add(10 * 365 * 24 * time.Hour).Unix(), // 10 years
+		"device_id":    deviceID,
+		"cookie_token": cookieToken,
+		"exp":          time.Now().UTC().Add(10 * 365 * 24 * time.Hour).Unix(), // 10 years
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(machineID))
 }
 
-// VerifyDeviceToken verifies the JWT token and returns the device ID
+// DeviceTokenClaims holds the parsed claims from a device token
+type DeviceTokenClaims struct {
+	DeviceID    int64
+	CookieToken string
+}
+
+// VerifyDeviceToken verifies the JWT token and returns the device ID and cookie token
 // Returns error if token is invalid or expired
-func VerifyDeviceToken(tokenString string, machineID string) (int64, error) {
+func VerifyDeviceToken(tokenString string, machineID string) (DeviceTokenClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -81,22 +88,22 @@ func VerifyDeviceToken(tokenString string, machineID string) (int64, error) {
 	})
 
 	if err != nil {
-		return 0, err
+		return DeviceTokenClaims{}, err
 	}
 
 	if !token.Valid {
-		return 0, fmt.Errorf("invalid token")
+		return DeviceTokenClaims{}, fmt.Errorf("invalid token")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, fmt.Errorf("invalid token claims")
+		return DeviceTokenClaims{}, fmt.Errorf("invalid token claims")
 	}
 
 	// Extract device_id from claims
 	deviceIDClaim, ok := claims["device_id"]
 	if !ok {
-		return 0, fmt.Errorf("device_id not found in token")
+		return DeviceTokenClaims{}, fmt.Errorf("device_id not found in token")
 	}
 
 	// Handle both float64 (JSON number) and string representations
@@ -107,19 +114,25 @@ func VerifyDeviceToken(tokenString string, machineID string) (int64, error) {
 	case string:
 		deviceID, err = strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			return 0, fmt.Errorf("invalid device_id format: %w", err)
+			return DeviceTokenClaims{}, fmt.Errorf("invalid device_id format: %w", err)
 		}
 	default:
-		return 0, fmt.Errorf("device_id has unexpected type: %T", v)
+		return DeviceTokenClaims{}, fmt.Errorf("device_id has unexpected type: %T", v)
 	}
 
-	return deviceID, nil
+	// Extract cookie_token (optional - old tokens may not have it)
+	cookieToken, _ := claims["cookie_token"].(string)
+
+	return DeviceTokenClaims{
+		DeviceID:    deviceID,
+		CookieToken: cookieToken,
+	}, nil
 }
 
 // SetDeviceCookie sets the JWT device cookie
-func SetDeviceCookie(w http.ResponseWriter, deviceID int64) error {
+func SetDeviceCookie(w http.ResponseWriter, deviceID int64, cookieToken string) error {
 	_, machineID := machineuid.GetMachineUID()
-	token, err := GenerateDeviceToken(deviceID, machineID)
+	token, err := GenerateDeviceToken(deviceID, cookieToken, machineID)
 	if err != nil {
 		return fmt.Errorf("failed to generate device token: %w", err)
 	}
@@ -136,35 +149,35 @@ func SetDeviceCookie(w http.ResponseWriter, deviceID int64) error {
 	return nil
 }
 
-// GetDeviceCookie retrieves and verifies the device cookie, returning the device ID
-func GetDeviceCookie(r *http.Request) (int64, error) {
+// GetDeviceCookie retrieves and verifies the device cookie, returning the parsed claims
+func GetDeviceCookie(r *http.Request) (DeviceTokenClaims, error) {
 	cookie, err := r.Cookie(getCookieName())
 	if err != nil {
-		return 0, err
+		return DeviceTokenClaims{}, err
 	}
 
 	_, machineID := machineuid.GetMachineUID()
-	deviceID, err := VerifyDeviceToken(cookie.Value, machineID)
+	claims, err := VerifyDeviceToken(cookie.Value, machineID)
 	if err != nil {
-		return 0, err
+		return DeviceTokenClaims{}, err
 	}
 
-	return deviceID, nil
+	return claims, nil
 }
 
 // GetDeviceFromHeader retrieves and verifies the device token from X-Device-Token header
-// Returns the device ID or error if token is invalid/missing
-func GetDeviceFromHeader(r *http.Request) (int64, error) {
+// Returns the parsed claims or error if token is invalid/missing
+func GetDeviceFromHeader(r *http.Request) (DeviceTokenClaims, error) {
 	tokenString := r.Header.Get(HeaderName)
 	if tokenString == "" {
-		return 0, fmt.Errorf("no device token in header")
+		return DeviceTokenClaims{}, fmt.Errorf("no device token in header")
 	}
 
 	_, machineID := machineuid.GetMachineUID()
-	deviceID, err := VerifyDeviceToken(tokenString, machineID)
+	claims, err := VerifyDeviceToken(tokenString, machineID)
 	if err != nil {
-		return 0, fmt.Errorf("invalid device token: %w", err)
+		return DeviceTokenClaims{}, fmt.Errorf("invalid device token: %w", err)
 	}
 
-	return deviceID, nil
+	return claims, nil
 }

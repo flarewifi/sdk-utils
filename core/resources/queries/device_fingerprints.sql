@@ -121,3 +121,7 @@ WHERE df.fingerprint_hash = @fingerprint_hash
   AND df.is_cna = FALSE
 ORDER BY df.last_seen_at DESC
 LIMIT 1;
+
+-- name: DeleteAllFingerprints :exec
+-- Deletes all device fingerprint records.
+DELETE FROM device_fingerprints;

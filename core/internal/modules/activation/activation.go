@@ -245,7 +245,7 @@ func Validate() {
 	// Do NOT remove the activation file when server is unreachable
 	// Only remove when server explicitly says "not activated"
 	log.Printf("Offline activation validation failed (server unreachable): %v", errOffline)
-	ActivationError.Store(errOffline)
+	ActivationError.Store(ErrNetworkIssue)
 	IsActivated.Store(false)
 }
 
