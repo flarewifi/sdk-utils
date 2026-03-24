@@ -3,7 +3,6 @@ package sdkutils
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -75,15 +74,14 @@ func RunInTx(db *sql.DB, ctx context.Context, fn func(tx *sql.Tx) error) error {
 		return err
 	}
 
-	err = fn(tx) // Execute the function within the transaction
-	if err == nil {
-		return tx.Commit()
+	// Always attempt rollback on exit. After a successful Commit() this is a
+	// no-op (returns sql.ErrTxDone). This ensures the write lock is released
+	// even if fn panics or Commit itself fails.
+	defer tx.Rollback()
+
+	if err := fn(tx); err != nil {
+		return err
 	}
 
-	rollbackErr := tx.Rollback()
-	if rollbackErr != nil {
-		return errors.Join(err, rollbackErr)
-	}
-
-	return err
+	return tx.Commit()
 }
