@@ -21,6 +21,11 @@ var (
 
 	// MachinePingInitialDelay - delay before first ping after startup
 	MachinePingInitialDelay = 200 * time.Second
+
+	// BatchSaveInterval controls how often the batch save loop snapshots
+	// time consumption for all running sessions and persists them to the
+	// database in a single transaction.
+	BatchSaveInterval = 30 * time.Second
 )
 
 // Schedule times (not used in dev mode, but needed for compilation)

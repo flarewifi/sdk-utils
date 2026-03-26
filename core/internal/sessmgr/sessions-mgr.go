@@ -36,9 +36,6 @@ type SessionsMgr struct {
 	// tcQueue serializes all TC/NFT commands globally.
 	// Uses JobQueue for automatic panic recovery, queue-wait logging, and context support.
 	tcQueue *jobque.JobQueue[struct{}]
-
-	// batchCancel cancels the background batch save loop goroutine.
-	batchCancel context.CancelFunc
 }
 
 // =============================================================================
@@ -1021,48 +1018,14 @@ func (self *SessionsMgr) handleSessionSaved(ctx context.Context, session sdkapi.
 }
 
 // =============================================================================
-// BATCH SAVE LOOP
+// BATCH SAVE
 // =============================================================================
 
-// StartBatchSaveLoop launches a background goroutine that periodically flushes
-// all dirty sessions to the database in a single transaction. This replaces
-// per-session DB writes and dramatically reduces SQLite lock contention.
-func (self *SessionsMgr) StartBatchSaveLoop(ctx context.Context) {
-	batchCtx, cancel := context.WithCancel(ctx)
-	self.batchCancel = cancel
-	go self.batchSaveLoop(batchCtx)
-	log.Println("[SessionsMgr] Batch save loop started")
-}
-
-// StopBatchSaveLoop stops the background batch save goroutine.
-func (self *SessionsMgr) StopBatchSaveLoop() {
-	if self.batchCancel != nil {
-		self.batchCancel()
-	}
-}
-
-func (self *SessionsMgr) batchSaveLoop(ctx context.Context) {
-	ticker := time.NewTicker(BatchSaveInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			// Final flush on shutdown to minimize data loss.
-			self.flushRunningSessions()
-			log.Println("[SessionsMgr] Batch save loop stopped")
-			return
-		case <-ticker.C:
-			self.flushRunningSessions()
-		}
-	}
-}
-
-// flushRunningSessions snapshots time consumption for all running sessions and
+// FlushRunningSessions snapshots time consumption for all running sessions and
 // persists them to the database in a single transaction. This combines the
 // periodic snapshot and DB write into one atomic pass, ensuring they happen
 // at the same time and reducing SQLite lock contention to a single write per cycle.
-func (self *SessionsMgr) flushRunningSessions() {
+func (self *SessionsMgr) FlushRunningSessions() {
 	// Phase 1: Snapshot all running sessions and collect for batch persist.
 	type entry struct {
 		rs *RunningSession

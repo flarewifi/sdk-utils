@@ -36,7 +36,6 @@ func Init(g *api.CoreGlobals) {
 			log.Println("Error initializing sessions manager:", err)
 		} else {
 			log.Println("Sessions manager initialized successfully.")
-			g.ClientMgr.StartBatchSaveLoop(context.Background())
 		}
 
 		// Initialize activation after everything else is ready
