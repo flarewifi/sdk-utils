@@ -11,11 +11,14 @@ import (
 
 	"core/db"
 	"core/db/models"
+	"core/db/queries"
 	"core/internal/events"
 	"core/internal/modules/nftables"
 	"core/internal/network"
 	jobque "core/utils/job-que"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 // =============================================================================
@@ -62,25 +65,25 @@ func (self *SessionsMgr) SetCoreAPI(api sdkapi.IPluginApi) {
 }
 
 func (self *SessionsMgr) Init(ctx context.Context) error {
-	// First, update consumption for all running sessions
-	err := self.db.Queries.BulkUpdateTimeConsumption(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to update consumption before reset: %w", err)
-	}
+	// Wrap all init operations in a single transaction for atomicity.
+	// If the machine loses power mid-init, either all or none of these changes persist.
+	return sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
+		q := self.db.Queries.WithTx(tx)
 
-	// Then reset all resumed_at fields to NULL
-	err = self.db.Queries.ResetAllResumedAt(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to reset resumed_at fields: %w", err)
-	}
+		if err := q.BulkUpdateTimeConsumption(ctx); err != nil {
+			return fmt.Errorf("failed to update consumption before reset: %w", err)
+		}
 
-	// Reset all device connection statuses to disconnected
-	err = self.db.Queries.ResetAllDeviceStatuses(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to reset device statuses: %w", err)
-	}
+		if err := q.ResetAllResumedAt(ctx); err != nil {
+			return fmt.Errorf("failed to reset resumed_at fields: %w", err)
+		}
 
-	return nil
+		if err := q.ResetAllDeviceStatuses(ctx); err != nil {
+			return fmt.Errorf("failed to reset device statuses: %w", err)
+		}
+
+		return nil
+	})
 }
 
 // =============================================================================
@@ -1012,4 +1015,144 @@ func (self *SessionsMgr) handleSessionSaved(ctx context.Context, session sdkapi.
 	}
 
 	return nil
+}
+
+// =============================================================================
+// BATCH SAVE
+// =============================================================================
+
+// FlushRunningSessions snapshots time consumption for all running sessions and
+// persists them to the database in a single transaction. This combines the
+// periodic snapshot and DB write into one atomic pass, ensuring they happen
+// at the same time and reducing SQLite lock contention to a single write per cycle.
+func (self *SessionsMgr) FlushRunningSessions() {
+	// Phase 1: Snapshot all running sessions and collect for batch persist.
+	type entry struct {
+		rs *RunningSession
+		cs *ClientSession
+	}
+	var entries []entry
+
+	self.sessions.Range(func(key, value any) bool {
+		rs := value.(*RunningSession)
+		if rs.IsStopped() {
+			return true
+		}
+
+		// Get session under mu; also reset diffMb for the next period.
+		rs.mu.Lock()
+		session := rs.session
+		rs.diffMb = 0
+		rs.mu.Unlock()
+
+		if session == nil {
+			return true
+		}
+
+		cs, ok := session.(*ClientSession)
+		if !ok {
+			return true
+		}
+
+		// Snapshot: bake elapsed time into timeCons, reset resumedAt to now.
+		rs.snapshotTimeConsumption(session, false)
+
+		entries = append(entries, entry{rs: rs, cs: cs})
+		return true
+	})
+
+	if len(entries) == 0 {
+		return
+	}
+
+	log.Printf("[SessionsMgr] Batch save: persisting %d sessions", len(entries))
+
+	// Phase 2: Write all sessions in a single transaction.
+	tx, err := self.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		log.Printf("[SessionsMgr] Batch save: failed to begin transaction: %v", err)
+		for _, e := range entries {
+			e.rs.incrementSaveFailCount()
+		}
+		return
+	}
+
+	txQueries := self.db.Queries.WithTx(tx)
+
+	for _, e := range entries {
+		if err := self.persistSessionInTx(txQueries, e.cs); err != nil {
+			log.Printf("[SessionsMgr] Batch save: update failed for session, rolling back: %v", err)
+			tx.Rollback()
+			for _, e2 := range entries {
+				e2.rs.incrementSaveFailCount()
+			}
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("[SessionsMgr] Batch save: commit failed: %v", err)
+		for _, e := range entries {
+			e.rs.incrementSaveFailCount()
+		}
+		return
+	}
+
+	// Phase 3: All succeeded — reset fail counters, check consumed, emit event.
+	sessions := make([]sdkapi.IClientSession, 0, len(entries))
+	for _, e := range entries {
+		e.rs.resetSaveFailCount()
+		sessions = append(sessions, e.cs)
+
+		// Check if session is now consumed after the snapshot.
+		if e.cs.IsConsumed() {
+			log.Printf("[SessionsMgr] Session consumed during batch save, DeviceID=%d", e.rs.clntId)
+			go e.rs.StopWithReason(StopReasonConsumed)
+		}
+	}
+
+	self.eventsMgr.EmitSessionBatchEvent(sdkapi.EventSessionBatchUpdated, sessions)
+
+	log.Printf("[SessionsMgr] Batch save: completed %d sessions", len(entries))
+}
+
+// persistSessionInTx writes a single session's state using the provided
+// transaction-scoped queries. This bypasses ClientSession.Save() and
+// PersistToDB() entirely to avoid emitting individual session events.
+// Only the batch-level EventSessionBatchUpdated event is emitted after
+// all sessions are committed.
+func (self *SessionsMgr) persistSessionInTx(txQueries *queries.Queries, cs *ClientSession) error {
+	d := cs.data.Load()
+
+	var expDays sql.NullInt64
+	if d.expDays != nil {
+		expDays = sql.NullInt64{Int64: int64(*d.expDays), Valid: true}
+	}
+
+	var startedAt sql.NullTime
+	if d.startedAt != nil {
+		startedAt = sql.NullTime{Time: *d.startedAt, Valid: true}
+	}
+
+	var resumedAt sql.NullTime
+	if d.resumedAt != nil {
+		resumedAt = sql.NullTime{Time: *d.resumedAt, Valid: true}
+	}
+
+	return txQueries.UpdateSession(context.Background(), queries.UpdateSessionParams{
+		ID:              d.id,
+		ProviderPkg:     d.providerPkg,
+		DeviceID:        d.devId,
+		SessionType:     d.sessionType,
+		TimeSecs:        int64(d.timeSecs),
+		DataMbytes:      d.dataMb,
+		ConsumptionSecs: int64(d.timeCons),
+		ConsumptionMb:   d.dataCons,
+		StartedAt:       startedAt,
+		ResumedAt:       resumedAt,
+		ExpDays:         expDays,
+		DownMbits:       int64(d.downMbits),
+		UpMbits:         int64(d.upMbits),
+		UseGlobal:       d.useGlobal,
+	})
 }

@@ -32,6 +32,7 @@ type EventsManager struct {
 	mu sync.RWMutex
 
 	sessionCallbacks      map[sdkapi.SessionEvent][]func(sdkapi.SessionEventData) error
+	sessionBatchCallbacks map[sdkapi.SessionEvent][]func([]sdkapi.IClientSession) error
 	clientCallbacks       map[sdkapi.ClientEvent][]func(sdkapi.IClientDevice) error
 	clientMergeCallbacks  []func(sdkapi.EventClientMergeData) error
 	purchaseCallbacks     map[sdkapi.PurchaseEvent][]func(sdkapi.PurchaseEventData) error
@@ -44,6 +45,7 @@ type EventsManager struct {
 func NewEventsManager() *EventsManager {
 	return &EventsManager{
 		sessionCallbacks:      make(map[sdkapi.SessionEvent][]func(sdkapi.SessionEventData) error),
+		sessionBatchCallbacks: make(map[sdkapi.SessionEvent][]func([]sdkapi.IClientSession) error),
 		clientCallbacks:       make(map[sdkapi.ClientEvent][]func(sdkapi.IClientDevice) error),
 		purchaseCallbacks:     make(map[sdkapi.PurchaseEvent][]func(sdkapi.PurchaseEventData) error),
 		voucherCallbacks:      make(map[sdkapi.VoucherEvent][]func(sdkapi.IVoucher) error),
@@ -60,6 +62,13 @@ func (em *EventsManager) OnSessionEvent(event sdkapi.SessionEvent, cb func(sdkap
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.sessionCallbacks[event] = append(em.sessionCallbacks[event], cb)
+}
+
+// OnSessionBatchEvent registers a callback that fires whenever a batch session event occurs.
+func (em *EventsManager) OnSessionBatchEvent(event sdkapi.SessionEvent, cb func([]sdkapi.IClientSession) error) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	em.sessionBatchCallbacks[event] = append(em.sessionBatchCallbacks[event], cb)
 }
 
 // OnClientEvent registers a callback that fires whenever the given client event occurs.
@@ -126,6 +135,27 @@ func (em *EventsManager) EmitSessionEvent(event sdkapi.SessionEvent, data sdkapi
 			defer cancel()
 			_ = ctx // callbacks don't accept context yet; timeout is enforced by their own internal logic
 			if err := cb(data); err != nil {
+				log.Printf("[EventsManager] %s handler error: %v", event, err)
+			}
+		}()
+	}
+}
+
+// EmitSessionBatchEvent dispatches a batch session event to all registered callbacks asynchronously.
+func (em *EventsManager) EmitSessionBatchEvent(event sdkapi.SessionEvent, sessions []sdkapi.IClientSession) {
+	em.mu.RLock()
+	cbs := em.sessionBatchCallbacks[event]
+	snapshot := make([]func([]sdkapi.IClientSession) error, len(cbs))
+	copy(snapshot, cbs)
+	em.mu.RUnlock()
+
+	for _, cb := range snapshot {
+		cb := cb
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			defer cancel()
+			_ = ctx
+			if err := cb(sessions); err != nil {
 				log.Printf("[EventsManager] %s handler error: %v", event, err)
 			}
 		}()

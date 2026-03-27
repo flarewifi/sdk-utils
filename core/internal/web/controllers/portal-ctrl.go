@@ -9,7 +9,6 @@ import (
 
 	"core/internal/api"
 	devicetoken "core/internal/modules/device-token"
-	"core/internal/modules/fingerprint"
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/sessmgr"
 	"core/internal/web/helpers"
@@ -201,73 +200,20 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		if macUnavailable {
-			// ARP lookup failed; try to identify the device by its fingerprint hash
-			// (non-CNA only, requires full JS fingerprint: user_agent + screen_res + language).
-			// SECURITY: Use HTTP header User-Agent as canonical source (server-side, not client JSON body)
-			// This prevents attackers from spoofing User-Agent in the request body to impersonate other devices
-			canonicalUA := r.Header.Get("User-Agent")
-			if canonicalUA != "" && reqBody.ScreenRes != "" && reqBody.Language != "" {
-				fpHash := fingerprint.GenerateHash(fingerprint.FingerprintData{
-					UserAgent: canonicalUA, // Use server-side User-Agent, not reqBody.UserAgent
-					ScreenRes: reqBody.ScreenRes,
-					Language:  reqBody.Language,
-					Timezone:  reqBody.Timezone,
-				})
-				deviceID, fpErr := g.Models.DeviceFingerprint().FindDeviceByFingerprintHash(ctx, fpHash)
-				if fpErr == nil && deviceID > 0 {
-					dev, devErr := g.Models.Device().Find(ctx, deviceID)
-					if devErr == nil && dev != nil && dev.MacAddr() != "" {
-						g.CoreAPI.LoggerAPI.Info(fmt.Sprintf(
-							"PortalRegisterAjax: ARP failed, identified device %d via fingerprint hash (RemoteAddr: %s)",
-							deviceID, r.RemoteAddr,
-						))
-						// Preserve the device's stored IP since ARP failed and we have no current IP.
-						h = &hostfinder.HostData{MacAddr: dev.MacAddr(), IpAddr: dev.IpAddr()}
-					} else {
-						// Device found by hash but stored MAC is empty — cannot proceed (option b)
-						errMsg := g.CoreAPI.Translate("error", "Unable to identify device")
-						g.CoreAPI.LoggerAPI.Error(fmt.Sprintf(
-							"PortalRegisterAjax: Fingerprint fallback found device %d but MAC is empty - RemoteAddr: %s",
-							deviceID, r.RemoteAddr,
-						))
-						w.Header().Set("Content-Type", "application/json")
-						w.WriteHeader(http.StatusBadRequest)
-						json.NewEncoder(w).Encode(map[string]interface{}{
-							"success": false,
-							"error":   errMsg,
-						})
-						return
-					}
-				} else {
-					// No device found by fingerprint hash — cannot identify device
-					errMsg := g.CoreAPI.Translate("error", "Unable to identify device")
-					g.CoreAPI.LoggerAPI.Error(fmt.Sprintf(
-						"PortalRegisterAjax: ARP failed and no device found by fingerprint hash - RemoteAddr: %s, ARP error: %v",
-						r.RemoteAddr, err,
-					))
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
-						"success": false,
-						"error":   errMsg,
-					})
-					return
-				}
-			} else {
-				// Insufficient fingerprint data for fallback
-				errMsg := g.CoreAPI.Translate("error", "Unable to identify device")
-				g.CoreAPI.LoggerAPI.Error(fmt.Sprintf(
-					"PortalRegisterAjax: ARP failed and no fingerprint data for fallback - RemoteAddr: %s, ARP error: %v",
-					r.RemoteAddr, err,
-				))
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"success": false,
-					"error":   errMsg,
-				})
-				return
-			}
+			// ARP/MAC lookup failed — cannot identify device without at least a MAC address.
+			// Fingerprint alone is not sufficient for device identification.
+			errMsg := g.CoreAPI.Translate("error", "Unable to identify your device from the network")
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf(
+				"PortalRegisterAjax: ARP/MAC lookup failed, cannot identify device - RemoteAddr: %s, ARP error: %v",
+				r.RemoteAddr, err,
+			))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   errMsg,
+			})
+			return
 		}
 
 		// Determine device ID from token or cookie

@@ -22,6 +22,9 @@ func Init(g *api.CoreGlobals) {
 	// Start machine ping scheduler (pings every hour for online status)
 	StartMachinePingScheduler()
 
+	// Start batch save loop for running sessions (flushes to DB periodically)
+	StartBatchSaveLoop(g.ClientMgr)
+
 	// Start ubus listener for network interface events
 	StartUbusListener()
 

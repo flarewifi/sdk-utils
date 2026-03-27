@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -52,7 +51,7 @@ type RunningSession struct {
 	// === ATOMIC (lock-free) ===
 	network atomic.Pointer[networkState]
 	// stopped uses atomic.Bool so hot paths (UpdateDataConsumption, timerLoop,
-	// handlePeriodicSave, IsStopped) can read it without acquiring mu.
+	// IsStopped) can read it without acquiring mu.
 	// StopWithReason uses CompareAndSwap to guarantee only one caller transitions
 	// false→true (the one that "wins" proceeds; all others return immediately).
 	stopped atomic.Bool
@@ -838,23 +837,12 @@ func (self *RunningSession) startTimer(remainingSecs int) {
 	go self.timerLoop(ctx, timer, gen)
 }
 
-// timerLoop handles timer expiration and periodic saves.
+// timerLoop handles timer expiration (session consumed).
 // Runs in a separate goroutine. The gen parameter ensures stale goroutines
 // (from a previous timer that was cancelled and replaced) become no-ops.
+// Periodic snapshots and DB persistence are handled by SessionsMgr's batch
+// save loop — this goroutine only watches for time expiration.
 func (self *RunningSession) timerLoop(ctx context.Context, timer *time.Timer, gen uint64) {
-	// Add a random jitter of 0–15 seconds before the first tick so that all
-	// active sessions don't write to the database simultaneously every minute.
-	// This spreads the write load and reduces "database is locked" contention.
-	jitter := time.Duration(rand.Int63n(int64(15 * time.Second)))
-	select {
-	case <-ctx.Done():
-		return
-	case <-time.After(jitter):
-	}
-
-	saveTicker := time.NewTicker(1 * time.Minute)
-	defer saveTicker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -875,86 +863,8 @@ func (self *RunningSession) timerLoop(ctx context.Context, timer *time.Timer, ge
 			log.Println("Session timer expired - time consumed!")
 			self.StopWithReason(StopReasonConsumed)
 			return
-
-		case <-saveTicker.C:
-			if !self.handlePeriodicSave(gen) {
-				return
-			}
 		}
 	}
-}
-
-// handlePeriodicSave persists time consumption and emits update event.
-// The gen parameter is the timer generation that spawned this periodic save.
-// Returns true to continue the timer loop, false to exit.
-func (self *RunningSession) handlePeriodicSave(gen uint64) bool {
-	// stopped is atomic — check it before acquiring mu to short-circuit fast.
-	if self.stopped.Load() {
-		return false
-	}
-	self.mu.Lock()
-	if self.timerGen != gen {
-		self.mu.Unlock()
-		return false
-	}
-	currentSession := self.session
-	// Reset diffMb now - any new consumption after this point will be tracked in the next period.
-	// This prevents data loss from consumption arriving between save and reset.
-	self.diffMb = 0
-	self.mu.Unlock()
-
-	if currentSession == nil {
-		return true
-	}
-
-	// Persist time consumption to protect against crashes
-	// This ensures at most 1 minute of time tracking is lost on crash
-	// instead of all time since session start
-	self.snapshotTimeConsumption(currentSession, false)
-	log.Printf("Periodic save: persisting %d seconds consumed, %d remaining\n",
-		currentSession.ConsumedTimeSecs(), currentSession.RemainingTime())
-
-	saveErr := self.persistSession(currentSession)
-
-	if saveErr != nil {
-		// Tolerate transient DB errors - only stop after consecutive failures.
-		// This prevents a single slow/failed DB write from permanently disconnecting the device.
-		// At most 1 minute of consumption data is at risk per failed save (periodic save interval).
-		self.mu.Lock()
-		self.saveFailCount++
-		failCount := self.saveFailCount
-		self.mu.Unlock()
-
-		const maxConsecutiveFailures = 3
-		if failCount >= maxConsecutiveFailures {
-			log.Printf("[ERROR] Periodic save failed %d consecutive times: %v - STOPPING SESSION", failCount, saveErr)
-			go self.Stop()
-			return false
-		}
-		log.Printf("[WARN] Periodic save failed (%d/%d): %v - will retry next period", failCount, maxConsecutiveFailures, saveErr)
-		return true
-	}
-
-	// Save succeeded - reset failure counter and check for stale/consumed state.
-	// stopped is atomic — read it outside mu; timerGen still needs mu.
-	self.mu.Lock()
-	self.saveFailCount = 0
-	freshSession := self.session
-	staleGen := self.timerGen != gen
-	self.mu.Unlock()
-
-	if self.stopped.Load() || staleGen {
-		return false
-	}
-
-	if freshSession != nil && freshSession.IsConsumed() {
-		log.Println("Session consumed or expired during periodic check")
-		// StopWithReason has its own stopped guard so concurrent calls are safe
-		go self.StopWithReason(StopReasonConsumed)
-		return false
-	}
-
-	return true
 }
 
 // initTc initializes TC class and filter. Must be called from within execTc with mu held.
@@ -1061,6 +971,30 @@ func (self *RunningSession) persistSession(session sdkapi.IClientSession) error 
 		return nil
 	}
 	return session.PersistToDB(context.Background())
+}
+
+// incrementSaveFailCount increments the consecutive save failure counter.
+// If the counter reaches the maximum, the session is stopped.
+// Called by SessionsMgr's batch save loop when a flush fails.
+func (self *RunningSession) incrementSaveFailCount() {
+	self.mu.Lock()
+	self.saveFailCount++
+	count := self.saveFailCount
+	self.mu.Unlock()
+
+	const maxConsecutiveFailures = 3
+	if count >= maxConsecutiveFailures {
+		log.Printf("[Running Session] Batch save failed %d consecutive times for DeviceID=%d - STOPPING", count, self.clntId)
+		go self.Stop()
+	}
+}
+
+// resetSaveFailCount resets the consecutive save failure counter to zero.
+// Called by SessionsMgr's batch save loop after a successful flush.
+func (self *RunningSession) resetSaveFailCount() {
+	self.mu.Lock()
+	self.saveFailCount = 0
+	self.mu.Unlock()
 }
 
 // resetTimer cancels the existing timer and creates a new one with the specified duration.

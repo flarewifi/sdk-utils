@@ -32,6 +32,7 @@ const (
 	EventSessionConsumed     SessionEvent = "session:expired"
 	EventSessionChanged      SessionEvent = "session:changed"
 	EventSessionDeleted      SessionEvent = "session:deleted"
+	EventSessionBatchUpdated SessionEvent = "session:batch-updated"
 
 	EventClientCreated      ClientEvent = "client:created"
 	EventClientRegistered   ClientEvent = "client:registered"

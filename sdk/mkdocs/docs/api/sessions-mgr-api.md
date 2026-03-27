@@ -811,6 +811,31 @@ sessionsMgr.OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionE
 })
 ```
 
+### OnSessionBatchEvent
+
+Registers a callback that fires whenever a batch of sessions is persisted to the database at once. The callback runs asynchronously and receives a slice of all sessions that were saved in the batch.
+
+The batch save system coalesces individual periodic session saves into a single database transaction every 60 seconds. This dramatically reduces SQLite lock contention when many sessions are running simultaneously. The `EventSessionBatchUpdated` event fires once per batch after a successful commit.
+
+**`sdkapi.EventSessionBatchUpdated` - "session:batch-updated"**
+
+Emitted after the batch save loop successfully persists all dirty sessions to the database. The callback receives all sessions that were included in the batch.
+
+**Use cases:** Bulk cloud synchronization, batch analytics reporting, periodic state snapshots.
+
+```go
+api.Events().OnSessionBatchEvent(sdkapi.EventSessionBatchUpdated, func(sessions []sdkapi.IClientSession) error {
+    api.Logger().Info("Batch saved %d sessions", len(sessions))
+    for _, s := range sessions {
+        api.Logger().Info("  Session %d: consumed %d secs, %.2f MB",
+            s.ID(), s.ConsumedTimeSecs(), s.DataConsumption())
+    }
+    return nil
+})
+```
+
+**Important:** This event fires for periodic consumption saves only — not for session start, stop, or user-initiated changes. Those continue to use individual `EventSession*` events. Use this event when you need to efficiently process multiple session updates in bulk (e.g., syncing consumption data to a cloud server in a single batch request instead of N individual requests).
+
 ### OnClientEvent
 
 Registers a callback function for client device events.
