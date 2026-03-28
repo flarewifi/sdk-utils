@@ -1,0 +1,262 @@
+package device
+
+import (
+	"core/db/queries"
+	"fmt"
+	"strconv"
+)
+
+type DeviceDiagParams struct {
+	DeviceID     int64
+	UUID         string
+	CookieToken  string
+	Ipv4Addr     string
+	Ipv6Addr     string
+	MacAddr      string
+	Hostname     string
+	Status       int
+	CreatedAt    string
+	UpdatedAt    string
+	Macs         []queries.DeviceMac
+	Fingerprints []queries.DeviceFingerprint
+}
+
+templ DeviceDiagPage(params DeviceDiagParams) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>Device Diagnostics</title>
+			<style>
+				* { margin: 0; padding: 0; box-sizing: border-box; }
+				body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: #f5f5f5; color: #333; padding: 16px; font-size: 14px; }
+				h1 { font-size: 18px; margin-bottom: 16px; }
+				h2 { font-size: 15px; margin-bottom: 8px; background: #333; color: #fff; padding: 8px 12px; border-radius: 4px 4px 0 0; }
+				.card { background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 16px; overflow: hidden; }
+				.card-body { padding: 12px; }
+				table { width: 100%; border-collapse: collapse; }
+				th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+				th { color: #666; font-weight: 600; white-space: nowrap; width: 140px; }
+				td { word-break: break-all; }
+				.badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+				.badge-green { background: #d4edda; color: #155724; }
+				.badge-gray { background: #e9ecef; color: #495057; }
+				.badge-blue { background: #cce5ff; color: #004085; }
+				.mono { font-family: monospace; font-size: 12px; }
+				.text-muted { color: #999; }
+				.scroll-x { overflow-x: auto; }
+			</style>
+		</head>
+		<body>
+			<h1>Device Diagnostics</h1>
+			<!-- Device Info -->
+			<div class="card">
+				<h2>Device</h2>
+				<div class="card-body">
+					<table>
+						<tr>
+							<th>ID</th>
+							<td>{ strconv.FormatInt(params.DeviceID, 10) }</td>
+						</tr>
+						<tr>
+							<th>UUID</th>
+							<td class="mono">{ params.UUID }</td>
+						</tr>
+						<tr>
+							<th>Cookie Token</th>
+							<td class="mono">
+								if params.CookieToken != "" {
+									{ params.CookieToken[:8] + "..." }
+								} else {
+									<span class="text-muted">(empty)</span>
+								}
+							</td>
+						</tr>
+						<tr>
+							<th>IPv4</th>
+							<td>
+								if params.Ipv4Addr != "" {
+									{ params.Ipv4Addr }
+								} else {
+									<span class="text-muted">(none)</span>
+								}
+							</td>
+						</tr>
+						<tr>
+							<th>IPv6</th>
+							<td class="mono">
+								if params.Ipv6Addr != "" {
+									{ params.Ipv6Addr }
+								} else {
+									<span class="text-muted">(none)</span>
+								}
+							</td>
+						</tr>
+						<tr>
+							<th>Current MAC</th>
+							<td class="mono">{ params.MacAddr }</td>
+						</tr>
+						<tr>
+							<th>Hostname</th>
+							<td>
+								if params.Hostname != "" {
+									{ params.Hostname }
+								} else {
+									<span class="text-muted">(empty)</span>
+								}
+							</td>
+						</tr>
+						<tr>
+							<th>Status</th>
+							<td>
+								if params.Status == 1 {
+									<span class="badge badge-green">Connected</span>
+								} else {
+									<span class="badge badge-gray">Disconnected</span>
+								}
+							</td>
+						</tr>
+						<tr>
+							<th>Created</th>
+							<td>{ params.CreatedAt }</td>
+						</tr>
+						<tr>
+							<th>Updated</th>
+							<td>{ params.UpdatedAt }</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<!-- MAC Addresses -->
+			<div class="card">
+				<h2>{ fmt.Sprintf("MAC Addresses (%d)", len(params.Macs)) }</h2>
+				<div class="card-body scroll-x">
+					if len(params.Macs) == 0 {
+						<p class="text-muted">No MAC address records</p>
+					} else {
+						<table>
+							<tr>
+								<th>MAC Address</th>
+								<th>Current</th>
+								<th>First Seen</th>
+								<th>Last Seen</th>
+							</tr>
+							for _, mac := range params.Macs {
+								<tr>
+									<td class="mono">{ mac.MacAddress }</td>
+									<td>
+										if mac.IsCurrent {
+											<span class="badge badge-green">Yes</span>
+										} else {
+											<span class="badge badge-gray">No</span>
+										}
+									</td>
+									<td>
+										if mac.FirstSeenAt.Valid {
+											{ mac.FirstSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
+										}
+									</td>
+									<td>
+										if mac.LastSeenAt.Valid {
+											{ mac.LastSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
+										}
+									</td>
+								</tr>
+							}
+						</table>
+					}
+				</div>
+			</div>
+			<!-- Fingerprints -->
+			<div class="card">
+				<h2>{ fmt.Sprintf("Fingerprints (%d)", len(params.Fingerprints)) }</h2>
+				<div class="card-body scroll-x">
+					if len(params.Fingerprints) == 0 {
+						<p class="text-muted">No fingerprint records</p>
+					} else {
+						for i, fp := range params.Fingerprints {
+							if i > 0 {
+								<hr style="margin: 12px 0; border-color: #eee;"/>
+							}
+							<table>
+								<tr>
+									<th>Hash</th>
+									<td class="mono">{ fp.FingerprintHash[:16] + "..." }</td>
+								</tr>
+								<tr>
+									<th>OS Family</th>
+									<td>{ fp.OsFamily }</td>
+								</tr>
+								<tr>
+									<th>Browser</th>
+									<td>{ fp.BrowserName }</td>
+								</tr>
+								<tr>
+									<th>Screen</th>
+									<td>
+										if fp.ScreenResolution != "" {
+											{ fp.ScreenResolution }
+										} else {
+											<span class="text-muted">(empty)</span>
+										}
+									</td>
+								</tr>
+								<tr>
+									<th>Language</th>
+									<td>
+										if fp.Language != "" {
+											{ fp.Language }
+										} else {
+											<span class="text-muted">(empty)</span>
+										}
+									</td>
+								</tr>
+								<tr>
+									<th>Timezone</th>
+									<td>
+										if fp.Timezone != "" {
+											{ fp.Timezone }
+										} else {
+											<span class="text-muted">(empty)</span>
+										}
+									</td>
+								</tr>
+								<tr>
+									<th>CNA</th>
+									<td>
+										if fp.IsCna {
+											<span class="badge badge-blue">Yes</span>
+										} else {
+											<span class="badge badge-gray">No</span>
+										}
+									</td>
+								</tr>
+								<tr>
+									<th>User Agent</th>
+									<td style="font-size: 11px;">{ fp.UserAgent }</td>
+								</tr>
+								<tr>
+									<th>Created</th>
+									<td>
+										if fp.CreatedAt.Valid {
+											{ fp.CreatedAt.Time.UTC().Format("2006-01-02 15:04:05") }
+										}
+									</td>
+								</tr>
+								<tr>
+									<th>Last Seen</th>
+									<td>
+										if fp.LastSeenAt.Valid {
+											{ fp.LastSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
+										}
+									</td>
+								</tr>
+							</table>
+						}
+					}
+				</div>
+			</div>
+		</body>
+	</html>
+}

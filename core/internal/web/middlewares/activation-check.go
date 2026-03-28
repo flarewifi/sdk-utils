@@ -42,6 +42,12 @@ func ActivationCheck() func(http.Handler) http.Handler {
 				return
 			}
 
+			// Allow device diagnostics page
+			if r.URL.Path == "/device" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			// Allow asset routes (JS, CSS, images, fonts)
 			if helpers.IsAssetPath(r.URL.Path) {
 				next.ServeHTTP(w, r)

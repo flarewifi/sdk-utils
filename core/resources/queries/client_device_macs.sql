@@ -113,8 +113,8 @@ ORDER BY last_seen_at DESC
 LIMIT 1;
 
 -- name: FindSharedMacAddresses :many
--- Finds MAC addresses that exist on multiple devices since the given UTC timestamp.
--- Used by device merge job to identify potential duplicates.
+-- Finds MAC addresses that exist on multiple devices (current or historical).
+-- Used by device merge job to find candidate pairs for fingerprint comparison.
 -- Caller should pass time.Now().UTC().AddDate(0, 0, -30) for 30-day lookback.
 SELECT mac_address
 FROM device_macs
@@ -123,9 +123,8 @@ GROUP BY mac_address
 HAVING COUNT(DISTINCT device_id) > 1;
 
 -- name: FindDeviceIDsByMacAddress :many
--- Gets all device IDs that have a specific MAC address, ordered by most recently seen.
--- Uses a subquery to pre-aggregate MAX(last_seen_at) per device so that the ORDER BY
--- is deterministic. SELECT DISTINCT with ORDER BY on a non-selected column is undefined.
+-- Gets all device IDs that have used a specific MAC address (current or historical),
+-- ordered by most recently seen.
 SELECT dm.device_id
 FROM (
     SELECT device_id, MAX(last_seen_at) AS max_seen

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
 
 	"core/db"
 	"core/db/models"
@@ -58,51 +57,55 @@ func (reg *ClientRegister) FindByID(ctx context.Context, deviceID int64) (sdkapi
 }
 
 // UpdateDevice updates device network details and handles reconnection if needed.
-// If the new MAC address belongs to another device, this function uses the shared
-// fingerprint.ShouldMergeDevices decision to determine if the devices should be merged.
-// This ensures the same merge strategy is applied during registration and the background merge job.
+// If the new MAC address belongs to another device, the conflicting MAC is freed
+// so the cookie-authenticated device can claim it.
 func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClientDevice, newMac, newIpv4, newIpv6, newHostname string) error {
 	// Check for MAC collision - if new MAC belongs to another device (current or historical)
 	if clnt.MacAddr() != newMac {
-		// Use FindDeviceByAnyMac to check both current and historical MAC ownership
 		existingDevID, err := reg.mdls.DeviceMac().FindDeviceByAnyMac(ctx, newMac)
 		if err == nil && existingDevID > 0 && existingDevID != clnt.ID() {
-			// MAC collision detected - load the existing device
-			existingDev, err := reg.mdls.Device().Find(ctx, existingDevID)
-			if err != nil {
-				return fmt.Errorf("could not find conflicting device %d: %w", existingDevID, err)
-			}
-
-			// Use the same merge decision logic as the background merge job
-			decision := reg.checkMergeDecision(ctx, clnt, existingDev)
-
-			if decision.ShouldMerge {
-				// Merge approved — proceed with merge
-				conflictingClnt := reg.wrapDevice(existingDev)
-				if _, hasSession := reg.sessionsMgr.GetRunningSession(conflictingClnt); hasSession {
-					if err := reg.sessionsMgr.Disconnect(ctx, conflictingClnt, ""); err != nil {
-						log.Printf("[ClientRegister.UpdateDevice] WARN: Failed to disconnect conflicting device session: %v", err)
+			if reg.isDeviceCNAOnly(ctx, existingDevID) {
+				// Conflicting device only has CNA fingerprints — it's likely a
+				// temporary record created when this same physical device connected
+				// via captive portal with a new random MAC. Safe to merge into the
+				// cookie-authenticated device.
+				log.Printf("[ClientRegister.UpdateDevice] Merging CNA-only device %d into cookie-authenticated device %d (MAC %s)",
+					existingDevID, clnt.ID(), newMac)
+				existingDev, findErr := reg.mdls.Device().Find(ctx, existingDevID)
+				if findErr == nil {
+					if mergeErr := reg.mdls.Device().MergeDevices(ctx, clnt.ID(), existingDevID); mergeErr != nil {
+						log.Printf("[ClientRegister.UpdateDevice] WARN: Failed to merge CNA device: %v", mergeErr)
+					} else {
+						reg.sessionsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+							Target:           clnt,
+							SourceDeviceID:   existingDev.ID(),
+							SourceDeviceUUID: existingDev.UUID(),
+						})
 					}
 				}
-
-				sourceDeviceID := existingDev.ID()
-				sourceDeviceUUID := existingDev.UUID()
-				if err := reg.mdls.Device().MergeDevices(ctx, clnt.ID(), sourceDeviceID); err != nil {
-					return fmt.Errorf("could not merge devices: %w", err)
+			} else if reg.fingerprintsMatch(ctx, clnt.ID(), existingDevID) {
+				// Conflicting device has browser fingerprints that match the
+				// cookie-authenticated device. Cookie + MAC + fingerprint match
+				// together give strong confidence this is the same physical device.
+				log.Printf("[ClientRegister.UpdateDevice] Merging fingerprint-matched device %d into cookie-authenticated device %d (MAC %s)",
+					existingDevID, clnt.ID(), newMac)
+				existingDev, findErr := reg.mdls.Device().Find(ctx, existingDevID)
+				if findErr == nil {
+					if mergeErr := reg.mdls.Device().MergeDevices(ctx, clnt.ID(), existingDevID); mergeErr != nil {
+						log.Printf("[ClientRegister.UpdateDevice] WARN: Failed to merge device: %v", mergeErr)
+					} else {
+						reg.sessionsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+							Target:           clnt,
+							SourceDeviceID:   existingDev.ID(),
+							SourceDeviceUUID: existingDev.UUID(),
+						})
+					}
 				}
-
-				reg.sessionsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
-					Target:           clnt,
-					SourceDeviceID:   sourceDeviceID,
-					SourceDeviceUUID: sourceDeviceUUID,
-				})
-
-				log.Printf("[ClientRegister.UpdateDevice] Merged device %d into %d (%s)", sourceDeviceID, clnt.ID(), decision.Reason)
 			} else {
-				// Merge rejected — free the MAC from the conflicting device so our
-				// cookie-authenticated device can claim it without merging data.
-				log.Printf("[ClientRegister.UpdateDevice] Merge rejected for devices %d and %d — freeing MAC %s from device %d",
-					clnt.ID(), existingDevID, newMac, existingDevID)
+				// Conflicting device has browser fingerprints that don't match —
+				// different device. Free the MAC so our cookie-authenticated device can claim it.
+				log.Printf("[ClientRegister.UpdateDevice] MAC collision: freeing MAC %s from device %d (fingerprints don't match device %d)",
+					newMac, existingDevID, clnt.ID())
 				if err := reg.mdls.DeviceMac().UnsetCurrentMac(ctx, existingDevID, newMac); err != nil {
 					log.Printf("[ClientRegister.UpdateDevice] WARN: Failed to unset current MAC: %v", err)
 				}
@@ -404,7 +407,30 @@ STEP_3_CREATE_NEW:
 		return clnt, shouldSetCookie, nil
 	}
 
-	// No MAC collision - create new device
+	// Step 3.5: Try to find device by exact fingerprint hash.
+	// This catches devices that reconnected with a brand-new random MAC and lost
+	// their cookie. ExactMatch (identical hash) requires same User-Agent + screen +
+	// language + timezone, which is very unlikely to collide across different devices.
+	if hasFingerprintData && fpHash != "" {
+		fpDeviceID, fpErr := reg.mdls.DeviceFingerprint().FindDeviceByHash(ctx, fpHash)
+		if fpErr == nil && fpDeviceID > 0 {
+			fpDev, findErr := reg.mdls.Device().Find(ctx, fpDeviceID)
+			if findErr == nil {
+				log.Printf("[ClientRegister] Found device %d by fingerprint hash, reusing", fpDeviceID)
+				clnt = reg.wrapDevice(fpDev)
+
+				// Update network details
+				if err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.Ipv4Addr, params.Ipv6Addr, params.Hostname); err != nil {
+					return nil, false, err
+				}
+
+				reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
+				return clnt, true, nil
+			}
+		}
+	}
+
+	// No match by cookie, MAC, or fingerprint - create new device
 	if errors.Is(err, sql.ErrNoRows) || dev == nil {
 		dev, err = reg.mdls.Device().Create(ctx, models.CreateDeviceParams{
 			MacAddress:  params.MacAddr,
@@ -544,8 +570,10 @@ func (reg *ClientRegister) validateDeviceFingerprint(ctx context.Context, device
 }
 
 // handleMacCollision checks if a MAC address already belongs to an existing device.
-// If found and fingerprint validates, it reuses that device instead of creating a new one.
-// This prevents duplicate device records for the same MAC address while ensuring security.
+// If so, frees the MAC from the old device so a new device can be created with it.
+// We intentionally do NOT reuse or merge the old device — fingerprint SmartMatch is
+// too loose to confirm identity, and at this point cookie and MAC matching have
+// already failed.
 // Returns (device, shouldSetCookie, handled, error) where handled=true means caller should return immediately.
 func (reg *ClientRegister) handleMacCollision(ctx context.Context, params ClientRegisterParams, browserInfo browserdetect.BrowserInfo, fpHash string, hasFingerprintData bool) (sdkapi.IClientDevice, bool, bool, error) {
 	// Check if MAC already belongs to another device
@@ -560,122 +588,75 @@ func (reg *ClientRegister) handleMacCollision(ctx context.Context, params Client
 		return nil, false, false, nil
 	}
 
-	// MAC collision detected - another device already has this MAC
-	log.Printf("[ClientRegister.handleMacCollision] MAC %s already exists on device %d", params.MacAddr, existingDevID)
-
-	existingDev, err := reg.mdls.Device().Find(ctx, existingDevID)
-	if err != nil {
-		log.Printf("[ClientRegister.handleMacCollision] ERROR: Failed to find existing device %d: %v", existingDevID, err)
-		return nil, false, false, nil // Fall through to create new
+	// MAC collision — free the MAC from the old device so a new one can claim it.
+	log.Printf("[ClientRegister.handleMacCollision] MAC %s belongs to device %d, freeing it for new device creation",
+		params.MacAddr, existingDevID)
+	if err := reg.mdls.DeviceMac().UnsetCurrentMac(ctx, existingDevID, params.MacAddr); err != nil {
+		log.Printf("[ClientRegister.handleMacCollision] WARN: Failed to unset current MAC: %v", err)
 	}
 
-	// Validate fingerprint before reusing device to prevent identity theft
-	if hasFingerprintData && fpHash != "" {
-		isValid, _, err := reg.validateDeviceFingerprint(ctx, existingDev.ID(), fpHash, params.ScreenRes, browserInfo.OSFamily, params.Language, params.Timezone, browserInfo.IsCNA)
-		if err != nil {
-			log.Printf("[ClientRegister.handleMacCollision] WARN: fingerprint validation error: %v", err)
-			// SECURITY: Cannot create new device - MAC already claimed
-			// Return error instead of falling through to device creation
-			return nil, false, true, fmt.Errorf("MAC %s already registered but fingerprint validation error: %w", params.MacAddr, err)
-		}
-		if !isValid {
-			log.Printf("[ClientRegister.handleMacCollision] CRITICAL: Fingerprint mismatch for MAC %s on device %d", params.MacAddr, existingDevID)
-			// SECURITY: This MAC is already claimed by another device with different fingerprint
-			// This could be:
-			// 1. MAC address reuse by router (different physical device)
-			// 2. Potential security attack (MAC spoofing)
-			// 3. Screen rotation issue (should be fixed by normalization, but log for monitoring)
-			log.Printf("[ClientRegister.handleMacCollision] Refusing to create duplicate device - MAC %s belongs to device %d", params.MacAddr, existingDevID)
-			return nil, false, true, fmt.Errorf("MAC address %s is already registered to a different device", params.MacAddr)
-		}
-		log.Printf("[ClientRegister.handleMacCollision] Fingerprint validated, reusing device %d", existingDevID)
-	} else {
-		// No fingerprint data - check if device has stored fingerprints
-		storedFPs, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, existingDev.ID())
-		if err == nil && len(storedFPs) > 0 {
-			// Device has fingerprints but we can't validate - reject for security
-			log.Printf("[ClientRegister.handleMacCollision] Device %d has fingerprints but no data to validate", existingDevID)
-			// SECURITY: Cannot create new device - MAC already claimed
-			return nil, false, true, fmt.Errorf("MAC %s already registered but cannot validate identity", params.MacAddr)
-		}
-		// No stored fingerprints — check active session guard before accepting
-		if reg.deviceHasActiveSession(existingDev.ID()) {
-			log.Printf("[ClientRegister.handleMacCollision] SECURITY: Rejecting MAC collision reuse for device %d — device has active session but no fingerprints (possible MAC spoof)", existingDevID)
-			return nil, false, true, fmt.Errorf("MAC address %s is already in use by an active device", params.MacAddr)
-		}
-		log.Printf("[ClientRegister.handleMacCollision] No fingerprints to validate, reusing device %d (backward compatibility)", existingDevID)
-	}
-
-	clnt := reg.wrapDevice(existingDev)
-
-	// Update network details if changed
-	if existingDev.Ipv4Addr() != params.Ipv4Addr || existingDev.Ipv6Addr() != params.Ipv6Addr || existingDev.Hostname() != params.Hostname {
-		err = reg.UpdateDevice(ctx, clnt, params.MacAddr, params.Ipv4Addr, params.Ipv6Addr, params.Hostname)
-		if err != nil {
-			log.Printf("[ClientRegister.handleMacCollision] ERROR: Failed to update device: %v", err)
-			return nil, false, false, err
-		}
-	}
-
-	// Add fingerprint if we have data (this device may have been created without fingerprints)
-	if hasFingerprintData && fpHash != "" {
-		reg.addFingerprint(ctx, existingDev.ID(), params, browserInfo, fpHash)
-	}
-
-	reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
-	return clnt, true, true, nil
+	// Return handled=false so caller falls through to create a new device
+	return nil, false, false, nil
 }
 
-// checkMergeDecision evaluates whether clnt and existingDev should be merged,
-// using the same fingerprint.ShouldMergeDevices logic as the background merge job.
-// The authenticated device (clnt) is always the target if merge is approved.
-func (reg *ClientRegister) checkMergeDecision(ctx context.Context, clnt sdkapi.IClientDevice, existingDev *models.Device) fingerprint.MergeDecision {
-	// Load fingerprints for both devices
-	clntFPs := reg.loadStoredFingerprints(ctx, clnt.ID())
-	existingFPs := reg.loadStoredFingerprints(ctx, existingDev.ID())
-
-	decision := fingerprint.ShouldMergeDevices(
-		fingerprint.MergeCandidate{
-			DeviceID:     clnt.ID(),
-			Fingerprints: clntFPs,
-			LastActivity: time.Now(), // Current device is active — bias as target
-			CurrentMAC:   clnt.MacAddr(),
-			CurrentIP:    clnt.IpAddr(),
-			Hostname:     clnt.Hostname(),
-		},
-		fingerprint.MergeCandidate{
-			DeviceID:     existingDev.ID(),
-			Fingerprints: existingFPs,
-			LastActivity: time.Time{}, // Zero — ensures clnt is always the target
-			CurrentMAC:   existingDev.MacAddr(),
-			CurrentIP:    existingDev.IpAddr(),
-			Hostname:     existingDev.Hostname(),
-		},
-	)
-
-	return decision
+// fingerprintsMatch checks if two devices have matching browser fingerprints
+// using ValidateFingerprint (ExactMatch or SmartMatch).
+func (reg *ClientRegister) fingerprintsMatch(ctx context.Context, deviceAID, deviceBID int64) bool {
+	fpsA, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, deviceAID)
+	if err != nil || len(fpsA) == 0 {
+		return false
+	}
+	fpsB, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, deviceBID)
+	if err != nil || len(fpsB) == 0 {
+		return false
+	}
+	for _, a := range fpsA {
+		if a.IsCna {
+			continue
+		}
+		for _, b := range fpsB {
+			if b.IsCna {
+				continue
+			}
+			result := fingerprint.ValidateFingerprint(
+				fingerprint.StoredFingerprint{
+					FingerprintHash:  a.FingerprintHash,
+					OSFamily:         a.OsFamily,
+					ScreenResolution: a.ScreenResolution,
+					Language:         a.Language,
+					Timezone:         a.Timezone,
+					IsCna:            a.IsCna,
+				},
+				b.FingerprintHash,
+				b.OsFamily,
+				b.ScreenResolution,
+				b.Language,
+				b.Timezone,
+				b.IsCna,
+			)
+			if result == fingerprint.ExactMatch || result == fingerprint.SmartMatch {
+				return true
+			}
+		}
+	}
+	return false
 }
 
-// loadStoredFingerprints loads fingerprints for a device and converts to
-// fingerprint.StoredFingerprint for merge comparison.
-func (reg *ClientRegister) loadStoredFingerprints(ctx context.Context, deviceID int64) []fingerprint.StoredFingerprint {
+// isDeviceCNAOnly returns true if the device has no browser fingerprints —
+// either no fingerprints at all or only CNA fingerprints (OS-family-only).
+// Such devices are safe to merge into a cookie-authenticated device because
+// they were likely created as temporary records during captive portal access.
+func (reg *ClientRegister) isDeviceCNAOnly(ctx context.Context, deviceID int64) bool {
 	fps, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, deviceID)
-	if err != nil {
-		log.Printf("[ClientRegister] WARN: Failed to load fingerprints for device %d: %v", deviceID, err)
-		return nil
+	if err != nil || len(fps) == 0 {
+		return true
 	}
-	records := make([]fingerprint.FingerprintRecord, len(fps))
-	for i, fp := range fps {
-		records[i] = fingerprint.FingerprintRecord{
-			FingerprintHash:  fp.FingerprintHash,
-			OsFamily:         fp.OsFamily,
-			ScreenResolution: fp.ScreenResolution,
-			Language:         fp.Language,
-			Timezone:         fp.Timezone,
-			IsCna:            fp.IsCna,
+	for _, fp := range fps {
+		if !fp.IsCna {
+			return false
 		}
 	}
-	return fingerprint.ToStoredFingerprints(records)
+	return true
 }
 
 // deviceHasActiveSession checks if a device has a running session in the sessions manager.

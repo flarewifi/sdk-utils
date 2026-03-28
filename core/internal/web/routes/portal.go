@@ -20,6 +20,7 @@ func PortalRoutes(g *api.CoreGlobals) {
 	pendingPurchaseMw := middlewares.PendingPurchase(g.CoreAPI, g.Models)
 	ensureDeviceMw := middlewares.EnsureDeviceRegistered(g.CoreAPI)
 
+	deviceDiagCtrl := controllers.DeviceDiagCtrl(g)
 	portalSseCtrl := controllers.PortalSseHandler(g)
 	portalRootCtrl := controllers.PortalRootCtrl(g)
 	portalRedirectCtrl := controllers.PortalRedirectCtrl(g)
@@ -30,6 +31,9 @@ func PortalRoutes(g *api.CoreGlobals) {
 	// Root route renders a simple HTML page with inline JavaScript
 	// that redirects to http://<lan-ip>/portal/redirect
 	rootR.HandleFunc("/", portalRootCtrl).Methods("GET").Name("portal:root")
+
+	// Device diagnostics page - shows fingerprints, MACs, device fields
+	rootR.HandleFunc("/device", deviceDiagCtrl).Methods("GET").Name("device:diag")
 
 	portalR.Group("/", func(regR sdkapi.IHttpRouterInstance) {
 		regR.Use(redirectToLanIpMw)

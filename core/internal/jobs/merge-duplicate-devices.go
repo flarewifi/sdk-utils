@@ -15,11 +15,6 @@ import (
 // waits for the first to finish rather than running in parallel).
 var mergeQueue = jobque.NewJobQueue[struct{}](1)
 
-// Type aliases for convenience — merge decision types live in the fingerprint package
-// so they can be reused by the registration flow (UpdateDevice inline merge).
-type MergeCandidate = fingerprint.MergeCandidate
-type MergeDecision = fingerprint.MergeDecision
-
 // StartDeviceMergeScheduler starts a background goroutine that merges
 // duplicate devices. Devices are identified by shared MAC addresses
 // and merged only if their fingerprints match (same physical device).
@@ -126,38 +121,42 @@ func runMerge(g *api.CoreGlobals) {
 		duration.Round(time.Millisecond), mergeCount)
 }
 
-// mergeMatchingDevices compares fingerprints for a group of devices sharing a MAC address
-// and merges those with matching fingerprints.
-// Uses fingerprint.ShouldMergeDevices for the merge decision (shared with UpdateDevice inline merge).
+// mergeMatchingDevices compares full browser fingerprints for a group of devices
+// sharing a MAC address and merges those that match.
+// Only considers non-CNA (browser) fingerprints — CNA fingerprints (OS-only) are
+// too weak to reliably identify a device for a destructive merge.
 func mergeMatchingDevices(ctx context.Context, g *api.CoreGlobals, deviceIDs []int64) int {
 	mergeCount := 0
 	mergedSources := make(map[int64]bool)
 
-	// Load fingerprints for all devices and convert to StoredFingerprint for merge comparison.
-	// If loading fails for a device, mark it with a sentinel so we can skip pairs
-	// involving it rather than treating it as fingerprint-less (which would cause
-	// wrong merge decisions).
-	deviceFPs := make(map[int64][]fingerprint.StoredFingerprint)
-	fpLoadFailed := make(map[int64]bool)
+	// Load browser fingerprints for all devices (skip CNA-only fingerprints).
+	type deviceFPData struct {
+		fps    []fingerprint.StoredFingerprint
+		failed bool
+	}
+	deviceFPs := make(map[int64]deviceFPData)
 	for _, devID := range deviceIDs {
 		fps, err := g.Models.DeviceFingerprint().FindByDeviceID(ctx, devID)
 		if err != nil {
-			log.Printf("[DeviceMerge] WARN: Failed to load fingerprints for device %d, skipping pairs involving it: %v", devID, err)
-			fpLoadFailed[devID] = true
+			log.Printf("[DeviceMerge] WARN: Failed to load fingerprints for device %d: %v", devID, err)
+			deviceFPs[devID] = deviceFPData{failed: true}
 			continue
 		}
-		records := make([]fingerprint.FingerprintRecord, len(fps))
-		for i, fp := range fps {
-			records[i] = fingerprint.FingerprintRecord{
-				FingerprintHash:  fp.FingerprintHash,
-				OsFamily:         fp.OsFamily,
-				ScreenResolution: fp.ScreenResolution,
-				Language:         fp.Language,
-				Timezone:         fp.Timezone,
-				IsCna:            fp.IsCna,
+		// Filter to browser-only fingerprints
+		var browserFPs []fingerprint.StoredFingerprint
+		for _, fp := range fps {
+			if !fp.IsCna {
+				browserFPs = append(browserFPs, fingerprint.StoredFingerprint{
+					FingerprintHash:  fp.FingerprintHash,
+					OSFamily:         fp.OsFamily,
+					ScreenResolution: fp.ScreenResolution,
+					Language:         fp.Language,
+					Timezone:         fp.Timezone,
+					IsCna:            false,
+				})
 			}
 		}
-		deviceFPs[devID] = fingerprint.ToStoredFingerprints(records)
+		deviceFPs[devID] = deviceFPData{fps: browserFPs}
 	}
 
 	// Get most recent activity for each device (for determining which to keep)
@@ -165,49 +164,27 @@ func mergeMatchingDevices(ctx context.Context, g *api.CoreGlobals, deviceIDs []i
 	for _, devID := range deviceIDs {
 		activity, err := g.Database.Queries.GetMostRecentSessionTimeForDevice(ctx, devID)
 		if err == nil && activity != nil {
-			// Parse the activity time - sqlc returns interface{} for MAX() aggregates
 			if t, ok := activity.(time.Time); ok {
 				deviceActivity[devID] = t
 			} else if s, ok := activity.(string); ok {
-				// SQLite may return time as string in several formats
 				deviceActivity[devID] = parseSQLiteTime(s)
 			} else {
 				deviceActivity[devID] = time.Time{}
 			}
 		} else {
-			deviceActivity[devID] = time.Time{} // Zero time if no sessions
+			deviceActivity[devID] = time.Time{}
 		}
 	}
 
-	// Load current network identity (MAC, IP, hostname) for each device.
-	// Used to enforce MAC+IP matching when the only fingerprint signal is CNA.
-	// A load failure is non-fatal: the candidate will have empty fields, which
-	// causes cnaMACIPMatch to return false (safe fallback — no merge).
-	deviceNetID := make(map[int64]struct {
-		mac      string
-		ip       string
-		hostname string
-	})
-	for _, devID := range deviceIDs {
-		dev, err := g.Models.Device().Find(ctx, devID)
-		if err != nil {
-			log.Printf("[DeviceMerge] WARN: Failed to load network identity for device %d: %v", devID, err)
-			// Leave zero-value entry — cnaMACIPMatch will reject this pair safely.
-			deviceNetID[devID] = struct{ mac, ip, hostname string }{}
-			continue
-		}
-		deviceNetID[devID] = struct{ mac, ip, hostname string }{
-			mac:      dev.MacAddr(),
-			ip:       dev.IpAddr(),
-			hostname: dev.Hostname(),
-		}
-	}
-
-	// Compare pairs
+	// Compare pairs — only merge when both have browser fingerprints that match
 	for i := 0; i < len(deviceIDs); i++ {
 		devA := deviceIDs[i]
 		if mergedSources[devA] {
 			continue
+		}
+		dataA := deviceFPs[devA]
+		if dataA.failed || len(dataA.fps) == 0 {
+			continue // No browser fingerprints — skip
 		}
 
 		for j := i + 1; j < len(deviceIDs); j++ {
@@ -215,55 +192,49 @@ func mergeMatchingDevices(ctx context.Context, g *api.CoreGlobals, deviceIDs []i
 			if mergedSources[devB] {
 				continue
 			}
+			dataB := deviceFPs[devB]
+			if dataB.failed || len(dataB.fps) == 0 {
+				continue // No browser fingerprints — skip
+			}
 
-			// Skip pairs where fingerprint loading failed for either device —
-			// we cannot safely determine whether they match.
-			if fpLoadFailed[devA] || fpLoadFailed[devB] {
-				log.Printf("[DeviceMerge] Skipping pair (%d, %d): fingerprint load failed for one or both devices", devA, devB)
+			// Check if any browser fingerprint pair matches
+			if !browserFingerprintsMatch(dataA.fps, dataB.fps) {
 				continue
 			}
 
-			netA := deviceNetID[devA]
-			netB := deviceNetID[devB]
+			// Determine target (keep device with most recent activity)
+			targetID, sourceID := devA, devB
+			if deviceActivity[devB].After(deviceActivity[devA]) {
+				targetID, sourceID = devB, devA
+			}
 
-			// Determine if we should merge and which device to keep
-			decision := fingerprint.ShouldMergeDevices(
-				MergeCandidate{
-					DeviceID:     devA,
-					Fingerprints: deviceFPs[devA],
-					LastActivity: deviceActivity[devA],
-					CurrentMAC:   netA.mac,
-					CurrentIP:    netA.ip,
-					Hostname:     netA.hostname,
-				},
-				MergeCandidate{
-					DeviceID:     devB,
-					Fingerprints: deviceFPs[devB],
-					LastActivity: deviceActivity[devB],
-					CurrentMAC:   netB.mac,
-					CurrentIP:    netB.ip,
-					Hostname:     netB.hostname,
-				},
-			)
+			log.Printf("[DeviceMerge] Merging device %d into %d (browser fingerprint match)", sourceID, targetID)
 
-			if !decision.ShouldMerge {
-				log.Printf("[DeviceMerge] DEBUG: Not merging devices %d and %d (reason: fingerprints don't match or other criteria)", devA, devB)
+			if err := g.ClientMgr.MergeClientDevices(ctx, targetID, sourceID); err != nil {
+				log.Printf("[DeviceMerge] ERROR: Failed to merge device %d into %d: %v", sourceID, targetID, err)
 				continue
 			}
 
-			log.Printf("[DeviceMerge] Merging device %d into %d (%s)", decision.SourceID, decision.TargetID, decision.Reason)
-
-			if err := g.ClientMgr.MergeClientDevices(ctx, decision.TargetID, decision.SourceID); err != nil {
-				log.Printf("[DeviceMerge] ERROR: Failed to merge device %d into %d: %v", decision.SourceID, decision.TargetID, err)
-				continue
-			}
-
-			mergedSources[decision.SourceID] = true
+			mergedSources[sourceID] = true
 			mergeCount++
 		}
 	}
 
 	return mergeCount
+}
+
+// browserFingerprintsMatch checks if two sets of browser fingerprints have a match
+// (ExactMatch or SmartMatch via ValidateFingerprint).
+func browserFingerprintsMatch(fpsA, fpsB []fingerprint.StoredFingerprint) bool {
+	for _, a := range fpsA {
+		for _, b := range fpsB {
+			result := fingerprint.ValidateFingerprint(a, b.FingerprintHash, b.OSFamily, b.ScreenResolution, b.Language, b.Timezone, b.IsCna)
+			if result == fingerprint.ExactMatch || result == fingerprint.SmartMatch {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // parseSQLiteTime attempts to parse a timestamp string returned by SQLite,
