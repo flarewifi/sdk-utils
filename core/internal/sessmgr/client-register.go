@@ -407,30 +407,7 @@ STEP_3_CREATE_NEW:
 		return clnt, shouldSetCookie, nil
 	}
 
-	// Step 3.5: Try to find device by exact fingerprint hash.
-	// This catches devices that reconnected with a brand-new random MAC and lost
-	// their cookie. ExactMatch (identical hash) requires same User-Agent + screen +
-	// language + timezone, which is very unlikely to collide across different devices.
-	if hasFingerprintData && fpHash != "" {
-		fpDeviceID, fpErr := reg.mdls.DeviceFingerprint().FindDeviceByHash(ctx, fpHash)
-		if fpErr == nil && fpDeviceID > 0 {
-			fpDev, findErr := reg.mdls.Device().Find(ctx, fpDeviceID)
-			if findErr == nil {
-				log.Printf("[ClientRegister] Found device %d by fingerprint hash, reusing", fpDeviceID)
-				clnt = reg.wrapDevice(fpDev)
-
-				// Update network details
-				if err := reg.UpdateDevice(ctx, clnt, params.MacAddr, params.Ipv4Addr, params.Ipv6Addr, params.Hostname); err != nil {
-					return nil, false, err
-				}
-
-				reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
-				return clnt, true, nil
-			}
-		}
-	}
-
-	// No match by cookie, MAC, or fingerprint - create new device
+	// No match by cookie or MAC - create new device
 	if errors.Is(err, sql.ErrNoRows) || dev == nil {
 		dev, err = reg.mdls.Device().Create(ctx, models.CreateDeviceParams{
 			MacAddress:  params.MacAddr,

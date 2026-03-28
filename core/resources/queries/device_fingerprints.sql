@@ -58,16 +58,6 @@ WHERE device_id = @device_id
     AND fingerprint_hash = @fingerprint_hash
 LIMIT 1;
 
--- name: FindDeviceByFingerprintHash :one
--- Finds a device ID by exact fingerprint hash match (across all devices).
--- Used to identify a returning device when cookie and MAC lookup both fail.
--- Returns the most recently seen match.
-SELECT device_id
-FROM device_fingerprints
-WHERE fingerprint_hash = @fingerprint_hash AND is_cna = FALSE
-ORDER BY last_seen_at DESC
-LIMIT 1;
-
 -- name: UpdateFingerprintLastSeen :exec
 UPDATE device_fingerprints
 SET last_seen_at = datetime('now')

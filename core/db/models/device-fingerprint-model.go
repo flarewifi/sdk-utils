@@ -81,12 +81,6 @@ func (self *DeviceFingerprintModel) CheckExactMatch(ctx context.Context, deviceI
 	return fp, nil
 }
 
-// FindDeviceByHash finds a device ID by exact fingerprint hash match across all devices.
-// Only matches non-CNA fingerprints. Returns (deviceID, error).
-func (self *DeviceFingerprintModel) FindDeviceByHash(ctx context.Context, hash string) (int64, error) {
-	return self.db.Queries.FindDeviceByFingerprintHash(ctx, hash)
-}
-
 // UpdateLastSeen updates the last_seen_at timestamp for a fingerprint
 func (self *DeviceFingerprintModel) UpdateLastSeen(ctx context.Context, id int64) error {
 	return self.db.Queries.UpdateFingerprintLastSeen(ctx, id)
