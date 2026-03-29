@@ -64,30 +64,10 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 	if clnt.MacAddr() != newMac {
 		existingDevID, err := reg.mdls.DeviceMac().FindDeviceByAnyMac(ctx, newMac)
 		if err == nil && existingDevID > 0 && existingDevID != clnt.ID() {
-			if reg.isDeviceCNAOnly(ctx, existingDevID) {
-				// Conflicting device only has CNA fingerprints — it's likely a
-				// temporary record created when this same physical device connected
-				// via captive portal with a new random MAC. Safe to merge into the
-				// cookie-authenticated device.
-				log.Printf("[ClientRegister.UpdateDevice] Merging CNA-only device %d into cookie-authenticated device %d (MAC %s)",
-					existingDevID, clnt.ID(), newMac)
-				existingDev, findErr := reg.mdls.Device().Find(ctx, existingDevID)
-				if findErr == nil {
-					if mergeErr := reg.mdls.Device().MergeDevices(ctx, clnt.ID(), existingDevID); mergeErr != nil {
-						log.Printf("[ClientRegister.UpdateDevice] WARN: Failed to merge CNA device: %v", mergeErr)
-					} else {
-						reg.sessionsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
-							Target:           clnt,
-							SourceDeviceID:   existingDev.ID(),
-							SourceDeviceUUID: existingDev.UUID(),
-						})
-					}
-				}
-			} else if reg.fingerprintsMatch(ctx, clnt.ID(), existingDevID) {
-				// Conflicting device has browser fingerprints that match the
-				// cookie-authenticated device. Cookie + MAC + fingerprint match
-				// together give strong confidence this is the same physical device.
-				log.Printf("[ClientRegister.UpdateDevice] Merging fingerprint-matched device %d into cookie-authenticated device %d (MAC %s)",
+			if reg.fingerprintsExactMatch(ctx, clnt.ID(), existingDevID) {
+				// Cookie + MAC + ExactMatch fingerprint — three independent signals
+				// confirm this is the same physical device. Safe to merge.
+				log.Printf("[ClientRegister.UpdateDevice] Merging device %d into cookie-authenticated device %d (MAC %s, ExactMatch fingerprint)",
 					existingDevID, clnt.ID(), newMac)
 				existingDev, findErr := reg.mdls.Device().Find(ctx, existingDevID)
 				if findErr == nil {
@@ -99,12 +79,13 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 							SourceDeviceID:   existingDev.ID(),
 							SourceDeviceUUID: existingDev.UUID(),
 						})
+						reg.logMerge(ctx, clnt.ID(), existingDevID, existingDev.UUID(), newMac, "Device merged (cookie + MAC collision + ExactMatch fingerprint)")
 					}
 				}
 			} else {
-				// Conflicting device has browser fingerprints that don't match —
-				// different device. Free the MAC so our cookie-authenticated device can claim it.
-				log.Printf("[ClientRegister.UpdateDevice] MAC collision: freeing MAC %s from device %d (fingerprints don't match device %d)",
+				// No ExactMatch — free the MAC so our cookie-authenticated device can claim it.
+				// The conflicting device keeps its other data intact.
+				log.Printf("[ClientRegister.UpdateDevice] MAC collision: freeing MAC %s from device %d (no ExactMatch with device %d)",
 					newMac, existingDevID, clnt.ID())
 				if err := reg.mdls.DeviceMac().UnsetCurrentMac(ctx, existingDevID, newMac); err != nil {
 					log.Printf("[ClientRegister.UpdateDevice] WARN: Failed to unset current MAC: %v", err)
@@ -576,9 +557,11 @@ func (reg *ClientRegister) handleMacCollision(ctx context.Context, params Client
 	return nil, false, false, nil
 }
 
-// fingerprintsMatch checks if two devices have matching browser fingerprints
-// using ValidateFingerprint (ExactMatch or SmartMatch).
-func (reg *ClientRegister) fingerprintsMatch(ctx context.Context, deviceAID, deviceBID int64) bool {
+// fingerprintsExactMatch checks if two devices share at least one browser
+// fingerprint with an ExactMatch (identical hash). Only ExactMatch is accepted
+// because merging is destructive — SmartMatch (OS+screen+lang) is too loose
+// and could incorrectly merge two different devices of the same model/locale.
+func (reg *ClientRegister) fingerprintsExactMatch(ctx context.Context, deviceAID, deviceBID int64) bool {
 	fpsA, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, deviceAID)
 	if err != nil || len(fpsA) == 0 {
 		return false
@@ -611,29 +594,12 @@ func (reg *ClientRegister) fingerprintsMatch(ctx context.Context, deviceAID, dev
 				b.Timezone,
 				b.IsCna,
 			)
-			if result == fingerprint.ExactMatch || result == fingerprint.SmartMatch {
+			if result == fingerprint.ExactMatch {
 				return true
 			}
 		}
 	}
 	return false
-}
-
-// isDeviceCNAOnly returns true if the device has no browser fingerprints —
-// either no fingerprints at all or only CNA fingerprints (OS-family-only).
-// Such devices are safe to merge into a cookie-authenticated device because
-// they were likely created as temporary records during captive portal access.
-func (reg *ClientRegister) isDeviceCNAOnly(ctx context.Context, deviceID int64) bool {
-	fps, err := reg.mdls.DeviceFingerprint().FindByDeviceID(ctx, deviceID)
-	if err != nil || len(fps) == 0 {
-		return true
-	}
-	for _, fp := range fps {
-		if !fp.IsCna {
-			return false
-		}
-	}
-	return true
 }
 
 // deviceHasActiveSession checks if a device has a running session in the sessions manager.
@@ -692,4 +658,18 @@ func (reg *ClientRegister) addFingerprint(ctx context.Context, deviceID int64, p
 	})
 
 	return err
+}
+
+// logMerge records a device merge event to the device_logs table for both target and source devices.
+func (reg *ClientRegister) logMerge(ctx context.Context, targetDeviceID, sourceDeviceID int64, sourceUUID, mac, reason string) {
+	metadata := map[string]interface{}{
+		"source_device_id":   sourceDeviceID,
+		"source_device_uuid": sourceUUID,
+		"target_device_id":   targetDeviceID,
+		"trigger_mac":        mac,
+		"reason":             reason,
+	}
+	if err := reg.mdls.DeviceLog().Create(ctx, targetDeviceID, "Device merged (absorbed source device)", metadata); err != nil {
+		log.Printf("[ClientRegister.logMerge] WARN: Failed to log merge for target device %d: %v", targetDeviceID, err)
+	}
 }

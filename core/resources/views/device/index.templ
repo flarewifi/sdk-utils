@@ -3,10 +3,12 @@ package device
 import (
 	"core/db/queries"
 	"fmt"
+	sdkapi "sdk/api"
 	"strconv"
 )
 
 type DeviceDiagParams struct {
+	Api          sdkapi.IPluginApi
 	DeviceID     int64
 	UUID         string
 	CookieToken  string
@@ -19,244 +21,294 @@ type DeviceDiagParams struct {
 	UpdatedAt    string
 	Macs         []queries.DeviceMac
 	Fingerprints []queries.DeviceFingerprint
+	RecentLogs   []queries.DeviceLog
+	TotalLogs    int64
 }
 
 templ DeviceDiagPage(params DeviceDiagParams) {
-	<!DOCTYPE html>
-	<html lang="en">
-		<head>
-			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Device Diagnostics</title>
-			<style>
-				* { margin: 0; padding: 0; box-sizing: border-box; }
-				body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: #f5f5f5; color: #333; padding: 16px; font-size: 14px; }
-				h1 { font-size: 18px; margin-bottom: 16px; }
-				h2 { font-size: 15px; margin-bottom: 8px; background: #333; color: #fff; padding: 8px 12px; border-radius: 4px 4px 0 0; }
-				.card { background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 16px; overflow: hidden; }
-				.card-body { padding: 12px; }
-				table { width: 100%; border-collapse: collapse; }
-				th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 13px; }
-				th { color: #666; font-weight: 600; white-space: nowrap; width: 140px; }
-				td { word-break: break-all; }
-				.badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
-				.badge-green { background: #d4edda; color: #155724; }
-				.badge-gray { background: #e9ecef; color: #495057; }
-				.badge-blue { background: #cce5ff; color: #004085; }
-				.mono { font-family: monospace; font-size: 12px; }
-				.text-muted { color: #999; }
-				.scroll-x { overflow-x: auto; }
-			</style>
-		</head>
-		<body>
-			<h1>Device Diagnostics</h1>
-			<!-- Device Info -->
-			<div class="card">
-				<h2>Device</h2>
-				<div class="card-body">
-					<table>
+	<div class="container-fluid">
+		<div class="d-flex align-items-center justify-content-between mb-4">
+			<h1 class="h2 mb-0">Device Diagnostics</h1>
+			<div class="d-flex gap-2">
+				<a href={ templ.SafeURL(params.Api.Http().Helpers().UrlForRoute("admin:devices:logs") + fmt.Sprintf("?id=%d", params.DeviceID)) } class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2">
+					<i class="bi bi-journal-text"></i>
+					View Logs
+				</a>
+				<form method="POST" action={ templ.SafeURL(params.Api.Http().Helpers().UrlForRoute("admin:devices:clear-history")) } onsubmit="return confirm('Are you sure you want to clear the fingerprint and MAC address history for this device?');">
+					<input type="hidden" name="id" value={ strconv.FormatInt(params.DeviceID, 10) }/>
+					<button type="submit" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-2">
+						<i class="bi bi-trash"></i>
+						Clear History
+					</button>
+				</form>
+			</div>
+		</div>
+		<!-- Device Info -->
+		<div class="card border shadow-sm rounded-3 mb-4">
+			<div class="card-header bg-dark text-white py-2 px-3">
+				<span class="fw-semibold" style="font-size: 0.9rem;">Device</span>
+			</div>
+			<div class="card-body p-0">
+				<table class="table table-sm mb-0">
+					<tbody>
 						<tr>
-							<th>ID</th>
+							<th class="text-body-secondary ps-3" style="width: 140px;">ID</th>
 							<td>{ strconv.FormatInt(params.DeviceID, 10) }</td>
 						</tr>
 						<tr>
-							<th>UUID</th>
-							<td class="mono">{ params.UUID }</td>
+							<th class="text-body-secondary ps-3">UUID</th>
+							<td class="font-monospace" style="font-size: 0.85rem;">{ params.UUID }</td>
 						</tr>
 						<tr>
-							<th>Cookie Token</th>
-							<td class="mono">
+							<th class="text-body-secondary ps-3">Cookie Token</th>
+							<td class="font-monospace" style="font-size: 0.85rem;">
 								if params.CookieToken != "" {
 									{ params.CookieToken[:8] + "..." }
 								} else {
-									<span class="text-muted">(empty)</span>
+									<span class="text-body-tertiary">(empty)</span>
 								}
 							</td>
 						</tr>
 						<tr>
-							<th>IPv4</th>
+							<th class="text-body-secondary ps-3">IPv4</th>
 							<td>
 								if params.Ipv4Addr != "" {
 									{ params.Ipv4Addr }
 								} else {
-									<span class="text-muted">(none)</span>
+									<span class="text-body-tertiary">(none)</span>
 								}
 							</td>
 						</tr>
 						<tr>
-							<th>IPv6</th>
-							<td class="mono">
+							<th class="text-body-secondary ps-3">IPv6</th>
+							<td class="font-monospace" style="font-size: 0.85rem;">
 								if params.Ipv6Addr != "" {
 									{ params.Ipv6Addr }
 								} else {
-									<span class="text-muted">(none)</span>
+									<span class="text-body-tertiary">(none)</span>
 								}
 							</td>
 						</tr>
 						<tr>
-							<th>Current MAC</th>
-							<td class="mono">{ params.MacAddr }</td>
+							<th class="text-body-secondary ps-3">Current MAC</th>
+							<td class="font-monospace" style="font-size: 0.85rem;">{ params.MacAddr }</td>
 						</tr>
 						<tr>
-							<th>Hostname</th>
+							<th class="text-body-secondary ps-3">Hostname</th>
 							<td>
 								if params.Hostname != "" {
 									{ params.Hostname }
 								} else {
-									<span class="text-muted">(empty)</span>
+									<span class="text-body-tertiary">(empty)</span>
 								}
 							</td>
 						</tr>
 						<tr>
-							<th>Status</th>
+							<th class="text-body-secondary ps-3">Status</th>
 							<td>
 								if params.Status == 1 {
-									<span class="badge badge-green">Connected</span>
+									<span class="badge bg-success">Connected</span>
 								} else {
-									<span class="badge badge-gray">Disconnected</span>
+									<span class="badge bg-secondary">Disconnected</span>
 								}
 							</td>
 						</tr>
 						<tr>
-							<th>Created</th>
+							<th class="text-body-secondary ps-3">Created</th>
 							<td>{ params.CreatedAt }</td>
 						</tr>
 						<tr>
-							<th>Updated</th>
+							<th class="text-body-secondary ps-3">Updated</th>
 							<td>{ params.UpdatedAt }</td>
 						</tr>
-					</table>
-				</div>
+					</tbody>
+				</table>
 			</div>
-			<!-- MAC Addresses -->
-			<div class="card">
-				<h2>{ fmt.Sprintf("MAC Addresses (%d)", len(params.Macs)) }</h2>
-				<div class="card-body scroll-x">
-					if len(params.Macs) == 0 {
-						<p class="text-muted">No MAC address records</p>
-					} else {
-						<table>
-							<tr>
-								<th>MAC Address</th>
-								<th>Current</th>
-								<th>First Seen</th>
-								<th>Last Seen</th>
-							</tr>
-							for _, mac := range params.Macs {
-								<tr>
-									<td class="mono">{ mac.MacAddress }</td>
-									<td>
-										if mac.IsCurrent {
-											<span class="badge badge-green">Yes</span>
-										} else {
-											<span class="badge badge-gray">No</span>
-										}
-									</td>
-									<td>
-										if mac.FirstSeenAt.Valid {
-											{ mac.FirstSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
-										}
-									</td>
-									<td>
-										if mac.LastSeenAt.Valid {
-											{ mac.LastSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
-										}
-									</td>
-								</tr>
-							}
-						</table>
-					}
-				</div>
+		</div>
+		<!-- Recent Logs -->
+		<div class="card border shadow-sm rounded-3 mb-4">
+			<div class="card-header bg-dark text-white py-2 px-3 d-flex justify-content-between align-items-center">
+				<span class="fw-semibold" style="font-size: 0.9rem;">{ fmt.Sprintf("Recent Logs (%d total)", params.TotalLogs) }</span>
+				<a href={ templ.SafeURL(params.Api.Http().Helpers().UrlForRoute("admin:devices:logs") + fmt.Sprintf("?id=%d", params.DeviceID)) } class="btn btn-outline-light btn-sm" style="font-size: 0.75rem;">View All</a>
 			</div>
-			<!-- Fingerprints -->
-			<div class="card">
-				<h2>{ fmt.Sprintf("Fingerprints (%d)", len(params.Fingerprints)) }</h2>
-				<div class="card-body scroll-x">
-					if len(params.Fingerprints) == 0 {
-						<p class="text-muted">No fingerprint records</p>
-					} else {
-						for i, fp := range params.Fingerprints {
-							if i > 0 {
-								<hr style="margin: 12px 0; border-color: #eee;"/>
-							}
-							<table>
-								<tr>
-									<th>Hash</th>
-									<td class="mono">{ fp.FingerprintHash[:16] + "..." }</td>
-								</tr>
-								<tr>
-									<th>OS Family</th>
-									<td>{ fp.OsFamily }</td>
-								</tr>
-								<tr>
-									<th>Browser</th>
-									<td>{ fp.BrowserName }</td>
-								</tr>
-								<tr>
-									<th>Screen</th>
-									<td>
-										if fp.ScreenResolution != "" {
-											{ fp.ScreenResolution }
-										} else {
-											<span class="text-muted">(empty)</span>
-										}
-									</td>
-								</tr>
-								<tr>
-									<th>Language</th>
-									<td>
-										if fp.Language != "" {
-											{ fp.Language }
-										} else {
-											<span class="text-muted">(empty)</span>
-										}
-									</td>
-								</tr>
-								<tr>
-									<th>Timezone</th>
-									<td>
-										if fp.Timezone != "" {
-											{ fp.Timezone }
-										} else {
-											<span class="text-muted">(empty)</span>
-										}
-									</td>
-								</tr>
-								<tr>
-									<th>CNA</th>
-									<td>
-										if fp.IsCna {
-											<span class="badge badge-blue">Yes</span>
-										} else {
-											<span class="badge badge-gray">No</span>
-										}
-									</td>
-								</tr>
-								<tr>
-									<th>User Agent</th>
-									<td style="font-size: 11px;">{ fp.UserAgent }</td>
-								</tr>
-								<tr>
-									<th>Created</th>
-									<td>
-										if fp.CreatedAt.Valid {
-											{ fp.CreatedAt.Time.UTC().Format("2006-01-02 15:04:05") }
-										}
-									</td>
-								</tr>
-								<tr>
-									<th>Last Seen</th>
-									<td>
-										if fp.LastSeenAt.Valid {
-											{ fp.LastSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
-										}
-									</td>
-								</tr>
-							</table>
+			<div class="card-body p-0">
+				if len(params.RecentLogs) == 0 {
+					<p class="text-body-tertiary p-3 mb-0">No log entries</p>
+				} else {
+					<div class="list-group list-group-flush">
+						for i, entry := range params.RecentLogs {
+							<div class="list-group-item px-3 py-2">
+								<div class="d-flex align-items-center gap-2">
+									if i == 0 {
+										<span class="badge bg-primary" style="font-size: 0.65rem;">Latest</span>
+									}
+									<span class="fw-semibold" style="font-size: 0.9rem;">{ entry.Message }</span>
+								</div>
+								<small class="text-body-tertiary">{ entry.CreatedAt.UTC().Format("2006-01-02 15:04:05 UTC") }</small>
+								if meta := parseMetadata(entry.Metadata); meta != nil && len(meta) > 0 {
+									<table class="table table-sm mt-1 mb-0" style="font-size: 0.8rem;">
+										<tbody>
+											for key, val := range meta {
+												<tr>
+													<th class="text-body-secondary ps-2" style="width: 160px;">{ key }</th>
+													<td class="font-monospace">{ formatValue(val) }</td>
+												</tr>
+											}
+										</tbody>
+									</table>
+								}
+							</div>
 						}
-					}
-				</div>
+					</div>
+				}
 			</div>
-		</body>
-	</html>
+		</div>
+		<!-- MAC Addresses -->
+		<div class="card border shadow-sm rounded-3 mb-4">
+			<div class="card-header bg-dark text-white py-2 px-3">
+				<span class="fw-semibold" style="font-size: 0.9rem;">{ fmt.Sprintf("MAC Addresses (%d)", len(params.Macs)) }</span>
+			</div>
+			<div class="card-body p-0">
+				if len(params.Macs) == 0 {
+					<p class="text-body-tertiary p-3 mb-0">No MAC address records</p>
+				} else {
+					<div class="table-responsive">
+						<table class="table table-sm mb-0">
+							<thead>
+								<tr>
+									<th class="text-body-secondary ps-3"></th>
+									<th class="text-body-secondary">MAC Address</th>
+									<th class="text-body-secondary">Current</th>
+									<th class="text-body-secondary">First Seen</th>
+									<th class="text-body-secondary">Last Seen</th>
+								</tr>
+							</thead>
+							<tbody>
+								for i, mac := range params.Macs {
+									<tr>
+										<td class="ps-3" style="width: 60px;">
+											if i == 0 {
+												<span class="badge bg-primary" style="font-size: 0.65rem;">Latest</span>
+											}
+										</td>
+										<td class="font-monospace" style="font-size: 0.85rem;">{ mac.MacAddress }</td>
+										<td>
+											if mac.IsCurrent {
+												<span class="badge bg-success">Yes</span>
+											} else {
+												<span class="badge bg-secondary">No</span>
+											}
+										</td>
+										<td>
+											if mac.FirstSeenAt.Valid {
+												{ mac.FirstSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
+											}
+										</td>
+										<td>
+											if mac.LastSeenAt.Valid {
+												{ mac.LastSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
+											}
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</div>
+		</div>
+		<!-- Fingerprints -->
+		<div class="card border shadow-sm rounded-3 mb-4">
+			<div class="card-header bg-dark text-white py-2 px-3">
+				<span class="fw-semibold" style="font-size: 0.9rem;">{ fmt.Sprintf("Fingerprints (%d)", len(params.Fingerprints)) }</span>
+			</div>
+			<div class="card-body p-0">
+				if len(params.Fingerprints) == 0 {
+					<p class="text-body-tertiary p-3 mb-0">No fingerprint records</p>
+				} else {
+					<div class="accordion list-group list-group-flush" id="fp-accordion">
+						for i, fp := range params.Fingerprints {
+							<div class="list-group-item p-0">
+								<div class="accordion-item border-0">
+									<h2 class="accordion-header">
+										<button class={ "accordion-button py-2 px-3", templ.KV("collapsed", i > 0) } type="button" data-bs-toggle="collapse" data-bs-target={ fmt.Sprintf("#fp-collapse-%d", i) } style="font-size: 0.85rem; background: transparent;">
+											<span class="d-flex align-items-center gap-2 flex-wrap">
+												if i == 0 {
+													<span class="badge bg-primary" style="font-size: 0.65rem;">Latest</span>
+												}
+												if fp.IsCna {
+													<span class="badge bg-info">CNA</span>
+												}
+												<span class="fw-semibold">{ fp.OsFamily }</span>
+												if fp.BrowserName != "" {
+													<span class="text-body-secondary">&middot;</span>
+													<span>{ fp.BrowserName }</span>
+												}
+												if fp.ScreenResolution != "" {
+													<span class="text-body-secondary">&middot;</span>
+													<span class="text-body-secondary">{ fp.ScreenResolution }</span>
+												}
+												<span class="text-body-secondary">&middot;</span>
+												<span class="font-monospace text-body-tertiary" style="font-size: 0.75rem;">{ fp.FingerprintHash[:12] + "..." }</span>
+											</span>
+										</button>
+									</h2>
+									<div id={ fmt.Sprintf("fp-collapse-%d", i) } class={ "accordion-collapse collapse", templ.KV("show", i == 0) } data-bs-parent="#fp-accordion">
+										<div class="px-3 pb-3">
+											<div class="row g-2" style="font-size: 0.85rem;">
+												<div class="col-sm-6">
+													<span class="text-body-secondary">Hash: </span>
+													<span class="font-monospace" style="font-size: 0.8rem;">{ fp.FingerprintHash }</span>
+												</div>
+												<div class="col-sm-6">
+													<span class="text-body-secondary">Language: </span>
+													if fp.Language != "" {
+														{ fp.Language }
+													} else {
+														<span class="text-body-tertiary">(empty)</span>
+													}
+												</div>
+												<div class="col-sm-6">
+													<span class="text-body-secondary">Timezone: </span>
+													if fp.Timezone != "" {
+														{ fp.Timezone }
+													} else {
+														<span class="text-body-tertiary">(empty)</span>
+													}
+												</div>
+												<div class="col-sm-6">
+													<span class="text-body-secondary">CNA: </span>
+													if fp.IsCna {
+														<span class="badge bg-info">Yes</span>
+													} else {
+														<span class="badge bg-secondary">No</span>
+													}
+												</div>
+												<div class="col-12">
+													<span class="text-body-secondary">User Agent: </span>
+													<span style="font-size: 0.8rem;">{ fp.UserAgent }</span>
+												</div>
+												<div class="col-sm-6">
+													<span class="text-body-secondary">Created: </span>
+													if fp.CreatedAt.Valid {
+														{ fp.CreatedAt.Time.UTC().Format("2006-01-02 15:04:05") }
+													}
+												</div>
+												<div class="col-sm-6">
+													<span class="text-body-secondary">Last Seen: </span>
+													if fp.LastSeenAt.Valid {
+														{ fp.LastSeenAt.Time.UTC().Format("2006-01-02 15:04:05") }
+													}
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	</div>
 }

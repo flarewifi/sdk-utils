@@ -29,10 +29,10 @@ func TestMergeScenario() {
 	fmt.Printf("NoMatch=0, SmartMatch=1, ExactMatch=2\n")
 	
 	if result == SmartMatch {
-		fmt.Println("✓ SUCCESS: Devices 8 and 34 should merge!")
+		fmt.Println("✓ SmartMatch: Same OS+screen+lang (valid for identification, NOT for merge)")
 	} else if result == ExactMatch {
 		fmt.Println("✓ EXACT MATCH: Devices should merge!")
 	} else {
-		fmt.Println("✗ FAIL: Devices will NOT merge (result=NoMatch)")
+		fmt.Println("✗ NoMatch: Devices will NOT merge")
 	}
 }

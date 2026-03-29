@@ -133,8 +133,10 @@ func FingerprintsMatchKind(fpsA, fpsB []StoredFingerprint) MatchKind {
 						best = MatchCNA
 					}
 				} else if !a.IsCna && !b.IsCna {
-					// Regular browser SmartMatch (OS + screen + language) is acceptable.
-					return MatchBrowser
+					// Browser SmartMatch (OS + screen + language) — too loose for merge.
+					// Two different Android devices of the same model/locale would match.
+					// Only ExactMatch (full hash) is accepted for browser-to-browser merges.
+					log.Printf("[Merge] Skipping browser SmartMatch (too permissive for merge): os=(%s,%s) screen=(%s,%s)", a.OSFamily, b.OSFamily, a.ScreenResolution, b.ScreenResolution)
 				} else {
 					// One CNA, one browser: SmartMatch is OS-only — too weak for a merge.
 					log.Printf("[Merge] Skipping CNA↔browser SmartMatch (too permissive for merge): isCNA=(%v,%v) os=(%s,%s)", a.IsCna, b.IsCna, a.OSFamily, b.OSFamily)

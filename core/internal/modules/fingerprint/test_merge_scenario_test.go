@@ -30,10 +30,11 @@ func TestMergeScenarioDevice8And34(t *testing.T) {
 	}
 }
 
-func TestFingerprintsMatchKind_BrowserSmartMatch_ReturnsMatchBrowser(t *testing.T) {
+func TestFingerprintsMatchKind_BrowserSmartMatch_ReturnsMatchNone(t *testing.T) {
 	// Two devices with same OS+screen+lang+tz but different hashes should
-	// return MatchBrowser — merge job relies on current MAC match as the
-	// primary signal, fingerprint SmartMatch is validation.
+	// return MatchNone — SmartMatch (OS+screen+lang) is too loose for merges
+	// and can incorrectly merge two different Android devices of the same
+	// model/locale. Only ExactMatch (full hash) is accepted for merges.
 	fpsA := []StoredFingerprint{{
 		FingerprintHash:  "b34b4bb609ab1184bfa2a94672a828b900309ccb0e1a9261fb1cde12c6629cd2",
 		OSFamily:         "Android",
@@ -52,8 +53,8 @@ func TestFingerprintsMatchKind_BrowserSmartMatch_ReturnsMatchBrowser(t *testing.
 	}}
 
 	kind := FingerprintsMatchKind(fpsA, fpsB)
-	if kind != MatchBrowser {
-		t.Errorf("Browser SmartMatch should return MatchBrowser, got %d", kind)
+	if kind != MatchNone {
+		t.Errorf("Browser SmartMatch should return MatchNone (too loose for merge), got %d", kind)
 	}
 }
 

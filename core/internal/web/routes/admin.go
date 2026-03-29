@@ -70,6 +70,12 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Post("/search", adminctrl.LogsPostSearch(g)).Name("admin:logs:search")
 	})
 
+	adminR.Group("/devices", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/diag", adminctrl.DeviceDiagCtrl(g)).Name("admin:devices:diag")
+		subrouter.Get("/logs", adminctrl.DeviceLogsCtrl(g)).Name("admin:devices:logs")
+		subrouter.Post("/clear-history", adminctrl.DeviceClearHistoryCtrl(g)).Name("admin:devices:clear-history")
+	})
+
 	AdminPluginRoutes(g)
 
 	adminR.Group("/power", func(subrouter sdkapi.IHttpRouterInstance) {

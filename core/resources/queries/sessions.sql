@@ -396,6 +396,39 @@ AND (
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = @id;
 
+-- name: DeleteConsumedOrExpiredSessions :exec
+-- Deletes sessions where time/data has been fully consumed OR expiration date has passed.
+-- Used by the session cleanup job to remove stale sessions.
+DELETE FROM sessions WHERE
+  -- Consumed: time/data exhausted
+  (
+    (session_type = 'time' AND consumption_secs >= time_secs)
+    OR (session_type = 'data' AND consumption_mb >= data_mbytes)
+    OR (session_type = 'time-or-data' AND (consumption_secs >= time_secs OR consumption_mb >= data_mbytes))
+  )
+  OR
+  -- Expired: passed expiration date
+  (
+    exp_days IS NOT NULL
+    AND started_at IS NOT NULL
+    AND datetime('now') >= datetime(started_at, '+' || exp_days || ' days')
+  );
+
+-- name: CountConsumedOrExpiredSessions :one
+-- Counts sessions where time/data has been fully consumed OR expiration date has passed.
+SELECT COUNT(*) FROM sessions WHERE
+  (
+    (session_type = 'time' AND consumption_secs >= time_secs)
+    OR (session_type = 'data' AND consumption_mb >= data_mbytes)
+    OR (session_type = 'time-or-data' AND (consumption_secs >= time_secs OR consumption_mb >= data_mbytes))
+  )
+  OR
+  (
+    exp_days IS NOT NULL
+    AND started_at IS NOT NULL
+    AND datetime('now') >= datetime(started_at, '+' || exp_days || ' days')
+  );
+
 -- name: GetMostRecentSessionTimeForDevice :one
 -- Gets the most recent session activity time for a device
 -- Used by device merge job to determine which device to keep

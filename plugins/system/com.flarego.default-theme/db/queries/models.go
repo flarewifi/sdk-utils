@@ -42,6 +42,14 @@ type DeviceFingerprint struct {
 	Timezone         string
 }
 
+type DeviceLog struct {
+	ID        int64
+	DeviceID  int64
+	Message   string
+	Metadata  string
+	CreatedAt time.Time
+}
+
 type DeviceMac struct {
 	ID          int64
 	DeviceID    int64

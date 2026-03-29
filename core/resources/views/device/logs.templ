@@ -1,0 +1,70 @@
+package device
+
+import (
+	"core/db/queries"
+	"fmt"
+	sdkapi "sdk/api"
+)
+
+type DeviceLogsParams struct {
+	Api        sdkapi.IPluginApi
+	DeviceID   int64
+	DeviceName string
+	Logs       []queries.DeviceLog
+	TotalCount int64
+	Pagination templ.Component
+}
+
+func deviceLogsTitle(params DeviceLogsParams) string {
+	if params.DeviceName != "" {
+		return fmt.Sprintf("Device Logs (%s)", params.DeviceName)
+	}
+	return fmt.Sprintf("Device Logs (ID: %d)", params.DeviceID)
+}
+
+templ DeviceLogsPage(params DeviceLogsParams) {
+	<div class="container-fluid">
+		<!-- Back link -->
+		<a href={ templ.SafeURL(params.Api.Http().Helpers().UrlForRoute("admin:devices:diag") + fmt.Sprintf("?id=%d", params.DeviceID)) } class="d-inline-flex align-items-center gap-2 text-secondary text-decoration-none mt-3 mb-3" style="font-size: 0.875rem;">
+			<i class="bi bi-arrow-left"></i>
+			Back to Device
+		</a>
+		<div class="d-flex align-items-center justify-content-between mb-4">
+			<h1 class="h2 mb-0">{ deviceLogsTitle(params) }</h1>
+		</div>
+		<div class="card border shadow-sm rounded-3 mb-4">
+			<div class="card-header bg-dark text-white py-2 px-3">
+				<span class="fw-semibold" style="font-size: 0.9rem;">{ fmt.Sprintf("Logs (%d total)", params.TotalCount) }</span>
+			</div>
+			<div class="card-body p-0">
+				if len(params.Logs) == 0 {
+					<p class="text-body-tertiary p-3 mb-0">No log entries</p>
+				} else {
+					<div class="list-group list-group-flush">
+						for _, entry := range params.Logs {
+							<div class="list-group-item px-3 py-2">
+								<div class="fw-semibold" style="font-size: 0.9rem;">{ entry.Message }</div>
+								<small class="text-body-tertiary">{ entry.CreatedAt.UTC().Format("2006-01-02 15:04:05 UTC") }</small>
+								if meta := parseMetadata(entry.Metadata); meta != nil && len(meta) > 0 {
+									<table class="table table-sm mt-2 mb-0" style="font-size: 0.8rem;">
+										<tbody>
+											for key, val := range meta {
+												<tr>
+													<th class="text-body-secondary ps-2" style="width: 160px;">{ key }</th>
+													<td class="font-monospace">{ formatValue(val) }</td>
+												</tr>
+											}
+										</tbody>
+									</table>
+								}
+							</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+		if params.Pagination != nil {
+			@params.Pagination
+		}
+	</div>
+}

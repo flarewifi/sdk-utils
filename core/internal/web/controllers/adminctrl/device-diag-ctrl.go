@@ -1,27 +1,35 @@
-package controllers
+package adminctrl
 
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
+	"core/db/queries"
 	"core/internal/api"
 	deviceview "core/resources/views/device"
-	"core/utils/hostfinder"
+	sdkapi "sdk/api"
 )
 
 func DeviceDiagCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		h, err := hostfinder.GetHostFromRequest(r)
-		if err != nil || h == nil || h.MacAddr == "" {
-			http.Error(w, "Unable to identify device from network", http.StatusBadRequest)
+		deviceIDStr := r.URL.Query().Get("id")
+		if deviceIDStr == "" {
+			http.Error(w, "Missing device id parameter", http.StatusBadRequest)
 			return
 		}
 
-		dev, err := g.Models.Device().FindByMac(ctx, h.MacAddr)
+		deviceID, err := strconv.ParseInt(deviceIDStr, 10, 64)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Device not found for MAC %s", h.MacAddr), http.StatusNotFound)
+			http.Error(w, fmt.Sprintf("Invalid device id: %s", deviceIDStr), http.StatusBadRequest)
+			return
+		}
+
+		dev, err := g.Models.Device().Find(ctx, deviceID)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Device not found: %d", deviceID), http.StatusNotFound)
 			return
 		}
 
@@ -35,7 +43,16 @@ func DeviceDiagCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			fingerprints = nil
 		}
 
+		logsResult, err := g.Models.DeviceLog().FindByDeviceIDPaginated(ctx, dev.ID(), 1)
+		var recentLogs []queries.DeviceLog
+		var totalLogs int64
+		if err == nil {
+			recentLogs = logsResult.Logs
+			totalLogs = logsResult.TotalCount
+		}
+
 		params := deviceview.DeviceDiagParams{
+			Api:          g.CoreAPI,
 			DeviceID:     dev.ID(),
 			UUID:         dev.UUID(),
 			CookieToken:  dev.CookieToken(),
@@ -48,9 +65,13 @@ func DeviceDiagCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			UpdatedAt:    dev.UpdatedAt().UTC().Format("2006-01-02 15:04:05 UTC"),
 			Macs:         macs,
 			Fingerprints: fingerprints,
+			RecentLogs:   recentLogs,
+			TotalLogs:    totalLogs,
 		}
 
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		deviceview.DeviceDiagPage(params).Render(ctx, w)
+		res := g.CoreAPI.HttpAPI.Response()
+		res.AdminView(w, r, sdkapi.ViewPage{
+			PageContent: deviceview.DeviceDiagPage(params),
+		})
 	}
 }
