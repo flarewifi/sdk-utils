@@ -4,6 +4,7 @@
 
 - Go application for OpenWRT routers using SQLite (embedded, lightweight)
 - Plugin-based architecture - core remains minimal, features go in plugins
+- Plugins in `data/plugins/local/*` are in **separate git repositories** (not tracked by this repo's git — they are gitignored)
 
 ## ⚠️ CRITICAL: Core vs Plugin Development
 

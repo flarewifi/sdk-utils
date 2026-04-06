@@ -279,16 +279,11 @@ func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 }
 
 // MergeDevices merges sourceDeviceID into targetDeviceID.
-// This transfers all sessions, purchases, fingerprints, MAC addresses, and wallet balance from source to target,
-// then deletes the source device. Used when MAC randomization creates duplicate device records
-// for the same physical device (validated by fingerprint matching).
+// Transfers all data (sessions, purchases, fingerprints, MACs, wallet) from source
+// to target, then deletes the source device.
 func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourceDeviceID int64) error {
 	log.Printf("[DeviceModel.MergeDevices] Starting merge: source=%d -> target=%d", sourceDeviceID, targetDeviceID)
 
-	// Start a transaction with IMMEDIATE mode (LevelSerializable maps to BEGIN
-	// IMMEDIATE in the SQLite drivers).  MergeDevices is an exclusively write
-	// operation, so acquiring the write lock upfront avoids the DEFERRED
-	// read→write upgrade race that causes "database is locked" (SQLITE_BUSY).
 	tx, err := self.db.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to begin transaction: %v", err)
@@ -332,8 +327,6 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 	}
 
 	// 4. Transfer MAC address records from source to target
-	// First, delete any conflicting MAC records on target that also exist on source
-	// This prevents unique constraint violations during transfer
 	log.Printf("[DeviceModel.MergeDevices] Deleting conflicting MAC addresses...")
 	err = qtx.DeleteConflictingMacsBeforeTransfer(ctx, queries.DeleteConflictingMacsBeforeTransferParams{
 		TargetDeviceID: targetDeviceID,
