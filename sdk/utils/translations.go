@@ -53,13 +53,16 @@ func SwitchLanguage(oldLang, newLang string, translationsDir string) error {
 	return nil
 }
 
-// forEachPluginTranslationsDir iterates over all plugin translation directories
-// and calls the provided function for each one
-func forEachPluginDir(rootDir string, fn func(pluginDir string) error) error {
-	installDir := filepath.Join(rootDir, "plugins", "installed")
-	entries, err := os.ReadDir(installDir)
+// forEachPluginInDir iterates over all plugin subdirectories in the given directory
+// and calls the provided function for each valid plugin. Skips if the directory doesn't exist.
+func forEachPluginInDir(dir string, fn func(pluginDir string) error) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return nil
+	}
+
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return fmt.Errorf("failed to read plugins directory: %w", err)
+		return fmt.Errorf("failed to read plugins directory %s: %w", dir, err)
 	}
 
 	for _, entry := range entries {
@@ -67,7 +70,7 @@ func forEachPluginDir(rootDir string, fn func(pluginDir string) error) error {
 			continue
 		}
 
-		pluginPath := filepath.Join(installDir, entry.Name())
+		pluginPath := filepath.Join(dir, entry.Name())
 		_, err := GetPluginInfoFromPath(pluginPath)
 		if err != nil {
 			continue // Not a valid plugin, skip
@@ -81,8 +84,13 @@ func forEachPluginDir(rootDir string, fn func(pluginDir string) error) error {
 	return nil
 }
 
+// forEachPluginDir iterates over all installed plugin directories (for backward compatibility)
+func forEachPluginDir(rootDir string, fn func(pluginDir string) error) error {
+	return forEachPluginInDir(filepath.Join(rootDir, "plugins", "installed"), fn)
+}
+
 // CompressAllTranslations compresses all translation directories for deployment
-// Scans core/resources/translations/ and all installed plugins' translation directories
+// Scans core, installed plugins, system plugins, and cached plugins for translation directories
 // Only used in production builds (//go:build !dev && !staging)
 func CompressAllTranslations(rootDir string) error {
 	// Compress core translations
@@ -91,8 +99,19 @@ func CompressAllTranslations(rootDir string) error {
 		return fmt.Errorf("failed to compress core translations: %w", err)
 	}
 
-	// Compress plugin translations
-	return forEachPluginDir(rootDir, CompressPluginTranslations)
+	// Compress translations in all plugin directories
+	pluginDirs := []string{
+		filepath.Join(rootDir, "plugins", "installed"),
+		filepath.Join(rootDir, "plugins", "system"),
+	}
+
+	for _, dir := range pluginDirs {
+		if err := forEachPluginInDir(dir, CompressPluginTranslations); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // CompressAllUnusedLanguages compresses all languages except current one for core and all plugins
@@ -105,11 +124,24 @@ func CompressAllUnusedLanguages(rootDir, currentLang string) error {
 		return fmt.Errorf("failed to compress unused core translations: %w", err)
 	}
 
-	// Compress unused plugin translations
-	return forEachPluginDir(rootDir, func(pluginDir string) error {
+	// Compress unused translations in all plugin directories
+	compressUnused := func(pluginDir string) error {
 		translationsDir := filepath.Join(pluginDir, "resources", "translations")
 		return CompressUnusedLanguages(translationsDir, currentLang)
-	})
+	}
+
+	pluginDirs := []string{
+		filepath.Join(rootDir, "plugins", "installed"),
+		filepath.Join(rootDir, "plugins", "system"),
+	}
+
+	for _, dir := range pluginDirs {
+		if err := forEachPluginInDir(dir, compressUnused); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // CompressPluginTranslations compresses all language subdirectories in a translations directory
