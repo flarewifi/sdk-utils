@@ -75,6 +75,7 @@ if err := RecordUsage(); err != nil {
 - Handle ALL errors, implement rollback for multi-step ops
 - Add DB constraints (UNIQUE, FOREIGN KEY) for business rules
 - Check docker logs for `Listening on port :3000`
+- Convert database timestamps from UTC to local time when displayed to UI using `sdkutil.UtcToLocalTime(t)`
 
 ## Go File Organization
 

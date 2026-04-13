@@ -9,6 +9,8 @@ import (
 	"core/internal/api"
 	deviceview "core/resources/views/device"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func DeviceDiagCtrl(g *api.CoreGlobals) http.HandlerFunc {
@@ -61,8 +63,8 @@ func DeviceDiagCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			MacAddr:      dev.MacAddr(),
 			Hostname:     dev.Hostname(),
 			Status:       int(dev.Status()),
-			CreatedAt:    dev.CreatedAt().UTC().Format("2006-01-02 15:04:05 UTC"),
-			UpdatedAt:    dev.UpdatedAt().UTC().Format("2006-01-02 15:04:05 UTC"),
+			CreatedAt:    sdkutils.UtcToLocalTime(dev.CreatedAt()).Format("2006-01-02 15:04:05"),
+			UpdatedAt:    sdkutils.UtcToLocalTime(dev.UpdatedAt()).Format("2006-01-02 15:04:05"),
 			Macs:         macs,
 			Fingerprints: fingerprints,
 			RecentLogs:   recentLogs,

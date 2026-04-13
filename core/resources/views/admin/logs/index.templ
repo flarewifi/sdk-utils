@@ -3,6 +3,8 @@ package logsview
 import (
 	"core/db/models"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type LogsSearchData struct {
@@ -141,7 +143,7 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 					}
 					for _, log := range logs {
 						<tr>
-							<td class="px-2 py-3 ps-4"><code class="text-muted text-nowrap">{ log.CreatedAt.Format("2006-01-02 15:04:05") }</code></td>
+							<td class="px-2 py-3 ps-4"><code class="text-muted text-nowrap">{ sdkutils.UtcToLocalTime(log.CreatedAt).Format("2006-01-02 15:04:05") }</code></td>
 							<td class="px-2 py-3"><code class="text-muted text-nowrap">{ log.Package }</code></td>
 							<td class="px-2 py-3">
 								<h5>
