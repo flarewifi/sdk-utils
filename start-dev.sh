@@ -3,9 +3,12 @@
 export GOTOOLCHAIN=go1.21.13
 GO_TAGS="dev"
 
-# Build everything
+# Build everything: core templates/queries first, then CLI, then plugins
 (cp go.work.default go.work && \
         rm -rf **/*_templ.go && \
+        sh -c "cd core && templ generate" && \
+        ./scripts/sqlc-gen.sh ./core && \
+        go run -tags="${GO_TAGS}" ./core/cmd/build-cli/main.go && \
         ./bin/flare fix-workspace && \
         ./bin/flare build-plugins
 ) || (echo "Build failed" && exit 1)
@@ -27,6 +30,7 @@ for f in \
     "scripts" \
     "go.work" \
     "go.sum" \
+    "hosts.json" \
     "start.sh" \
     ; do
 

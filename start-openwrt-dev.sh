@@ -52,6 +52,7 @@ for f in \
     "scripts" \
     "go.work" \
     "go.sum" \
+    "hosts.json" \
     "start.sh" \
     ; do
 

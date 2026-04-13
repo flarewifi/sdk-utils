@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"path/filepath"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type HostInfo struct {
@@ -29,7 +32,7 @@ func GetHostFromRequest(r *http.Request) (*HostData, error) {
 	}
 
 	// Read hosts.json to get mac_addr and hostname
-	hostsData, err := os.ReadFile("hosts.json")
+	hostsData, err := os.ReadFile(filepath.Join(sdkutils.PathAppDir, "hosts.json"))
 	if err != nil {
 		// Fallback to defaults if hosts.json can't be read
 		return &HostData{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -87,29 +88,42 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 		return nil, fmt.Errorf("cookie token mismatch for device %d", claims.DeviceID)
 	}
 
-	// Security: Cross-validate current request's MAC/IP against stored device record
-	// This detects potential token theft or spoofing attempts
-	// Log-only mode: do not reject to avoid breaking legitimate cases (DHCP reassignment, MAC randomization)
-	// Skip ARP check for SSE and other high-frequency endpoints to reduce DHCP/ARP lookup overhead
+	// Cross-validate current request's MAC/IP against stored device record.
+	// Cookie token already proves device identity (checked above), so a mismatch here
+	// is a legitimate network change — MAC randomization, DHCP reassignment, dual-stack
+	// reordering — not an attack. Sync the stored record so callers see live values.
+	// Skip on SSE/events to avoid disconnect/reconnect storms on high-frequency endpoints.
 	shouldCheckMAC := !strings.HasSuffix(r.URL.Path, "/events") && !strings.Contains(r.URL.Path, "/sse")
 	if shouldCheckMAC {
 		if h, arpErr := hostfinder.GetHostFromRequest(r); arpErr == nil && h != nil && h.MacAddr != "" {
 			storedMAC := strings.ToUpper(clnt.MacAddr())
 			currentMAC := strings.ToUpper(h.MacAddr)
-			if storedMAC != "" && currentMAC != storedMAC {
-				log.Printf("[SECURITY] GetClientDevice: MAC mismatch - token claims device %d (MAC: %s) but ARP shows MAC: %s (IP: %s, RemoteAddr: %s)",
-					claims.DeviceID, storedMAC, currentMAC, h.IpAddr, r.RemoteAddr)
-			}
-			// Also check IP mismatch (less critical but useful for logging)
-			// Accept if request IP matches either stored IPv4 or IPv6 (dual-stack device).
 			requestIP := h.IpAddr
 			storedIPv4 := clnt.Ipv4Addr()
 			storedIPv6 := clnt.Ipv6Addr()
-			if requestIP != "" && storedIPv4 == "" && storedIPv6 == "" {
-				// No stored IPs yet - skip check
-			} else if requestIP != "" && requestIP != storedIPv4 && requestIP != storedIPv6 {
-				log.Printf("[SECURITY] GetClientDevice: IP mismatch - device %d stored IPv4: %s, IPv6: %s but request from IP: %s (MAC: %s)",
-					claims.DeviceID, storedIPv4, storedIPv6, requestIP, currentMAC)
+
+			macChanged := storedMAC != "" && currentMAC != storedMAC
+			ipChanged := requestIP != "" && (storedIPv4 != "" || storedIPv6 != "") && requestIP != storedIPv4 && requestIP != storedIPv6
+
+			if macChanged || ipChanged {
+				newIpv4, newIpv6 := storedIPv4, storedIPv6
+				if parsed := net.ParseIP(requestIP); parsed != nil {
+					if v4 := parsed.To4(); v4 != nil {
+						newIpv4 = v4.String()
+					} else {
+						newIpv6 = parsed.String()
+					}
+				}
+				newHostname := h.Hostname
+				if newHostname == "" {
+					newHostname = clnt.Hostname()
+				}
+				if err := self.clientRegister.UpdateDevice(ctx, clnt, h.MacAddr, newIpv4, newIpv6, newHostname); err != nil {
+					log.Printf("[GetClientDevice] failed to sync device %d network details (MAC %s→%s, IP %s): %v",
+						claims.DeviceID, storedMAC, currentMAC, requestIP, err)
+				} else if refreshed, err := self.clientRegister.FindByID(ctx, claims.DeviceID); err == nil {
+					clnt = refreshed
+				}
 			}
 		}
 	}
