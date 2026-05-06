@@ -213,7 +213,7 @@ func (self *Session) UpdatedAt() time.Time {
 	return self.updatedAt
 }
 
-func (self *Session) Update(ctx context.Context, devId int64, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, resumed *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
+func (self *Session) Update(ctx context.Context, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, resumed *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
 	var startedTime sql.NullTime
 	if started != nil {
 		startedTime = sql.NullTime{Time: *started, Valid: true}
@@ -231,7 +231,6 @@ func (self *Session) Update(ctx context.Context, devId int64, t string, secs int
 
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		ProviderPkg:     self.providerPkg,
-		DeviceID:        devId,
 		SessionType:     t,
 		TimeSecs:        int64(secs),
 		DataMbytes:      mb,
@@ -250,7 +249,6 @@ func (self *Session) Update(ctx context.Context, devId int64, t string, secs int
 		return err
 	}
 
-	self.deviceId = devId
 	self.sessionType = t
 	self.timeSecs = secs
 	self.dataMb = mb
@@ -265,5 +263,5 @@ func (self *Session) Update(ctx context.Context, devId int64, t string, secs int
 }
 
 func (self *Session) Save(ctx context.Context) error {
-	return self.Update(ctx, self.deviceId, self.sessionType, self.timeSecs, self.dataMb, self.timeCons, self.dataCons, self.startedAt, self.resumedAt, self.expDays, self.downMbits, self.upMbits, self.useGlobal)
+	return self.Update(ctx, self.sessionType, self.timeSecs, self.dataMb, self.timeCons, self.dataCons, self.startedAt, self.resumedAt, self.expDays, self.downMbits, self.upMbits, self.useGlobal)
 }

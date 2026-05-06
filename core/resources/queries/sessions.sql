@@ -36,7 +36,6 @@ UPDATE
   sessions
 SET
     provider_pkg = @provider_pkg,
-    device_id = @device_id,
     session_type = @session_type,
     time_secs = @time_secs,
     data_mbytes = @data_mbytes,

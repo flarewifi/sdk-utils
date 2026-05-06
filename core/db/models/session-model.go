@@ -32,12 +32,13 @@ type CreateSessionParams struct {
 	UseGlobalSpeed bool
 }
 
-// UpdateSessionParams holds parameters for updating a session
+// UpdateSessionParams holds parameters for updating a session.
+// Note: DeviceID is intentionally excluded — it is immutable after creation.
+// Only TransferSessionsToDevice (used by device merge) may change it.
 type UpdateSessionParams struct {
 	ID             int64
 	UUID           string
 	ProviderPkg    string
-	DeviceID       int64
 	Type           sdkapi.SessionType
 	TimeSecs       int
 	DataMb         float64
@@ -134,7 +135,6 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		ProviderPkg:     params.ProviderPkg,
-		DeviceID:        params.DeviceID,
 		SessionType:     string(params.Type),
 		TimeSecs:        int64(params.TimeSecs),
 		DataMbytes:      params.DataMb,

@@ -1142,7 +1142,6 @@ func (self *SessionsMgr) persistSessionInTx(txQueries *queries.Queries, cs *Clie
 	return txQueries.UpdateSession(context.Background(), queries.UpdateSessionParams{
 		ID:              d.id,
 		ProviderPkg:     d.providerPkg,
-		DeviceID:        d.devId,
 		SessionType:     d.sessionType,
 		TimeSecs:        int64(d.timeSecs),
 		DataMbytes:      d.dataMb,
