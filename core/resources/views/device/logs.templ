@@ -4,6 +4,8 @@ import (
 	"core/db/queries"
 	"fmt"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type DeviceLogsParams struct {
@@ -44,7 +46,7 @@ templ DeviceLogsPage(params DeviceLogsParams) {
 						for _, entry := range params.Logs {
 							<div class="list-group-item px-3 py-2">
 								<div class="fw-semibold" style="font-size: 0.9rem;">{ entry.Message }</div>
-								<small class="text-body-tertiary">{ entry.CreatedAt.UTC().Format("2006-01-02 15:04:05 UTC") }</small>
+								<small class="text-body-tertiary">{ sdkutils.UtcToLocalTime(entry.CreatedAt).Format("2006-01-02 15:04:05") }</small>
 								if meta := parseMetadata(entry.Metadata); meta != nil && len(meta) > 0 {
 									<table class="table table-sm mt-2 mb-0" style="font-size: 0.8rem;">
 										<tbody>

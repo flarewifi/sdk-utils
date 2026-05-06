@@ -7,6 +7,8 @@ import (
 	"log"
 
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 type Release struct {
@@ -42,7 +44,7 @@ templ ReleasesPage(api sdkapi.IPluginApi, data []Release, pluginPkg string) {
 						<td>{ release.TagName }</td>
 						<td>{ release.Name }</td>
 						<td>{ release.Body }</td>
-						<td>{ publishedDate.Format("January 02, 2006") }</td>
+						<td>{ sdkutils.UtcToLocalTime(publishedDate).Format("January 02, 2006") }</td>
 						<td>
 							{{ pairs := []string{"pkg", pluginPkg, "tag" , release.TagName }}}
 							{{ url := api.Http().Helpers().UrlForRoute("admin:plugins:get-update", pairs...) }}

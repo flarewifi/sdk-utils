@@ -18,10 +18,10 @@ import (
 const (
 	// Default retention period in days (used if config is not set)
 	defaultLogRetentionDays = 3
-	// Maximum lines to keep in flarehotspot.logs file
+	// Maximum lines to keep in flarehotspot.log file
 	maxLogFileLines = 500
-	// Log file name
-	logFileName = "flarehotspot.logs"
+	// Log file name (matches LOGFILE in S99flarehotspot init script)
+	logFileName = "flarehotspot.log"
 )
 
 // StartLogCleanupScheduler starts a background goroutine that cleans up
@@ -89,7 +89,7 @@ func performLogCleanup(database *db.Database, mdls *models.Models, retentionDays
 		}
 	}
 
-	// Truncate flarehotspot.logs file to max 500 lines
+	// Truncate flarehotspot.log file to max 500 lines
 	truncateLogFile()
 }
 

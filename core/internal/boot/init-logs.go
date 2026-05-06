@@ -8,7 +8,7 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-const logsFile = "flarehotspot.logs"
+const logsFile = "flarehotspot.log"
 
 func CleanUpLogs() {
 	log.Println("Cleaning up logs...")

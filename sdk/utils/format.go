@@ -1,6 +1,9 @@
 package sdkutils
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // FormatByteData formats data in megabytes as a string, using GB if >= 1024 MB
 func FormatByteData(dataMB float64) string {
@@ -40,4 +43,9 @@ func FormatTimeSecs(timeSec int) string {
 	result += fmt.Sprintf("%ds", seconds)
 
 	return result
+}
+
+// UtcToLocalTime converts a UTC time to the server's local timezone.
+func UtcToLocalTime(t time.Time) time.Time {
+	return t.In(time.Local)
 }
