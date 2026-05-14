@@ -11,8 +11,9 @@ type PluginFile struct {
 }
 
 var PLuginFiles = []PluginFile{
-	{File: "LICENSE.txt", Optional: false},
 	{File: "go.mod", Optional: false},
+	{File: "go.sum", Optional: true},
+	{File: "LICENSE.txt", Optional: false},
 	{File: "plugin.json", Optional: false},
 	{File: "plugin.so", Optional: false},
 	{File: "resources/assets/dist", Optional: true},

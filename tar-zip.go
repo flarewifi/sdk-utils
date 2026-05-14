@@ -136,7 +136,11 @@ func CompressTar(sourceDir, outputFile string) error {
 
 // Untar extracts tar file to a output directory
 func Untar(tarGzFile, outputDir string) error {
-	if err := FsEnsureDir(filepath.Dir(outputDir)); err != nil {
+	// Ensure outputDir itself exists, not just its parent. Tar archives are
+	// not required to list directory entries before their contents, so a
+	// top-level file (e.g. .DS_Store) would otherwise fail with ENOENT when
+	// OpenFile tries to write into a directory that was never created.
+	if err := FsEnsureDir(outputDir); err != nil {
 		return err
 	}
 
@@ -179,6 +183,14 @@ func Untar(tarGzFile, outputDir string) error {
 			continue
 		}
 
+		// Some archives list files without a preceding TypeDir entry for the
+		// parent (e.g. nested files in archives without explicit dir headers).
+		// MkdirAll the parent before opening the file so extraction does not
+		// depend on tar entry ordering.
+		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+			return err
+		}
+
 		// Handle files
 		file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode))
 		if err != nil {
@@ -200,7 +212,7 @@ func Untar(tarGzFile, outputDir string) error {
 
 // UntarXz extracts tar.xz file to a output directory
 func UntarXz(tarXzFile, outputDir string) error {
-	if err := FsEnsureDir(filepath.Dir(outputDir)); err != nil {
+	if err := FsEnsureDir(outputDir); err != nil {
 		return err
 	}
 
