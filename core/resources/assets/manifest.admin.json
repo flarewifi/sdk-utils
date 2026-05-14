@@ -16,5 +16,25 @@
   ],
   "check-updates.js": [
     "./admin/js/check-updates.js"
+  ],
+  "theme-fallback.js": [
+    "./themes/fallback/vendor/bootstrap-5.3.3/js/bootstrap.bundle.js",
+    "./themes/fallback/admin/js/layout.js",
+    "./themes/fallback/admin/js/color-modes.js",
+    "./themes/fallback/admin/js/nav-search.js",
+    "./themes/fallback/admin.js",
+    "./themes/fallback/admin/js/notifications.js",
+    "./themes/fallback/admin/js/dashboard.js"
+  ],
+  "theme-fallback.css": [
+    "./themes/fallback/vendor/bootstrap-icons-1.13.1/bootstrap-icons.min.css",
+    "./themes/fallback/vendor/bootstrap-5.3.3/css/bootstrap.css",
+    "./themes/fallback/admin/css/fonts.css",
+    "./themes/fallback/admin/css/layout.css",
+    "./themes/fallback/admin/css/sidebar-menu.css",
+    "./themes/fallback/admin/css/sizing.css",
+    "./themes/fallback/admin/css/content.css",
+    "./themes/fallback/admin/css/dashboard.css",
+    "./themes/fallback/admin.css"
   ]
 }

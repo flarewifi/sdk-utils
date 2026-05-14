@@ -40,6 +40,7 @@ use (
 	pluginSearchPaths := []string{
 		sdkutils.StripRootPath(sdkutils.PathPluginSystemDir),
 		sdkutils.StripRootPath(sdkutils.PathPluginLocalDir),
+		sdkutils.StripRootPath(sdkutils.PathPluginDevelDir),
 	}
 
 	for _, searchPath := range pluginSearchPaths {

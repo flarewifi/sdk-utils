@@ -26,8 +26,9 @@ func NewDatabase() *Database {
 	dbcfg, err := config.ReadDatabaseConfig()
 	if err != nil {
 		dbpath = filepath.Join(sdkutils.PathDataDir, "db/database.sqlite")
+	} else {
+		dbpath = dbcfg.SqlitePath
 	}
-	dbpath = dbcfg.SqlitePath
 	return newSQLiteDatabase(dbpath)
 }
 

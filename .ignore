@@ -1,5 +1,6 @@
 !data/storage
 !data/plugins/local/*
+!data/plugins/devel/*
 !data/config
 !data/openwrt-files
 !data/config

@@ -115,8 +115,14 @@ func BuildPluginSo(pluginSrcDir string, workdir string) error {
 		return err
 	}
 
-	if err := sdkutils.FsCopyDir(filepath.Join(sdkutils.PathAppDir, "core"), filepath.Join(workdir, "core"), nil); err != nil {
-		return err
+	// When building the core itself as a plugin, the plugin copy at
+	// workdir/plugins/<package> IS the core module. Skipping the extra
+	// ./core copy avoids two workspace entries declaring `module core`.
+	isCoreBuild := filepath.Clean(pluginSrcDir) == filepath.Clean(sdkutils.PathCoreDir)
+	if !isCoreBuild {
+		if err := sdkutils.FsCopyDir(filepath.Join(sdkutils.PathAppDir, "core"), filepath.Join(workdir, "core"), nil); err != nil {
+			return err
+		}
 	}
 
 	if err := sdkutils.FsCopyDir(filepath.Join(sdkutils.PathAppDir, "scripts"), filepath.Join(workdir, "scripts"), nil); err != nil {
@@ -129,10 +135,12 @@ go %s
 use (
     ./sdk/api
     ./sdk/utils
-	./core
-    `, sdkutils.GO_VERSION)
+`, sdkutils.GO_VERSION)
 
-	goWork += fmt.Sprintf("./plugins/%s\n)", info.Package)
+	if !isCoreBuild {
+		goWork += "    ./core\n"
+	}
+	goWork += fmt.Sprintf("    ./plugins/%s\n)", info.Package)
 	goworkFile := filepath.Join(workdir, "go.work")
 	if err := os.WriteFile(goworkFile, []byte(goWork), sdkutils.PermFile); err != nil {
 		return err
@@ -145,7 +153,7 @@ use (
 		}
 	}
 
-	gofile := "main.go"
+	gofile := "."
 	outfile := "plugin.so"
 	if err := BuildGoPlugin(gofile, outfile, goBuildPath, nil); err != nil {
 		return err

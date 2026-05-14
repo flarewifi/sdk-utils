@@ -110,7 +110,15 @@ templ AdminIndexPage(api sdkapi.IPluginApi, data interface{}) {
 
 ## CSS Customization
 
-The admin interface uses Bootstrap 5 only. The portal uses Bootstrap 3 only for compatibility with old browsers and uses a different set of libraries as defined in `@core/resources/assets/manifest.portal.json`. Both interfaces use ES5 syntax only for maximum browser compatibility.
+The admin interface uses Bootstrap v5. The login and portal pages use Bootstrap v3 for compatibility with older captive portal browsers. Both interfaces use ES5 syntax only for maximum browser compatibility.
+
+!!! important "Theme plugins must bundle their own Bootstrap"
+    When creating a theme plugin, you must include your own copy of the required Bootstrap version in your theme's `vendor/` directory:
+
+    - **Admin**: Bootstrap v5 CSS + JS + Bootstrap Icons
+    - **Login/Portal**: Bootstrap v3 CSS (JS is not required)
+    
+    Reference these files in your manifest and stylesheets (see [Step 9: Add Assets](index.md#step-9-add-assets) in the main guide).
 
 ### Using Bootstrap 5
 

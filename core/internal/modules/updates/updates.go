@@ -2,7 +2,7 @@ package updates
 
 import (
 	"core/internal/rpc"
-	"core/internal/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/utils/config"
 	"core/utils/tags"
 	"crypto/md5"

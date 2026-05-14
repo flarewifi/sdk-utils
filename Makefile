@@ -1,7 +1,11 @@
-.PHONY: default create-network openwrt docs-build docs-serve sync-version devkit down deploy-arm64 build-mips deploy-mips
+.PHONY: default mono create-network openwrt docs-build docs-serve sync-version devkit down deploy-arm64 build-mips deploy-mips
 .PHONY: translations-check check-translations translation-report find-missing create-templates help status
 
-default: create-network
+default: prep
+	docker compose -f docker-compose.yml up app docs sqliteweb \
+		--build --remove-orphans --force-recreate
+
+mono: prep
 	docker compose -f docker-compose.yml -f docker-compose.mono.yml up app docs sqliteweb \
 		--build --remove-orphans --force-recreate
 
@@ -10,7 +14,8 @@ help:
 	@echo "==============================="
 	@echo ""
 	@echo "Development:"
-	@echo "  make                    - Start development build (default)"
+	@echo "  make                    - Start development build (non-mono)"
+	@echo "  make mono               - Start mono development build"
 	@echo "  make restart            - Stop all containers, then restart"
 	@echo "  make openwrt            - Start OpenWRT development environment"
 	@echo "  make down               - Stop all containers"
@@ -25,6 +30,10 @@ help:
 	@echo "  make devkit             - Build development kit"
 	@echo "  make deploy-arm64       - Deploy to ARM64 device"
 	@echo ""
+
+prep: create-network
+	mkdir -p plugins/installed
+	cp go.work.default go.work
 
 create-network:
 	# create docker network if not exists

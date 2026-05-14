@@ -28,7 +28,7 @@ func NewHttpResponse(api *PluginApi, assets *GlobalAssets) *HttpResponse {
 }
 
 func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sdkapi.ViewPage) {
-	_, themeApi, err := self.api.PluginsMgrApi.GetAdminTheme()
+	_, themeApi, isFallback, err := self.api.PluginsMgrApi.GetAdminTheme()
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
@@ -42,15 +42,23 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 	}
 
 	var flash *sdkapi.FlashMsg
-	flashType, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_type")
-	flashMsg, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_message")
-	if flashType != "" && flashMsg != "" {
+	if isFallback {
+		msg := self.api.Translate("warning", "The selected theme is not installed or failed to load. Falling back to the built-in core theme.")
 		flash = &sdkapi.FlashMsg{
-			Type:    flashType,
-			Message: flashMsg,
+			Type:    sdkapi.FlashMsgWarning,
+			Message: msg,
 		}
-		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_type")
-		self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
+	} else {
+		flashType, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_type")
+		flashMsg, _ := self.api.HttpAPI.httpCookie.GetCookie(r, "flash_message")
+		if flashType != "" && flashMsg != "" {
+			flash = &sdkapi.FlashMsg{
+				Type:    flashType,
+				Message: flashMsg,
+			}
+			self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_type")
+			self.api.HttpAPI.httpCookie.DeleteCookie(w, "flash_message")
+		}
 	}
 
 	htmlAttrs := templ.Attributes{}
@@ -79,10 +87,16 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	pageUUID := q.Get("t") // Prevent caching
 	coreAPI := self.api.CoreAPI
 
-	_, themesAPI, err := self.api.PluginsMgrApi.GetAdminTheme()
+	_, themesAPI, isFallback, err := self.api.PluginsMgrApi.GetPortalTheme()
 	if err != nil {
 		self.Error(w, r, err, http.StatusInternalServerError)
 		return
+	}
+
+	if isFallback {
+		msg := self.api.Translate("warning", "The selected theme is not installed or failed to load. Falling back to the built-in core theme.")
+		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_type", sdkapi.FlashMsgWarning, nil)
+		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_message", msg, nil)
 	}
 
 	assets, err := GetPortalAssetsForPage(coreAPI, themesAPI.api, self.api, v, self.assets)

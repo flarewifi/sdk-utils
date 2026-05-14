@@ -8,7 +8,14 @@ import (
 )
 
 func BuildLocalPlugins() error {
-	pluginDefs := LocalPluginSrcDefs()
+	return BuildPluginDefs(LocalPluginSrcDefs())
+}
+
+func BuildSystemPlugins() error {
+	return BuildPluginDefs(SystemPluginSrcDefs())
+}
+
+func BuildPluginDefs(pluginDefs []sdkutils.PluginSrcDef) error {
 	for _, def := range pluginDefs {
 		pluginPath, err := sdkutils.FindPluginSrc(def.LocalPath)
 		if err != nil {
@@ -33,7 +40,6 @@ func BuildLocalPlugins() error {
 		if err := sdkutils.CopyPluginFiles(pluginPath, pluginInstallDir); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }

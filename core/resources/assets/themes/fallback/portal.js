@@ -1,0 +1,1 @@
+/* Core fallback portal theme JS */

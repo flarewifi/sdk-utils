@@ -1,10 +1,6 @@
 package migrate
 
 import (
-	"core/db"
-	cmd "core/utils/shell"
-	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -19,30 +15,29 @@ const (
 	migration_Up
 )
 
-func listFiles(pluginDir string, tmpdir string, d MigDirection) (files []string, err error) {
-	opts := &cmd.ExecOpts{Stdout: os.Stdout, Stderr: os.Stderr}
-	if err := cmd.Exec(fmt.Sprintf("./scripts/copy-sql.sh %s %s %s", pluginDir, tmpdir, db.Driver), opts); err != nil {
-		return nil, fmt.Errorf("failed to copy migration files: %w", err)
-	}
-
-	migrationsDir := filepath.Join(tmpdir, "resources/migrations")
+// listFiles enumerates migration SQL files for the given plugin directly from
+// <pluginDir>/resources/migrations. It deliberately does NOT shell out to any
+// build-time helper (e.g. copy-sql.sh) so it works the same in dev and on a
+// real router, where the build-time sqlc tooling is not available.
+func listFiles(pluginDir string, d MigDirection) (files []string, err error) {
+	migrationsDir := filepath.Join(pluginDir, "resources/migrations")
 
 	list := []string{}
 	if err = sdkutils.FsListFiles(migrationsDir, &list, false); err != nil {
-		return files, err
+		return nil, err
 	}
 
 	files = []string{}
 	if d == migration_Down {
 		for _, f := range list {
-			if strings.HasSuffix(f, ".down.sql") && !strings.HasPrefix(f, ".") {
+			if strings.HasSuffix(f, ".down.sql") && !strings.HasPrefix(filepath.Base(f), ".") {
 				files = append(files, f)
 			}
 		}
-		sdkutils.SliceReverseString(files)
+		sort.Sort(sort.Reverse(sort.StringSlice(files)))
 	} else {
 		for _, f := range list {
-			if strings.HasSuffix(f, ".up.sql") && !strings.HasPrefix(f, ".") {
+			if strings.HasSuffix(f, ".up.sql") && !strings.HasPrefix(filepath.Base(f), ".") {
 				files = append(files, f)
 			}
 		}

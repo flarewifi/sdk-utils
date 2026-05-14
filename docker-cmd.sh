@@ -23,6 +23,7 @@ reflex \
     -R 'plugins\/backups\/.*' \
     -R 'plugins\/updates\/.*' \
     -R 'plugin\-init_mono\.(go|default)$' \
+    -R 'system\-plugins\-init\.(go|default)$' \
     -s -- sh -c "$START_SH" -v &
 
 # Start livereload server (go.work is now available)

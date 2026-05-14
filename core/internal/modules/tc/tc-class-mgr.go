@@ -80,10 +80,9 @@ func (self *TcClassMgr) Setup() error {
 			return nil, err
 		}
 
-		// Add fq_codel leaf qdiscs for bufferbloat protection
-		if err = self.addLeafQdisc(TcClassIdDefault); err != nil {
-			log.Printf("Warning: Failed to add fq_codel to default class: %v", err)
-		}
+		// Add fq_codel leaf qdisc for bufferbloat protection on user class only.
+		// Default class 1:1 intentionally left with HTB's inherited pfifo so
+		// system/control-plane traffic isn't subject to flow-isolation queuing.
 		if err = self.addLeafQdisc(TcClassIdUser); err != nil {
 			log.Printf("Warning: Failed to add fq_codel to user class: %v", err)
 		}

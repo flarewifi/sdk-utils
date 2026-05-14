@@ -46,7 +46,7 @@ func main() {
 		return
 
 	case "build-plugins":
-		BuildPlugin()
+		BuildPlugins()
 		return
 
 	case "build-templates":
@@ -188,6 +188,18 @@ func BuildPlugin() {
 
 	if err != nil {
 		fmt.Println("Error building plugin: " + err.Error())
+		os.Exit(1)
+	}
+}
+
+func BuildPlugins() {
+	if err := plugins.BuildLocalPlugins(); err != nil {
+		fmt.Println("Error building local plugins: " + err.Error())
+		os.Exit(1)
+	}
+
+	if err := plugins.BuildSystemPlugins(); err != nil {
+		fmt.Println("Error building system plugins: " + err.Error())
 		os.Exit(1)
 	}
 }

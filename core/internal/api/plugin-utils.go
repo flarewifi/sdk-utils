@@ -34,6 +34,10 @@ func GetAdminAssetsForPage(coreAPI *PluginApi, themeAPI *PluginApi, pluginAPI *P
 	if themeAPI.ThemesAPI.AdminTheme != nil {
 		themeJsSrc = themeAPI.HttpAPI.Helpers().AdminAssetPath(themeAPI.ThemesAPI.AdminTheme.JsFile)
 		themeCssHref = themeAPI.HttpAPI.Helpers().AdminAssetPath(themeAPI.ThemesAPI.AdminTheme.CssFile)
+	} else if themeAPI == coreAPI {
+		// Built-in core fallback theme assets are keyed in core manifest.
+		themeJsSrc = coreAPI.HttpAPI.Helpers().AdminAssetPath("theme-fallback.js")
+		themeCssHref = coreAPI.HttpAPI.Helpers().AdminAssetPath("theme-fallback.css")
 	}
 
 	pluginGlobalJsSrc := pluginAPI.HttpAPI.Helpers().AdminAssetPath("global.js")
@@ -62,6 +66,10 @@ func GetPortalAssetsForPage(coreAPI *PluginApi, themeAPI *PluginApi, pluginAPI *
 	if themeAPI.ThemesAPI.PortalTheme != nil {
 		themeJsSrc = themeAPI.HttpAPI.Helpers().PortalAssetPath(themeAPI.ThemesAPI.PortalTheme.JsFile)
 		themeCssHref = themeAPI.HttpAPI.Helpers().PortalAssetPath(themeAPI.ThemesAPI.PortalTheme.CssFile)
+	} else if themeAPI == coreAPI {
+		// Built-in core fallback theme assets are keyed in core manifest.
+		themeJsSrc = coreAPI.HttpAPI.Helpers().PortalAssetPath("theme-fallback.js")
+		themeCssHref = coreAPI.HttpAPI.Helpers().PortalAssetPath("theme-fallback.css")
 	}
 
 	pluginGlobalJsSrc := pluginAPI.HttpAPI.Helpers().PortalAssetPath("global.js")

@@ -15,7 +15,7 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 		}
 
 		res := g.CoreAPI.HttpAPI.Response()
-		p, t, err := g.PluginMgr.GetPortalTheme()
+		p, t, _, err := g.PluginMgr.GetPortalTheme()
 		if err != nil {
 			res.Error(w, r, errors.New(g.CoreAPI.Translate("error", "Unable to Get Admin Theme")), http.StatusInternalServerError)
 			return
@@ -39,6 +39,31 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 		page := t.PortalTheme.LoginPageFactory(w, r, data)
 		p.Http().Response().PortalView(w, r, page)
 	})
+}
+
+// AdminAuthenticateCtrl handles POST /login for the fallback (core) login form.
+// When the configured theme plugin is not loaded, this endpoint processes credentials.
+func AdminAuthenticateCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, g.CoreAPI.Translate("error", "Invalid form data"), sdkapi.FlashMsgError)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+
+		acct, err := g.CoreAPI.HttpAPI.Auth().Authenticate(username, password)
+		if err != nil {
+			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, g.CoreAPI.Translate("error", "Invalid credentials"), sdkapi.FlashMsgError)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		g.CoreAPI.HttpAPI.Auth().SignIn(w, acct)
+		http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	}
 }
 
 func AdminLogoutCtrl(g *api.CoreGlobals) http.Handler {

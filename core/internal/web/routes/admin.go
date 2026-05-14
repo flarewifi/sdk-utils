@@ -30,6 +30,11 @@ func AdminRoutes(g *api.CoreGlobals) {
 
 	// TODO: enable csrf protection
 	rootR.Handle("/login", httpsRedirectMw(adminLoginCtrl)).Methods("GET").Name("admin:login")
+	rootR.Handle("/login", httpsRedirectMw(controllers.AdminAuthenticateCtrl(g))).Methods("POST").Name("auth:login")
+
+	// Register auth:login on the core static plugin router so UrlForRoute("auth:login")
+	// resolves correctly when the fallback core theme is active (com.flarego.core#static#auth:login).
+	g.CoreAPI.HttpAPI.Router().StaticPluginRouter().Post("/login", controllers.AdminAuthenticateCtrl(g)).Name("auth:login")
 	adminR.Get("/events", adminSseCtrl).Name(api.RouteNameAdminSSE)
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
@@ -60,6 +65,18 @@ func AdminRoutes(g *api.CoreGlobals) {
 		})
 	})
 
+	// Core fallback theme routes — must exist so layout.templ / notifications.templ
+	// can call UrlForRoute even when the configured theme plugin is not loaded.
+	adminR.Post("/logout", controllers.AdminLogoutCtrl(g).ServeHTTP).Name("admin:auth:logout")
+
+	adminR.Group("/notifications", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Get("/count", adminctrl.NotificationsBellCountCtrl(g)).Name("admin:notifications:count")
+		subrouter.Get("/list", adminctrl.NotificationsListCtrl(g)).Name("admin:notifications:list")
+		subrouter.Get("/show/{id}", adminctrl.ShowNotificationContentCtrl(g)).Name("admin:notifications:show")
+		subrouter.Post("/update/{id}", adminctrl.UpdateNotificationCtrl(g)).Name("admin:notifications:update")
+		subrouter.Post("/clear-all", adminctrl.ClearAllNotificationsCtrl(g)).Name("admin:notifications:clear-all")
+	})
+
 	adminR.Group("/themes", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/index", adminctrl.GetAvailableThemes(g)).Name("admin:themes:index")
 		subrouter.Post("/save", adminctrl.SaveThemeSettings(g)).Name("admin:themes:save")
@@ -75,8 +92,6 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Get("/logs", adminctrl.DeviceLogsCtrl(g)).Name("admin:devices:logs")
 		subrouter.Post("/clear-history", adminctrl.DeviceClearHistoryCtrl(g)).Name("admin:devices:clear-history")
 	})
-
-	AdminPluginRoutes(g)
 
 	adminR.Group("/power", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/reboot", adminctrl.RebootPageCtrl(g)).Name("admin:power:reboot")

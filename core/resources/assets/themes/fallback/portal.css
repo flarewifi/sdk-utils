@@ -1,0 +1,332 @@
+/* Core fallback portal theme styles */
+
+html,
+body {
+  min-height: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #e5e7eb;
+  background: radial-gradient(circle at 20% 20%, #1d4ed8 0%, #111827 45%, #030712 100%);
+}
+
+.container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.portal-wrap {
+  min-height: calc(100vh - 32px);
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.55);
+  overflow: hidden;
+}
+
+#home-page .heading {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin-top: 20px;
+}
+
+#home-page .heading span {
+  color: #60a5fa;
+}
+
+#home-page .status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+#home-page .status-bar.connected {
+  background: rgba(16, 185, 129, 0.2);
+  color: #a7f3d0;
+}
+
+#home-page .status-bar.disconnected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fecaca;
+}
+
+#home-page .status-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#home-page .status-bar-icon {
+  width: 16px;
+  height: 16px;
+}
+
+#home-page .device-info {
+  margin-top: 8px;
+  text-align: center;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+#home-page .info-sep {
+  margin: 0 8px;
+  color: #94a3b8;
+}
+
+#home-page .content {
+  padding: 20px;
+}
+
+#home-page .session {
+  margin-bottom: 20px;
+}
+
+#home-page .timer {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+#home-page .timer-label {
+  color: #93c5fd;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+#home-page .timer-value {
+  font-size: 36px;
+  line-height: 1.1;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+#home-page .data-remaining {
+  margin-top: 10px;
+  color: #cbd5e1;
+}
+
+#home-page .nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+#home-page .nav li a {
+  display: block;
+  text-decoration: none;
+  text-align: center;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+#home-page .nav li a:hover {
+  border-color: rgba(96, 165, 250, 0.6);
+  background: rgba(30, 64, 175, 0.28);
+}
+
+.footer {
+  text-align: center;
+  color: #94a3b8;
+  margin-top: 18px;
+  margin-bottom: 6px;
+}
+
+.footer a {
+  color: #93c5fd;
+  text-decoration: none;
+}
+
+@media (max-width: 575.98px) {
+  .container {
+    padding: 10px;
+  }
+
+  .portal-wrap {
+    min-height: calc(100vh - 20px);
+    border-radius: 12px;
+  }
+
+  #home-page .heading {
+    font-size: 22px;
+  }
+
+  #home-page .content {
+    padding: 14px;
+  }
+
+  #home-page .timer {
+    padding: 16px;
+  }
+
+  #home-page .timer-value {
+    font-size: 30px;
+  }
+}
+
+/* Login page */
+.fw-login-wrapper {
+  min-height: calc(100vh - 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.fw-stars-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fw-star {
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(191, 219, 254, 0.8);
+}
+
+.fw-star--lg {
+  width: 4px;
+  height: 4px;
+}
+
+.fw-star--md {
+  width: 3px;
+  height: 3px;
+}
+
+.fw-star--sm {
+  width: 2px;
+  height: 2px;
+}
+
+.fw-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(44px);
+  opacity: 0.28;
+}
+
+.fw-orb--purple { background: #8b5cf6; }
+.fw-orb--blue { background: #3b82f6; }
+.fw-orb--indigo { background: #6366f1; }
+
+.fw-card.fw-login-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.82);
+  box-shadow: 0 24px 50px rgba(2, 6, 23, 0.6);
+  padding: 24px;
+}
+
+.fw-logo-wrap #logo {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 0 auto 14px;
+}
+
+.fw-heading {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.fw-subtitle {
+  margin-top: 6px;
+  margin-bottom: 18px;
+  color: #94a3b8;
+}
+
+.fw-input-wrap {
+  position: relative;
+}
+
+.fw-input-icon {
+  width: 18px;
+  height: 18px;
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.fw-input-with-icon {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  color: #e2e8f0;
+  padding: 12px 12px 12px 40px;
+}
+
+.fw-input-with-icon::placeholder {
+  color: #94a3b8;
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.fw-form-group-last {
+  margin-bottom: 18px;
+}
+
+.fw-btn-submit {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: 600;
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  color: #fff;
+}
+
+.fw-btn-submit:hover {
+  opacity: 0.95;
+}
+
+@media (max-width: 575.98px) {
+  .fw-login-wrapper {
+    padding: 10px;
+  }
+
+  .fw-card.fw-login-card {
+    max-width: 100%;
+    padding: 16px;
+  }
+
+  .fw-heading {
+    font-size: 20px;
+  }
+}

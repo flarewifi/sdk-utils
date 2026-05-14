@@ -3,7 +3,7 @@ package jobs
 import (
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
-	"core/internal/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v2"
 	"log"
 	"time"
 )
