@@ -24,6 +24,7 @@ cp go.work.default go.work && \
     go run -tags="${GO_TAGS}" $BUILD_ASSETS_MAIN && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN fix-workspace && \
     go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN build-templates && \
+    go run -tags="${GO_TAGS}" $FLARE_CLI_MAIN build-plugins && \
     go run -tags="${GO_TAGS}" $MONO_BIN_PREPARE && \
     go run -tags="${GO_TAGS}" $MONO_BIN_COMPILE && \
     go run -tags="${GO_TAGS}" $MONO_BIN_COPY_OUTPUT --outdir="${MONO_BIN_OUTDIR}"
@@ -61,8 +62,8 @@ done
 
 echo "Copying mono bin files to app directory..."
 # Copy files from mono bin output
-rsync -a $MONO_BIN_OUTDIR/ $APP_DIR/
-rsync -a $MONO_BIN_OUTDIR/data/ $DATA_DIR/
+rsync -rl $MONO_BIN_OUTDIR/ $APP_DIR/
+rsync -rl $MONO_BIN_OUTDIR/data/ $DATA_DIR/
 mkdir -p $APP_DIR/.tmp
 touch $APP_DIR/.tmp/.server-up
 rm -rf $APP_DIR/data

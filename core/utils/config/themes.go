@@ -9,7 +9,7 @@ import (
 
 const (
 	themesConfigJsonFile = "themes.json"
-	defaultThemePlugin   = "com.flarego.default-theme"
+	defaultThemePlugin   = "com.flarego.core-theme"
 )
 
 var (
@@ -64,6 +64,10 @@ func WriteThemesConfig(cfg ThemesConfig) error {
 }
 
 func isThemeValid(themePkg string) bool {
+	// The built-in core theme is always valid (no disk install needed)
+	if themePkg == defaultThemePlugin {
+		return true
+	}
 	themePath := filepath.Join(sdkutils.PathPluginInstallDir, themePkg)
 	return sdkutils.FsExists(themePath)
 }

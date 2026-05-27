@@ -49,7 +49,8 @@ require (
 
 	mainPath := filepath.Join(pluginDir, "main.go")
 
-	goMain := fmt.Sprintf(`
+	goMain := fmt.Sprintf(`//go:build !mono
+
 package main
 
 import (
@@ -89,7 +90,19 @@ func Init(api sdkapi.IPluginApi) {
 		panic(err)
 	}
 
-	MakePluginMainMono(pluginDir)
+	// Enforce the three-file plugin contract on the freshly scaffolded plugin:
+	//   - main.go was just written with //go:build !mono.
+	//   - main_mono.go is generated from main.go (mono build tag swap).
+	//   - system/main.go is generated from main.go (package rename, tag and
+	//     func main stripped) for static linking by both mono and non-mono
+	//     system plugin loaders.
+	// EnsureMainGoBuildTag is a no-op here (template already includes the
+	// tag) but called for defense-in-depth and to keep the generator
+	// pipeline consistent with sysplugin-prepare's flow.
+	EnsureMainGoBuildTag(pluginDir)
+	EnsurePluginMainMono(pluginDir)
+	EnsurePluginSystemFiles(pluginDir)
+	ValidatePluginContract(pluginDir)
 
 	home := `
 package views

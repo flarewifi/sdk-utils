@@ -48,6 +48,17 @@ func PortalRoutes(g *api.CoreGlobals) {
 			Name("portal:register:ajax")
 	})
 
+	// Core fallback theme HTMX endpoints — used by the built-in portal theme
+	// (index.templ / status_nav.templ) when the configured theme plugin is absent.
+	portalR.Group("/portal", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Use(redirectToLanIpMw)
+		subrouter.Use(httpRedirectMw)
+		subrouter.Use(ensureDeviceMw)
+		subrouter.Get("/status-nav", controllers.PortalStatusNavCtrl(g)).Name("portal:status-nav")
+		subrouter.Get("/sessions/summary", controllers.PortalSessionSummaryCtrl(g)).Name("portal:sessions:summary")
+		subrouter.Get("/navs", controllers.PortalNavsCtrl(g)).Name("portal:navs")
+	})
+
 	portalR.Group("/portal", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Use(redirectToLanIpMw)
 		subrouter.Use(httpRedirectMw)

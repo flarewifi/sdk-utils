@@ -9,6 +9,27 @@ This tutorial will guide you through creating a custom theme plugin for Flare Ho
 - Familiarity with the [templ](https://templ.guide/) template engine
 - A Flare Hotspot development environment set up
 
+!!! important "Bootstrap Requirements"
+    Theme plugins must bundle their own copy of Bootstrap. The versions depend on the interface:
+
+    - **Admin interface**: Bootstrap **v5** (CSS + JS) — the admin layout relies on Bootstrap 5 classes.
+    - **Login page**: Bootstrap **v3** (CSS only, no JS required).
+    - **Portal page**: Bootstrap **v3** (CSS only, no JS required).
+
+    Include these files in your theme's `vendor/` directory and reference them in your manifest files. For example, the admin manifest should include:
+
+    ```json
+    "./vendor/bootstrap-5/css/bootstrap.css",
+    "./vendor/bootstrap-5/js/bootstrap.bundle.js",
+    "./vendor/bootstrap-icons/bootstrap-icons.min.css"
+    ```
+
+    And the portal manifest should import Bootstrap 3 CSS in your portal stylesheet:
+
+    ```css
+    @import 'vendor/bootstrap-3/css/bootstrap.css';
+    ```
+
 ## Step 1: Create the Basic Plugin Structure
 
 First, follow the [general plugin creation guide](../guides/creating-a-plugin.md) to create a new plugin using the `create-plugin` command. This will set up the basic plugin structure, `main.go` file, and necessary configuration.

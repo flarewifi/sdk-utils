@@ -5,6 +5,7 @@ import (
 	"core/internal/api"
 	"core/internal/jobs"
 	"core/internal/modules/activation"
+	coretheme "core/internal/theme"
 	"log"
 )
 
@@ -21,6 +22,8 @@ func Init(g *api.CoreGlobals) {
 		InitOpkg()
 		RunCoreMigrations(g)
 		InitTranslations()
+		coretheme.SetAdminTheme(g.CoreAPI)
+		coretheme.SetPortalTheme(g.CoreAPI)
 		InitPlugins(g)
 		InitAssets(g)
 		InitAccounts()

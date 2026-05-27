@@ -10,6 +10,7 @@
 /go
 /data/config
 /data/plugins/local/*
+/data/plugins/devel/*
 /data/storage
 /data/system
 /data/db
@@ -32,6 +33,7 @@
 *.sqlite
 .env
 plugin-init_mono.go
+system-plugins-init.go
 go.work.sum
 os_release.json
 

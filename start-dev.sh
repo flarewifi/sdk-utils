@@ -8,9 +8,13 @@ GO_TAGS="dev"
         rm -rf **/*_templ.go && \
         sh -c "cd core && templ generate" && \
         ./scripts/sqlc-gen.sh ./core && \
+        # Generate static system plugin loader (writes core/internal/api/system-plugins-init.go
+        # and <plugin>/static/main.go for every system plugin). Must run before
+        # any compile of the api package — otherwise LoadSystemPlugins resolves
+        # to the no-op .default stub and any system plugins are silently absent.
+        go run -tags="${GO_TAGS}" ./core/cmd/sysplugin-prepare/main.go && \
         go run -tags="${GO_TAGS}" ./core/cmd/build-cli/main.go && \
-        ./bin/flare fix-workspace && \
-        ./bin/flare build-plugins
+        ./bin/flare fix-workspace
 ) || (echo "Build failed" && exit 1)
 
 APP_DIR="/opt/flarehotspot/app"
@@ -41,6 +45,16 @@ done
 # Create temp directory marker
 mkdir -p $APP_DIR/.tmp
 touch $APP_DIR/.tmp/.server-up
+
+# Ensure system/local plugins are installed under runtime APP_DIR
+APP_DIR="$APP_DIR" APP_TMP="$APP_TMP" ./bin/flare build-plugins || (echo "Build plugins failed" && exit 1)
+
+# Dev mode: prevent stale update tarballs from wiping app symlinks
+if [ -d "/opt/flarehotspot/data/storage/system/updates" ]; then
+    rm -rf /opt/flarehotspot/data/storage/system/updates/*.tar.gz
+    rm -rf /opt/flarehotspot/data/storage/system/updates/.dl_software_update_complete
+fi
+
 
 # Run start.sh from the app directory
 cd $APP_DIR && ./start.sh

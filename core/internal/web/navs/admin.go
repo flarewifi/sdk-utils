@@ -151,12 +151,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			},
 		}
 
-		// Append plugin navs
-		systemNavs = append(systemNavs, GetAdminPluginNavs(g)...)
-
 		adminNavs := append(quickAccessNavs, systemNavs...)
 		return adminNavs
 	})
-
-	GetAdminPluginNavs(g)
 }

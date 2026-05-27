@@ -18,7 +18,8 @@ func main() {
 
 	localPlugins := plugins.LocalPluginSrcDefs()
 	systemPlugins := plugins.SystemPluginSrcDefs()
-	allPlugins := append(localPlugins, systemPlugins...)
+	develPlugins := plugins.DevelPluginSrcDefs()
+	allPlugins := append(append(systemPlugins, localPlugins...), develPlugins...)
 
 	// Reset data/config/plugins.json
 	if err := config.ResetPluginsConfig(); err != nil {

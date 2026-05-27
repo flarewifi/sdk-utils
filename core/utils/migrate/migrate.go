@@ -5,17 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func MigrateUp(db *sql.DB, pluginDir string) error {
-	tmpDir := filepath.Join(sdkutils.PathTmpDir, ".migrate", filepath.Base(pluginDir))
-	defer os.RemoveAll(tmpDir)
-
-	files, err := listFiles(pluginDir, tmpDir, migration_Up)
+	files, err := listFiles(pluginDir, migration_Up)
 	if err != nil && errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
@@ -52,11 +48,12 @@ func MigrateUp(db *sql.DB, pluginDir string) error {
 	return nil
 }
 
-func MigrateDown(plguinDir string, db *sql.DB) error {
-	tmpDir := filepath.Join(sdkutils.PathTmpDir, ".migrate", filepath.Base(plguinDir))
-	defer os.RemoveAll(tmpDir)
+func MigrateDown(pluginDir string, db *sql.DB) error {
+	files, err := listFiles(pluginDir, migration_Down)
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
 
-	files, err := listFiles(plguinDir, tmpDir, migration_Down)
 	if err != nil {
 		return err
 	}

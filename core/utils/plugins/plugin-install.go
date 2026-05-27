@@ -30,8 +30,10 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 		info, err = InstallFromLocalPath(db, def, opts)
 
 	case sdkutils.PluginSrcStore:
-		opts.RemoveSrc = true
-		info, err = InstallFromPluginStore(db, def, opts)
+		// Store installs require a transient download URL that is not part of
+		// the persisted PluginSrcDef. Callers must go through
+		// PluginsMgr.InstallFromStore which provides the URL explicitly.
+		return sdkutils.PluginInfo{}, errors.New("store installs must be invoked via PluginsMgr.InstallFromStore")
 	default:
 		return sdkutils.PluginInfo{}, errors.New("Invalid plugin source: " + def.Src)
 	}
@@ -58,8 +60,12 @@ func InstallFromLocalPath(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpt
 	return
 }
 
-func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (sdkutils.PluginInfo, error) {
+func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, zipURL string, opts InstallOpts) (sdkutils.PluginInfo, error) {
 	log.Println("Installing plugin from store: " + def.String())
+
+	if zipURL == "" {
+		return sdkutils.PluginInfo{}, errors.New("InstallFromPluginStore: zipURL is required")
+	}
 
 	// prepare path
 	randomPath := RandomPluginPath()
@@ -77,9 +83,10 @@ func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, opts Insta
 	}
 	defer mnt.Unmount()
 
-	// download plugin release zip file
-	log.Println("downloading plugin release: ", def.StoreZipURL)
-	downloader := download.NewDownloader(def.StoreZipURL, clonePath)
+	// download plugin release zip file. The URL is transient and is not
+	// recorded on the persisted PluginSrcDef.
+	log.Println("downloading plugin release: ", zipURL)
+	downloader := download.NewDownloader(zipURL, clonePath)
 	if err := downloader.Download(); err != nil {
 		log.Println("Error: ", err)
 		return sdkutils.PluginInfo{}, err
@@ -87,9 +94,6 @@ func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, opts Insta
 
 	// extract compressed plugin release
 	sdkutils.FsExtract(clonePath, workPath)
-
-	// clear StoreZipURL def
-	def.StoreZipURL = ""
 
 	newWorkPath, err := sdkutils.FindPluginSrc(workPath)
 	if err != nil {
@@ -129,12 +133,7 @@ func InstallFromGitSrc(sqldb *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpt
 		return sdkutils.PluginInfo{}, err
 	}
 
-	cachePath := filepath.Join(sdkutils.PathPluginCacheDir, info.Package)
-	if err := sdkutils.FsCopy(clonePath, cachePath); err != nil {
-		return sdkutils.PluginInfo{}, err
-	}
-
-	if err := InstallPlugin(sdkutils.StripRootPath(cachePath), sqldb, opts); err != nil {
+	if err := InstallPlugin(sdkutils.StripRootPath(clonePath), sqldb, opts); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 
@@ -222,7 +221,24 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	}()
 
 	installPath := GetInstallPath(info.Package)
-	if err := ValidateInstallPath(installPath); err == nil {
+	if !opts.ForceInstall {
+		if err := ValidateInstallPath(installPath); err == nil {
+			installPath = GetPendingUpdatePath(info.Package)
+		}
+	}
+
+	if opts.ForceInstall {
+		if err := os.RemoveAll(installPath); err != nil {
+			return err
+		}
+		if err := os.RemoveAll(GetPendingUpdatePath(info.Package)); err != nil {
+			return err
+		}
+	}
+
+	if !opts.ForceInstall {
+		// keep existing behavior: install to pending updates when already installed
+		// and force install is not requested.
 		installPath = GetPendingUpdatePath(info.Package)
 	}
 
@@ -230,20 +246,18 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		return err
 	}
 
-	// Save the source path
-	if opts.Def.LocalPath == "" {
+	// Save the source path for local/system/zip installs. Git and store
+	// installs intentionally do NOT persist LocalPath — pluginSrc is a
+	// transient clone/mount path that is removed immediately after install.
+	if opts.Def.LocalPath == "" &&
+		opts.Def.Src != sdkutils.PluginSrcGit &&
+		opts.Def.Src != sdkutils.PluginSrcStore {
 		opts.Def.LocalPath = pluginSrc
 	}
 
 	if err := WriteMetadata(opts.Def, info.Package); err != nil {
 		log.Println("Error building plugin: ", err)
 		return err
-	}
-
-	if opts.ForceInstall {
-		if err := os.RemoveAll(installPath); err != nil {
-			return err
-		}
 	}
 
 	log.Println("Copying plugin files to: ", installPath)
@@ -350,22 +364,31 @@ func IsToBeRemoved(pkg string) bool {
 
 func UninstallPlugin(pkg string, sqldb *sql.DB) error {
 	meta, err := ReadMetadata(pkg)
-	if err != nil {
-		return err
-	}
+	metaFound := err == nil
 
-	if err := RemoveMetadata(pkg); err != nil {
-		return err
+	if metaFound {
+		if err := RemoveMetadata(pkg); err != nil {
+			return err
+		}
 	}
 
 	installPath := GetInstallPath(pkg)
-	if err := migrate.MigrateDown(installPath, sqldb); err != nil {
-		return err
+
+	// Only run down-migrations if the plugin has a migrations directory.
+	migDir := filepath.Join(installPath, "resources/migrations")
+	if sdkutils.FsExists(migDir) {
+		if err := migrate.MigrateDown(installPath, sqldb); err != nil {
+			return err
+		}
 	}
 
-	if meta.Def.Src == sdkutils.PluginSrcLocal || meta.Def.Src == sdkutils.PluginSrcSystem {
-		if err := os.RemoveAll(meta.Def.LocalPath); err != nil {
-			return err
+	// Only remove the source directory for non-local/system plugins (e.g. git, store, zip).
+	// For local/system plugins the source is the plugin repo itself and must not be deleted.
+	if metaFound && meta.Def.Src != sdkutils.PluginSrcLocal && meta.Def.Src != sdkutils.PluginSrcSystem {
+		if meta.Def.LocalPath != "" {
+			if err := os.RemoveAll(meta.Def.LocalPath); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	machineuid "core/internal/modules/machine-uid"
 	rpcutil "core/internal/modules/rpc"
-	"core/internal/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/utils/env"
 	"log"
 	"net/http"

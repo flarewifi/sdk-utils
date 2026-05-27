@@ -193,6 +193,15 @@ func GetInstalledModules() ([]RequiredGoModule, error) {
 	installedDirs := InstalledPluginDirs()
 	for _, pluginDir := range installedDirs {
 		pluginGoModFile := filepath.Join(pluginDir, "go.mod")
+
+		if !sdkutils.FsExists(pluginGoModFile) {
+			log.Printf("Plugin %s is missing go.mod, removing incomplete install dir for reinstall\n", pluginDir)
+			if err := os.RemoveAll(pluginDir); err != nil {
+				log.Printf("Error removing incomplete plugin install dir %s: %v\n", pluginDir, err)
+			}
+			continue
+		}
+
 		reqMods, err := GetRequiredGoModules(pluginGoModFile)
 		if err != nil {
 			return nil, err

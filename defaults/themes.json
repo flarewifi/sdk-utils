@@ -1,4 +1,4 @@
 {
-  "portal": "com.flarego.default-theme",
-  "admin": "com.flarego.default-theme"
+  "portal": "com.flarego.core-theme",
+  "admin": "com.flarego.core-theme"
 }

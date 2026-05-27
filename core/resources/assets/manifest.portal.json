@@ -33,5 +33,19 @@
   ],
   "payment-options.css": [
     "./portal/payments/payment-options.css"
+  ],
+  "theme-fallback.js": [
+    "./themes/fallback/portal/js/portal.js",
+    "./themes/fallback/auth/login.js",
+    "./themes/fallback/portal.js"
+  ],
+  "theme-fallback.css": [
+    "./themes/fallback/portal/css/portal.css",
+    "./themes/fallback/portal/css/home-page.css",
+    "./themes/fallback/portal/css/voucher-form.css",
+    "./themes/fallback/portal/css/payment-options.css",
+    "./themes/fallback/portal/css/insert-coin.css",
+    "./themes/fallback/auth/login.css",
+    "./themes/fallback/portal.css"
   ]
 }

@@ -59,7 +59,6 @@ type PluginSrcDef struct {
 	Src                string // git | store | system | local
 	StorePackage       string // if src is "store"
 	StorePluginVersion string // if src is "store"
-	StoreZipURL        string // if src is "store"
 	GitURL             string // if src is "git"
 	GitRef             string // can be a branch, tag or commit hash
 	LocalPath          string // if src is "local or system"

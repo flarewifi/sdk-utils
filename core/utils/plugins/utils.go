@@ -56,6 +56,38 @@ func ConfigPluginSrcDefs() []sdkutils.PluginSrcDef {
 	return defs
 }
 
+func ConfigPluginSrcDefsWithPkg() []sdkutils.PluginMetadata {
+	cfg, err := config.ReadPluginsConfig()
+	if err != nil {
+		return nil
+	}
+
+	excluded := []string{sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem}
+	var metadataList []sdkutils.PluginMetadata
+	for _, m := range cfg.Metadata {
+		if slices.Contains(excluded, m.Def.Src) {
+			continue
+		}
+
+		metadataList = append(metadataList, m)
+	}
+
+	return metadataList
+}
+
+func DevelPluginSrcDefs() []sdkutils.PluginSrcDef {
+	list := []sdkutils.PluginSrcDef{}
+	paths := SearchPluginDirs(sdkutils.PathPluginDevelDir)
+	for _, pluginPath := range paths {
+		list = append(list, sdkutils.PluginSrcDef{
+			Src:       sdkutils.PluginSrcLocal,
+			LocalPath: sdkutils.StripRootPath(pluginPath),
+		})
+	}
+	log.Println("devel plugins list: ", list)
+	return list
+}
+
 func LocalPluginSrcDefs() []sdkutils.PluginSrcDef {
 	list := []sdkutils.PluginSrcDef{}
 	paths := SearchPluginDirs(sdkutils.PathPluginLocalDir)
@@ -155,6 +187,10 @@ func WriteMetadata(def sdkutils.PluginSrcDef, pkg string) error {
 		return err
 	}
 
+	if def.Src == sdkutils.PluginSrcGit || def.Src == sdkutils.PluginSrcStore {
+		def.LocalPath = ""
+	}
+
 	meta := sdkutils.PluginMetadata{
 		Package: pkg,
 		Def:     def,
@@ -170,6 +206,20 @@ func WriteMetadata(def sdkutils.PluginSrcDef, pkg string) error {
 	cfg.Metadata = append(cfg.Metadata, meta)
 
 	return config.WritePluginsConfig(cfg)
+}
+
+func CacheAndRegisterPlugin(def sdkutils.PluginSrcDef, pkg string) error {
+	cfg, err := config.ReadPluginsConfig()
+	if err != nil {
+		return err
+	}
+	for _, m := range cfg.Metadata {
+		if m.Package == pkg && m.Def.Src == sdkutils.PluginSrcStore {
+			return nil // preserve marketplace entry
+		}
+	}
+	// Write original def directly — no cache copy needed
+	return WriteMetadata(def, pkg)
 }
 
 func ReadMetadata(pkg string) (metadata sdkutils.PluginMetadata, err error) {
@@ -325,8 +375,15 @@ func ValidateSrcPath(src string) error {
 	return nil
 }
 
+// ValidateInstallPath checks whether a directory under plugins/installed/ holds
+// a real plugin's data tree. Only plugin.json is required — plugin.so is NOT,
+// because statically-linked system plugins (compiled into the core binary by
+// sysplugin-prepare) carry their data tree here without a .so sibling. The
+// previous plugin.so requirement was a leftover from the pre-static-plugin
+// world and silently excluded system plugin dirs from InstalledPluginDirs(),
+// which in turn skipped their migrations at boot in production.
 func ValidateInstallPath(src string) error {
-	requiredFiles := []string{"plugin.json", "go.mod", "plugin.so"}
+	requiredFiles := []string{"plugin.json"}
 
 	for _, f := range requiredFiles {
 		if !sdkutils.FsExists(filepath.Join(src, f)) {
@@ -371,23 +428,3 @@ func GetBackupPath(pkg string) string {
 	return filepath.Join(sdkutils.PathPluginBackupsDir, pkg)
 }
 
-func HasCache(cachePath string) bool {
-	info, err := sdkutils.GetPluginInfoFromPath(cachePath)
-	if err != nil {
-		log.Println("no info found")
-		return false
-	}
-
-	actualCachePath := GetCachePath(info.Package)
-	strippedRootPath := sdkutils.StripRootPath(actualCachePath)
-	if strippedRootPath != cachePath {
-		return false
-	}
-
-	err = sdkutils.ValidatePluginSrc(cachePath)
-	return err == nil
-}
-
-func GetCachePath(pkg string) string {
-	return filepath.Join(sdkutils.PathPluginCacheDir, pkg)
-}

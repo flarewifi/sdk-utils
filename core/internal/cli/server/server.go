@@ -1,4 +1,4 @@
-//go:build !mono
+//go:build !mono && !dev
 
 package server
 

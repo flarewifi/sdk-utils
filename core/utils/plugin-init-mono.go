@@ -22,21 +22,45 @@ type PluginModule struct {
 	PluginImportVar   string
 	PluginModuleUri   string
 	PluginPackageName string
+	DefSrc            string
+	DefLocalPath      string
 }
 
 func CreateMonoPluginInit() {
 	CreateGoWorkspace()
 
+	develDefs := plugins.DevelPluginSrcDefs()
 	localDefs := plugins.LocalPluginSrcDefs()
 	systemDefs := plugins.SystemPluginSrcDefs()
 
-	pluginDirs := []string{filepath.Join(sdkutils.PathAppDir, "core")}
-	for _, def := range append(systemDefs, localDefs...) {
+	// The four-file plugin contract applies to plugins ONLY — not to the
+	// core/ directory. Core is the binary entry point (its own main.go +
+	// main_mono.go each defining func main()) and is not imported via a
+	// <module>/system subpackage by any loader. Including core here would
+	// generate a stray core/system/{main,main_mono}.go that nothing uses.
+	pluginDirs := []string{}
+	for _, def := range append(append(develDefs, systemDefs...), localDefs...) {
 		pluginDirs = append(pluginDirs, def.LocalPath)
 	}
 
 	for _, p := range pluginDirs {
-		MakePluginMainMono(p)
+		// Enforce the four-file plugin contract: //go:build !mono on main.go,
+		// main_mono.go generated from main.go if missing, system/main.go and
+		// system/main_mono.go generated as derived mirrors (always overwrite
+		// with content-aware-skip). Both the mono loader and the non-mono
+		// system-plugin loader import via the <module>/system path; Go's
+		// build-tag filtering picks system/main.go or system/main_mono.go
+		// based on the loader's own //go:build tag.
+		//
+		// EnsureMainGoBuildTag mutates main.go in place when no tag is
+		// present. EnsurePluginMainMono creates main_mono.go from main.go
+		// only if it does not already exist (author-owned once present).
+		// EnsurePluginSystemFiles always (re)generates both system/ files.
+		// ValidatePluginContract fails loudly if anything is still missing.
+		EnsureMainGoBuildTag(p)
+		EnsurePluginMainMono(p)
+		EnsurePluginSystemFiles(p)
+		ValidatePluginContract(p)
 	}
 
 	MakePluginInitMono()
@@ -46,26 +70,44 @@ func MakePluginInitMono() {
 	pluginPaths := []string{}
 	pluginDirs := []string{}
 
+	develDefs := plugins.DevelPluginSrcDefs()
 	localDefs := plugins.LocalPluginSrcDefs()
 	systemDefs := plugins.SystemPluginSrcDefs()
-	for _, def := range append(systemDefs, localDefs...) {
+	defByDir := make(map[string]sdkutils.PluginSrcDef)
+	for _, def := range append(append(develDefs, systemDefs...), localDefs...) {
 		pluginDirs = append(pluginDirs, def.LocalPath)
+		defByDir[def.LocalPath] = def
 	}
 
 	pluginPaths = append(pluginPaths, pluginDirs...)
 
 	pluginMods := []PluginModule{}
+	seenPackages := make(map[string]bool)
 	for _, dir := range pluginDirs {
 		modVar := sdkutils.Slugify(filepath.Base(dir), "_")
 		modPath := getGoModule(dir)
 		pkgName := getPackage(dir)
-		mod := PluginModule{modVar, modPath, pkgName}
+		if seenPackages[pkgName] {
+			continue
+		}
+		seenPackages[pkgName] = true
+		def := defByDir[dir]
+		mod := PluginModule{
+			PluginImportVar:   modVar,
+			PluginModuleUri:   modPath,
+			PluginPackageName: pkgName,
+			DefSrc:            def.Src,
+			DefLocalPath:      def.LocalPath,
+		}
 		pluginMods = append(pluginMods, mod)
 	}
 
 	importModules := ""
 	for _, mod := range pluginMods {
-		importModules += fmt.Sprintf("\n\t"+`%s "%s"`, mod.PluginImportVar, mod.PluginModuleUri)
+		// Import the renamed-package subpackage at <module>/system (created
+		// by EnsurePluginSystemFiles) rather than the plugin root, which is
+		// still `package main` and not importable.
+		importModules += fmt.Sprintf("\n\t"+`%s "%s/system"`, mod.PluginImportVar, mod.PluginModuleUri)
 	}
 
 	pluginInitCodes := ""
