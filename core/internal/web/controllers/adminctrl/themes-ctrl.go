@@ -17,14 +17,19 @@ func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 		portalThemes := []themes.ThemeOption{}
 
 		for _, p := range allPlugins {
+			info := p.Info()
+			// Hide the built-in core fallback from the picker — it is the
+			// implicit fallback when no real theme plugin is selected, not a
+			// user-selectable theme.
+			if info.Package == "com.flarego.core" {
+				continue
+			}
 			features := p.Features()
 			for _, f := range features {
 				if f == "theme:admin" {
-					info := p.Info()
 					adminThemes = append(adminThemes, themes.ThemeOption{Label: info.Name, Value: info.Package})
 				}
 				if f == "theme:portal" {
-					info := p.Info()
 					portalThemes = append(portalThemes, themes.ThemeOption{Label: info.Name, Value: info.Package})
 				}
 			}

@@ -114,7 +114,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 					g.CoreAPI.Translate("label", "events"),
 					g.CoreAPI.Translate("label", "monitoring"),
 				},
-				Order: 5000, // Default position (after plugin items with Order < 5000)
+				Order: 8500, // Sit directly above Reboot, after plugin items
 				Icon:  "<i class='bi bi-file-earmark-text'></i>",
 			},
 			{

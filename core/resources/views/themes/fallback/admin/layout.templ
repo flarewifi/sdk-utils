@@ -1,206 +1,119 @@
 package admin
 
 import (
-	"encoding/json"
-	"fmt"
+	"net/http"
+
 	sdkapi "sdk/api"
 )
 
 type AdminLayoutData struct {
 	Components    sdkapi.IThemeComponents
-	Navs          []sdkapi.AdminNavList
-	NavItems      []sdkapi.AdminNavItem
 	Notifications []sdkapi.Notification
+	CurrentPath   string
 }
 
 templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 	<!DOCTYPE html>
-	<html lang="en" data-bs-theme="dark" { data.Components.HtmlAttrs()... }>
+	<html lang="en" { data.Components.HtmlAttrs()... }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			@data.Components.Head()
 		</head>
-		<script>
-			(function() {
-				document.documentElement.setAttribute("data-bs-theme", "dark");
-				localStorage.setItem("theme", "dark");
-			})();
-		</script>
 		<body { data.Components.BodyAttrs()... }>
-			<div class="layout" x-data="{ sidebarOpen: false }">
-				<div class="sidebar-overlay" x-show="sidebarOpen" x-transition.opacity @click="sidebarOpen = false" x-cloak></div>
+			<div
+				class="fw-layout"
+				x-data="{ sidebarOpen: false, notifOpen: false, modalOpen: false }"
+				@show-notif-modal.window="modalOpen = true"
+			>
+				<div class="fw-sidebar-overlay" x-show="sidebarOpen" x-transition.opacity @click="sidebarOpen = false" x-cloak></div>
 				@sidebar(api, data)
-				<div class="right-content">
-					<header>
+				<div class="fw-right">
+					<header class="fw-topbar">
 						@topbar(api, data)
 					</header>
-					<main>
+					<main class="fw-main">
+						<div id="flash" class="fw-flash"></div>
 						@data.Components.PageContent()
 					</main>
 				</div>
+				<div
+					class="fw-modal"
+					id="notifModal"
+					x-show="modalOpen"
+					x-cloak
+					@click.self="modalOpen = false"
+					@keydown.escape.window="modalOpen = false"
+				>
+					@ShowNotificationContent(api, sdkapi.Notification{})
+				</div>
 			</div>
-			<!-- Notification Modal -->
-			<div
-				class="modal fade"
-				id="notifModal"
-				tabindex="-1"
-				aria-labelledby="notifModalTitle"
-				aria-hidden="true"
-			>
-				@ShowNotificationContent(api, sdkapi.Notification{})
-			</div>
-			@colorModes()
 			@data.Components.Scripts()
 		</body>
 	</html>
 }
 
-func subnavItemClass(subnav sdkapi.AdminNavItem) string {
-	klass := "sub-nav-item"
-	if subnav.IsCurrent {
+func navItemClass(currentPath, href string) string {
+	klass := "fw-sub-nav-item"
+	if currentPath == href {
 		klass += " active"
 	}
 	return klass
 }
 
-func navCategoryClass(navs sdkapi.AdminNavList) string {
-	klass := "nav-category"
-	for _, sub := range navs.Items {
-		if sub.IsCurrent {
-			klass += " active"
-			return klass
-		}
+// CurrentPathFromRequest returns the request path; used by admin.go to populate
+// AdminLayoutData.CurrentPath so the sidebar can mark the active item.
+func CurrentPathFromRequest(r *http.Request) string {
+	if r == nil || r.URL == nil {
+		return ""
 	}
-	return klass
-}
-
-func menuData(navs []sdkapi.AdminNavList) string {
-	open := make([]bool, len(navs))
-	for i, nav := range navs {
-		for _, sub := range nav.Items {
-			if sub.IsCurrent {
-				open[i] = true
-				break
-			}
-		}
-	}
-
-	openJSON, _ := json.Marshal(open)
-	return fmt.Sprintf("{ open: %s }", openJSON)
-}
-
-func navItemsAsJSON(items []sdkapi.AdminNavItem) string {
-	bytes, _ := json.Marshal(items)
-	return string(bytes)
+	return r.URL.Path
 }
 
 templ sidebar(api sdkapi.IPluginApi, data AdminLayoutData) {
-	<aside class="sidebar" :class="sidebarOpen && 'open'">
-		<div class="h-100 d-flex flex-column">
-			<div class="logo-img">
-				<a class="px-3 fs-6 text-white" href="/admin">
-					<img class="logo" src={ api.Http().Helpers().PublicPath("images/flarewifi_logo.png") } alt="Nexifi Logo"/>
+	{{
+		dashboardUrl := api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "admin:dashboard")
+		themesUrl := api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "admin:themes:index")
+	}}
+	<aside class="fw-sidebar" :class="sidebarOpen && 'open'">
+		<div class="fw-sidebar-logo">
+			<a href="/admin">
+				<img class="fw-logo" src={ api.Http().Helpers().PublicPath("images/flarewifi_logo.png") } alt="FlareWiFi"/>
+			</a>
+		</div>
+		<nav class="fw-sidebar-items">
+			<div class={ navItemClass(data.CurrentPath, themesUrl) }>
+				<a href={ templ.SafeURL(themesUrl) }>
+					<span>{ api.Translate("label", "Select Theme") }</span>
 				</a>
 			</div>
-			<!-- Mobile search - only visible on mobile -->
-			<div class="sidebar-search d-block d-md-none">
-				<form class="search-bar mobile-search" data-results={ navItemsAsJSON(data.NavItems) }>
-					<div class="position-relative w-100">
-						<i class="bi bi-search search-icon"></i>
-						<input
-							type="text"
-							placeholder={ api.Translate("label", "Search settings") }
-							aria-label={ api.Translate("label", "Search settings") }
-							class="mobile-search-input"
-						/>
-						<ul class="dropdown-menu w-100 mobile-search-results"></ul>
-					</div>
-				</form>
-			</div>
-			<nav class="items" x-data={ menuData(data.Navs) }>
-				for i, nav := range data.Navs {
-					if nav.Category == sdkapi.NavCategoryQuickAccess || nav.Category == sdkapi.NavCategoryPayments {
-						<div class="nav-category">
-							<div class="mb-2">
-								<h6 class="text-uppercase">{ nav.Label }</h6>
-							</div>
-							<div>
-								<div class="d-flex flex-column gap-1">
-									for _, subnav := range nav.Items {
-										<div class={ subnavItemClass(subnav) }>
-											<a href={ templ.SafeURL(subnav.RouteUrl) }>
-												@templ.Raw(subnav.Icon)
-												<span class="fs-6" style="flex: 1;">{ subnav.Label }</span>
-												if subnav.Label == "eCash" {
-													<span class="badge bg-warning bg-opacity-25 rounded-pill px-2 py-1 border border-warning text-warning">Coming Soon</span>
-												}
-											</a>
-										</div>
-									}
-								</div>
-							</div>
-						</div>
-					} else {
-						<div class={ navCategoryClass(nav) } :class={ fmt.Sprintf("{'active': open[%d]}", i) }>
-							<button type="button" @click.prevent={ fmt.Sprintf("open[%d] = !open[%d]", i, i) }>
-								<h6 class="text-uppercase">{ nav.Label }</h6>
-								<i class="bi bi-chevron-right"></i>
-							</button>
-							<div x-show={ fmt.Sprintf("open[%d]", i) } x-cloak x-transition>
-								<div class="d-flex flex-column gap-1">
-									for _, subnav := range nav.Items {
-										<div class={ subnavItemClass(subnav) }>
-											<a href={ templ.SafeURL(subnav.RouteUrl) }>
-												@templ.Raw(subnav.Icon)
-												<span class="fs-6">{ subnav.Label }</span>
-											</a>
-										</div>
-									}
-								</div>
-							</div>
-						</div>
-					}
-				}
-			</nav>
-			<div class="footer">
-				<a href="#" class="logout" id="logoutBtn" type="button" data-logout-url={ api.Http().Helpers().UrlForRoute("admin:auth:logout") }>
-					<i class="bi bi-box-arrow-right"></i>
-					<span class="fs-6">{ api.Translate("label", "Logout") }</span>
+			<div class={ navItemClass(data.CurrentPath, dashboardUrl) }>
+				<a href={ templ.SafeURL(dashboardUrl) }>
+					<span>{ api.Translate("label", "System Status") }</span>
 				</a>
 			</div>
+		</nav>
+		<div class="fw-sidebar-footer">
+			<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:auth:logout")) } onsubmit="return confirm('Are you sure you want to logout?')">
+				<button type="submit" class="fw-logout">{ api.Translate("label", "Logout") }</button>
+			</form>
 		</div>
 	</aside>
 }
 
 templ topbar(api sdkapi.IPluginApi, data AdminLayoutData) {
-	<div class="d-flex align-items-center justify-content-between h-100 px-4">
-		<button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen" type="button">
-			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-				<path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"></path>
+	<button class="fw-sidebar-toggle" @click="sidebarOpen = !sidebarOpen" type="button" aria-label="Toggle sidebar">
+		<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+			<path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"></path>
+		</svg>
+	</button>
+	<div class="fw-topbar-right">
+		@NotificationForm(api, data.Notifications)
+		<a href={ templ.SafeURL(api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "admin:user:index")) } class="fw-admin-link">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+				<path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"></path>
 			</svg>
-		</button>
-		<form class="search-bar d-none d-md-block" data-results={ navItemsAsJSON(data.NavItems) }>
-			<div class="position-relative w-100">
-				<i class="bi bi-search search-icon"></i>
-				<input
-					type="text"
-					placeholder={ api.Translate("label", "Search settings") }
-					aria-label={ api.Translate("label", "Search settings") }
-					id="searchInput"
-					autocomplete="off"
-				/>
-				<ul id="searchResults" class="dropdown-menu w-100"></ul>
-			</div>
-		</form>
-		<div class="d-flex align-items-center gap-4">
-			@NotificationForm(api, data.Notifications)
-			<a href={ templ.SafeURL(api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "admin:user:index")) } class="admin">
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person size-5" viewBox="0 0 16 16">
-					<path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"></path>
-				</svg>
-				<h6 class="fs-6">Admin</h6>
-			</a>
-		</div>
+			<span>Admin</span>
+		</a>
 	</div>
 }

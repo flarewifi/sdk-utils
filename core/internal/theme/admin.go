@@ -29,13 +29,6 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 			TextColor:      "#1f2937",
 		},
 		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
-			navs := api.Http().Navs().GetAdminNavs(r)
-
-			var navItems []sdkapi.AdminNavItem
-			for _, nav := range navs {
-				navItems = append(navItems, nav.Items...)
-			}
-
 			notifs, err := api.Notification().GetUnreadNotifications(r.Context())
 			if err != nil {
 				notifs = []sdkapi.Notification{}
@@ -43,9 +36,8 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 
 			data := corethemeadmin.AdminLayoutData{
 				Components:    c,
-				Navs:          navs,
-				NavItems:      navItems,
 				Notifications: notifs,
+				CurrentPath:   corethemeadmin.CurrentPathFromRequest(r),
 			}
 			layout := corethemeadmin.AdminLayout(api, data)
 			if err := layout.Render(r.Context(), w); err != nil {

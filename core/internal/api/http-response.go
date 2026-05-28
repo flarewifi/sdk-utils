@@ -43,7 +43,7 @@ func (self *HttpResponse) AdminView(w http.ResponseWriter, r *http.Request, v sd
 
 	var flash *sdkapi.FlashMsg
 	if isFallback {
-		msg := self.api.Translate("warning", "The selected theme is not installed or failed to load. Falling back to the built-in core theme.")
+		msg := self.api.Translate("warning", "The selected theme is not valid or not installed. Please select a valid theme.")
 		flash = &sdkapi.FlashMsg{
 			Type:    sdkapi.FlashMsgWarning,
 			Message: msg,
@@ -94,7 +94,7 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	}
 
 	if isFallback {
-		msg := self.api.Translate("warning", "The selected theme is not installed or failed to load. Falling back to the built-in core theme.")
+		msg := self.api.Translate("warning", "The selected theme is not valid or not installed. Please select a valid theme.")
 		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_type", sdkapi.FlashMsgWarning, nil)
 		self.api.HttpAPI.httpCookie.SetCookie(w, "flash_message", msg, nil)
 	}

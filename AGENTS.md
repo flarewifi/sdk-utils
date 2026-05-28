@@ -4,7 +4,7 @@
 
 - Go application for OpenWRT routers using SQLite (embedded, lightweight)
 - Plugin-based architecture - core remains minimal, features go in plugins
-- Plugins in `data/plugins/local/*` and `data/plugins/devel/*` are in **separate git repositories** (not tracked by this repo's git — they are gitignored)
+- Plugins in `data/plugins/local/*` are in **separate git repositories** (not tracked by this repo's git — they are gitignored)
 
 ## ⚠️ CRITICAL: Core vs Plugin Development
 
@@ -278,6 +278,7 @@ Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural l
 
 **CSS:** Bootstrap 3 (portal) vs Bootstrap 5 (admin) - never mix  
 **JavaScript:** ES5 only (`var`, `function() {}`, no template literals)  
+**DOM Manipulation:** Use jQuery from the core `global.js` - it's already loaded and available  
 **Interactivity:** Use htmx and Alpine.js - avoid custom JavaScript when possible  
 **Real-time Updates:** Use Server-Sent Events (SSE) for live UI updates, not polling  
 **URLs:** `templ.SafeURL(api.Http().Helpers().UrlForRoute("route:name"))`
@@ -336,3 +337,5 @@ Only create custom functions if needed functionality doesn't exist in `sdk/utils
 ## UI Testing
 
 Playwright MCP (`http://localhost:3000`): `browser_navigate` → `browser_snapshot` → test → verify both admin/portal
+
+**Screenshots & temp files:** Save all Playwright-generated files (screenshots, console logs, etc.) to `.tmp/playwright/` directory.

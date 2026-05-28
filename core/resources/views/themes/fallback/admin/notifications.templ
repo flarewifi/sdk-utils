@@ -6,12 +6,11 @@ import (
 )
 
 templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
-	<div class="dropdown w-100 position-relative z-0">
+	<div class="fw-notif" x-data="{ open: false }" @click.outside="open = false">
 		<button
-			class="btn position-relative p-0 border-0 bg-transparent"
-			id="notifDropdown"
-			data-bs-toggle="dropdown"
-			data-bs-auto-close="outside"
+			class="fw-notif-bell"
+			type="button"
+			@click="open = !open"
 			hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:count") }
 			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
 		>
@@ -19,94 +18,79 @@ templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 		</button>
 		<ul
 			id="notifDropdownMenu"
-			class="dropdown-menu dropdown-menu-end w-100 w-md-50"
-			style="min-width: 320px;"
+			class="fw-notif-menu"
+			x-show="open"
+			x-cloak
+			x-transition
 			hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:list") }
 			hx-trigger={ fmt.Sprintf("notificationRead from:body, sse:%s", sdkapi.FlareNotificationEvent) }
 		>
-			<!-- Notifications will be appended here -->
 			@NotificationsList(api, notifs)
 		</ul>
 	</div>
 }
 
 templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
-		if len(notifs) == 0 {
-			<li class="d-flex flex-column border-bottom">
-				<p class="dropdown-item text-wrap notif-item text-center">{ api.Translate("label", "No new notifications") }</p>
-			</li>
-		} else {
-			for _, notif := range notifs {
-				<li class="d-flex flex-column p-2 border-bottom">
-					<div class="d-flex justify-content-between align-items-start">
-						<a
-							class="dropdown-item text-wrap notif-item flex-grow-1 p-0"
-							hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:show", "id", fmt.Sprint(notif.ID)) }
-							hx-target="#notifModal"
-							hx-swap="innerHTML"
-							data-bs-toggle="modal"
-							data-bs-target="#notifModal"
-						>
-							<div class="fw-medium">{ notif.Subject }</div>
-							<small class="text-muted">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
-						</a>
-						<button
-							class="btn btn-sm btn-link text-decoration-none p-0 ms-2"
-							title={ api.Translate("label", "Clear") }
-							hx-post={ api.Http().Helpers().UrlForRoute("admin:notifications:update", "id", fmt.Sprint(notif.ID)) }
-							hx-target="#notifDropdownMenu"
-							hx-swap="innerHTML"
-						>
-							<i class="bi bi-x-lg text-muted"></i>
-						</button>
-					</div>
-				</li>
-			}
-			<li class="p-2">
+	if len(notifs) == 0 {
+		<li class="fw-notif-empty">{ api.Translate("label", "No new notifications") }</li>
+	} else {
+		for _, notif := range notifs {
+			<li class="fw-notif-item">
+				<a
+					href="#"
+					class="fw-notif-link"
+					hx-get={ api.Http().Helpers().UrlForRoute("admin:notifications:show", "id", fmt.Sprint(notif.ID)) }
+					hx-target="#notifModal"
+					hx-swap="innerHTML"
+					hx-on::after-request="window.dispatchEvent(new Event('show-notif-modal'))"
+				>
+					<div class="fw-notif-subject">{ notif.Subject }</div>
+					<small class="fw-notif-time">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+				</a>
 				<button
-					class="btn btn-sm btn-outline-secondary w-100"
-					hx-post={ api.Http().Helpers().UrlForRoute("admin:notifications:clear-all") }
+					class="fw-notif-clear"
+					title={ api.Translate("label", "Clear") }
+					hx-post={ api.Http().Helpers().UrlForRoute("admin:notifications:update", "id", fmt.Sprint(notif.ID)) }
 					hx-target="#notifDropdownMenu"
 					hx-swap="innerHTML"
-				>
-					{ api.Translate("label", "Clear All") }
-				</button>
+				>×</button>
 			</li>
 		}
+		<li class="fw-notif-actions">
+			<button
+				class="fw-btn-outline"
+				hx-post={ api.Http().Helpers().UrlForRoute("admin:notifications:clear-all") }
+				hx-target="#notifDropdownMenu"
+				hx-swap="innerHTML"
+			>{ api.Translate("label", "Clear All") }</button>
+		</li>
+	}
 }
 
 templ NotificationsBellCount(notifs []sdkapi.Notification) {
-	{{ notifsCount := len(notifs)}}
-	<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+	{{ notifsCount := len(notifs) }}
+	<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
 	if notifsCount > 0 {
-		<span class="notification-badge text-xs size-4" id="notifBellCount">
-			{ fmt.Sprint(notifsCount) }
-		</span>
+		<span class="fw-notif-badge" id="notifBellCount">{ fmt.Sprint(notifsCount) }</span>
 	}
 }
 
 templ ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) {
-	<div class="modal-dialog modal-dialog-centered modal-l w-100">
-		<div class="modal-content">
-			<div class="modal-header border-0">
-				<h5 class="modal-title fs-5 fw-bold">{ notif.Subject }</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+	<div class="fw-modal-dialog">
+		<div class="fw-modal-header">
+			<h5 class="fw-modal-title">{ notif.Subject }</h5>
+			<button type="button" class="fw-modal-close" @click="modalOpen = false" aria-label="Close">×</button>
+		</div>
+		<div class="fw-modal-body">
+			<div id="notifModalContent">
+				<div class="fw-modal-content-box">{ notif.Content }</div>
 			</div>
-
-			<div class="modal-body px-4 py-3">
-				<div id="notifModalContent">
-					<div class="p-3 bg-body-tertiary rounded">
-						{ notif.Content }
-					</div>
-				</div>
-				<small class="text-muted d-block mt-3 text-end">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
-			</div>
-
-			<div class="modal-footer border-0">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-					{ api.Translate("label", "Close") }
-				</button>
-			</div>
+			<small class="fw-notif-time">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+		</div>
+		<div class="fw-modal-footer">
+			<button type="button" class="fw-btn-secondary" @click="modalOpen = false">
+				{ api.Translate("label", "Close") }
+			</button>
 		</div>
 	</div>
 }

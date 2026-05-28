@@ -190,6 +190,17 @@ func (self *PluginsMgr) HasPendingUpdate(pkg string) bool {
 	return plugins.HasPendingUpdate(pkg)
 }
 
+// SourceDef returns the source definition for an installed plugin (where it
+// came from: git, store, system, local, or zip). Returns (zero-value, false)
+// when the package is not installed or the metadata cannot be read.
+func (self *PluginsMgr) SourceDef(pkg string) (sdkutils.PluginSrcDef, bool) {
+	def, err := plugins.GetPluginDef(pkg)
+	if err != nil {
+		return sdkutils.PluginSrcDef{}, false
+	}
+	return def, true
+}
+
 // RerunPluginMigrations re-runs migrations for all loaded plugins
 // This is used after database reset to recreate plugin tables
 func (self *PluginsMgr) RerunPluginMigrations(newDB *sql.DB) error {
