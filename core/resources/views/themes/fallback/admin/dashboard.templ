@@ -55,7 +55,7 @@ func avgCPU(percents []float64) float64 {
 }
 
 func progressBarHTML(percent float64, color string) string {
-	return fmt.Sprintf(`<div class="progress-bar" role="progressbar" style="width: %.1f%%; background-color: %s;" aria-valuenow="%.0f" aria-valuemin="0" aria-valuemax="100"></div>`, percent, color, percent)
+	return fmt.Sprintf(`<div class="fw-progress-fill" style="width: %.1f%%; background-color: %s;"></div>`, percent, color)
 }
 
 func shortDeviceID(id string) string {
@@ -66,66 +66,45 @@ func shortDeviceID(id string) string {
 }
 
 templ AdminIndexPage(api sdkapi.IPluginApi, info *SysInfo, firmwareVersion string) {
-	<div class="fw-dashboard-header mb-4">
-		<h1 class="h3 mb-0">{ api.Translate("label", "Dashboard") }</h1>
-		<div class="fw-last-updated">
-			<i class="bi bi-clock"></i>
-			<span>{ api.Translate("label", "Last updated") }: { time.Now().Format("Jan 2, 2006 3:04:05 PM") }</span>
-		</div>
+	<div class="fw-dashboard-header">
+		<h1>{ api.Translate("label", "System Status") }</h1>
+		<div class="fw-last-updated">{ api.Translate("label", "Last updated") }: { time.Now().Format("Jan 2, 2006 3:04:05 PM") }</div>
 	</div>
-	<div class="row g-3 mb-4">
-		<div class="col-lg-6">
-			@deviceHealthCard(api, info)
-		</div>
-		<div class="col-lg-6">
-			@systemInfoCard(api, info, firmwareVersion)
-		</div>
+	<div class="fw-grid-2">
+		@deviceHealthCard(api, info)
+		@systemInfoCard(api, info, firmwareVersion)
 	</div>
 }
 
 templ deviceHealthCard(api sdkapi.IPluginApi, info *SysInfo) {
-	<div class="card border h-100">
-		<div class="card-body">
-			<h2 class="h5 mb-3">{ api.Translate("label", "Device Health") }</h2>
-			<div class="d-flex flex-column gap-3">
-				<!-- CPU Usage -->
-				<div>
-					<div class="d-flex align-items-center justify-content-between mb-2">
-						<div class="d-flex align-items-center gap-2">
-							<i class="bi bi-cpu text-muted"></i>
-							<span class="text-muted small">{ api.Translate("label", "CPU Usage") }</span>
-						</div>
-						<span class="small">{ fmt.Sprintf("%.0f%%", avgCPU(info.CPUPercent)) }</span>
-					</div>
-					<div class="progress fw-progress-thin">
-						@templ.Raw(progressBarHTML(avgCPU(info.CPUPercent), "#3b82f6"))
-					</div>
+	<div class="fw-card">
+		<h2 class="fw-card-title">{ api.Translate("label", "Device Health") }</h2>
+		<div class="fw-stack">
+			<div>
+				<div class="fw-progress-label">
+					<span>{ api.Translate("label", "CPU Usage") }</span>
+					<span>{ fmt.Sprintf("%.0f%%", avgCPU(info.CPUPercent)) }</span>
 				</div>
-				<!-- Memory Usage -->
-				<div>
-					<div class="d-flex align-items-center justify-content-between mb-2">
-						<div class="d-flex align-items-center gap-2">
-							<i class="bi bi-hdd text-muted"></i>
-							<span class="text-muted small">{ api.Translate("label", "Memory Usage") }</span>
-						</div>
-						<span class="small">{ formatBytes(info.MemUsed) } / { formatBytes(info.MemTotal) }</span>
-					</div>
-					<div class="progress fw-progress-thin">
-						@templ.Raw(progressBarHTML(info.MemUsedPercent, "#10b981"))
-					</div>
+				<div class="fw-progress">
+					@templ.Raw(progressBarHTML(avgCPU(info.CPUPercent), "#3b82f6"))
 				</div>
-				<!-- Disk Usage -->
-				<div>
-					<div class="d-flex align-items-center justify-content-between mb-2">
-						<div class="d-flex align-items-center gap-2">
-							<i class="bi bi-activity text-muted"></i>
-							<span class="text-muted small">{ api.Translate("label", "Disk Usage") }</span>
-						</div>
-						<span class="small">{ fmt.Sprintf("%.0f%%", info.DiskUsedPercent) }</span>
-					</div>
-					<div class="progress fw-progress-thin">
-						@templ.Raw(progressBarHTML(info.DiskUsedPercent, "#f59e0b"))
-					</div>
+			</div>
+			<div>
+				<div class="fw-progress-label">
+					<span>{ api.Translate("label", "Memory Usage") }</span>
+					<span>{ formatBytes(info.MemUsed) } / { formatBytes(info.MemTotal) }</span>
+				</div>
+				<div class="fw-progress">
+					@templ.Raw(progressBarHTML(info.MemUsedPercent, "#10b981"))
+				</div>
+			</div>
+			<div>
+				<div class="fw-progress-label">
+					<span>{ api.Translate("label", "Disk Usage") }</span>
+					<span>{ fmt.Sprintf("%.0f%%", info.DiskUsedPercent) }</span>
+				</div>
+				<div class="fw-progress">
+					@templ.Raw(progressBarHTML(info.DiskUsedPercent, "#f59e0b"))
 				</div>
 			</div>
 		</div>
@@ -133,88 +112,48 @@ templ deviceHealthCard(api sdkapi.IPluginApi, info *SysInfo) {
 }
 
 templ systemInfoCard(api sdkapi.IPluginApi, info *SysInfo, firmware string) {
-	<div class="card border h-100">
-		<div class="card-body">
-			<h2 class="h5 mb-3">{ api.Translate("label", "System Information") }</h2>
-			<div>
-				<!-- Device ID -->
-				<div class="fw-info-row">
-					<div class="fw-info-row-label">
-						<i class="bi bi-fingerprint"></i>
-						<span>{ api.Translate("label", "Device ID") }</span>
-					</div>
-					<div class="fw-info-row-value">
-						<span class="fw-mono">{ shortDeviceID(api.Machine().GetID()) }</span>
-					</div>
-				</div>
-				<!-- Architecture -->
-				<div class="fw-info-row">
-					<div class="fw-info-row-label">
-						<i class="bi bi-cpu"></i>
-						<span>{ api.Translate("label", "Architecture") }</span>
-					</div>
-					<div class="fw-info-row-value">
-						<span>{ runtime.GOARCH }</span>
-					</div>
-				</div>
-				<!-- Firmware -->
-				<div class="fw-info-row">
-					<div class="fw-info-row-label">
-						<i class="bi bi-box"></i>
-						<span>{ api.Translate("label", "Firmware Version") }</span>
-					</div>
-					<div class="fw-info-row-value">
-						<span>{ fmt.Sprintf("v%s", firmware) }</span>
-					</div>
-				</div>
-				<!-- Uptime -->
-				<div class="fw-info-row">
-					<div class="fw-info-row-label">
-						<i class="bi bi-clock"></i>
-						<span>{ api.Translate("label", "Uptime") }</span>
-					</div>
-					<div class="fw-info-row-value">
-						<span>{ formatUptime(info.Uptime) }</span>
-					</div>
-				</div>
-				<!-- IP Address -->
-				<div class="fw-info-row">
-					<div class="fw-info-row-label">
-						<i class="bi bi-diagram-3"></i>
-						<span>{ api.Translate("label", "IP Address") }</span>
-					</div>
-					<div class="fw-info-row-value">
-						if info.IPAddress != "" {
-							<span>{ info.IPAddress }</span>
-						} else {
-							<span class="text-muted">{ api.Translate("label", "N/A") }</span>
-						}
-					</div>
-				</div>
-				<!-- MAC Address -->
-				<div class="fw-info-row">
-					<div class="fw-info-row-label">
-						<i class="bi bi-link-45deg"></i>
-						<span>{ api.Translate("label", "MAC Address") }</span>
-					</div>
-					<div class="fw-info-row-value">
-						if info.MACAddress != "" {
-							<span class="fw-mono">{ info.MACAddress }</span>
-						} else {
-							<span class="text-muted">{ api.Translate("label", "N/A") }</span>
-						}
-					</div>
-				</div>
-				<!-- Storage -->
-				<div class="fw-info-row">
-					<div class="fw-info-row-label">
-						<i class="bi bi-hdd"></i>
-						<span>{ api.Translate("label", "Storage") }</span>
-					</div>
-					<div class="fw-info-row-value">
-						<span>{ formatBytes(info.DiskUsed) } / { formatBytes(info.DiskTotal) }</span>
-					</div>
-				</div>
+	<div class="fw-card">
+		<h2 class="fw-card-title">{ api.Translate("label", "System Information") }</h2>
+		<div>
+			<div class="fw-info-row">
+				<span class="fw-info-label">{ api.Translate("label", "Device ID") }</span>
+				<span class="fw-info-value fw-mono">{ shortDeviceID(api.Machine().GetID()) }</span>
+			</div>
+			<div class="fw-info-row">
+				<span class="fw-info-label">{ api.Translate("label", "Architecture") }</span>
+				<span class="fw-info-value">{ runtime.GOARCH }</span>
+			</div>
+			<div class="fw-info-row">
+				<span class="fw-info-label">{ api.Translate("label", "Firmware Version") }</span>
+				<span class="fw-info-value">{ fmt.Sprintf("v%s", firmware) }</span>
+			</div>
+			<div class="fw-info-row">
+				<span class="fw-info-label">{ api.Translate("label", "Uptime") }</span>
+				<span class="fw-info-value">{ formatUptime(info.Uptime) }</span>
+			</div>
+			<div class="fw-info-row">
+				<span class="fw-info-label">{ api.Translate("label", "IP Address") }</span>
+				<span class="fw-info-value">
+					if info.IPAddress != "" {
+						{ info.IPAddress }
+					} else {
+						{ api.Translate("label", "N/A") }
+					}
+				</span>
+			</div>
+			<div class="fw-info-row">
+				<span class="fw-info-label">{ api.Translate("label", "MAC Address") }</span>
+				<span class="fw-info-value fw-mono">
+					if info.MACAddress != "" {
+						{ info.MACAddress }
+					} else {
+						{ api.Translate("label", "N/A") }
+					}
+				</span>
+			</div>
+			<div class="fw-info-row">
+				<span class="fw-info-label">{ api.Translate("label", "Storage") }</span>
+				<span class="fw-info-value">{ formatBytes(info.DiskUsed) } / { formatBytes(info.DiskTotal) }</span>
 			</div>
 		</div>
 	</div>

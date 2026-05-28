@@ -34,4 +34,10 @@ type IPluginsMgrApi interface {
 
 	// HasPendingUpdate returns true if a downloaded update is waiting to be applied.
 	HasPendingUpdate(pkg string) bool
+
+	// SourceDef returns the source definition for an installed plugin —
+	// where it came from and how it was installed (git / store / system /
+	// local / zip). Returns (zero-value, false) if the package is not
+	// installed.
+	SourceDef(pkg string) (sdkutils.PluginSrcDef, bool)
 }

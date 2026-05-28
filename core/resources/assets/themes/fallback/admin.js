@@ -1,33 +1,52 @@
-/* Core fallback admin theme JS */
-(function() {
+/* Core fallback admin theme JS — minimal */
+(function () {
   window.$flare = window.$flare || {};
+
+  // Flash notification helper — drops messages into the #flash container
+  // defined in admin layout. User dismisses manually via the close button.
   window.$flare.notify = {
-    _show: function(msg, type) {
-      var container = document.getElementById('core-flash-container');
-      if (!container) {
-        container = document.createElement('div');
-        container.id = 'core-flash-container';
-        container.style.cssText = 'position:fixed;top:70px;right:20px;z-index:9999;max-width:400px;';
-        document.body.appendChild(container);
-      }
-      var alertClass = 'alert-info';
-      if (type === 'warning') alertClass = 'alert-warning';
-      else if (type === 'success') alertClass = 'alert-success';
-      else if (type === 'error' || type === 'failed') alertClass = 'alert-danger';
+    _show: function (msg, type) {
+      var container = document.getElementById('flash');
+      if (!container) return;
       var div = document.createElement('div');
-      div.className = 'alert ' + alertClass + ' alert-dismissible fade show';
-      div.setAttribute('role', 'alert');
-      div.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
-      container.appendChild(div);
-      setTimeout(function() {
+      div.className = 'fw-flash-item ' + (type || 'info');
+
+      var span = document.createElement('span');
+      span.className = 'fw-flash-msg';
+      span.textContent = msg;
+      div.appendChild(span);
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fw-flash-close';
+      btn.setAttribute('aria-label', 'Dismiss');
+      btn.textContent = '×';
+      btn.onclick = function () {
         if (div.parentNode) div.parentNode.removeChild(div);
-      }, 6000);
+      };
+      div.appendChild(btn);
+
+      container.appendChild(div);
     },
-    info: function(msg) { this._show(msg, 'info'); },
-    warning: function(msg) { this._show(msg, 'warning'); },
-    warn: function(msg) { this._show(msg, 'warning'); },
-    success: function(msg) { this._show(msg, 'success'); },
-    error: function(msg) { this._show(msg, 'error'); },
-    failed: function(msg) { this._show(msg, 'error'); }
+    info: function (m) { this._show(m, 'info'); },
+    warning: function (m) { this._show(m, 'warning'); },
+    warn: function (m) { this._show(m, 'warning'); },
+    success: function (m) { this._show(m, 'success'); },
+    error: function (m) { this._show(m, 'error'); },
+    failed: function (m) { this._show(m, 'error'); }
   };
+
+  // SSE flare_notification → flash.
+  // $flare.events is created by the platform's global events glue.
+  if (window.$flare.events && typeof window.$flare.events.ready === 'function') {
+    window.$flare.events.ready(function () {
+      window.$flare.events.on('flare_notification', function (event) {
+        try {
+          var data = JSON.parse(event.data);
+          var fn = window.$flare.notify[data.type] || window.$flare.notify.info;
+          fn.call(window.$flare.notify, data.subject);
+        } catch (e) {}
+      });
+    });
+  }
 })();
