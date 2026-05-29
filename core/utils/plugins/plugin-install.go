@@ -255,9 +255,23 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		opts.Def.LocalPath = pluginSrc
 	}
 
-	if err := WriteMetadata(opts.Def, info.Package); err != nil {
-		log.Println("Error building plugin: ", err)
-		return err
+	// Preserve "store" registration: once a plugin's metadata is recorded as
+	// Src=store (i.e., published to the marketplace), subsequent devel/local
+	// installs must NOT overwrite that source back to "local". The publish
+	// flag is a developer-facing decision that should survive boot-time
+	// reinstalls of the devel source.
+	shouldWriteMetadata := true
+	if opts.Def.Src == sdkutils.PluginSrcLocal {
+		if existing, readErr := ReadMetadata(info.Package); readErr == nil && existing.Def.Src == sdkutils.PluginSrcStore {
+			log.Println("Preserving store metadata for", info.Package, "(devel install would overwrite Src=local)")
+			shouldWriteMetadata = false
+		}
+	}
+	if shouldWriteMetadata {
+		if err := WriteMetadata(opts.Def, info.Package); err != nil {
+			log.Println("Error building plugin: ", err)
+			return err
+		}
 	}
 
 	log.Println("Copying plugin files to: ", installPath)
