@@ -175,6 +175,95 @@ func (self *PluginsMgr) InstallFromStore(def sdkutils.PluginSrcDef, zipURL strin
 	return self.RegisterPlugin(p)
 }
 
+// InstallMetaMember installs a plugin as a member of the named meta plugin and
+// registers it live, recording metaPkg as an owner in the member's metadata.
+func (self *PluginsMgr) InstallMetaMember(def sdkutils.PluginSrcDef, zipURL string, metaPkg string) error {
+	def.Src = sdkutils.PluginSrcStore
+
+	info, err := plugins.InstallFromPluginStore(self.db.DB, def, zipURL, plugins.InstallOpts{
+		Def:          def,
+		RemoveSrc:    true,
+		Encrypt:      true,
+		ForceInstall: true,
+		AsMetaMember: metaPkg,
+	})
+	if err != nil {
+		return fmt.Errorf("InstallMetaMember: %w", err)
+	}
+
+	installPath := plugins.GetInstallPath(info.Package)
+	p := NewPluginApi(installPath, info, self.globalAssets, self, self.trfkMgr, self.wifiMgr)
+	return self.RegisterPlugin(p)
+}
+
+// AddMetaOwner records that metaPkg owns an already-installed member.
+func (self *PluginsMgr) AddMetaOwner(memberPkg string, metaPkg string) error {
+	return plugins.AddMetaOwner(memberPkg, metaPkg)
+}
+
+// RemoveMetaOwner drops metaPkg from a member's owners.
+func (self *PluginsMgr) RemoveMetaOwner(memberPkg string, metaPkg string) error {
+	_, _, err := plugins.RemoveMetaOwner(memberPkg, metaPkg)
+	return err
+}
+
+// SaveMetaRecord persists an installed meta plugin's record.
+func (self *PluginsMgr) SaveMetaRecord(rec sdkutils.MetaInstallRecord) error {
+	return plugins.WriteMetaRecord(rec)
+}
+
+// MetaRecord returns the install record for a meta plugin and whether it exists.
+func (self *PluginsMgr) MetaRecord(pkg string) (sdkutils.MetaInstallRecord, bool) {
+	rec, err := plugins.ReadMetaRecord(pkg)
+	if err != nil {
+		return sdkutils.MetaInstallRecord{}, false
+	}
+	return rec, true
+}
+
+// MetaRecords returns all installed meta plugin records.
+func (self *PluginsMgr) MetaRecords() []sdkutils.MetaInstallRecord {
+	recs, err := plugins.AllMetaRecords()
+	if err != nil {
+		return nil
+	}
+	return recs
+}
+
+// UninstallMeta removes a meta plugin and cascades to its members: each member
+// loses this meta as an owner, and any member left with no owners that was not
+// installed standalone is marked for removal (applied on the next restart).
+func (self *PluginsMgr) UninstallMeta(pkg string) error {
+	rec, err := plugins.ReadMetaRecord(pkg)
+	if err != nil {
+		return err
+	}
+
+	for _, member := range rec.Members {
+		remaining, standalone, err := plugins.RemoveMetaOwner(member, pkg)
+		if err != nil {
+			return err
+		}
+		if remaining == 0 && !standalone {
+			if err := plugins.MarkToRemove(member); err != nil {
+				self.CoreAPI.Logger().Error(fmt.Sprintf("UninstallMeta: mark member %s for removal: %v", member, err))
+			}
+		}
+	}
+
+	return plugins.RemoveMetaRecord(pkg)
+}
+
+// MetaMembership reports whether a plugin was installed standalone and which
+// meta plugins own it. ok is false when the package has no recorded metadata.
+func (self *PluginsMgr) MetaMembership(pkg string) (standalone bool, owners []string, ok bool) {
+	meta, err := plugins.ReadMetadata(pkg)
+	if err != nil {
+		return false, nil, false
+	}
+	return meta.Standalone, meta.MetaOwners, true
+}
+
 // Uninstall marks the plugin for removal on the next restart.
 func (self *PluginsMgr) Uninstall(pkg string) error {
 	return plugins.MarkToRemove(pkg)
