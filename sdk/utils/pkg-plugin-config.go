@@ -53,6 +53,25 @@ type PluginsConfig struct {
 type PluginMetadata struct {
 	Def     PluginSrcDef
 	Package string
+	// Standalone is true when the user installed this package on its own
+	// (via the normal install button), as opposed to it being pulled in only
+	// as a member of a meta plugin. A standalone member survives meta uninstall.
+	Standalone bool
+	// MetaOwners lists the packages of meta plugins that installed this plugin
+	// as a member. A member is only removed on meta uninstall when this list
+	// becomes empty and Standalone is false.
+	MetaOwners []string
+}
+
+// MetaInstallRecord tracks an installed meta plugin. A meta has no plugin.so
+// artifact of its own — it is a named bundle whose members are installed
+// individually. The record lets us list the meta as a single entry and cascade
+// its uninstall to members it owns.
+type MetaInstallRecord struct {
+	Package string
+	Name    string
+	Version string
+	Members []string
 }
 
 type PluginSrcDef struct {

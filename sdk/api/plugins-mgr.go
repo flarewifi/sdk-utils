@@ -40,4 +40,38 @@ type IPluginsMgrApi interface {
 	// local / zip). Returns (zero-value, false) if the package is not
 	// installed.
 	SourceDef(pkg string) (sdkutils.PluginSrcDef, bool)
+
+	// InstallMetaMember installs a plugin as a member of the named meta plugin
+	// and registers it live. The plugin's metadata records metaPkg as an owner
+	// rather than marking it a standalone (user-initiated) install.
+	InstallMetaMember(def sdkutils.PluginSrcDef, zipURL string, metaPkg string) error
+
+	// AddMetaOwner records that metaPkg owns an already-installed member without
+	// reinstalling it.
+	AddMetaOwner(memberPkg string, metaPkg string) error
+
+	// RemoveMetaOwner drops metaPkg from a member's owners. Used to roll back a
+	// partially-completed meta install for members that were only adopted (not
+	// freshly installed).
+	RemoveMetaOwner(memberPkg string, metaPkg string) error
+
+	// SaveMetaRecord persists an installed meta plugin's record.
+	SaveMetaRecord(rec sdkutils.MetaInstallRecord) error
+
+	// MetaRecord returns the install record for a meta plugin and whether it
+	// exists.
+	MetaRecord(pkg string) (sdkutils.MetaInstallRecord, bool)
+
+	// MetaRecords returns all installed meta plugin records.
+	MetaRecords() []sdkutils.MetaInstallRecord
+
+	// UninstallMeta removes a meta plugin: it drops the meta from each member's
+	// owners and marks for removal any member left with no owners that was not
+	// installed standalone. Member removals apply on the next restart.
+	UninstallMeta(pkg string) error
+
+	// MetaMembership reports whether a plugin was installed standalone and which
+	// meta plugins own it as a member. ok is false when the package has no
+	// recorded metadata.
+	MetaMembership(pkg string) (standalone bool, owners []string, ok bool)
 }

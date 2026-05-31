@@ -145,6 +145,10 @@ type InstallOpts struct {
 	RemoveSrc    bool
 	Encrypt      bool
 	ForceInstall bool
+	// AsMetaMember, when non-empty, marks this install as a member pulled in by
+	// the named meta plugin. The plugin's metadata records the meta as an owner
+	// instead of flagging the plugin as a standalone (user-initiated) install.
+	AsMetaMember string
 }
 
 func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
@@ -268,7 +272,12 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		}
 	}
 	if shouldWriteMetadata {
-		if err := WriteMetadata(opts.Def, info.Package); err != nil {
+		if opts.AsMetaMember != "" {
+			if err := WriteMetadataAsMember(opts.Def, info.Package, opts.AsMetaMember); err != nil {
+				log.Println("Error building plugin: ", err)
+				return err
+			}
+		} else if err := WriteMetadata(opts.Def, info.Package); err != nil {
 			log.Println("Error building plugin: ", err)
 			return err
 		}
