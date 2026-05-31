@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"core/utils/config"
-	"core/utils/env"
 	"errors"
 	"fmt"
 	"log"
@@ -181,24 +180,25 @@ func GetMetaDataPath(pkg string) string {
 	return filepath.Join(sdkutils.PathConfigDir, "plugins", pkg, "metadata.json")
 }
 
-// WriteMetadata records a standalone (user-initiated) install. It preserves any
-// existing meta ownership so that a plugin which is both a meta member and a
-// standalone install keeps both signals.
+// WriteMetadata records a standalone (user-initiated) install. It preserves an
+// existing Standalone flag so that a plugin which is both a meta member and a
+// standalone install keeps that signal.
 func WriteMetadata(def sdkutils.PluginSrcDef, pkg string) error {
-	return upsertMetadata(def, pkg, true, "")
+	return upsertMetadata(def, pkg, true)
 }
 
 // WriteMetadataAsMember records an install performed on behalf of a meta plugin.
-// It appends metaPkg to the member's owners and preserves the existing
-// Standalone flag (a member the user also installed directly stays standalone).
-func WriteMetadataAsMember(def sdkutils.PluginSrcDef, pkg string, metaPkg string) error {
-	return upsertMetadata(def, pkg, false, metaPkg)
+// The plugin is recorded as a non-standalone install; meta ownership itself is
+// tracked by the meta install record's member list, not here. An existing
+// Standalone flag is preserved (a member the user also installed directly stays
+// standalone).
+func WriteMetadataAsMember(def sdkutils.PluginSrcDef, pkg string) error {
+	return upsertMetadata(def, pkg, false)
 }
 
-// upsertMetadata writes or updates a plugin's metadata entry, merging ownership
-// fields with any existing entry. When standalone is true the Standalone flag is
-// set. When addOwner is non-empty it is appended to MetaOwners (deduped).
-func upsertMetadata(def sdkutils.PluginSrcDef, pkg string, standalone bool, addOwner string) error {
+// upsertMetadata writes or updates a plugin's metadata entry. When standalone is
+// true the Standalone flag is set; an existing true flag is never cleared.
+func upsertMetadata(def sdkutils.PluginSrcDef, pkg string, standalone bool) error {
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
 		return err
@@ -217,124 +217,32 @@ func upsertMetadata(def sdkutils.PluginSrcDef, pkg string, standalone bool, addO
 	for i, m := range cfg.Metadata {
 		if m.Package == pkg {
 			meta.Standalone = m.Standalone || standalone
-			meta.MetaOwners = m.MetaOwners
-			if addOwner != "" && !slices.Contains(meta.MetaOwners, addOwner) {
-				meta.MetaOwners = append(meta.MetaOwners, addOwner)
-			}
 			cfg.Metadata[i] = meta
 			return config.WritePluginsConfig(cfg)
 		}
 	}
 
-	if addOwner != "" {
-		meta.MetaOwners = []string{addOwner}
-	}
 	cfg.Metadata = append(cfg.Metadata, meta)
 
 	return config.WritePluginsConfig(cfg)
 }
 
-// AddMetaOwner records that metaPkg owns memberPkg without reinstalling it.
-// Used when a member is already installed at an acceptable version.
-func AddMetaOwner(memberPkg string, metaPkg string) error {
-	cfg, err := config.ReadPluginsConfig()
-	if err != nil {
-		return err
-	}
-
-	for i, m := range cfg.Metadata {
-		if m.Package == memberPkg {
-			if !slices.Contains(m.MetaOwners, metaPkg) {
-				cfg.Metadata[i].MetaOwners = append(m.MetaOwners, metaPkg)
-			}
-			return config.WritePluginsConfig(cfg)
-		}
-	}
-
-	return ErrNotInstalled
-}
-
-// RemoveMetaOwner drops metaPkg from memberPkg's owners and reports the member's
-// remaining owner count and Standalone flag, so the caller can decide whether to
-// uninstall the member. A member not found is treated as already gone (0, false).
-func RemoveMetaOwner(memberPkg string, metaPkg string) (remaining int, standalone bool, err error) {
-	cfg, err := config.ReadPluginsConfig()
-	if err != nil {
-		return 0, false, err
-	}
-
-	for i, m := range cfg.Metadata {
-		if m.Package == memberPkg {
-			owners := slices.DeleteFunc(m.MetaOwners, func(o string) bool { return o == metaPkg })
-			cfg.Metadata[i].MetaOwners = owners
-			if err := config.WritePluginsConfig(cfg); err != nil {
-				return 0, false, err
-			}
-			return len(owners), m.Standalone, nil
-		}
-	}
-
-	return 0, false, nil
-}
-
 // WriteMetaRecord upserts a meta plugin install record (keyed by package).
-func WriteMetaRecord(rec sdkutils.MetaInstallRecord) error {
+func WriteMetaRecord(rec sdkutils.MetaPlugin) error {
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
 		return err
 	}
 
-	for i, m := range cfg.Metas {
+	for i, m := range cfg.MetaPlugins {
 		if m.Package == rec.Package {
-			cfg.Metas[i] = rec
+			cfg.MetaPlugins[i] = rec
 			return config.WritePluginsConfig(cfg)
 		}
 	}
 
-	cfg.Metas = append(cfg.Metas, rec)
+	cfg.MetaPlugins = append(cfg.MetaPlugins, rec)
 	return config.WritePluginsConfig(cfg)
-}
-
-// ReadMetaRecord returns the install record for a meta plugin.
-func ReadMetaRecord(pkg string) (sdkutils.MetaInstallRecord, error) {
-	cfg, err := config.ReadPluginsConfig()
-	if err != nil {
-		return sdkutils.MetaInstallRecord{}, err
-	}
-
-	for _, m := range cfg.Metas {
-		if m.Package == pkg {
-			return m, nil
-		}
-	}
-
-	return sdkutils.MetaInstallRecord{}, ErrNotInstalled
-}
-
-// RemoveMetaRecord deletes a meta plugin install record.
-func RemoveMetaRecord(pkg string) error {
-	cfg, err := config.ReadPluginsConfig()
-	if err != nil {
-		return err
-	}
-
-	for i, m := range cfg.Metas {
-		if m.Package == pkg {
-			cfg.Metas = slices.Delete(cfg.Metas, i, i+1)
-			break
-		}
-	}
-
-	return config.WritePluginsConfig(cfg)
-}
-
-// AllMetaRecords returns every installed meta plugin record.
-func AllMetaRecords() ([]sdkutils.MetaInstallRecord, error) {
-	cfg, err := config.ReadPluginsConfig()
-	if err != nil {
-		return nil, err
-	}
-	return cfg.Metas, nil
 }
 
 func CacheAndRegisterPlugin(def sdkutils.PluginSrcDef, pkg string) error {
@@ -413,25 +321,6 @@ func InstalledPluginsList() (list []sdkutils.PluginMetadata) {
 	}
 
 	return
-}
-
-func NeedsRecompile(def sdkutils.PluginSrcDef) bool {
-	if env.GO_ENV == env.ENV_DEV && (def.Src == sdkutils.PluginSrcLocal || def.Src == sdkutils.PluginSrcSystem) {
-		return true
-	}
-
-	info, err := GetInfoFromDef(def)
-	if err != nil {
-		return true
-	}
-
-	cfg, err := config.ReadPluginsConfig()
-	if err != nil {
-		log.Println("Error reading plugins config: ", err)
-		return true
-	}
-
-	return slices.Contains(cfg.Recompile, info.Package)
 }
 
 func HasPendingUpdate(pkg string) bool {
@@ -556,4 +445,3 @@ func GetPendingUpdatePath(pkg string) string {
 func GetBackupPath(pkg string) string {
 	return filepath.Join(sdkutils.PathPluginBackupsDir, pkg)
 }
-

@@ -8,6 +8,11 @@ package sdkapi
 
 import sdkutils "github.com/flarehotspot/sdk-utils"
 
+type SupportedLanguage struct {
+	Code string
+	Name string
+}
+
 // AppConfig is the application configuration.
 type AppConfig sdkutils.AppConfig
 
@@ -15,9 +20,4 @@ type AppConfig sdkutils.AppConfig
 type IAppCfgApi interface {
 	Get() (AppConfig, error)
 	Save(AppConfig) error
-}
-
-type SupportedLanguage struct {
-	Code string
-	Name string
 }

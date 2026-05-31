@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 	"core/internal/events"
 	"core/internal/modules/ubus"
 	"core/internal/network"
+	corerpc "core/internal/rpc"
+	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/internal/sessmgr"
 	"core/utils/config"
 	"core/utils/migrate"
@@ -154,20 +157,59 @@ func (self *PluginsMgr) GetPortalTheme() (*PluginApi, *ThemesApi, bool, error) {
 	return self.CoreAPI, coreThemeApi, true, nil
 }
 
-// InstallFromStore downloads the plugin zip from the marketplace, installs it
-// using an encrypted scratch disk, and registers it live without a restart.
-// zipURL is the transient download URL — it is not persisted on the def.
-func (self *PluginsMgr) InstallFromStore(def sdkutils.PluginSrcDef, zipURL string) error {
-	def.Src = sdkutils.PluginSrcStore
+// InstallPlugin installs a plugin from any source and registers it live without
+// a restart. The source is selected by def.Src:
+//   - store:           resolves the release zip URL via the core RPC service
+//     (using def.StorePackage / def.StorePluginVersion) and installs from an
+//     encrypted scratch disk. The resolved URL is transient and not persisted.
+//   - git:             clones def.GitURL at def.GitRef into a temp dir.
+//   - local/system/zip: installs from def.LocalPath, a source folder already on
+//     disk; the source files are left in place (RemoveSrc is forced off).
+//
+// ForceInstall routes the build straight to plugins/installed instead of staging
+// it as a pending update.
+func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
+	var info sdkutils.PluginInfo
+	var err error
 
-	info, err := plugins.InstallFromPluginStore(self.db.DB, def, zipURL, plugins.InstallOpts{
-		Def:          def,
-		RemoveSrc:    true,
-		Encrypt:      true,
-		ForceInstall: true,
-	})
+	switch def.Src {
+	case sdkutils.PluginSrcStore:
+		var rel storeRelease
+		rel, err = self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion)
+		if err != nil {
+			return fmt.Errorf("InstallPlugin: %w", err)
+		}
+		// A meta bundle has no zip of its own — install each of its members and
+		// record the bundle. installStoreMeta registers members live itself.
+		if rel.IsMeta {
+			return self.installStoreMeta(def, rel)
+		}
+		info, err = plugins.InstallFromPluginStore(self.db.DB, def, rel.ZipURL, plugins.InstallOpts{
+			Def:          def,
+			RemoveSrc:    true,
+			Encrypt:      true,
+			ForceInstall: true,
+		})
+
+	case sdkutils.PluginSrcGit:
+		info, err = plugins.InstallFromGitSrc(self.db.DB, def, plugins.InstallOpts{
+			Def:          def,
+			RemoveSrc:    true,
+			ForceInstall: true,
+		})
+
+	case sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem, sdkutils.PluginSrcZip:
+		info, err = plugins.InstallFromLocalPath(self.db.DB, def, plugins.InstallOpts{
+			Def:          def,
+			ForceInstall: true,
+		})
+
+	default:
+		return fmt.Errorf("InstallPlugin: invalid plugin source: %q", def.Src)
+	}
+
 	if err != nil {
-		return fmt.Errorf("InstallFromStore: %w", err)
+		return fmt.Errorf("InstallPlugin: %w", err)
 	}
 
 	installPath := plugins.GetInstallPath(info.Package)
@@ -175,12 +217,121 @@ func (self *PluginsMgr) InstallFromStore(def sdkutils.PluginSrcDef, zipURL strin
 	return self.RegisterPlugin(p)
 }
 
-// InstallMetaMember installs a plugin as a member of the named meta plugin and
-// registers it live, recording metaPkg as an owner in the member's metadata.
-func (self *PluginsMgr) InstallMetaMember(def sdkutils.PluginSrcDef, zipURL string, metaPkg string) error {
-	def.Src = sdkutils.PluginSrcStore
+// storeRelease is the resolved store lookup for a package: either a single
+// downloadable release (ZipURL set) or a meta bundle (IsMeta with Members).
+type storeRelease struct {
+	ZipURL  string
+	IsMeta  bool
+	Name    string
+	Version string
+	Members []storeMember
+}
 
-	info, err := plugins.InstallFromPluginStore(self.db.DB, def, zipURL, plugins.InstallOpts{
+// storeMember is a meta bundle member pinned to a specific version.
+type storeMember struct {
+	Package string
+	Version string
+}
+
+// fetchStoreRelease resolves a store package via the core RPC service. For a
+// normal plugin it returns the download (zip) URL for the requested version (or
+// latest when version is empty). For a meta bundle it returns IsMeta with the
+// pinned member list. Auth and machine identity are handled by the shared RPC
+// client; any resolved URL is transient and never persisted on the source def.
+func (self *PluginsMgr) fetchStoreRelease(pkg string, version string) (storeRelease, error) {
+	if pkg == "" {
+		return storeRelease{}, errors.New("store package is required")
+	}
+
+	srv, ctx := corerpc.GetTwirpServiceAndCtx()
+	resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v2.FetchLatestPluginReleaseByPackageRequest{
+		PluginPackage: pkg,
+		Version:       version,
+	})
+	if err != nil {
+		return storeRelease{}, fmt.Errorf("fetch release %q for %q: %w", version, pkg, err)
+	}
+
+	rel := storeRelease{
+		IsMeta:  resp.GetIsMeta(),
+		Name:    resp.GetName(),
+		Version: resp.GetVersion(),
+	}
+
+	if rel.IsMeta {
+		for _, m := range resp.GetMembers() {
+			rel.Members = append(rel.Members, storeMember{Package: m.GetPackage(), Version: m.GetVersion()})
+		}
+		return rel, nil
+	}
+
+	rel.ZipURL = resp.GetPluginRelease().GetZipFileUrl()
+	if rel.ZipURL == "" {
+		return storeRelease{}, fmt.Errorf("no download url for plugin %q", pkg)
+	}
+
+	return rel, nil
+}
+
+// installStoreMeta installs every member of a store meta bundle and records the
+// bundle. Members already present are adopted (ownership is recorded by the saved
+// meta record); missing members are installed fresh at their pinned version. On
+// any failure, members installed in this call are marked for removal so the
+// operation leaves no partial bundle behind.
+func (self *PluginsMgr) installStoreMeta(def sdkutils.PluginSrcDef, rel storeRelease) error {
+	if len(rel.Members) == 0 {
+		return fmt.Errorf("meta plugin %q has no members", def.StorePackage)
+	}
+
+	var installed []string
+	memberPkgs := make([]string, 0, len(rel.Members))
+
+	for _, m := range rel.Members {
+		memberPkgs = append(memberPkgs, m.Package)
+
+		// Already present — adopt it; ownership is recorded by the meta record.
+		if _, ok := self.FindByPkg(m.Package); ok {
+			continue
+		}
+
+		memberDef := sdkutils.PluginSrcDef{
+			Src:                sdkutils.PluginSrcStore,
+			StorePackage:       m.Package,
+			StorePluginVersion: m.Version,
+		}
+		if err := self.installStoreMember(memberDef, def.StorePackage); err != nil {
+			self.rollbackMeta(installed)
+			return fmt.Errorf("install member %q: %w", m.Package, err)
+		}
+		installed = append(installed, m.Package)
+	}
+
+	rec := sdkutils.MetaPlugin{
+		Package: def.StorePackage,
+		Name:    rel.Name,
+		Version: rel.Version,
+		Members: memberPkgs,
+	}
+	if err := plugins.WriteMetaRecord(rec); err != nil {
+		self.rollbackMeta(installed)
+		return fmt.Errorf("save meta record for %q: %w", def.StorePackage, err)
+	}
+
+	return nil
+}
+
+// installStoreMember installs a single store plugin as a member of metaPkg and
+// registers it live, recording metaPkg as an owner in the member's metadata.
+func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg string) error {
+	rel, err := self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion)
+	if err != nil {
+		return err
+	}
+	if rel.IsMeta {
+		return fmt.Errorf("meta plugin %q cannot be a member of another meta", def.StorePackage)
+	}
+
+	info, err := plugins.InstallFromPluginStore(self.db.DB, def, rel.ZipURL, plugins.InstallOpts{
 		Def:          def,
 		RemoveSrc:    true,
 		Encrypt:      true,
@@ -188,7 +339,7 @@ func (self *PluginsMgr) InstallMetaMember(def sdkutils.PluginSrcDef, zipURL stri
 		AsMetaMember: metaPkg,
 	})
 	if err != nil {
-		return fmt.Errorf("InstallMetaMember: %w", err)
+		return err
 	}
 
 	installPath := plugins.GetInstallPath(info.Package)
@@ -196,72 +347,14 @@ func (self *PluginsMgr) InstallMetaMember(def sdkutils.PluginSrcDef, zipURL stri
 	return self.RegisterPlugin(p)
 }
 
-// AddMetaOwner records that metaPkg owns an already-installed member.
-func (self *PluginsMgr) AddMetaOwner(memberPkg string, metaPkg string) error {
-	return plugins.AddMetaOwner(memberPkg, metaPkg)
-}
-
-// RemoveMetaOwner drops metaPkg from a member's owners.
-func (self *PluginsMgr) RemoveMetaOwner(memberPkg string, metaPkg string) error {
-	_, _, err := plugins.RemoveMetaOwner(memberPkg, metaPkg)
-	return err
-}
-
-// SaveMetaRecord persists an installed meta plugin's record.
-func (self *PluginsMgr) SaveMetaRecord(rec sdkutils.MetaInstallRecord) error {
-	return plugins.WriteMetaRecord(rec)
-}
-
-// MetaRecord returns the install record for a meta plugin and whether it exists.
-func (self *PluginsMgr) MetaRecord(pkg string) (sdkutils.MetaInstallRecord, bool) {
-	rec, err := plugins.ReadMetaRecord(pkg)
-	if err != nil {
-		return sdkutils.MetaInstallRecord{}, false
-	}
-	return rec, true
-}
-
-// MetaRecords returns all installed meta plugin records.
-func (self *PluginsMgr) MetaRecords() []sdkutils.MetaInstallRecord {
-	recs, err := plugins.AllMetaRecords()
-	if err != nil {
-		return nil
-	}
-	return recs
-}
-
-// UninstallMeta removes a meta plugin and cascades to its members: each member
-// loses this meta as an owner, and any member left with no owners that was not
-// installed standalone is marked for removal (applied on the next restart).
-func (self *PluginsMgr) UninstallMeta(pkg string) error {
-	rec, err := plugins.ReadMetaRecord(pkg)
-	if err != nil {
-		return err
-	}
-
-	for _, member := range rec.Members {
-		remaining, standalone, err := plugins.RemoveMetaOwner(member, pkg)
-		if err != nil {
-			return err
-		}
-		if remaining == 0 && !standalone {
-			if err := plugins.MarkToRemove(member); err != nil {
-				self.CoreAPI.Logger().Error(fmt.Sprintf("UninstallMeta: mark member %s for removal: %v", member, err))
-			}
+// rollbackMeta marks freshly-installed meta members for removal after a failed
+// bundle install. Removal is applied on the next restart.
+func (self *PluginsMgr) rollbackMeta(installed []string) {
+	for _, pkg := range installed {
+		if err := self.Uninstall(pkg); err != nil {
+			self.CoreAPI.Logger().Error(fmt.Sprintf("rollbackMeta uninstall %s: %v", pkg, err))
 		}
 	}
-
-	return plugins.RemoveMetaRecord(pkg)
-}
-
-// MetaMembership reports whether a plugin was installed standalone and which
-// meta plugins own it. ok is false when the package has no recorded metadata.
-func (self *PluginsMgr) MetaMembership(pkg string) (standalone bool, owners []string, ok bool) {
-	meta, err := plugins.ReadMetadata(pkg)
-	if err != nil {
-		return false, nil, false
-	}
-	return meta.Standalone, meta.MetaOwners, true
 }
 
 // Uninstall marks the plugin for removal on the next restart.
