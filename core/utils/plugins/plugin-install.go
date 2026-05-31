@@ -32,8 +32,8 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 	case sdkutils.PluginSrcStore:
 		// Store installs require a transient download URL that is not part of
 		// the persisted PluginSrcDef. Callers must go through
-		// PluginsMgr.InstallFromStore which provides the URL explicitly.
-		return sdkutils.PluginInfo{}, errors.New("store installs must be invoked via PluginsMgr.InstallFromStore")
+		// PluginsMgr.InstallPlugin, which resolves the URL before installing.
+		return sdkutils.PluginInfo{}, errors.New("store installs must be invoked via PluginsMgr.InstallPlugin")
 	default:
 		return sdkutils.PluginInfo{}, errors.New("Invalid plugin source: " + def.Src)
 	}
@@ -273,7 +273,7 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	}
 	if shouldWriteMetadata {
 		if opts.AsMetaMember != "" {
-			if err := WriteMetadataAsMember(opts.Def, info.Package, opts.AsMetaMember); err != nil {
+			if err := WriteMetadataAsMember(opts.Def, info.Package); err != nil {
 				log.Println("Error building plugin: ", err)
 				return err
 			}
