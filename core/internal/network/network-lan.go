@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 
+	"core/internal/modules/captivedns"
 	"core/internal/modules/nftables"
 	"core/internal/modules/tc"
 	"core/internal/modules/ubus"
@@ -214,6 +215,9 @@ func (self *NetworkLan) ReinitializeTc() (err error) {
 			log.Printf("ERROR: Captive portal setup failed for LAN '%s': %v", self.name, err)
 			return nil, err
 		}
+		if derr := captivedns.Setup(ipv4.Addr); derr != nil {
+			log.Printf("WARNING: captive portal DNS setup failed for LAN '%s': %v", self.name, derr)
+		}
 
 		log.Printf("TC reinitialization complete for LAN '%s'", self.name)
 		return nil, nil
@@ -238,8 +242,13 @@ func (self *NetworkLan) SetupCaptivePortal() (err error) {
 		if ipv6, err := iface.IpV6Addr(); err == nil {
 			routerIp6 = ipv6.Addr
 		}
-		err = nftables.SetupCaptivePortal(info.Device, ipv4.Addr, routerIp6)
-		return nil, err
+		if err = nftables.SetupCaptivePortal(info.Device, ipv4.Addr, routerIp6); err != nil {
+			return nil, err
+		}
+		if derr := captivedns.Setup(ipv4.Addr); derr != nil {
+			log.Printf("WARNING: captive portal DNS setup failed for LAN '%s': %v", self.name, derr)
+		}
+		return nil, nil
 	})
 
 	return err
@@ -318,6 +327,9 @@ func (self *NetworkLan) SetupTrafficControl() (err error) {
 			err = nftables.SetupCaptivePortal(i.Device, ipv4.Addr, routerIp6setup)
 			if err != nil {
 				return nil, err
+			}
+			if derr := captivedns.Setup(ipv4.Addr); derr != nil {
+				log.Printf("WARNING: captive portal DNS setup failed for LAN '%s': %v", self.name, derr)
 			}
 
 			return nil, nil

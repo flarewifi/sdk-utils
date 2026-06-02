@@ -36,7 +36,18 @@ cp hosts.json.sample hosts.json
 ```sh
 make
 ```
-Now you can browse the portal at [http://localhost:3000](http://localhost:3000)
+The captive portal is served over **HTTPS on the shared portal hostname**.
+Visiting [http://localhost:3000](http://localhost:3000) (or the device LAN IP) now
+redirects to **https://captive.flare-local.com:3443** (the dev HTTPS port).
+
+> **Add the portal hostname to `/etc/hosts`** so the browser resolves it to the
+> local container (production resolves it via the device's split-horizon dnsmasq):
+> ```
+> 127.0.0.1 captive.flare-local.com
+> ```
+> In development the certificate is issued from Let's Encrypt **staging**, so the
+> browser shows an "untrusted certificate" warning — proceed past it. The padlock
+> is fully trusted once the cloud is switched to Let's Encrypt production.
 
 The admin dashboard can be accessed at [http://localhost:3000/admin](http://localhost:3000/admin)
 

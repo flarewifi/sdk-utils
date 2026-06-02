@@ -20,6 +20,16 @@ var (
 	// MachinePingInitialDelay - delay before first ping after startup
 	MachinePingInitialDelay = 30 * time.Second
 
+	// PortalCertInterval - how often to check the cloud for a renewed portal cert.
+	// The cert is a 90-day Let's Encrypt cert renewed ~30 days before expiry, so a
+	// daily check catches a renewal with weeks of slack. The fingerprint check is
+	// cheap and reloads HTTPS only on an actual change; new/rebooted devices get
+	// the cert promptly via PortalCertInitialDelay regardless of this interval.
+	PortalCertInterval = 24 * time.Hour
+
+	// PortalCertInitialDelay - delay before the first portal cert fetch after startup
+	PortalCertInitialDelay = 60 * time.Second
+
 	// SessionCleanupInterval - runs daily at 23:30 (calculated dynamically)
 	// Set to 0 to use time-of-day scheduling instead of interval
 	SessionCleanupInterval = time.Duration(0)
