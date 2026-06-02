@@ -9,6 +9,7 @@ import (
 
 	"core/internal/modules/uci"
 	"core/utils/config"
+	"core/utils/env"
 	cmd "core/utils/shell"
 )
 
@@ -28,6 +29,10 @@ func Setup(lanIP string) error {
 	cfg, err := config.GetCachedAppConfig()
 	if err != nil {
 		return fmt.Errorf("read app config: %w", err)
+	}
+
+	if env.GO_ENV == env.ENV_DEV {
+		cfg.CustomDomain = "captive.flare-local.com"
 	}
 
 	domain := strings.TrimSpace(cfg.CustomDomain)
