@@ -25,6 +25,11 @@ type AppConfig struct {
 
 	// Enable HTTPS for admin web interface (default: false)
 	AdminWebHttps bool `json:"admin_web_https"`
+
+	// Shared captive-portal hostname served locally with a valid, cloud-issued
+	// certificate. Used for split-horizon DNS, the RFC 8910 advertisement, and
+	// the TLS SAN. Example: captive.flarewifi.com (dev: captive.flare-local.com).
+	CustomDomain string `json:"custom_domain"`
 }
 
 type DbConfig struct {
