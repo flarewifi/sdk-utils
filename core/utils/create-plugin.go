@@ -123,7 +123,6 @@ templ Home() {
 	gitIgnorePath := filepath.Join(pluginDir, ".gitignore")
 	gitIgnore := `
 .DS_Store
-/db/queries
 /node_modules
 /resources/assets/dist
 *.so

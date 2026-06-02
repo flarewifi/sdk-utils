@@ -1,7 +1,6 @@
 .DS_Store
 /node_modules
 /resources/assets/dist
-/db/queries
 plugin-init_mono.go
 system-plugins-init.go
 *.so
