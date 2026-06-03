@@ -73,7 +73,7 @@ func BuildFromGit(w io.Writer, db *sql.DB, def sdkutils.PluginSrcDef) (sdkutils.
 	return info, nil
 }
 
-func BuildPluginSo(pluginSrcDir string, workdir string) error {
+func BuildPluginSo(pluginSrcDir string, workdir string, opts BuildOpts) error {
 	if pluginSrcDir == "" {
 		return errors.New("Build plugin error: no plugin source path")
 	}
@@ -125,6 +125,27 @@ func BuildPluginSo(pluginSrcDir string, workdir string) error {
 		}
 	}
 
+	// When building the core, statically link the system plugins into
+	// core/plugin.so. The generated core/internal/api/system-plugins-init.go
+	// imports each system plugin's /system subpackage, so the plugin source must
+	// live in this isolated workspace and be listed in go.work — otherwise those
+	// imports don't resolve and the plugins aren't compiled into the .so. The
+	// sources are copied as-is (sysplugin-prepare already generated their
+	// system/main.go and, off-device, their templ/sqlc output); this mirrors how
+	// CreateGoWorkspace adds plugins/system/* to the full workspace go.work.
+	var systemPluginUsePaths []string
+	if isCoreBuild {
+		for _, def := range SystemPluginSrcDefs() {
+			rel := filepath.ToSlash(def.LocalPath) // e.g. plugins/system/<name>
+			srcAbs := filepath.Join(sdkutils.PathAppDir, def.LocalPath)
+			dstAbs := filepath.Join(workdir, def.LocalPath)
+			if err := sdkutils.FsCopyDir(srcAbs, dstAbs, nil); err != nil {
+				return fmt.Errorf("copying system plugin %s into core build workspace: %w", rel, err)
+			}
+			systemPluginUsePaths = append(systemPluginUsePaths, "./"+rel)
+		}
+	}
+
 	if err := sdkutils.FsCopyDir(filepath.Join(sdkutils.PathAppDir, "scripts"), filepath.Join(workdir, "scripts"), nil); err != nil {
 		return err
 	}
@@ -140,14 +161,19 @@ use (
 	if !isCoreBuild {
 		goWork += "    ./core\n"
 	}
-	goWork += fmt.Sprintf("    ./plugins/%s\n)", info.Package)
+	goWork += fmt.Sprintf("    ./plugins/%s\n", info.Package)
+	for _, p := range systemPluginUsePaths {
+		goWork += "    " + p + "\n"
+	}
+	goWork += ")"
 	goworkFile := filepath.Join(workdir, "go.work")
 	if err := os.WriteFile(goworkFile, []byte(goWork), sdkutils.PermFile); err != nil {
 		return err
 	}
 
 	// Don't build templates in development since it is already watched and built by another script.
-	if env.GO_ENV != env.ENV_DEV {
+	// Also skip when the caller opts out (e.g. on-device builds that rely on committed *_templ.go).
+	if env.GO_ENV != env.ENV_DEV && !opts.SkipTemplates {
 		if err := BuildTemplates(goBuildPath); err != nil {
 			return err
 		}

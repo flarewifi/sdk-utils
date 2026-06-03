@@ -54,7 +54,7 @@ func CreateDevkit() {
 	BuildFlareCLI()
 
 	// Build core/plugin.so
-	BuildCore()
+	BuildCore(plugins.BuildOpts{})
 
 	// Copy devkit files
 	for _, entry := range devkitFiles {

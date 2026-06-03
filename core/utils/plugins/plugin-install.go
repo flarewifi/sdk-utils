@@ -202,7 +202,7 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		return err
 	}
 
-	if err := BuildPluginSo(pluginSrc, buildpath); err != nil {
+	if err := BuildPluginSo(pluginSrc, buildpath, BuildOpts{}); err != nil {
 		log.Println("Error building plugin: ", err)
 		return err
 	}
