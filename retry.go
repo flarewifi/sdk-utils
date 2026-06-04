@@ -20,7 +20,6 @@ func Retry[T any](fn func() (T, error), retries int) (T, error) {
 
 		if attempt < retries {
 			sleepDuration := time.Duration(attempt*2) * time.Second
-			fmt.Printf("Attempt %d failed: %v. Retrying in %v...\n", attempt, err, sleepDuration)
 			time.Sleep(sleepDuration)
 		}
 	}

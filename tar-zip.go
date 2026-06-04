@@ -20,12 +20,10 @@ func CompressZip(srcDir string, destFile string) error {
 		return err
 	}
 
-	fmt.Println("Zipping: ", StripRootPath(srcDir), " -> ", StripRootPath(destFile))
 	cmd := exec.Command("zip", "-r", destFile, ".")
 	cmd.Dir = srcDir
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println("Error zipping: ", err)
 		return err
 	}
 	return nil
@@ -203,8 +201,6 @@ func Untar(tarGzFile, outputDir string) error {
 		}
 
 		file.Close() // dont use defer
-
-		fmt.Printf("Extracted: %s\n", outputPath)
 	}
 
 	return nil
@@ -264,7 +260,6 @@ func UntarXz(tarXzFile, outputDir string) error {
 			if err := os.Symlink(header.Linkname, outputPath); err != nil {
 				return err
 			}
-			fmt.Printf("Extracted symlink: %s -> %s\n", outputPath, header.Linkname)
 			continue
 		}
 
@@ -280,8 +275,6 @@ func UntarXz(tarXzFile, outputDir string) error {
 		}
 
 		file.Close() // dont use defer
-
-		fmt.Printf("Extracted: %s\n", outputPath)
 	}
 
 	return nil
@@ -345,8 +338,6 @@ func Unzip(src, dest string) error {
 		if err != nil {
 			return err
 		}
-
-		fmt.Printf("Extracted: %s\n", filePath)
 	}
 	return nil
 }

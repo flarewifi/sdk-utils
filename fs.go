@@ -424,8 +424,7 @@ func FsMoveFile(sourcePath, destPath string) error {
 	// Attempt to rename the file (this is a quick move if on the same filesystem)
 	if err := os.Rename(sourcePath, destPath); err != nil {
 		// If renaming fails, we check if the error is because the file is on a different filesystem
-		if linkErr, ok := err.(*os.LinkError); ok {
-			fmt.Printf("Link error encountered: %v\n", linkErr)
+		if _, ok := err.(*os.LinkError); ok {
 			// Attempt to copy and then remove the source file
 			if err := FsCopyFile(sourcePath, destPath); err != nil {
 				return fmt.Errorf("failed to copy file: %w", err)
@@ -481,18 +480,12 @@ func FsRmEmpty(dirPath string) error {
 
 	// Remove empty directories.
 	for _, dir := range emptyDirs {
-		removeErr := os.Remove(dir)
-		if removeErr != nil {
-			fmt.Println("Error removing directory:", removeErr)
-		}
+		os.Remove(dir)
 
 		// Remove empty parent directories.
 		parentDir := filepath.Dir(dir)
 		if isEmpty, err := FsIsEmptyDir(parentDir); err == nil && isEmpty {
-			removeErr := os.Remove(parentDir)
-			if removeErr != nil {
-				fmt.Println("Error removing directory:", removeErr)
-			}
+			os.Remove(parentDir)
 		}
 	}
 
