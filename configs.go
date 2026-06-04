@@ -47,7 +47,6 @@ const (
 	PluginSrcStore  string = "store"
 	PluginSrcSystem string = "system"
 	PluginSrcLocal  string = "local"
-	PluginSrcZip    string = "zip"
 )
 
 type PluginsConfig struct {
@@ -92,7 +91,7 @@ func (def PluginSrcDef) String() string {
 		return def.GitURL
 	case PluginSrcStore:
 		return def.StorePackage + "@" + def.StorePluginVersion
-	case PluginSrcSystem, PluginSrcLocal, PluginSrcZip:
+	case PluginSrcLocal:
 		return def.LocalPath
 	default:
 		return "unknown plugin source: " + def.Src
@@ -100,7 +99,7 @@ func (def PluginSrcDef) String() string {
 }
 
 func (def PluginSrcDef) Equal(compare PluginSrcDef) bool {
-	if (def.Src == PluginSrcLocal || def.Src == PluginSrcSystem || def.Src == PluginSrcZip) &&
+	if (def.Src == PluginSrcLocal || def.Src == PluginSrcSystem) &&
 		compare.Src == def.Src &&
 		StripRootPath(def.LocalPath) == StripRootPath(compare.LocalPath) {
 		return true
