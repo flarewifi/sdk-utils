@@ -20,7 +20,7 @@ a no-op version (e.g. before the generator has run for the first time).
 )
 
 // CreateSystemPluginInit prepares the non-mono system-plugin integration:
-// for every plugin under plugins/system/ it enforces the three-file plugin
+// for every plugin under data/plugins/system/ it enforces the three-file plugin
 // contract (//go:build !mono on main.go, main_mono.go generated if missing,
 // system/main.go generated if missing — all driven from the plugin's root
 // main.go), then writes the loader file core/internal/api/system-plugins-init.go

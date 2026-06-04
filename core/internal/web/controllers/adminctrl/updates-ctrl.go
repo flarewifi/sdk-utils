@@ -24,6 +24,18 @@ var (
 	newUpdate atomic.Value
 )
 
+// outdatedPlugins returns only the entries that have a newer version available,
+// preserving order. Shared across builds (the list is empty on mono).
+func outdatedPlugins(list []updates.PluginUpdate) []updates.PluginUpdate {
+	out := make([]updates.PluginUpdate, 0, len(list))
+	for _, p := range list {
+		if p.HasUpdate {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // formatBytes converts bytes to human-readable format (B, KB, MB, GB)
 func formatBytes(bytes int64) string {
 	const (
@@ -108,14 +120,14 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "Unable to Check Updates"))
 		currentVersion, err := semver.NewVersion(coreInfo.Version)
 		if err != nil {
-			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, checkUpdateErr)
+			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, false, checkUpdateErr)
 			page.Render(r.Context(), w)
 			return
 		}
 
 		result, err := updates.CheckSoftwareReleaseUpdate(currentVersion)
 		if err != nil {
-			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, checkUpdateErr)
+			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, false, checkUpdateErr)
 			page.Render(r.Context(), w)
 			return
 		}
@@ -151,8 +163,18 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
-		page := updatesview.CheckForUpdatesPartial(api, update, nil)
+		// Fetch the plugin update status once (best-effort, nil on mono/err) and keep
+		// only the plugins that are actually outdated — the page hides plugins until
+		// a check and then lists ONLY the ones to be updated.
+		outdated := outdatedPlugins(checkPluginUpdatesList(g))
+		hasPlugin := len(outdated) > 0
+
+		page := updatesview.CheckForUpdatesPartial(api, update, hasPlugin, nil)
 		page.Render(r.Context(), w)
+
+		// Non-mono builds also fill the plugin update list via an OOB swap in the
+		// same response. No-op on mono (see updates-ctrl_plugins_mono.go).
+		renderPluginUpdatesOOB(g, w, r, outdated)
 	}
 }
 
@@ -162,19 +184,18 @@ func DownloadUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		res := api.HttpAPI.Response()
 
 		v := newUpdate.Load()
-		update, ok := v.(*updates.SoftwareReleaseUpdate)
-		if !ok {
-			res.Redirect(w, r, "admin:updates:index")
-			return
-		}
-
-		if !update.HasUpdate {
-			res.Redirect(w, r, "admin:updates:index")
-			return
-		}
+		update, _ := v.(*updates.SoftwareReleaseUpdate)
+		coreUpdate := update != nil && update.HasUpdate
 
 		isDownloading := updates.IsDownloading()
 		isDownloaded := updates.IsDownloaded()
+
+		// With no core update and nothing already staging/staged, this is only a
+		// valid upgrade if some plugin is outdated. Otherwise there is nothing to do.
+		if !coreUpdate && !isDownloading && !isDownloaded && !hasPluginUpdates(g) {
+			res.Redirect(w, r, "admin:updates:index")
+			return
+		}
 
 		var percent int32
 		if isDownloading {
@@ -185,17 +206,20 @@ func DownloadUpdatePageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			percent = 100
 		}
 
-		page := updatesview.DownloadUpdatePage(api, EventInstallProgress, int(percent), nil)
+		compiling := updates.CurrentPhase() == updates.PhaseCompiling
+		page := updatesview.DownloadUpdatePage(api, EventInstallProgress, int(percent), compiling, nil)
 		res.AdminView(w, r, sdkapi.ViewPage{PageContent: page})
 
 		if !isDownloaded && !isDownloading {
-			// Initiate the process of downloading and installing of software updates
-			go updates.DownloadSoftwareUpdate(updates.DownloadParams{
-				FileURL:      update.ReleseFileURL,
-				Checksum:     update.ReleaseFileChecksum,
-				OutputPath:   updates.GetUpdateOutputPath(update.ReleseFileURL, update.IsSysupgrade),
-				IsSysupgrade: update.IsSysupgrade,
-			})
+			// Initiate the upgrade. A core update stages the core plus every
+			// ABI-matched plugin (model A, mono downloads a single tarball) via the
+			// build-tagged startSystemDownload. With no core update we stage only the
+			// latest plugins against the unchanged current core (startPluginOnlyDownload).
+			if coreUpdate {
+				startSystemDownload(g, update)
+			} else {
+				startPluginOnlyDownload(g)
+			}
 		}
 	}
 }
@@ -208,6 +232,15 @@ func DownloadStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		// Plugin-only upgrade that applied live (a meta-bundle bump) — nothing to
+		// reboot for. Flash success and return to the updates page.
+		if updates.PluginUpdateApplied() {
+			res := api.HttpAPI.Response()
+			res.FlashMsg(w, r, api.Translate("success", "Plugins updated successfully"), sdkapi.FlashMsgSuccess)
+			res.Redirect(w, r, "admin:updates:index")
+			return
+		}
+
 		percent := updates.DownloadPercent()
 		err := updates.DownloadError()
 		downloaded := updates.DownloadedBytes()
@@ -216,7 +249,8 @@ func DownloadStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		downloadedStr := formatBytes(downloaded)
 		totalSizeStr := formatBytes(totalSize)
 
-		page := updatesview.DownloadStatusPartial(api, int(percent), downloadedStr, totalSizeStr, err)
+		compiling := updates.CurrentPhase() == updates.PhaseCompiling
+		page := updatesview.DownloadStatusPartial(api, int(percent), downloadedStr, totalSizeStr, compiling, err)
 		if err := page.Render(r.Context(), w); err != nil {
 			api.LoggerAPI.Error(err.Error())
 		}

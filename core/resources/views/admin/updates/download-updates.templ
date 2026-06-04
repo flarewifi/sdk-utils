@@ -5,13 +5,13 @@ import (
 	"fmt"
 )
 
-templ DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, err error) {
+templ DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, compiling bool, err error) {
     <div id="page" hx-post={ api.Http().Router().UrlForRoute("admin:updates:download-status") } hx-trigger="every 1s">
-		@DownloadStatusPartial(api, percent, "0 B", "0 B", err)
+		@DownloadStatusPartial(api, percent, "0 B", "0 B", compiling, err)
 	</div>
 }
 
-templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize string, totalSize string, err error) {
+templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize string, totalSize string, compiling bool, err error) {
 	if err != nil {
 		<div class="alert alert-danger alert-dismissible fade show" role="alert">
 			<i class="bi bi-exclamation-triangle me-2"></i>
@@ -19,37 +19,67 @@ templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize s
 		</div>
 		{{ return }}
 	}
-	
+
 	<div class="card shadow-sm" x-data={ fmt.Sprintf("{percent: %d, downloadedSize: '%s', totalSize: '%s'}", percent, downloadedSize, totalSize) }>
 		<div class="card-body">
-			<h4 class="card-title mb-4">
-				<i class="bi bi-download me-2"></i>
-				{ api.Translate("info", "Downloading updates") }
-			</h4>
-			
+			if compiling {
+				<h4 class="card-title mb-4">
+					<i class="bi bi-cpu me-2"></i>
+					{ api.Translate("info", "Compiling plugins") }
+				</h4>
+			} else {
+				<h4 class="card-title mb-4">
+					<i class="bi bi-download me-2"></i>
+					{ api.Translate("info", "Downloading updates") }
+				</h4>
+			}
+
 			<div class="mb-3">
 				<div class="d-flex justify-content-between align-items-center mb-2">
-					<span class="text-body-secondary">{ api.Translate("label", "Download Progress") }</span>
+					if compiling {
+						<span class="text-body-secondary">{ api.Translate("label", "Compilation Progress") }</span>
+					} else {
+						<span class="text-body-secondary">{ api.Translate("label", "Download Progress") }</span>
+					}
 					<span class="badge bg-primary" x-text="`${percent}%`"></span>
 				</div>
-				
+
 				<div class="progress" style="height: 30px">
-					<div 
-						class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
-						role="progressbar" 
-						:style="`width: ${percent}%`"
-						:aria-valuenow="percent"
-						aria-valuemin="0" 
-						aria-valuemax="100"
-						x-text="`${downloadedSize}/${totalSize}`">
-					</div>
+					if compiling {
+						<div
+							class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+							role="progressbar"
+							:style="`width: ${percent}%`"
+							:aria-valuenow="percent"
+							aria-valuemin="0"
+							aria-valuemax="100"
+							x-text="`${percent}%`">
+						</div>
+					} else {
+						<div
+							class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+							role="progressbar"
+							:style="`width: ${percent}%`"
+							:aria-valuenow="percent"
+							aria-valuemin="0"
+							aria-valuemax="100"
+							x-text="`${downloadedSize}/${totalSize}`">
+						</div>
+					}
 				</div>
 			</div>
-			
-			<div class="alert alert-info mb-0" role="alert">
-				<i class="bi bi-info-circle me-2"></i>
-				{ api.Translate("info", "Please wait while the update is being downloaded. Do not close this page or turn off the device") }.
-			</div>
+
+			if compiling {
+				<div class="alert alert-info mb-0" role="alert">
+					<i class="bi bi-info-circle me-2"></i>
+					{ api.Translate("info", "Please wait while the plugins are being compiled. Do not close this page or turn off the device") }.
+				</div>
+			} else {
+				<div class="alert alert-info mb-0" role="alert">
+					<i class="bi bi-info-circle me-2"></i>
+					{ api.Translate("info", "Please wait while the update is being downloaded. Do not close this page or turn off the device") }.
+				</div>
+			}
 		</div>
 	</div>
 }

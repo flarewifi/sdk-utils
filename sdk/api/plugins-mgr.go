@@ -28,13 +28,29 @@ type IPluginsMgrApi interface {
 	//     and is never persisted as part of the source definition.
 	//   - git:              clones def.GitURL at def.GitRef (a branch, tag, or
 	//     commit hash) into a temp directory.
-	//   - local/system/zip: installs from def.LocalPath, a source folder already
-	//     on disk (it must contain a plugin.json); the source files are left in
-	//     place.
+	//   - local/system: installs from def.LocalPath, a source folder already on
+	//     disk (it must contain a plugin.json); the source files are left in place.
+	//
+	// When def resolves to a store meta bundle, InstallPlugin expands it: every
+	// member is installed (or adopted if already present) and a bundle record is
+	// saved. See UninstallMeta for the reverse.
 	InstallPlugin(def sdkutils.PluginSrcDef) error
 
-	// Uninstall marks a plugin for removal on the next restart.
+	// Uninstall removes a plugin or meta bundle. A regular plugin is marked for
+	// removal on the next restart; a meta bundle is delegated to UninstallMeta.
 	Uninstall(pkg string) error
+
+	// UninstallMeta removes a meta bundle record and cascades to its members: any
+	// member left owned by no remaining bundle and not installed standalone is
+	// marked for removal on the next restart.
+	UninstallMeta(pkg string) error
+
+	// MetaRecords returns all installed meta-plugin bundle records.
+	MetaRecords() ([]sdkutils.MetaPlugin, error)
+
+	// MetaMembership reports whether pkg should be treated as a standalone install
+	// and which meta bundles own it. ok is false only when config cannot be read.
+	MetaMembership(pkg string) (standalone bool, owners []string, ok bool)
 
 	// IsToBeRemoved returns true if the plugin has been marked for removal.
 	IsToBeRemoved(pkg string) bool
@@ -44,7 +60,6 @@ type IPluginsMgrApi interface {
 
 	// SourceDef returns the source definition for an installed plugin —
 	// where it came from and how it was installed (git / store / system /
-	// local / zip). Returns (zero-value, false) if the package is not
-	// installed.
+	// local). Returns (zero-value, false) if the package is not installed.
 	SourceDef(pkg string) (sdkutils.PluginSrcDef, bool)
 }

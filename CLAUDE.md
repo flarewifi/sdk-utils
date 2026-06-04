@@ -76,6 +76,7 @@ if err := RecordUsage(); err != nil {
 - Add DB constraints (UNIQUE, FOREIGN KEY) for business rules
 - Check docker logs for `Listening on port :3000`
 - Convert database timestamps from UTC to local time when displayed to UI using `sdkutil.UtcToLocalTime(t)`
+- Put temporary compiled/binary artifacts in `.tmp/` so they are not tracked by git
 
 ## Go File Organization
 

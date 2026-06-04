@@ -51,7 +51,7 @@ for f in \
     "go.work" \
     "go.sum" \
     "hosts.json" \
-    "start.sh" \
+    "start-mono.sh" \
     "os_release.json" \
     "MACHINE_UID" \
     ; do

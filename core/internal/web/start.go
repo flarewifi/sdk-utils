@@ -14,6 +14,8 @@ import (
 func StartServer(r *mux.Router, forever bool) *http.Server {
 	addr := fmt.Sprintf(":%d", env.HTTP_PORT)
 
+	fmt.Printf("Listening on port %s\n", addr)
+
 	srv := &http.Server{
 		Handler: r,
 		Addr:    addr,

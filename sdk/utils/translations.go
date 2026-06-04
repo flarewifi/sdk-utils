@@ -102,7 +102,7 @@ func CompressAllTranslations(rootDir string) error {
 	// Compress translations in all plugin directories
 	pluginDirs := []string{
 		filepath.Join(rootDir, "plugins", "installed"),
-		filepath.Join(rootDir, "plugins", "system"),
+		filepath.Join(rootDir, "data", "plugins", "system"),
 	}
 
 	for _, dir := range pluginDirs {
@@ -132,7 +132,7 @@ func CompressAllUnusedLanguages(rootDir, currentLang string) error {
 
 	pluginDirs := []string{
 		filepath.Join(rootDir, "plugins", "installed"),
-		filepath.Join(rootDir, "plugins", "system"),
+		filepath.Join(rootDir, "data", "plugins", "system"),
 	}
 
 	for _, dir := range pluginDirs {

@@ -11,6 +11,7 @@
 /data/config
 /data/plugins/local/*
 /data/plugins/devel/*
+/data/plugins/system/*
 /data/storage
 /data/system
 /data/db

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
@@ -28,6 +29,12 @@ var (
 	certDir  = filepath.Join(sdkutils.PathDataDir, "storage", "certs")
 	certFile = filepath.Join(certDir, "server.crt")
 	keyFile  = filepath.Join(certDir, "server.key")
+	// Seed cert+key embedded into the release by the software-release build
+	// (EmbedPortalCertificate). On first boot, before the cloud-sync fetch job has
+	// run, these let the portal serve the real cloud-issued cert instead of a
+	// self-signed one. Absent or expired => fall back to self-signed.
+	seedCertFile = filepath.Join(sdkutils.PathDefaultsDir, "certs", "server.crt")
+	seedKeyFile  = filepath.Join(sdkutils.PathDefaultsDir, "certs", "server.key")
 	// Renew certificates when they expire within this duration
 	renewalThreshold = 30 * 24 * time.Hour // 30 days
 
@@ -79,6 +86,14 @@ func ensureTLSCertificates() error {
 	// Ensure the certs directory exists
 	if err := sdkutils.FsEnsureDir(certDir); err != nil {
 		return err
+	}
+
+	// Prefer the cert embedded into the release by the software-release build before
+	// falling back to a self-signed cert. This is the first-boot head start: a fresh
+	// install serves the real cloud-issued portal cert immediately. The runtime
+	// cloud-sync fetch (StartPortalCertScheduler) keeps it current afterwards.
+	if seedFromDefaults() {
+		return nil
 	}
 
 	// Generate RSA private key
@@ -136,6 +151,52 @@ func ensureTLSCertificates() error {
 	}
 
 	return nil
+}
+
+// seedFromDefaults installs the release-embedded portal cert from defaults/certs into
+// the live certs dir when it exists, the key matches the cert, and the cert is within
+// its validity window. It returns true on a successful install. A missing, mismatched,
+// or expired seed returns false so the caller falls back to a self-signed cert (the
+// runtime cloud-sync fetch then supplies the current cert). Best-effort: it never
+// errors out the boot path.
+func seedFromDefaults() bool {
+	if !sdkutils.FsExists(seedCertFile) || !sdkutils.FsExists(seedKeyFile) {
+		return false
+	}
+
+	certPEM, err := os.ReadFile(seedCertFile)
+	if err != nil {
+		return false
+	}
+	keyPEM, err := os.ReadFile(seedKeyFile)
+	if err != nil {
+		return false
+	}
+
+	// The key must actually match the cert, and the cert must be currently valid.
+	if _, err := tls.X509KeyPair(certPEM, keyPEM); err != nil {
+		return false
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return false
+	}
+	leaf, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false
+	}
+	now := time.Now()
+	if now.Before(leaf.NotBefore) || now.After(leaf.NotAfter) {
+		return false
+	}
+
+	if err := os.WriteFile(certFile, certPEM, 0600); err != nil {
+		return false
+	}
+	if err := os.WriteFile(keyFile, keyPEM, 0600); err != nil {
+		return false
+	}
+	return true
 }
 
 // startCertificateRenewalChecker runs periodic checks for certificate renewal

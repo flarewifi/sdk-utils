@@ -19,9 +19,6 @@ import (
 
 func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (info sdkutils.PluginInfo, err error) {
 	switch def.Src {
-	case sdkutils.PluginSrcZip:
-		info, err = InstallFromLocalPath(db, def, opts)
-
 	case sdkutils.PluginSrcGit:
 		info, err = InstallFromGitSrc(db, def, opts)
 

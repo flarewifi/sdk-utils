@@ -152,7 +152,7 @@ func main() {
 	flag.BoolVar(&scanConfig.ListUntranslated, "list-untranslated", false, "List all files with untranslated content (content equals key)")
 	flag.StringVar(&scanConfig.Language, "language", "", "Filter results by language code (e.g., en, es, fr) - useful for parallel AI agent workflows")
 	flag.StringVar(&scanConfig.CorePath, "core-path", "core", "Path to core directory")
-	flag.StringVar(&scanConfig.SystemPluginsPath, "system-plugins-path", "plugins/system", "Path to system plugins directory")
+	flag.StringVar(&scanConfig.SystemPluginsPath, "system-plugins-path", "data/plugins/system", "Path to system plugins directory")
 	flag.StringVar(&scanConfig.LocalPluginsPath, "local-plugins-path", "data/plugins/local", "Path to local plugins directory")
 	flag.BoolVar(&scanConfig.Validate, "validate", false, "Validation mode - read-only check of translation coverage (for CI/CD)")
 	flag.IntVar(&scanConfig.MinCoverage, "min-coverage", 80, "Minimum translation coverage percentage (used with --validate)")

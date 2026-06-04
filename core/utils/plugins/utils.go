@@ -17,6 +17,11 @@ var (
 	ErrNotInstalled = errors.New("Plugin is not installed")
 )
 
+// CorePkg is the package id the core itself stages under in the unified update
+// root (data/storage/system/updates/com.flarego.core). It MUST match CORE_PKG in
+// start.sh, which overlays this package onto the app dir on the next boot.
+const CorePkg = "com.flarego.core"
+
 func IsDefInList(defs []sdkutils.PluginSrcDef, def sdkutils.PluginSrcDef) bool {
 	for _, i := range defs {
 		if i.Equal(def) {
@@ -316,6 +321,15 @@ func HasPendingUpdate(pkg string) bool {
 	return ValidateInstallPath(updatepath) == nil
 }
 
+// HasPendingCoreUpdate reports whether a staged core update exists under the
+// unified update root. The core can't be detected with HasPendingUpdate: its
+// self-contained tarball carries the manifest at core/plugin.json (not a root
+// plugin.json), so we sentinel on the built CLI binary (bin/flare) instead, which
+// only a fully-extracted core payload contains.
+func HasPendingCoreUpdate() bool {
+	return sdkutils.FsExists(filepath.Join(GetPendingUpdatePath(CorePkg), "bin", "flare"))
+}
+
 func MovePendingUpdate(pkg string) error {
 	updatePath := GetPendingUpdatePath(pkg)
 	if err := CreateBackup(pkg); err != nil {
@@ -426,8 +440,36 @@ func GetInstallPath(pkg string) string {
 	return filepath.Join(sdkutils.PathPluginInstallDir, pkg)
 }
 
+// GetPendingUpdatePath returns the unified staging directory for a package's
+// downloaded-but-not-yet-applied update: data/storage/system/updates/{pkg}. BOTH
+// the core (pkg == "com.flarego.core") and each plugin stage here; the non-mono
+// boot script (start.sh) overlays every staged package onto its install
+// location atomically on the next boot.
+//
+// Previously plugin updates staged under plugins/updates/{pkg} and were applied by
+// the Go boot (MovePendingUpdate); applying is now the shell's job so the core and
+// plugins follow one update process from a single staging root.
 func GetPendingUpdatePath(pkg string) string {
-	return filepath.Join(sdkutils.PathPluginUpdatesDir, pkg)
+	return filepath.Join(sdkutils.PathSystemUpdateDir, pkg)
+}
+
+// StagedCompleteMarkerPath returns the marker file the non-mono boot script waits
+// for before applying staged updates. The app writes it only after the full set
+// (core + any ABI-matched plugins) has finished staging, so a partial/aborted
+// download is never applied.
+func StagedCompleteMarkerPath() string {
+	return filepath.Join(sdkutils.PathSystemUpdateDir, ".staged_complete")
+}
+
+// MarkStagedComplete commits the current staged set by writing the
+// .staged_complete marker. It must be called LAST, only once every package in the
+// set (core and/or plugins) has been fully extracted and validated — start.sh
+// applies the whole staging root atomically the moment this marker exists.
+func MarkStagedComplete() error {
+	if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
+		return err
+	}
+	return os.WriteFile(StagedCompleteMarkerPath(), []byte("complete"), 0644)
 }
 
 func GetBackupPath(pkg string) string {
