@@ -44,13 +44,11 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 			ctx := r.Context()
 			clnt, err := api.Http().GetClientDevice(r)
 			if err != nil {
-				api.Logger().Error("core-theme portal: error getting client device: " + err.Error())
 				return sdkapi.ViewPage{}
 			}
 
 			summary, err := api.SessionsMgr().SessionSummary(ctx, clnt)
 			if err != nil {
-				api.Logger().Error("core-theme portal: error getting session summary: " + err.Error())
 				return sdkapi.ViewPage{}
 			}
 

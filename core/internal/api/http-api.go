@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -77,7 +76,6 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 	clnt, err := self.clientRegister.FindByID(ctx, claims.DeviceID)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			log.Printf("[TIMEOUT] GetClientDevice exceeded 2s timeout for DeviceID=%d", claims.DeviceID)
 			return nil, fmt.Errorf("device lookup timed out")
 		}
 		return nil, fmt.Errorf("device not found: %w", err)
@@ -118,11 +116,10 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 				if newHostname == "" {
 					newHostname = clnt.Hostname()
 				}
-				if err := self.clientRegister.UpdateDevice(ctx, clnt, h.MacAddr, newIpv4, newIpv6, newHostname); err != nil {
-					log.Printf("[GetClientDevice] failed to sync device %d network details (MAC %s→%s, IP %s): %v",
-						claims.DeviceID, storedMAC, currentMAC, requestIP, err)
-				} else if refreshed, err := self.clientRegister.FindByID(ctx, claims.DeviceID); err == nil {
-					clnt = refreshed
+				if err := self.clientRegister.UpdateDevice(ctx, clnt, h.MacAddr, newIpv4, newIpv6, newHostname); err == nil {
+					if refreshed, err := self.clientRegister.FindByID(ctx, claims.DeviceID); err == nil {
+						clnt = refreshed
+					}
 				}
 			}
 		}

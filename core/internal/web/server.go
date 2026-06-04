@@ -1,7 +1,6 @@
 package web
 
 import (
-	"log"
 	"net/http"
 	"strings"
 
@@ -50,8 +49,6 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 	redirectToPortalMw := middlewares.RedirectToPortalDomain()
 
 	router.RootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Warning: unknown route requested: ", r.URL.Path)
-
 		// Admin 404s stay on the device host (LAN IP / localhost).
 		if strings.HasPrefix(r.URL.Path, "/admin") {
 			h := redirectToLanIpMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

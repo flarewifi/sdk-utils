@@ -6,7 +6,6 @@ import (
 	"core/internal/jobs"
 	"core/internal/modules/activation"
 	coretheme "core/internal/theme"
-	"log"
 )
 
 func Init(g *api.CoreGlobals) {
@@ -17,7 +16,6 @@ func Init(g *api.CoreGlobals) {
 
 	go func() {
 		g.Database.WaitReady()
-		log.Println("Database is ready.")
 
 		InitOpkg()
 		RunCoreMigrations(g)
@@ -28,7 +26,6 @@ func Init(g *api.CoreGlobals) {
 		InitAssets(g)
 		InitAccounts()
 		if err := InitNetwork(); err != nil {
-			log.Println("Error initializing network:", err)
 		} else {
 			api.RunNetworkReadyCallbacks(g.CoreAPI.Logger())
 		}
@@ -36,9 +33,7 @@ func Init(g *api.CoreGlobals) {
 		// Initialize sessions manager
 		ctx := context.Background()
 		if err := g.ClientMgr.Init(ctx); err != nil {
-			log.Println("Error initializing sessions manager:", err)
 		} else {
-			log.Println("Sessions manager initialized successfully.")
 		}
 
 		// Initialize activation after everything else is ready
@@ -49,8 +44,6 @@ func Init(g *api.CoreGlobals) {
 
 		// Start jobs
 		jobs.Init(g)
-
-		g.CoreAPI.Logger().Info("[Boot Init] System boot complete.")
 
 		bootCh <- struct{}{}
 	}()

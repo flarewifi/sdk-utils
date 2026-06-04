@@ -8,7 +8,6 @@ import (
 	"core/utils/markdown"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	sdkapi "sdk/api"
 	"sync/atomic"
@@ -109,7 +108,6 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "Unable to Check Updates"))
 		currentVersion, err := semver.NewVersion(coreInfo.Version)
 		if err != nil {
-			log.Println("Error:", err)
 			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, checkUpdateErr)
 			page.Render(r.Context(), w)
 			return
@@ -117,7 +115,6 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		result, err := updates.CheckSoftwareReleaseUpdate(currentVersion)
 		if err != nil {
-			log.Println("Error:", err)
 			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, checkUpdateErr)
 			page.Render(r.Context(), w)
 			return
@@ -134,8 +131,6 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 				if err == nil {
 					releaseNotesHTML = templ.Raw(htmlContent)
 				} else {
-					// Fallback to plain text if parsing fails
-					log.Println("Error parsing markdown:", err)
 					releaseNotesHTML = templ.Raw("<pre>" + result.ReleaseNotes + "</pre>")
 				}
 			}
@@ -263,7 +258,6 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Parse multipart form (100 MB max)
 		if err := r.ParseMultipartForm(updates.MaxSysupgradeFileSize); err != nil {
-			log.Println("Error parsing multipart form:", err)
 			errMsg := api.Translate("error", "Failed to parse upload form")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin:updates:index")
@@ -273,7 +267,6 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get uploaded file
 		file, header, err := r.FormFile("sysupgrade_file")
 		if err != nil {
-			log.Println("Error getting form file:", err)
 			errMsg := api.Translate("error", "No file uploaded")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin:updates:index")
@@ -283,7 +276,6 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Validate file
 		if err := updates.ValidateSysupgradeFile(header.Filename, header.Size); err != nil {
-			log.Println("File validation error:", err)
 			var errMsg string
 			switch err {
 			case updates.ErrInvalidFileExtension:
@@ -300,7 +292,6 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Save the file
 		if err := updates.SaveSysupgradeFile(file, header.Filename); err != nil {
-			log.Println("Error saving sysupgrade file:", err)
 			errMsg := api.Translate("error", "Failed to save firmware file")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin:updates:index")
@@ -310,7 +301,6 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Validate firmware compatibility and create completion marker
 		// This is the shared path for both local uploads and remote downloads
 		if err := updates.FinalizeSysupgrade(); err != nil {
-			log.Println("Firmware finalization failed:", err)
 			var errMsg string
 			switch err {
 			case updates.ErrIncompatibleFirmware:

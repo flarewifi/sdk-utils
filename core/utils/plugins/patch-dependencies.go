@@ -3,7 +3,6 @@ package plugins
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,7 +25,6 @@ type ReplacedGoModule struct {
 }
 
 func PatchPluginDeps(pluginDir string) error {
-	log.Println("Tidying up go.mod file...")
 	cmd := exec.Command("go", "mod", "tidy", "-e")
 	cmd.Dir = pluginDir
 	if err := cmd.Run(); err != nil {
@@ -195,10 +193,7 @@ func GetInstalledModules() ([]RequiredGoModule, error) {
 		pluginGoModFile := filepath.Join(pluginDir, "go.mod")
 
 		if !sdkutils.FsExists(pluginGoModFile) {
-			log.Printf("Plugin %s is missing go.mod, removing incomplete install dir for reinstall\n", pluginDir)
-			if err := os.RemoveAll(pluginDir); err != nil {
-				log.Printf("Error removing incomplete plugin install dir %s: %v\n", pluginDir, err)
-			}
+			os.RemoveAll(pluginDir)
 			continue
 		}
 

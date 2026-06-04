@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"net/http"
 	"os"
@@ -74,13 +73,8 @@ func ensureTLSCertificates() error {
 	}
 
 	if !expired {
-		log.Println("TLS certificates are valid at", certDir)
 		return nil
 	}
-
-	log.Println("TLS certificates expired or missing, generating new ones...")
-
-	log.Println("Generating self-signed TLS certificates...")
 
 	// Ensure the certs directory exists
 	if err := sdkutils.FsEnsureDir(certDir); err != nil {
@@ -129,8 +123,6 @@ func ensureTLSCertificates() error {
 		return err
 	}
 
-	log.Println("Generated certificate:", certFile)
-
 	// Write private key to file
 	keyOut, err := os.Create(keyFile)
 	if err != nil {
@@ -142,9 +134,6 @@ func ensureTLSCertificates() error {
 	if err := pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}); err != nil {
 		return err
 	}
-
-	log.Println("Generated private key:", keyFile)
-	log.Println("Self-signed TLS certificates created successfully")
 
 	return nil
 }
@@ -158,22 +147,15 @@ func startCertificateRenewalChecker(stop chan struct{}) {
 	for {
 		select {
 		case <-stop:
-			log.Println("Certificate renewal checker stopped")
 			return
 		case <-ticker.C:
 			expired, err := isCertificateExpired()
 			if err != nil {
-				log.Printf("Error checking certificate expiration: %v\n", err)
 				continue
 			}
 
 			if expired {
-				log.Println("Certificate approaching expiration, renewing...")
-				if err := ensureTLSCertificates(); err != nil {
-					log.Printf("Error renewing certificate: %v\n", err)
-				} else {
-					log.Println("Certificate renewed successfully")
-				}
+				_ = ensureTLSCertificates()
 			}
 		}
 	}
@@ -188,7 +170,6 @@ func StartHTTPSServer(r *mux.Router) error {
 	currentRouter = r
 
 	if httpsServerRunning {
-		log.Println("HTTPS server is already running")
 		return nil
 	}
 
@@ -196,11 +177,9 @@ func StartHTTPSServer(r *mux.Router) error {
 	// valid (cloud-issued) certificate. The admin_web_https flag only governs the
 	// admin HTTP->HTTPS redirect, not whether TLS is served at all.
 	addr := fmt.Sprintf(":%d", env.HTTPS_PORT)
-	log.Println("Starting HTTPS server on port", addr)
 
 	// Ensure TLS certificates exist
 	if err := ensureTLSCertificates(); err != nil {
-		log.Printf("Error ensuring TLS certificates: %v\n", err)
 		return fmt.Errorf("failed to ensure TLS certificates: %w", err)
 	}
 
@@ -217,10 +196,7 @@ func StartHTTPSServer(r *mux.Router) error {
 	go startCertificateRenewalChecker(certRenewalStop)
 
 	go func() {
-		err := srv.ListenAndServeTLS(certFile, keyFile)
-		if err != nil && !errors.Is(http.ErrServerClosed, err) {
-			log.Printf("Error starting HTTPS server: %v\n", err)
-		}
+		_ = srv.ListenAndServeTLS(certFile, keyFile)
 	}()
 
 	return nil
@@ -232,11 +208,8 @@ func StopHTTPSServer() {
 	defer httpsServerMu.Unlock()
 
 	if !httpsServerRunning || httpsServer == nil {
-		log.Println("HTTPS server is not running")
 		return
 	}
-
-	log.Println("Stopping HTTPS server...")
 
 	// Stop certificate renewal checker
 	close(certRenewalStop)
@@ -245,11 +218,7 @@ func StopHTTPSServer() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := httpsServer.Shutdown(ctx); err != nil {
-		log.Printf("Error stopping HTTPS server: %v\n", err)
-	} else {
-		log.Println("HTTPS server stopped successfully")
-	}
+	_ = httpsServer.Shutdown(ctx)
 
 	httpsServer = nil
 	httpsServerRunning = false
@@ -301,8 +270,6 @@ func InstallCertificate(certPEM, keyPEM []byte) error {
 	if err := os.WriteFile(keyFile, keyPEM, 0600); err != nil {
 		return fmt.Errorf("write key: %w", err)
 	}
-	log.Println("Installed portal certificate to", certDir)
-
 	// Snapshot running state under the lock, then (re)start outside it (Stop/Start
 	// take the same mutex, so holding it here would deadlock).
 	httpsServerMu.Lock()
@@ -319,10 +286,7 @@ func InstallCertificate(certPEM, keyPEM []byte) error {
 	// If a prior start failed (e.g. certs dir wasn't writable) the server is not
 	// running but the router is known — start it now that a cert exists.
 	if running {
-		log.Println("Reloading HTTPS server with new certificate")
 		StopHTTPSServer()
-	} else {
-		log.Println("Starting HTTPS server with newly installed certificate")
 	}
 	return StartHTTPSServer(router)
 }

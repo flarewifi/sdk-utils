@@ -4,7 +4,6 @@ import (
 	"core/utils/config"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,7 +82,6 @@ func DevelPluginSrcDefs() []sdkutils.PluginSrcDef {
 			LocalPath: sdkutils.StripRootPath(pluginPath),
 		})
 	}
-	log.Println("devel plugins list: ", list)
 	return list
 }
 
@@ -96,7 +94,6 @@ func LocalPluginSrcDefs() []sdkutils.PluginSrcDef {
 			LocalPath: sdkutils.StripRootPath(pluginPath),
 		})
 	}
-	log.Println("local plugins list: ", list)
 	return list
 }
 
@@ -109,7 +106,6 @@ func SystemPluginSrcDefs() []sdkutils.PluginSrcDef {
 			LocalPath: sdkutils.StripRootPath(pluginPath),
 		})
 	}
-	log.Println("system plugins list: ", list)
 	return list
 }
 
@@ -119,12 +115,10 @@ func InstalledPluginsDef() []sdkutils.PluginSrcDef {
 	for _, p := range paths {
 		info, err := sdkutils.GetPluginInfoFromPath(p)
 		if err != nil {
-			log.Println("Error reading plugin info: ", err)
 			continue
 		}
 		metadata, err := ReadMetadata(info.Package)
 		if err != nil {
-			log.Println("Error reading plugin metadata: ", err)
 			continue
 		}
 
@@ -138,14 +132,11 @@ func InstalledPluginsDef() []sdkutils.PluginSrcDef {
 func SearchPluginDirs(searchPath string) (pluginDirs []string) {
 	var list []string
 	if err := sdkutils.FsListDirs(searchPath, &list, false); err != nil {
-		log.Println("Error listing directories in ", searchPath, ": ", err)
 		return
 	}
 	for _, p := range list {
 		if err := ValidateSrcPath(p); err == nil {
 			pluginDirs = append(pluginDirs, p)
-		} else {
-			fmt.Println("Error validating source path: ", p, err)
 		}
 	}
 	return
@@ -161,15 +152,12 @@ func InstalledPluginDirs() (pluginDirs []string) {
 	// this lists all directories inside paths.PluginsDir/installed
 	var list []string
 	if err := sdkutils.FsListDirs(sdkutils.PathPluginInstallDir, &list, false); err != nil {
-		fmt.Printf("Error listing directories in %s: %v\n", sdkutils.PathPluginInstallDir, err)
 		return
 	}
 
 	for _, p := range list {
 		if err := ValidateInstallPath(p); err == nil {
 			pluginDirs = append(pluginDirs, p)
-		} else {
-			fmt.Println("Error validating install path: ", p, err)
 		}
 	}
 

@@ -5,7 +5,6 @@ package captivedns
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	gouci "github.com/digineo/go-uci"
@@ -32,14 +31,10 @@ const (
 // for option 114 are replaced rather than duplicated. A missing custom_domain or
 // LAN IP is a no-op (nothing to advertise).
 func Setup(lanIP string) error {
-	log.Printf("captivedns: Setup called with lanIP=%q (GO_ENV=%d, ENV_PRODUCTION=%d)", lanIP, env.GO_ENV, env.ENV_PRODUCTION)
-
 	cfg, err := config.GetCachedAppConfig()
 	if err != nil {
-		log.Printf("captivedns: read app config FAILED: %v", err)
 		return fmt.Errorf("read app config: %w", err)
 	}
-	log.Printf("captivedns: app config CustomDomain=%q", cfg.CustomDomain)
 
 	if env.GO_ENV == env.ENV_DEV {
 		cfg.CustomDomain = "captive.flare-local.com"
@@ -47,32 +42,24 @@ func Setup(lanIP string) error {
 
 	domain := strings.TrimSpace(cfg.CustomDomain)
 	if domain == "" || lanIP == "" {
-		log.Printf("captivedns: no-op (nothing to advertise): domain=%q lanIP=%q", domain, lanIP)
 		return nil
 	}
-	log.Printf("captivedns: proceeding with domain=%q lanIP=%q", domain, lanIP)
 
 	if err := setSplitHorizon(domain, lanIP); err != nil {
-		log.Printf("captivedns: setSplitHorizon FAILED: %v", err)
 		return err
 	}
 	if err := setCaptivePortalOption(domain); err != nil {
-		log.Printf("captivedns: setCaptivePortalOption FAILED: %v", err)
 		return err
 	}
 
 	if err := uci.UciTree.Commit(); err != nil {
-		log.Printf("captivedns: uci commit dhcp FAILED: %v", err)
 		return fmt.Errorf("uci commit dhcp: %w", err)
 	}
-	log.Printf("captivedns: uci commit dhcp OK")
 
 	// Reload (not restart) so existing DHCP leases are preserved.
 	if err := cmd.Exec("service dnsmasq reload", nil); err != nil {
-		log.Printf("captivedns: dnsmasq reload FAILED: %v", err)
 		return fmt.Errorf("dnsmasq reload: %w", err)
 	}
-	log.Printf("captivedns: Setup complete (dnsmasq reloaded)")
 	return nil
 }
 
@@ -84,12 +71,10 @@ func Setup(lanIP string) error {
 // replacing any stale entry for the same domain.
 func setSplitHorizon(domain, lanIP string) error {
 	entry := fmt.Sprintf("/%s/%s", domain, lanIP)
-	existing, getOk := uci.UciTree.Get("dhcp", dnsmasqSection, "address")
-	log.Printf("captivedns: get dhcp.%s.address ok=%v existing=%v", dnsmasqSection, getOk, existing)
+	existing, _ := uci.UciTree.Get("dhcp", dnsmasqSection, "address")
 	list := append(filterOut(existing, func(v string) bool {
 		return strings.HasPrefix(v, "/"+domain+"/")
 	}), entry)
-	log.Printf("captivedns: setting dhcp.%s.address=%v", dnsmasqSection, list)
 
 	// Write as a UCI list: OpenWRT's dnsmasq init reads `address` via
 	// config_list_foreach, which ignores the single-value `option` form.
@@ -103,12 +88,10 @@ func setSplitHorizon(domain, lanIP string) error {
 // API URL, replacing any prior option-114 entry.
 func setCaptivePortalOption(domain string) error {
 	value := fmt.Sprintf("114,https://%s/api/captive", domain)
-	existing, getOk := uci.UciTree.Get("dhcp", lanSection, "dhcp_option")
-	log.Printf("captivedns: get dhcp.%s.dhcp_option ok=%v existing=%v", lanSection, getOk, existing)
+	existing, _ := uci.UciTree.Get("dhcp", lanSection, "dhcp_option")
 	list := append(filterOut(existing, func(v string) bool {
 		return strings.HasPrefix(v, "114,")
 	}), value)
-	log.Printf("captivedns: setting dhcp.%s.dhcp_option=%v", lanSection, list)
 
 	// Write as a UCI list: dnsmasq's `dhcp_option` is read via
 	// config_list_foreach, so the single-value `option` form is ignored.

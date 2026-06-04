@@ -4,7 +4,6 @@ package routes
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 
@@ -50,8 +49,6 @@ func WifiEventRoutes(g *api.CoreGlobals) {
 			return
 		}
 
-		log.Printf("[WifiEventDev] Emitting fake WiFi event: interface=%s, event=%s, mac=%s", iface, event, mac)
-
 		// Emit the WiFi event to all registered handlers
 		api.EmitWifiEvent(event, mac)
 
@@ -65,6 +62,4 @@ func WifiEventRoutes(g *api.CoreGlobals) {
 			"mac":       mac,
 		})
 	}).Methods(http.MethodGet).Name("dev:wifi-event")
-
-	log.Println("[WifiEventDev] Fake WiFi event route registered: GET /wifi-event/{interface}/{event}/{mac}")
 }

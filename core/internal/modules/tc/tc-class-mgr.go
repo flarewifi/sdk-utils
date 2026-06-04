@@ -2,7 +2,6 @@ package tc
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	ifbutil "core/internal/modules/network"
@@ -83,9 +82,7 @@ func (self *TcClassMgr) Setup() error {
 		// Add fq_codel leaf qdisc for bufferbloat protection on user class only.
 		// Default class 1:1 intentionally left with HTB's inherited pfifo so
 		// system/control-plane traffic isn't subject to flow-isolation queuing.
-		if err = self.addLeafQdisc(TcClassIdUser); err != nil {
-			log.Printf("Warning: Failed to add fq_codel to user class: %v", err)
-		}
+		self.addLeafQdisc(TcClassIdUser)
 
 		return nil, nil
 	})
@@ -146,9 +143,7 @@ func (self *TcClassMgr) CreateClass(parent *TcClass, classid TcClassId, down Kbi
 		}
 
 		// Add fq_codel leaf qdisc for flow isolation and bufferbloat protection
-		if err = self.addLeafQdisc(classid); err != nil {
-			log.Printf("Warning: Failed to add fq_codel to class %s: %v", classid.String(), err)
-		}
+		self.addLeafQdisc(classid)
 
 		self.classList = append(self.classList, klass)
 		return nil, nil
@@ -327,14 +322,8 @@ func (self *TcClassMgr) addLeafQdisc(classid TcClassId) error {
 
 	// Add to IFB interface (upload shaping via ingress redirection)
 	if ifbutil.IsIfbSupported() {
-		if err := cmd.Exec(fmt.Sprintf(fqCmd, ifb), nil); err != nil {
-			// Log but don't fail - IFB is optional enhancement
-			log.Printf("Warning: failed to add fq_codel to %s class %s: %v", ifb, classidStr, err)
-		}
+		cmd.Exec(fmt.Sprintf(fqCmd, ifb), nil)
 	}
-
-	log.Printf("Added fq_codel to class %s (target=%s, limit=%d, quantum=%d, ECN=true)",
-		classidStr, fqCodelTarget, fqCodelLimit, fqCodelQuantum)
 
 	return nil
 }

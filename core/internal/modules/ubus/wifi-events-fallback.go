@@ -3,7 +3,6 @@
 package ubus
 
 import (
-	"log"
 	"strings"
 	"time"
 
@@ -46,7 +45,6 @@ func NewFallbackDetector(wifiMgr *WifiMgr, trafficCh <-chan sdkapi.TrafficData) 
 
 // Start begins the fallback detection loop
 func (d *FallbackDetector) Start() {
-	log.Println("[WifiMgr-Fallback] Starting traffic-based event detection (parallel with hostapd_cli)")
 	go d.run()
 }
 
@@ -63,12 +61,10 @@ func (d *FallbackDetector) run() {
 	for {
 		select {
 		case <-d.stopCh:
-			log.Println("[WifiMgr-Fallback] Stopping traffic-based event detection")
 			return
 
 		case traffic, ok := <-d.trafficCh:
 			if !ok {
-				log.Println("[WifiMgr-Fallback] Traffic channel closed")
 				return
 			}
 			d.processTraffic(traffic)
@@ -96,7 +92,6 @@ func (d *FallbackDetector) processTraffic(traffic sdkapi.TrafficData) {
 			processedMACs[mac] = true
 
 			if stateTracker.OnTrafficDetected(mac) {
-				log.Printf("[WifiMgr-Fallback] Client resumed activity (upload) after disconnect, emitting connect: %s", mac)
 				d.emitConnect(mac)
 			}
 		}
@@ -118,7 +113,7 @@ func (d *FallbackDetector) processTraffic(traffic sdkapi.TrafficData) {
 	// Batch-resolve IP→MAC (single mutex acquisition)
 	ipToMacMap := nftables.GetMacsByIps(activeIPs)
 
-	for ip, mac := range ipToMacMap {
+	for _, mac := range ipToMacMap {
 		mac = strings.ToUpper(mac)
 		if processedMACs[mac] {
 			continue // Already handled via upload traffic this tick
@@ -126,7 +121,6 @@ func (d *FallbackDetector) processTraffic(traffic sdkapi.TrafficData) {
 		processedMACs[mac] = true
 
 		if stateTracker.OnTrafficDetected(mac) {
-			log.Printf("[WifiMgr-Fallback] Client resumed activity (download, ip=%s) after disconnect, emitting connect: %s", ip, mac)
 			d.emitConnect(mac)
 		}
 	}
@@ -145,8 +139,6 @@ func (d *FallbackDetector) checkInactiveClients() {
 	for _, mac := range inactiveMACs {
 		// Attempt to mark as inactive (returns true if state changed)
 		if stateTracker.MarkInactive(mac) {
-			log.Printf("[WifiMgr-Fallback] Client inactive for %v, emitting disconnect: %s",
-				fallbackInactivityTimeout, mac)
 			d.emitDisconnect(mac)
 		}
 	}

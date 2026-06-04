@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"log"
 
 	"core/db"
 	"core/db/models"
@@ -49,8 +48,6 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pm
 	NewVouchersApi(pluginApi)
 	NewWifiApi(pluginApi, wifiMgr)
 	pluginApi.StorageAPI = NewStorageApi(pluginApi).(*StorageApi)
-
-	log.Println("NewPluginApi: ", dir, " - ", info.Package, " - ", info.Name, " - ", info.Version, " - ", info.Description)
 
 	return pluginApi
 }

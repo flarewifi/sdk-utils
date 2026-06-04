@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"core/db"
@@ -60,7 +59,6 @@ func (self *WalletTrns) UpdateTx(ctx context.Context, walletId int64, amount flo
 		ID:          self.id,
 	})
 	if err != nil {
-		log.Printf("error updating wallet transaction %+v: %v", self.id, err)
 		return err
 	}
 
@@ -69,6 +67,5 @@ func (self *WalletTrns) UpdateTx(ctx context.Context, walletId int64, amount flo
 	self.newBalance = newbal
 	self.description = desc
 
-	log.Printf("Succcessfully updated wallet transaction with id %v", walletId)
 	return nil
 }

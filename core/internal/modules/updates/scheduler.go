@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"log"
 	"time"
 
 	cmd "core/utils/shell"
@@ -46,7 +45,6 @@ func performScheduledUpdateCheck() {
 
 	// Force updates must be installed automatically - users cannot opt-out
 	if result.ForceUpdate {
-		log.Println("Force update detected - will be installed automatically")
 		if !IsDownloading() && !IsDownloaded() {
 			DownloadSoftwareUpdate(DownloadParams{
 				FileURL:      result.ReleseFileURL,
@@ -71,23 +69,19 @@ func waitForDownloadAndReboot() {
 		}
 
 		if IsDownloaded() {
-			log.Println("Automatic software update downloaded")
 			time.Sleep(3 * time.Second)
 
 			if IsSysupgradeReady() {
 				// Validate firmware compatibility before flashing
 				if err := ValidateSysupgradeCompatibility(); err != nil {
-					log.Println("Sysupgrade compatibility check failed, aborting auto-update:", err)
 					RemoveSysupgradeFile()
 					return
 				}
-				log.Println("Sysupgrade compatibility check passed - flashing firmware now")
 				// Note: Automatic updates always preserve data (noPreserve = false)
 				// Only manual uploads can choose to not preserve data
 				// In dev mode, shell.Exec will automatically ignore sysupgrade commands
 				cmd.Exec(GetSysupgradeCommand(false), nil)
 			} else {
-				log.Println("Rebooting to apply software update")
 				// In dev mode, shell.Exec will automatically ignore reboot commands
 				cmd.Exec("reboot", nil)
 			}

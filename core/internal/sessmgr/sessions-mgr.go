@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -134,42 +133,25 @@ func (self *SessionsMgr) MergeClientDevices(ctx context.Context, targetID, sourc
 		return fmt.Errorf("source device %d not found: %w", sourceID, err)
 	}
 
-	// Disconnect source if it has an active session.
 	if _, hasSession := self.GetRunningSession(sourceClnt); hasSession {
-		log.Printf("[SessionsMgr.MergeClientDevices] Disconnecting active session on source device %d before merge", sourceID)
-		if err := self.Disconnect(ctx, sourceClnt, ""); err != nil {
-			log.Printf("[SessionsMgr.MergeClientDevices] WARN: Failed to disconnect source device %d: %v", sourceID, err)
-			// Continue with merge anyway.
-		}
+		self.Disconnect(ctx, sourceClnt, "")
 	}
 
-	// Disconnect target if it has an active session; remember so we can reconnect.
 	var targetHadSession bool
 	if _, hasSession := self.GetRunningSession(targetClnt); hasSession {
 		targetHadSession = true
 		disconnectMsg := self.coreAPI.Translate("info", "Device merge in progress, reconnecting")
-		if err := self.Disconnect(ctx, targetClnt, disconnectMsg); err != nil {
-			log.Printf("[SessionsMgr.MergeClientDevices] WARN: Failed to disconnect target device %d: %v", targetID, err)
-			// Continue with merge anyway.
-		}
+		self.Disconnect(ctx, targetClnt, disconnectMsg)
 	}
 
-	// Capture source UUID before deletion.
 	sourceDeviceUUID := sourceClnt.UUID()
 
-	// Perform the DB merge (transfers sessions, purchases, fingerprints, wallet; deletes source).
 	if err := self.mdl.Device().MergeDevices(ctx, targetID, sourceID); err != nil {
 		return fmt.Errorf("failed to merge device %d into %d: %w", sourceID, targetID, err)
 	}
 
-	log.Printf("[SessionsMgr.MergeClientDevices] Successfully merged device %d into %d", sourceID, targetID)
-
-	// Reload target once to get updated state after merge.
-	// Reused for both the event emit and the optional reconnect below.
 	reloadedTarget, reloadErr := self.FindDeviceByID(ctx, targetID)
 	if reloadErr != nil {
-		log.Printf("[SessionsMgr.MergeClientDevices] WARN: Failed to reload target device %d after merge: %v", targetID, reloadErr)
-		// Fall back to original reference so the event is still emitted.
 		reloadedTarget = targetClnt
 	}
 
@@ -179,14 +161,9 @@ func (self *SessionsMgr) MergeClientDevices(ctx context.Context, targetID, sourc
 		SourceDeviceUUID: sourceDeviceUUID,
 	})
 
-	// Reconnect target if it was active before the merge.
 	if targetHadSession {
 		reconnectMsg := self.coreAPI.Translate("success", "Device merge completed, reconnected successfully")
-		if err := self.Connect(ctx, reloadedTarget, reconnectMsg); err != nil {
-			log.Printf("[SessionsMgr.MergeClientDevices] ERROR: Failed to reconnect target device %d after merge: %v", targetID, err)
-		} else {
-			log.Printf("[SessionsMgr.MergeClientDevices] Target device %d reconnected successfully after merge", targetID)
-		}
+		self.Connect(ctx, reloadedTarget, reconnectMsg)
 	}
 
 	return nil
@@ -227,7 +204,6 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 				// may be concurrently stopping (e.g., timer expired). Calling Start() on
 				// a stopping session would clear the stopped flag and create inconsistent state.
 				if rs.IsStopped() {
-					log.Printf("[SessionsMgr] ReloadSessions: skipping stopped session for device %d", rs.ClientId())
 					return true
 				}
 
@@ -270,24 +246,16 @@ func (self *SessionsMgr) StopSessions(ctx context.Context, iface string, reason 
 
 			// Disconnect both IPv4 and IPv6 from their respective verdict maps.
 			if net.ipv4 != "" {
-				if err := nftables.Disconnect(net.ipv4, mac); err != nil {
-					log.Printf("[SessionsMgr] StopSessions: failed to disconnect IPv4=%s MAC=%s: %v", net.ipv4, mac, err)
-				}
+				nftables.Disconnect(net.ipv4, mac)
 			}
 			if net.ipv6 != "" {
-				if err := nftables.Disconnect(net.ipv6, mac); err != nil {
-					log.Printf("[SessionsMgr] StopSessions: failed to disconnect IPv6=%s MAC=%s: %v", net.ipv6, mac, err)
-				}
+				nftables.Disconnect(net.ipv6, mac)
 			}
 
-			if err := rs.Stop(); err != nil {
-				log.Printf("[SessionsMgr] StopSessions: failed to stop session for device MAC=%s: %v", mac, err)
-			}
+			rs.Stop()
 
 			// Clean up TC classes/filters and restore class ID to pool
-			if err := rs.CleanupTc(); err != nil {
-				log.Printf("[SessionsMgr] StopSessions: failed to cleanup TC for device MAC=%s: %v", mac, err)
-			}
+			rs.CleanupTc()
 
 			// Remove from sessions map
 			self.sessions.Delete(key)
@@ -651,8 +619,6 @@ func (self *SessionsMgr) NewClientDevice(params sdkapi.NewDeviceParams) sdkapi.I
 // - Updates bandwidth based on UseGlobal setting
 // - Saves the session (which triggers ApplyBandwidthUpdate via the save callback)
 func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname string, cfg sdkapi.IBandwdCfg) {
-	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: updating sessions on interface %s", ifname)
-
 	self.sessions.Range(func(key, value any) bool {
 		rs := value.(*RunningSession)
 		lan := rs.Lan()
@@ -663,7 +629,6 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 
 		// Skip stopped sessions
 		if rs.IsStopped() {
-			log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: skipping stopped session for device %d", rs.ClientId())
 			return true
 		}
 
@@ -682,9 +647,6 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 			upMbits = cfg.UserUpMbits
 		}
 
-		log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: updating session %d - Down=%d, Up=%d, UseGlobal=%v",
-			session.ID(), downMbits, upMbits, cfg.UseGlobal)
-
 		// Update session bandwidth settings
 		session.SetData(sdkapi.SessionUpdateData{
 			DownMbits:      &downMbits,
@@ -693,15 +655,10 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 		})
 
 		// Save triggers the save callback which calls ApplyBandwidthUpdate
-		if err := session.Save(ctx, nil); err != nil {
-			log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: failed to save session %d: %v", session.ID(), err)
-			// Continue updating other sessions
-		}
+		session.Save(ctx, nil)
 
 		return true // Continue to next session
 	})
-
-	log.Printf("[SessionsMgr] UpdateInterfaceBandwidth: completed for interface %s", ifname)
 }
 
 // =============================================================================
@@ -832,18 +789,10 @@ func (self *SessionsMgr) loopSessions(startedCh chan<- error, clnt sdkapi.IClien
 		// Handle session end
 		if err != nil {
 			if errors.Is(err, ErrSessionExpired) || errors.Is(err, ErrSessionStopped) {
-				// Session expired or was stopped (e.g., via UpdateTime(0)) - prepare for next session
-				// TC class/filter are preserved for reuse with the next session
-				log.Printf("Session ended for device %s (reason: %v), checking for next available session...", clnt.MacAddr(), err)
 				rs.PrepareForChain()
 
-				// Check if this loop has been superseded by a new Connect() call.
-				// UpdateDevice calls Disconnect (which deletes from sessions map and stops rs),
-				// then Connect (which spawns a NEW loopSessions with a new RunningSession).
-				// If the RunningSession in the map is no longer ours, we've been replaced — exit.
 				currentRs, stillInMap := self.getRunningSession(clnt)
 				if !stillInMap || currentRs != rs {
-					log.Printf("[loopSessions] Session loop superseded for device %s (replaced by new Connect), exiting", clnt.MacAddr())
 					return
 				}
 
@@ -895,13 +844,11 @@ func (self *SessionsMgr) endSession(clnt sdkapi.IClientDevice) error {
 		var firstErr error
 		if ipv4 != "" {
 			if err := nftables.Disconnect(ipv4, mac); err != nil {
-				log.Printf("[SessionsMgr] endSession: failed to disconnect IPv4=%s MAC=%s: %v", ipv4, mac, err)
 				firstErr = err
 			}
 		}
 		if ipv6 != "" {
 			if err := nftables.Disconnect(ipv6, mac); err != nil {
-				log.Printf("[SessionsMgr] endSession: failed to disconnect IPv6=%s MAC=%s: %v", ipv6, mac, err)
 				if firstErr == nil {
 					firstErr = err
 				}
@@ -1065,12 +1012,9 @@ func (self *SessionsMgr) FlushRunningSessions() {
 		return
 	}
 
-	log.Printf("[SessionsMgr] Batch save: persisting %d sessions", len(entries))
-
 	// Phase 2: Write all sessions in a single transaction.
 	tx, err := self.db.BeginTx(context.Background(), nil)
 	if err != nil {
-		log.Printf("[SessionsMgr] Batch save: failed to begin transaction: %v", err)
 		for _, e := range entries {
 			e.rs.incrementSaveFailCount()
 		}
@@ -1081,7 +1025,6 @@ func (self *SessionsMgr) FlushRunningSessions() {
 
 	for _, e := range entries {
 		if err := self.persistSessionInTx(txQueries, e.cs); err != nil {
-			log.Printf("[SessionsMgr] Batch save: update failed for session, rolling back: %v", err)
 			tx.Rollback()
 			for _, e2 := range entries {
 				e2.rs.incrementSaveFailCount()
@@ -1091,7 +1034,6 @@ func (self *SessionsMgr) FlushRunningSessions() {
 	}
 
 	if err := tx.Commit(); err != nil {
-		log.Printf("[SessionsMgr] Batch save: commit failed: %v", err)
 		for _, e := range entries {
 			e.rs.incrementSaveFailCount()
 		}
@@ -1106,14 +1048,11 @@ func (self *SessionsMgr) FlushRunningSessions() {
 
 		// Check if session is now consumed after the snapshot.
 		if e.cs.IsConsumed() {
-			log.Printf("[SessionsMgr] Session consumed during batch save, DeviceID=%d", e.rs.clntId)
 			go e.rs.StopWithReason(StopReasonConsumed)
 		}
 	}
 
 	self.eventsMgr.EmitSessionBatchEvent(sdkapi.EventSessionBatchUpdated, sessions)
-
-	log.Printf("[SessionsMgr] Batch save: completed %d sessions", len(entries))
 }
 
 // persistSessionInTx writes a single session's state using the provided

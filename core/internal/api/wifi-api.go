@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log"
 	"sync"
 
 	"core/internal/modules/ubus"
@@ -54,7 +53,6 @@ func (self *WifiApi) OnWifiClientEvent(event sdkapi.WifiClientEvent, callback fu
 	globalWifiMu.Lock()
 	defer globalWifiMu.Unlock()
 	globalWifiHandlers[event] = append(globalWifiHandlers[event], callback)
-	log.Printf("[WifiApi] Registered handler for event: %s (total handlers: %d)", event, len(globalWifiHandlers[event]))
 }
 
 // wifiClient implements sdkapi.IWifiClient
@@ -74,11 +72,8 @@ func EmitWifiEvent(event sdkapi.WifiClientEvent, mac string) {
 	copy(callbacksCopy, callbacks)
 	globalWifiMu.Unlock()
 
-	log.Printf("[WifiApi] Emitting event %s for MAC %s to %d handlers", event, mac, len(callbacksCopy))
-
 	client := &wifiClient{macAddress: mac}
-	for i, cb := range callbacksCopy {
-		log.Printf("[WifiApi] Invoking handler %d/%d for event %s", i+1, len(callbacksCopy), event)
+	for _, cb := range callbacksCopy {
 		cb(client)
 	}
 }

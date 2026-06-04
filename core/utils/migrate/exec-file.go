@@ -4,7 +4,6 @@ import (
 	"core/db"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 )
 
@@ -22,7 +21,6 @@ func execFile(path string, tx *sql.Tx) error {
 
 			_, err = tx.Exec(q)
 			if err != nil {
-				log.Printf("Error migrating\nfile: %s \n%+v\nquery: %s", path, err, q)
 				return fmt.Errorf("error executing query from file %s: %w", path, err)
 			}
 		}

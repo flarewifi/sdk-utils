@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -134,7 +133,6 @@ func validateDeviceUpdateFields(uuid, ipv4, ipv6, mac string) error {
 func (self *Device) Reload(ctx context.Context) error {
 	dRow, err := self.db.Queries.FindDevice(ctx, self.id)
 	if err != nil {
-		log.Printf("error finding device with id %v: %v", self.id, err)
 		return err
 	}
 
@@ -152,7 +150,6 @@ func (self *Device) Reload(ctx context.Context) error {
 func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams) error {
 	// Validate required fields
 	if err := validateDeviceUpdateFields(params.UUID, params.Ipv4, params.Ipv6, params.Mac); err != nil {
-		log.Printf("device validation failed: %v", err)
 		return err
 	}
 
@@ -166,22 +163,13 @@ func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams
 		Status:   int64(params.Status),
 	})
 	if err != nil {
-		log.Printf("error updating device %v: %v", self.id, err)
 		return err
 	}
 
 	// Always record MAC address to update last_seen_at and ensure is_current is set
 	// RecordMacAddress is idempotent - if MAC exists, it just updates timestamp
-	if self.macaddr != params.Mac {
-		log.Printf("[Device.Update] MAC address changed from %s to %s, recording in device_macs", self.macaddr, params.Mac)
-	} else {
-		log.Printf("[Device.Update] Refreshing MAC address %s in device_macs", params.Mac)
-	}
-	err = self.models.DeviceMac().RecordMacAddress(ctx, self.id, params.Mac)
-	if err != nil {
-		log.Printf("[Device.Update] ERROR: Failed to record MAC address: %v", err)
-		// Don't fail the entire update, but log the error
-	}
+
+	self.models.DeviceMac().RecordMacAddress(ctx, self.id, params.Mac)
 
 	self.hostname = params.Hostname
 	self.ipv4addr = params.Ipv4
@@ -196,7 +184,6 @@ func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams
 func (self *Device) Wallet(ctx context.Context) (*Wallet, error) {
 	w, err := self.db.Queries.FindWalletByDeviceId(ctx, self.id)
 	if err != nil {
-		log.Printf("error finding wallet by device id %v: %v", self.id, err)
 		return nil, err
 	}
 
@@ -212,7 +199,6 @@ func (self *Device) Wallet(ctx context.Context) (*Wallet, error) {
 func (self *Device) NextSession(ctx context.Context) (*Session, error) {
 	sRow, err := self.db.Queries.FindAvailableSessionForDevice(ctx, self.id)
 	if err != nil {
-		log.Printf("error finding available session for device %v: %v", self.id, err)
 		return nil, err
 	}
 
@@ -223,7 +209,6 @@ func (self *Device) NextSession(ctx context.Context) (*Session, error) {
 func (self *Device) Sessions(ctx context.Context) ([]*Session, error) {
 	sessionsRow, err := self.db.Queries.FindSessionsForDev(ctx, self.id)
 	if err != nil {
-		log.Printf("error finding sessions for dev %v: %v", self.id, err)
 		return nil, err
 	}
 

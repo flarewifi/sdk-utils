@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -74,41 +73,29 @@ type RunningSession struct {
 // =============================================================================
 
 func NewRunningSession(clnt sdkapi.IClientDevice, s sdkapi.IClientSession, emitter SessionEventEmitter, tcQueue *jobque.JobQueue[struct{}]) (*RunningSession, error) {
-	log.Printf("[Running Session] Creating new running session - DeviceID=%d, MAC=%s, IPv4=%s, IPv6=%s",
-		clnt.ID(), clnt.MacAddr(), clnt.Ipv4Addr(), clnt.Ipv6Addr())
-
-	// Use whichever IP is available for LAN lookup (IPv4 preferred).
-	// Build a temporary networkState so we can reuse the primaryIP() helper.
 	initNet := &networkState{ipv4: clnt.Ipv4Addr(), ipv6: clnt.Ipv6Addr()}
 	primaryAddr := primaryIP(initNet)
 	lan, err := network.FindByIp(primaryAddr)
 	if err != nil {
-		log.Printf("[Running Session] ERROR - Failed to find LAN for IP %s: %v", primaryAddr, err)
 		return nil, err
 	}
 
 	rs := &RunningSession{
-		// Immutable fields - set once, never change
 		clnt:    clnt,
 		clntId:  clnt.ID(),
 		emitter: emitter,
 		tcQueue: tcQueue,
 
-		// Mutable state initialized
 		session: s,
 		doneCh:  make(chan error, 1),
 	}
 
-	// Initialize network state atomically
 	rs.network.Store(&networkState{
 		ipv4: clnt.Ipv4Addr(),
 		ipv6: clnt.Ipv6Addr(),
 		mac:  clnt.MacAddr(),
 		lan:  lan,
 	})
-
-	log.Printf("[Running Session] Running session created successfully - DeviceID=%d, MAC=%s, IPv4=%s, IPv6=%s, LAN=%s",
-		rs.clntId, clnt.MacAddr(), clnt.Ipv4Addr(), clnt.Ipv6Addr(), lan.Name())
 
 	return rs, nil
 }
@@ -206,12 +193,6 @@ func (self *RunningSession) PrepareForChain() {
 }
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
-	net := self.network.Load()
-	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, MAC=%s, IPv4=%s, IPv6=%s",
-		self.clntId, s.ID(), net.mac, net.ipv4, net.ipv6)
-
-	log.Printf("[Running Session] Start - %s", contextInfo)
-
 	// 1. DB reload - no lock needed (session has its own synchronization)
 	if err := s.Reload(ctx); err != nil {
 		return fmt.Errorf("failed to reload session: %w", err)
@@ -284,9 +265,6 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 	stopImmediately := false
 	if self.timeTimer == nil {
 		stopImmediately = self.initTimeTimer(s)
-		if !stopImmediately {
-			log.Println("Session timer has started...")
-		}
 	}
 	self.mu.Unlock()
 
@@ -294,7 +272,6 @@ func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) 
 		go self.StopWithReason(StopReasonConsumed)
 	}
 
-	log.Printf("[Running Session] Start completed - %s", contextInfo)
 	return nil
 }
 
@@ -303,64 +280,29 @@ func (self *RunningSession) Stop() error {
 }
 
 func (self *RunningSession) StopWithReason(reason StopReason) error {
-	// Use CAS to guarantee only one caller transitions stopped false→true.
-	// All concurrent callers that lose the race return immediately without
-	// acquiring mu, eliminating contention on the hot "already stopped" path.
 	if !self.stopped.CompareAndSwap(false, true) {
-		log.Printf("[Running Session] StopWithReason - already stopped, DeviceID=%d", self.clntId)
 		return nil
 	}
 
-	// Won the CAS — collect mutable state and clean up timer under mu.
 	self.mu.Lock()
 	session := self.session
 	doneCh := self.doneCh
 	self.cleanUpTimer()
 	self.mu.Unlock()
 
-	// Build context info for logging
-	var sessionID int64
-	if session != nil {
-		sessionID = session.ID()
-	}
-	contextInfo := fmt.Sprintf("DeviceID=%d, SessionID=%d, Reason=%s",
-		self.clntId, sessionID, reason)
-
-	log.Printf("[Running Session] StopWithReason - %s", contextInfo)
-
-	// Calculate and record elapsed time
-	elapsed := self.snapshotTimeConsumption(session, true)
-	if elapsed > 0 && session != nil {
-		log.Printf("Recording elapsed time: %d seconds (total consumption: %d)\n",
-			elapsed, session.TimeConsumption())
-	}
-
-	// DB save - no lock needed (session has its own synchronization)
 	saveErr := self.persistSession(session)
 
-	// Emit events - only emit if we have a valid session.
-	// Session can be nil if Stop() is called before Start() completes
-	// or if the session was never properly initialized.
-	// Note: emitter and clnt are immutable fields set at construction.
 	if session != nil {
 		if reason == StopReasonConsumed {
-			// Session was consumed (time/data exhausted) - emit both consumed and disconnected
 			self.emitter.EmitSessionEvent(sdkapi.EventSessionConsumed, sdkapi.SessionEventData{Session: session})
 		}
-		// Always emit disconnected event when session stops
 		self.emitter.EmitSessionEvent(sdkapi.EventSessionDisconnected, sdkapi.SessionEventData{Session: session})
 	}
 
-	// Determine the error to signal to Done() waiters.
-	// For consumed sessions, always return ErrSessionExpired but include saveErr context if present.
-	// For manual stops, propagate saveErr directly (nil on success).
 	var callbackErr error
 	if reason == StopReasonConsumed {
 		if saveErr != nil {
-			// Wrap both errors - session expired AND save failed.
-			// Data loss is mitigated by periodic saves (at most 1 minute lost).
 			callbackErr = fmt.Errorf("%w (save failed: %v)", ErrSessionExpired, saveErr)
-			log.Printf("[Running Session] WARNING - Save failed during consumed stop: %v", saveErr)
 		} else {
 			callbackErr = ErrSessionExpired
 		}
@@ -368,17 +310,11 @@ func (self *RunningSession) StopWithReason(reason StopReason) error {
 		callbackErr = saveErr
 	}
 
-	// Signal completion to Done() waiter - non-blocking send since channel is buffered
 	select {
 	case doneCh <- callbackErr:
 	default:
-		// This should never happen with a properly managed buffered channel.
-		// If it does, it indicates a bug (double-stop or channel misuse).
-		log.Printf("[Running Session] WARNING - doneCh full, could not signal completion - DeviceID=%d", self.clntId)
 	}
-	log.Println("Session stop signaled.")
 
-	log.Printf("[Running Session] StopWithReason completed - %s", contextInfo)
 	return callbackErr
 }
 
@@ -387,22 +323,16 @@ func (self *RunningSession) CleanupTc() error {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
-		// Read network state inside lock to ensure consistency with UpdateNetworkDetails
 		net := self.network.Load()
 
 		if self.tcClassId != nil {
-			log.Printf("Clean up TC... DeviceID=%d, IPv4=%s, IPv6=%s", self.clntId, net.ipv4, net.ipv6)
 			classid := *self.tcClassId
 
 			if net.ipv4 != "" {
-				if err := net.lan.DelFilter(net.ipv4, classid.Uint()); err != nil {
-					log.Printf("[Running Session] WARNING - Failed to delete IPv4 filter: %v", err)
-				}
+				net.lan.DelFilter(net.ipv4, classid.Uint())
 			}
 			if net.ipv6 != "" {
-				if err := net.lan.DelFilter(net.ipv6, classid.Uint()); err != nil {
-					log.Printf("[Running Session] WARNING - Failed to delete IPv6 filter: %v", err)
-				}
+				net.lan.DelFilter(net.ipv6, classid.Uint())
 			}
 
 			if err := net.lan.DelClass(classid.Uint()); err != nil {
@@ -412,7 +342,6 @@ func (self *RunningSession) CleanupTc() error {
 			self.tcClassId = nil
 		}
 
-		log.Println("Done cleaning TC.")
 		return nil
 	})
 }
@@ -423,52 +352,33 @@ func (self *RunningSession) CleanupTc() error {
 
 // UpdateNetworkDetails updates the MAC, IPv4, and IPv6 addresses when device network details change.
 func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, newIpv4, newIpv6 string) error {
-	contextInfo := fmt.Sprintf("DeviceID=%d, NewMAC=%s, NewIPv4=%s, NewIPv6=%s",
-		self.clntId, newMac, newIpv4, newIpv6)
-
-	log.Printf("[Running Session] UpdateNetworkDetails - %s", contextInfo)
-
-	// Quick check outside lock - if nothing changed, skip entirely.
-	// This is an optimization; the authoritative check happens inside the lock.
 	quickNet := self.network.Load()
 	if quickNet.ipv4 == newIpv4 && quickNet.ipv6 == newIpv6 && quickNet.mac == newMac {
-		log.Printf("[Running Session] No network changes detected for device %d", self.clntId)
 		return nil
 	}
 
-	// Use primary IP (IPv4 preferred, fallback to IPv6) for LAN lookup.
 	newPrimaryAddr := primaryIP(&networkState{ipv4: newIpv4, ipv6: newIpv6})
 	quickPrimaryAddr := primaryIP(quickNet)
 
-	// Determine new LAN outside lock (network.FindByIp is read-only and safe)
 	var newLan *network.NetworkLan
 	if quickPrimaryAddr != newPrimaryAddr {
-		log.Printf("[Running Session] Primary IP changed, checking if LAN changed...")
 		var err error
 		newLan, err = network.FindByIp(newPrimaryAddr)
 		if err != nil {
-			log.Printf("[Running Session] ERROR - Failed to find LAN for new IP %s: %v", newPrimaryAddr, err)
 			return err
 		}
 	}
 
-	// All TC operations and network state updates happen inside execTc+mu.
-	// Re-read network state inside the lock to handle concurrent UpdateNetworkDetails calls.
-	// If another call already updated the state, we detect it and adjust accordingly.
 	return self.execTc("TC Network Update", func() error {
 		self.mu.Lock()
 		defer self.mu.Unlock()
 
-		// Re-read current network state under lock (authoritative check)
 		currentNet := self.network.Load()
 
-		// Check if update is still needed (another concurrent call may have already done it)
 		if currentNet.ipv4 == newIpv4 && currentNet.ipv6 == newIpv6 && currentNet.mac == newMac {
-			log.Printf("[Running Session] Network already updated by concurrent call for device %d, skipping", self.clntId)
 			return nil
 		}
 
-		// If IPs haven't changed (only MAC), just update network state
 		if currentNet.ipv4 == newIpv4 && currentNet.ipv6 == newIpv6 {
 			self.network.Store(&networkState{
 				ipv4: newIpv4,
@@ -479,40 +389,24 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 			return nil
 		}
 
-		// IP changed - need to update TC rules
-		// Use newLan computed above (or fall back to current LAN if primary IP didn't change relative to quickNet)
 		if newLan == nil {
 			newLan = currentNet.lan
 		}
 
 		if newLan.Name() != currentNet.lan.Name() {
-			// LAN changed - need to recreate TC rules on new interface
-			log.Printf("[Running Session] LAN changed from %s to %s, recreating TC rules...",
-				currentNet.lan.Name(), newLan.Name())
-
-			// Clean up old TC filters on current (old) LAN (both IPs)
 			if self.tcClassId != nil {
 				classid := self.tcClassId.Uint()
-				log.Printf("[Running Session] Removing old TC filters for IPv4=%s, IPv6=%s", currentNet.ipv4, currentNet.ipv6)
 				if currentNet.ipv4 != "" {
-					if err := currentNet.lan.DelFilter(currentNet.ipv4, classid); err != nil {
-						log.Printf("[Running Session] WARNING - Failed to delete old IPv4 filter: %v", err)
-					}
+					currentNet.lan.DelFilter(currentNet.ipv4, classid)
 				}
 				if currentNet.ipv6 != "" {
-					if err := currentNet.lan.DelFilter(currentNet.ipv6, classid); err != nil {
-						log.Printf("[Running Session] WARNING - Failed to delete old IPv6 filter: %v", err)
-					}
+					currentNet.lan.DelFilter(currentNet.ipv6, classid)
 				}
 
-				log.Printf("[Running Session] Removing old TC class %d", classid)
-				if err := currentNet.lan.DelClass(classid); err != nil {
-					log.Printf("[Running Session] WARNING - Failed to delete old class: %v", err)
-				}
+				currentNet.lan.DelClass(classid)
 				self.tcClassId = nil
 			}
 
-			// Update network state BEFORE initTc so it reads the new LAN
 			self.network.Store(&networkState{
 				ipv4: newIpv4,
 				ipv6: newIpv6,
@@ -520,52 +414,32 @@ func (self *RunningSession) UpdateNetworkDetails(ctx context.Context, newMac, ne
 				lan:  newLan,
 			})
 
-			// Recreate TC rules on new interface
-			log.Printf("[Running Session] Creating new TC rules on interface %s", newLan.Name())
 			if err := self.initTc(self.session); err != nil {
-				log.Printf("[Running Session] ERROR - Failed to create TC rules: %v", err)
 				return err
 			}
-			log.Printf("[Running Session] TC rules recreated successfully")
 		} else {
-			// Same LAN, just update the filters
-			log.Printf("[Running Session] Same LAN, updating TC filters from IPv4=%s,IPv6=%s to IPv4=%s,IPv6=%s",
-				currentNet.ipv4, currentNet.ipv6, newIpv4, newIpv6)
-
 			if self.tcClassId != nil {
 				classid := self.tcClassId.Uint()
 
-				// Remove old filters using current (authoritative) IPs
 				if currentNet.ipv4 != "" {
-					if err := currentNet.lan.DelFilter(currentNet.ipv4, classid); err != nil {
-						log.Printf("[Running Session] WARNING - Failed to delete old IPv4 filter: %v", err)
-					}
+					currentNet.lan.DelFilter(currentNet.ipv4, classid)
 				}
 				if currentNet.ipv6 != "" {
-					if err := currentNet.lan.DelFilter(currentNet.ipv6, classid); err != nil {
-						log.Printf("[Running Session] WARNING - Failed to delete old IPv6 filter: %v", err)
-					}
+					currentNet.lan.DelFilter(currentNet.ipv6, classid)
 				}
 
-				// Create new filter for IPv4 (required if present)
 				if newIpv4 != "" {
 					if err := newLan.CreateFilter(newIpv4, classid); err != nil {
-						log.Printf("[Running Session] ERROR - Failed to create new IPv4 filter: %v", err)
 						return err
 					}
 				}
-				// Create new filter for IPv6 (required if present — silent failure
-				// would let IPv6 traffic bypass bandwidth quota).
 				if newIpv6 != "" {
 					if err := newLan.CreateFilter(newIpv6, classid); err != nil {
-						log.Printf("[Running Session] ERROR - Failed to create new IPv6 filter: %v", err)
 						return err
 					}
 				}
-				log.Printf("[Running Session] TC filters updated successfully")
 			}
 
-			// Update network state AFTER TC filters are ready
 			self.network.Store(&networkState{
 				ipv4: newIpv4,
 				ipv6: newIpv6,
@@ -620,7 +494,6 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	}
 
 	dataconMb := float64(dl.Bytes+upload.Bytes) / bytesPerMiB
-	log.Println("CONSUMPTION MiB: ", dataconMb)
 
 	// Update session data consumption (session has its own synchronization)
 	session.IncDataCons(dataconMb)
@@ -637,8 +510,6 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	self.mu.Unlock()
 
 	if shouldStop {
-		log.Println("Session data is consumed!!!")
-		// StopWithReason has its own stopped guard, so concurrent calls are safe (only first wins)
 		go self.StopWithReason(StopReasonConsumed)
 	}
 }
@@ -804,10 +675,7 @@ func (self *RunningSession) initTimeTimer(s sdkapi.IClientSession) bool {
 	// Get session data in a single atomic snapshot
 	data := s.Data()
 
-	// If session is already consumed, signal the caller to stop after releasing mu.
-	// We never dispatch goroutines while holding mu — that is fragile and hard to reason about.
 	if data.IsConsumed {
-		log.Println("Session already consumed or expired, stopping immediately")
 		return true
 	}
 
@@ -832,8 +700,6 @@ func (self *RunningSession) startTimer(remainingSecs int) {
 	timer := time.NewTimer(duration)
 	self.timeTimer = timer
 
-	log.Printf("[Running Session] Timer started for %d seconds, DeviceID=%d, gen=%d", remainingSecs, self.clntId, gen)
-
 	go self.timerLoop(ctx, timer, gen)
 }
 
@@ -846,21 +712,16 @@ func (self *RunningSession) timerLoop(ctx context.Context, timer *time.Timer, ge
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Session timer cancelled")
 			return
 
 		case <-timer.C:
-			// Verify this timer goroutine is still current before acting.
-			// stopped is atomic — read it without mu. timerGen still needs mu.
 			self.mu.Lock()
 			currentGen := self.timerGen
 			self.mu.Unlock()
 			if currentGen != gen || self.stopped.Load() {
-				log.Printf("[Running Session] Stale timer expired (gen=%d, current=%d), ignoring", gen, currentGen)
 				return
 			}
 
-			log.Println("Session timer expired - time consumed!")
 			self.StopWithReason(StopReasonConsumed)
 			return
 		}
@@ -933,10 +794,8 @@ func (self *RunningSession) updateTc(s sdkapi.IClientSession) error {
 
 // cleanUpTimer cleans up the timer. Must be called with mu held.
 func (self *RunningSession) cleanUpTimer() {
-	log.Println("Cleaning up session timer...")
-
 	if self.timerCancel != nil {
-		self.timerCancel() // Cancel the timer context
+		self.timerCancel()
 		self.timerCancel = nil
 		self.timerCtx = nil
 	}
@@ -945,8 +804,6 @@ func (self *RunningSession) cleanUpTimer() {
 		self.timeTimer.Stop()
 		self.timeTimer = nil
 	}
-
-	log.Println("Done cleaning session timer.")
 }
 
 // snapshotTimeConsumption atomically bakes elapsed time into stored consumption and resets resumedAt.
@@ -984,7 +841,6 @@ func (self *RunningSession) incrementSaveFailCount() {
 
 	const maxConsecutiveFailures = 3
 	if count >= maxConsecutiveFailures {
-		log.Printf("[Running Session] Batch save failed %d consecutive times for DeviceID=%d - STOPPING", count, self.clntId)
 		go self.Stop()
 	}
 }

@@ -2,7 +2,6 @@ package sdkutils
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 )
 
@@ -85,8 +84,6 @@ func (b *BuildOutput) Run() error {
 }
 
 func (b *BuildOutput) copy(srcPath string, destPath string) error {
-	fmt.Printf("Copying '%s' -> '%s'\n", srcPath, destPath)
-
 	if !FsExists(srcPath) {
 		return errors.New("File does not exist: " + srcPath)
 	}

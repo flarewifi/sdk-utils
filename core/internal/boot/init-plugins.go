@@ -4,7 +4,6 @@ package boot
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 
 	"core/internal/api"
@@ -25,7 +24,6 @@ func InitPlugins(g *api.CoreGlobals) error {
 	if env.GO_ENV != env.ENV_PRODUCTION {
 		for _, def := range systemPlugins {
 			if info, err := sdkutils.GetPluginInfoFromPath(def.LocalPath); err == nil && plugins.IsToBeRemoved(info.Package) {
-				log.Printf("Skipping force-reinstall of system plugin marked for removal: %s", info.Package)
 				continue
 			}
 			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
@@ -36,7 +34,6 @@ func InitPlugins(g *api.CoreGlobals) error {
 
 		for _, def := range localPlugins {
 			if info, err := sdkutils.GetPluginInfoFromPath(def.LocalPath); err == nil && plugins.IsToBeRemoved(info.Package) {
-				log.Printf("Skipping force-reinstall of local plugin marked for removal: %s", info.Package)
 				continue
 			}
 			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
@@ -49,7 +46,6 @@ func InitPlugins(g *api.CoreGlobals) error {
 	for _, def := range develPlugins {
 		_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
 		if err != nil {
-			log.Printf("Warning: error installing devel plugin %s: %v (continuing)", def.LocalPath, err)
 		}
 	}
 
@@ -66,9 +62,7 @@ func InitPlugins(g *api.CoreGlobals) error {
 	for _, dir := range plugins.InstalledPluginDirs() {
 		pkg := filepath.Base(dir)
 		if plugins.IsToBeRemoved(pkg) {
-			log.Printf("Removing plugin marked for uninstall: %s", pkg)
 			if err := plugins.UninstallPlugin(pkg, db); err != nil {
-				log.Printf("Error uninstalling plugin %s: %v", pkg, err)
 			}
 		}
 	}
@@ -88,7 +82,6 @@ func InitPlugins(g *api.CoreGlobals) error {
 
 			pkg := filepath.Base(dir)
 			if err := LoadFromBackup(g, pkg); err != nil {
-				g.CoreAPI.Logger().Error(fmt.Sprintf("Error loading from backup: %v", err))
 			}
 
 			continue
@@ -107,7 +100,6 @@ func InitPlugins(g *api.CoreGlobals) error {
 		// Pass the plugin root dir; MigrateUp resolves resources/migrations
 		// itself (same convention as the mono loader and RunCoreMigrations).
 		if err := migrate.MigrateUp(db, dir); err != nil {
-			log.Printf("Error in running migration for plugin %s: %+v\n", dir, err)
 		}
 
 		// Skip any plugin already registered by LoadSystemPlugins above
@@ -117,14 +109,12 @@ func InitPlugins(g *api.CoreGlobals) error {
 		// step with whatever LoadSystemPlugins actually registered — no
 		// parallel bookkeeping needed.
 		if _, alreadyLoaded := g.PluginMgr.FindByPkg(info.Package); alreadyLoaded {
-			log.Printf("Skipping .so registration for already-loaded plugin: %s", info.Package)
 			continue
 		}
 
 		// Ensure plugin translations are available for current language (skip in dev mode)
 		if env.GO_ENV != env.ENV_DEV {
 			if err := sdkutils.EnsureTranslations(dir, currentLang); err != nil {
-				log.Printf("Warning: Failed to ensure translations for plugin %s: %v", info.Package, err)
 			}
 		}
 
@@ -132,7 +122,6 @@ func InitPlugins(g *api.CoreGlobals) error {
 		err = g.PluginMgr.RegisterPlugin(p)
 		if err != nil {
 			if err := LoadFromBackup(g, info.Package); err != nil {
-				g.CoreAPI.Logger().Error(fmt.Sprintf("Error loading from backup: %v", err))
 			}
 		}
 	}

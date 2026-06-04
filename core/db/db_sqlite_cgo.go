@@ -7,7 +7,6 @@ import (
 	"core/utils/config"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -33,8 +32,6 @@ func NewDatabase() *Database {
 }
 
 func newSQLiteDatabase(dbpath string) *Database {
-	log.Println("Initializing SQLite database (CGO driver)...")
-
 	var db Database
 
 	go func(db *Database) {
@@ -62,7 +59,6 @@ func newSQLiteDatabase(dbpath string) *Database {
 		dburl := fmt.Sprintf("file:%s?_busy_timeout=30000&_journal_mode=WAL&_sync=NORMAL&_loc=UTC&_txlock=immediate", dbpath)
 		sqlDB, err := sql.Open(SqliteDriverName, dburl)
 		if err != nil {
-			log.Println("Error opening SQLite DB:", err)
 			db.ConnErr = err
 			return
 		}
@@ -83,18 +79,11 @@ func newSQLiteDatabase(dbpath string) *Database {
 		}
 
 		// Force UTC timezone for all timestamp operations
-		_, err = sqlDB.ExecContext(context.Background(), "PRAGMA timezone = 'UTC'")
-		if err != nil {
-			log.Println("Warning: Failed to set SQLite timezone to UTC:", err)
-			// Don't fail - _loc=UTC in connection string should handle it
-		}
+		_, _ = sqlDB.ExecContext(context.Background(), "PRAGMA timezone = 'UTC'")
 
 		// Configure WAL checkpointing: checkpoint when WAL file reaches 1000 pages (~4MB)
 		// This prevents WAL file from growing unbounded
-		_, err = sqlDB.ExecContext(context.Background(), "PRAGMA wal_autocheckpoint = 1000")
-		if err != nil {
-			log.Println("Warning: Failed to set WAL autocheckpoint:", err)
-		}
+		_, _ = sqlDB.ExecContext(context.Background(), "PRAGMA wal_autocheckpoint = 1000")
 
 		db.DB = sqlDB
 		db.Queries = *queries.New(sqlDB)

@@ -3,7 +3,6 @@ package network
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
 
 	"core/internal/modules/ubus"
@@ -38,7 +37,6 @@ func (self *NetworkInterface) Device() (d sdkapi.INetworkDevice, err error) {
 func (self *NetworkInterface) IpV4Addr() (*sdkapi.NetworkIpv4, error) {
 	info, err := self.getInfo()
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 
@@ -56,7 +54,6 @@ func (self *NetworkInterface) IpV4Addr() (*sdkapi.NetworkIpv4, error) {
 func (self *NetworkInterface) IpV6Addr() (*sdkapi.NetworkIpv6, error) {
 	info, err := self.getInfo()
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 

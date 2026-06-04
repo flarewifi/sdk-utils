@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -134,9 +133,7 @@ func (em *EventsManager) EmitSessionEvent(event sdkapi.SessionEvent, data sdkapi
 			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
 			defer cancel()
 			_ = ctx // callbacks don't accept context yet; timeout is enforced by their own internal logic
-			if err := cb(data); err != nil {
-				log.Printf("[EventsManager] %s handler error: %v", event, err)
-			}
+			cb(data)
 		}()
 	}
 }
@@ -155,9 +152,7 @@ func (em *EventsManager) EmitSessionBatchEvent(event sdkapi.SessionEvent, sessio
 			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
 			defer cancel()
 			_ = ctx
-			if err := cb(sessions); err != nil {
-				log.Printf("[EventsManager] %s handler error: %v", event, err)
-			}
+			cb(sessions)
 		}()
 	}
 }
@@ -176,9 +171,7 @@ func (em *EventsManager) EmitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.I
 			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
 			defer cancel()
 			_ = ctx
-			if err := cb(clnt); err != nil {
-				log.Printf("[EventsManager] %s handler error: %v", event, err)
-			}
+			cb(clnt)
 		}()
 	}
 }
@@ -197,9 +190,7 @@ func (em *EventsManager) EmitPurchaseEvent(event sdkapi.PurchaseEvent, data sdka
 			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
 			defer cancel()
 			_ = ctx
-			if err := cb(data); err != nil {
-				log.Printf("[EventsManager] %s handler error: %v", event, err)
-			}
+			cb(data)
 		}()
 	}
 }
@@ -218,9 +209,7 @@ func (em *EventsManager) EmitVoucherEvent(event sdkapi.VoucherEvent, v sdkapi.IV
 			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
 			defer cancel()
 			_ = ctx
-			if err := cb(v); err != nil {
-				log.Printf("[EventsManager] %s handler error: %v", event, err)
-			}
+			cb(v)
 		}()
 	}
 }
@@ -240,9 +229,7 @@ func (em *EventsManager) EmitClientMerge(data sdkapi.EventClientMergeData) {
 			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
 			defer cancel()
 			_ = ctx
-			if err := cb(data); err != nil {
-				log.Printf("[EventsManager] client:merged handler error: %v", err)
-			}
+			cb(data)
 		}()
 	}
 }
@@ -261,9 +248,7 @@ func (em *EventsManager) EmitVoucherBatchEvent(event sdkapi.VoucherEvent, batch 
 			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
 			defer cancel()
 			_ = ctx
-			if err := cb(batch); err != nil {
-				log.Printf("[EventsManager] %s handler error: %v", event, err)
-			}
+			cb(batch)
 		}()
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -26,8 +25,6 @@ func BuildGoModule(gofile string, outfile string, opts GoBuildOpts) error {
 		opts.Env = os.Environ()
 	}
 
-	fmt.Println("Building go module: " + StripRootPath(filepath.Join(opts.WorkDir, gofile)))
-
 	goBin := opts.GoBinPath
 	buildArgs := DefaultGoBuildArgs(opts.BuildTags)
 	buildArgs = append(buildArgs, opts.ExtraArgs...)
@@ -41,9 +38,6 @@ func BuildGoModule(gofile string, outfile string, opts GoBuildOpts) error {
 		cmdstr += " " + arg
 	}
 
-	fmt.Printf(`Build working directory: %s`+"\n", StripRootPath(opts.WorkDir))
-	fmt.Printf("Executing: %s\n", cmdstr)
-
 	var stderr strings.Builder
 	cmd := exec.Command("sh", "-c", cmdstr)
 	cmd.Stdout = os.Stdout
@@ -56,7 +50,6 @@ func BuildGoModule(gofile string, outfile string, opts GoBuildOpts) error {
 		return fmt.Errorf("Failed to build go module: %s\n%s", err, stderr.String())
 	}
 
-	fmt.Println("Module built successfully: " + StripRootPath(filepath.Join(opts.WorkDir, outfile)))
 	return nil
 }
 

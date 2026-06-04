@@ -4,7 +4,6 @@ package machineuid
 
 import (
 	"crypto/sha1"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -43,13 +42,11 @@ func WriteCachedMachineID(uid string) {
 
 	err := os.WriteFile(machineIDCacheFile, []byte(uid), 0644)
 	if err != nil {
-		log.Printf("Warning: Failed to write machine ID cache to %s: %v", machineIDCacheFile, err)
 		return
 	}
 
 	// Update in-memory state
 	machineUID = uid
-	log.Printf("Machine ID cached: %s", uid)
 }
 
 // calculateMachineUID calculates the machine UID from system identifiers
@@ -93,7 +90,6 @@ func GetMachineUIDWithChange() (string, string) {
 	// Calculate current machine ID from hardware
 	calculatedID := calculateMachineUID()
 	if calculatedID == "" {
-		log.Printf("Warning: Could not calculate machine ID (no identifiers found)")
 		return "", ""
 	}
 
@@ -138,18 +134,13 @@ func GetMachineUID() (string, string) {
 	// Calculate and cache the new 16-char format ID
 	newID := calculateMachineUID()
 	if newID == "" {
-		log.Printf("Warning: Could not calculate machine ID (no identifiers found)")
 		return "", ""
 	}
 
 	// Write to cache file
-	err := os.WriteFile(machineIDCacheFile, []byte(newID), 0644)
-	if err != nil {
-		log.Printf("Warning: Failed to write machine ID cache to %s: %v", machineIDCacheFile, err)
-	}
+	os.WriteFile(machineIDCacheFile, []byte(newID), 0644)
 
 	machineUID = newID
-	log.Printf("New machine ID generated: %s", newID)
 	return "", newID
 }
 

@@ -70,7 +70,6 @@ func CancelPurchaseCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Cancel the purchase (handles refunds automatically)
 		err = purchase.Cancel(ctx)
 		if err != nil {
-			g.CoreAPI.Logger().Error("Failed to cancel purchase: " + err.Error())
 			res.FlashMsg(w, r, g.CoreAPI.Translate("error", "Failed to cancel purchase"), sdkapi.FlashMsgError)
 			res.Redirect(w, r, "payments:options")
 			return

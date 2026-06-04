@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -81,10 +80,7 @@ func init() {
 func GetCallerFileLine(calldepth int) (file string, line int) {
 	calldepth++
 
-	_, file, line, ok := runtime.Caller(calldepth)
-	if !ok {
-		log.Println("Core Logger: Cannot retrieve caller")
-	}
+	_, file, line, _ = runtime.Caller(calldepth)
 
 	return
 }
@@ -96,7 +92,6 @@ func GetLogLines(logFile string) int {
 
 		file, err := os.Open(logFilePathToRead)
 		if err != nil {
-			log.Println(err)
 			return 0, err
 		}
 		defer file.Close()
@@ -104,7 +99,6 @@ func GetLogLines(logFile string) int {
 		// get log's lines count
 		logLines, err := lineCounter(file)
 		if err != nil {
-			log.Println(err)
 			return 0, err
 		}
 
@@ -151,20 +145,17 @@ func ReadLogs(start int, end int) ([]*LogLine, error) {
 			}
 
 			if err != nil {
-				log.Println("Core Logger: error inside readlogs for loop ", err)
 				return nil, err
 			}
 
 			// read of line successful
 			dataInLine, err := sdkutils.ParseLineAsArray(l)
 			if err != nil {
-				log.Println("Core Logger: error parsing raw log file to wsv: ", err)
 				return nil, err
 			}
 
 			parsedlog, err := parseLog(dataInLine)
 			if err != nil {
-				log.Println("Core Logger: error parsing log file to flarelog format: ", err)
 				return nil, err
 			}
 
@@ -219,7 +210,6 @@ func lineCounter(r io.Reader) (int, error) {
 // Accepts a slice of string and parses as a flare log line
 // and returns the parsed string.
 func parseLog(logLine []string) (*LogLine, error) {
-	// log.Println("Logline: ", logLine)
 	logLength := len(logLine)
 
 	// check if valid flare log file
@@ -338,7 +328,6 @@ func LogToConsole(file string, line int, level int, title string, body ...any) {
 		content = fmt.Sprintf("%s\"%s\"", content, str)
 	}
 
-	fmt.Println(content)
 }
 
 // Logs the log info to the specified file path
@@ -346,7 +335,6 @@ func LogToFile(file string, line int, level int, title string, body ...any) erro
 	_, err := queId.Exec("LogToFile", func() (any, error) {
 		logFile, err := openLogFile()
 		if err != nil {
-			log.Println(err)
 			return nil, err
 		}
 
@@ -483,7 +471,6 @@ func openLogFile() (*os.File, error) {
 	// opening/creating log file
 	logFile, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
-		log.Println("Core Logger: Error creating log file: ", err)
 		return nil, err
 	}
 

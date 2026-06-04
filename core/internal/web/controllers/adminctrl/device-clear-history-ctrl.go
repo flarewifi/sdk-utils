@@ -2,7 +2,6 @@ package adminctrl
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -30,7 +29,6 @@ func DeviceClearHistoryCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Delete fingerprints
 		_, err = g.Database.DB.ExecContext(ctx, "DELETE FROM device_fingerprints WHERE device_id = ?", deviceID)
 		if err != nil {
-			log.Printf("[DeviceClearHistory] ERROR: Failed to clear fingerprints for device %d: %v", deviceID, err)
 			res.FlashMsg(w, r, "Failed to clear device history", sdkapi.FlashMsgError)
 			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 			return
@@ -39,7 +37,6 @@ func DeviceClearHistoryCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Delete non-current MACs
 		_, err = g.Database.DB.ExecContext(ctx, "DELETE FROM device_macs WHERE device_id = ? AND is_current = 0", deviceID)
 		if err != nil {
-			log.Printf("[DeviceClearHistory] ERROR: Failed to clear MACs for device %d: %v", deviceID, err)
 			res.FlashMsg(w, r, "Failed to clear device history", sdkapi.FlashMsgError)
 			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 			return
@@ -49,7 +46,6 @@ func DeviceClearHistoryCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		newToken := sdkutils.NewUUID()
 		_, err = g.Database.DB.ExecContext(ctx, "UPDATE devices SET cookie_token = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", newToken, deviceID)
 		if err != nil {
-			log.Printf("[DeviceClearHistory] ERROR: Failed to regenerate cookie_token for device %d: %v", deviceID, err)
 			res.FlashMsg(w, r, "Failed to clear device history", sdkapi.FlashMsgError)
 			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 			return

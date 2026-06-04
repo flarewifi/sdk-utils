@@ -4,7 +4,6 @@ package nftables
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -109,7 +108,6 @@ func IsConnected(mac string) bool {
 	)
 
 	if err != nil {
-		log.Printf("[ERROR] IsConnected check failed for %s: %v", mac, err)
 		return false
 	}
 
@@ -154,7 +152,6 @@ func isConnected(mac string) bool {
 	// Validate and normalize MAC address
 	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
 	if err != nil {
-		log.Printf("[ERROR] isConnected: invalid MAC address '%s': %v", mac, err)
 		return false
 	}
 
@@ -186,7 +183,6 @@ func doConnect(ip string, mac string) error {
 	macToIps[normalizedMAC][ip] = true
 	nftMu.Unlock()
 
-	log.Println("nftables connected: " + normalizedMAC + " (" + ip + ")")
 	return nil
 }
 
@@ -220,6 +216,5 @@ func doDisconnect(ip string, mac string) error {
 		delete(connTable, normalizedMAC)
 	}
 
-	log.Println("nftables disconnected IP: " + ip + " (" + normalizedMAC + ")")
 	return nil
 }

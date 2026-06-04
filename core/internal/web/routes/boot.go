@@ -4,7 +4,6 @@ import (
 	"core/internal/api"
 	"core/internal/web/controllers"
 	"core/internal/web/router"
-	"log"
 	"net/http"
 )
 
@@ -21,8 +20,6 @@ func BootRoutes(g *api.CoreGlobals) {
 	}).Methods(http.MethodGet)
 
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Location not found: ", r.URL.Path)
-		log.Println("Redirecting to boot page: ", controllers.BootURL)
 		http.Redirect(w, r, controllers.BootURL, http.StatusFound)
 	})
 }

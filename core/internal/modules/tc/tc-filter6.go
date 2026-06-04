@@ -2,7 +2,6 @@ package tc
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	ifbutil "core/internal/modules/network"
@@ -32,7 +31,6 @@ type TcFilter6 struct {
 func NewTcFilter6(dev string, ip string, prefixLen int) (*TcFilter6, error) {
 	seg, err := newIpsegmt6(ip, prefixLen)
 	if err != nil {
-		log.Println("tc6 error: " + err.Error())
 		return nil, err
 	}
 
@@ -234,7 +232,6 @@ func (self *TcFilter6) Setup() error {
 
 			for _, c := range cmds {
 				if err := cmd.Exec(c, nil); err != nil {
-					log.Println("Error in tc6 filter setup: ", err)
 					return nil, err
 				}
 			}

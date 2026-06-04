@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 
 	"core/db"
@@ -61,7 +60,6 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 
 	// Validate required fields
 	if err := validateDeviceFields(uid, params.Ipv4Address, params.Ipv6Address, params.MacAddress); err != nil {
-		log.Printf("device validation failed: %v", err)
 		return nil, err
 	}
 
@@ -88,13 +86,11 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 			CookieToken: cookieToken,
 		})
 		if err != nil {
-			log.Println("error creating new device:", err)
 			return err
 		}
 
 		d, err := q.FindDevice(ctx, dId)
 		if err != nil {
-			log.Printf("error finding device %v: %v\n", dId, err)
 			return err
 		}
 
@@ -142,7 +138,6 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 func (self *DeviceModel) Find(ctx context.Context, id int64) (*Device, error) {
 	d, err := self.db.Queries.FindDevice(ctx, id)
 	if err != nil {
-		log.Printf("error finding device %v: %v", id, err)
 		return nil, err
 	}
 
@@ -165,7 +160,6 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 	// Find device by MAC using device_macs table
 	deviceID, err := self.models.DeviceMac().FindDeviceByMac(ctx, mac)
 	if err != nil {
-		log.Printf("error finding device by MAC %s: %v", mac, err)
 		return nil, err
 	}
 
@@ -176,7 +170,6 @@ func (self *DeviceModel) FindByMac(ctx context.Context, mac string) (*Device, er
 func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, error) {
 	d, err := self.db.Queries.FindDeviceByUUID(ctx, uid)
 	if err != nil {
-		log.Printf("error finding device by UUID %s: %v", uid, err)
 		return nil, err
 	}
 
@@ -198,7 +191,6 @@ func (self *DeviceModel) FindByUUID(ctx context.Context, uid string) (*Device, e
 func (self *DeviceModel) FindByIp(ctx context.Context, ip string) (*Device, error) {
 	d, err := self.db.Queries.FindDeviceByIp(ctx, ip)
 	if err != nil {
-		log.Printf("error finding device by IP %s: %v", ip, err)
 		return nil, err
 	}
 
@@ -220,7 +212,6 @@ func (self *DeviceModel) FindByIp(ctx context.Context, ip string) (*Device, erro
 func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) error {
 	// Validate required fields
 	if err := validateDeviceFields(params.UUID, params.Ipv4Address, params.Ipv6Address, params.MacAddress); err != nil {
-		log.Printf("device validation failed: %v", err)
 		return err
 	}
 
@@ -233,20 +224,13 @@ func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) 
 		Status:   int64(params.Status),
 	})
 	if err != nil {
-		log.Printf("error updating device %v: %v", params.ID, err)
 		return err
 	}
 
 	// Always record MAC address to update last_seen_at and ensure is_current is set
 	// RecordMacAddress is idempotent - if MAC exists, it just updates timestamp
-	log.Printf("[DeviceModel.Update] Recording MAC address %s for device %d", params.MacAddress, params.ID)
-	err = self.models.DeviceMac().RecordMacAddress(ctx, params.ID, params.MacAddress)
-	if err != nil {
-		log.Printf("[DeviceModel.Update] ERROR: Failed to record MAC address: %v", err)
-		// Don't fail the entire update, but log the error
-	}
+	self.models.DeviceMac().RecordMacAddress(ctx, params.ID, params.MacAddress)
 
-	log.Printf("Successfully updated device with id %v", params.ID)
 	return nil
 }
 
@@ -254,7 +238,6 @@ func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) 
 func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 	devices, err := self.db.Queries.FindDevicesWithEmptyUUID(ctx)
 	if err != nil {
-		log.Printf("error finding devices with empty UUID: %v", err)
 		return err
 	}
 
@@ -265,14 +248,8 @@ func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 			Uuid: uid,
 		})
 		if err != nil {
-			log.Printf("error updating UUID for device %v: %v", d.ID, err)
 			return err
 		}
-		log.Printf("Generated UUID %s for device %v", uid, d.ID)
-	}
-
-	if len(devices) > 0 {
-		log.Printf("Backfilled UUIDs for %d devices", len(devices))
 	}
 
 	return nil
@@ -282,11 +259,8 @@ func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 // Transfers all data (sessions, purchases, fingerprints, MACs, wallet) from source
 // to target, then deletes the source device.
 func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourceDeviceID int64) error {
-	log.Printf("[DeviceModel.MergeDevices] Starting merge: source=%d -> target=%d", sourceDeviceID, targetDeviceID)
-
 	tx, err := self.db.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
-		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to begin transaction: %v", err)
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
@@ -294,69 +268,53 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 	qtx := self.db.Queries.WithTx(tx)
 
 	// 1. Transfer sessions from source to target
-	log.Printf("[DeviceModel.MergeDevices] Transferring sessions...")
 	err = qtx.TransferSessionsToDevice(ctx, queries.TransferSessionsToDeviceParams{
 		TargetDeviceID: targetDeviceID,
 		SourceDeviceID: sourceDeviceID,
 	})
 	if err != nil {
-		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer sessions: %v", err)
 		return fmt.Errorf("failed to transfer sessions: %w", err)
 	}
-
-	// 2. Transfer purchases from source to target
-	log.Printf("[DeviceModel.MergeDevices] Transferring purchases...")
 	err = qtx.TransferPurchasesToDevice(ctx, queries.TransferPurchasesToDeviceParams{
 		TargetDeviceID: sql.NullInt64{Int64: targetDeviceID, Valid: true},
 		SourceDeviceID: sql.NullInt64{Int64: sourceDeviceID, Valid: true},
 	})
 	if err != nil {
-		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer purchases: %v", err)
 		return fmt.Errorf("failed to transfer purchases: %w", err)
 	}
 
 	// 3. Transfer fingerprints from source to target
-	log.Printf("[DeviceModel.MergeDevices] Transferring fingerprints...")
 	err = qtx.TransferFingerprintsToDevice(ctx, queries.TransferFingerprintsToDeviceParams{
 		TargetDeviceID: targetDeviceID,
 		SourceDeviceID: sourceDeviceID,
 	})
 	if err != nil {
-		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer fingerprints: %v", err)
 		return fmt.Errorf("failed to transfer fingerprints: %w", err)
 	}
 
 	// 4. Transfer MAC address records from source to target
-	log.Printf("[DeviceModel.MergeDevices] Deleting conflicting MAC addresses...")
 	err = qtx.DeleteConflictingMacsBeforeTransfer(ctx, queries.DeleteConflictingMacsBeforeTransferParams{
 		TargetDeviceID: targetDeviceID,
 		SourceDeviceID: sourceDeviceID,
 	})
 	if err != nil {
-		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to delete conflicting MAC addresses: %v", err)
 		return fmt.Errorf("failed to delete conflicting MAC addresses: %w", err)
 	}
-
-	log.Printf("[DeviceModel.MergeDevices] Transferring MAC addresses...")
 	err = qtx.TransferMacs(ctx, queries.TransferMacsParams{
 		TargetDeviceID: targetDeviceID,
 		SourceDeviceID: sourceDeviceID,
 	})
 	if err != nil {
-		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer MAC addresses: %v", err)
 		return fmt.Errorf("failed to transfer MAC addresses: %w", err)
 	}
 
 	// 5. Merge wallets - transfer balance and transactions
-	log.Printf("[DeviceModel.MergeDevices] Merging wallets...")
 	sourceWallet, err := qtx.FindWalletByDeviceId(ctx, sourceDeviceID)
 	if err != nil {
-		log.Printf("[DeviceModel.MergeDevices] WARN: Source wallet not found (may not exist): %v", err)
 		// Continue - source device might not have a wallet
 	} else {
 		targetWallet, err := qtx.FindWalletByDeviceId(ctx, targetDeviceID)
 		if err != nil {
-			log.Printf("[DeviceModel.MergeDevices] ERROR: Target wallet not found: %v", err)
 			return fmt.Errorf("failed to find target wallet: %w", err)
 		}
 
@@ -366,19 +324,16 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 			SourceWalletID: sourceWallet.ID,
 		})
 		if err != nil {
-			log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to transfer wallet transactions: %v", err)
 			return fmt.Errorf("failed to transfer wallet transactions: %w", err)
 		}
 
 		// Add source wallet balance to target wallet
 		if sourceWallet.Balance > 0 {
-			log.Printf("[DeviceModel.MergeDevices] Adding balance %.2f from source wallet to target", sourceWallet.Balance)
 			err = qtx.AddToWalletBalance(ctx, queries.AddToWalletBalanceParams{
 				Amount:   sourceWallet.Balance,
 				DeviceID: targetDeviceID,
 			})
 			if err != nil {
-				log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to add wallet balance: %v", err)
 				return fmt.Errorf("failed to add wallet balance: %w", err)
 			}
 		}
@@ -386,26 +341,20 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 		// Delete source wallet (transactions already transferred)
 		err = qtx.DeleteWalletByDeviceId(ctx, sourceDeviceID)
 		if err != nil {
-			log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to delete source wallet: %v", err)
 			return fmt.Errorf("failed to delete source wallet: %w", err)
 		}
 	}
 
 	// 6. Delete the source device
-	log.Printf("[DeviceModel.MergeDevices] Deleting source device %d...", sourceDeviceID)
 	err = qtx.DeleteDevice(ctx, sourceDeviceID)
 	if err != nil {
-		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to delete source device: %v", err)
 		return fmt.Errorf("failed to delete source device: %w", err)
 	}
 
 	// Commit the transaction
 	if err := tx.Commit(); err != nil {
-		log.Printf("[DeviceModel.MergeDevices] ERROR: Failed to commit transaction: %v", err)
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
-
-	log.Printf("[DeviceModel.MergeDevices] SUCCESS: Merged device %d into device %d", sourceDeviceID, targetDeviceID)
 
 	// VACUUM is intentionally omitted here. The database operates in WAL mode,
 	// which reclaims space automatically via periodic checkpointing. Calling

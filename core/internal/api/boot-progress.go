@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -52,7 +51,6 @@ func (bp *BootProgress) IsDone() bool {
 }
 
 func (bp *BootProgress) Done(err error) {
-	log.Println("Setting boot progress to done...")
 	bp.done.Store(true)
 
 	bp.mu.Lock()
@@ -70,11 +68,8 @@ func (bp *BootProgress) AddSocket(s *sse.SseSocket) {
 	defer bp.mu.Unlock()
 	bp.sockets = append(bp.sockets, s)
 
-	log.Println("Socket added to boot progress: ", s.ID())
-
 	go func() {
 		<-s.Done()
-		// remove socket if disconnected
 		bp.mu.Lock()
 		defer bp.mu.Unlock()
 
@@ -86,8 +81,6 @@ func (bp *BootProgress) AddSocket(s *sse.SseSocket) {
 		}
 
 		bp.sockets = sockets
-
-		log.Println("Socket removed from boot progress: ", s.ID())
 	}()
 }
 
@@ -96,13 +89,10 @@ func (bp *BootProgress) emit() {
 
 	data, err := json.Marshal(bootProgData)
 	if err != nil {
-		log.Println("Boot Progress JSON error:", err)
+		return
 	}
 
 	for _, s := range bp.sockets {
-		err := s.Emit("boot:progress", data)
-		if err != nil {
-			log.Println("Boot Progress socket error:", err)
-		}
+		s.Emit("boot:progress", data)
 	}
 }

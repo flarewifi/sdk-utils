@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"os/exec"
 	"strings"
@@ -47,23 +46,18 @@ var (
 )
 
 func Exec(command string, opts *ExecOpts) error {
-	log.Println("Executing:", command)
-
 	// Handle sysupgrade -T command for firmware validation in dev mode
 	if strings.HasPrefix(command, "sysupgrade -T") {
 		time.Sleep(5 * time.Second)
 		if FakeSysupgradeValidationSuccess {
-			log.Println("Dev mode: Fake sysupgrade validation SUCCESS")
 			return nil
 		}
-		log.Println("Dev mode: Fake sysupgrade validation FAILURE")
 		return errors.New("firmware validation failed: incompatible firmware")
 	}
 
 	// Handle other sysupgrade commands (actual upgrade) - ignore in dev mode
 	if strings.HasPrefix(command, "sysupgrade") {
 		time.Sleep(5 * time.Second)
-		log.Println("Dev mode: Ignoring sysupgrade command")
 		return nil
 	}
 
@@ -78,8 +72,6 @@ func Exec(command string, opts *ExecOpts) error {
 }
 
 func ExecOutput(command string, out io.Writer) error {
-	// log.Println(command)
-
 	// Handle nftables firewall commands
 	if strings.Contains(command, "nft -j list table inet internet") {
 		out.Write([]byte(getFakeNFTTableJSON()))
@@ -207,8 +199,6 @@ func execShell(command string, opts *ExecOpts) (err error) {
 		cmd.Stderr = &stderr
 	}
 
-	log.Printf("Executing '%s': %s\n", shell, command)
-
 	if err = cmd.Run(); err != nil {
 		if stderr.String() != "" {
 			err = errors.New(stderr.String())
@@ -220,8 +210,6 @@ func execShell(command string, opts *ExecOpts) (err error) {
 
 // ExecWithContext executes shell command with context cancellation support (dev version)
 func ExecWithContext(ctx context.Context, command string, opts *ExecOpts) error {
-	log.Println("Executing with context:", command)
-
 	// don't execute some commands in dev mode
 	for _, ignoreCmd := range ignoreCmdsStart {
 		if strings.HasPrefix(command, ignoreCmd) {
@@ -262,8 +250,6 @@ func ExecWithContext(ctx context.Context, command string, opts *ExecOpts) error 
 	if opts == nil || opts.Stderr == nil {
 		cmd.Stderr = &stderr
 	}
-
-	log.Printf("Executing '%s' with context: %s\n", shell, command)
 
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {

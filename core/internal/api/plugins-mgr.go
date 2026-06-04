@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"path/filepath"
 	sdkplugin "sdk/api"
 
@@ -352,7 +351,6 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg st
 func (self *PluginsMgr) rollbackMeta(installed []string) {
 	for _, pkg := range installed {
 		if err := self.Uninstall(pkg); err != nil {
-			self.CoreAPI.Logger().Error(fmt.Sprintf("rollbackMeta uninstall %s: %v", pkg, err))
 		}
 	}
 }
@@ -386,8 +384,6 @@ func (self *PluginsMgr) SourceDef(pkg string) (sdkutils.PluginSrcDef, bool) {
 // RerunPluginMigrations re-runs migrations for all loaded plugins
 // This is used after database reset to recreate plugin tables
 func (self *PluginsMgr) RerunPluginMigrations(newDB *sql.DB) error {
-	log.Println("Re-running plugin migrations after database reset...")
-
 	for _, p := range self.plugins {
 		// Skip core plugin (already migrated)
 		if p.Info().Package == "com.flarego.core" {
@@ -398,19 +394,15 @@ func (self *PluginsMgr) RerunPluginMigrations(newDB *sql.DB) error {
 		migdir := filepath.Join(pluginDir, "resources/migrations")
 
 		if !sdkutils.FsExists(migdir) {
-			log.Printf("No migrations directory for plugin %s, skipping...", p.Info().Package)
 			continue
 		}
 
-		log.Printf("Running migrations for plugin: %s", p.Info().Package)
 		// Pass the plugin directory, not the migrations subdirectory
 		// This ensures proper temp directory isolation per plugin
 		if err := migrate.MigrateUp(newDB, pluginDir); err != nil {
 			return fmt.Errorf("failed to run migrations for plugin %s: %w", p.Info().Package, err)
 		}
-		log.Printf("Successfully ran migrations for plugin: %s", p.Info().Package)
 	}
 
-	log.Println("All plugin migrations completed successfully")
 	return nil
 }

@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,8 +17,6 @@ func DeleteFileCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		cookieName := r.URL.Query().Get("cookie_name")
 		err := os.Remove(filePath)
 		if err != nil {
-			log.Println("error removing file: ", err)
-
 			errMsg := g.CoreAPI.Translate("error", "Unable to Remove File", "file", filepath.Base(filePath), "err", err)
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 			return

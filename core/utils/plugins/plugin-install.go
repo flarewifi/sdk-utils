@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,7 +41,6 @@ func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (inf
 }
 
 func InstallFromLocalPath(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (info sdkutils.PluginInfo, err error) {
-	fmt.Println("Installing plugin from local path: " + def.LocalPath)
 	sdkutils.PrettyPrint(def)
 
 	info, err = sdkutils.GetPluginInfoFromPath(def.LocalPath)
@@ -61,8 +59,6 @@ func InstallFromLocalPath(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpt
 }
 
 func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, zipURL string, opts InstallOpts) (sdkutils.PluginInfo, error) {
-	log.Println("Installing plugin from store: " + def.String())
-
 	if zipURL == "" {
 		return sdkutils.PluginInfo{}, errors.New("InstallFromPluginStore: zipURL is required")
 	}
@@ -78,17 +74,14 @@ func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, zipURL str
 	dev := sdkutils.RandomStr(8)
 	mnt := encdisk.NewEncrypedDisk(diskfile, mountpath, dev)
 	if err := mnt.Mount(); err != nil {
-		log.Println("Error mounting disk: ", err)
 		return sdkutils.PluginInfo{}, err
 	}
 	defer mnt.Unmount()
 
 	// download plugin release zip file. The URL is transient and is not
 	// recorded on the persisted PluginSrcDef.
-	log.Println("downloading plugin release: ", zipURL)
 	downloader := download.NewDownloader(zipURL, clonePath)
 	if err := downloader.Download(); err != nil {
-		log.Println("Error: ", err)
 		return sdkutils.PluginInfo{}, err
 	}
 
@@ -98,12 +91,10 @@ func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, zipURL str
 	newWorkPath, err := sdkutils.FindPluginSrc(workPath)
 	if err != nil {
 		err = errors.New("Unable to find plugin source in: " + workPath)
-		log.Println("Error: ", err)
 		return sdkutils.PluginInfo{}, err
 	}
 	info, err := sdkutils.GetPluginInfoFromPath(newWorkPath)
 	if err != nil {
-		log.Println("Error getting plugin info: ", err)
 		return sdkutils.PluginInfo{}, err
 	}
 
@@ -115,21 +106,17 @@ func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, zipURL str
 }
 
 func InstallFromGitSrc(sqldb *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (sdkutils.PluginInfo, error) {
-	log.Println("Installing plugin from git source: " + def.String())
 	clonePath := filepath.Join(sdkutils.PathTmpDir, "plugins", "cloned", sdkutils.RandomStr(16))
 
 	repo := sdkutils.GitRepoSource{URL: def.GitURL, Ref: def.GitRef}
 
-	log.Println("Cloning plugin from git: " + def.GitURL)
 	if err := sdkutils.GitClone(repo, clonePath); err != nil {
-		log.Println("Error cloning: ", err)
 		return sdkutils.PluginInfo{}, err
 	}
 	defer os.RemoveAll(clonePath)
 
 	info, err := sdkutils.GetPluginInfoFromPath(clonePath)
 	if err != nil {
-		log.Println("Error getting plugin info: ", err)
 		return sdkutils.PluginInfo{}, err
 	}
 
@@ -152,7 +139,6 @@ type InstallOpts struct {
 }
 
 func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
-	log.Println("Installing plugin: ", pluginSrc)
 	sdkutils.PrettyPrint(opts)
 
 	var buildpath string
@@ -165,7 +151,6 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		buildpath = filepath.Join(mountpath, "build")
 		mnt := encdisk.NewEncrypedDisk(diskfile, mountpath, dev)
 		if err := mnt.Mount(); err != nil {
-			log.Println("Error mounting: ", err)
 			return err
 		}
 
@@ -184,17 +169,14 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	}
 
 	if err := BuildTemplates(pluginSrc); err != nil {
-		log.Println("Error building plugin templates: ", err)
 		return err
 	}
 
 	if err := RunMigrations(sqldb, pluginSrc); err != nil {
-		log.Println("Error running migrations: ", err)
 		return err
 	}
 
 	if err := BuildQueries(pluginSrc); err != nil {
-		log.Println("Error building plugin sqlc: ", err)
 		return err
 	}
 
@@ -203,13 +185,11 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	}
 
 	if err := BuildPluginSo(pluginSrc, buildpath, BuildOpts{}); err != nil {
-		log.Println("Error building plugin: ", err)
 		return err
 	}
 
 	info, err := sdkutils.GetPluginInfoFromPath(pluginSrc)
 	if err != nil {
-		log.Println("Error building plugin: ", err)
 		return err
 	}
 
@@ -267,23 +247,19 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	shouldWriteMetadata := true
 	if opts.Def.Src == sdkutils.PluginSrcLocal {
 		if existing, readErr := ReadMetadata(info.Package); readErr == nil && existing.Def.Src == sdkutils.PluginSrcStore {
-			log.Println("Preserving store metadata for", info.Package, "(devel install would overwrite Src=local)")
 			shouldWriteMetadata = false
 		}
 	}
 	if shouldWriteMetadata {
 		if opts.AsMetaMember != "" {
 			if err := WriteMetadataAsMember(opts.Def, info.Package); err != nil {
-				log.Println("Error building plugin: ", err)
 				return err
 			}
 		} else if err := WriteMetadata(opts.Def, info.Package); err != nil {
-			log.Println("Error building plugin: ", err)
 			return err
 		}
 	}
 
-	log.Println("Copying plugin files to: ", installPath)
 	if err := sdkutils.CopyPluginFiles(pluginSrc, installPath); err != nil {
 		return err
 	}
@@ -291,12 +267,9 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 
 	if opts.RemoveSrc {
 		if err := os.RemoveAll(pluginSrc); err != nil {
-			log.Println("Error building plugin: ", err)
 			return err
 		}
 	}
-
-	log.Println("Plugin installed")
 
 	return nil
 }
@@ -353,20 +326,16 @@ func IsSystemPackageInstalled(opkgPackage string) (bool, error) {
 }
 
 func RunMigrations(sqldb *sql.DB, pluginDir string) (err error) {
-	info, err := sdkutils.GetPluginInfoFromPath(pluginDir)
+	_, err = sdkutils.GetPluginInfoFromPath(pluginDir)
 	if err != nil {
 		return
 	}
 
-	name := info.Name
-
 	err = migrate.MigrateUp(sqldb, pluginDir)
 	if err != nil {
-		log.Println("Error in plugin migration "+name, ":", err.Error())
 		return err
 	}
 
-	log.Println("Done migrating plugin:", name)
 	return nil
 }
 

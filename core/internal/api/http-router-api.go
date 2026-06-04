@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"core/db"
@@ -94,13 +93,11 @@ func (self *HttpRouterApi) staticMuxRouteName(name sdkapi.PluginRouteName) sdkap
 func (self *HttpRouterApi) UrlForMuxRoute(muxname sdkapi.MuxRouteName, pairs ...string) string {
 	route := router.FindRoute(muxname)
 	if route == nil {
-		log.Println("Error: route not found for " + string(muxname))
 		return "Error: route not found for " + string(muxname)
 	}
 
 	url, err := route.URL(pairs...)
 	if err != nil {
-		log.Println("Error: " + err.Error())
 		return ""
 	}
 

@@ -27,7 +27,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -110,7 +109,6 @@ func (q *JobQueue[T]) runWorker() {
 		if cleanExit := q.runWorkerOnce(); cleanExit {
 			return
 		}
-		log.Println("[WARNING] job worker restarted after panic")
 	}
 }
 
@@ -119,14 +117,6 @@ func (q *JobQueue[T]) runWorker() {
 func (q *JobQueue[T]) runWorkerOnce() (cleanExit bool) {
 	defer func() {
 		if r := recover(); r != nil {
-			buf := make([]byte, 4096)
-			n := runtime.Stack(buf, false)
-			log.Printf(
-				"[PANIC] job worker recovered: %v\n%s",
-				r,
-				string(buf[:n]),
-			)
-
 			// Notify blocked caller if there was a job in progress
 			if j := q.currentJob.Swap(nil); j != nil {
 				var zero T
@@ -148,18 +138,6 @@ func (q *JobQueue[T]) worker() {
 
 	for j := range q.jobs {
 
-		wait := time.Since(j.enqueuedAt)
-
-		if q.contentionWarnAfter > 0 && wait > q.contentionWarnAfter {
-			log.Printf(
-				"[WARNING] job queue contention: waited %v - %s - %s:%d",
-				wait,
-				j.contextInfo,
-				j.callerFile,
-				j.callerLine,
-			)
-		}
-
 		// Note: if a job's context is already done when dequeued, we still
 		// dequeue it — we cannot put it back. The job is skipped but the queue
 		// slot was already consumed. This is an inherent property of a
@@ -179,37 +157,13 @@ func (q *JobQueue[T]) worker() {
 		jCopy := j
 		q.currentJob.Store(&jCopy)
 
-		start := time.Now()
-
 		res, err := safeExecute(j.fn)
 
 		q.currentJob.Store(nil)
 
-		duration := time.Since(start)
-
-		if ctxErr := j.ctx.Err(); ctxErr != nil {
-			logContextError(
-				j.operationName,
-				ctxErr,
-				duration,
-				j.contextInfo,
-				j.callerFile,
-				j.callerLine,
-			)
-		}
-
 		select {
 		case j.resp <- result[T]{res, err}:
 		case <-j.ctx.Done():
-			if err != nil {
-				log.Printf(
-					"[WARNING] %s result discarded (context expired): %v - %s:%d",
-					j.operationName,
-					err,
-					j.callerFile,
-					j.callerLine,
-				)
-			}
 		}
 	}
 }
@@ -218,16 +172,6 @@ func safeExecute[T any](fn func() (T, error)) (res T, err error) {
 
 	defer func() {
 		if r := recover(); r != nil {
-
-			buf := make([]byte, 4096)
-			n := runtime.Stack(buf, false)
-
-			log.Printf(
-				"[PANIC] job execution panic: %v\n%s",
-				r,
-				string(buf[:n]),
-			)
-
 			err = fmt.Errorf("job panic: %v", r)
 		}
 	}()
@@ -359,23 +303,4 @@ func (q *JobQueue[T]) Capacity() int {
 	return cap(q.jobs)
 }
 
-func logContextError(
-	operationName string,
-	ctxErr error,
-	duration time.Duration,
-	contextInfo string,
-	callerFile string,
-	callerLine int,
-) {
-	log.Printf(
-		"[CONTEXT] %s context error after %v: %v\n"+
-			"  Context: %s\n"+
-			"  Caller: %s:%d",
-		operationName,
-		duration,
-		ctxErr,
-		contextInfo,
-		callerFile,
-		callerLine,
-	)
-}
+

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	sdkapi "sdk/api"
 	"time"
 
@@ -85,7 +84,6 @@ func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams
 		UseGlobal:   params.UseGlobalSpeed,
 	})
 	if err != nil {
-		log.Println("error creating session:", err)
 		return nil, err
 	}
 
@@ -95,7 +93,6 @@ func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams
 func (self *SessionModel) Find(ctx context.Context, id int64) (*Session, error) {
 	sRow, err := self.db.Queries.FindSession(ctx, id)
 	if err != nil {
-		log.Printf("error finding session %v: %v", id, err)
 		return nil, err
 	}
 	session := NewSession(self.db, self.models, &sRow)
@@ -105,7 +102,6 @@ func (self *SessionModel) Find(ctx context.Context, id int64) (*Session, error) 
 func (self *SessionModel) FindByUUID(ctx context.Context, uuid string) (*Session, error) {
 	sRow, err := self.db.Queries.FindSessionByUUID(ctx, uuid)
 	if err != nil {
-		log.Printf("error finding session by UUID %s: %v", uuid, err)
 		return nil, err
 	}
 	session := NewSession(self.db, self.models, &sRow)
@@ -149,18 +145,15 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 		ID:              params.ID,
 	})
 	if err != nil {
-		log.Printf("error updating session %v: %v", params.ID, err)
 		return err
 	}
 
-	log.Printf("Successfully updated device with id %v", params.ID)
 	return nil
 }
 
 func (self *SessionModel) AvailableForDevice(ctx context.Context, devId int64) (*Session, error) {
 	sRow, err := self.db.Queries.FindAvailableSessionForDevice(ctx, devId)
 	if err != nil {
-		log.Printf("error finding available session for dev %v: %v", devId, err)
 		return nil, err
 	}
 
@@ -171,7 +164,6 @@ func (self *SessionModel) AvailableForDevice(ctx context.Context, devId int64) (
 func (self *SessionModel) SessionsForDev(ctx context.Context, devId int64) ([]*Session, error) {
 	sRows, err := self.db.Queries.FindSessionsForDev(ctx, devId)
 	if err != nil {
-		log.Println("error finding available sessions for dev:", err)
 		return nil, err
 	}
 
@@ -194,11 +186,9 @@ func (self *SessionModel) UpdateAllBandwidth(ctx context.Context, downMbit int, 
 		UseGlobal: g,
 	})
 	if err != nil {
-		log.Println("error updating all bandwidth:", err)
 		return err
 	}
 
-	log.Println("Successfully updated all bandwidth of valid sessions")
 	return nil
 }
 
@@ -232,7 +222,6 @@ func (self *SessionModel) Summary(ctx context.Context, deviceID int64) (*sdkapi.
 func (self *SessionModel) Delete(ctx context.Context, id int64) error {
 	err := self.db.Queries.DeleteSession(ctx, id)
 	if err != nil {
-		log.Printf("error deleting session %v: %v", id, err)
 		return err
 	}
 	return nil
