@@ -34,6 +34,11 @@ var (
 		"shutdown",
 		"reboot",
 		"halt",
+		// OpenWRT service management (e.g. service dnsmasq reload, and the
+		// underlying /etc/init.d/ scripts) doesn't exist in the dev container;
+		// treat it as a no-op.
+		"service ",
+		"/etc/init.d/",
 	}
 
 	// FakeSysupgradeValidationSuccess controls whether sysupgrade -T returns success or failure in dev mode
