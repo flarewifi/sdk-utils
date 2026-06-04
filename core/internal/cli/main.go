@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -171,34 +172,59 @@ func CreateMigration() {
 }
 
 func BuildPlugin() {
-	var err error
-	if len(os.Args) < 3 {
-		err = plugins.BuildLocalPlugins()
-	} else {
-		searchPath := os.Args[2]
-		pluginPath, err := sdkutils.FindPluginSrc(searchPath)
-		if err != nil {
-			log.Fatalf("Error finding plugin source in %s: %s\n", searchPath, err.Error())
-		}
+	// Flags must precede the optional plugin path (Go's flag parser stops at the
+	// first non-flag arg), e.g. `flare build-plugin --skip-sqlc --skip-templ <dir>`.
+	fs := flag.NewFlagSet("build-plugin", flag.ExitOnError)
+	skipSqlc := fs.Bool("skip-sqlc", false, "Skip sqlc generation; use the committed db/queries package")
+	skipTempl := fs.Bool("skip-templ", false, "Skip templ generation; use the committed *_templ.go files")
+	_ = fs.Parse(os.Args[2:])
 
-		if err := plugins.BuildPlugin(pluginPath); err != nil {
-			log.Fatalf("Error building plugin in %s: %s\n", pluginPath, err.Error())
-		}
+	opts := plugins.BuildOpts{
+		SkipTemplates: *skipTempl,
+		SkipQueries:   *skipSqlc,
 	}
 
+	// No plugin path given: build all local plugins (previous no-arg behavior).
+	rest := fs.Args()
+	if len(rest) == 0 {
+		if err := plugins.BuildLocalPlugins(opts); err != nil {
+			fmt.Println("Error building plugin: " + err.Error())
+			os.Exit(1)
+		}
+		return
+	}
+
+	searchPath := rest[0]
+	pluginPath, err := sdkutils.FindPluginSrc(searchPath)
 	if err != nil {
-		fmt.Println("Error building plugin: " + err.Error())
-		os.Exit(1)
+		log.Fatalf("Error finding plugin source in %s: %s\n", searchPath, err.Error())
+	}
+
+	if err := plugins.BuildPlugin(pluginPath, opts); err != nil {
+		log.Fatalf("Error building plugin in %s: %s\n", pluginPath, err.Error())
 	}
 }
 
 func BuildPlugins() {
-	if err := plugins.BuildLocalPlugins(); err != nil {
+	// sqlc (db/queries) and templ (*_templ.go) outputs are committed to the
+	// repo, so builders running where these tools are unavailable can pass
+	// --skip-sqlc / --skip-templ to build from the committed generated files.
+	fs := flag.NewFlagSet("build-plugins", flag.ExitOnError)
+	skipSqlc := fs.Bool("skip-sqlc", false, "Skip sqlc generation; use the committed db/queries package")
+	skipTempl := fs.Bool("skip-templ", false, "Skip templ generation; use the committed *_templ.go files")
+	_ = fs.Parse(os.Args[2:])
+
+	opts := plugins.BuildOpts{
+		SkipTemplates: *skipTempl,
+		SkipQueries:   *skipSqlc,
+	}
+
+	if err := plugins.BuildLocalPlugins(opts); err != nil {
 		fmt.Println("Error building local plugins: " + err.Error())
 		os.Exit(1)
 	}
 
-	if err := plugins.BuildSystemPlugins(); err != nil {
+	if err := plugins.BuildSystemPlugins(opts); err != nil {
 		fmt.Println("Error building system plugins: " + err.Error())
 		os.Exit(1)
 	}

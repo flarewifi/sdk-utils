@@ -47,21 +47,25 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 	navs.SetAdminNavs(g)
 
 	redirectToLanIpMw := middlewares.RedirectToLanIP(g.CoreAPI)
+	redirectToPortalMw := middlewares.RedirectToPortalDomain()
 
 	router.RootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Warning: unknown route requested: ", r.URL.Path)
 
-		// Determine redirect destination based on route prefix
-		redirectTo := "/"
+		// Admin 404s stay on the device host (LAN IP / localhost).
 		if strings.HasPrefix(r.URL.Path, "/admin") {
-			redirectTo = "/admin"
+			h := redirectToLanIpMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, "/admin", http.StatusFound)
+			}))
+			h.ServeHTTP(w, r)
+			return
 		}
 
-		// Redirect to LAN IP
-		h := redirectToLanIpMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, redirectTo, http.StatusFound)
+		// Portal 404s — including OS captive-detection probes that hit arbitrary
+		// URLs — are funneled to the portal hostname over HTTPS, not the bare LAN IP.
+		h := redirectToPortalMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/", http.StatusFound)
 		}))
-
 		h.ServeHTTP(w, r)
 	})
 }

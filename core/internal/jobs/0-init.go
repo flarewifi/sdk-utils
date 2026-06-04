@@ -21,6 +21,10 @@ func Init(g *api.CoreGlobals) {
 	// Start machine ping scheduler (pings every hour for online status)
 	StartMachinePingScheduler()
 
+	// Start portal certificate scheduler (fetches the shared captive-portal TLS
+	// cert from the cloud and hot-reloads HTTPS when it changes)
+	StartPortalCertScheduler()
+
 	// Start batch save loop for running sessions (flushes to DB periodically)
 	StartBatchSaveLoop(g.ClientMgr)
 

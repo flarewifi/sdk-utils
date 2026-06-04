@@ -131,14 +131,18 @@ func SetupCaptivePortal(dev string, routerIp4 string, routerIp6 string) (err err
 			// Allow already authenticated devices to bypass captive portal
 			batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, connMacSet))
 
-			// Redirect HTTP/HTTPS traffic to captive portal (IPv4)
+			// Redirect plain HTTP (port 80) to the captive portal (IPv4).
+			// Port 443 is intentionally NOT intercepted: MITM'ing TLS breaks the
+			// browser. Modern OSes are instead pointed at the portal via the RFC
+			// 8910 advertisement (DHCP option 114); port 80 stays as the legacy
+			// detection fallback for clients that still probe over HTTP.
 			if routerIp4 != "" {
-				batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80, 443 } counter dnat ip to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp4))
+				batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80 } counter dnat ip to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp4))
 			}
 
-			// Redirect HTTP/HTTPS traffic to captive portal (IPv6)
+			// Redirect plain HTTP (port 80) to the captive portal (IPv6).
 			if routerIp6 != "" {
-				batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80, 443 } counter dnat ip6 to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp6))
+				batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80 } counter dnat ip6 to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp6))
 			}
 
 			// Anti-tethering: set TTL=1 on IPv4 packets going out through this LAN device

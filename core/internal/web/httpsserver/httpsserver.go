@@ -1,13 +1,13 @@
-//go:build !dev
-
 package httpsserver
 
 import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	"core/utils/config"
 	"core/utils/env"
 	sdkutils "github.com/flarehotspot/sdk-utils"
 	"github.com/gorilla/mux"
@@ -193,18 +192,9 @@ func StartHTTPSServer(r *mux.Router) error {
 		return nil
 	}
 
-	// Check if HTTPS is enabled in config
-	cfg, err := config.GetCachedAppConfig()
-	if err != nil {
-		log.Printf("Error reading application config: %v\n", err)
-		return err
-	}
-
-	if !cfg.AdminWebHttps {
-		log.Println("Admin HTTPS is disabled in config, skipping HTTPS server")
-		return nil
-	}
-
+	// The portal HTTPS server always runs so the captive portal is served over a
+	// valid (cloud-issued) certificate. The admin_web_https flag only governs the
+	// admin HTTP->HTTPS redirect, not whether TLS is served at all.
 	addr := fmt.Sprintf(":%d", env.HTTPS_PORT)
 	log.Println("Starting HTTPS server on port", addr)
 
@@ -277,4 +267,62 @@ func GetCurrentRouter() *mux.Router {
 	httpsServerMu.Lock()
 	defer httpsServerMu.Unlock()
 	return currentRouter
+}
+
+// CurrentCertFingerprint returns the sha256 (hex) of the certificate currently
+// on disk, or "" if none exists. It matches the fingerprint the cloud computes
+// over the same PEM bytes, so the device can ask whether a newer cert exists.
+func CurrentCertFingerprint() string {
+	if !sdkutils.FsExists(certFile) {
+		return ""
+	}
+	b, err := os.ReadFile(certFile)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+// InstallCertificate writes a cloud-issued certificate + key to disk and, if the
+// HTTPS server is running, restarts it so the new material takes effect. Used by
+// the portal-cert fetch job after pulling a changed cert from the cloud.
+func InstallCertificate(certPEM, keyPEM []byte) error {
+	if len(certPEM) == 0 || len(keyPEM) == 0 {
+		return errors.New("install certificate: empty cert or key")
+	}
+
+	if err := sdkutils.FsEnsureDir(certDir); err != nil {
+		return fmt.Errorf("ensure certs dir: %w", err)
+	}
+	if err := os.WriteFile(certFile, certPEM, 0600); err != nil {
+		return fmt.Errorf("write cert: %w", err)
+	}
+	if err := os.WriteFile(keyFile, keyPEM, 0600); err != nil {
+		return fmt.Errorf("write key: %w", err)
+	}
+	log.Println("Installed portal certificate to", certDir)
+
+	// Snapshot running state under the lock, then (re)start outside it (Stop/Start
+	// take the same mutex, so holding it here would deadlock).
+	httpsServerMu.Lock()
+	running := httpsServerRunning
+	router := currentRouter
+	httpsServerMu.Unlock()
+
+	// No router captured yet means StartHTTPSServer has never been attempted;
+	// the next start will pick up the cert from disk.
+	if router == nil {
+		return nil
+	}
+
+	// If a prior start failed (e.g. certs dir wasn't writable) the server is not
+	// running but the router is known — start it now that a cert exists.
+	if running {
+		log.Println("Reloading HTTPS server with new certificate")
+		StopHTTPSServer()
+	} else {
+		log.Println("Starting HTTPS server with newly installed certificate")
+	}
+	return StartHTTPSServer(router)
 }

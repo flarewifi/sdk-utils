@@ -19,6 +19,12 @@ var (
 	// MachinePingInitialDelay - delay before first ping after startup
 	MachinePingInitialDelay = 200 * time.Second
 
+	// PortalCertInterval - how often to check the cloud for a renewed portal cert
+	PortalCertInterval = 600 * time.Second
+
+	// PortalCertInitialDelay - delay before the first portal cert fetch after startup
+	PortalCertInitialDelay = 15 * time.Second
+
 	// SessionCleanupInterval - how often to run session cleanup
 	SessionCleanupInterval = 500 * time.Second
 

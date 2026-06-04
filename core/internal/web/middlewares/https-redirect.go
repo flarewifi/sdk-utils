@@ -47,7 +47,11 @@ func HTTPSRedirect() func(http.Handler) http.Handler {
 
 			if !useHttps && isHTTPS {
 				var httpURL string
-				httpURL = fmt.Sprintf("http://%s:%d%s", host, env.HTTPS_PORT, r.URL.RequestURI())
+				if env.HTTP_PORT == 80 {
+					httpURL = fmt.Sprintf("http://%s%s", host, r.URL.RequestURI())
+				} else {
+					httpURL = fmt.Sprintf("http://%s:%d%s", host, env.HTTP_PORT, r.URL.RequestURI())
+				}
 				http.Redirect(w, r, httpURL, http.StatusSeeOther)
 				return
 			}

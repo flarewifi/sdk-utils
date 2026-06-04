@@ -7,22 +7,32 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func BuildLocalPlugins() error {
-	return BuildPluginDefs(LocalPluginSrcDefs())
+// BuildOpts controls whether codegen steps run during a build. The sqlc and
+// templ outputs are committed to the repo, so builders that run where those
+// tools are unavailable (e.g. on-device core_arch_bin builds) can skip
+// generation and rely on the committed files. The zero value generates
+// everything, preserving the default behavior for callers that don't opt out.
+type BuildOpts struct {
+	SkipTemplates bool // skip `templ generate` (use committed *_templ.go)
+	SkipQueries   bool // skip sqlc generation (use committed db/queries)
 }
 
-func BuildSystemPlugins() error {
-	return BuildPluginDefs(SystemPluginSrcDefs())
+func BuildLocalPlugins(opts BuildOpts) error {
+	return BuildPluginDefs(LocalPluginSrcDefs(), opts)
 }
 
-func BuildPluginDefs(pluginDefs []sdkutils.PluginSrcDef) error {
+func BuildSystemPlugins(opts BuildOpts) error {
+	return BuildPluginDefs(SystemPluginSrcDefs(), opts)
+}
+
+func BuildPluginDefs(pluginDefs []sdkutils.PluginSrcDef, opts BuildOpts) error {
 	for _, def := range pluginDefs {
 		pluginPath, err := sdkutils.FindPluginSrc(def.LocalPath)
 		if err != nil {
 			return err
 		}
 
-		if err := BuildPlugin(pluginPath); err != nil {
+		if err := BuildPlugin(pluginPath, opts); err != nil {
 			return err
 		}
 
@@ -44,7 +54,7 @@ func BuildPluginDefs(pluginDefs []sdkutils.PluginSrcDef) error {
 	return nil
 }
 
-func BuildPlugin(pluginPath string) error {
+func BuildPlugin(pluginPath string, opts BuildOpts) error {
 	workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(pluginPath))
 	defer os.RemoveAll(workdir)
 
@@ -52,15 +62,19 @@ func BuildPlugin(pluginPath string) error {
 		return err
 	}
 
-	if err := BuildTemplates(pluginPath); err != nil {
-		return err
+	if !opts.SkipTemplates {
+		if err := BuildTemplates(pluginPath); err != nil {
+			return err
+		}
 	}
 
-	if err := BuildQueries(pluginPath); err != nil {
-		return err
+	if !opts.SkipQueries {
+		if err := BuildQueries(pluginPath); err != nil {
+			return err
+		}
 	}
 
-	if err := BuildPluginSo(pluginPath, workdir); err != nil {
+	if err := BuildPluginSo(pluginPath, workdir, opts); err != nil {
 		return err
 	}
 

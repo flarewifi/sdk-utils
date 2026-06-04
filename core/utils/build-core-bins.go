@@ -8,9 +8,9 @@ import (
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-func BuildCoreBins() {
+func BuildCoreBins(opts plugins.BuildOpts) {
 	BuildFlareCLI()
-	BuildCore()
+	BuildCore(opts)
 
 	build := &sdkutils.BuildOutput{
 		OutputDir: filepath.Join(sdkutils.PathAppDir, "output/core-binaries"),
@@ -26,14 +26,18 @@ func BuildCoreBins() {
 	}
 }
 
-func BuildCore() {
+func BuildCore(opts plugins.BuildOpts) {
 
-	if err := plugins.BuildTemplates(sdkutils.PathCoreDir); err != nil {
-		panic(err)
+	if !opts.SkipTemplates {
+		if err := plugins.BuildTemplates(sdkutils.PathCoreDir); err != nil {
+			panic(err)
+		}
 	}
 
-	if err := plugins.BuildQueries(sdkutils.PathCoreDir); err != nil {
-		panic(err)
+	if !opts.SkipQueries {
+		if err := plugins.BuildQueries(sdkutils.PathCoreDir); err != nil {
+			panic(err)
+		}
 	}
 
 	if err := plugins.BuildAssets(sdkutils.PathCoreDir); err != nil {
@@ -42,7 +46,7 @@ func BuildCore() {
 
 	workdir := filepath.Join(sdkutils.PathTmpDir, "b/core", sdkutils.RandomStr(16))
 	defer os.RemoveAll(workdir)
-	if err := plugins.BuildPluginSo(sdkutils.PathCoreDir, workdir); err != nil {
+	if err := plugins.BuildPluginSo(sdkutils.PathCoreDir, workdir, opts); err != nil {
 		panic(err)
 	}
 }

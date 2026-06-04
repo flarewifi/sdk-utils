@@ -1,7 +1,10 @@
 package main
 
-import tools "core/utils"
+import (
+	tools "core/utils"
+	"core/utils/plugins"
+)
 
 func main() {
-	tools.BuildCore()
+	tools.BuildCore(plugins.BuildOpts{})
 }

@@ -2,5 +2,6 @@
   "lang": "en",
   "currency": "PHP",
   "secret": "",
-  "channel": "stable"
+  "channel": "stable",
+  "custom_domain": "captive.flarewifi.com"
 }

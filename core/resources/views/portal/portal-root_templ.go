@@ -44,29 +44,16 @@ func PortalRootPage(api sdkapi.IPluginApi, lanIP string, redirectPath string) te
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</title></head><body><div id=\"portal-root-container\" data-lan-ip=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</title></head><body><div id=\"portal-root-container\" data-redirect-path=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(lanIP)
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(redirectPath)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-root.templ`, Line: 15, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-root.templ`, Line: 15, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" data-redirect-path=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(redirectPath)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-root.templ`, Line: 16, Col: 37}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -74,16 +61,16 @@ func PortalRootPage(api sdkapi.IPluginApi, lanIP string, redirectPath string) te
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Redirecting"))
+		var templ_7745c5c3_Var4 string
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Redirecting"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-root.templ`, Line: 17, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/portal/portal-root.templ`, Line: 16, Col: 45}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</p></div><script>\n\t\t(function() {\n\t\t\tvar container = document.getElementById('portal-root-container');\n\t\t\tvar lanIP = container.getAttribute('data-lan-ip');\n\t\t\tvar redirectPath = container.getAttribute('data-redirect-path');\n\t\t\t\n\t\t\tif (lanIP && redirectPath) {\n\t\t\t\tvar redirectUrl = 'http://' + lanIP + redirectPath;\n\t\t\t\twindow.location.href = redirectUrl;\n\t\t\t} else if (redirectPath) {\n\t\t\t\t// Fallback: redirect to path on current host\n\t\t\t\twindow.location.href = redirectPath;\n\t\t\t} else {\n\t\t\t\t// Last resort fallback\n\t\t\t\twindow.location.href = '/portal/redirect';\n\t\t\t}\n\t\t})();\n\t\t</script></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</p></div><script>\n\t\t(function() {\n\t\t\tvar container = document.getElementById('portal-root-container');\n\t\t\tvar redirectPath = container.getAttribute('data-redirect-path');\n\t\t\t// Relative redirect keeps the client on the current origin — the portal\n\t\t\t// hostname served over HTTPS — instead of a hardcoded http:// URL that\n\t\t\t// would point at the HTTPS port over plain HTTP.\n\t\t\twindow.location.href = redirectPath || '/portal/redirect';\n\t\t})();\n\t\t</script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

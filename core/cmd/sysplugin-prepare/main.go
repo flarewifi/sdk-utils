@@ -3,6 +3,7 @@ package main
 import (
 	tools "core/utils"
 	"core/utils/plugins"
+	"flag"
 	"fmt"
 	"path/filepath"
 
@@ -35,6 +36,14 @@ import (
 // metadata entries written by the rest of the non-mono release flow for the
 // other plugin source types.
 func main() {
+	// sqlc (db/queries) and templ (*_templ.go) outputs are committed to the
+	// repo. On-device builds run where these tools are unavailable (and sqlc
+	// cannot compile on 32-bit targets), so pass --skip-sqlc / --skip-templ to
+	// build system plugins from the committed generated files instead.
+	skipSqlc := flag.Bool("skip-sqlc", false, "Skip sqlc generation; use the committed db/queries package")
+	skipTempl := flag.Bool("skip-templ", false, "Skip templ generation; use the committed *_templ.go files")
+	flag.Parse()
+
 	fmt.Println("Preparing system plugins (enforce three-file contract, build assets/sqlc/templ, install data)...")
 
 	tools.CreateGoWorkspace()
@@ -59,11 +68,15 @@ func main() {
 		tools.EnsurePluginSystemFiles(pluginDir)
 		tools.ValidatePluginContract(pluginDir)
 
-		if err := plugins.BuildQueries(pluginDir); err != nil {
-			panic(err)
+		if !*skipSqlc {
+			if err := plugins.BuildQueries(pluginDir); err != nil {
+				panic(err)
+			}
 		}
-		if err := plugins.BuildTemplates(pluginDir); err != nil {
-			panic(err)
+		if !*skipTempl {
+			if err := plugins.BuildTemplates(pluginDir); err != nil {
+				panic(err)
+			}
 		}
 		if err := plugins.BuildAssets(pluginDir); err != nil {
 			panic(err)

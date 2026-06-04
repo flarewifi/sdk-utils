@@ -27,7 +27,11 @@ RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architectur
         tar -C /usr/local -xzf golang.tar.gz && \
         rm -rf golang.tar.gz
 
-RUN mkdir -p /opt/flarehotspot /var/cache/go && \
+# Pre-create data/storage so the named volume mounted there inherits ubuntu
+# ownership on first creation (Docker seeds empty volumes from the image dir).
+# Without this the volume mountpoint defaults to root:root and the app
+# (running as ubuntu) cannot create data/storage/certs for the HTTPS server.
+RUN mkdir -p /opt/flarehotspot/data/storage /var/cache/go && \
     touch /etc/.tkn && \
     chown -R ubuntu:ubuntu \
     /opt/flarehotspot \
