@@ -168,8 +168,9 @@ func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams
 
 	// Always record MAC address to update last_seen_at and ensure is_current is set
 	// RecordMacAddress is idempotent - if MAC exists, it just updates timestamp
-
-	self.models.DeviceMac().RecordMacAddress(ctx, self.id, params.Mac)
+	if err := self.models.DeviceMac().RecordMacAddress(ctx, self.id, params.Mac); err != nil {
+		return fmt.Errorf("failed to record MAC address for device %d: %w", self.id, err)
+	}
 
 	self.hostname = params.Hostname
 	self.ipv4addr = params.Ipv4

@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -66,6 +67,9 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 	// CRITICAL: Check if this MAC is already marked as current for another device
 	// This prevents creating duplicate devices for the same MAC address
 	existingDeviceID, err := self.models.DeviceMac().FindDeviceByMac(ctx, params.MacAddress)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("failed to check existing device by MAC %s: %w", params.MacAddress, err)
+	}
 	if err == nil && existingDeviceID > 0 {
 		return nil, fmt.Errorf("MAC address %s is already registered to device %d (cannot create duplicate device)", params.MacAddress, existingDeviceID)
 	}
@@ -229,7 +233,9 @@ func (self *DeviceModel) Update(ctx context.Context, params UpdateDeviceParams) 
 
 	// Always record MAC address to update last_seen_at and ensure is_current is set
 	// RecordMacAddress is idempotent - if MAC exists, it just updates timestamp
-	self.models.DeviceMac().RecordMacAddress(ctx, params.ID, params.MacAddress)
+	if err := self.models.DeviceMac().RecordMacAddress(ctx, params.ID, params.MacAddress); err != nil {
+		return fmt.Errorf("failed to record MAC address for device %d: %w", params.ID, err)
+	}
 
 	return nil
 }
@@ -311,7 +317,9 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 	// 5. Merge wallets - transfer balance and transactions
 	sourceWallet, err := qtx.FindWalletByDeviceId(ctx, sourceDeviceID)
 	if err != nil {
-		// Continue - source device might not have a wallet
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("failed to find source wallet: %w", err)
+		}
 	} else {
 		targetWallet, err := qtx.FindWalletByDeviceId(ctx, targetDeviceID)
 		if err != nil {

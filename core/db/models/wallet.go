@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"time"
 
 	"core/db"
@@ -65,7 +67,10 @@ func (self *Wallet) Update(ctx context.Context, bal float64) error {
 func (self *Wallet) AvailableBal(ctx context.Context) (float64, error) {
 	pending, err := self.models.purchaseModel.PendingPurchase(ctx, self.deviceId)
 	if err != nil {
-		return 0, nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return self.balance, nil
+		}
+		return 0, err
 	}
 
 	dbt := pending.WalletDebit()
