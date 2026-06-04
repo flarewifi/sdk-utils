@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -50,7 +49,6 @@ type pendingMachineUpdate struct {
 func savePendingMachineUpdate(oldID, newID string) {
 	data, _ := json.Marshal(pendingMachineUpdate{OldID: oldID, NewID: newID})
 	_ = os.WriteFile(pendingMachineUpdateFile, data, 0644)
-	log.Printf("Saved pending machine ID update to %s", pendingMachineUpdateFile)
 }
 
 // loadPendingMachineUpdate loads any pending machine ID update from previous boot
@@ -69,7 +67,6 @@ func loadPendingMachineUpdate() *pendingMachineUpdate {
 // clearPendingMachineUpdate removes the pending update file after successful sync
 func clearPendingMachineUpdate() {
 	_ = os.Remove(pendingMachineUpdateFile)
-	log.Printf("Cleared pending machine ID update")
 }
 
 // buildMachineInfo builds a MachineInfo struct from system information
@@ -110,13 +107,10 @@ func buildMachineInfo(machineID string) (*rpc_flarewifi_v2.MachineInfo, error) {
 // updateMachineIDOnCloud updates the machine ID on the cloud server
 // Returns true if successful, false otherwise
 func updateMachineIDOnCloud(oldID, newID string) bool {
-	log.Printf("Updating machine ID on cloud: %s -> %s", oldID, newID)
-
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
 
 	machineInfo, err := buildMachineInfo(newID)
 	if err != nil {
-		log.Printf("Failed to build machine info: %v", err)
 		return false
 	}
 
@@ -129,20 +123,15 @@ func updateMachineIDOnCloud(oldID, newID string) bool {
 	for attempt := 1; attempt <= maxUpdateRetries; attempt++ {
 		_, err = srv.UpdateMachineInfo(ctx, req)
 		if err == nil {
-			log.Printf("Successfully updated machine ID on cloud")
 			return true
 		}
 
-		log.Printf("Attempt %d/%d failed: %v", attempt, maxUpdateRetries, err)
-
 		if attempt < maxUpdateRetries {
 			delay := retryBaseDelay * time.Duration(attempt)
-			log.Printf("Retrying in %v...", delay)
 			time.Sleep(delay)
 		}
 	}
 
-	log.Printf("All %d retries failed", maxUpdateRetries)
 	return false
 }
 
@@ -151,18 +140,12 @@ func updateMachineIDOnCloud(oldID, newID string) bool {
 func processMachineIDChange() {
 	// First check for pending update from previous boot
 	if pending := loadPendingMachineUpdate(); pending != nil {
-		log.Printf("Found pending machine ID update from previous boot: %s -> %s", pending.OldID, pending.NewID)
-
 		if updateMachineIDOnCloud(pending.OldID, pending.NewID) {
 			// Success - update local cache and clear pending
 			machineuid.WriteCachedMachineID(pending.NewID)
 			clearPendingMachineUpdate()
 			// Remove activation token since machine ID changed
 			_ = os.Remove(activationFile)
-			log.Printf("Pending machine ID update completed successfully")
-		} else {
-			// Failed again - keep pending file for next boot
-			log.Printf("Pending machine ID update failed, will retry on next boot")
 		}
 		return
 	}
@@ -176,18 +159,14 @@ func processMachineIDChange() {
 	}
 
 	// Machine ID has changed - update cloud first
-	log.Printf("Machine ID changed: %s -> %s", oldID, newID)
-
 	if updateMachineIDOnCloud(oldID, newID) {
 		// Success - update local cache
 		machineuid.WriteCachedMachineID(newID)
 		// Remove activation token since machine ID changed
 		_ = os.Remove(activationFile)
-		log.Printf("Machine ID update completed successfully")
 	} else {
 		// Failed - save for retry on next boot
 		savePendingMachineUpdate(oldID, newID)
-		log.Printf("Machine ID update failed, saved for retry on next boot")
 	}
 }
 
@@ -198,7 +177,6 @@ func CheckActivationFileExists() bool {
 	if _, err := os.Stat(activationFile); err == nil {
 		// File exists, optimistically assume activated
 		IsActivated.Store(true)
-		log.Printf("Activation file exists, optimistically setting activated=true")
 		return true
 	}
 	return false
@@ -226,7 +204,6 @@ func Validate() {
 		// If previously activated (token file exists), remove it
 		if _, err := os.Stat(activationFile); err == nil {
 			_ = os.Remove(activationFile)
-			log.Printf("Server validation failed, removing activation file and correcting optimistic assumption")
 		}
 		ActivationError.Store(ErrNotActivated)
 		IsActivated.Store(false)
@@ -234,17 +211,15 @@ func Validate() {
 	}
 
 	// 4. Server unreachable - fall back to offline validation
-	ok, errOffline := offlineActivation()
+	ok, _ := offlineActivation()
 	if ok {
 		IsActivated.Store(true)
-		log.Printf("Offline activation validation succeeded")
 		return
 	}
 
 	// Offline validation failed - token is invalid or expired
 	// Do NOT remove the activation file when server is unreachable
 	// Only remove when server explicitly says "not activated"
-	log.Printf("Offline activation validation failed (server unreachable): %v", errOffline)
 	ActivationError.Store(ErrNetworkIssue)
 	IsActivated.Store(false)
 }
@@ -357,9 +332,6 @@ func checkActivationOnline() (ok bool, err error) {
 		if attempt == maxAttempts-1 {
 			return false, ErrNetworkIssue
 		}
-
-		logMsg := fmt.Sprintf("Activation attempt %d failed: %v", attempt+1, err)
-		log.Println(logMsg)
 	}
 
 	if err != nil {

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"core/internal/api"
@@ -36,8 +35,6 @@ func CaptiveApiCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			log.Printf("[CaptiveApi] failed to encode response: %v", err)
-		}
+		json.NewEncoder(w).Encode(resp)
 	}
 }

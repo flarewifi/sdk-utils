@@ -1,7 +1,6 @@
 package fingerprint
 
 import (
-	"log"
 	"time"
 )
 
@@ -48,21 +47,13 @@ func ShouldMergeDevices(deviceA, deviceB MergeCandidate) MergeDecision {
 	// Case 1: Both have fingerprints - only merge if they match
 	if hasA && hasB {
 		kind := FingerprintsMatchKind(deviceA.Fingerprints, deviceB.Fingerprints)
-		log.Printf("[Merge] fingerprintsMatchKind for devices %d and %d returned: %d (MatchNone=0, MatchCNA=1, MatchBrowser=2)", deviceA.DeviceID, deviceB.DeviceID, kind)
 		if kind == MatchNone {
-			log.Printf("[Merge] Devices %d and %d have fingerprints but they don't match", deviceA.DeviceID, deviceB.DeviceID)
 			return MergeDecision{ShouldMerge: false}
 		}
 
 		// CNA-CNA SmartMatch is OS-family-only — require same current MAC and IP
 		// (and hostname when both non-empty) to guard against false positives.
 		if kind == MatchCNA && !CnaMACIPMatch(deviceA, deviceB) {
-			log.Printf("[Merge] Skipping CNA pair (%d, %d): MAC/IP/hostname mismatch (mac: %q vs %q, ip: %q vs %q, hostname: %q vs %q)",
-				deviceA.DeviceID, deviceB.DeviceID,
-				deviceA.CurrentMAC, deviceB.CurrentMAC,
-				deviceA.CurrentIP, deviceB.CurrentIP,
-				deviceA.Hostname, deviceB.Hostname,
-			)
 			return MergeDecision{ShouldMerge: false}
 		}
 
@@ -93,8 +84,6 @@ func ShouldMergeDevices(deviceA, deviceB MergeCandidate) MergeDecision {
 	// physical device. Shared MAC alone is not sufficient (MAC randomization,
 	// reuse across devices). Devices will be reconsidered once both accumulate
 	// browser fingerprints through normal registration.
-	log.Printf("[Merge] Skipping pair (%d, %d): insufficient fingerprint data (hasA=%v, hasB=%v)",
-		deviceA.DeviceID, deviceB.DeviceID, hasA, hasB)
 	return MergeDecision{ShouldMerge: false}
 }
 
@@ -136,10 +125,8 @@ func FingerprintsMatchKind(fpsA, fpsB []StoredFingerprint) MatchKind {
 					// Browser SmartMatch (OS + screen + language) — too loose for merge.
 					// Two different Android devices of the same model/locale would match.
 					// Only ExactMatch (full hash) is accepted for browser-to-browser merges.
-					log.Printf("[Merge] Skipping browser SmartMatch (too permissive for merge): os=(%s,%s) screen=(%s,%s)", a.OSFamily, b.OSFamily, a.ScreenResolution, b.ScreenResolution)
 				} else {
 					// One CNA, one browser: SmartMatch is OS-only — too weak for a merge.
-					log.Printf("[Merge] Skipping CNA↔browser SmartMatch (too permissive for merge): isCNA=(%v,%v) os=(%s,%s)", a.IsCna, b.IsCna, a.OSFamily, b.OSFamily)
 				}
 			}
 		}

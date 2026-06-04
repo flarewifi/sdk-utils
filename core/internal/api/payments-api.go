@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 
 	"core/db/models"
@@ -30,7 +29,6 @@ type PaymentsApi struct {
 }
 
 func (self *PaymentsApi) NewPaymentProvider(provider sdkapi.IPaymentProvider) {
-	log.Println("Registering payment method:", provider.Name())
 	self.paymentsMgr.NewPaymentProvider(self.api, provider)
 }
 
@@ -40,7 +38,6 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 
 		clnt, err := self.api.Http().GetClientDevice(r)
 		if err != nil {
-			log.Println("helpers.CurrentClient error:", err)
 			self.ErrorPage(w, err)
 			return
 		}
@@ -81,22 +78,18 @@ func (self *PaymentsApi) GetPurchaseRequest(r *http.Request) (sdkapi.IPurchaseRe
 	mdls := self.api.models
 	clnt, err := self.api.HttpAPI.GetClientDevice(r)
 	if err != nil {
-		log.Println("helpers.CurrentClient error:", err)
 		return nil, err
 	}
 
 	p, err := mdls.Purchase().PendingPurchase(r.Context(), clnt.ID())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Println("No pending purchase found for device:", clnt.ID())
 			return nil, errors.New("No pending purchase found")
 		}
-		log.Println("mdls.Purchase().FindByDeviceId error:", err)
 		return nil, err
 	}
 
 	if p.IsCancelled() || p.IsConfirmed() {
-		log.Println("Purchase is already processed")
 		return nil, errors.New("Purchase is already processed")
 	}
 
@@ -110,7 +103,6 @@ func (self *PaymentsApi) FindPurchaseRequestByUUID(uuid string) (sdkapi.IPurchas
 
 	p, err := mdls.Purchase().FindByUUID(ctx, uuid)
 	if err != nil {
-		log.Printf("mdls.Purchase().FindByUUID error for uuid %s: %v", uuid, err)
 		return nil, err
 	}
 
@@ -161,7 +153,6 @@ func (self *PaymentsApi) ExtractPurchaseData(r *http.Request) (sdkapi.IPurchaseR
 	// Verify the token and extract claims
 	claims, err := helpers.VerifyPurchaseToken(token)
 	if err != nil {
-		log.Printf("ExtractPurchaseData: Token verification failed: %v", err)
 		return nil, err
 	}
 

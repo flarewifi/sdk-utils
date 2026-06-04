@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"log"
 	"net"
 	"strings"
 
@@ -95,7 +94,6 @@ func GetNetworkInterfaces() (map[string]*NetworkInterface, error) {
 	ifMap := map[string]*NetworkInterface{}
 
 	for _, iface := range list {
-		log.Println("Get iface:", iface)
 		ifaceData, err := GetNetworkInterface(iface)
 		if err != nil {
 			return nil, err

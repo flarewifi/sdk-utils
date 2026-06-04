@@ -8,9 +8,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -76,15 +74,12 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 		Channel:        strings.ToLower(cfg.Channel),
 	}
 
-	log.Println("\nChecking software version:")
 	sdkutils.PrettyPrint(&params)
 
 	result, err := srv.FetchLatestSoftwareRelease(ctx, &params)
 	if err != nil {
 		return nil, ErrCheckUpdate
 	}
-
-	fmt.Printf("Software update check result: %+v\n", result)
 
 	if !result.HasUpdate {
 		return &SoftwareReleaseUpdate{HasUpdate: false}, nil
@@ -163,7 +158,6 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 
 		for result := range ch {
 			if result.Error != nil {
-				log.Println("Error downloading update file:", result.Error)
 				downloadError.Store(&result.Error)
 				return
 			}
@@ -171,11 +165,6 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 			downloadPercent.Store(int32(result.Percent))
 			downloadedBytes.Store(result.Downloaded)
 			totalSizeBytes.Store(result.TotalSize)
-			prev := prevPercent.Load()
-
-			if prev < int32(result.Percent) {
-				log.Println("Download percent:", result.Percent)
-			}
 			prevPercent.Store(int32(result.Percent))
 		}
 	}()
@@ -187,8 +176,6 @@ func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 
 	go func() {
 		defer close(resultCh)
-
-		log.Println("Downloading update file from", params.FileURL, "to", params.OutputPath)
 
 		// Ensure the destination directory exists
 		outputDir := filepath.Dir(params.OutputPath)
@@ -267,35 +254,24 @@ func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 		if params.Checksum != "" {
 			actualChecksum := base64.StdEncoding.EncodeToString(hasher.Sum(nil))
 			if actualChecksum != params.Checksum {
-				log.Printf("Checksum mismatch: expected %s, got %s", params.Checksum, actualChecksum)
 				os.Remove(params.OutputPath)
 				resultCh <- DownloadResult{Error: ErrChecksumMismatch}
 				return
 			}
-			log.Println("Checksum verified successfully")
 		}
-
-		log.Println("Update file downloaded to", params.OutputPath)
 
 		// For sysupgrade files, use the shared finalization path
 		// This validates compatibility and creates the marker file
 		if params.IsSysupgrade {
-			log.Println("Finalizing sysupgrade...")
 			if err := FinalizeSysupgrade(); err != nil {
-				log.Println("Sysupgrade finalization failed:", err)
 				resultCh <- DownloadResult{Error: err}
 				return
 			}
-			log.Println("Sysupgrade finalized successfully")
 		} else {
 			// For regular updates, create the completion marker
-			if err := sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir); err != nil {
-				log.Println("Warning: failed to create marker directory:", err)
-			}
+			sdkutils.FsEnsureDir(sdkutils.PathSystemUpdateDir)
 			markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
-			if err := os.WriteFile(markerPath, []byte("complete"), 0644); err != nil {
-				log.Println("Warning: failed to create download completion marker:", err)
-			}
+			os.WriteFile(markerPath, []byte("complete"), 0644)
 		}
 
 		resultCh <- DownloadResult{

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"log"
 	sdkapi "sdk/api"
 
 	"core/db/models"
@@ -59,17 +58,14 @@ func (n *NotificationAPI) MarkAllAsRead(ctx context.Context) error {
 func (n *NotificationAPI) sendEvent(api *PluginApi, notif *sdkapi.Notification) {
 	accts, err := api.AcctAPI.GetAll()
 	if err != nil {
-		log.Println("No accounts found:", err)
 		return
 	}
 
 	data, err := json.Marshal(notif)
 	if err != nil {
-		log.Println("Notification json error:", err)
 		return
 	}
 
-	// Send to all admin accounts
 	for _, acct := range accts {
 		acct.Emit(sdkapi.FlareNotificationEvent, data)
 	}

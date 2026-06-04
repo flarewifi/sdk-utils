@@ -2,11 +2,11 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	machineuid "core/internal/modules/machine-uid"
 	rpcutil "core/internal/modules/rpc"
 	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/utils/env"
-	"log"
 	"net/http"
 
 	"github.com/twitchtv/twirp"
@@ -28,7 +28,7 @@ func GetTwirpServiceAndCtx() (rpc_flarewifi_v2.FlarehotspotService, context.Cont
 	ctx := context.Background()
 	ctx, err := twirp.WithHTTPRequestHeaders(ctx, header)
 	if err != nil {
-		log.Fatalf("twirp error setting headers: %s", err)
+		panic(fmt.Errorf("twirp error setting headers: %s", err))
 	}
 
 	return srv, ctx

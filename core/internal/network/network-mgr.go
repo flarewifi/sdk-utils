@@ -3,7 +3,6 @@ package network
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -83,11 +82,7 @@ func addLan(lan *NetworkLan) error {
 		if _, cidr6, err := net.ParseCIDR(cidr6Str); err == nil {
 			entry.cidr6 = cidr6
 			entry.ipv6Addr = ipv6.Addr
-		} else {
-			log.Printf("WARNING: Invalid IPv6 CIDR '%s' for LAN '%s': %v", cidr6Str, lan.Name(), err)
 		}
-	} else {
-		log.Printf("INFO: No IPv6 address found for LAN '%s': %v", lan.Name(), err)
 	}
 
 	registry.mu.Lock()
@@ -135,8 +130,6 @@ func updateLanCidr(lanName string, lan *NetworkLan) error {
 		if _, cidr6, err := net.ParseCIDR(cidr6Str); err == nil {
 			entry.cidr6 = cidr6
 			entry.ipv6Addr = ipv6.Addr
-		} else {
-			log.Printf("WARNING: Invalid IPv6 CIDR '%s' for LAN '%s': %v", cidr6Str, lanName, err)
 		}
 	}
 
@@ -152,54 +145,42 @@ func listenLanEvents(lan *NetworkLan) {
 	for evt := range ch {
 		netQueue.Exec("listenLanEvents", func() (any, error) {
 			if evt.Event == ubus.IfEventDown && lan.Up() {
-				log.Printf("LAN interface '%s' went DOWN", lan.Name())
 				lan.SetStatus(false)
 			}
 
 			if evt.Event == ubus.IfEventUp && !lan.Up() {
-				log.Printf("LAN interface '%s' came UP, reinitializing...", lan.Name())
 				time.Sleep(1000 * time.Millisecond) // add delay to wait for complete network bootup
 
 				// Reinitialize TC (handles IP changes and ensures proper setup)
 				err := lan.ReinitializeTc()
 				if err != nil {
-					log.Printf("ERROR: Failed to reinitialize TC for LAN '%s': %v", lan.Name(), err)
 					return nil, err
 				}
 
 				// Rebuild CIDR cache — IP may have changed after reinit
 				if err := updateLanCidr(lan.Name(), lan); err != nil {
-					log.Printf("ERROR: Failed to update CIDR cache for LAN '%s': %v", lan.Name(), err)
 					return nil, err
 				}
 
 				lan.SetStatus(true)
-				log.Printf("LAN interface '%s' reinitialized successfully", lan.Name())
 			}
 
 			return nil, nil
 		})
 
-		log.Println("Interface event: ", evt)
 	}
 }
 
 func SetupLanInterfaces() (err error) {
-	log.Println("SetupLanInterfaces: Starting LAN interface setup...")
-
 	ifaces, err := ubus.GetInterfaceNames()
-	log.Println("ubus.GetNetworkInterfaces(): ", ifaces)
 	if err != nil {
-		log.Printf("ERROR: Failed to get interface names from UBUS: %v", err)
 		return err
 	}
 
 	cfg, err := config.ReadBandwidthConfig()
 	if err != nil {
-		log.Printf("ERROR: Failed to read bandwidth config: %v", err)
 		return err
 	}
-	log.Printf("Bandwidth config loaded. Configured LANs: %v", getConfiguredLanNames(cfg))
 
 	lanCount := 0
 	for _, ifname := range ifaces {
@@ -209,26 +190,15 @@ func SetupLanInterfaces() (err error) {
 
 			err = lan.SetupTrafficControl()
 			if err != nil {
-				log.Printf("ERROR: Failed to setup traffic control for interface %s: %v", ifname, err)
 				return err
 			}
 			go listenLanEvents(lan)
 
 			if err = addLan(lan); err != nil {
-				log.Printf("ERROR: Failed to add LAN '%s' to registry: %v", ifname, err)
 				return err
 			}
 			lanCount++
-			log.Printf("LAN interface '%s' added to registry", ifname)
-		} else {
-			log.Printf("Interface '%s' not found in bandwidth config, skipping", ifname)
 		}
-	}
-
-	log.Printf("SetupLanInterfaces complete: %d LAN(s) configured", lanCount)
-
-	if lanCount == 0 {
-		log.Println("WARNING: No LAN interfaces were configured! Check bandwidth.json config.")
 	}
 
 	return nil

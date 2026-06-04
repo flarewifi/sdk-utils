@@ -352,8 +352,6 @@ func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) 
 	// to call Disconnect unconditionally; it becomes a no-op when already disconnected.
 	if self.IsConnected(device) {
 		if disconnectErr := self.Disconnect(ctx, device, "Session deleted"); disconnectErr != nil {
-			// Log but don't fail - we still want to delete
-			self.pluginApi.Logger().Error(fmt.Sprintf("Failed to disconnect device before session deletion: %v", disconnectErr))
 		}
 	}
 

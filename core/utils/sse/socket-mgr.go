@@ -7,7 +7,6 @@
 package sse
 
 import (
-	"log"
 	"sync"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
@@ -26,8 +25,6 @@ func AddSocket(key string, socket *SseSocket) {
 
 	sockets = append(sockets, socket)
 	socketStore.Store(key, sockets)
-
-	log.Printf("Socket %s attached to \"%s\"...", socket.ID(), key)
 
 	go func() {
 		<-socket.Done()
@@ -48,8 +45,6 @@ func RemoveSocket(key string, socket *SseSocket) {
 		} else {
 			socketStore.Store(key, sockets)
 		}
-
-		log.Printf("Socket %s detached from \"%s\"...\n", socket.ID(), key)
 	}
 }
 

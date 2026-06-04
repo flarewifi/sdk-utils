@@ -9,7 +9,6 @@ package sse
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -20,7 +19,6 @@ import (
 func NewSocket(w http.ResponseWriter, r *http.Request) (s *SseSocket, err error) {
 	f, ok := w.(http.Flusher)
 	if !ok {
-		log.Println("Streaming not supported in path: ", r.URL.Path)
 		err = errors.New("streaming not supported")
 		return nil, err
 	}
@@ -87,7 +85,6 @@ func (s *SseSocket) Listen() {
 				fmt.Fprintf(s.res, "data: %s\n", line)
 			}
 			fmt.Fprint(s.res, "\n")
-			log.Printf("Socket data: id: %d, event: %s, data: %s", s.msgId, d.MsgType, data)
 			s.Flush()
 			s.msgId += 1
 		case <-s.Done():

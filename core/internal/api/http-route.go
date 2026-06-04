@@ -1,7 +1,7 @@
 package api
 
 import (
-	"log"
+	"fmt"
 	"strings"
 
 	"core/internal/web/router"
@@ -29,11 +29,11 @@ func (self *HttpRoute) Queries(pairs ...string) sdkapi.IHttpRoute {
 func (self *HttpRoute) Name(name sdkapi.PluginRouteName) sdkapi.IHttpRoute {
 	if self.admin {
 		if !strings.HasPrefix(string(name), RouteNameAdminPrefix) {
-			log.Fatalf(`The admin route name "%s" must have a prefix "%s", for example: "%sdashboard.index"`, name, RouteNameAdminPrefix, RouteNameAdminPrefix)
+			panic(fmt.Errorf(`The admin route name "%s" must have a prefix "%s", for example: "%sdashboard.index"`, name, RouteNameAdminPrefix, RouteNameAdminPrefix))
 		}
 	} else {
 		if strings.HasPrefix(string(name), RouteNameAdminPrefix) {
-			log.Fatalf(`Route name "%s" must not have a prefix "%s"`, name, RouteNameAdminPrefix)
+			panic(fmt.Errorf(`Route name "%s" must not have a prefix "%s"`, name, RouteNameAdminPrefix))
 		}
 	}
 

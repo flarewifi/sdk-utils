@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"core/db"
@@ -245,7 +244,6 @@ func (self *Session) Update(ctx context.Context, t string, secs int, mb float64,
 		ID:              self.id,
 	})
 	if err != nil {
-		log.Printf("error updating session %v: %v", self.id, err)
 		return err
 	}
 

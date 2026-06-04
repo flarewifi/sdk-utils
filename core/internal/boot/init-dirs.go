@@ -1,7 +1,6 @@
 package boot
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -22,7 +21,7 @@ func InitDirs() {
 		go func(d string) {
 			defer wg.Done()
 			if err := os.MkdirAll(d, sdkutils.PermDir); err != nil {
-				log.Fatal(err)
+				panic(err)
 			}
 		}(d)
 	}

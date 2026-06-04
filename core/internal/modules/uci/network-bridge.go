@@ -3,7 +3,6 @@ package uci
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	sdkapi "sdk/api"
 )
@@ -37,7 +36,6 @@ func (self *UciNetworkApi) GetBridgeVlanFilter(section string) (enabled bool) {
 func (self *UciNetworkApi) GetBridgePorts(section string) (ports []string, err error) {
 	types, ok := UciTree.Get("network", section, "type")
 	if !ok {
-		log.Println("Device " + section + " type is not a bridge")
 		return nil, sdkapi.ErrNotBridge
 	}
 

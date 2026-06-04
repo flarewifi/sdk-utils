@@ -3,7 +3,6 @@ package hostfinder
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strings"
@@ -72,18 +71,14 @@ func FindHostFromDhcp6Lease(ip string, leasePath string) (*Dhcp6LeaseInfo, error
 	}
 	normalizedSearchIP := searchIP.String()
 
-	log.Printf("[DHCP6 Lease] DEBUG: Opening lease file: %s, searching for IP=%s", leasePath, normalizedSearchIP)
 	file, err := os.Open(leasePath)
 	if err != nil {
-		log.Printf("[DHCP6 Lease] ERROR: Failed to open %s: %v", leasePath, err)
 		return nil, fmt.Errorf("failed to open DHCPv6 leases file %s: %w", leasePath, err)
 	}
 	defer file.Close()
 
-	lineCount := 0
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		lineCount++
 		line := strings.TrimSpace(scanner.Text())
 
 		// Skip empty lines
@@ -115,7 +110,6 @@ func FindHostFromDhcp6Lease(ip string, leasePath string) (*Dhcp6LeaseInfo, error
 			if len(fields) >= 8 {
 				mac = fields[7]
 			}
-			log.Printf("[DHCP6 Lease] SUCCESS (odhcpd): IP=%s MAC=%s Hostname=%s", ip, mac, hostname)
 			return &Dhcp6LeaseInfo{Mac: mac, Hostname: hostname}, nil
 		}
 
@@ -138,15 +132,12 @@ func FindHostFromDhcp6Lease(ip string, leasePath string) (*Dhcp6LeaseInfo, error
 		if hostname == "*" || hostname == "-" {
 			hostname = ""
 		}
-		log.Printf("[DHCP6 Lease] SUCCESS (dnsmasq): IP=%s MAC=%s Hostname=%s", ip, mac, hostname)
 		return &Dhcp6LeaseInfo{Mac: mac, Hostname: hostname}, nil
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Printf("[DHCP6 Lease] ERROR: Scanner error reading %s: %v", leasePath, err)
 		return nil, fmt.Errorf("error reading DHCPv6 leases: %w", err)
 	}
 
-	log.Printf("[DHCP6 Lease] DEBUG: IP %s not found in %s (scanned %d lines)", ip, leasePath, lineCount)
 	return nil, nil
 }

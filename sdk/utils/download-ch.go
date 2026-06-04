@@ -6,7 +6,6 @@ import (
 	"errors"
 	"hash"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,8 +22,6 @@ type DownloadWithProgressOpts struct {
 func DownloadWithProgress(url, dest string, opts ...*DownloadWithProgressOpts) (<-chan int, <-chan error) {
 	progress := make(chan int)
 	errChan := make(chan error, 1)
-
-	log.Println("Downloading", url, "to", dest)
 
 	go func() {
 		defer close(progress)
@@ -102,11 +99,9 @@ func DownloadWithProgress(url, dest string, opts ...*DownloadWithProgressOpts) (
 				if expectedChecksum != "" {
 					actualChecksum := base64.StdEncoding.EncodeToString(hasher.Sum(nil))
 					if actualChecksum != expectedChecksum {
-						log.Printf("Checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum)
 						errChan <- ErrChecksumVerificationFailed
 						return
 					}
-					log.Println("Checksum verified successfully")
 				}
 
 				errChan <- nil

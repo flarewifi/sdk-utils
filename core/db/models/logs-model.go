@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"log"
 	"strconv"
 
 	"core/db"
@@ -65,9 +64,7 @@ func (self *LogModel) Clear(ctx context.Context) error {
 
 	// Reclaim disk space immediately after a full log clear (user-triggered,
 	// so blocking is acceptable). Log any error — don't swallow it silently.
-	if err := self.models.Vacuum(ctx); err != nil {
-		log.Printf("[LogModel.Clear] WARN: VACUUM failed after log clear: %v", err)
-	}
+
 
 	return nil
 }

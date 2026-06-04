@@ -1,8 +1,6 @@
 package boot
 
 import (
-	"log"
-
 	"core/internal/modules/nftables"
 	"core/internal/network"
 )
@@ -10,13 +8,11 @@ import (
 func InitNetwork() (err error) {
 	err = nftables.Setup()
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
 	err = network.SetupLanInterfaces()
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 

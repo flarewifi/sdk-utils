@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -36,7 +35,6 @@ func MakeGitCache(repo GitRepoSource, clonePath string) error {
 	if err := FsCopyDir(clonePath, cachePath, nil); err != nil {
 		return err
 	}
-	log.Printf("Repository cached to %s", cachePath)
 	return nil
 }
 
@@ -62,8 +60,6 @@ func GitClone(repo GitRepoSource, clonePath string) error {
 			return fmt.Errorf("Error: %s\nStderr: %s", err.Error(), stderr.String())
 		}
 
-		log.Printf("Repository cloned to %s", clonePath)
-
 		// If a specific ref (branch, tag, commit) is provided, checkout that ref
 		if repo.Ref != "" {
 			// Prepare the checkout command
@@ -78,8 +74,6 @@ func GitClone(repo GitRepoSource, clonePath string) error {
 			if err := MakeGitCache(repo, clonePath); err != nil {
 				return err
 			}
-
-			log.Printf("Checked out ref %s", repo.Ref)
 		}
 	}
 

@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"log"
 
 	"core/db"
 	"core/db/queries"
@@ -33,7 +32,6 @@ func (self *WalletTrnsModel) Create(ctx context.Context, params CreateWalletTrns
 		Description: params.Description,
 	})
 	if err != nil {
-		log.Println("error creating wallet transaction:", err)
 		return nil, err
 	}
 
@@ -52,7 +50,6 @@ func (self *WalletTrnsModel) Create(ctx context.Context, params CreateWalletTrns
 func (self *WalletTrnsModel) Find(ctx context.Context, id int64) (*WalletTrns, error) {
 	wt, err := self.db.Queries.FindWalletTrns(ctx, id)
 	if err != nil {
-		log.Printf("error finding wallet transaction %v: %v\n", id, err)
 		return nil, err
 	}
 

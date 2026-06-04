@@ -5,7 +5,6 @@ package ubus
 import (
 	"bytes"
 	"fmt"
-	"log"
 
 	"github.com/goccy/go-json"
 
@@ -43,6 +42,5 @@ func GetNetworkDevice(device string) (*NetworkDevice, error) {
 	var dev NetworkDevice
 	err = json.Unmarshal(out.Bytes(), &dev)
 	dev.Name = device
-	log.Println(dev)
 	return &dev, err
 }

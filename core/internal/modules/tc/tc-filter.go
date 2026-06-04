@@ -3,7 +3,6 @@ package tc
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	ifbutil "core/internal/modules/network"
@@ -36,7 +35,6 @@ func NewTcFilter(dev string, ip string, netmask int) (*TcFilter, error) {
 
 	seg, err := newIpsegmt(ip, netmask)
 	if err != nil {
-		log.Println("tc error: " + err.Error())
 		return nil, err
 	}
 
@@ -179,7 +177,6 @@ func (self *TcFilter) Setup() error {
 			for _, c := range cmds {
 				err := cmd.Exec(c, nil)
 				if err != nil {
-					log.Println("Error in tc filter setup: ", err)
 					return nil, err
 				}
 			}

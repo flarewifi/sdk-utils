@@ -4,7 +4,6 @@ package nftables
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"sync"
@@ -113,7 +112,6 @@ func SetupCaptivePortal(dev string, routerIp4 string, routerIp6 string) (err err
 	if routerIp6 != "" {
 		parsed := net.ParseIP(routerIp6)
 		if parsed == nil || parsed.IsLinkLocalUnicast() {
-			log.Printf("[WARN] SetupCaptivePortal: ignoring link-local/invalid IPv6 address %q for dev %s", routerIp6, dev)
 			routerIp6 = ""
 		}
 	}
@@ -206,7 +204,6 @@ func IsConnected(mac string) bool {
 	)
 
 	if err != nil {
-		log.Printf("[ERROR] IsConnected check failed for %s: %v", mac, err)
 		return false
 	}
 
@@ -252,7 +249,6 @@ func isConnected(mac string) bool {
 	// Validate and normalize MAC address
 	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
 	if err != nil {
-		log.Printf("[ERROR] isConnected: invalid MAC address '%s': %v", mac, err)
 		return false
 	}
 

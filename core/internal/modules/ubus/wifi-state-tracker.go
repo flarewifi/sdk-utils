@@ -1,7 +1,6 @@
 package ubus
 
 import (
-	"log"
 	"sync"
 	"time"
 )
@@ -141,7 +140,6 @@ func (t *ClientStateTracker) OnTrafficDetected(mac string) bool {
 			lastActivity:    now,
 			lastStateChange: now,
 		}
-		log.Printf("[StateTracker] Unknown MAC with traffic detected, marking connected: %s", mac)
 		return true
 	}
 
@@ -214,20 +212,14 @@ func (t *ClientStateTracker) cleanupStaleClients() {
 	for range ticker.C {
 		t.mu.Lock()
 		now := time.Now()
-		removed := 0
 
 		for mac, state := range t.clients {
 			if state.state == StateDisconnected {
 				staleDuration := now.Sub(state.lastStateChange)
 				if staleDuration >= staleClientTimeout {
 					delete(t.clients, mac)
-					removed++
 				}
 			}
-		}
-
-		if removed > 0 {
-			log.Printf("[StateTracker] Cleaned up %d stale disconnected clients", removed)
 		}
 
 		t.mu.Unlock()

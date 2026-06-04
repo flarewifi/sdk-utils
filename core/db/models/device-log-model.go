@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"encoding/json"
-	"log"
 
 	"core/db"
 	"core/db/queries"
@@ -32,7 +31,6 @@ func NewDeviceLogModel(database *db.Database, mdls *Models) *DeviceLogModel {
 func (self *DeviceLogModel) Create(ctx context.Context, deviceID int64, message string, metadata map[string]interface{}) error {
 	metaJSON, err := json.Marshal(metadata)
 	if err != nil {
-		log.Printf("[DeviceLogModel.Create] WARN: Failed to marshal metadata: %v", err)
 		metaJSON = []byte("{}")
 	}
 

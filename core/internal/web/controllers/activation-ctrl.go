@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -56,12 +55,9 @@ func (ctrl *ActivationCtrl) ValidateActivation(w http.ResponseWriter, r *http.Re
 
 	// If activation succeeded, trigger system reboot to ensure proper initialization
 	if activation.IsActivated.Load() {
-		log.Println("Activation successful - scheduling system reboot")
-
 		// Schedule reboot in a goroutine to allow response to be sent first
 		go func() {
 			time.Sleep(2 * time.Second) // Give time for response to reach client
-			log.Println("Rebooting system after activation")
 			cmd.Exec("reboot", nil)
 		}()
 	}

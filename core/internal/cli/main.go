@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -197,11 +196,11 @@ func BuildPlugin() {
 	searchPath := rest[0]
 	pluginPath, err := sdkutils.FindPluginSrc(searchPath)
 	if err != nil {
-		log.Fatalf("Error finding plugin source in %s: %s\n", searchPath, err.Error())
+		panic(fmt.Errorf("Error finding plugin source in %s: %s", searchPath, err.Error()))
 	}
 
 	if err := plugins.BuildPlugin(pluginPath, opts); err != nil {
-		log.Fatalf("Error building plugin in %s: %s\n", pluginPath, err.Error())
+		panic(fmt.Errorf("Error building plugin in %s: %s", pluginPath, err.Error()))
 	}
 }
 

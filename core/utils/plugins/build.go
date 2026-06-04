@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -26,8 +25,6 @@ func BuildFromLocal(w io.Writer, db *sql.DB, def sdkutils.PluginSrcDef) (sdkutil
 		return sdkutils.PluginInfo{}, err
 	}
 
-	// TODO: remove logs
-	log.Println("Marking plugins..")
 	if err := WriteMetadata(def, info.Package); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
@@ -186,9 +183,7 @@ use (
 	}
 
 	pluginSoOut := filepath.Join(goBuildPath, "plugin.so")
-	fmt.Printf("Copying '%s' to '%s'\n", sdkutils.StripRootPath(pluginSoOut), sdkutils.StripRootPath(pluginSoPath))
 	if err := sdkutils.FsCopyFile(pluginSoOut, pluginSoPath); err != nil {
-		log.Printf("Error copying '%s' to '%s': %+v\n", pluginSoOut, pluginSoPath, err)
 		return err
 	}
 

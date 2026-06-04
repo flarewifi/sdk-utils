@@ -2,7 +2,6 @@ package boot
 
 import (
 	cmd "core/utils/shell"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -15,7 +14,6 @@ func InitOpkg() {
 
 	packagesDir := filepath.Join(sdkutils.PathAppDir, "packages")
 	if err := sdkutils.FsListFiles(packagesDir, &files, true); err != nil {
-		log.Printf("Error listing files in packages in %s: %v", packagesDir, err.Error())
 		return
 	}
 
@@ -25,7 +23,6 @@ func InitOpkg() {
 				Stdout: os.Stdout,
 				Stderr: os.Stderr,
 			}); err != nil {
-				log.Printf("Error installing ipk file %s: %v", f, err.Error())
 				return
 			}
 

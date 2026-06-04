@@ -44,8 +44,7 @@ func (self *DeviceMacModel) RecordMacAddress(ctx context.Context, deviceID int64
 	if count >= 100 {
 		log.Printf("[ClientDeviceMac] WARN: Device %d has %d MACs (limit reached), deleting oldest inactive MAC", deviceID, count)
 		if err := self.db.Queries.DeleteOldestInactiveMac(ctx, deviceID); err != nil {
-			log.Printf("[ClientDeviceMac] ERROR: Failed to delete oldest MAC: %v", err)
-			// Continue anyway - don't block on cleanup
+			return err
 		}
 	}
 

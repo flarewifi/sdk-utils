@@ -3,7 +3,6 @@ package download
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -33,8 +32,6 @@ func (d *Downloader) Download() error {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
 	defer out.Close()
-
-	log.Println("Downloading", d.srcUrl, "to", d.destPath)
 
 	// Get the data
 	resp, err := http.Get(d.srcUrl)

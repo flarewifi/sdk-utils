@@ -5,7 +5,6 @@ package ubus
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -56,21 +55,17 @@ type hostapdProcess struct {
 // Start begins listening for WiFi client events from hostapd using hostapd_cli action mode.
 // Also starts traffic-based fallback detection in parallel to catch missed events.
 func (self *WifiMgr) Start() {
-	log.Println("[WifiMgr] Starting WiFi event listener")
-
 	// Always start the fallback detector in parallel
 	// This ensures we catch disconnects even if hostapd_cli misses events
 	self.startFallback()
 
 	// Check if hostapd_cli is available
 	if _, err := exec.LookPath("hostapd_cli"); err != nil {
-		log.Printf("[WifiMgr] hostapd_cli not found, relying on fallback traffic-based detection only")
 		return
 	}
 
 	// Check if hostapd sockets exist
 	if _, err := os.Stat(hostapdSocketDir); os.IsNotExist(err) {
-		log.Printf("[WifiMgr] hostapd socket directory not found (%s), relying on fallback traffic-based detection only", hostapdSocketDir)
 		return
 	}
 
@@ -80,7 +75,6 @@ func (self *WifiMgr) Start() {
 // startFallback starts the traffic-based fallback detector
 func (self *WifiMgr) startFallback() {
 	if self.trafficCh == nil {
-		log.Println("[WifiMgr] WARNING: No traffic channel set, fallback detection disabled")
 		return
 	}
 
@@ -93,7 +87,6 @@ func (self *WifiMgr) run() {
 	for {
 		// Setup: create FIFO and action script
 		if err := self.setup(); err != nil {
-			log.Printf("[WifiMgr] Setup failed: %v, retrying in %v", err, reconnectDelay)
 			time.Sleep(reconnectDelay)
 			continue
 		}
@@ -101,13 +94,10 @@ func (self *WifiMgr) run() {
 		// Start hostapd_cli process(es)
 		processes, err := self.startHostapdCli()
 		if err != nil {
-			log.Printf("[WifiMgr] Failed to start hostapd_cli: %v, retrying in %v", err, reconnectDelay)
 			self.cleanup()
 			time.Sleep(reconnectDelay)
 			continue
 		}
-
-		log.Printf("[WifiMgr] Listening for WiFi events (%d interface(s))", len(processes))
 
 		// Read events from FIFO (blocks until FIFO is closed or error)
 		self.readEvents()
@@ -118,7 +108,6 @@ func (self *WifiMgr) run() {
 		}
 		self.cleanup()
 
-		log.Printf("[WifiMgr] Event reader exited, restarting in %v...", reconnectDelay)
 		time.Sleep(reconnectDelay)
 	}
 }
@@ -180,7 +169,6 @@ func (self *WifiMgr) startHostapdCli() ([]*hostapdProcess, error) {
 	for _, iface := range interfaces {
 		proc, err := self.startProcess(iface)
 		if err != nil {
-			log.Printf("[WifiMgr] Failed to start process for %s: %v", iface, err)
 			continue
 		}
 		processes = append(processes, proc)
@@ -205,12 +193,9 @@ func (self *WifiMgr) startProcess(interfaceName string) (*hostapdProcess, error)
 		return nil, fmt.Errorf("start command: %w", err)
 	}
 
-	// Start goroutine to wait for process exit and log it
+	// Start goroutine to wait for process exit
 	go func() {
-		err := cmd.Wait()
-		if err != nil {
-			log.Printf("[WifiMgr] hostapd_cli for %s exited with error: %v", interfaceName, err)
-		}
+		cmd.Wait()
 	}()
 
 	return &hostapdProcess{
@@ -232,7 +217,6 @@ func (self *WifiMgr) readEvents() {
 	// Using O_RDWR keeps the FIFO open even when no writers are connected
 	file, err := os.OpenFile(eventFifoPath, os.O_RDWR, 0666)
 	if err != nil {
-		log.Printf("[WifiMgr] Failed to open FIFO: %v", err)
 		return
 	}
 	defer file.Close()
@@ -242,7 +226,6 @@ func (self *WifiMgr) readEvents() {
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			log.Printf("[WifiMgr] Read error: %v", err)
 			return
 		}
 
@@ -288,7 +271,6 @@ func (self *WifiMgr) parseAndEmitEvent(line string) {
 
 	matches := eventRegex.FindStringSubmatch(line)
 	if matches == nil {
-		log.Printf("[WifiMgr] Failed to parse event: %q", line)
 		return
 	}
 
@@ -311,11 +293,6 @@ func (self *WifiMgr) parseAndEmitEvent(line string) {
 			shouldEmit = true // No tracker yet, emit event
 		}
 		event = sdkapi.WifiEventClientConnected
-		if shouldEmit {
-			log.Printf("[WifiMgr-hostapd] Client CONNECTED on %s: %s", interfaceName, mac)
-		} else {
-			log.Printf("[WifiMgr-hostapd] Client CONNECTED on %s: %s (duplicate, suppressed)", interfaceName, mac)
-		}
 
 	case "AP-STA-DISCONNECTED":
 		if stateTracker != nil {
@@ -324,11 +301,6 @@ func (self *WifiMgr) parseAndEmitEvent(line string) {
 			shouldEmit = true // No tracker yet, emit event
 		}
 		event = sdkapi.WifiEventClientDisconnected
-		if shouldEmit {
-			log.Printf("[WifiMgr-hostapd] Client DISCONNECTED on %s: %s", interfaceName, mac)
-		} else {
-			log.Printf("[WifiMgr-hostapd] Client DISCONNECTED on %s: %s (already disconnected, suppressed)", interfaceName, mac)
-		}
 
 	default:
 		return

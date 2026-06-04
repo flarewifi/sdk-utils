@@ -2,7 +2,6 @@ package boot
 
 import (
 	"context"
-	"log"
 	"os"
 	"time"
 
@@ -24,33 +23,19 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	os.Remove(sdkutils.PathIsUpdated)
 	os.Remove(sdkutils.PathIsReverted)
 
-	log.Println("Boot progress done. Need to restart server...")
-
 	// Gracefully shut down the server to clear booting routes
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := server.Shutdown(ctx)
-	if err != nil {
-		log.Printf("Server shutdown error: %v\n", err)
-	} else {
-		log.Println("Server gracefully stopped")
-	}
+	server.Shutdown(ctx)
 
 	// Restart the server with all routes
 	web.SetupAppRoutes(g)
 
 	// Notify that the server is starting
 	startedAt := time.Now().Format(time.RFC3339)
-	if err := os.WriteFile(sdkutils.PathServerUp, []byte(startedAt), sdkutils.PermFile); err != nil {
-		log.Printf("Error writing server up file: %v\n", err)
-	} else {
-		log.Printf("Server up file written at %s\n", sdkutils.PathServerUp)
-	}
+	os.WriteFile(sdkutils.PathServerUp, []byte(startedAt), sdkutils.PermFile)
 
-	log.Println("Starting server...")
-	if err := web.StartHTTPSServer(router.RootRouter); err != nil {
-		log.Printf("Warning: Failed to start HTTPS server: %v\n", err)
-	}
+	web.StartHTTPSServer(router.RootRouter)
 	web.StartServer(router.RootRouter, true)
 }

@@ -1,7 +1,6 @@
 package network
 
 import (
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -67,7 +66,6 @@ func (self *TrafficMgr) MakeTrafficData() {
 	// Neither requires TrafficMgr.mu — all inputs come from the snapshot above.
 	stats, err := nftables.GetStats()
 	if err != nil {
-		log.Println(err)
 		return
 	}
 

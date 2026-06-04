@@ -2,7 +2,6 @@ package adminctrl
 
 import (
 	"core/internal/api"
-	"log"
 	"net/http"
 
 	corethemeadmin "core/resources/views/themes/fallback/admin"
@@ -16,7 +15,6 @@ func NotificationsListCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		notifsAPI := g.CoreAPI.Notification()
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
 		if err != nil {
-			log.Printf("get notifications error: %v", err)
 			notifs = []sdkapi.Notification{}
 		}
 
@@ -30,7 +28,6 @@ func NotificationsBellCountCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		notifsAPI := g.CoreAPI.Notification()
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
 		if err != nil {
-			log.Printf("get notifications error: %v", err)
 			notifs = []sdkapi.Notification{}
 		}
 
@@ -47,18 +44,15 @@ func ShowNotificationContentCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		idInt := sdkutils.StrToInt64(id)
 
 		if idInt == 0 {
-			g.CoreAPI.Logger().Error("No valid notification ID.")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		if err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead); err != nil {
-			g.CoreAPI.Logger().Error("update notification error: " + err.Error())
 		}
 
 		notif, err := notifsAPI.GetNotificationByID(r.Context(), idInt)
 		if err != nil {
-			g.CoreAPI.Logger().Error("get notification error: " + err.Error())
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -77,18 +71,15 @@ func UpdateNotificationCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		idInt := sdkutils.StrToInt64(id)
 
 		if idInt == 0 {
-			g.CoreAPI.Logger().Error("No valid notification ID.")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		if err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead); err != nil {
-			g.CoreAPI.Logger().Error("update notification error: " + err.Error())
 		}
 
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
 		if err != nil {
-			log.Printf("get notifications error: %v", err)
 			notifs = []sdkapi.Notification{}
 		}
 
@@ -103,12 +94,10 @@ func ClearAllNotificationsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		notifsAPI := g.CoreAPI.Notification()
 
 		if err := notifsAPI.MarkAllAsRead(r.Context()); err != nil {
-			g.CoreAPI.Logger().Error("clear all notifications error: " + err.Error())
 		}
 
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
 		if err != nil {
-			log.Printf("get notifications error: %v", err)
 			notifs = []sdkapi.Notification{}
 		}
 
