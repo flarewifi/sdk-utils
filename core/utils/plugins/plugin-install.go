@@ -161,7 +161,7 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		defer os.RemoveAll(parentpath)
 	}
 
-	if err := PatchPluginDeps(pluginSrc); err != nil {
+	if err := PatchPluginDeps(pluginSrc, nil); err != nil {
 		return err
 	}
 
