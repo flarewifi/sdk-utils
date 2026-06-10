@@ -22,7 +22,7 @@ func CaptiveApiCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		resp := map[string]any{
 			"captive":                   true,
 			"user-portal-url":           userPortalURL,
-			"x-android-use-custom-tags": 361335020,
+			"x-android-use-custom-tabs": 361335020,
 		}
 
 		// A running, non-expired, non-consumed session means the client is online
