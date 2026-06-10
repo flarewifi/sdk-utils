@@ -26,11 +26,15 @@ import (
 //     so codegen is skipped and no templ/sqlc tooling is needed on-device).
 //   - coreStageDir is the staged core payload (GetPendingUpdatePath(CorePkg)); its
 //     core/ + sdk/ are the NEW core the .so must be ABI-matched to.
+//   - pinned is the TARGET core version's dependency lock (from plugindeps.Fetch with
+//     the staged core version) so the rebuilt .so resolves the same module
+//     versions+hashes as the staged core and the cloud-built store plugins beside it.
+//     Nil = build unpinned (lock unavailable/empty).
 //
 // The staged package is the current install tree (resources, assets/dist, plugin.json
 // — all ABI-independent and unchanged) with plugin.so replaced by the freshly built
 // one; start.sh's apply_pkg swaps the whole install dir for it.
-func StageLocalPluginRebuild(srcDir, coreStageDir string) error {
+func StageLocalPluginRebuild(srcDir, coreStageDir string, pinned []LockedGoModule) error {
 	info, err := sdkutils.GetPluginInfoFromPath(srcDir)
 	if err != nil {
 		return err
@@ -46,11 +50,13 @@ func StageLocalPluginRebuild(srcDir, coreStageDir string) error {
 	workdir := filepath.Join(sdkutils.PathTmpDir, "stage-rebuild", info.Package)
 	defer os.RemoveAll(workdir)
 
-	// Compile plugin.so against the STAGED core (opts.AppDir), not the live one.
+	// Compile plugin.so against the STAGED core (opts.AppDir), not the live one,
+	// pinned to the target core version's dependency lock for ABI parity.
 	if err := BuildPluginSo(srcDir, workdir, BuildOpts{
 		SkipTemplates: true,
 		SkipQueries:   true,
 		AppDir:        coreStageDir,
+		PinnedDeps:    pinned,
 	}); err != nil {
 		return fmt.Errorf("build plugin.so against staged core: %w", err)
 	}

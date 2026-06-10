@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"core/internal/cli/server"
+	"core/internal/plugindeps"
 	tools "core/utils"
 	"core/utils/env"
 	"core/utils/plugins"
@@ -182,11 +183,21 @@ func BuildPlugin() {
 	// for the server to fold back into the lock. Both are used by the cloud builder.
 	pinnedDepsFile := fs.String("pinned-deps", "", "JSON file of the dependency lock to pin the build to")
 	emitDepsFile := fs.String("emit-deps", "", "JSON file to write the build's resolved dependencies to")
+	// fetch-deps pulls the per-core-version dependency lock from the cloud (the
+	// machine-facing FetchPluginDependencies RPC) instead of a file, so an on-device
+	// build is ABI-matched without a builder shuttling the lock. core-version selects
+	// which lock (empty = the machine's registered core version).
+	fetchDeps := fs.Bool("fetch-deps", false, "Fetch the dependency lock from the cloud and pin the build to it")
+	coreVersion := fs.String("core-version", "", "Core version whose dependency lock to fetch (with --fetch-deps; empty = machine's registered version)")
 	_ = fs.Parse(os.Args[2:])
 
 	pinned, err := loadPinnedDeps(*pinnedDepsFile)
 	if err != nil {
 		panic(fmt.Errorf("Error reading pinned deps %s: %s", *pinnedDepsFile, err.Error()))
+	}
+	// An explicit --pinned-deps file wins; otherwise --fetch-deps pulls from the cloud.
+	if len(pinned) == 0 && *fetchDeps {
+		pinned = plugindeps.Fetch(*coreVersion)
 	}
 
 	opts := plugins.BuildOpts{

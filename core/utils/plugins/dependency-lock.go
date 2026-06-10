@@ -27,6 +27,42 @@ type goSumHashes struct {
 	goMod string
 }
 
+// ResolvedCoreModules reports the external module closure the CORE was compiled
+// against: the union of ResolvedGoModules over the three workspace modules under
+// appRoot — core, sdk/api, sdk/utils. This is the authoritative set used to SEED a
+// core version's plugin dependency lock during the core (software_release) build, so
+// every plugin built for that version pins to the exact versions+hashes the core
+// uses (not just whatever the first plugin happened to resolve).
+//
+// First-writer-wins per module path; under one go.work the three modules resolve any
+// shared dependency to the same version, so the order only affects which (identical)
+// entry is kept. The sdk modules themselves are workspace-local (no go.sum entry) and
+// are naturally excluded by ResolvedGoModules — only their external deps are recorded.
+func ResolvedCoreModules(appRoot string) ([]LockedGoModule, error) {
+	dirs := []string{
+		filepath.Join(appRoot, "core"),
+		filepath.Join(appRoot, "sdk", "api"),
+		filepath.Join(appRoot, "sdk", "utils"),
+	}
+
+	seen := make(map[string]bool)
+	merged := make([]LockedGoModule, 0)
+	for _, dir := range dirs {
+		mods, err := ResolvedGoModules(dir)
+		if err != nil {
+			return nil, fmt.Errorf("resolve modules in %s: %w", dir, err)
+		}
+		for _, m := range mods {
+			if seen[m.Path] {
+				continue
+			}
+			seen[m.Path] = true
+			merged = append(merged, m)
+		}
+	}
+	return merged, nil
+}
+
 // ResolvedGoModules reports the external module set a freshly-built plugin was
 // compiled against: the selected versions from its (tidied) go.mod require block,
 // each annotated with its go.sum hashes. Workspace-local modules (sdk/api,

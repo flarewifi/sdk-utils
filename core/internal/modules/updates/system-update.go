@@ -19,6 +19,7 @@ package updates
 
 import (
 	"core/internal/api"
+	"core/internal/plugindeps"
 	"core/utils/config"
 	"core/utils/plugins"
 	"crypto/md5"
@@ -272,6 +273,10 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	if err != nil {
 		return fmt.Errorf("enumerate local plugins: %w", err)
 	}
+	// Fetch the TARGET core version's dependency lock ONCE so every local plugin is
+	// rebuilt against the same module versions+hashes as the staged core and the
+	// cloud-built store plugins beside it. Empty/unreachable => nil => unpinned.
+	pinnedDeps := plugindeps.Fetch(targetCore)
 	for i, srcDir := range localTargets {
 		// Name the plugin currently compiling so the software-update logs trace
 		// on-device recompile progress (store plugins are built in the cloud; these
@@ -283,7 +288,7 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		}
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("Compiling plugin %s (%d/%d)", pluginName, i+1, len(localTargets)))
 
-		if err := plugins.StageLocalPluginRebuild(srcDir, coreDest); err != nil {
+		if err := plugins.StageLocalPluginRebuild(srcDir, coreDest, pinnedDeps); err != nil {
 			return fmt.Errorf("stage local plugin %s: %w", srcDir, err)
 		}
 		pct := storePluginsEndPct + (i+1)*(99-storePluginsEndPct)/len(localTargets)

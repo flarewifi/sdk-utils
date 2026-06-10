@@ -12,6 +12,7 @@ import (
 	"core/internal/events"
 	"core/internal/modules/ubus"
 	"core/internal/network"
+	"core/internal/plugindeps"
 	corerpc "core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/internal/sessmgr"
@@ -171,6 +172,11 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 	var info sdkutils.PluginInfo
 	var err error
 
+	// Pin the on-device build to the running core's dependency lock so the compiled
+	// .so is ABI-compatible with the core and other installed plugins. Empty lock or
+	// unreachable cloud => nil => unpinned build (graceful, see plugindeps.Fetch).
+	pinned := plugindeps.Fetch("")
+
 	switch def.Src {
 	case sdkutils.PluginSrcStore:
 		var rel storeRelease
@@ -188,6 +194,7 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 			RemoveSrc:    true,
 			Encrypt:      true,
 			ForceInstall: true,
+			PinnedDeps:   pinned,
 		})
 
 	case sdkutils.PluginSrcGit:
@@ -195,12 +202,14 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 			Def:          def,
 			RemoveSrc:    true,
 			ForceInstall: true,
+			PinnedDeps:   pinned,
 		})
 
 	case sdkutils.PluginSrcLocal:
 		info, err = plugins.InstallFromLocalPath(self.db.DB, def, plugins.InstallOpts{
 			Def:          def,
 			ForceInstall: true,
+			PinnedDeps:   pinned,
 		})
 
 	default:
@@ -338,6 +347,7 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg st
 		Encrypt:      true,
 		ForceInstall: true,
 		AsMetaMember: metaPkg,
+		PinnedDeps:   plugindeps.Fetch(""),
 	})
 	if err != nil {
 		return err
