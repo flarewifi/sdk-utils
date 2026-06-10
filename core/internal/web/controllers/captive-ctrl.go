@@ -17,11 +17,12 @@ func CaptiveApiCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/captive+json")
 		w.Header().Set("Cache-Control", "no-store")
 
-		userPortalURL := "https://" + r.Host + g.CoreAPI.Http().Helpers().UrlForRoute("portal:index")
+		userPortalURL := "https://" + r.Host
 
-		resp := map[string]interface{}{
-			"captive":         true,
-			"user-portal-url": userPortalURL,
+		resp := map[string]any{
+			"captive":                   true,
+			"user-portal-url":           userPortalURL,
+			"x-android-use-custom-tags": 361335020,
 		}
 
 		// A running, non-expired, non-consumed session means the client is online
