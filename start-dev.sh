@@ -14,7 +14,12 @@ GO_TAGS="dev"
         # to the no-op .default stub and any system plugins are silently absent.
         go run -tags="${GO_TAGS}" ./core/cmd/sysplugin-prepare/main.go && \
         go run -tags="${GO_TAGS}" ./core/cmd/build-cli/main.go && \
-        ./bin/flare fix-workspace
+        ./bin/flare fix-workspace && \
+        # Rebuild core assets (resources/assets/dist) on every reload. `flare
+        # build-plugins` below only rebuilds plugin assets, so without this a core
+        # JS/CSS edit would never reach the browser. --core-only keeps the hot
+        # loop fast (plugins are handled by build-plugins).
+        go run -tags="${GO_TAGS}" ./core/cmd/build-assets/main.go --core-only
 ) || (echo "Build failed" && exit 1)
 
 APP_DIR="/opt/flarehotspot/app"

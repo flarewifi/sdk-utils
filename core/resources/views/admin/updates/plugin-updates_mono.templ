@@ -1,0 +1,11 @@
+//go:build mono
+
+package updatesview
+
+import sdkapi "sdk/api"
+
+// In a mono build the core and plugins ship as one system release, so there is no
+// separate plugin update list. This empty twin keeps PluginUpdatesSection defined
+// for the shared check-updates.templ, which calls it unconditionally.
+templ PluginUpdatesSection(api sdkapi.IPluginApi) {
+}

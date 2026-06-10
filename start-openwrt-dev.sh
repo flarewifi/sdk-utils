@@ -53,7 +53,7 @@ for f in \
     "go.work" \
     "go.sum" \
     "hosts.json" \
-    "start.sh" \
+    "start-mono.sh" \
     ; do
 
     rm -rf $APP_DIR/$f && \

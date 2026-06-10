@@ -256,7 +256,7 @@ list of commands:
 
     build-plugin <plugin path>          Build plugin.so file. If no plugin path is provided, all plugins will be built.
 
-    build-plugins                       Build plugin.so of all the local and system plugins. Similar to build-plugin command without arguments.
+    build-plugins                       Build plugin.so of all local plugins and stage system plugins' installed data tree (system plugins are linked into core/plugin.so, so no standalone .so is built for them).
 
     build-templates                     Compile templ files to golang.
 

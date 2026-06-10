@@ -104,11 +104,19 @@ func BuildPluginSo(pluginSrcDir string, workdir string, opts BuildOpts) error {
 		return err
 	}
 
+	// appDir is the source of the core/, sdk/ and scripts/ layers copied into the
+	// build workspace. Defaults to the live install; opts.AppDir points it at a
+	// staged core payload so a plugin can be compiled against a not-yet-applied core.
+	appDir := sdkutils.PathAppDir
+	if opts.AppDir != "" {
+		appDir = opts.AppDir
+	}
+
 	if err := sdkutils.FsCopyDir(pluginSrcDir, goBuildPath, nil); err != nil {
 		return err
 	}
 
-	if err := sdkutils.FsCopyDir(filepath.Join(sdkutils.PathAppDir, "sdk"), filepath.Join(workdir, "sdk"), nil); err != nil {
+	if err := sdkutils.FsCopyDir(filepath.Join(appDir, "sdk"), filepath.Join(workdir, "sdk"), nil); err != nil {
 		return err
 	}
 
@@ -117,7 +125,7 @@ func BuildPluginSo(pluginSrcDir string, workdir string, opts BuildOpts) error {
 	// ./core copy avoids two workspace entries declaring `module core`.
 	isCoreBuild := filepath.Clean(pluginSrcDir) == filepath.Clean(sdkutils.PathCoreDir)
 	if !isCoreBuild {
-		if err := sdkutils.FsCopyDir(filepath.Join(sdkutils.PathAppDir, "core"), filepath.Join(workdir, "core"), nil); err != nil {
+		if err := sdkutils.FsCopyDir(filepath.Join(appDir, "core"), filepath.Join(workdir, "core"), nil); err != nil {
 			return err
 		}
 	}
@@ -129,11 +137,11 @@ func BuildPluginSo(pluginSrcDir string, workdir string, opts BuildOpts) error {
 	// imports don't resolve and the plugins aren't compiled into the .so. The
 	// sources are copied as-is (sysplugin-prepare already generated their
 	// system/main.go and, off-device, their templ/sqlc output); this mirrors how
-	// CreateGoWorkspace adds plugins/system/* to the full workspace go.work.
+	// CreateGoWorkspace adds data/plugins/system/* to the full workspace go.work.
 	var systemPluginUsePaths []string
 	if isCoreBuild {
 		for _, def := range SystemPluginSrcDefs() {
-			rel := filepath.ToSlash(def.LocalPath) // e.g. plugins/system/<name>
+			rel := filepath.ToSlash(def.LocalPath) // e.g. data/plugins/system/<name>
 			srcAbs := filepath.Join(sdkutils.PathAppDir, def.LocalPath)
 			dstAbs := filepath.Join(workdir, def.LocalPath)
 			if err := sdkutils.FsCopyDir(srcAbs, dstAbs, nil); err != nil {
@@ -143,7 +151,7 @@ func BuildPluginSo(pluginSrcDir string, workdir string, opts BuildOpts) error {
 		}
 	}
 
-	if err := sdkutils.FsCopyDir(filepath.Join(sdkutils.PathAppDir, "scripts"), filepath.Join(workdir, "scripts"), nil); err != nil {
+	if err := sdkutils.FsCopyDir(filepath.Join(appDir, "scripts"), filepath.Join(workdir, "scripts"), nil); err != nil {
 		return err
 	}
 
@@ -193,6 +201,23 @@ use (
 func BuildGoPlugin(gofile string, outfile string, workdir string, envs []string) error {
 	goBin := GoBin()
 	extraArgs := []string{"-buildmode=plugin"}
+
+	// Route Go's build cache and link-temp onto the app data partition
+	// (PathTmpDir == APP_TMP == /opt/flarehotspot/tmp on-device). Without this,
+	// `go build` falls back to $HOME/.cache/go-build and /tmp — on OpenWRT the
+	// tiny rootfs overlay and a RAM-backed tmpfs — and linking a plugin.so against
+	// a full core exhausts them ("no space left on device"). Pointing both at the
+	// roomy data partition fixes that and lets successive plugin builds in a single
+	// software-update run share one cache, speeding up the on-device recompile.
+	goCacheDir := filepath.Join(sdkutils.PathCacheDir, "go-build")
+	goTmpDir := filepath.Join(sdkutils.PathTmpDir, "go-tmp")
+	if err := sdkutils.FsEnsureDir(goCacheDir); err != nil {
+		return fmt.Errorf("create go build cache dir: %w", err)
+	}
+	if err := sdkutils.FsEnsureDir(goTmpDir); err != nil {
+		return fmt.Errorf("create go tmp dir: %w", err)
+	}
+	envs = append(envs, "GOCACHE="+goCacheDir, "GOTMPDIR="+goTmpDir)
 
 	buildOpts := sdkutils.GoBuildOpts{
 		GoBinPath: goBin,

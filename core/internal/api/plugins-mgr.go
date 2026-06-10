@@ -162,7 +162,7 @@ func (self *PluginsMgr) GetPortalTheme() (*PluginApi, *ThemesApi, bool, error) {
 //     (using def.StorePackage / def.StorePluginVersion) and installs from an
 //     encrypted scratch disk. The resolved URL is transient and not persisted.
 //   - git:             clones def.GitURL at def.GitRef into a temp dir.
-//   - local/system/zip: installs from def.LocalPath, a source folder already on
+//   - local:           installs from def.LocalPath, a source folder already on
 //     disk; the source files are left in place (RemoveSrc is forced off).
 //
 // ForceInstall routes the build straight to plugins/installed instead of staging
@@ -197,7 +197,7 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 			ForceInstall: true,
 		})
 
-	case sdkutils.PluginSrcLocal, sdkutils.PluginSrcSystem, sdkutils.PluginSrcZip:
+	case sdkutils.PluginSrcLocal:
 		info, err = plugins.InstallFromLocalPath(self.db.DB, def, plugins.InstallOpts{
 			Def:          def,
 			ForceInstall: true,
@@ -320,7 +320,9 @@ func (self *PluginsMgr) installStoreMeta(def sdkutils.PluginSrcDef, rel storeRel
 }
 
 // installStoreMember installs a single store plugin as a member of metaPkg and
-// registers it live, recording metaPkg as an owner in the member's metadata.
+// registers it live. The install is recorded as non-standalone (AsMetaMember);
+// the bundle->member ownership itself is tracked by the meta record's member
+// list (cfg.MetaPlugins), not in the member's own metadata.
 func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg string) error {
 	rel, err := self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion)
 	if err != nil {
@@ -351,12 +353,24 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg st
 func (self *PluginsMgr) rollbackMeta(installed []string) {
 	for _, pkg := range installed {
 		if err := self.Uninstall(pkg); err != nil {
+			self.CoreAPI.Logger().Error(fmt.Sprintf("rollbackMeta: uninstall %s: %v", pkg, err))
 		}
 	}
 }
 
-// Uninstall marks the plugin for removal on the next restart.
+// Uninstall removes a plugin or meta bundle. A meta bundle has no plugin.so of
+// its own, so it is delegated to UninstallMeta (remove the record and cascade to
+// orphaned members). Otherwise the plugin is marked for removal on the next
+// restart. System plugins ship with the product image and are foundational, so
+// they can never be uninstalled — this is the last line of defense, enforced
+// regardless of which caller (UI, RPC, meta rollback) reaches it.
 func (self *PluginsMgr) Uninstall(pkg string) error {
+	if self.isMetaPlugin(pkg) {
+		return self.UninstallMeta(pkg)
+	}
+	if def, err := plugins.GetPluginDef(pkg); err == nil && def.Src == sdkutils.PluginSrcSystem {
+		return errors.New("cannot uninstall system plugin: " + pkg)
+	}
 	return plugins.MarkToRemove(pkg)
 }
 

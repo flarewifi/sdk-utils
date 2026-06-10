@@ -23,7 +23,7 @@ var (
 	PathLogsDir          = filepath.Join(PathAppDir, "logs")
 	PathSdkDir           = filepath.Join(PathAppDir, "sdk")
 	PathStorageDir       = filepath.Join(PathDataDir, "storage")
-	PathPluginSystemDir  = filepath.Join(PathAppDir, "plugins", "system")
+	PathPluginSystemDir  = filepath.Join(PathDataDir, "plugins", "system")
 	PathPluginInstallDir = filepath.Join(PathAppDir, "plugins", "installed")
 	PathPluginBackupsDir = filepath.Join(PathAppDir, "plugins", "backups")
 	PathPluginUpdatesDir = filepath.Join(PathAppDir, "plugins", "updates")

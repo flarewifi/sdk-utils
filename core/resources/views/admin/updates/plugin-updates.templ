@@ -1,0 +1,49 @@
+//go:build !mono
+
+package updatesview
+
+import sdkapi "sdk/api"
+import "core/internal/modules/updates"
+
+// PluginUpdatesSection renders an empty placeholder on the Software Updates page.
+// Plugins are hidden until the user runs "Check for updates"; the unified check
+// then fills #plugin-updates-list (via PluginUpdatesListPartial, an out-of-band
+// swap) with ONLY the plugins that have a newer version. The empty container must
+// exist up front so the OOB swap has a target to replace. There is no per-plugin
+// update action.
+templ PluginUpdatesSection(api sdkapi.IPluginApi) {
+	<div id="plugin-updates-list"></div>
+}
+
+// PluginUpdatesListPartial is returned as an out-of-band swap after a check. The
+// caller passes ONLY the plugins that have an update available; when that list is
+// empty nothing is rendered, so the section stays hidden.
+templ PluginUpdatesListPartial(api sdkapi.IPluginApi, list []updates.PluginUpdate) {
+	<div id="plugin-updates-list" hx-swap-oob="true">
+		if len(list) > 0 {
+			<h5 class="fw-semibold mb-3 mt-4">{ api.Translate("label", "Plugins to update") }</h5>
+			<div class="list-group list-group-flush">
+				for _, p := range list {
+					@pluginUpdateRow(api, p)
+				}
+			</div>
+		}
+	</div>
+}
+
+templ pluginUpdateRow(api sdkapi.IPluginApi, p updates.PluginUpdate) {
+	<div class="list-group-item px-0 py-2">
+		<div class="d-flex align-items-center justify-content-between gap-3">
+			<span class="fw-semibold">
+				{ p.Name }
+				if p.IsMeta {
+					<span class="badge text-bg-info ms-1 align-middle">{ api.Translate("label", "Bundle") }</span>
+				}
+			</span>
+			<span class="small text-muted">
+				<code>{ p.CurrentVersion }</code>
+				<span class="ms-1">&rarr; <code>{ p.LatestVersion }</code></span>
+			</span>
+		</div>
+	</div>
+}

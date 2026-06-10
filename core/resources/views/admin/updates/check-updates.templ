@@ -16,10 +16,19 @@ type SoftwareUpdate struct {
 templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysupgradeReady bool, uploadUrl string, csrfHTML string, maxSizeMB int, allowedExts []string, currentVersion string) {
 	<div>
 		<h3 class="card-title mb-4">{ api.Translate("label", "Software Updates") }</h3>
-		<div class="w-full">
-			<div class="card shadow-sm border border-light-subtle">
-				<div class="card-body p-4">
-					<div class="d-flex align-items-center justify-content-between mb-4">
+		<ul class="nav nav-tabs mb-4" role="tablist">
+			<li class="nav-item" role="presentation">
+				<button class="nav-link active" id="tab-softwares-btn" data-bs-toggle="tab" data-bs-target="#tab-softwares" type="button" role="tab" aria-controls="tab-softwares" aria-selected="true">{ api.Translate("label", "Softwares") }</button>
+			</li>
+			<li class="nav-item" role="presentation">
+				<button class="nav-link" id="tab-firmware-btn" data-bs-toggle="tab" data-bs-target="#tab-firmware" type="button" role="tab" aria-controls="tab-firmware" aria-selected="false">{ api.Translate("label", "Firmware") }</button>
+			</li>
+		</ul>
+		<div class="tab-content">
+			<div class="tab-pane fade show active" id="tab-softwares" role="tabpanel" aria-labelledby="tab-softwares-btn">
+				<div class="card shadow-sm border border-light-subtle">
+					<div class="card-body p-4">
+						<div class="d-flex align-items-center justify-content-between mb-4">
 						<div>
 							<h4 class="fw-bold">System Software</h4>
 							<p>Current Version: <span id="current-version">{ currentVersion }</span></p>
@@ -80,8 +89,11 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 					</form>
 					<div id="update-status-message"></div>
 					<div id="update-info"></div>
+					@PluginUpdatesSection(api)
+					</div>
 				</div>
 			</div>
+			<div class="tab-pane fade" id="tab-firmware" role="tabpanel" aria-labelledby="tab-firmware-btn">
 			<!-- Manual Sysupgrade Section -->
 			<style>
 				#firmware-upload-form.htmx-request #firmware-upload-ui { display: none; }
@@ -159,11 +171,12 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 					</form>
 				</div>
 			</div>
+			</div>
 		</div>
 	</div>
 }
 
-templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err error) {
+templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, hasPluginUpdates bool, err error) {
 	if err != nil {
 		// Error: Show alert in notification area, keep page intact
 		<div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -173,7 +186,7 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 		</div>
 		{{ 	return }}
 	}
-	if !update.HasUpdate {
+	if !update.HasUpdate && !hasPluginUpdates {
 		// Up to date: Show success alert in notification area, keep page intact
 		<div class="alert alert-success alert-dismissible fade show" role="alert">
 			<i class="bi bi-check-circle me-2"></i>
@@ -198,10 +211,17 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 	<div id="update-info" hx-swap-oob="true">
 		<div class="card border-success mt-4">
 			<div class="card-body">
-				<div class="mb-3">
-					<h5 class="fw-bold text-success">Version { update.NewVersion } Available</h5>
-					<p class="mb-0">Released on <span>2026-02-05</span> • <span>24.5 MB</span></p>
-				</div>
+				if update.HasUpdate {
+					<div class="mb-3">
+						<h5 class="fw-bold text-success">Version { update.NewVersion } Available</h5>
+						<p class="mb-0">Released on <span>2026-02-05</span> • <span>24.5 MB</span></p>
+					</div>
+				} else {
+					<div class="mb-3">
+						<h5 class="fw-bold text-success">{ api.Translate("label", "Plugin updates available") }</h5>
+						<p class="mb-0">{ api.Translate("info", "New plugin versions are ready to install") }.</p>
+					</div>
+				}
 				if update.ReleaseNotes != "" {
 					<div class="accordion mb-4">
 						<div class="accordion-item">
@@ -235,7 +255,7 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, err e
 								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
 								<path d="m7 10 5 5 5-5"></path>
 							</svg>
-							{ api.Translate("label", "Download and Install Update") }
+							{ api.Translate("label", "Upgrade Now") }
 						</span>
 					</a>
 				</div>

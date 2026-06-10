@@ -11,7 +11,7 @@ import (
 )
 
 // sysplugin-prepare prepares the build host for a non-mono build with
-// statically-linked system plugins. For every plugin under plugins/system/ it:
+// statically-linked system plugins. For every plugin under data/plugins/system/ it:
 //
 //  1. Enforces the three-file plugin entry-point contract:
 //       - Adds //go:build !mono to main.go if no build tag is present.
@@ -89,6 +89,9 @@ func main() {
 		installPath := filepath.Join(sdkutils.PathPluginInstallDir, info.Package)
 		fmt.Printf("Copying system plugin %s to installed plugins directory: %s\n", info.Name, installPath)
 
+		// System plugins are statically linked into core/plugin.so, so they ship
+		// the bundled file set (no standalone plugin.so / Go build inputs) — the
+		// same set a mono build uses.
 		if err := sdkutils.CopyPluginFilesMono(pluginDir, installPath); err != nil {
 			panic(err)
 		}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	tools "core/utils"
 	toolsenv "core/utils/env"
 	"flag"
 	"fmt"
@@ -37,7 +38,6 @@ func main() {
 		"data/config",
 		"plugins/installed",
 		"scripts",
-		"start.sh",
 	}
 
 	for _, f := range files {
@@ -48,6 +48,15 @@ func main() {
 		}
 		fmt.Printf("Copied: %s\n", f)
 	}
+
+	// Ship the build-appropriate boot script as start.sh (start-mono.sh for mono).
+	if err := sdkutils.FsCopy(
+		filepath.Join(sdkutils.PathAppDir, tools.StartScriptSrc()),
+		filepath.Join(outputDir, "start.sh"),
+	); err != nil {
+		panic(fmt.Errorf("failed to copy start script to output directory: %w", err))
+	}
+	fmt.Printf("Copied: %s -> start.sh\n", tools.StartScriptSrc())
 
 	// Skip translation compression in dev mode
 	if toolsenv.GO_ENV != toolsenv.ENV_DEV {

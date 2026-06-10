@@ -30,7 +30,6 @@ var (
 		"docker-compose.yml",
 		"docker-cmd.sh",
 		"Dockerfile",
-		"plugins/system",
 		"scripts",
 		"sdk",
 		"core/utils/go.mod",
@@ -56,8 +55,14 @@ func CreateDevkit() {
 	// Build core/plugin.so
 	BuildCore(plugins.BuildOpts{})
 
-	// Copy devkit files
-	for _, entry := range devkitFiles {
+	// Copy devkit files. data/plugins/system is optional — FlareWiFi may ship no
+	// system plugins, leaving the directory absent — so append it only when
+	// present to avoid panicking on a missing source (see CoreFileSet).
+	files := devkitFiles
+	if sdkutils.FsExists(sdkutils.PathPluginSystemDir) {
+		files = append(files, "data/plugins/system")
+	}
+	for _, entry := range files {
 		srcPath := filepath.Join(sdkutils.PathAppDir, entry)
 		destPath := filepath.Join(devkitReleaseDir, entry)
 		fmt.Println("Copying: ", sdkutils.StripRootPath(srcPath), " -> ", sdkutils.StripRootPath(destPath))

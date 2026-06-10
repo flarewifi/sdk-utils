@@ -1,6 +1,7 @@
 package updates
 
 import (
+	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/utils/config"
@@ -34,7 +35,44 @@ var (
 	downloadError        atomic.Pointer[error]
 	downloadedBytes      atomic.Int64
 	totalSizeBytes       atomic.Int64
+	// updatePhase identifies which stage of an in-flight upgrade is running so the
+	// download page can label it correctly. A non-mono upgrade first downloads the
+	// core tarball (PhaseDownloading) and then stages/recompiles plugins against it
+	// (PhaseCompiling); the byte counters above only advance during the download.
+	// Reset to PhaseDownloading at the start of every download/stage.
+	updatePhase atomic.Int32
+	// pluginUpdateApplied marks a plugin-only upgrade that completed WITHOUT staging
+	// anything for reboot (its only change — a meta-bundle version bump — was applied
+	// live). It lets the download flow finish without prompting for a reboot. Reset
+	// at the start of every stage/download.
+	pluginUpdateApplied atomic.Bool
 )
+
+// UpdatePhase identifies which stage of an in-flight upgrade is running, so the
+// download page can show "Downloading updates" versus "Compiling plugins".
+type UpdatePhase int32
+
+const (
+	// PhaseDownloading: fetching the core tarball / sysupgrade image from the cloud.
+	// The byte counters are meaningful in this phase. Default for mono (whose whole
+	// flow is a single tarball download) and for the start of every non-mono stage.
+	PhaseDownloading UpdatePhase = iota
+	// PhaseCompiling: staging plugins — store plugins built in the cloud and on-device
+	// recompiles against the staged core. No byte progress; only the percent advances.
+	PhaseCompiling
+)
+
+// setPhase records the current upgrade stage. Called by the non-mono staging flow;
+// mono never leaves PhaseDownloading.
+func setPhase(p UpdatePhase) {
+	updatePhase.Store(int32(p))
+}
+
+// CurrentPhase reports which stage of the in-flight upgrade is running. The download
+// page uses it to label the progress UI. See UpdatePhase.
+func CurrentPhase() UpdatePhase {
+	return UpdatePhase(updatePhase.Load())
+}
 
 type SoftwareReleaseUpdate struct {
 	Version             *semver.Version
@@ -57,8 +95,15 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 		return nil, err
 	}
 
+	// The server gates beta/development releases to tester-owned machines, looking up
+	// the owner by machine_id from the request body. Omitting it makes the server treat
+	// the machine as a non-tester and silently downgrade the requested channel to
+	// "stable", hiding every beta/development release. Always send it.
+	_, machineID := machineuid.GetMachineUID()
+
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
 	params := rpc_flarewifi_v2.FetchLatestSoftwareReleaseRequest{
+		MachineId:      machineID,
 		DeviceModel:    release.DeviceModel,
 		DeviceConfig:   release.DeviceConfig,
 		CurrentVersion: currentVersion.String(),
@@ -130,6 +175,7 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 	downloadedBytes.Store(0)
 	totalSizeBytes.Store(0)
 	downloadError.Store(nil) // Clear any previous download error
+	setPhase(PhaseDownloading)
 
 	go func() {
 		defer downloading.Store(false)
@@ -296,6 +342,14 @@ func IsDownloading() bool {
 	return downloading.Load()
 }
 
+// PluginUpdateApplied reports whether the last plugin-only upgrade finished by
+// applying its change live (a meta-bundle version bump) with nothing staged for
+// reboot. The download flow uses this to show a success state instead of a reboot
+// prompt. See stagePluginsUpdate.
+func PluginUpdateApplied() bool {
+	return pluginUpdateApplied.Load()
+}
+
 func DownloadPercent() int32 {
 	return downloadPercent.Load()
 }
@@ -309,10 +363,10 @@ func DownloadError() error {
 	return *v
 }
 
-func IsDownloaded() bool {
-	markerPath := filepath.Join(sdkutils.PathSystemUpdateDir, downloadCompleteFile)
-	return sdkutils.FsExists(markerPath)
-}
+// IsDownloaded reports whether a system update has finished staging/downloading
+// and is ready to apply. Its definition is build-tag specific: mono checks the
+// single-tarball download marker (system-update_mono.go); non-mono checks the
+// staged-overlay completion marker (system-update.go).
 
 func DownloadedBytes() int64 {
 	return downloadedBytes.Load()
