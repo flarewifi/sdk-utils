@@ -113,6 +113,41 @@ func ResolvedGoModules(pluginDir string) ([]LockedGoModule, error) {
 	return resolved, nil
 }
 
+// LocalPluginNeedsRepin reports whether a plugin's current build disagrees with the
+// dependency lock on any SHARED module — i.e. its installed .so is ABI-incompatible
+// with anything built against the lock (the core and the cloud-built store plugins).
+// It compares the plugin's resolved modules to the lock and returns true on the first
+// shared module whose version or content hash differs. Modules the plugin does not
+// use (absent from its resolved set) and an empty lock impose nothing.
+//
+// Used when installing a store plugin: a local plugin that returns true must be
+// recompiled pinned to the lock so the store plugin (which already matches the lock)
+// can load alongside it. The lock — core + store deps — is authoritative; local
+// plugins conform to it.
+func LocalPluginNeedsRepin(pluginDir string, lock []LockedGoModule) (bool, error) {
+	if len(lock) == 0 {
+		return false, nil
+	}
+	resolved, err := ResolvedGoModules(pluginDir)
+	if err != nil {
+		return false, err
+	}
+	byPath := make(map[string]LockedGoModule, len(resolved))
+	for _, m := range resolved {
+		byPath[m.Path] = m
+	}
+	for _, l := range lock {
+		r, ok := byPath[l.Path]
+		if !ok {
+			continue // plugin does not use this locked module
+		}
+		if r.Version != l.Version || r.Hash != l.Hash {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // VerifyPinnedGoSum fails if any pinned module resolved to different bytes than the
 // lock records — the moved-tag / `replace` / proxy-divergence hazard that pinning
 // the version alone cannot catch. Modules the plugin does not actually use (absent

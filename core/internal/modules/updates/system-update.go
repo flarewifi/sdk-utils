@@ -269,7 +269,7 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	//    progress bar reflects it. start.sh applies the staged package on reboot,
 	//    atomically with the core, and can roll it back. Build against coreDest (the
 	//    staged new core), NOT the live one.
-	localTargets, err := installedLocalPluginSrcDirs()
+	localTargets, err := plugins.InstalledLocalPluginSrcDirs()
 	if err != nil {
 		return fmt.Errorf("enumerate local plugins: %w", err)
 	}
@@ -302,42 +302,6 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	}
 
 	return nil
-}
-
-// installedLocalPluginSrcDirs returns the resolved source directory of every plugin
-// that must be recompiled ON-DEVICE: installed, with source under data/plugins/local,
-// and recorded as locally-sourced. Store- and system-sourced plugins are deliberately
-// excluded — store plugins are rebuilt server-side and staged via
-// storePluginPackages/StagePluginUpdate (recompiling them here too would double-stage
-// the same package), and system plugins are compiled into the core image and must never
-// be rebuilt independently. Routing is by the installed METADATA Def.Src (the source of
-// truth: the store-registration-preservation rule in InstallPlugin can mark a plugin
-// Src=store even when local source is present, and a release bundles system sources under
-// data/plugins/local too), NOT by where the source happens to sit.
-func installedLocalPluginSrcDirs() ([]string, error) {
-	var dirs []string
-	for _, def := range plugins.LocalPluginSrcDefs() {
-		srcDir, err := sdkutils.FindPluginSrc(def.LocalPath)
-		if err != nil {
-			continue
-		}
-		info, err := sdkutils.GetPluginInfoFromPath(srcDir)
-		if err != nil {
-			continue
-		}
-		// Skip plugins that are not installed (nothing to swap).
-		if !sdkutils.FsExists(plugins.GetInstallPath(info.Package)) {
-			continue
-		}
-		// Skip store- and system-sourced plugins. The store path owns the store
-		// rebuild; system plugins ship inside the core and are never rebuilt here.
-		if meta, err := plugins.ReadMetadata(info.Package); err == nil &&
-			(meta.Def.Src == sdkutils.PluginSrcStore || meta.Def.Src == sdkutils.PluginSrcSystem) {
-			continue
-		}
-		dirs = append(dirs, srcDir)
-	}
-	return dirs, nil
 }
 
 // pruneNonLocalPluginSources removes bundled plugin source trees from the staged core

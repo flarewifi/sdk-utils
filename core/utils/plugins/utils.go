@@ -102,6 +102,39 @@ func LocalPluginSrcDefs() []sdkutils.PluginSrcDef {
 	return list
 }
 
+// InstalledLocalPluginSrcDirs returns the source directories of every INSTALLED,
+// local-sourced plugin — the plugins that are recompiled on-device. Routing is by the
+// installed metadata Def.Src (the source of truth: a store-registered plugin can have
+// local source present, and a release bundles system sources under data/plugins/local
+// too), NOT by where the source sits. Store plugins are rebuilt server-side and system
+// plugins are compiled into the core image, so both are excluded here. Shared by the
+// staged-update recompile (system-update) and the store-install reconcile (plugins-mgr).
+func InstalledLocalPluginSrcDirs() ([]string, error) {
+	var dirs []string
+	for _, def := range LocalPluginSrcDefs() {
+		srcDir, err := sdkutils.FindPluginSrc(def.LocalPath)
+		if err != nil {
+			continue
+		}
+		info, err := sdkutils.GetPluginInfoFromPath(srcDir)
+		if err != nil {
+			continue
+		}
+		// Skip plugins that are not installed (nothing to swap).
+		if !sdkutils.FsExists(GetInstallPath(info.Package)) {
+			continue
+		}
+		// Skip store- and system-sourced plugins. The store path owns the store
+		// rebuild; system plugins ship inside the core and are never rebuilt here.
+		if meta, err := ReadMetadata(info.Package); err == nil &&
+			(meta.Def.Src == sdkutils.PluginSrcStore || meta.Def.Src == sdkutils.PluginSrcSystem) {
+			continue
+		}
+		dirs = append(dirs, srcDir)
+	}
+	return dirs, nil
+}
+
 func SystemPluginSrcDefs() []sdkutils.PluginSrcDef {
 	list := []sdkutils.PluginSrcDef{}
 	paths := SearchPluginDirs(sdkutils.PathPluginSystemDir)
