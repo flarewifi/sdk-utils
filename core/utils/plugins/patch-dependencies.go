@@ -24,7 +24,18 @@ type ReplacedGoModule struct {
 	NewVersion string
 }
 
-func PatchPluginDeps(pluginDir string) error {
+// PatchPluginDeps aligns a plugin's dependency versions with the host before it is
+// compiled, so its .so is ABI-compatible with the core and the other plugins it
+// loads alongside.
+//
+// pinned is the authoritative per-core-version dependency lock supplied by the
+// build server (empty for local dev builds and for the first plugin built against a
+// core version). When present, its versions are forced exactly via `replace`
+// (overriding the locally-derived versions and surviving MVS), and the resulting
+// go.sum is verified against the locked content hashes. When empty, behavior is
+// unchanged: versions are aligned to the locally-installed core/sdk/plugin set on a
+// best-effort require basis.
+func PatchPluginDeps(pluginDir string, pinned []LockedGoModule) error {
 	cmd := exec.Command("go", "mod", "tidy", "-e")
 	cmd.Dir = pluginDir
 	if err := cmd.Run(); err != nil {
@@ -36,14 +47,32 @@ func PatchPluginDeps(pluginDir string) error {
 		return err
 	}
 
+	// The lock takes precedence over the locally-derived versions: it is the set
+	// every other plugin for this core version was already pinned to.
+	replacements := systemDeps
+	for _, p := range pinned {
+		replacements = append(replacements, RequiredGoModule{Path: p.Path, Version: p.Version})
+	}
+
 	pluginGoModFile := filepath.Join(pluginDir, "go.mod")
-	if err := UpdateRequiredModules(pluginGoModFile, systemDeps); err != nil {
+	if err := UpdateRequiredModules(pluginGoModFile, replacements); err != nil {
+		return err
+	}
+
+	// Force the locked versions exactly (require alone can be overridden by MVS).
+	if err := forcePinnedVersions(pluginDir, pinned); err != nil {
 		return err
 	}
 
 	cmd = exec.Command("go", "mod", "tidy", "-e")
 	cmd.Dir = pluginDir
 	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	// Confirm the pinned modules resolved to the locked content, not just the
+	// locked label, before we trust the resulting .so.
+	if err := VerifyPinnedGoSum(pluginDir, pinned); err != nil {
 		return err
 	}
 
@@ -186,7 +215,27 @@ func GetInstalledModules() ([]RequiredGoModule, error) {
 		return nil, err
 	}
 
-	pluginModules := []RequiredGoModule{}
+	// Collect every dependency together with the source that declared it, so we
+	// can report conflicts. Order matters: the first source to declare a module
+	// wins (core > sdk/utils > sdk/api > installed plugins). Because plugin .so
+	// files must be built against the exact same versions as the host, any
+	// divergence here would otherwise be silently overridden and only surface as
+	// a cryptic "plugin was built with a different version of package" error at
+	// plugin.Open() time. We surface it loudly at build time instead.
+	type sourcedModule struct {
+		mod    RequiredGoModule
+		source string
+	}
+
+	var all []sourcedModule
+	addGroup := func(mods []RequiredGoModule, source string) {
+		for _, m := range mods {
+			all = append(all, sourcedModule{mod: m, source: source})
+		}
+	}
+	addGroup(coreMods, "core")
+	addGroup(utilsMods, "sdk/utils")
+	addGroup(apiMods, "sdk/api")
 
 	installedDirs := InstalledPluginDirs()
 	for _, pluginDir := range installedDirs {
@@ -201,24 +250,25 @@ func GetInstalledModules() ([]RequiredGoModule, error) {
 		if err != nil {
 			return nil, err
 		}
-		pluginModules = append(pluginModules, reqMods...)
+		addGroup(reqMods, "plugin "+filepath.Base(pluginDir))
 	}
 
+	chosen := make(map[string]sourcedModule)
 	modules := []RequiredGoModule{}
-	modGroups := [][]RequiredGoModule{coreMods, utilsMods, apiMods, pluginModules}
-	for _, mods := range modGroups {
-		for _, mod := range mods {
-			// Check if the module is already in the list
-			found := false
-			for _, m := range modules {
-				if m.Path == mod.Path {
-					found = true
-					break
-				}
-			}
-			if !found {
-				modules = append(modules, mod)
-			}
+	for _, sm := range all {
+		prev, ok := chosen[sm.mod.Path]
+		if !ok {
+			chosen[sm.mod.Path] = sm
+			modules = append(modules, sm.mod)
+			continue
+		}
+		// Already pinned by a higher-priority source. Warn if this source wanted
+		// a different version, since it will be overridden to keep ABI parity.
+		if prev.mod.Version != sm.mod.Version {
+			fmt.Printf(
+				"Warning: dependency version conflict for %s: pinning %s (from %s), overriding %s required by %s.\n",
+				sm.mod.Path, prev.mod.Version, prev.source, sm.mod.Version, sm.source,
+			)
 		}
 	}
 

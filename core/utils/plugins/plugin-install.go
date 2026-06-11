@@ -133,6 +133,11 @@ type InstallOpts struct {
 	// the named meta plugin. The plugin's metadata records the meta as an owner
 	// instead of flagging the plugin as a standalone (user-initiated) install.
 	AsMetaMember string
+	// PinnedDeps is the per-core-version dependency lock to build the plugin .so
+	// against, so an on-device install is ABI-compatible with the running core and
+	// the other installed plugins. Nil = build unpinned (the lock was unavailable or
+	// empty). Callers in internal/api populate it via plugindeps.Fetch.
+	PinnedDeps []LockedGoModule
 }
 
 func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
@@ -161,7 +166,7 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		defer os.RemoveAll(parentpath)
 	}
 
-	if err := PatchPluginDeps(pluginSrc); err != nil {
+	if err := PatchPluginDeps(pluginSrc, opts.PinnedDeps); err != nil {
 		return err
 	}
 
@@ -181,7 +186,7 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		return err
 	}
 
-	if err := BuildPluginSo(pluginSrc, buildpath, BuildOpts{}); err != nil {
+	if err := BuildPluginSo(pluginSrc, buildpath, BuildOpts{PinnedDeps: opts.PinnedDeps}); err != nil {
 		return err
 	}
 

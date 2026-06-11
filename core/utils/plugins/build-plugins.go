@@ -32,6 +32,10 @@ type BuildOpts struct {
 	// (CopyPluginFilesMono — same as a mono build) instead of the full non-mono
 	// set (CopyPluginFiles, which includes a standalone plugin.so).
 	SkipPluginSo bool
+	// PinnedDeps is the per-core-version dependency lock the plugin must be built
+	// against (server-side cloud builds). Empty for local dev builds and the first
+	// plugin built for a core version. See PatchPluginDeps.
+	PinnedDeps []LockedGoModule
 }
 
 func BuildLocalPlugins(opts BuildOpts) error {
@@ -90,7 +94,7 @@ func BuildPlugin(pluginPath string, opts BuildOpts) error {
 	workdir := filepath.Join(sdkutils.PathTmpDir, "builds", filepath.Base(pluginPath))
 	defer os.RemoveAll(workdir)
 
-	if err := PatchPluginDeps(pluginPath); err != nil {
+	if err := PatchPluginDeps(pluginPath, opts.PinnedDeps); err != nil {
 		return err
 	}
 

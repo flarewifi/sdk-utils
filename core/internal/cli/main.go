@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"core/internal/cli/server"
+	"core/internal/plugindeps"
 	tools "core/utils"
 	"core/utils/env"
 	"core/utils/plugins"
@@ -176,11 +178,32 @@ func BuildPlugin() {
 	fs := flag.NewFlagSet("build-plugin", flag.ExitOnError)
 	skipSqlc := fs.Bool("skip-sqlc", false, "Skip sqlc generation; use the committed db/queries package")
 	skipTempl := fs.Bool("skip-templ", false, "Skip templ generation; use the committed *_templ.go files")
+	// pinned-deps: JSON file with the per-core-version dependency lock to build
+	// against. emit-deps: JSON file to write the .so's resolved dependency set to,
+	// for the server to fold back into the lock. Both are used by the cloud builder.
+	pinnedDepsFile := fs.String("pinned-deps", "", "JSON file of the dependency lock to pin the build to")
+	emitDepsFile := fs.String("emit-deps", "", "JSON file to write the build's resolved dependencies to")
+	// fetch-deps pulls the per-core-version dependency lock from the cloud (the
+	// machine-facing FetchPluginDependencies RPC) instead of a file, so an on-device
+	// build is ABI-matched without a builder shuttling the lock. core-version selects
+	// which lock (empty = the machine's registered core version).
+	fetchDeps := fs.Bool("fetch-deps", false, "Fetch the dependency lock from the cloud and pin the build to it")
+	coreVersion := fs.String("core-version", "", "Core version whose dependency lock to fetch (with --fetch-deps; empty = machine's registered version)")
 	_ = fs.Parse(os.Args[2:])
+
+	pinned, err := loadPinnedDeps(*pinnedDepsFile)
+	if err != nil {
+		panic(fmt.Errorf("Error reading pinned deps %s: %s", *pinnedDepsFile, err.Error()))
+	}
+	// An explicit --pinned-deps file wins; otherwise --fetch-deps pulls from the cloud.
+	if len(pinned) == 0 && *fetchDeps {
+		pinned = plugindeps.Fetch(*coreVersion)
+	}
 
 	opts := plugins.BuildOpts{
 		SkipTemplates: *skipTempl,
 		SkipQueries:   *skipSqlc,
+		PinnedDeps:    pinned,
 	}
 
 	// No plugin path given: build all local plugins (previous no-arg behavior).
@@ -202,6 +225,41 @@ func BuildPlugin() {
 	if err := plugins.BuildPlugin(pluginPath, opts); err != nil {
 		panic(fmt.Errorf("Error building plugin in %s: %s", pluginPath, err.Error()))
 	}
+
+	// Report the exact dependency set the .so was compiled against so the server
+	// can fold it into the core version's lock (first-writer-wins).
+	if *emitDepsFile != "" {
+		if err := emitResolvedDeps(pluginPath, *emitDepsFile); err != nil {
+			panic(fmt.Errorf("Error writing resolved deps for %s: %s", pluginPath, err.Error()))
+		}
+	}
+}
+
+func loadPinnedDeps(path string) ([]plugins.LockedGoModule, error) {
+	if path == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var pinned []plugins.LockedGoModule
+	if err := json.Unmarshal(data, &pinned); err != nil {
+		return nil, err
+	}
+	return pinned, nil
+}
+
+func emitResolvedDeps(pluginPath, outFile string) error {
+	resolved, err := plugins.ResolvedGoModules(pluginPath)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(resolved)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(outFile, data, sdkutils.PermFile)
 }
 
 func BuildPlugins() {

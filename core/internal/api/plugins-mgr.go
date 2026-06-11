@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"time"
+
 	sdkplugin "sdk/api"
 
 	"core/db"
@@ -12,12 +14,14 @@ import (
 	"core/internal/events"
 	"core/internal/modules/ubus"
 	"core/internal/network"
+	"core/internal/plugindeps"
 	corerpc "core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/internal/sessmgr"
 	"core/utils/config"
 	"core/utils/migrate"
 	"core/utils/plugins"
+	cmd "core/utils/shell"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -171,6 +175,11 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 	var info sdkutils.PluginInfo
 	var err error
 
+	// Pin the on-device build to the running core's dependency lock so the compiled
+	// .so is ABI-compatible with the core and other installed plugins. Empty lock or
+	// unreachable cloud => nil => unpinned build (graceful, see plugindeps.Fetch).
+	pinned := plugindeps.Fetch("")
+
 	switch def.Src {
 	case sdkutils.PluginSrcStore:
 		var rel storeRelease
@@ -188,6 +197,7 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 			RemoveSrc:    true,
 			Encrypt:      true,
 			ForceInstall: true,
+			PinnedDeps:   pinned,
 		})
 
 	case sdkutils.PluginSrcGit:
@@ -195,12 +205,14 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 			Def:          def,
 			RemoveSrc:    true,
 			ForceInstall: true,
+			PinnedDeps:   pinned,
 		})
 
 	case sdkutils.PluginSrcLocal:
 		info, err = plugins.InstallFromLocalPath(self.db.DB, def, plugins.InstallOpts{
 			Def:          def,
 			ForceInstall: true,
+			PinnedDeps:   pinned,
 		})
 
 	default:
@@ -211,9 +223,84 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 		return fmt.Errorf("InstallPlugin: %w", err)
 	}
 
+	// A store plugin's .so is pinned to the (store-prioritized) lock. A local plugin
+	// built against an older lock can share a module at a different version, making
+	// the two .so files mutually ABI-incompatible — the new store plugin would fail
+	// to load alongside it. Recompile any such local plugin pinned to the lock; if
+	// any was recompiled we must reboot to load the coherent set (a running .so can't
+	// be hot-reloaded), so we skip the live registration below.
+	if def.Src == sdkutils.PluginSrcStore {
+		if recompiled := self.reconcileLocalPluginsWithLock(pinned); recompiled {
+			self.rebootToApplyRecompiledPlugins(info.Package)
+			return nil
+		}
+	}
+
 	installPath := plugins.GetInstallPath(info.Package)
 	p := NewPluginApi(installPath, info, self.globalAssets, self, self.trfkMgr, self.wifiMgr)
 	return self.RegisterPlugin(p)
+}
+
+// reconcileLocalPluginsWithLock recompiles every installed LOCAL plugin whose current
+// build disagrees with the dependency lock (a shared module at a different
+// version/hash), pinning it to the lock so it is ABI-compatible with the core and the
+// just-installed store plugin.
+//
+// The conformance direction is forced by HOW each kind of plugin is built: a store
+// plugin is compiled ONCE in the cloud and cached as an immutable artifact shared by
+// every machine — it cannot be recompiled here to match one device's local plugins.
+// A local plugin is compiled ON-DEVICE and can be rebuilt cheaply. So the (cached)
+// store/core versions in the lock are authoritative and local plugins bend to them —
+// never the reverse. Returns whether any plugin was recompiled. Best-effort per
+// plugin: a single failure is logged and the sweep continues, so one bad local plugin
+// never aborts the store install.
+func (self *PluginsMgr) reconcileLocalPluginsWithLock(lock []plugins.LockedGoModule) bool {
+	if len(lock) == 0 {
+		return false
+	}
+
+	srcDirs, err := plugins.InstalledLocalPluginSrcDirs()
+	if err != nil {
+		self.CoreAPI.LoggerAPI.Error(fmt.Sprintf("reconcile: enumerate local plugins: %v", err))
+		return false
+	}
+
+	recompiled := false
+	for _, srcDir := range srcDirs {
+		needs, err := plugins.LocalPluginNeedsRepin(srcDir, lock)
+		if err != nil {
+			self.CoreAPI.LoggerAPI.Error(fmt.Sprintf("reconcile: check %s: %v", srcDir, err))
+			continue
+		}
+		if !needs {
+			continue
+		}
+		self.CoreAPI.LoggerAPI.Info(fmt.Sprintf("reconcile: recompiling local plugin %s against the dependency lock (store deps prioritized)", srcDir))
+		def := sdkutils.PluginSrcDef{Src: sdkutils.PluginSrcLocal, LocalPath: sdkutils.StripRootPath(srcDir)}
+		if _, err := plugins.InstallFromLocalPath(self.db.DB, def, plugins.InstallOpts{
+			Def:          def,
+			ForceInstall: true,
+			PinnedDeps:   lock,
+		}); err != nil {
+			self.CoreAPI.LoggerAPI.Error(fmt.Sprintf("reconcile: recompile %s: %v", srcDir, err))
+			continue
+		}
+		recompiled = true
+	}
+	return recompiled
+}
+
+// rebootToApplyRecompiledPlugins reboots so the core, the freshly-recompiled local
+// plugins, and the new store plugin all load together against one coherent dependency
+// set. Go's plugin.Open cannot reload a .so already mapped into the running process,
+// so the recompiled local .so files only take effect on a fresh start. Dev shell.Exec
+// ignores reboot. Mirrors adminctrl/power-ctrl.go's reboot pattern.
+func (self *PluginsMgr) rebootToApplyRecompiledPlugins(pkg string) {
+	self.CoreAPI.LoggerAPI.Info(fmt.Sprintf("installed store plugin %s and recompiled conflicting local plugin(s); rebooting to apply", pkg))
+	go func() {
+		time.Sleep(3 * time.Second)
+		cmd.Exec("reboot", nil)
+	}()
 }
 
 // storeRelease is the resolved store lookup for a package: either a single
@@ -316,6 +403,13 @@ func (self *PluginsMgr) installStoreMeta(def sdkutils.PluginSrcDef, rel storeRel
 		return fmt.Errorf("save meta record for %q: %w", def.StorePackage, err)
 	}
 
+	// Same as a single store install: a member may have bumped a shared module in the
+	// lock, leaving a local plugin stale. Recompile conflicting local plugins pinned
+	// to the lock and reboot to apply if any were recompiled.
+	if recompiled := self.reconcileLocalPluginsWithLock(plugindeps.Fetch("")); recompiled {
+		self.rebootToApplyRecompiledPlugins(def.StorePackage)
+	}
+
 	return nil
 }
 
@@ -338,6 +432,7 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg st
 		Encrypt:      true,
 		ForceInstall: true,
 		AsMetaMember: metaPkg,
+		PinnedDeps:   plugindeps.Fetch(""),
 	})
 	if err != nil {
 		return err
