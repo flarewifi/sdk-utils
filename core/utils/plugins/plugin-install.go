@@ -2,8 +2,6 @@ package plugins
 
 import (
 	"bytes"
-	"core/utils/download"
-	"core/utils/encdisk"
 	"core/utils/migrate"
 	cmd "core/utils/shell"
 	"database/sql"
@@ -55,47 +53,38 @@ func InstallFromLocalPath(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpt
 	return
 }
 
-func InstallFromPluginStore(sqldb *sql.DB, def sdkutils.PluginSrcDef, zipURL string, opts InstallOpts) (sdkutils.PluginInfo, error) {
-	if zipURL == "" {
-		return sdkutils.PluginInfo{}, errors.New("InstallFromPluginStore: zipURL is required")
+// InstallFromPrebuilt installs a store plugin from a server-built, install-ready
+// tarball (compiled plugin.so plus generated templates/queries/assets already
+// included). The device only downloads and extracts — no on-device toolchain,
+// no scratch disk. The URL is transient (resolved per-machine via
+// RequestPluginBuild) and is not recorded on the persisted PluginSrcDef.
+func InstallFromPrebuilt(sqldb *sql.DB, tarballURL string, opts InstallOpts) (sdkutils.PluginInfo, error) {
+	if tarballURL == "" {
+		return sdkutils.PluginInfo{}, errors.New("InstallFromPrebuilt: tarballURL is required")
 	}
 
-	// prepare path
-	randomPath := RandomPluginPath()
-	diskfile := filepath.Join(randomPath, "disk")
-	mountpath := filepath.Join(randomPath, "mount")
-	clonePath := filepath.Join(mountpath, "clone", "0") // need extra sub dir
-	workPath := filepath.Join(mountpath, "clone", "1")  // need extra sub dir
-
-	// prepare encrypted virtual disk path
-	dev := sdkutils.RandomStr(8)
-	mnt := encdisk.NewEncrypedDisk(diskfile, mountpath, dev)
-	if err := mnt.Mount(); err != nil {
+	workPath := filepath.Join(sdkutils.PathTmpDir, "plugins", "prebuilt", sdkutils.RandomStr(16))
+	if err := sdkutils.FsEmptyDir(workPath); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
-	defer mnt.Unmount()
+	defer os.RemoveAll(workPath)
 
-	// download plugin release zip file. The URL is transient and is not
-	// recorded on the persisted PluginSrcDef.
-	downloader := download.NewDownloader(zipURL, clonePath)
-	if err := downloader.Download(); err != nil {
-		return sdkutils.PluginInfo{}, err
+	tarFile := filepath.Join(workPath, "package.tar.gz")
+	if err := sdkutils.Download(tarballURL, tarFile); err != nil {
+		return sdkutils.PluginInfo{}, fmt.Errorf("InstallFromPrebuilt: download: %w", err)
 	}
 
-	// extract compressed plugin release
-	sdkutils.FsExtract(clonePath, workPath)
+	srcPath := filepath.Join(workPath, "src")
+	if err := sdkutils.Untar(tarFile, srcPath); err != nil {
+		return sdkutils.PluginInfo{}, fmt.Errorf("InstallFromPrebuilt: extract: %w", err)
+	}
 
-	newWorkPath, err := sdkutils.FindPluginSrc(workPath)
+	info, err := sdkutils.GetPluginInfoFromPath(srcPath)
 	if err != nil {
-		err = errors.New("Unable to find plugin source in: " + workPath)
-		return sdkutils.PluginInfo{}, err
-	}
-	info, err := sdkutils.GetPluginInfoFromPath(newWorkPath)
-	if err != nil {
-		return sdkutils.PluginInfo{}, err
+		return sdkutils.PluginInfo{}, fmt.Errorf("InstallFromPrebuilt: invalid package tree: %w", err)
 	}
 
-	if err := InstallPlugin(newWorkPath, sqldb, opts); err != nil {
+	if err := InstallPrebuilt(srcPath, sqldb, opts); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 
@@ -127,7 +116,6 @@ func InstallFromGitSrc(sqldb *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpt
 type InstallOpts struct {
 	Def          sdkutils.PluginSrcDef
 	RemoveSrc    bool
-	Encrypt      bool
 	ForceInstall bool
 	// AsMetaMember, when non-empty, marks this install as a member pulled in by
 	// the named meta plugin. The plugin's metadata records the meta as an owner
@@ -143,28 +131,12 @@ type InstallOpts struct {
 func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	sdkutils.PrettyPrint(opts)
 
-	var buildpath string
-
-	if opts.Encrypt {
-		dev := sdkutils.RandomStr(8)
-		parentPath := RandomPluginPath()
-		diskfile := filepath.Join(parentPath, "disk")
-		mountpath := filepath.Join(parentPath, "mount")
-		buildpath = filepath.Join(mountpath, "build")
-		mnt := encdisk.NewEncrypedDisk(diskfile, mountpath, dev)
-		if err := mnt.Mount(); err != nil {
-			return err
-		}
-
-		defer mnt.Unmount()
-	} else {
-		parentpath := filepath.Join(sdkutils.PathTmpDir, "b", sdkutils.RandomStr(16))
-		buildpath = filepath.Join(parentpath, "0")
-		if err := sdkutils.FsEmptyDir(buildpath); err != nil {
-			return err
-		}
-		defer os.RemoveAll(parentpath)
+	parentpath := filepath.Join(sdkutils.PathTmpDir, "b", sdkutils.RandomStr(16))
+	buildpath := filepath.Join(parentpath, "0")
+	if err := sdkutils.FsEmptyDir(buildpath); err != nil {
+		return err
 	}
+	defer os.RemoveAll(parentpath)
 
 	if err := PatchPluginDeps(pluginSrc, opts.PinnedDeps); err != nil {
 		return err
@@ -266,6 +238,59 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		return err
 	}
 	defer os.RemoveAll(filepath.Join(pluginSrc, "resources/assets/dist")) // Clean up dist folder
+
+	if opts.RemoveSrc {
+		if err := os.RemoveAll(pluginSrc); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// InstallPrebuilt runs the non-build install steps for a server-built plugin
+// tree: migrations, system packages, metadata, and the copy into the install
+// path. The tree must already carry the compiled plugin.so and all generated
+// artifacts — nothing is compiled or generated on the device.
+func InstallPrebuilt(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
+	if err := RunMigrations(sqldb, pluginSrc); err != nil {
+		return err
+	}
+
+	info, err := sdkutils.GetPluginInfoFromPath(pluginSrc)
+	if err != nil {
+		return err
+	}
+
+	installPath := GetInstallPath(info.Package)
+	if opts.ForceInstall {
+		if err := os.RemoveAll(installPath); err != nil {
+			return err
+		}
+		if err := os.RemoveAll(GetPendingUpdatePath(info.Package)); err != nil {
+			return err
+		}
+	} else {
+		// Same behavior as InstallPlugin: stage as a pending update when not
+		// force-installing.
+		installPath = GetPendingUpdatePath(info.Package)
+	}
+
+	if err := InstallSystemPkgs(info.SystemPackages); err != nil {
+		return err
+	}
+
+	if opts.AsMetaMember != "" {
+		if err := WriteMetadataAsMember(opts.Def, info.Package); err != nil {
+			return err
+		}
+	} else if err := WriteMetadata(opts.Def, info.Package); err != nil {
+		return err
+	}
+
+	if err := sdkutils.CopyPluginFiles(pluginSrc, installPath); err != nil {
+		return err
+	}
 
 	if opts.RemoveSrc {
 		if err := os.RemoveAll(pluginSrc); err != nil {

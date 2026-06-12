@@ -162,9 +162,11 @@ func (self *PluginsMgr) GetPortalTheme() (*PluginApi, *ThemesApi, bool, error) {
 
 // InstallPlugin installs a plugin from any source and registers it live without
 // a restart. The source is selected by def.Src:
-//   - store:           resolves the release zip URL via the core RPC service
-//     (using def.StorePackage / def.StorePluginVersion) and installs from an
-//     encrypted scratch disk. The resolved URL is transient and not persisted.
+//   - store:           resolves the release via the core RPC service (using
+//     def.StorePackage / def.StorePluginVersion), then downloads the
+//     server-built install-ready tarball — store plugins are compiled in the
+//     cloud against this machine's exact core version and platform, so nothing
+//     is compiled on the device. The resolved URL is transient and not persisted.
 //   - git:             clones def.GitURL at def.GitRef into a temp dir.
 //   - local:           installs from def.LocalPath, a source folder already on
 //     disk; the source files are left in place (RemoveSrc is forced off).
@@ -192,12 +194,16 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 		if rel.IsMeta {
 			return self.installStoreMeta(def, rel)
 		}
-		info, err = plugins.InstallFromPluginStore(self.db.DB, def, rel.ZipURL, plugins.InstallOpts{
+		// rel.Version is the concrete semver the lookup resolved (the prebuild
+		// RPC rejects an empty version when def.StorePluginVersion was "latest").
+		var tarballURL string
+		tarballURL, err = self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "")
+		if err != nil {
+			return fmt.Errorf("InstallPlugin: %w", err)
+		}
+		info, err = plugins.InstallFromPrebuilt(self.db.DB, tarballURL, plugins.InstallOpts{
 			Def:          def,
-			RemoveSrc:    true,
-			Encrypt:      true,
 			ForceInstall: true,
-			PinnedDeps:   pinned,
 		})
 
 	case sdkutils.PluginSrcGit:
@@ -426,13 +432,15 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg st
 		return fmt.Errorf("meta plugin %q cannot be a member of another meta", def.StorePackage)
 	}
 
-	info, err := plugins.InstallFromPluginStore(self.db.DB, def, rel.ZipURL, plugins.InstallOpts{
+	tarballURL, err := self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "")
+	if err != nil {
+		return err
+	}
+
+	info, err := plugins.InstallFromPrebuilt(self.db.DB, tarballURL, plugins.InstallOpts{
 		Def:          def,
-		RemoveSrc:    true,
-		Encrypt:      true,
 		ForceInstall: true,
 		AsMetaMember: metaPkg,
-		PinnedDeps:   plugindeps.Fetch(""),
 	})
 	if err != nil {
 		return err
