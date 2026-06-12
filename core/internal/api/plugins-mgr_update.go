@@ -52,6 +52,26 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 		version = rel.Version
 	}
 
+	downloadURL, err := self.fetchPrebuiltPluginURL(pkg, version, coreVersion)
+	if err != nil {
+		return fmt.Errorf("StagePluginUpdate: %w", err)
+	}
+
+	if err := stagePackageFromURL(pkg, downloadURL); err != nil {
+		return fmt.Errorf("StagePluginUpdate: stage %s: %w", pkg, err)
+	}
+	return nil
+}
+
+// fetchPrebuiltPluginURL requests a server-side build of a store plugin and
+// returns the install-ready tarball URL, polling until the build is done. A Go
+// plugin .so is ABI-locked to the exact core build it loads into, so the cloud
+// compiles against coreVersion ("" = the machine's currently-registered core
+// version) for this machine's platform. version must be a concrete semver.
+//
+// The mono twin of this method always errors: mono machines statically link
+// plugins at core-build time, so there is nothing a prebuilt .so could load into.
+func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string) (string, error) {
 	// The prebuild RPCs live on the core-owned FlarehotspotService (flarehotspot.v2),
 	// NOT the store plugin's store.v1 — core and plugin must keep separate proto
 	// files so their descriptors don't collide in the same process.
@@ -65,7 +85,7 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 		CoreVersion: coreVersion,
 	})
 	if err != nil {
-		return fmt.Errorf("StagePluginUpdate: request build for %s: %w", pkg, err)
+		return "", fmt.Errorf("request build for %s: %w", pkg, err)
 	}
 
 	// Fast path: the cloud already had this (plugin, core version, platform) built
@@ -74,17 +94,13 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 	if resp.GetBuildStatus() != pluginBuildStatusOK {
 		downloadURL, err = self.awaitPluginBuild(srv, ctx, machineID, resp.GetBuildId())
 		if err != nil {
-			return fmt.Errorf("StagePluginUpdate: %w", err)
+			return "", err
 		}
 	}
 	if downloadURL == "" {
-		return fmt.Errorf("StagePluginUpdate: %s build completed without a download url", pkg)
+		return "", fmt.Errorf("%s build completed without a download url", pkg)
 	}
-
-	if err := stagePackageFromURL(pkg, downloadURL); err != nil {
-		return fmt.Errorf("StagePluginUpdate: stage %s: %w", pkg, err)
-	}
-	return nil
+	return downloadURL, nil
 }
 
 // =============================================================================
