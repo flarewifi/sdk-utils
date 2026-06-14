@@ -20,7 +20,7 @@ GO_TAGS="dev"
         # JS/CSS edit would never reach the browser. --core-only keeps the hot
         # loop fast (plugins are handled by build-plugins).
         go run -tags="${GO_TAGS}" ./core/cmd/build-assets/main.go --core-only
-) || (echo "Build failed" && exit 1)
+) || { echo "Build failed"; exit 1; }
 
 APP_DIR="/opt/flarehotspot/app"
 DATA_DIR="/opt/flarehotspot/data"
@@ -44,7 +44,7 @@ for f in \
     ; do
 
     rm -rf $APP_DIR/$f && \
-    ln -s $(pwd)/$f $APP_DIR/$f || (echo "Failed to link $f" && exit 1)
+    ln -s $(pwd)/$f $APP_DIR/$f || { echo "Failed to link $f"; exit 1; }
 done
 
 # Create temp directory marker
@@ -52,7 +52,7 @@ mkdir -p $APP_DIR/.tmp
 touch $APP_DIR/.tmp/.server-up
 
 # Ensure system/local plugins are installed under runtime APP_DIR
-APP_DIR="$APP_DIR" APP_TMP="$APP_TMP" ./bin/flare build-plugins || (echo "Build plugins failed" && exit 1)
+APP_DIR="$APP_DIR" APP_TMP="$APP_TMP" ./bin/flare build-plugins || { echo "Build plugins failed"; exit 1; }
 
 # Dev mode: prevent stale update tarballs from wiping app symlinks
 if [ -d "/opt/flarehotspot/data/storage/system/updates" ]; then

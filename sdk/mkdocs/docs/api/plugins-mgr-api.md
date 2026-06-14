@@ -41,12 +41,12 @@ if found {
 }
 ```
 
-### All
+### Plugins
 
 Returns all plugins installed in the system.
 
 ```go
-allPlugins := api.PluginsMgr().All()
+allPlugins := api.PluginsMgr().Plugins()
 
 fmt.Printf("Total plugins installed: %d\n", len(allPlugins))
 
@@ -61,6 +61,60 @@ for _, plugin := range allPlugins {
     }
 }
 ```
+
+### InstallPlugin
+
+Installs a plugin from any source (`store`, `git`, `local`/`system`) and registers
+it live, without a server restart. The core owns the entire operation — for store
+plugins this includes requesting a server-side `.so` build, polling it to
+completion, downloading the install-ready tarball, and installing it on the device.
+
+`InstallPlugin` returns immediately with an `IPluginInstall` **handle**; the install
+runs in the background. The handle exposes:
+
+- `Progress() <-chan PluginInstallProgress` — a stream of stage events, **closed**
+  after the install finishes. Sends are best-effort: a slow consumer may miss
+  intermediate events, but `Done()` is always authoritative.
+- `Done() error` — blocks until the install completes and returns the final error
+  (`nil` on success). Safe to call without consuming `Progress()`.
+
+Stages (in order): `resolving` → `queued` → `building` → `downloading` →
+`installing` → terminal `done` / `failed`. `git`/`local` installs compile
+on-device, so they skip the `queued`/`downloading` stages.
+
+```go
+def := sdkutils.PluginSrcDef{
+    Src:                sdkutils.PluginSrcStore,
+    StorePackage:       "com.example.payment",
+    StorePluginVersion: "1.2.0", // or "" for latest
+}
+
+h := api.PluginsMgr().InstallPlugin(def)
+
+// Stream progress (e.g. to drive a progress bar or SSE endpoint).
+for ev := range h.Progress() {
+    fmt.Printf("[%s] %d%% %s\n", ev.Stage, ev.Percent, ev.Message)
+}
+
+// Channel closed — read the authoritative result.
+if err := h.Done(); err != nil {
+    api.Logger().Error(fmt.Sprintf("install failed: %v", err))
+    return
+}
+fmt.Println("Plugin installed successfully")
+```
+
+If you only need the result and not the progress, ignore `Progress()` entirely:
+
+```go
+if err := api.PluginsMgr().InstallPlugin(def).Done(); err != nil {
+    // handle failure
+}
+```
+
+The percentages within the build phase are approximate: the cloud build reports
+only coarse states (`queued` / `building` / `done`), so the core ramps a synthetic
+percent to show forward motion during a long compile.
 
 ## Usage Examples
 

@@ -14,7 +14,7 @@ func InitAssets(g *api.CoreGlobals) {
 	var globalPortalJs, globalPortalcss []string
 	processedFiles := []string{}
 
-	for _, p := range g.PluginMgr.All() {
+	for _, p := range g.PluginMgr.Plugins() {
 		api := p.(*api.PluginApi)
 		manifest := api.AssetsManifest
 		globalJsFiles := []string{"global.js", "globals.js"}

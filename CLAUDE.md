@@ -38,6 +38,7 @@
 - ✅ Catch ALL errors, no silent failures
 - ✅ Rollback on partial failures (e.g., `CreateSession()` → `RecordUsage()` fails → `DeleteSession()`)
 - ❌ NEVER `_ = functionThatCanError()` or log-and-continue for critical operations
+- ✅ When logging errors, wrap with generic but descriptive messages; never expose twrip URLs, domains, secrets, or important file locations
 
 **Logic & Security:**
 - ✅ Race conditions (add DB unique constraints)
@@ -274,6 +275,24 @@ docker cp ./database.sqlite-shm flarewifi-app-1:/opt/flarehotspot/app/data/db/
 **ALL user-facing text:** `api.Translate("label", "Username")` or `api.Translate("error", "Invalid input")`
 
 Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural language (no snake_case)
+
+### Dynamic values (paired params)
+
+- `api.Translate(type, text, pairs...)` accepts **key/value pairs** after the text and interpolates them into the message — **do NOT** build messages with `fmt.Sprintf` or string concatenation.
+- **Placeholders use `<% .key %>` delimiters, NOT `{{ .key }}`** — the translation engine (`flaretmpl.GetTextTemplate`) parses the text as a Go `text/template` with custom `Delims("<%", "%>")`. Using `{{ }}` prints the placeholder **literally**.
+- Keys are lowercase and match the pair names; values can be any type (string, int, etc.):
+  ```go
+  // ✅ CORRECT — paired params with <% %> delimiters
+  api.Translate("success", "Local version bumped to <% .version %>", "version", newVersion)
+  api.Translate("error", "Pull request #<% .number %> is still open", "number", pr.Number)
+
+  // ❌ WRONG — {{ }} delimiters print literally: "... {{.version}}"
+  api.Translate("success", "Local version bumped to {{.version}}", "version", newVersion)
+
+  // ❌ WRONG — don't Sprintf around Translate for interpolation
+  fmt.Sprintf(api.Translate("success", "Local version bumped to %s"), newVersion)
+  ```
+- The message text doubles as the translation **filename/key**, so the same text always resolves to the same translation. On the **first** call for a new text the raw text is returned (placeholders not yet interpolated) while the translation file is created; subsequent calls interpolate.
 
 ## Frontend
 

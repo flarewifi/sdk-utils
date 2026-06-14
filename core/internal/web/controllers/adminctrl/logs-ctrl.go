@@ -79,7 +79,7 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 
 		// Collect package names from all plugins
 		var packages []string
-		pkgs := g.PluginMgr.All()
+		pkgs := g.PluginMgr.Plugins()
 		for _, p := range pkgs {
 			info := p.Info()
 			packages = append(packages, info.Package)

@@ -40,6 +40,14 @@ const (
 	EventClientConnected    ClientEvent = "client:connected"
 	EventClientDisconnected ClientEvent = "client:disconnected"
 
+	// EventClientActive is emitted when a known device shows network activity at
+	// layer 3 — independently of whether it has a running session. The primary
+	// source is the RFC 8908 captive portal API (advertised via DHCP option 114):
+	// when a client's OS probes it, the device is provably on the network.
+	// Subscribers use this as a "client connected" signal to drive auto-resume of
+	// previously auto-paused sessions, mirroring a WiFi (re)association.
+	EventClientActive ClientEvent = "client:active"
+
 	// EventClientMerge is emitted after two device records are successfully merged.
 	// The source device (identified by Source) is deleted; the target device
 	// (available as Target) is the one that was kept and received all transferred data.

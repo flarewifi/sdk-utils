@@ -70,7 +70,8 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 			PluginPackage: m.Package,
 		})
 		if err != nil {
-			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: fetch release for meta %s: %v", m.Package, err))
+			// Log only the method + package; the raw RPC error exposes the cloud endpoint URL.
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: failed to fetch the latest release for meta %s", m.Package))
 			continue
 		}
 
@@ -118,7 +119,8 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 			PluginPackage: meta.Package,
 		})
 		if err != nil {
-			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: fetch release for %s: %v", meta.Package, err))
+			// Log only the method + package; the raw RPC error exposes the cloud endpoint URL.
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: failed to fetch the latest release for %s", meta.Package))
 			continue
 		}
 

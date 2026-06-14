@@ -47,7 +47,8 @@ type IEventsApi interface {
 	// device event occurs. The callback runs asynchronously.
 	//
 	// Available events: EventClientCreated, EventClientRegistered,
-	// EventClientUpdated, EventClientConnected, EventClientDisconnected.
+	// EventClientUpdated, EventClientConnected, EventClientDisconnected,
+	// EventClientActive.
 	OnClientEvent(event ClientEvent, callback func(clnt IClientDevice) error)
 
 	// OnClientMerge registers a callback that fires after two device records have
