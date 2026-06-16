@@ -23,7 +23,21 @@ const (
 type Manifest map[string][]string
 
 func BuildAssets(pluginDir string) (err error) {
-	fmt.Printf("Building plugin assets in: %s\n", pluginDir)
+	pkg := pluginDir
+	if info, infoErr := sdkutils.GetPluginInfoFromPath(pluginDir); infoErr == nil && info.Package != "" {
+		pkg = info.Package
+	}
+
+	// Tag every failure with the plugin package so a broken asset (e.g. a
+	// manifest entry whose file is missing) identifies the offending plugin in
+	// the build log instead of just a filesystem path.
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("plugin %q: %w", pkg, err)
+		}
+	}()
+
+	fmt.Printf("Building plugin assets for %s in: %s\n", pkg, pluginDir)
 
 	if !sdkutils.FsExists(filepath.Join(sdkutils.PathCoreDir, "node_modules")) {
 		if _, err := sdkutils.Retry(func() (any, error) {
@@ -142,13 +156,16 @@ func compileManifest(pluginDir string, manifest Manifest, target api.Target) (re
 		// Import all files into one file
 		indexContent := ""
 		for _, f := range files {
-			f = filepath.Join(pluginDir, AssetsDir, f)
-			if !sdkutils.FsExists(f) {
-				fmt.Printf("Warning: file %s does not exist, skipping...\n", f)
-				continue
+			assetPath := filepath.Join(pluginDir, AssetsDir, f)
+			// A file listed in the manifest but missing on disk is a build error,
+			// not a skippable warning: silently dropping it ships a plugin whose
+			// bundled JS/CSS is incomplete (broken admin/portal UI) with no failure
+			// signal. Block the build so the missing asset is fixed first.
+			if !sdkutils.FsExists(assetPath) {
+				return results, fmt.Errorf("asset file %q listed in manifest does not exist: %s", f, assetPath)
 			}
 
-			rel, err := filepath.Rel(filepath.Dir(indexFile), f)
+			rel, err := filepath.Rel(filepath.Dir(indexFile), assetPath)
 			if err != nil {
 				return results, err
 			}

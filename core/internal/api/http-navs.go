@@ -60,7 +60,7 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 	for _, category := range categories {
 		navItems := []sdkapi.AdminNavItem{}
 
-		for _, p := range self.api.PluginsMgrApi.All() {
+		for _, p := range self.api.PluginsMgrApi.Plugins() {
 			navapi := p.Http().Navs().(*HttpNavsApi)
 			adminNavs := navapi.adminNavsFn(r)
 			for _, nav := range adminNavs {
@@ -121,7 +121,7 @@ func (self *HttpNavsApi) GetAdminNavs(r *http.Request) []sdkapi.AdminNavList {
 // ExtraAttrs from PortalNavItemOpt are passed through to allow theme customization.
 func (self *HttpNavsApi) GetPortalItems(r *http.Request) []sdkapi.PortalNavItem {
 	items := []sdkapi.PortalNavItem{}
-	for _, p := range self.api.PluginsMgrApi.All() {
+	for _, p := range self.api.PluginsMgrApi.Plugins() {
 		navsapi := p.Http().Navs().(*HttpNavsApi)
 		portalItems := navsapi.portalNavsFn(r)
 		for _, item := range portalItems {

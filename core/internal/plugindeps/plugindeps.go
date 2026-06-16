@@ -31,7 +31,9 @@ func Fetch(coreVersion string) []plugins.LockedGoModule {
 		CoreVersion: coreVersion,
 	})
 	if err != nil {
-		fmt.Printf("[plugindeps] warning: unable to fetch dependency lock (building unpinned): %s\n", err.Error())
+		// Best-effort: log only that the dependency-lock fetch failed. The raw RPC
+		// error carries the cloud endpoint URL/domain, which must never reach logs.
+		fmt.Printf("[plugindeps] warning: unable to fetch the plugin dependency lock from the cloud (building unpinned)\n")
 		return nil
 	}
 

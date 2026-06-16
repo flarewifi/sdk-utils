@@ -8,6 +8,62 @@ package sdkapi
 
 import sdkutils "github.com/flarehotspot/sdk-utils"
 
+// PluginInstallStage names a phase of a plugin install. An install moves through
+// these stages in order; only one terminal stage (Done or Failed) is reached.
+type PluginInstallStage string
+
+const (
+	// PluginInstallStageResolving: looking up the store release / download URL.
+	PluginInstallStageResolving PluginInstallStage = "resolving"
+	// PluginInstallStageQueued: the server-side build is enqueued, waiting for a
+	// binary bot to pick it up.
+	PluginInstallStageQueued PluginInstallStage = "queued"
+	// PluginInstallStageBuilding: the plugin .so is being compiled (in the cloud
+	// for store plugins, on-device for git/local plugins).
+	PluginInstallStageBuilding PluginInstallStage = "building"
+	// PluginInstallStageDownloading: fetching the install-ready tarball.
+	PluginInstallStageDownloading PluginInstallStage = "downloading"
+	// PluginInstallStageInstalling: extracting, running migrations, copying into
+	// the install path and registering the plugin live.
+	PluginInstallStageInstalling PluginInstallStage = "installing"
+	// PluginInstallStageDone: install completed successfully (terminal).
+	PluginInstallStageDone PluginInstallStage = "done"
+	// PluginInstallStageFailed: install failed; the event's Err is set (terminal).
+	PluginInstallStageFailed PluginInstallStage = "failed"
+)
+
+// PluginInstallProgress is a single progress event emitted during an install.
+type PluginInstallProgress struct {
+	// Pkg is the package being installed.
+	Pkg string
+	// Stage is the current phase.
+	Stage PluginInstallStage
+	// Percent is a best-effort, monotonic 0..100 completion estimate. The cloud
+	// build reports only coarse states, so percentages within the build phase are
+	// approximate.
+	Percent int
+	// Message is an optional human-readable detail (raw, untranslated). Consumers
+	// should switch on Stage for user-facing text and use Message for extra
+	// context such as an error string.
+	Message string
+	// Err is set only on the terminal Failed event.
+	Err error
+}
+
+// IPluginInstall is the handle returned by InstallPlugin. The install runs in the
+// background as soon as InstallPlugin returns.
+type IPluginInstall interface {
+	// Progress streams install stage events. It is closed after the terminal
+	// (Done/Failed) event, so a consumer can drain it with `for ev := range
+	// h.Progress()`. Sends are best-effort: if the consumer is slow, intermediate
+	// events may be dropped, but Done() always reports the authoritative result.
+	Progress() <-chan PluginInstallProgress
+
+	// Done blocks until the install finishes and returns the final error (nil on
+	// success). It is safe to call without consuming Progress.
+	Done() error
+}
+
 // IPluginsMgrApi is used to get data of installed plugins in the system.
 type IPluginsMgrApi interface {
 
@@ -18,7 +74,7 @@ type IPluginsMgrApi interface {
 	FindByPkg(pkg string) (IPluginApi, bool)
 
 	// Returns all plugins installed in the system.
-	All() []IPluginApi
+	Plugins() []IPluginApi
 
 	// InstallPlugin installs a plugin from any source and registers it live
 	// without requiring a server restart. The source is selected by def.Src:
@@ -33,24 +89,29 @@ type IPluginsMgrApi interface {
 	//
 	// When def resolves to a store meta bundle, InstallPlugin expands it: every
 	// member is installed (or adopted if already present) and a bundle record is
-	// saved. See UninstallMeta for the reverse.
-	InstallPlugin(def sdkutils.PluginSrcDef) error
+	// saved. UninstallPlugin reverses this (it detects and removes meta bundles too).
+	//
+	// The install runs in the background. InstallPlugin returns immediately with a
+	// handle: range over handle.Progress() for stage events and call handle.Done()
+	// for the final result. Callers that only want the result can ignore Progress
+	// and call Done() directly (it blocks until the install finishes).
+	InstallPlugin(def sdkutils.PluginSrcDef) IPluginInstall
 
-	// Uninstall removes a plugin or meta bundle. A regular plugin is marked for
-	// removal on the next restart; a meta bundle is delegated to UninstallMeta.
-	Uninstall(pkg string) error
+	// UninstallPlugin removes a plugin or meta bundle through a single entry point.
+	// A regular plugin is marked for removal on the next restart. A meta bundle is
+	// detected automatically and its bundle record is removed, cascading to its
+	// members: any member left owned by no remaining bundle and not installed
+	// standalone is also marked for removal on the next restart.
+	UninstallPlugin(pkg string) error
 
-	// UninstallMeta removes a meta bundle record and cascades to its members: any
-	// member left owned by no remaining bundle and not installed standalone is
-	// marked for removal on the next restart.
-	UninstallMeta(pkg string) error
+	// MetaPlugins returns all installed meta-plugin bundle records.
+	MetaPlugins() ([]sdkutils.MetaPlugin, error)
 
-	// MetaRecords returns all installed meta-plugin bundle records.
-	MetaRecords() ([]sdkutils.MetaPlugin, error)
-
-	// MetaMembership reports whether pkg should be treated as a standalone install
-	// and which meta bundles own it. ok is false only when config cannot be read.
-	MetaMembership(pkg string) (standalone bool, owners []string, ok bool)
+	// MetaMembership reports which installed meta bundles own pkg and whether it
+	// should be treated as a standalone install. A plugin installed on its own, or
+	// owned by no meta, is standalone. When the plugins config cannot be read it
+	// returns ([]string{}, true) — the safe default (no owners, treated standalone).
+	MetaMembership(pkg string) (owners []string, standalone bool)
 
 	// IsToBeRemoved returns true if the plugin has been marked for removal.
 	IsToBeRemoved(pkg string) bool

@@ -7,9 +7,6 @@
     "./admin/css/global.css",
     "./lib/charts/line-chart.css"
   ],
-  "plugin.js": [
-    "./admin/js/plugin.js"
-  ],
   "admin-error.js": [
     "./admin/js/admin-error.js"
   ],

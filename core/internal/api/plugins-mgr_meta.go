@@ -16,12 +16,16 @@ import (
 // the membership queries so all meta logic lives in core's PluginsMgr rather than
 // in the store UI plugin.
 
-// UninstallMeta removes a meta bundle record and cascades to its members: any
+// uninstallMeta removes a meta bundle record and cascades to its members: any
 // member left owned by no remaining meta and not installed standalone is marked
 // for removal (applied on the next restart). Ownership is recomputed against the
 // updated config, so members shared with another bundle (or installed on their
 // own) are preserved. Symmetric with InstallPlugin's meta-bundle expansion.
-func (self *PluginsMgr) UninstallMeta(pkg string) error {
+//
+// This is an internal helper: callers use UninstallPlugin, which routes a meta
+// bundle here via isMetaPlugin so a single entry point handles both regular and
+// meta plugins.
+func (self *PluginsMgr) uninstallMeta(pkg string) error {
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
 		return err
@@ -51,8 +55,8 @@ func (self *PluginsMgr) UninstallMeta(pkg string) error {
 	// ownership. A member kept by another bundle or installed standalone survives.
 	for _, member := range removed.Members {
 		if len(metaOwnersOf(cfg, member)) == 0 && !isStandalone(cfg, member) {
-			if err := self.Uninstall(member); err != nil {
-				self.CoreAPI.Logger().Error(fmt.Sprintf("UninstallMeta: uninstall member %s: %v", member, err))
+			if err := self.UninstallPlugin(member); err != nil {
+				self.CoreAPI.Logger().Error(fmt.Sprintf("uninstallMeta: uninstall member %s: %v", member, err))
 			}
 		}
 	}
@@ -60,8 +64,8 @@ func (self *PluginsMgr) UninstallMeta(pkg string) error {
 	return nil
 }
 
-// MetaRecords returns all installed meta-plugin bundle records.
-func (self *PluginsMgr) MetaRecords() ([]sdkutils.MetaPlugin, error) {
+// MetaPlugins returns all installed meta-plugin bundle records.
+func (self *PluginsMgr) MetaPlugins() ([]sdkutils.MetaPlugin, error) {
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
 		return nil, err
@@ -69,16 +73,18 @@ func (self *PluginsMgr) MetaRecords() ([]sdkutils.MetaPlugin, error) {
 	return cfg.MetaPlugins, nil
 }
 
-// MetaMembership reports whether pkg should be treated as a standalone install
-// and which meta bundles own it. A plugin installed on its own, or owned by no
-// meta, is reported standalone. ok is false only when the config cannot be read.
-func (self *PluginsMgr) MetaMembership(pkg string) (standalone bool, owners []string, ok bool) {
+// MetaMembership reports which installed meta bundles own pkg and whether it
+// should be treated as a standalone install. A plugin installed on its own, or
+// owned by no meta, is standalone. When the plugins config cannot be read it
+// returns ([]string{}, true) — the safe default (no owners, treated standalone),
+// so a transient read failure never hides a plugin or implies meta ownership.
+func (self *PluginsMgr) MetaMembership(pkg string) (owners []string, standalone bool) {
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
-		return false, nil, false
+		return []string{}, true
 	}
 	owners = metaOwnersOf(cfg, pkg)
-	return isStandalone(cfg, pkg) || len(owners) == 0, owners, true
+	return owners, isStandalone(cfg, pkg) || len(owners) == 0
 }
 
 // isMetaPlugin reports whether pkg is an installed meta bundle (has a record in

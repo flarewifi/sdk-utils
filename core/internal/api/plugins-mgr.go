@@ -67,7 +67,10 @@ func (self *PluginsMgr) InitCoreApi(coreApi *PluginApi) {
 	self.plugins = append(self.plugins, coreApi)
 }
 
-func (self *PluginsMgr) Plugins() []*PluginApi {
+// PluginApis returns the live, concretely-typed plugin list for core-internal use
+// (callers that need *PluginApi rather than the IPluginApi interface). The public,
+// interface-typed accessor is Plugins().
+func (self *PluginsMgr) PluginApis() []*PluginApi {
 	return self.plugins
 }
 
@@ -89,7 +92,7 @@ func (self *PluginsMgr) FindByPkg(pkg string) (sdkplugin.IPluginApi, bool) {
 	return nil, false
 }
 
-func (self *PluginsMgr) All() []sdkplugin.IPluginApi {
+func (self *PluginsMgr) Plugins() []sdkplugin.IPluginApi {
 	plugins := []sdkplugin.IPluginApi{}
 	for _, p := range self.plugins {
 		plugins = append(plugins, p)
@@ -173,7 +176,26 @@ func (self *PluginsMgr) GetPortalTheme() (*PluginApi, *ThemesApi, bool, error) {
 //
 // ForceInstall routes the build straight to plugins/installed instead of staging
 // it as a pending update.
-func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
+func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) sdkplugin.IPluginInstall {
+	pkg := def.StorePackage
+	if pkg == "" {
+		pkg = def.LocalPath
+	}
+	h := newPluginInstall(pkg)
+	// The install runs in the background so the caller can stream Progress() while
+	// it proceeds; finish() records the result and closes the handle exactly once.
+	go func() {
+		h.finish(self.runInstall(def, h.emit))
+	}()
+	return h
+}
+
+// runInstall performs a plugin install synchronously, reporting stage progress
+// through emit (never nil here — the InstallPlugin handle supplies it). The
+// percentages are coarse, monotonic checkpoints: the cloud build only reports
+// queued/processing/done, so the build phase ramp inside fetchPrebuiltPluginURL is
+// an estimate.
+func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitter) error {
 	var info sdkutils.PluginInfo
 	var err error
 
@@ -184,6 +206,7 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 
 	switch def.Src {
 	case sdkutils.PluginSrcStore:
+		emit.call(sdkplugin.PluginInstallStageResolving, 5, "")
 		var rel storeRelease
 		rel, err = self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion)
 		if err != nil {
@@ -192,21 +215,26 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 		// A meta bundle has no zip of its own — install each of its members and
 		// record the bundle. installStoreMeta registers members live itself.
 		if rel.IsMeta {
+			emit.call(sdkplugin.PluginInstallStageInstalling, 30, "")
 			return self.installStoreMeta(def, rel)
 		}
 		// rel.Version is the concrete semver the lookup resolved (the prebuild
 		// RPC rejects an empty version when def.StorePluginVersion was "latest").
 		var tarballURL string
-		tarballURL, err = self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "")
+		tarballURL, err = self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "", emit)
 		if err != nil {
 			return fmt.Errorf("InstallPlugin: %w", err)
 		}
+		emit.call(sdkplugin.PluginInstallStageInstalling, 85, "")
 		info, err = plugins.InstallFromPrebuilt(self.db.DB, tarballURL, plugins.InstallOpts{
 			Def:          def,
 			ForceInstall: true,
 		})
 
 	case sdkutils.PluginSrcGit:
+		// Git/local plugins compile on-device; there is no cloud build to poll, so a
+		// single building checkpoint covers the (potentially long) compile.
+		emit.call(sdkplugin.PluginInstallStageBuilding, 30, "")
 		info, err = plugins.InstallFromGitSrc(self.db.DB, def, plugins.InstallOpts{
 			Def:          def,
 			RemoveSrc:    true,
@@ -215,6 +243,7 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 		})
 
 	case sdkutils.PluginSrcLocal:
+		emit.call(sdkplugin.PluginInstallStageBuilding, 30, "")
 		info, err = plugins.InstallFromLocalPath(self.db.DB, def, plugins.InstallOpts{
 			Def:          def,
 			ForceInstall: true,
@@ -228,6 +257,8 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) error {
 	if err != nil {
 		return fmt.Errorf("InstallPlugin: %w", err)
 	}
+
+	emit.call(sdkplugin.PluginInstallStageInstalling, 90, "")
 
 	// A store plugin's .so is pinned to the (store-prioritized) lock. A local plugin
 	// built against an older lock can share a module at a different version, making
@@ -275,20 +306,20 @@ func (self *PluginsMgr) reconcileLocalPluginsWithLock(lock []plugins.LockedGoMod
 	for _, srcDir := range srcDirs {
 		needs, err := plugins.LocalPluginNeedsRepin(srcDir, lock)
 		if err != nil {
-			self.CoreAPI.LoggerAPI.Error(fmt.Sprintf("reconcile: check %s: %v", srcDir, err))
+			self.CoreAPI.LoggerAPI.Error(fmt.Sprintf("reconcile: check %s: %v", sdkutils.StripRootPath(srcDir), err))
 			continue
 		}
 		if !needs {
 			continue
 		}
-		self.CoreAPI.LoggerAPI.Info(fmt.Sprintf("reconcile: recompiling local plugin %s against the dependency lock (store deps prioritized)", srcDir))
+		self.CoreAPI.LoggerAPI.Info(fmt.Sprintf("reconcile: recompiling local plugin %s against the dependency lock (store deps prioritized)", sdkutils.StripRootPath(srcDir)))
 		def := sdkutils.PluginSrcDef{Src: sdkutils.PluginSrcLocal, LocalPath: sdkutils.StripRootPath(srcDir)}
 		if _, err := plugins.InstallFromLocalPath(self.db.DB, def, plugins.InstallOpts{
 			Def:          def,
 			ForceInstall: true,
 			PinnedDeps:   lock,
 		}); err != nil {
-			self.CoreAPI.LoggerAPI.Error(fmt.Sprintf("reconcile: recompile %s: %v", srcDir, err))
+			self.CoreAPI.LoggerAPI.Error(fmt.Sprintf("reconcile: recompile %s: %v", sdkutils.StripRootPath(srcDir), err))
 			continue
 		}
 		recompiled = true
@@ -432,7 +463,7 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg st
 		return fmt.Errorf("meta plugin %q cannot be a member of another meta", def.StorePackage)
 	}
 
-	tarballURL, err := self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "")
+	tarballURL, err := self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "", nil)
 	if err != nil {
 		return err
 	}
@@ -455,21 +486,22 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg st
 // bundle install. Removal is applied on the next restart.
 func (self *PluginsMgr) rollbackMeta(installed []string) {
 	for _, pkg := range installed {
-		if err := self.Uninstall(pkg); err != nil {
+		if err := self.UninstallPlugin(pkg); err != nil {
 			self.CoreAPI.Logger().Error(fmt.Sprintf("rollbackMeta: uninstall %s: %v", pkg, err))
 		}
 	}
 }
 
-// Uninstall removes a plugin or meta bundle. A meta bundle has no plugin.so of
-// its own, so it is delegated to UninstallMeta (remove the record and cascade to
-// orphaned members). Otherwise the plugin is marked for removal on the next
-// restart. System plugins ship with the product image and are foundational, so
-// they can never be uninstalled — this is the last line of defense, enforced
-// regardless of which caller (UI, RPC, meta rollback) reaches it.
-func (self *PluginsMgr) Uninstall(pkg string) error {
+// UninstallPlugin removes a plugin or meta bundle through a single entry point. A
+// meta bundle has no plugin.so of its own, so it is routed to the meta cascade
+// (remove the record and mark orphaned members for removal). Otherwise the plugin
+// is marked for removal on the next restart. System plugins ship with the product
+// image and are foundational, so they can never be uninstalled — this is the last
+// line of defense, enforced regardless of which caller (UI, RPC, meta rollback)
+// reaches it.
+func (self *PluginsMgr) UninstallPlugin(pkg string) error {
 	if self.isMetaPlugin(pkg) {
-		return self.UninstallMeta(pkg)
+		return self.uninstallMeta(pkg)
 	}
 	if def, err := plugins.GetPluginDef(pkg); err == nil && def.Src == sdkutils.PluginSrcSystem {
 		return errors.New("cannot uninstall system plugin: " + pkg)

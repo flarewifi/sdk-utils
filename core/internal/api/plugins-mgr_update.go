@@ -13,12 +13,15 @@ import (
 	"path/filepath"
 	"time"
 
+	sdkplugin "sdk/api"
+
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 const (
-	pluginBuildStatusOK     = "ok"
-	pluginBuildStatusFailed = "failed"
+	pluginBuildStatusOK         = "ok"
+	pluginBuildStatusFailed     = "failed"
+	pluginBuildStatusProcessing = "processing"
 
 	pluginBuildPollInterval = 3 * time.Second
 	pluginBuildPollTimeout  = 10 * time.Minute
@@ -52,7 +55,7 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 		version = rel.Version
 	}
 
-	downloadURL, err := self.fetchPrebuiltPluginURL(pkg, version, coreVersion)
+	downloadURL, err := self.fetchPrebuiltPluginURL(pkg, version, coreVersion, nil)
 	if err != nil {
 		return fmt.Errorf("StagePluginUpdate: %w", err)
 	}
@@ -71,18 +74,25 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 //
 // The mono twin of this method always errors: mono machines statically link
 // plugins at core-build time, so there is nothing a prebuilt .so could load into.
-func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string) (string, error) {
+func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string, emit progressEmitter) (string, error) {
 	// The prebuild RPCs live on the core-owned FlarehotspotService (flarehotspot.v2),
 	// NOT the store plugin's store.v1 — core and plugin must keep separate proto
 	// files so their descriptors don't collide in the same process.
 	srv, ctx := corerpc.GetTwirpServiceAndCtx()
 	_, machineID := machineuid.GetMachineUID()
 
+	emit.call(sdkplugin.PluginInstallStageQueued, 15, "")
 	resp, err := srv.RequestPluginBuild(ctx, &v2.RequestPluginBuildRequest{
 		MachineId:   machineID,
 		Package:     pkg,
 		Version:     version,
 		CoreVersion: coreVersion,
+		// Declare the Go version of this running core. A plugin .so is ABI-locked to
+		// the exact Go version of the core it loads into, so the cloud must build/serve
+		// the cache entry for this go version. sdkutils.GO_VERSION is runtime.Version()
+		// of this binary — i.e. the toolchain it was compiled with — the authoritative
+		// ABI value, independent of when the machine last registered.
+		GoVersion: sdkutils.GO_VERSION,
 	})
 	if err != nil {
 		return "", fmt.Errorf("request build for %s: %w", pkg, err)
@@ -92,7 +102,7 @@ func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string)
 	// and returned the download URL immediately. Otherwise poll until ready.
 	downloadURL := resp.GetDownloadUrl()
 	if resp.GetBuildStatus() != pluginBuildStatusOK {
-		downloadURL, err = self.awaitPluginBuild(srv, ctx, machineID, resp.GetBuildId())
+		downloadURL, err = self.awaitPluginBuild(srv, ctx, machineID, resp.GetBuildId(), emit)
 		if err != nil {
 			return "", err
 		}
@@ -100,6 +110,7 @@ func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string)
 	if downloadURL == "" {
 		return "", fmt.Errorf("%s build completed without a download url", pkg)
 	}
+	emit.call(sdkplugin.PluginInstallStageDownloading, 75, "")
 	return downloadURL, nil
 }
 
@@ -109,8 +120,11 @@ func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string)
 
 // awaitPluginBuild polls the cloud build until it is ready, failed, or times out,
 // returning the install-ready tarball URL on success.
-func (self *PluginsMgr) awaitPluginBuild(srv v2.FlarehotspotService, ctx context.Context, machineID string, buildID int64) (string, error) {
+func (self *PluginsMgr) awaitPluginBuild(srv v2.FlarehotspotService, ctx context.Context, machineID string, buildID int64, emit progressEmitter) (string, error) {
 	deadline := time.Now().Add(pluginBuildPollTimeout)
+	// The cloud reports only coarse states, so ramp a synthetic percent within the
+	// build phase (30→70) so a long compile still shows forward motion.
+	buildPercent := 30
 	for {
 		st, err := srv.GetPluginBuildStatus(ctx, &v2.GetPluginBuildStatusRequest{
 			MachineId: machineID,
@@ -125,6 +139,13 @@ func (self *PluginsMgr) awaitPluginBuild(srv v2.FlarehotspotService, ctx context
 			return st.GetDownloadUrl(), nil
 		case pluginBuildStatusFailed:
 			return "", fmt.Errorf("server build %d failed: %s", buildID, st.GetErrorMessage())
+		case pluginBuildStatusProcessing:
+			emit.call(sdkplugin.PluginInstallStageBuilding, buildPercent, "")
+			if buildPercent < 70 {
+				buildPercent += 5
+			}
+		default: // pending: enqueued, waiting for a binary bot.
+			emit.call(sdkplugin.PluginInstallStageQueued, 20, "")
 		}
 
 		if time.Now().After(deadline) {

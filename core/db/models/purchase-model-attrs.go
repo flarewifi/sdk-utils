@@ -39,8 +39,6 @@ func (self *PurchaseModel) FindPurchaseByAttrs(ctx context.Context, attrs map[st
 		LIMIT 1
 	`, strings.Join(conditions, " AND "))
 
-	log.Printf("FindPurchaseByAttrs query: %s, args: %v", query, args)
-
 	// Execute the query
 	row := self.db.DB.QueryRowContext(ctx, query, args...)
 

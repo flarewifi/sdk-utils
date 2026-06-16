@@ -3,6 +3,7 @@
 package boot
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -11,6 +12,8 @@ import (
 	"core/utils/env"
 	"core/utils/migrate"
 	"core/utils/plugins"
+
+	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarehotspot/sdk-utils"
 )
@@ -46,6 +49,12 @@ func InitPlugins(g *api.CoreGlobals) error {
 	for _, def := range develPlugins {
 		_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
 		if err != nil {
+			// Devel plugins are development-only; in non-production a failure to
+			// install one must abort boot like any other plugin (production keeps
+			// the historical best-effort behavior — devel plugins ship there).
+			if env.GO_ENV != env.ENV_PRODUCTION {
+				return fmt.Errorf("error installing devel plugin %s: %w", def.LocalPath, err)
+			}
 		}
 	}
 
@@ -89,7 +98,18 @@ func InitPlugins(g *api.CoreGlobals) error {
 		if err != nil {
 
 			pkg := filepath.Base(dir)
+
+			// In development every plugin must load successfully: abort boot so
+			// the failure is fixed instead of silently shipping a broken plugin
+			// set. Production stays resilient (notify + restore from backup +
+			// keep booting) so one bad plugin can't brick a device in the field.
+			if env.GO_ENV != env.ENV_PRODUCTION {
+				return fmt.Errorf("plugin %q failed to load: %w", pkg, err)
+			}
+
+			notifyPluginLoadFailure(g, pkg, err)
 			if err := LoadFromBackup(g, pkg); err != nil {
+				notifyPluginBackupFailure(g, pkg, err)
 			}
 
 			continue
@@ -129,12 +149,75 @@ func InitPlugins(g *api.CoreGlobals) error {
 		p := api.NewPluginApi(dir, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr, g.WifiMgr)
 		err = g.PluginMgr.RegisterPlugin(p)
 		if err != nil {
+			// Dev: a plugin that fails to compile/load aborts boot (see above).
+			// Production: notify the admin and try to recover from backup.
+			if env.GO_ENV != env.ENV_PRODUCTION {
+				return fmt.Errorf("plugin %q failed to load: %w", info.Package, err)
+			}
+
+			notifyPluginLoadFailure(g, info.Package, err)
 			if err := LoadFromBackup(g, info.Package); err != nil {
+				notifyPluginBackupFailure(g, info.Package, err)
 			}
 		}
 	}
 
 	return nil
+}
+
+// notifyPluginLoadFailure records a plugin load/compile failure surfaced at boot
+// (e.g. a stale plugin.so that fails plugin.Open with "different version of
+// package", or any other dlopen error). The detailed cause is always logged for
+// diagnostics; in production it additionally raises an admin notification so the
+// operator knows a plugin failed and needs attention. The user-facing message is
+// kept generic — it names only the plugin package, never the underlying error or
+// .so path — per the error-message hygiene rules; the specifics stay in the log.
+func notifyPluginLoadFailure(g *api.CoreGlobals, pkg string, cause error) {
+	if err := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q failed to load: %v", pkg, cause)); err != nil {
+	}
+
+	if env.GO_ENV != env.ENV_PRODUCTION {
+		return
+	}
+
+	subject := g.CoreAPI.Translate("error", "Plugin failed to load")
+	content := fmt.Sprintf("%s: %s", g.CoreAPI.Translate("error", "A plugin failed to load and may be unavailable until you reinstall or update it"), pkg)
+
+	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{
+		Subject: subject,
+		Content: content,
+		Type:    sdkapi.NotificationTypeError,
+	}); err != nil {
+		if logErr := g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin of plugin load failure for %q: %v", pkg, err)); logErr != nil {
+		}
+	}
+}
+
+// notifyPluginBackupFailure records that recovery from backup also failed after a
+// plugin failed to load — the plugin could not be restored to a working state and
+// is now unavailable. The detailed cause is always logged; in production an admin
+// notification is raised so the operator knows manual recovery (reinstall) is
+// required. The user-facing message names only the package, never the underlying
+// error or filesystem path, per the error-message hygiene rules.
+func notifyPluginBackupFailure(g *api.CoreGlobals, pkg string, cause error) {
+	if err := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q failed to restore from backup: %v", pkg, cause)); err != nil {
+	}
+
+	if env.GO_ENV != env.ENV_PRODUCTION {
+		return
+	}
+
+	subject := g.CoreAPI.Translate("error", "Plugin recovery failed")
+	content := fmt.Sprintf("%s: %s", g.CoreAPI.Translate("error", "A plugin failed to load and could not be restored from backup. Please reinstall it"), pkg)
+
+	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{
+		Subject: subject,
+		Content: content,
+		Type:    sdkapi.NotificationTypeError,
+	}); err != nil {
+		if logErr := g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin of plugin backup recovery failure for %q: %v", pkg, err)); logErr != nil {
+		}
+	}
 }
 
 func LoadFromBackup(g *api.CoreGlobals, pkg string) error {

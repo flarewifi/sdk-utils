@@ -17,7 +17,7 @@ import (
 )
 
 func PluginAssets(g *api.CoreGlobals) {
-	allPlugins := g.PluginMgr.All()
+	allPlugins := g.PluginMgr.Plugins()
 	for _, p := range allPlugins {
 		setupAssetsRoutes(router.RootRouter, p)
 	}

@@ -81,7 +81,7 @@ func PortalRoutes(g *api.CoreGlobals) {
 
 			// Collect portal middlewares from ALL plugins (not just core)
 			var portalMws []func(http.Handler) http.Handler
-			for _, plugin := range g.PluginMgr.Plugins() {
+			for _, plugin := range g.PluginMgr.PluginApis() {
 				pluginMws := plugin.Http().Router().(*api.HttpRouterApi).GetPortalMiddlewares()
 				portalMws = append(portalMws, pluginMws...)
 			}

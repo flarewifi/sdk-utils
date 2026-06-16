@@ -12,7 +12,7 @@ import (
 func GetAvailableThemes(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
-		allPlugins := g.PluginMgr.All()
+		allPlugins := g.PluginMgr.Plugins()
 		adminThemes := []themes.ThemeOption{}
 		portalThemes := []themes.ThemeOption{}
 
