@@ -15,14 +15,14 @@ Instructions for downloading the SDK:
 - If you are using Windows on x86/64 CPU architecture (non-arm CPU), choose the file with **amd64** in the file name.
 - If you are using Windows on Arm or Mac OS on M-series CPU, choose the file with **arm64** in the file name.
 
-![Download Flare Hotspot SDK](./img/01-select-latest-release.png)
+![Download Flarewifi SDK](./img/01-select-latest-release.png)
 
 After downloading, extract the zip file to your desired location.
 
-![Extract Flare Hotspot Sdk](./img/02-extract-devkit.png)
+![Extract Flarewifi Sdk](./img/02-extract-devkit.png)
 
 
-![Extract Flare Hotspot Sdk](./img/03-extract-devkit.png)
+![Extract Flarewifi Sdk](./img/03-extract-devkit.png)
 
 ## 3. Starting The SDK {#start-sdk}
 
@@ -39,7 +39,7 @@ Docker may take sometime to download and install the container and its dependenc
 
 ![Server is running](./img/05-server-is-running.png)
 
-Now you can access the Flare Hotspot web interface:
+Now you can access the Flarewifi web interface:
 
 - Captive Portal: [http://localhost:3000](http://localhost:3000)
 - Admin Dashboard: [http://localhost:3000/admin](http://localhost:3000/admin)

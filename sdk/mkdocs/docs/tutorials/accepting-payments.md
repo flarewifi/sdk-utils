@@ -1,6 +1,6 @@
 # Accept Payments
 
-This guide explains how to implement payment processing in FlareHotspot plugins. It covers both product plugins (that create purchase requests) and payment provider plugins (that process payments).
+This guide explains how to implement payment processing in Flarewifi plugins. It covers both product plugins (that create purchase requests) and payment provider plugins (that process payments).
 
 ## Payment Flow Diagram
 
@@ -25,7 +25,7 @@ The following diagram illustrates the complete payment flow between a requester 
 
 ## Payment Architecture Overview
 
-FlareHotspot uses a dual-route payment architecture:
+Flarewifi uses a dual-route payment architecture:
 
 ```
 ┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
@@ -820,7 +820,7 @@ Processing() bool
 
 ## Summary
 
-Payment processing in FlareHotspot uses a webhook pattern:
+Payment processing in Flarewifi uses a webhook pattern:
 
 1. **Product plugins** create PurchaseRequests with CallbackRoute + WebHookRoute
 2. **Payment providers** collect payment and call Execute()

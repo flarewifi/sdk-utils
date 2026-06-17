@@ -1,6 +1,6 @@
 # INotificationAPI
 
-The `INotificationAPI` provides methods to manage user notifications in the Flare Hotspot system. Notifications can be used to inform users about important events, system status, or other relevant information.
+The `INotificationAPI` provides methods to manage user notifications in the Flarewifi system. Notifications can be used to inform users about important events, system status, or other relevant information.
 
 To get an instance of `INotificationAPI`:
 

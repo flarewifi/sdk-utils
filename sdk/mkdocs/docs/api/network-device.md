@@ -1,6 +1,6 @@
 # INetworkDevice
 
-The `INetworkDevice` interface represents a network device (such as Ethernet, WLAN, bridge, or VLAN interfaces) in the Flare Hotspot system. It provides methods to access device information including name, type, MAC address, status, and traffic statistics.
+The `INetworkDevice` interface represents a network device (such as Ethernet, WLAN, bridge, or VLAN interfaces) in the Flarewifi system. It provides methods to access device information including name, type, MAC address, status, and traffic statistics.
 
 Network devices are obtained through the [INetworkApi](./network-api.md) interface.
 

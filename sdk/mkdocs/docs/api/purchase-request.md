@@ -1,6 +1,6 @@
 # IPurchaseRequest
 
-The `IPurchaseRequest` interface represents a purchase request record in the Flare Hotspot payment system. It provides methods to manage the lifecycle of a purchase, including creating payments, handling wallet payments, and confirming or canceling purchases.
+The `IPurchaseRequest` interface represents a purchase request record in the Flarewifi payment system. It provides methods to manage the lifecycle of a purchase, including creating payments, handling wallet payments, and confirming or canceling purchases.
 
 Purchase requests are created through [IPaymentsApi.Checkout()](./payments-api.md#checkout) and can be retrieved using `api.Payments().GetPurchaseRequest(r)` or `api.Payments().FindPurchaseRequestByUUID(uuid)`.
 

@@ -1,6 +1,6 @@
 # IThemesApi
 
-The `IThemesApi` is used to register custom themes for the Flare Hotspot admin interface and user portal. Themes control the layout, styling, and appearance of the application.
+The `IThemesApi` is used to register custom themes for the Flarewifi admin interface and user portal. Themes control the layout, styling, and appearance of the application.
 
 ## Accessing IThemesApi
 
@@ -677,7 +677,7 @@ templ PortalLayout(data PortalLayoutData) {
                     @data.Components.PageContent()
                 </main>
                 <footer class="text-center py-4">
-                    <p>Powered by Flare Hotspot</p>
+                    <p>Powered by Flarewifi</p>
                 </footer>
             </div>
             @data.Components.Scripts()

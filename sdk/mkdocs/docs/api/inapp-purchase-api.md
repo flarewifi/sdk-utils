@@ -1,6 +1,6 @@
 # IInAppPurchasesApi
 
-The `IInAppPurchasesApi` provides methods to handle in-app purchases and subscriptions in the Flare Hotspot system. It allows you to verify purchases, check subscriptions, and protect routes that require payment.
+The `IInAppPurchasesApi` provides methods to handle in-app purchases and subscriptions in the Flarewifi system. It allows you to verify purchases, check subscriptions, and protect routes that require payment.
 
 To get an instance of `IInAppPurchasesApi`:
 

@@ -1,13 +1,13 @@
 # Creating a Theme Plugin
 
-This tutorial will guide you through creating a custom theme plugin for Flare Hotspot. Theme plugins allow you to customize the appearance and layout of both the admin interface and the user portal.
+This tutorial will guide you through creating a custom theme plugin for Flarewifi. Theme plugins allow you to customize the appearance and layout of both the admin interface and the user portal.
 
 ## Prerequisites
 
 - Basic knowledge of Go programming
 - Understanding of HTML, CSS, and JavaScript
 - Familiarity with the [templ](https://templ.guide/) template engine
-- A Flare Hotspot development environment set up
+- A Flarewifi development environment set up
 
 !!! important "Bootstrap Requirements"
     Theme plugins must bundle their own copy of Bootstrap. The versions depend on the interface:
@@ -78,7 +78,7 @@ Update the `plugin.json` created by the `create-plugin` command to reflect that 
   "name": "My Custom Theme",
   "package": "com.example.my-theme",
   "version": "1.0.0",
-  "description": "A custom theme for Flare Hotspot"
+  "description": "A custom theme for Flarewifi"
 }
 ```
 

@@ -1,6 +1,6 @@
 # INetworkInterface
 
-The `INetworkInterface` interface represents a network interface configuration in the Flare Hotspot system. It provides methods to access interface information including name, associated device, status, and IP configuration.
+The `INetworkInterface` interface represents a network interface configuration in the Flarewifi system. It provides methods to access interface information including name, associated device, status, and IP configuration.
 
 Network interfaces are obtained through the [INetworkApi](./network-api.md) interface.
 

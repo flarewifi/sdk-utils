@@ -1,6 +1,6 @@
 # IFirewallAPI
 
-The `IFirewallAPI` provides methods to manage firewall rules for client devices in the Flare Hotspot system. It allows you to control network access using Destination IP Groups, which provide efficient firewall management for services with multiple IPs.
+The `IFirewallAPI` provides methods to manage firewall rules for client devices in the Flarewifi system. It allows you to control network access using Destination IP Groups, which provide efficient firewall management for services with multiple IPs.
 
 To get an instance of `IFirewallAPI`:
 

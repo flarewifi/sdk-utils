@@ -1,7 +1,7 @@
 ---
-site_name: Flare Hotspot Developers
+site_name: Flarewifi Developers
 site_url: https://developer.flarehotspot.com
-site_description: "Flare Hotspot platform for developers:
+site_description: "Flarewifi platform for developers:
   Build. Innovate. Get Paid."
 
 theme:
@@ -80,7 +80,7 @@ nav:
       - "IUIAPI": api/ui-api.md
       - "Plugin Info": api/plugin-info.md
   - Free Plugins:
-      - "Flare Hotspot Theme": "plugins/com.flarego.default-theme.md"
+      - "Flarewifi Theme": "plugins/com.flarego.default-theme.md"
 
 copyright: |
   &copy; 2024 <a href="https://www.flarego.ph">Flarego Technologies Corp.</a>

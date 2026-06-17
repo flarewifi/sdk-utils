@@ -1,1 +1,1 @@
-# Flare Hotspot Default Theme
+# Flarewifi Default Theme

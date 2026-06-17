@@ -1,6 +1,6 @@
 # Database Migrations and Queries Guide
 
-This comprehensive guide covers database migrations and query development for FlareHotspot plugins. FlareHotspot supports both PostgreSQL and SQLite databases using `sqlc` for type-safe query generation.
+This comprehensive guide covers database migrations and query development for Flarewifi plugins. Flarewifi supports both PostgreSQL and SQLite databases using `sqlc` for type-safe query generation.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This comprehensive guide covers database migrations and query development for Fl
 
 ### Architecture
 
-FlareHotspot uses a dual-database architecture:
+Flarewifi uses a dual-database architecture:
 
 - **PostgreSQL**: Production environment with extensive type overrides
 - **SQLite**: Development/OpenWRT environment with minimal overrides

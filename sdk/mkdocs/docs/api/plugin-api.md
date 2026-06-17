@@ -1,6 +1,6 @@
 # IPluginApi
 
-The `IPluginApi` is the root Go interface of Flare Hotspot SDK. It provides access to methods used to manipulate system accounts, network devices, theme configuration, user sessions, payment system and more. Each plugin is provided with an instance of `IPluginApi`.
+The `IPluginApi` is the root Go interface of Flarewifi SDK. It provides access to methods used to manipulate system accounts, network devices, theme configuration, user sessions, payment system and more. Each plugin is provided with an instance of `IPluginApi`.
 
 When the plugin is first loaded into the system, the system looks for the `Init` function of the plugin's `main` package. The `IPluginApi` instance is then passed to the plugin's `Init` function. From there, you can start configuring the routes and components of your plugin. An example of a plugin's init function:
 

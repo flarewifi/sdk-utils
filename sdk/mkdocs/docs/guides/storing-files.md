@@ -1,6 +1,6 @@
 # Storing Files
 
-This guide shows you how to store and manage files in your FlareHotspot plugin using the Storage API.
+This guide shows you how to store and manage files in your Flarewifi plugin using the Storage API.
 
 ## Overview
 

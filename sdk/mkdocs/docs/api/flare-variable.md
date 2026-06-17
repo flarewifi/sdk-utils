@@ -1,10 +1,10 @@
 # The `$flare` global variable
 
-The `$flare` variable is a global variable in the browser that contains helper functions to work with the Flare Hotspot API.
+The `$flare` variable is a global variable in the browser that contains helper functions to work with the Flarewifi API.
 
 ## 1. $flare.events {#flare-events}
 
-The `$flare.events` object provides methods to listen to server-sent events (SSE) emitted by the Flare Hotspot backend.
+The `$flare.events` object provides methods to listen to server-sent events (SSE) emitted by the Flarewifi backend.
 
 ### $flare.events.on {#flare-events-on}
 

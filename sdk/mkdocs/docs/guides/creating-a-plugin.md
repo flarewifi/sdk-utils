@@ -107,7 +107,7 @@ func Init(api sdkapi.IPluginApi) error {
 ```
 
 !!! note
-    The `api` variable is an instance of the [IPluginApi](../api/plugin-api.md), the root API of the Flare Hotspot SDK. Throughout the documentation, when you see the variable `api`, it refers to [IPluginApi](../api/plugin-api.md).
+    The `api` variable is an instance of the [IPluginApi](../api/plugin-api.md), the root API of the Flarewifi SDK. Throughout the documentation, when you see the variable `api`, it refers to [IPluginApi](../api/plugin-api.md).
 
 !!! warning "Keep the `//go:build !mono` tag"
     The `//go:build !mono` tag on the first line is mandatory. It tells Go to compile this file only for non-mono builds (`.so` builds for local/devel/git/store plugins). Removing it will cause a build-tag conflict with `main_mono.go`, which has `//go:build mono`. The generator will re-add the tag if you accidentally remove it, but it is best to leave it in place.

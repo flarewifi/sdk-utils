@@ -1,6 +1,6 @@
 # IPaymentsApi
 
-The `IPaymentsApi` is used to handle customer payments in Flare Hotspot. It provides methods for registering payment providers, initiating purchases, and managing purchase requests.
+The `IPaymentsApi` is used to handle customer payments in Flarewifi. It provides methods for registering payment providers, initiating purchases, and managing purchase requests.
 
 ## Accessing IPaymentsApi
 

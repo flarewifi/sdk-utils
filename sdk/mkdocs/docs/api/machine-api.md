@@ -1,6 +1,6 @@
 # IMachineApi
 
-The `IMachineApi` provides access to machine-specific information and operations in the Flare Hotspot system. It allows plugins to access details about the host machine.
+The `IMachineApi` provides access to machine-specific information and operations in the Flarewifi system. It allows plugins to access details about the host machine.
 
 To get an instance of `IMachineApi`:
 

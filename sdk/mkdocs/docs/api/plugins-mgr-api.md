@@ -1,6 +1,6 @@
 # IPluginsMgrApi
 
-The `IPluginsMgrApi` provides methods to manage and access installed plugins in the Flare Hotspot system. It allows you to find plugins by name or package, and retrieve information about all installed plugins.
+The `IPluginsMgrApi` provides methods to manage and access installed plugins in the Flarewifi system. It allows you to find plugins by name or package, and retrieve information about all installed plugins.
 
 To get an instance of `IPluginsMgrApi`:
 

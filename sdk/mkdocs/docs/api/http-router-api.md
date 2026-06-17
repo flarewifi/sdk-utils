@@ -1,5 +1,5 @@
 # IHttpRouterApi
-The `IHttpRouterApi` is the backend for http routing in Flare Hotspot. There are four (4) kinds of http routers:
+The `IHttpRouterApi` is the backend for http routing in Flarewifi. There are four (4) kinds of http routers:
 
 - `AdminRouter` - a router for the admin pages of the plugin that requires admin authentication.
 - `PluginRouter` - a router for general purpose routing within the plugin.
@@ -259,7 +259,7 @@ Handler functions are used when you register a route to a router. An example bel
 pluginRouter := api.Http().Router().PluginRouter()
 pluginRouter.Get("/welcome", func (w http.ResponseWriter, r *http.Request) {
     // Handler function code here...
-    w.Write([]byte("Welcome to Flare Hotspot!"))
+    w.Write([]byte("Welcome to Flarewifi!"))
 }).Name("portal:welcome")
 ```
 

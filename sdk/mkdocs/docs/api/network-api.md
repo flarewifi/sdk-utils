@@ -1,6 +1,6 @@
 # INetworkApi
 
-The `INetworkApi` provides methods to access and manage network devices and interfaces in the Flare Hotspot system. It allows you to retrieve information about network hardware, interfaces, and traffic data.
+The `INetworkApi` provides methods to access and manage network devices and interfaces in the Flarewifi system. It allows you to retrieve information about network hardware, interfaces, and traffic data.
 
 To get an instance of `INetworkApi`:
 
