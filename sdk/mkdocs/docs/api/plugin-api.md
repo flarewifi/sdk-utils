@@ -72,6 +72,15 @@ dir := api.Dir()
 fmt.Println(dir) // "/path/to/com.mydomain.myplugin"
 ```
 
+### Events
+
+It returns the [IEventsApi](./events-api.md) object which is used to react to session lifecycle, client, purchase, and voucher events.
+
+```go
+events := api.Events()
+fmt.Println(events) // IEventsApi
+```
+
 ### Features
 
 Returns the available features of the plugin.
