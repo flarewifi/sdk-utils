@@ -31,8 +31,8 @@ type VouchersApi struct {
 	eventsMgr interface {
 		OnVoucherEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucher) error)
 		OnVoucherBatchEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucherBatch) error)
-		EmitVoucherEvent(ctx context.Context, event sdkapi.VoucherEvent, v sdkapi.IVoucher)
-		EmitVoucherBatchEvent(ctx context.Context, event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch)
+		EmitVoucherEvent(ctx context.Context, event sdkapi.VoucherEvent, v sdkapi.IVoucher) error
+		EmitVoucherBatchEvent(ctx context.Context, event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch) error
 		EmitVoucherBeforeCreate(ctx context.Context, params *sdkapi.CreateVouchersParams) error
 	}
 }
@@ -90,8 +90,8 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 		params.BatchUUID = generateUUID()
 	}
 
-	// Synchronous pre-create hook: callbacks may modify params or abort creation by
-	// returning an error. Runs before any DB writes, so a veto needs no rollback.
+	// Synchronous pre-create hook: callbacks may modify params or cancel creation by
+	// returning an error. Runs before any DB writes, so cancelling needs no rollback.
 	if err := self.eventsMgr.EmitVoucherBeforeCreate(ctx, &params); err != nil {
 		return nil, err
 	}

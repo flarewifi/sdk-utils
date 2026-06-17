@@ -53,15 +53,14 @@ const (
 	// previously auto-paused sessions, mirroring a WiFi (re)association.
 	EventClientActive ClientEvent = "client:active"
 
-	// EventClientBeforeConnect is emitted SYNCHRONOUSLY before a client device is
-	// connected to the internet, from the session manager's Connect() flow. Unlike
-	// every other client event (which is async fire-and-forget), the callbacks for
-	// this event run sequentially in the caller's goroutine: if any callback returns
-	// an error, the connection is aborted and that error is propagated back to the
-	// caller of Connect(). Use this as a veto hook (e.g. quota/credit checks, policy
-	// enforcement). It fires before any side effects (firewall rules, session start),
-	// so a veto requires no rollback. Callbacks must be fast and must not block
-	// indefinitely.
+	// EventClientBeforeConnect is emitted before a client device is connected to the
+	// internet, from the session manager's Connect() flow. Like all events its
+	// callbacks run synchronously; what makes it special is that Connect() checks the
+	// returned error: if any callback returns an error, the connection is cancelled
+	// and that error is propagated back to the caller of Connect(). Use this for
+	// quota/credit checks or policy enforcement. It fires before any side effects
+	// (firewall rules, session start), so cancelling requires no rollback. Callbacks
+	// must be fast and must not block indefinitely.
 	EventClientBeforeConnect ClientEvent = "client:before_connect"
 
 	// EventClientMerge is emitted after two device records are successfully merged.
@@ -88,7 +87,7 @@ const (
 	EventVoucherBatchDeleted VoucherEvent = "voucher:batch_deleted"
 )
 
-// Note: the pre-create veto hook is NOT a VoucherEvent constant. Because it must
+// Note: the pre-create hook is NOT a VoucherEvent constant. Because it must
 // run synchronously and be able to block creation, it is registered via the
 // dedicated IEventsApi.OnVoucherBeforeCreate method rather than the async,
 // event-keyed OnVoucherEvent path.
@@ -115,8 +114,17 @@ const (
 
 // IEventsApi is the unified event subscription API for plugins.
 //
-// All registration methods are safe to call concurrently. Callbacks are dispatched
-// asynchronously (each in its own goroutine).
+// All registration methods are safe to call concurrently.
+//
+// DISPATCH IS SYNCHRONOUS. When an event fires, its registered callbacks run
+// sequentially in the emitter's goroutine, in registration order. A callback that
+// must not block the emitting operation — or that runs long — should spawn its own
+// goroutine: deciding sync vs async is the handler's responsibility, not the core's.
+//
+// Most events ignore the value a callback returns. A few let a callback cancel the
+// operation by returning an error — the operation checks the first non-nil error:
+//   - OnVoucherBeforeCreate — an error cancels voucher creation.
+//   - OnClientEvent for EventClientBeforeConnect — an error cancels the connection.
 //
 // Prefer this API over the individual On* methods on ISessionsMgrApi, IVouchersApi,
 // and IPaymentsApi, which are deprecated.
@@ -133,8 +141,8 @@ const (
 type IEventsApi interface {
 
 	// OnSessionEvent registers a callback that fires whenever the given session
-	// event occurs. The callback runs asynchronously; errors are logged but not
-	// propagated to the caller that emitted the event.
+	// event occurs. The callback runs synchronously in the emitter's goroutine; its
+	// returned error is ignored by the emitter. Spawn a goroutine if it must not block.
 	//
 	// Available events: EventSessionCreated, EventSessionConnected,
 	// EventSessionDisconnected, EventSessionConsumed, EventSessionChanged,
@@ -142,19 +150,20 @@ type IEventsApi interface {
 	OnSessionEvent(event SessionEvent, callback func(ctx context.Context, data SessionEventData) error)
 
 	// OnSessionBatchEvent registers a callback that fires whenever a batch of
-	// sessions is updated at once. The callback runs asynchronously.
+	// sessions is updated at once. The callback runs synchronously in the emitter's
+	// goroutine; spawn a goroutine if it must not block.
 	//
 	// Available events: EventSessionBatchUpdated.
 	OnSessionBatchEvent(event SessionEvent, callback func(ctx context.Context, sessions []IClientSession) error)
 
 	// OnClientEvent registers a callback that fires whenever the given client
-	// device event occurs. For most events the callback runs asynchronously and a
-	// returned error is logged but ignored.
+	// device event occurs. The callback runs synchronously in the emitter's goroutine,
+	// in registration order; spawn a goroutine if it must not block. For most client
+	// events the returned error is ignored.
 	//
-	// EXCEPTION — EventClientBeforeConnect: callbacks for this event run
-	// SYNCHRONOUSLY in the Connect() caller's goroutine, in registration order. If a
-	// callback returns an error, the connection is aborted and the error propagates
-	// back to the caller of Connect(). Use it to veto a connection.
+	// EventClientBeforeConnect is the exception: Connect() honors the returned error.
+	// If a callback returns an error, the connection is aborted and the error
+	// propagates back to the caller of Connect(). Use it to stop a connection.
 	//
 	// Available events: EventClientCreated, EventClientRegistered,
 	// EventClientUpdated, EventClientConnected, EventClientDisconnected,
@@ -162,7 +171,8 @@ type IEventsApi interface {
 	OnClientEvent(event ClientEvent, callback func(ctx context.Context, clnt IClientDevice) error)
 
 	// OnClientMerge registers a callback that fires after two device records have
-	// been successfully merged. The callback runs asynchronously.
+	// been successfully merged. The callback runs synchronously in the emitter's
+	// goroutine; spawn a goroutine if it must not block.
 	//
 	// This event fires from multiple sources:
 	//   - Real-time: MAC-collision detected during device registration
@@ -175,32 +185,37 @@ type IEventsApi interface {
 	OnClientMerge(callback func(ctx context.Context, data EventClientMergeData) error)
 
 	// OnPurchaseEvent registers a callback that fires whenever the given purchase
-	// event occurs. The callback runs asynchronously.
+	// event occurs. The callback runs synchronously in the emitter's goroutine;
+	// spawn a goroutine if it must not block.
 	//
 	// Available events: EventPurchaseSuccess, EventPurchaseFailed,
 	// EventPurchaseCancelled.
 	OnPurchaseEvent(event PurchaseEvent, callback func(ctx context.Context, data PurchaseEventData) error)
 
 	// OnVoucherEvent registers a callback that fires whenever the given
-	// single-voucher event occurs. The callback runs asynchronously.
+	// single-voucher event occurs. The callback runs synchronously in the emitter's
+	// goroutine; spawn a goroutine if it must not block.
 	//
 	// Available events: EventVoucherActivated, EventVoucherUpdated,
 	// EventVoucherDeleted.
 	OnVoucherEvent(event VoucherEvent, callback func(ctx context.Context, v IVoucher) error)
 
 	// OnVoucherBatchEvent registers a callback that fires whenever the given
-	// voucher-batch event occurs. The callback runs asynchronously.
+	// voucher-batch event occurs. The callback runs synchronously in the emitter's
+	// goroutine; spawn a goroutine if it must not block.
 	//
 	// Available events: EventVoucherGenerated, EventVoucherBatchDeleted.
 	OnVoucherBatchEvent(event VoucherEvent, callback func(ctx context.Context, batch IVoucherBatch) error)
 
-	// OnVoucherBeforeCreate registers a SYNCHRONOUS hook that runs before a batch
-	// of vouchers is created. Unlike the async On*Event methods, hooks run
-	// sequentially in the CreateVouchers caller's goroutine, in registration order.
-	// Each hook receives a pointer to the (already defaulted) creation params and
-	// may modify them — e.g. clamp Count or override defaults. If any hook returns
-	// a non-nil error, creation is aborted and the error is returned to the caller
-	// of CreateVouchers. Use this for quota/credit checks or policy enforcement.
-	// BatchUUID and bandwidth defaults are guaranteed to be populated before hooks run.
+	// OnVoucherBeforeCreate registers a pre-create hook that runs before a batch
+	// of vouchers is created. Like all events it runs synchronously in the
+	// CreateVouchers caller's goroutine, in registration order; what makes it special
+	// is that CreateVouchers honors the returned error. Each hook receives a pointer
+	// to the (already defaulted) creation params and may modify them — e.g. clamp
+	// Count or override defaults. If any hook returns a non-nil error, creation is
+	// cancelled and the error is returned to the caller of CreateVouchers. Use this
+	// for quota/credit checks or policy enforcement. BatchUUID and bandwidth defaults
+	// are guaranteed to be populated before hooks run. A hook may run even after an
+	// earlier hook cancels creation, so it must be a side-effect-free check.
 	OnVoucherBeforeCreate(callback func(ctx context.Context, params *CreateVouchersParams) error)
 }

@@ -2,7 +2,9 @@
 
 The `IEventsApi` is the unified event subscription API for plugins. It provides a single access point for reacting to session lifecycle changes, client device events, purchase outcomes, and voucher operations — replacing the individual `OnSessionEvent`, `OnClientEvent`, and related methods that were previously scattered across other APIs (those are now deprecated).
 
-All registration methods are safe to call concurrently. Callbacks are dispatched asynchronously (each in its own goroutine) except for the synchronous veto hooks — `OnVoucherBeforeCreate` (can block/abort voucher creation) and `EventClientBeforeConnect` via `OnClientEvent` (can block/abort a client connection).
+All registration methods are safe to call concurrently. **Dispatch is synchronous:** when an event fires, its callbacks run sequentially in the emitter's goroutine, in registration order. Deciding whether to run async is the handler's responsibility — a callback that must not block the emitting operation (or that runs long) should spawn its own goroutine.
+
+Most events ignore the value a callback returns. A few let a callback **cancel the operation** by returning an error: `OnVoucherBeforeCreate` (cancels voucher creation) and `EventClientBeforeConnect` via `OnClientEvent` (cancels a client connection).
 
 Access the `IEventsApi` via `api.Events()`:
 
@@ -20,7 +22,7 @@ func Init(api sdkapi.IPluginApi) error {
 
 ### OnSessionEvent
 
-Registers a callback that fires whenever the given session event occurs. The callback runs asynchronously; errors are logged but not propagated to the caller that emitted the event.
+Registers a callback that fires whenever the given session event occurs. The callback runs synchronously in the emitter's goroutine; its returned error is ignored by the emitter. Spawn a goroutine if it must not block the session operation.
 
 **Available events:** `sdkapi.EventSessionCreated`, `sdkapi.EventSessionConnected`, `sdkapi.EventSessionDisconnected`, `sdkapi.EventSessionConsumed`, `sdkapi.EventSessionChanged`, `sdkapi.EventSessionDeleted`.
 
@@ -36,7 +38,7 @@ The callback receives a [`SessionEventData`](#sessioneventdata-structure) struct
 
 ### OnSessionBatchEvent
 
-Registers a callback that fires whenever a batch of sessions is persisted to the database at once. The callback runs asynchronously and receives a slice of all sessions that were saved in the batch.
+Registers a callback that fires whenever a batch of sessions is persisted to the database at once. The callback runs synchronously in the emitter's goroutine and receives a slice of all sessions that were saved in the batch; spawn a goroutine if it must not block.
 
 The batch save system coalesces individual periodic session saves into a single database transaction every 60 seconds, reducing SQLite lock contention when many sessions are running simultaneously.
 
@@ -57,7 +59,7 @@ This event fires for periodic consumption saves only — not for session start, 
 
 ### OnClientEvent
 
-Registers a callback that fires whenever the given client device event occurs. The callback runs asynchronously.
+Registers a callback that fires whenever the given client device event occurs. The callback runs synchronously in the emitter's goroutine; spawn a goroutine if it must not block. For most client events the returned error is ignored — the exception is `EventClientBeforeConnect` (see below).
 
 **Available events:**
 
@@ -69,7 +71,7 @@ Registers a callback that fires whenever the given client device event occurs. T
 | `"client:connected"` | `sdkapi.EventClientConnected` | A device establishes a session |
 | `"client:disconnected"` | `sdkapi.EventClientDisconnected` | A device disconnects |
 | `"client:active"` | `sdkapi.EventClientActive` | Network activity detected at layer 3 (RFC 8908 captive portal probe) |
-| `"client:before_connect"` | `sdkapi.EventClientBeforeConnect` | **Synchronous veto hook** — fired before a device is connected; returning an error aborts the connection |
+| `"client:before_connect"` | `sdkapi.EventClientBeforeConnect` | **Can cancel the connection** — fired before a device is connected; returning an error stops it |
 
 ```go
 api.Events().OnClientEvent(sdkapi.EventClientConnected, func(ctx context.Context, clnt sdkapi.IClientDevice) error {
@@ -78,9 +80,9 @@ api.Events().OnClientEvent(sdkapi.EventClientConnected, func(ctx context.Context
 })
 ```
 
-#### EventClientBeforeConnect (synchronous veto)
+#### EventClientBeforeConnect (can cancel the connection)
 
-`EventClientBeforeConnect` is the one exception to the asynchronous rule. Its callbacks run **synchronously**, in registration order, inside the `Connect()` caller's goroutine. If any callback returns a non-nil error, the chain is aborted, the connection is **not** established, and the error is returned to the caller of `Connect()`. Because the hook fires before any side effects (firewall rules, session start), a veto needs no rollback.
+`EventClientBeforeConnect` can cancel a connection. Like all events its callbacks run synchronously, in registration order, inside the `Connect()` caller's goroutine — what sets it apart is that `Connect()` honors the returned error. If a callback returns a non-nil error, the connection is **not** established and the error is returned to the caller of `Connect()`. Because the hook fires before any side effects (firewall rules, session start), cancelling needs no rollback.
 
 Use it for last-mile policy enforcement — quota/credit checks, time-of-day rules, device allow/deny lists, etc. Keep callbacks fast: they block the connection while they run (each is bounded by an internal timeout, but a slow hook delays the user's connection).
 
@@ -97,7 +99,7 @@ api.Events().OnClientEvent(sdkapi.EventClientBeforeConnect, func(ctx context.Con
 
 ### OnClientMerge
 
-Registers a callback that fires after two device records have been successfully merged. The callback runs asynchronously.
+Registers a callback that fires after two device records have been successfully merged. The callback runs synchronously in the emitter's goroutine; spawn a goroutine if it must not block.
 
 This event fires from multiple sources:
 
@@ -119,7 +121,7 @@ api.Events().OnClientMerge(func(data sdkapi.EventClientMergeData) error {
 
 ### OnPurchaseEvent
 
-Registers a callback that fires whenever the given purchase event occurs. The callback runs asynchronously.
+Registers a callback that fires whenever the given purchase event occurs. The callback runs synchronously in the emitter's goroutine; spawn a goroutine if it must not block.
 
 **Available events:**
 
@@ -138,7 +140,7 @@ api.Events().OnPurchaseEvent(sdkapi.EventPurchaseSuccess, func(data sdkapi.Purch
 
 ### OnVoucherEvent
 
-Registers a callback that fires whenever a single-voucher lifecycle event occurs. The callback runs asynchronously.
+Registers a callback that fires whenever a single-voucher lifecycle event occurs. The callback runs synchronously in the emitter's goroutine; spawn a goroutine if it must not block.
 
 **Available events:**
 
@@ -157,7 +159,7 @@ api.Events().OnVoucherEvent(sdkapi.EventVoucherActivated, func(v sdkapi.IVoucher
 
 ### OnVoucherBatchEvent
 
-Registers a callback that fires whenever a voucher-batch event occurs. The callback runs asynchronously.
+Registers a callback that fires whenever a voucher-batch event occurs. The callback runs synchronously in the emitter's goroutine; spawn a goroutine if it must not block.
 
 **Available events:**
 
@@ -175,7 +177,7 @@ api.Events().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(batch sdkapi
 
 ### OnVoucherBeforeCreate
 
-Registers a **synchronous** hook that is called before a batch of vouchers is created. Hooks run in registration order, in the `CreateVouchers` caller's goroutine; the first hook that returns a non-nil error aborts the chain and prevents voucher creation (the error is returned to the caller of `CreateVouchers`). Because it runs before any database writes, a veto needs no rollback.
+Registers a hook that is called before a batch of vouchers is created. Like all events the hooks run synchronously, in registration order, in the `CreateVouchers` caller's goroutine; the first hook that returns a non-nil error cancels voucher creation (the error is returned to the caller of `CreateVouchers`). Because it runs before any database writes, cancelling needs no rollback.
 
 The hook receives a pointer to the creation params and may modify them (e.g., to enforce quota limits or override defaults). `BatchUUID` and the bandwidth defaults are already populated by the time hooks run, so credit/quota checks can rely on the final `BatchUUID`, `Count`, and `Amount`.
 

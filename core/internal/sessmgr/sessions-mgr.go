@@ -98,22 +98,23 @@ func (self *SessionsMgr) OnClientEvent(event sdkapi.ClientEvent, callback func(c
 	self.eventsMgr.OnClientEvent(event, callback)
 }
 
-func (self *SessionsMgr) EmitSessionEvent(ctx context.Context, event sdkapi.SessionEvent, session sdkapi.IClientSession) {
-	self.eventsMgr.EmitSessionEvent(ctx, event, sdkapi.SessionEventData{Session: session})
+// EmitSessionEvent dispatches a session event synchronously and returns the first
+// callback error. Notification callers may ignore the returned error.
+func (self *SessionsMgr) EmitSessionEvent(ctx context.Context, event sdkapi.SessionEvent, session sdkapi.IClientSession) error {
+	return self.eventsMgr.EmitSessionEvent(ctx, event, sdkapi.SessionEventData{Session: session})
 }
 
-func (self *SessionsMgr) EmitClientEvent(ctx context.Context, event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) {
-	self.eventsMgr.EmitClientEvent(ctx, event, clnt)
+// EmitClientEvent dispatches a client event synchronously and returns the first
+// callback error. Callers that can cancel the operation (e.g. EventClientBeforeConnect)
+// check the error to abort; notification callers may ignore it.
+func (self *SessionsMgr) EmitClientEvent(ctx context.Context, event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
+	return self.eventsMgr.EmitClientEvent(ctx, event, clnt)
 }
 
-// EmitClientEventSync dispatches a client event synchronously, returning the first
-// callback error so callers can abort (used by the EventClientBeforeConnect veto hook).
-func (self *SessionsMgr) EmitClientEventSync(ctx context.Context, event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
-	return self.eventsMgr.EmitClientEventSync(ctx, event, clnt)
-}
-
-func (self *SessionsMgr) EmitClientMerge(ctx context.Context, data sdkapi.EventClientMergeData) {
-	self.eventsMgr.EmitClientMerge(ctx, data)
+// EmitClientMerge dispatches a client-merge event synchronously and returns the first
+// callback error.
+func (self *SessionsMgr) EmitClientMerge(ctx context.Context, data sdkapi.EventClientMergeData) error {
+	return self.eventsMgr.EmitClientMerge(ctx, data)
 }
 
 // MergeClientDevices merges sourceID into targetID: transfers all data, deletes source,
@@ -277,12 +278,12 @@ func (self *SessionsMgr) Connect(_ context.Context, clnt sdkapi.IClientDevice, n
 		return errors.New(self.coreAPI.Translate("error", "Device is blocked"))
 	}
 
-	// Blocking pre-connect hook: any registered callback may veto the connection by
-	// returning an error. Runs synchronously before any side effects (firewall rules,
-	// session start), so a veto needs no rollback. context.Background() matches this
-	// method's convention of ignoring the passed-in ctx; EmitClientEventSync applies
-	// its own per-callback timeout.
-	if err := self.EmitClientEventSync(context.Background(), sdkapi.EventClientBeforeConnect, clnt); err != nil {
+	// Pre-connect hook: any registered callback may cancel the connection by returning
+	// an error. Client events dispatch synchronously, so this runs before any side
+	// effects (firewall rules, session start) and cancelling needs no rollback.
+	// context.Background() matches this method's convention of ignoring the passed-in
+	// ctx; EmitClientEvent applies its own per-callback timeout.
+	if err := self.EmitClientEvent(context.Background(), sdkapi.EventClientBeforeConnect, clnt); err != nil {
 		return err
 	}
 

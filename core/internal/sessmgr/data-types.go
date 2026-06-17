@@ -49,7 +49,7 @@ type IsConnectedFunc func(deviceID int64) bool
 // SessionEventEmitter is the narrow interface that RunningSession uses to emit session events.
 // It is satisfied by *events.EventsManager, keeping RunningSession decoupled from the full manager.
 type SessionEventEmitter interface {
-	EmitSessionEvent(ctx context.Context, event sdkapi.SessionEvent, data sdkapi.SessionEventData)
+	EmitSessionEvent(ctx context.Context, event sdkapi.SessionEvent, data sdkapi.SessionEventData) error
 }
 
 // =============================================================================
