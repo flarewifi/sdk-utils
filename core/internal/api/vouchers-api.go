@@ -29,12 +29,11 @@ func NewVouchersApi(pluginApi *PluginApi) *VouchersApi {
 type VouchersApi struct {
 	pluginApi *PluginApi
 	eventsMgr interface {
-		OnVoucherEvent(event sdkapi.VoucherEvent, cb func(sdkapi.IVoucher) error)
-		OnVoucherBatchEvent(event sdkapi.VoucherEvent, cb func(sdkapi.IVoucherBatch) error)
-		OnBeforeCreate(cb func(context.Context, *sdkapi.CreateVouchersParams) error)
-		RunBeforeCreate(ctx context.Context, params *sdkapi.CreateVouchersParams) error
-		EmitVoucherEvent(event sdkapi.VoucherEvent, v sdkapi.IVoucher)
-		EmitVoucherBatchEvent(event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch)
+		OnVoucherEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucher) error)
+		OnVoucherBatchEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucherBatch) error)
+		EmitVoucherEvent(ctx context.Context, event sdkapi.VoucherEvent, v sdkapi.IVoucher) error
+		EmitVoucherBatchEvent(ctx context.Context, event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch) error
+		EmitVoucherBeforeCreate(ctx context.Context, params *sdkapi.CreateVouchersParams) error
 	}
 }
 
@@ -75,29 +74,31 @@ func (self *VouchersApi) providerPkg() string {
 // CreateVouchers creates a batch of vouchers and emits EventVoucherGenerated.
 // Automatically creates a voucher batch record before creating vouchers.
 func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.CreateVouchersParams) ([]sdkapi.IVoucher, error) {
-	// Run before-create hooks synchronously (can modify params or return error to block creation).
-	if err := self.eventsMgr.RunBeforeCreate(ctx, &params); err != nil {
-		return nil, err
-	}
-
 	db := self.pluginApi.db
 
 	// Apply default bandwidth if not specified
-	downSpeedMbps := params.DownSpeedMbps
-	upSpeedMbps := params.UpSpeedMbps
-	if downSpeedMbps == 0 {
-		downSpeedMbps = 10
+	if params.DownSpeedMbps == 0 {
+		params.DownSpeedMbps = 10
 	}
-	if upSpeedMbps == 0 {
-		upSpeedMbps = 10
+	if params.UpSpeedMbps == 0 {
+		params.UpSpeedMbps = 10
 	}
 
-	// Use provided BatchUUID or generate one
-	batchUUID := params.BatchUUID
-	if batchUUID == "" {
-		batchUUID = generateUUID()
-		params.BatchUUID = batchUUID // Update params so hooks can access it
+	// Use provided BatchUUID or generate one. Done before the hook so pre-create
+	// callbacks (e.g. reseller credit checks) can reference the final batch UUID.
+	if params.BatchUUID == "" {
+		params.BatchUUID = generateUUID()
 	}
+
+	// Synchronous pre-create hook: callbacks may modify params or cancel creation by
+	// returning an error. Runs before any DB writes, so cancelling needs no rollback.
+	if err := self.eventsMgr.EmitVoucherBeforeCreate(ctx, &params); err != nil {
+		return nil, err
+	}
+
+	downSpeedMbps := params.DownSpeedMbps
+	upSpeedMbps := params.UpSpeedMbps
+	batchUUID := params.BatchUUID
 
 	// Wrap batch + voucher creation in a single transaction for atomicity.
 	// If any voucher INSERT fails, the entire batch (including the batch record) is rolled back.
@@ -166,7 +167,7 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 	if len(created) > 0 {
 		batch, err := self.FindBatchByUUID(ctx, batchUUID)
 		if err == nil {
-			self.eventsMgr.EmitVoucherBatchEvent(sdkapi.EventVoucherGenerated, batch)
+			self.eventsMgr.EmitVoucherBatchEvent(ctx, sdkapi.EventVoucherGenerated, batch)
 		}
 	}
 
@@ -349,7 +350,7 @@ func (self *VouchersApi) Update(ctx context.Context, params sdkapi.UpdateVoucher
 		return nil, err
 	}
 
-	self.eventsMgr.EmitVoucherEvent(sdkapi.EventVoucherUpdated, updated)
+	self.eventsMgr.EmitVoucherEvent(ctx, sdkapi.EventVoucherUpdated, updated)
 	return updated, nil
 }
 
@@ -423,7 +424,7 @@ func (self *VouchersApi) Activate(ctx context.Context, params sdkapi.ActivateVou
 		session: session,
 	}
 
-	self.eventsMgr.EmitVoucherEvent(sdkapi.EventVoucherActivated, activated)
+	self.eventsMgr.EmitVoucherEvent(ctx, sdkapi.EventVoucherActivated, activated)
 	return sdkapi.VoucherActivateResult{
 		Voucher: activated,
 		Session: session,
@@ -463,7 +464,7 @@ func (self *VouchersApi) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("unable to delete voucher: %w", err)
 	}
 
-	self.eventsMgr.EmitVoucherEvent(sdkapi.EventVoucherDeleted, voucher)
+	self.eventsMgr.EmitVoucherEvent(ctx, sdkapi.EventVoucherDeleted, voucher)
 	return nil
 }
 
@@ -481,7 +482,7 @@ func (self *VouchersApi) DeleteActivated(ctx context.Context) error {
 	}
 
 	for _, v := range activated {
-		self.eventsMgr.EmitVoucherEvent(sdkapi.EventVoucherDeleted, v)
+		self.eventsMgr.EmitVoucherEvent(ctx, sdkapi.EventVoucherDeleted, v)
 	}
 	return nil
 }
@@ -507,19 +508,12 @@ func (self *VouchersApi) getActivated(ctx context.Context) ([]sdkapi.IVoucher, e
 }
 
 // OnVoucherEvent registers a callback for a single-voucher event (delegates to global EventsManager).
-func (self *VouchersApi) OnVoucherEvent(event sdkapi.VoucherEvent, callback func(sdkapi.IVoucher) error) {
+func (self *VouchersApi) OnVoucherEvent(event sdkapi.VoucherEvent, callback func(context.Context, sdkapi.IVoucher) error) {
 	self.eventsMgr.OnVoucherEvent(event, callback)
 }
 
-// OnVoucherBatchEvent registers a callback for a batch voucher event (delegates to global EventsManager).
-func (self *VouchersApi) OnVoucherBatchEvent(event sdkapi.VoucherEvent, callback func(sdkapi.IVoucherBatch) error) {
+func (self *VouchersApi) OnVoucherBatchEvent(event sdkapi.VoucherEvent, callback func(context.Context, sdkapi.IVoucherBatch) error) {
 	self.eventsMgr.OnVoucherBatchEvent(event, callback)
-}
-
-// OnBeforeCreate registers a synchronous hook called before voucher creation (delegates to global EventsManager).
-// Return an error to block creation.
-func (self *VouchersApi) OnBeforeCreate(callback func(context.Context, *sdkapi.CreateVouchersParams) error) {
-	self.eventsMgr.OnBeforeCreate(callback)
 }
 
 // FindBatchByUUID finds a voucher batch by its UUID.
@@ -666,7 +660,7 @@ func (self *VouchersApi) DeleteBatch(ctx context.Context, batchUUID string) erro
 	}
 
 	// Emit batch deleted event
-	self.eventsMgr.EmitVoucherBatchEvent(sdkapi.EventVoucherBatchDeleted, batch)
+	self.eventsMgr.EmitVoucherBatchEvent(ctx, sdkapi.EventVoucherBatchDeleted, batch)
 
 	return nil
 }

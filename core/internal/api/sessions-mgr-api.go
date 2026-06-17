@@ -134,7 +134,7 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 	}
 
 	// Emit EventSessionCreated - notify plugins that session was created
-	self.pluginApi.EventsMgr.EmitSessionEvent(sdkapi.EventSessionCreated, sdkapi.SessionEventData{Session: cs})
+	self.pluginApi.EventsMgr.EmitSessionEvent(ctx, sdkapi.EventSessionCreated, sdkapi.SessionEventData{Session: cs})
 
 	return cs, nil
 }
@@ -172,12 +172,11 @@ func (self *SessionsMgrApi) NewClientDevice(params sdkapi.NewDeviceParams) sdkap
 }
 
 // OnSessionEvent registers a callback for session events (delegates to global EventsManager).
-func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData) error) {
+func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback func(context.Context, sdkapi.SessionEventData) error) {
 	self.pluginApi.EventsMgr.OnSessionEvent(event, callback)
 }
 
-// OnClientEvent registers a callback for client device events (delegates to global EventsManager).
-func (self *SessionsMgrApi) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice) error) {
+func (self *SessionsMgrApi) OnClientEvent(event sdkapi.ClientEvent, callback func(context.Context, sdkapi.IClientDevice) error) {
 	self.pluginApi.EventsMgr.OnClientEvent(event, callback)
 }
 
@@ -362,7 +361,7 @@ func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) 
 
 	// Emit EventSessionDeleted AFTER deletion
 	// The session object still has all the data needed (UUID, etc.)
-	self.pluginApi.EventsMgr.EmitSessionEvent(sdkapi.EventSessionDeleted, sdkapi.SessionEventData{Session: session})
+	self.pluginApi.EventsMgr.EmitSessionEvent(ctx, sdkapi.EventSessionDeleted, sdkapi.SessionEventData{Session: session})
 
 	return nil
 }

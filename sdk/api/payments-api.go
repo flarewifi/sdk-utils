@@ -58,7 +58,7 @@ type IPaymentsApi interface {
 	//   - EventPurchaseCancelled: Emitted after purchase.Cancel() completes
 	//
 	// Deprecated: Use api.Events().OnPurchaseEvent(...) instead.
-	OnPurchaseEvent(event PurchaseEvent, callback func(data PurchaseEventData) error)
+	OnPurchaseEvent(event PurchaseEvent, callback func(ctx context.Context, data PurchaseEventData) error)
 
 	// CreatePurchase creates a purchase record programmatically without HTTP checkout flow.
 	// Used for admin-generated purchases like voucher batch sales where no customer device is involved.

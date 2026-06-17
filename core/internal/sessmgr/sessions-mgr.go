@@ -90,30 +90,31 @@ func (self *SessionsMgr) Init(ctx context.Context) error {
 // =============================================================================
 
 // OnSessionEvent registers a callback for a session event (delegates to EventsManager).
-func (self *SessionsMgr) OnSessionEvent(event sdkapi.SessionEvent, callback func(data sdkapi.SessionEventData) error) {
+func (self *SessionsMgr) OnSessionEvent(event sdkapi.SessionEvent, callback func(context.Context, sdkapi.SessionEventData) error) {
 	self.eventsMgr.OnSessionEvent(event, callback)
 }
 
-// OnClientEvent registers a callback for a client event (delegates to EventsManager).
-func (self *SessionsMgr) OnClientEvent(event sdkapi.ClientEvent, callback func(clnt sdkapi.IClientDevice) error) {
+func (self *SessionsMgr) OnClientEvent(event sdkapi.ClientEvent, callback func(context.Context, sdkapi.IClientDevice) error) {
 	self.eventsMgr.OnClientEvent(event, callback)
 }
 
-// EmitSessionEvent dispatches a session event asynchronously via EventsManager.
-func (self *SessionsMgr) EmitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession) {
-	self.eventsMgr.EmitSessionEvent(event, sdkapi.SessionEventData{Session: session})
+// EmitSessionEvent dispatches a session event synchronously and returns the first
+// callback error. Notification callers may ignore the returned error.
+func (self *SessionsMgr) EmitSessionEvent(ctx context.Context, event sdkapi.SessionEvent, session sdkapi.IClientSession) error {
+	return self.eventsMgr.EmitSessionEvent(ctx, event, sdkapi.SessionEventData{Session: session})
 }
 
-// EmitClientEvent dispatches a client event asynchronously via EventsManager.
-func (self *SessionsMgr) EmitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) {
-	self.eventsMgr.EmitClientEvent(event, clnt)
+// EmitClientEvent dispatches a client event synchronously and returns the first
+// callback error. Callers that can cancel the operation (e.g. EventClientBeforeConnect)
+// check the error to abort; notification callers may ignore it.
+func (self *SessionsMgr) EmitClientEvent(ctx context.Context, event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
+	return self.eventsMgr.EmitClientEvent(ctx, event, clnt)
 }
 
-// EmitClientMerge dispatches a client-merge event asynchronously via EventsManager.
-// Internal use only — called by ClientRegister for MAC-collision merges that must
-// defer the target reconnect to the surrounding UpdateDevice flow.
-func (self *SessionsMgr) EmitClientMerge(data sdkapi.EventClientMergeData) {
-	self.eventsMgr.EmitClientMerge(data)
+// EmitClientMerge dispatches a client-merge event synchronously and returns the first
+// callback error.
+func (self *SessionsMgr) EmitClientMerge(ctx context.Context, data sdkapi.EventClientMergeData) error {
+	return self.eventsMgr.EmitClientMerge(ctx, data)
 }
 
 // MergeClientDevices merges sourceID into targetID: transfers all data, deletes source,
@@ -155,7 +156,7 @@ func (self *SessionsMgr) MergeClientDevices(ctx context.Context, targetID, sourc
 		reloadedTarget = targetClnt
 	}
 
-	self.eventsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+	self.eventsMgr.EmitClientMerge(ctx, sdkapi.EventClientMergeData{
 		Target:           reloadedTarget,
 		SourceDeviceID:   sourceID,
 		SourceDeviceUUID: sourceDeviceUUID,
@@ -277,6 +278,15 @@ func (self *SessionsMgr) Connect(_ context.Context, clnt sdkapi.IClientDevice, n
 		return errors.New(self.coreAPI.Translate("error", "Device is blocked"))
 	}
 
+	// Pre-connect hook: any registered callback may cancel the connection by returning
+	// an error. Client events dispatch synchronously, so this runs before any side
+	// effects (firewall rules, session start) and cancelling needs no rollback.
+	// context.Background() matches this method's convention of ignoring the passed-in
+	// ctx; EmitClientEvent applies its own per-callback timeout.
+	if err := self.EmitClientEvent(context.Background(), sdkapi.EventClientBeforeConnect, clnt); err != nil {
+		return err
+	}
+
 	// Launch session loop - handles nftables, session start, events, and chaining.
 	startCh := make(chan error, 1)
 	go self.loopSessions(startCh, clnt, notify)
@@ -314,7 +324,7 @@ func (self *SessionsMgr) Disconnect(_ context.Context, clnt sdkapi.IClientDevice
 	// the HTTP handler. nftables/TC cleanup already happened in endSession() above.
 	go func() {
 		clnt.Emit(string(sdkapi.EventSessionDisconnected), []byte(notify))
-		self.EmitClientEvent(sdkapi.EventClientDisconnected, clnt)
+		self.EmitClientEvent(context.Background(), sdkapi.EventClientDisconnected, clnt)
 	}()
 
 	return clnt.Update(context.Background(), sdkapi.UpdateDeviceParams{
@@ -343,7 +353,7 @@ func (self *SessionsMgr) disconnectInternal(clnt sdkapi.IClientDevice, notify st
 	// Note: This only fires SSE + events.Emit, NOT plugin callbacks (emitSessionEvent).
 	// StopWithReason already fired plugin callbacks, so we don't duplicate those.
 	clnt.Emit(string(sdkapi.EventSessionDisconnected), []byte(notify))
-	self.EmitClientEvent(sdkapi.EventClientDisconnected, clnt)
+	self.EmitClientEvent(context.Background(), sdkapi.EventClientDisconnected, clnt)
 
 	return clnt.Update(context.Background(), sdkapi.UpdateDeviceParams{
 		UUID:     clnt.UUID(),
@@ -667,12 +677,12 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 
 // emitSessionEvent dispatches a session event with optional changed-fields data.
 // It is an internal helper for call sites that pass changedFields (e.g. handleSessionSaved).
-func (self *SessionsMgr) emitSessionEvent(event sdkapi.SessionEvent, session sdkapi.IClientSession, changedFields ...sdkapi.SessionChangedFields) {
+func (self *SessionsMgr) emitSessionEvent(ctx context.Context, event sdkapi.SessionEvent, session sdkapi.IClientSession, changedFields ...sdkapi.SessionChangedFields) {
 	data := sdkapi.SessionEventData{Session: session}
 	if len(changedFields) > 0 {
 		data.ChangedFields = changedFields[0]
 	}
-	self.eventsMgr.EmitSessionEvent(event, data)
+	self.eventsMgr.EmitSessionEvent(ctx, event, data)
 }
 
 func (self *SessionsMgr) loopSessions(startedCh chan<- error, clnt sdkapi.IClientDevice, notify string) {
@@ -778,9 +788,9 @@ func (self *SessionsMgr) loopSessions(startedCh chan<- error, clnt sdkapi.IClien
 			// Emit connection events (runs in this goroutine after unblocking the HTTP handler)
 			clnt.Emit(string(sdkapi.EventSessionConnected), []byte(notify))
 			if session, ok := self.CurrSession(clnt); ok {
-				self.emitSessionEvent(sdkapi.EventSessionConnected, session)
-			}
-			self.EmitClientEvent(sdkapi.EventClientConnected, clnt)
+			self.emitSessionEvent(ctx, sdkapi.EventSessionConnected, session)
+		}
+		self.EmitClientEvent(ctx, sdkapi.EventClientConnected, clnt)
 		}
 
 		// Wait for session to end
@@ -958,7 +968,7 @@ func (self *SessionsMgr) handleSessionSaved(ctx context.Context, session sdkapi.
 
 	// Emit event (unless IgnoreCallbacks is set)
 	if opts == nil || !opts.IgnoreCallbacks {
-		self.emitSessionEvent(sdkapi.EventSessionChanged, session, changed)
+		self.emitSessionEvent(ctx, sdkapi.EventSessionChanged, session, changed)
 	}
 
 	return nil
@@ -1052,7 +1062,7 @@ func (self *SessionsMgr) FlushRunningSessions() {
 		}
 	}
 
-	self.eventsMgr.EmitSessionBatchEvent(sdkapi.EventSessionBatchUpdated, sessions)
+	self.eventsMgr.EmitSessionBatchEvent(context.Background(), sdkapi.EventSessionBatchUpdated, sessions)
 }
 
 // persistSessionInTx writes a single session's state using the provided

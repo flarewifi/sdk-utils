@@ -37,7 +37,7 @@ func CaptiveApiCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// downstream resume logic is idempotent.
 		clnt := resolveCaptiveDevice(g, r)
 		if clnt != nil {
-			g.EventsMgr.EmitClientEvent(sdkapi.EventClientActive, clnt)
+			g.EventsMgr.EmitClientEvent(r.Context(), sdkapi.EventClientActive, clnt)
 
 			// A running, non-expired, non-consumed session means the client is online
 			// and should be reported as not captive.
