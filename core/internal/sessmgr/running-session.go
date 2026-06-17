@@ -294,9 +294,9 @@ func (self *RunningSession) StopWithReason(reason StopReason) error {
 
 	if session != nil {
 		if reason == StopReasonConsumed {
-			self.emitter.EmitSessionEvent(sdkapi.EventSessionConsumed, sdkapi.SessionEventData{Session: session})
+			self.emitter.EmitSessionEvent(context.Background(), sdkapi.EventSessionConsumed, sdkapi.SessionEventData{Session: session})
 		}
-		self.emitter.EmitSessionEvent(sdkapi.EventSessionDisconnected, sdkapi.SessionEventData{Session: session})
+		self.emitter.EmitSessionEvent(context.Background(), sdkapi.EventSessionDisconnected, sdkapi.SessionEventData{Session: session})
 	}
 
 	var callbackErr error

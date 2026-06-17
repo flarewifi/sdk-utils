@@ -2,7 +2,7 @@
 
 The `IEventsApi` is the unified event subscription API for plugins. It provides a single access point for reacting to session lifecycle changes, client device events, purchase outcomes, and voucher operations — replacing the individual `OnSessionEvent`, `OnClientEvent`, and related methods that were previously scattered across other APIs (those are now deprecated).
 
-All registration methods are safe to call concurrently. Callbacks are dispatched asynchronously (each in its own goroutine) except for `OnBeforeCreate`, which is synchronous and can block or abort voucher creation.
+All registration methods are safe to call concurrently. Callbacks are dispatched asynchronously (each in its own goroutine) except for the synchronous veto hooks — `OnVoucherBeforeCreate` (can block/abort voucher creation) and `EventClientBeforeConnect` via `OnClientEvent` (can block/abort a client connection).
 
 Access the `IEventsApi` via `api.Events()`:
 
@@ -69,10 +69,28 @@ Registers a callback that fires whenever the given client device event occurs. T
 | `"client:connected"` | `sdkapi.EventClientConnected` | A device establishes a session |
 | `"client:disconnected"` | `sdkapi.EventClientDisconnected` | A device disconnects |
 | `"client:active"` | `sdkapi.EventClientActive` | Network activity detected at layer 3 (RFC 8908 captive portal probe) |
+| `"client:before_connect"` | `sdkapi.EventClientBeforeConnect` | **Synchronous veto hook** — fired before a device is connected; returning an error aborts the connection |
 
 ```go
-api.Events().OnClientEvent(sdkapi.EventClientConnected, func(clnt sdkapi.IClientDevice) error {
+api.Events().OnClientEvent(sdkapi.EventClientConnected, func(ctx context.Context, clnt sdkapi.IClientDevice) error {
     log.Printf("Device %s connected with IPv4=%s", clnt.MacAddr(), clnt.Ipv4Addr())
+    return nil
+})
+```
+
+#### EventClientBeforeConnect (synchronous veto)
+
+`EventClientBeforeConnect` is the one exception to the asynchronous rule. Its callbacks run **synchronously**, in registration order, inside the `Connect()` caller's goroutine. If any callback returns a non-nil error, the chain is aborted, the connection is **not** established, and the error is returned to the caller of `Connect()`. Because the hook fires before any side effects (firewall rules, session start), a veto needs no rollback.
+
+Use it for last-mile policy enforcement — quota/credit checks, time-of-day rules, device allow/deny lists, etc. Keep callbacks fast: they block the connection while they run (each is bounded by an internal timeout, but a slow hook delays the user's connection).
+
+```go
+api.Events().OnClientEvent(sdkapi.EventClientBeforeConnect, func(ctx context.Context, clnt sdkapi.IClientDevice) error {
+    if overQuota(clnt) {
+        // Returning an error here aborts the connection; the message
+        // surfaces to the caller of Connect().
+        return errors.New("data quota exceeded")
+    }
     return nil
 })
 ```
@@ -155,14 +173,14 @@ api.Events().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(batch sdkapi
 })
 ```
 
-### OnBeforeCreate
+### OnVoucherBeforeCreate
 
-Registers a synchronous hook that is called before vouchers are created. Hooks run in registration order; the first hook that returns a non-nil error aborts the chain and prevents voucher creation.
+Registers a **synchronous** hook that is called before a batch of vouchers is created. Hooks run in registration order, in the `CreateVouchers` caller's goroutine; the first hook that returns a non-nil error aborts the chain and prevents voucher creation (the error is returned to the caller of `CreateVouchers`). Because it runs before any database writes, a veto needs no rollback.
 
-The hook receives a pointer to the creation params and may modify them (e.g., to enforce quota limits or override defaults).
+The hook receives a pointer to the creation params and may modify them (e.g., to enforce quota limits or override defaults). `BatchUUID` and the bandwidth defaults are already populated by the time hooks run, so credit/quota checks can rely on the final `BatchUUID`, `Count`, and `Amount`.
 
 ```go
-api.Events().OnBeforeCreate(func(ctx context.Context, params *sdkapi.CreateVouchersParams) error {
+api.Events().OnVoucherBeforeCreate(func(ctx context.Context, params *sdkapi.CreateVouchersParams) error {
     maxVouchers := 100
     if params.Count > maxVouchers {
         return fmt.Errorf("cannot create more than %d vouchers at once", maxVouchers)
@@ -232,6 +250,7 @@ type PurchaseEventData struct {
 | `sdkapi.EventClientConnected` | `"client:connected"` |
 | `sdkapi.EventClientDisconnected` | `"client:disconnected"` |
 | `sdkapi.EventClientActive` | `"client:active"` |
+| `sdkapi.EventClientBeforeConnect` | `"client:before_connect"` |
 
 ### PurchaseEvent Constants
 
@@ -253,7 +272,7 @@ type PurchaseEventData struct {
 
 ### CreateVouchersParams
 
-The parameters passed to `OnBeforeCreate` hooks. The hook may modify these values.
+The parameters passed to `OnVoucherBeforeCreate` hooks. The hook may modify these values.
 
 ```go
 type CreateVouchersParams struct {

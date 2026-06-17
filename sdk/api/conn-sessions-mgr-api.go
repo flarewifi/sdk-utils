@@ -20,40 +20,6 @@ const (
 	SessionTypeTimeOrData SessionType = "time-or-data"
 )
 
-// SessionEvent represents the type of a session event.
-type SessionEvent string
-type ClientEvent string
-type PortalEvent string
-
-const (
-	EventSessionCreated      SessionEvent = "session:created"
-	EventSessionConnected    SessionEvent = "session:connected"
-	EventSessionDisconnected SessionEvent = "session:disconnected"
-	EventSessionConsumed     SessionEvent = "session:expired"
-	EventSessionChanged      SessionEvent = "session:changed"
-	EventSessionDeleted      SessionEvent = "session:deleted"
-	EventSessionBatchUpdated SessionEvent = "session:batch-updated"
-
-	EventClientCreated      ClientEvent = "client:created"
-	EventClientRegistered   ClientEvent = "client:registered"
-	EventClientUpdated      ClientEvent = "client:updated"
-	EventClientConnected    ClientEvent = "client:connected"
-	EventClientDisconnected ClientEvent = "client:disconnected"
-
-	// EventClientActive is emitted when a known device shows network activity at
-	// layer 3 — independently of whether it has a running session. The primary
-	// source is the RFC 8908 captive portal API (advertised via DHCP option 114):
-	// when a client's OS probes it, the device is provably on the network.
-	// Subscribers use this as a "client connected" signal to drive auto-resume of
-	// previously auto-paused sessions, mirroring a WiFi (re)association.
-	EventClientActive ClientEvent = "client:active"
-
-	// EventClientMerge is emitted after two device records are successfully merged.
-	// The source device (identified by Source) is deleted; the target device
-	// (available as Target) is the one that was kept and received all transferred data.
-	EventClientMerge ClientEvent = "client:merged"
-)
-
 // EventClientMergeData carries the context of a device-merge event.
 type EventClientMergeData struct {
 	// Target is the device that was kept after the merge. All sessions, purchases,
@@ -242,12 +208,12 @@ type ISessionsMgrApi interface {
 	// OnSessionEvent registers a callback for session events.
 	//
 	// Deprecated: Use api.Events().OnSessionEvent(...) instead.
-	OnSessionEvent(event SessionEvent, callback func(data SessionEventData) error)
+	OnSessionEvent(event SessionEvent, callback func(ctx context.Context, data SessionEventData) error)
 
 	// OnClientEvent registers a callback for client device events.
 	//
 	// Deprecated: Use api.Events().OnClientEvent(...) instead.
-	OnClientEvent(event ClientEvent, callback func(clnt IClientDevice) error)
+	OnClientEvent(event ClientEvent, callback func(ctx context.Context, clnt IClientDevice) error)
 
 	// ListSessions returns a paginated list of sessions with optional search and filters.
 	// Search matches against session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code.

@@ -17,38 +17,36 @@ const callbackTimeout = 2 * time.Minute
 // It is created once at startup and injected into every component that emits or listens
 // to events (SessionsMgr, ClientRegister, PaymentsApi, VouchersApi, etc.).
 //
-// Dispatch behaviour:
-//   - All Emit* methods are fire-and-forget: each registered callback runs in its own
-//     goroutine so the caller (HTTP handler, session loop, …) is never blocked.
-//   - Each goroutine receives a context with a 2-minute deadline so a slow or hung
-//     callback cannot leak goroutines indefinitely.
-//   - Errors from callbacks are logged but not propagated to the caller.
-//
-// Exception:
-//   - RunBeforeCreate is synchronous and returns the first error it encounters.
-//     This is intentional: it is a blocking gate that must run before vouchers are created.
+// All Emit* methods are fire-and-forget: each registered callback runs in its own
+// goroutine so the caller (HTTP handler, session loop, …) is never blocked.
+// Each goroutine receives a context with a 2-minute deadline so a slow or hung
+// callback cannot leak goroutines indefinitely.
+// Errors from callbacks are logged but not propagated to the caller.
 type EventsManager struct {
 	mu sync.RWMutex
 
-	sessionCallbacks      map[sdkapi.SessionEvent][]func(sdkapi.SessionEventData) error
-	sessionBatchCallbacks map[sdkapi.SessionEvent][]func([]sdkapi.IClientSession) error
-	clientCallbacks       map[sdkapi.ClientEvent][]func(sdkapi.IClientDevice) error
-	clientMergeCallbacks  []func(sdkapi.EventClientMergeData) error
-	purchaseCallbacks     map[sdkapi.PurchaseEvent][]func(sdkapi.PurchaseEventData) error
-	voucherCallbacks      map[sdkapi.VoucherEvent][]func(sdkapi.IVoucher) error
-	voucherBatchCallbacks map[sdkapi.VoucherEvent][]func(sdkapi.IVoucherBatch) error
-	beforeCreateCallbacks []func(context.Context, *sdkapi.CreateVouchersParams) error
+	sessionCallbacks      map[sdkapi.SessionEvent][]func(context.Context, sdkapi.SessionEventData) error
+	sessionBatchCallbacks map[sdkapi.SessionEvent][]func(context.Context, []sdkapi.IClientSession) error
+	clientCallbacks       map[sdkapi.ClientEvent][]func(context.Context, sdkapi.IClientDevice) error
+	clientMergeCallbacks  []func(context.Context, sdkapi.EventClientMergeData) error
+	purchaseCallbacks     map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error
+	voucherCallbacks      map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error
+	voucherBatchCallbacks map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucherBatch) error
+
+	// voucherBeforeCreateCallbacks holds synchronous pre-create veto hooks. Unlike
+	// the event-keyed maps above, these are not dispatched async — see EmitVoucherBeforeCreate.
+	voucherBeforeCreateCallbacks []func(context.Context, *sdkapi.CreateVouchersParams) error
 }
 
 // NewEventsManager constructs an EventsManager ready for use.
 func NewEventsManager() *EventsManager {
 	return &EventsManager{
-		sessionCallbacks:      make(map[sdkapi.SessionEvent][]func(sdkapi.SessionEventData) error),
-		sessionBatchCallbacks: make(map[sdkapi.SessionEvent][]func([]sdkapi.IClientSession) error),
-		clientCallbacks:       make(map[sdkapi.ClientEvent][]func(sdkapi.IClientDevice) error),
-		purchaseCallbacks:     make(map[sdkapi.PurchaseEvent][]func(sdkapi.PurchaseEventData) error),
-		voucherCallbacks:      make(map[sdkapi.VoucherEvent][]func(sdkapi.IVoucher) error),
-		voucherBatchCallbacks: make(map[sdkapi.VoucherEvent][]func(sdkapi.IVoucherBatch) error),
+		sessionCallbacks:      make(map[sdkapi.SessionEvent][]func(context.Context, sdkapi.SessionEventData) error),
+		sessionBatchCallbacks: make(map[sdkapi.SessionEvent][]func(context.Context, []sdkapi.IClientSession) error),
+		clientCallbacks:       make(map[sdkapi.ClientEvent][]func(context.Context, sdkapi.IClientDevice) error),
+		purchaseCallbacks:     make(map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error),
+		voucherCallbacks:      make(map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error),
+		voucherBatchCallbacks: make(map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucherBatch) error),
 	}
 }
 
@@ -57,58 +55,57 @@ func NewEventsManager() *EventsManager {
 // =============================================================================
 
 // OnSessionEvent registers a callback that fires whenever the given session event occurs.
-func (em *EventsManager) OnSessionEvent(event sdkapi.SessionEvent, cb func(sdkapi.SessionEventData) error) {
+func (em *EventsManager) OnSessionEvent(event sdkapi.SessionEvent, cb func(context.Context, sdkapi.SessionEventData) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.sessionCallbacks[event] = append(em.sessionCallbacks[event], cb)
 }
 
 // OnSessionBatchEvent registers a callback that fires whenever a batch session event occurs.
-func (em *EventsManager) OnSessionBatchEvent(event sdkapi.SessionEvent, cb func([]sdkapi.IClientSession) error) {
+func (em *EventsManager) OnSessionBatchEvent(event sdkapi.SessionEvent, cb func(context.Context, []sdkapi.IClientSession) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.sessionBatchCallbacks[event] = append(em.sessionBatchCallbacks[event], cb)
 }
 
 // OnClientEvent registers a callback that fires whenever the given client event occurs.
-func (em *EventsManager) OnClientEvent(event sdkapi.ClientEvent, cb func(sdkapi.IClientDevice) error) {
+func (em *EventsManager) OnClientEvent(event sdkapi.ClientEvent, cb func(context.Context, sdkapi.IClientDevice) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.clientCallbacks[event] = append(em.clientCallbacks[event], cb)
 }
 
 // OnPurchaseEvent registers a callback that fires whenever the given purchase event occurs.
-func (em *EventsManager) OnPurchaseEvent(event sdkapi.PurchaseEvent, cb func(sdkapi.PurchaseEventData) error) {
+func (em *EventsManager) OnPurchaseEvent(event sdkapi.PurchaseEvent, cb func(context.Context, sdkapi.PurchaseEventData) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.purchaseCallbacks[event] = append(em.purchaseCallbacks[event], cb)
 }
 
 // OnVoucherEvent registers a callback that fires whenever the given single-voucher event occurs.
-func (em *EventsManager) OnVoucherEvent(event sdkapi.VoucherEvent, cb func(sdkapi.IVoucher) error) {
+func (em *EventsManager) OnVoucherEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucher) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.voucherCallbacks[event] = append(em.voucherCallbacks[event], cb)
 }
 
 // OnVoucherBatchEvent registers a callback that fires whenever the given voucher-batch event occurs.
-func (em *EventsManager) OnVoucherBatchEvent(event sdkapi.VoucherEvent, cb func(sdkapi.IVoucherBatch) error) {
+func (em *EventsManager) OnVoucherBatchEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucherBatch) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.voucherBatchCallbacks[event] = append(em.voucherBatchCallbacks[event], cb)
 }
 
-// OnBeforeCreate registers a hook that is called synchronously before voucher creation.
-// The hook may modify params or return an error to abort creation.
-func (em *EventsManager) OnBeforeCreate(cb func(context.Context, *sdkapi.CreateVouchersParams) error) {
+// OnVoucherBeforeCreate registers a synchronous pre-create veto hook.
+func (em *EventsManager) OnVoucherBeforeCreate(cb func(context.Context, *sdkapi.CreateVouchersParams) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
-	em.beforeCreateCallbacks = append(em.beforeCreateCallbacks, cb)
+	em.voucherBeforeCreateCallbacks = append(em.voucherBeforeCreateCallbacks, cb)
 }
 
 // OnClientMerge registers a callback that fires after two device records have been
 // successfully merged. The source device is deleted before callbacks are invoked.
-func (em *EventsManager) OnClientMerge(cb func(sdkapi.EventClientMergeData) error) {
+func (em *EventsManager) OnClientMerge(cb func(context.Context, sdkapi.EventClientMergeData) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.clientMergeCallbacks = append(em.clientMergeCallbacks, cb)
@@ -120,156 +117,167 @@ func (em *EventsManager) OnClientMerge(cb func(sdkapi.EventClientMergeData) erro
 
 // EmitSessionEvent dispatches a session event to all registered callbacks asynchronously.
 // Each callback runs in its own goroutine. Errors are logged; the caller is never blocked.
-func (em *EventsManager) EmitSessionEvent(event sdkapi.SessionEvent, data sdkapi.SessionEventData) {
+func (em *EventsManager) EmitSessionEvent(ctx context.Context, event sdkapi.SessionEvent, data sdkapi.SessionEventData) {
 	em.mu.RLock()
-	cbs := em.sessionCallbacks[event]
-	snapshot := make([]func(sdkapi.SessionEventData) error, len(cbs))
-	copy(snapshot, cbs)
+	snapshot := make([]func(context.Context, sdkapi.SessionEventData) error, len(em.sessionCallbacks[event]))
+	copy(snapshot, em.sessionCallbacks[event])
 	em.mu.RUnlock()
 
 	for _, cb := range snapshot {
 		cb := cb
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			ctx, cancel := context.WithTimeout(ctx, callbackTimeout)
 			defer cancel()
-			_ = ctx // callbacks don't accept context yet; timeout is enforced by their own internal logic
-			cb(data)
+			cb(ctx, data)
 		}()
 	}
 }
 
 // EmitSessionBatchEvent dispatches a batch session event to all registered callbacks asynchronously.
-func (em *EventsManager) EmitSessionBatchEvent(event sdkapi.SessionEvent, sessions []sdkapi.IClientSession) {
+func (em *EventsManager) EmitSessionBatchEvent(ctx context.Context, event sdkapi.SessionEvent, sessions []sdkapi.IClientSession) {
 	em.mu.RLock()
-	cbs := em.sessionBatchCallbacks[event]
-	snapshot := make([]func([]sdkapi.IClientSession) error, len(cbs))
-	copy(snapshot, cbs)
+	snapshot := make([]func(context.Context, []sdkapi.IClientSession) error, len(em.sessionBatchCallbacks[event]))
+	copy(snapshot, em.sessionBatchCallbacks[event])
 	em.mu.RUnlock()
 
 	for _, cb := range snapshot {
 		cb := cb
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			ctx, cancel := context.WithTimeout(ctx, callbackTimeout)
 			defer cancel()
-			_ = ctx
-			cb(sessions)
+			cb(ctx, sessions)
 		}()
 	}
 }
 
 // EmitClientEvent dispatches a client event to all registered callbacks asynchronously.
-func (em *EventsManager) EmitClientEvent(event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) {
+func (em *EventsManager) EmitClientEvent(ctx context.Context, event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) {
 	em.mu.RLock()
-	cbs := em.clientCallbacks[event]
-	snapshot := make([]func(sdkapi.IClientDevice) error, len(cbs))
-	copy(snapshot, cbs)
+	snapshot := make([]func(context.Context, sdkapi.IClientDevice) error, len(em.clientCallbacks[event]))
+	copy(snapshot, em.clientCallbacks[event])
 	em.mu.RUnlock()
 
 	for _, cb := range snapshot {
 		cb := cb
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			ctx, cancel := context.WithTimeout(ctx, callbackTimeout)
 			defer cancel()
-			_ = ctx
-			cb(clnt)
+			cb(ctx, clnt)
 		}()
 	}
 }
 
-// EmitPurchaseEvent dispatches a purchase event to all registered callbacks asynchronously.
-func (em *EventsManager) EmitPurchaseEvent(event sdkapi.PurchaseEvent, data sdkapi.PurchaseEventData) {
+// EmitClientEventSync dispatches a client event to all registered callbacks
+// SYNCHRONOUSLY, in the caller's goroutine and in registration order, stopping at
+// and returning the first error. Unlike the fire-and-forget Emit* methods, this is
+// used for blocking hooks such as EventClientBeforeConnect where a callback must be
+// able to veto an operation. Each callback still receives a context bounded by
+// callbackTimeout so a hung callback cannot block the caller indefinitely.
+func (em *EventsManager) EmitClientEventSync(ctx context.Context, event sdkapi.ClientEvent, clnt sdkapi.IClientDevice) error {
 	em.mu.RLock()
-	cbs := em.purchaseCallbacks[event]
-	snapshot := make([]func(sdkapi.PurchaseEventData) error, len(cbs))
-	copy(snapshot, cbs)
+	snapshot := make([]func(context.Context, sdkapi.IClientDevice) error, len(em.clientCallbacks[event]))
+	copy(snapshot, em.clientCallbacks[event])
+	em.mu.RUnlock()
+
+	for _, cb := range snapshot {
+		cbCtx, cancel := context.WithTimeout(ctx, callbackTimeout)
+		err := cb(cbCtx, clnt)
+		cancel()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// EmitPurchaseEvent dispatches a purchase event to all registered callbacks asynchronously.
+func (em *EventsManager) EmitPurchaseEvent(ctx context.Context, event sdkapi.PurchaseEvent, data sdkapi.PurchaseEventData) {
+	em.mu.RLock()
+	snapshot := make([]func(context.Context, sdkapi.PurchaseEventData) error, len(em.purchaseCallbacks[event]))
+	copy(snapshot, em.purchaseCallbacks[event])
 	em.mu.RUnlock()
 
 	for _, cb := range snapshot {
 		cb := cb
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			ctx, cancel := context.WithTimeout(ctx, callbackTimeout)
 			defer cancel()
-			_ = ctx
-			cb(data)
+			cb(ctx, data)
 		}()
 	}
 }
 
 // EmitVoucherEvent dispatches a single-voucher event to all registered callbacks asynchronously.
-func (em *EventsManager) EmitVoucherEvent(event sdkapi.VoucherEvent, v sdkapi.IVoucher) {
+func (em *EventsManager) EmitVoucherEvent(ctx context.Context, event sdkapi.VoucherEvent, v sdkapi.IVoucher) {
 	em.mu.RLock()
-	cbs := em.voucherCallbacks[event]
-	snapshot := make([]func(sdkapi.IVoucher) error, len(cbs))
-	copy(snapshot, cbs)
+	snapshot := make([]func(context.Context, sdkapi.IVoucher) error, len(em.voucherCallbacks[event]))
+	copy(snapshot, em.voucherCallbacks[event])
 	em.mu.RUnlock()
 
 	for _, cb := range snapshot {
 		cb := cb
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			ctx, cancel := context.WithTimeout(ctx, callbackTimeout)
 			defer cancel()
-			_ = ctx
-			cb(v)
+			cb(ctx, v)
 		}()
 	}
 }
 
 // EmitClientMerge dispatches a client-merge event to all registered callbacks asynchronously.
 // The source device is already deleted from the database when this is called.
-func (em *EventsManager) EmitClientMerge(data sdkapi.EventClientMergeData) {
+func (em *EventsManager) EmitClientMerge(ctx context.Context, data sdkapi.EventClientMergeData) {
 	em.mu.RLock()
-	cbs := em.clientMergeCallbacks
-	snapshot := make([]func(sdkapi.EventClientMergeData) error, len(cbs))
-	copy(snapshot, cbs)
+	snapshot := make([]func(context.Context, sdkapi.EventClientMergeData) error, len(em.clientMergeCallbacks))
+	copy(snapshot, em.clientMergeCallbacks)
 	em.mu.RUnlock()
 
 	for _, cb := range snapshot {
 		cb := cb
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			ctx, cancel := context.WithTimeout(ctx, callbackTimeout)
 			defer cancel()
-			_ = ctx
-			cb(data)
+			cb(ctx, data)
 		}()
 	}
 }
 
 // EmitVoucherBatchEvent dispatches a voucher-batch event to all registered callbacks asynchronously.
-func (em *EventsManager) EmitVoucherBatchEvent(event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch) {
+func (em *EventsManager) EmitVoucherBatchEvent(ctx context.Context, event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch) {
 	em.mu.RLock()
-	cbs := em.voucherBatchCallbacks[event]
-	snapshot := make([]func(sdkapi.IVoucherBatch) error, len(cbs))
-	copy(snapshot, cbs)
+	snapshot := make([]func(context.Context, sdkapi.IVoucherBatch) error, len(em.voucherBatchCallbacks[event]))
+	copy(snapshot, em.voucherBatchCallbacks[event])
 	em.mu.RUnlock()
 
 	for _, cb := range snapshot {
 		cb := cb
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), callbackTimeout)
+			ctx, cancel := context.WithTimeout(ctx, callbackTimeout)
 			defer cancel()
-			_ = ctx
-			cb(batch)
+			cb(ctx, batch)
 		}()
 	}
 }
 
-// =============================================================================
-// SYNCHRONOUS GATE
-// =============================================================================
-
-// RunBeforeCreate runs all OnBeforeCreate hooks synchronously, in registration order.
-// The first hook that returns a non-nil error aborts the chain and that error is returned
-// to the caller. This is a blocking gate: voucher creation must not proceed on error.
-func (em *EventsManager) RunBeforeCreate(ctx context.Context, params *sdkapi.CreateVouchersParams) error {
+// EmitVoucherBeforeCreate runs all registered pre-create hooks SYNCHRONOUSLY, in
+// registration order, in the caller's goroutine, stopping at and returning the first
+// error. Hooks receive a pointer to params and may modify them; a returned error
+// aborts voucher creation. Each hook gets a context bounded by callbackTimeout.
+func (em *EventsManager) EmitVoucherBeforeCreate(ctx context.Context, params *sdkapi.CreateVouchersParams) error {
 	em.mu.RLock()
-	snapshot := make([]func(context.Context, *sdkapi.CreateVouchersParams) error, len(em.beforeCreateCallbacks))
-	copy(snapshot, em.beforeCreateCallbacks)
+	snapshot := make([]func(context.Context, *sdkapi.CreateVouchersParams) error, len(em.voucherBeforeCreateCallbacks))
+	copy(snapshot, em.voucherBeforeCreateCallbacks)
 	em.mu.RUnlock()
 
-	for _, hook := range snapshot {
-		if err := hook(ctx, params); err != nil {
+	for _, cb := range snapshot {
+		cbCtx, cancel := context.WithTimeout(ctx, callbackTimeout)
+		err := cb(cbCtx, params)
+		cancel()
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
+

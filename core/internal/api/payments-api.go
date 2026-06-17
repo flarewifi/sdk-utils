@@ -160,7 +160,7 @@ func (self *PaymentsApi) ExtractPurchaseData(r *http.Request) (sdkapi.IPurchaseR
 	return self.FindPurchaseRequestByUUID(claims.PurchaseUID)
 }
 
-func (self *PaymentsApi) OnPurchaseEvent(event sdkapi.PurchaseEvent, callback func(data sdkapi.PurchaseEventData) error) {
+func (self *PaymentsApi) OnPurchaseEvent(event sdkapi.PurchaseEvent, callback func(context.Context, sdkapi.PurchaseEventData) error) {
 	self.api.EventsMgr.OnPurchaseEvent(event, callback)
 }
 

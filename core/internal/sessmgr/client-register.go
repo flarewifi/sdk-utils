@@ -69,7 +69,7 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 				existingDev, findErr := reg.mdls.Device().Find(ctx, existingDevID)
 				if findErr == nil {
 					reg.mdls.Device().MergeDevices(ctx, clnt.ID(), existingDevID)
-					reg.sessionsMgr.EmitClientMerge(sdkapi.EventClientMergeData{
+					reg.sessionsMgr.EmitClientMerge(ctx, sdkapi.EventClientMergeData{
 						Target:           clnt,
 						SourceDeviceID:   existingDev.ID(),
 						SourceDeviceUUID: existingDev.UUID(),
@@ -108,7 +108,7 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 		return fmt.Errorf("could not update device: %w", err)
 	}
 
-	reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientUpdated, clnt)
+	reg.sessionsMgr.EmitClientEvent(ctx, sdkapi.EventClientUpdated, clnt)
 
 	// Reconnect if was previously running a session
 	if hasRunningSession {
@@ -230,7 +230,7 @@ func (reg *ClientRegister) Register(ctx context.Context, params ClientRegisterPa
 				}
 			}
 
-			reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
+			reg.sessionsMgr.EmitClientEvent(ctx, sdkapi.EventClientRegistered, clnt)
 			return clnt, true, nil
 		}
 		// Failed to find device by cookie, fall through to MAC match
@@ -309,7 +309,7 @@ STEP_2_MAC_MATCH:
 			}
 		}
 
-		reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
+		reg.sessionsMgr.EmitClientEvent(ctx, sdkapi.EventClientRegistered, clnt)
 		return clnt, true, nil
 	}
 
@@ -358,7 +358,7 @@ STEP_2_5_MAC_HISTORY:
 			return nil, false, err
 		}
 
-		reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
+		reg.sessionsMgr.EmitClientEvent(ctx, sdkapi.EventClientRegistered, clnt)
 		return clnt, true, nil
 	}
 
@@ -386,8 +386,8 @@ STEP_3_CREATE_NEW:
 
 		clnt = reg.wrapDevice(dev)
 
-		reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientCreated, clnt)
-		reg.sessionsMgr.EmitClientEvent(sdkapi.EventClientRegistered, clnt)
+		reg.sessionsMgr.EmitClientEvent(ctx, sdkapi.EventClientCreated, clnt)
+		reg.sessionsMgr.EmitClientEvent(ctx, sdkapi.EventClientRegistered, clnt)
 
 		// Add first fingerprint for new device (full, partial/CNA, or minimal/JS-disabled)
 		if hasFingerprintData && fpHash != "" {
