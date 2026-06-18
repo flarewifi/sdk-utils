@@ -12,25 +12,24 @@ import (
 
 func AdminRoutes(g *api.CoreGlobals) {
 	authMw := middlewares.AdminAuth(g.CoreAPI)
-	httpsRedirectMw := middlewares.HTTPSRedirect()
 	rootR := router.RootRouter
 	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
 
-	// Register HTTPS redirect middleware to admin router
-	adminR.Use(httpsRedirectMw)
+	// HTTPS is enforced globally by middlewares.ForceHTTPS (applied on RootRouter
+	// in SetupAppRoutes), so no per-route HTTPS redirect is needed here.
 
 	adminLoginCtrl := controllers.AdminLoginCtrl(g)
 	adminSseCtrl := adminctrl.AdminSseHandler(g)
 
-	router.AdminRouter.Handle("/", httpsRedirectMw(authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.AdminRouter.Handle("/", authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		g.CoreAPI.HttpAPI.Response().Redirect(w, r, "admin:dashboard")
-	})))).Methods("GET")
+	}))).Methods("GET")
 
 	adminR.Get("/dashboard", adminctrl.AdminIndexCtrl(g)).Name("admin:dashboard")
 
 	// TODO: enable csrf protection
-	rootR.Handle("/login", httpsRedirectMw(adminLoginCtrl)).Methods("GET").Name("admin:login")
-	rootR.Handle("/login", httpsRedirectMw(controllers.AdminAuthenticateCtrl(g))).Methods("POST").Name("auth:login")
+	rootR.Handle("/login", adminLoginCtrl).Methods("GET").Name("admin:login")
+	rootR.Handle("/login", controllers.AdminAuthenticateCtrl(g)).Methods("POST").Name("auth:login")
 
 	// Register auth:login on the core static plugin router so UrlForRoute("auth:login")
 	// resolves correctly when the fallback core theme is active (com.flarego.core#static#auth:login).
@@ -85,6 +84,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 	adminR.Group("/logs", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/index", adminctrl.LogsIndex(g)).Name("admin:logs:index")
 		subrouter.Post("/search", adminctrl.LogsPostSearch(g)).Name("admin:logs:search")
+		subrouter.Get("/stream", adminctrl.LogsStream(g)).Name("admin:logs:stream")
 	})
 
 	adminR.Group("/devices", func(subrouter sdkapi.IHttpRouterInstance) {

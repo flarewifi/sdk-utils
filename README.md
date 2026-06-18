@@ -36,20 +36,67 @@ cp hosts.json.sample hosts.json
 ```sh
 make
 ```
-The captive portal is served over **HTTPS on the shared portal hostname**.
-Visiting [http://localhost:3000](http://localhost:3000) (or the device LAN IP) now
-redirects to **https://captive.flare-local.com:3443** (the dev HTTPS port).
+## HTTPS (captive portal + admin)
 
-> **Add the portal hostname to `/etc/hosts`** so the browser resolves it to the
-> local container (production resolves it via the device's split-horizon dnsmasq):
+**Both the captive portal and the admin dashboard always run over HTTPS**, in dev
+and in production. Every plain-HTTP request is redirected to HTTPS (the HTTP
+listener stays up only to redirect, which is also how OS captive-portal probes are
+caught — see `middlewares.ForceHTTPS`). The redirect **target host depends on the
+page**:
+
+| You open (HTTP) | Redirects to (HTTPS) | Why |
+|---|---|---|
+| `http://localhost:3000/` (portal) | `https://captive.flare-local.com:3443/` | portal domain → **valid cert** |
+| `http://localhost:3000/admin` (admin) | `https://localhost:3443/admin` | **same host** → admin works by IP, cert-name warning expected |
+
+- **Portal/captive** traffic goes to the portal domain: **`captive.flare-local.com`**
+  in dev (fixed), the configured **`custom_domain`** in production (e.g.
+  `captive.flarewifi.com`), so it is served with the valid cloud-issued cert.
+- **Admin** stays on the **same host**, so the dashboard is reachable by raw IP with
+  **no domain required** (e.g. `https://10.0.0.1/admin`); the served cert is for the
+  portal domain, so a name-mismatch warning is expected — accept it.
+
+The dev HTTPS port is **3443** (production uses 443).
+
+> **Dev:** add the portal hostname to `/etc/hosts` so the browser resolves it to
+> the local container:
 > ```
 > 127.0.0.1 captive.flare-local.com
 > ```
-> In development the certificate is issued from Let's Encrypt **staging**, so the
-> browser shows an "untrusted certificate" warning — proceed past it. The padlock
-> is fully trusted once the cloud is switched to Let's Encrypt production.
 
-The admin dashboard can be accessed at [http://localhost:3000/admin](http://localhost:3000/admin)
+> **Production — DNS requirement:** the portal domain (`captive.flarewifi.com`, or
+> whatever `custom_domain` is set to) **must resolve to the device's LAN gateway IP
+> `10.0.0.1`**. The device's own dnsmasq does this with a split-horizon entry, so
+> any client on the device's network — and the admin operator — reach the local
+> server (with its valid cert) instead of the public internet. If the domain does
+> not point to `10.0.0.1`, the HTTPS redirect lands off-device and the portal/admin
+> become unreachable.
+
+### Portal certificate & the Cloudflare token
+
+The portal certificate is **not** generated on the device. The cloud
+([flare-server](https://github.com/flarehotspot/flare-server)) issues a real
+Let's Encrypt certificate for the portal hostname (`captive.flare-local.com` in
+dev) using the **ACME DNS-01 challenge against the Cloudflare zone**, and the
+machine fetches and installs it via cloud-sync. The device only falls back to a
+self-signed cert when no cloud-issued cert is available yet.
+
+For dev HTTPS to serve a proper (Let's Encrypt **staging**) cert, the
+**flare-server** must have a valid Cloudflare API token set — a token with
+*DNS:Edit* permission on the `flare-local.com` zone:
+
+```sh
+# in the flare-server repo's .env
+CLOUDFLARE_TOKEN=<cloudflare-api-token-with-DNS-edit-on-flare-local.com>
+# optional: switch from Let's Encrypt staging (default) to production
+# ACME_DIRECTORY_URL=https://acme-v02.api.letsencrypt.org/directory
+```
+
+Without it, `flare-server` logs `portalcert: CLOUDFLARE_TOKEN is not set` and no
+cert is issued, so the device serves the self-signed fallback (browser shows an
+"untrusted certificate" warning). With the **staging** directory (the dev
+default) the chain is real but signed by Let's Encrypt's staging root, so the
+browser still warns until the cloud is pointed at the production ACME directory.
 
 The database can be managed at [http://localhost:3001](http://localhost:3001)
 

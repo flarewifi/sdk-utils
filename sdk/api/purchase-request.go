@@ -28,6 +28,15 @@ type ExecuteParams struct {
 	Message string  `json:"message"`
 }
 
+// PurchaseExecuteHandler handles an in-process purchase execution — the
+// replacement for the former loopback HTTP "webhook". When a payment provider
+// calls IPurchaseRequest.Execute(), the core dispatches directly to the handler
+// registered (via IPaymentsApi.HandlePurchaseExecute) by the purchase's callback
+// plugin for the matching WebHookRoute. It runs synchronously in the provider's
+// goroutine, so there is no second HTTP request or DB connection involved.
+// Returning a non-nil error marks the execution as failed.
+type PurchaseExecuteHandler func(ctx context.Context, purchase IPurchaseRequest, params ExecuteParams) error
+
 // PurchaseRequest represents a purchase to be made by the customer.
 type PurchaseRequest struct {
 	Sku           string
@@ -146,9 +155,9 @@ type IPurchaseRequest interface {
 	// The state includes the total accumulated payment for the purchase and other important details.
 	State(ctx context.Context) (PurchasePaymentData, error)
 
-	// Executes the webhook for the purchase.
-	// This will make an internal POST request to the webhook route.
-	// The params contain the success status and message to be passed to the webhook handler.
+	// Executes the purchase, invoking the callback plugin's registered
+	// PurchaseExecuteHandler (see IPaymentsApi.HandlePurchaseExecute) in-process.
+	// The params carry the success status and amount passed to that handler.
 	Execute(ctx context.Context, params ExecuteParams) error
 
 	// Redirects the user to the callback route of the purchase request.

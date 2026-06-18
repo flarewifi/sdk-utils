@@ -15,7 +15,6 @@ type Models struct {
 	paymentModel           *PaymentModel
 	walletModel            *WalletModel
 	walletTrnsModel        *WalletTrnsModel
-	logModel               *LogModel
 	notificationModel      *NotificationModel
 }
 
@@ -31,7 +30,6 @@ func New(dtb *db.Database) *Models {
 	paymentModel := NewPaymentModel(dtb, &models)
 	walletModel := NewWalletModel(dtb, &models)
 	walletTrnsModel := NewWalletTrnsModel(dtb, &models)
-	logModel := NewLogModel(dtb, &models)
 
 	models.deviceModel = deviceModel
 	models.deviceFingerprintModel = deviceFingerprintModel
@@ -42,7 +40,6 @@ func New(dtb *db.Database) *Models {
 	models.paymentModel = paymentModel
 	models.walletModel = walletModel
 	models.walletTrnsModel = walletTrnsModel
-	models.logModel = logModel
 	models.notificationModel = NewNotificationModel(dtb, &models)
 
 	return &models
@@ -84,10 +81,6 @@ func (self *Models) DeviceLog() *DeviceLogModel {
 	return self.deviceLogModel
 }
 
-func (self *Models) Log() *LogModel {
-	return self.logModel
-}
-
 func (self *Models) Notification() *NotificationModel {
 	return self.notificationModel
 }
@@ -95,6 +88,6 @@ func (self *Models) Notification() *NotificationModel {
 // Vacuum runs SQLite VACUUM to reclaim disk space after bulk delete operations.
 // This should be called after operations that delete significant amounts of data.
 func (self *Models) Vacuum(ctx context.Context) error {
-	_, err := self.logModel.db.DB.ExecContext(ctx, "VACUUM")
+	_, err := self.deviceModel.db.DB.ExecContext(ctx, "VACUUM")
 	return err
 }

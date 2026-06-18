@@ -234,9 +234,9 @@ func StartHTTPSServer(r *mux.Router) error {
 		return nil
 	}
 
-	// The portal HTTPS server always runs so the captive portal is served over a
-	// valid (cloud-issued) certificate. The admin_web_https flag only governs the
-	// admin HTTP->HTTPS redirect, not whether TLS is served at all.
+	// The HTTPS server always runs so both the captive portal and the admin pages
+	// are served over a valid (cloud-issued) certificate. HTTP->HTTPS upgrade is
+	// enforced globally by middlewares.ForceHTTPS.
 	addr := fmt.Sprintf(":%d", env.HTTPS_PORT)
 
 	// Ensure TLS certificates exist

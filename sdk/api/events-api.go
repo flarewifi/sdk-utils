@@ -26,6 +26,10 @@ type PurchaseEvent string
 // PaymentEvent represents the type of a payment-related UI event.
 type PaymentEvent string
 
+// InternetEvent represents a change in the device's internet connectivity, as
+// observed by the core's online monitor.
+type InternetEvent string
+
 // Session events.
 const (
 	EventSessionCreated      SessionEvent = "session:created"
@@ -110,6 +114,23 @@ const (
 	// options changes. This occurs when payment providers become available or
 	// unavailable (e.g., devices going online/offline).
 	EventPaymentOptionsChanged PaymentEvent = "payment:options:changed"
+)
+
+// Internet connectivity events.
+const (
+	// EventInternetUp is emitted when the core's online monitor observes that the
+	// device has gained internet access — either at boot once connectivity first
+	// arrives, or after a previous outage is restored. The core uses this signal
+	// to run install work that needs the network (a plugin's system_packages and
+	// its preinstall/postinstall scripts), so a device flashed offline still gets
+	// fully provisioned the moment it reaches the internet. Because the callback
+	// may run long (opkg/pip), spawn a goroutine if it must not block the monitor.
+	EventInternetUp InternetEvent = "internet:up"
+
+	// EventInternetDown is emitted when the online monitor observes that internet
+	// access has been lost. Use it to pause network-dependent work or surface an
+	// offline state in the UI.
+	EventInternetDown InternetEvent = "internet:down"
 )
 
 // IEventsApi is the unified event subscription API for plugins.
@@ -206,6 +227,16 @@ type IEventsApi interface {
 	//
 	// Available events: EventVoucherGenerated, EventVoucherBatchDeleted.
 	OnVoucherBatchEvent(event VoucherEvent, callback func(ctx context.Context, batch IVoucherBatch) error)
+
+	// OnInternetEvent registers a callback that fires whenever the device's
+	// internet connectivity changes, as observed by the core's online monitor. The
+	// callback runs synchronously in the monitor's goroutine, in registration
+	// order; its returned error is logged but does not stop other callbacks. A
+	// callback that does slow work (e.g. downloads, package installs) MUST spawn
+	// its own goroutine so it does not stall the monitor's polling loop.
+	//
+	// Available events: EventInternetUp, EventInternetDown.
+	OnInternetEvent(event InternetEvent, callback func(ctx context.Context) error)
 
 	// OnVoucherBeforeCreate registers a pre-create hook that runs before a batch
 	// of vouchers is created. Like all events it runs synchronously in the

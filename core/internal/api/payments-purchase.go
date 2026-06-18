@@ -1,19 +1,14 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"core/db/models"
 	"core/internal/web/helpers"
-	"core/utils/env"
 	sdkapi "sdk/api"
 )
 
@@ -188,76 +183,42 @@ func (self *Purchase) State(ctx context.Context) (sdkapi.PurchasePaymentData, er
 	return state, nil
 }
 
+// Execute dispatches the purchase to the callback plugin's registered
+// PurchaseExecuteHandler in-process. This replaces the former loopback HTTP
+// "webhook" POST: the handler runs synchronously in the caller's goroutine, so
+// there is no second HTTP request, JWT round-trip, TLS, or extra DB connection
+// involved — which removes the cross-goroutine contention on the single SQLite
+// connection that the HTTP design was prone to.
 func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) error {
 	pmgr := self.api.PluginsMgr()
-	callbackPkg, ok := pmgr.FindByPkg(self.purchase.CallbackPluginPkg())
-	if !ok {
+	callbackPkg := self.purchase.CallbackPluginPkg()
+	if _, ok := pmgr.FindByPkg(callbackPkg); !ok {
 		err := errors.New("Unable to find plugin to receive the payment")
 		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
 		return err
 	}
 
-	// Build the webhook URL
-	webhookRoute := self.purchase.WebHookRoute()
-	if webhookRoute == "" {
+	route := self.purchase.WebHookRoute()
+	if route == "" {
 		err := errors.New("WebHookRoute is not configured for this purchase")
 		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
 		return err
 	}
 
-	webhookURL := callbackPkg.Http().Helpers().UrlForRoute(webhookRoute)
-
-	// Create JWT token with device ID and purchase UUID
-	token, err := helpers.CreatePurchaseToken(self.deviceId, self.purchase.UUID())
-	if err != nil {
-		execErr := fmt.Errorf("failed to create purchase token: %w", err)
-		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
-		return execErr
+	handler, ok := self.api.PaymentsAPI.paymentsMgr.findExecuteHandler(callbackPkg, route)
+	if !ok {
+		err := errors.New("No payment handler is registered to receive the payment")
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
+		return err
 	}
 
-	// Append token as query parameter to webhook URL
-	fullURL := env.LocalBaseURL + webhookURL
-	if strings.Contains(fullURL, "?") {
-		fullURL = fullURL + "&token=" + token
-	} else {
-		fullURL = fullURL + "?token=" + token
-	}
-
-	// Marshal params to JSON
-	jsonData, err := json.Marshal(params)
-	if err != nil {
-		execErr := fmt.Errorf("failed to marshal execute params: %w", err)
-		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
-		return execErr
-	}
-
-	// Create request with context and JSON body
-	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		execErr := fmt.Errorf("failed to create webhook request: %w", err)
-		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
-		return execErr
-	}
-
-	// Set Content-Type header
-	req.Header.Set("Content-Type", "application/json")
-
-	// Make the request
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		execErr := fmt.Errorf("webhook request failed: %w", err)
-		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
-		return execErr
-	}
-	defer resp.Body.Close()
-
-	// Check response status
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		execErr := fmt.Errorf("webhook returned status %d: %s", resp.StatusCode, string(body))
-		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, execErr.Error())
-		return execErr
+	// Invoke the callback plugin's handler directly. On success the handler is
+	// responsible for confirming the purchase (which emits EventPurchaseSuccess);
+	// on failure we emit EventPurchaseFailed here so providers see a consistent
+	// event regardless of which step failed.
+	if err := handler(ctx, self, params); err != nil {
+		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
+		return err
 	}
 
 	return nil

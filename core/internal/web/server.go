@@ -19,7 +19,13 @@ func SetupBootRoutes(g *api.CoreGlobals) {
 }
 
 func SetupAppRoutes(g *api.CoreGlobals) {
-	// Apply global activation check middleware FIRST (before any routes)
+	// Force HTTPS globally, before any other middleware, so the admin pages and
+	// the captive portal always run over TLS. RootRouter backs both the HTTP and
+	// HTTPS listeners; this redirects the HTTP side (admin -> same host, portal ->
+	// portal domain) while keeping port 80 open to intercept captive-portal probes.
+	router.RootRouter.Use(middlewares.ForceHTTPS())
+
+	// Apply global activation check middleware (before any routes)
 	// This only runs after booting completes (when RootRouter is active)
 	activationCheckMw := middlewares.ActivationCheck()
 	router.RootRouter.Use(activationCheckMw)

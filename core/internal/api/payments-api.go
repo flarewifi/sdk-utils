@@ -164,6 +164,14 @@ func (self *PaymentsApi) OnPurchaseEvent(event sdkapi.PurchaseEvent, callback fu
 	self.api.EventsMgr.OnPurchaseEvent(event, callback)
 }
 
+// HandlePurchaseExecute registers the in-process handler invoked when a payment
+// provider calls Purchase.Execute() for a purchase whose callback plugin is this
+// plugin and whose WebHookRoute matches `route`. It replaces the loopback HTTP
+// webhook.
+func (self *PaymentsApi) HandlePurchaseExecute(route string, handler sdkapi.PurchaseExecuteHandler) {
+	self.paymentsMgr.registerExecuteHandler(self.api.Info().Package, route, handler)
+}
+
 // CreatePurchase creates a purchase record programmatically without HTTP checkout flow.
 // Used for admin-generated purchases like voucher batch sales where no customer device is involved.
 func (self *PaymentsApi) CreatePurchase(ctx context.Context, params sdkapi.CreatePurchaseParams) (sdkapi.IPurchaseRequest, error) {

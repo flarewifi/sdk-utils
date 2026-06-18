@@ -52,9 +52,9 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegis
 }
 
 func (self *HttpRouterApi) Initialize() {
-	self.adminRouter.Use(middlewares.HTTPSRedirect())
+	// HTTPS is enforced globally by middlewares.ForceHTTPS on RootRouter (see
+	// web.SetupAppRoutes); plugin admin routers only need auth here.
 	self.adminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
-	self.staticAdminRouter.Use(middlewares.HTTPSRedirect())
 	self.staticAdminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
 }
 
