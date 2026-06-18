@@ -72,6 +72,13 @@ func Exec(command string, opts *ExecOpts) error {
 }
 
 func ExecOutput(command string, out io.Writer) error {
+	// opkg is not available in the dev container; treat package queries as
+	// returning no output (nothing installed) so plugin system_packages
+	// installs become a no-op in dev.
+	if strings.HasPrefix(command, "opkg") {
+		return nil
+	}
+
 	// Handle nftables firewall commands
 	if strings.Contains(command, "nft -j list table inet internet") {
 		out.Write([]byte(getFakeNFTTableJSON()))

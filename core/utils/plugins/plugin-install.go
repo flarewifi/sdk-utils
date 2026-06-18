@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -334,22 +333,26 @@ func InstallSystemPkgs(packages []string) (err error) {
 	return nil
 }
 
-// IsPackageInstalled checks if a package is installed on OpenWrt.
+// IsSystemPackageInstalled checks if a package is installed on OpenWrt. It runs
+// through the shell wrapper (not a raw exec) so the dev build can stub opkg out.
 func IsSystemPackageInstalled(opkgPackage string) (bool, error) {
-	// Execute the `opkg list-installed` command
-	cmd := exec.Command("opkg", "list-installed")
 	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.ExecOutput("opkg list-installed", &output); err != nil {
 		return false, fmt.Errorf("failed to execute opkg: %v, output: %s", err, output.String())
 	}
 
-	// Check if the package name exists in the output
-	installedPackages := output.String()
-	return strings.Contains(installedPackages, opkgPackage), nil
+	// opkg list-installed lines look like "pkgname - version"; match the package
+	// name exactly so e.g. "python3" doesn't satisfy "python3-light".
+	for _, line := range strings.Split(output.String(), "\n") {
+		name := strings.TrimSpace(line)
+		if i := strings.IndexByte(name, ' '); i >= 0 {
+			name = name[:i]
+		}
+		if name == opkgPackage {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func RunMigrations(sqldb *sql.DB, pluginDir string) (err error) {

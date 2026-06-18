@@ -33,7 +33,7 @@ For example to get the uri path of the file in `resources/assets/public/images/l
 
 ```go
 uri := api.Http().Helpers().PublicPath("images/logo.png")
-fmt.Println(uri) // Returns "/plugins/your-plugin-id/0.0.1/assets/public/images/logo.png"
+fmt.Println(uri) // Returns "/assets/plugin/your-plugin-id/0.0.1/resources/assets/public/images/logo.png"
 ```
 
 ### AdsView
