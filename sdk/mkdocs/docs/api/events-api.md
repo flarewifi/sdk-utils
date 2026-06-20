@@ -223,6 +223,8 @@ api.Events().OnInternetEvent(sdkapi.EventInternetDown, func(ctx context.Context)
 })
 ```
 
+> **Need the current status, not a change?** Use [`api.Machine().IsOnline()`](./machine-api.md#isonline) for a one-off check of whether the machine has internet right now — it reads the same online-monitor signal that drives these events. Subscribe with `OnInternetEvent` to *react* to transitions; call `IsOnline()` to *query* the state at the moment you need it (e.g. just before attempting a network call).
+
 ## Supporting Types
 
 ### SessionEventData
