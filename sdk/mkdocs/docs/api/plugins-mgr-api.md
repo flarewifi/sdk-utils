@@ -67,7 +67,7 @@ for _, plugin := range allPlugins {
 Installs a plugin from any source (`store`, `git`, `local`/`system`) and registers
 it live, without a server restart. The core owns the entire operation — for store
 plugins this includes requesting a server-side `.so` build, polling it to
-completion, downloading the install-ready tarball, and installing it on the device.
+completion, downloading the install-ready tarball, and installing it on the machine.
 
 `InstallPlugin` returns immediately with an `IPluginInstall` **handle**; the install
 runs in the background. The handle exposes:

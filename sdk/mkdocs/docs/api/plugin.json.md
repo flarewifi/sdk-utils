@@ -23,10 +23,10 @@ List of system packages required by the plugin. These are installed via `opkg`
 (the install runs `opkg update` then `opkg install` for any not already present).
 
 Because `opkg` needs the package feed, system packages are installed **when the
-device has internet** — not blindly during the offline part of boot:
+machine has internet** — not blindly during the offline part of boot:
 
 - **Runtime install** (from the dashboard): installed inline, since the install
-  itself proves the device is online.
+  itself proves the machine is online.
 - **Baked-in plugins** (os_image first boot): installed by the core's **online
   monitor** the moment internet becomes available (see
   [`OnInternetEvent`](./events-api.md#oninternetevent)), and retried on the next
@@ -47,7 +47,7 @@ A plugin goes through these phases, in order:
    can rely on its system packages and preinstall setup being in place.
 5. **`postinstall`** — runs after `Init`.
 
-On a device flashed offline, phases 2–5 are held until the **online monitor** sees
+On a machine flashed offline, phases 2–5 are held until the **online monitor** sees
 internet (see [`OnInternetEvent`](./events-api.md#oninternetevent)). A plugin that
 declares no `system_packages` and no `preinstall` has nothing to wait for, so its
 `Init` runs at boot — that's how the captive portal comes up without a network.
@@ -64,7 +64,7 @@ imports at startup:
 
 ```sh
 #!/bin/sh
-# Only run the real setup on a production device; no-op everywhere else.
+# Only run the real setup on a production machine; no-op everywhere else.
 [ "${GO_ENV:-production}" = "production" ] || exit 0
 pip3 install --no-cache-dir SomeLibrary
 ```
@@ -82,7 +82,7 @@ belongs in `preinstall` instead.
 
 ```sh
 #!/bin/sh
-# Only run the real setup on a production device; no-op everywhere else.
+# Only run the real setup on a production machine; no-op everywhere else.
 [ "${GO_ENV:-production}" = "production" ] || exit 0
 pip3 install --no-cache-dir SomeLibrary
 ```
@@ -96,8 +96,8 @@ stdout/stderr. A non-zero exit fails the install.
 Install scripts are run with a `GO_ENV` environment variable set to the current
 build environment — one of `development`, `sandbox`, `staging`, or
 `production`. Scripts **should guard on it** so they remain a clean no-op in
-development (where device tooling such as `opkg`/`pip3` is absent and running
-device setup would otherwise fail the boot-time install):
+development (where machine tooling such as `opkg`/`pip3` is absent and running
+machine setup would otherwise fail the boot-time install):
 
 ```sh
 [ "${GO_ENV:-production}" = "production" ] || exit 0

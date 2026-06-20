@@ -6,6 +6,12 @@
 - Plugin-based architecture - core remains minimal, features go in plugins
 - Plugins in `data/plugins/local/*` are in **separate git repositories** (not tracked by this repo's git — they are gitignored)
 
+## Terminology: "machine" vs "device"
+
+- **"machine"** = the OpenWRT router/hardware that runs this app (the hotspot box). Use "machine" for anything about the host itself: its internet connectivity, boot/flash, install scripts, plugin installation, machine ID/licensing, online monitor, etc. See `IMachineApi` (`api.Machine()`).
+- **"device"** = a **client device** (a client host such as a phone/laptop) connecting *through* the machine. Reserve "device" for these: `IClientDevice`, `client:*` events, sessions, vouchers, MAC/IP of a client, etc.
+- ⚠️ "device" alone is ambiguous — never use it to mean the machine. In docs (`sdk/mkdocs`), comments, log/user-facing text, and translations, say "machine" when you mean the router and "client device" when you mean a client host. Example fixed in `sdk/mkdocs`: `OnInternetEvent` / `plugin.json` install-script docs now say "machine has internet", "machine went offline", "production machine".
+
 ## ⚠️ CRITICAL: Core vs Plugin Development
 
 **DEFAULT: Plugin Development** (unless user explicitly requests core modification)
