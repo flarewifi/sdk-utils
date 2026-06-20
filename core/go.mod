@@ -14,7 +14,7 @@ require (
 	github.com/flarehotspot/sdk-utils v0.1.15
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-json v0.10.3
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.0
