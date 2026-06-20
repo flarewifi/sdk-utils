@@ -25,13 +25,25 @@ func Init(g *api.CoreGlobals) {
 		InitTranslations()
 		coretheme.SetAdminTheme(g.CoreAPI)
 		coretheme.SetPortalTheme(g.CoreAPI)
+		// InitPlugins now only LOADS plugins (maps each .so, resolves Init); it
+		// does not run Init. A load failure (e.g. a stale/ABI-broken .so) still
+		// aborts the boot in development so the failure is visible in docker logs /
+		// reflex instead of booting a broken plugin set; production notifies +
+		// recovers from backup and keeps going.
 		if err := InitPlugins(g); err != nil {
-			// In development a plugin that fails to compile or load aborts the
-			// boot: we never signal bootCh, so the app routes never come up, and
-			// the process exits so the failure is visible (docker logs / reflex)
-			// instead of booting with a broken plugin set. Production returns nil
-			// from the load loop (it notifies + recovers from backup and keeps
-			// going), so this exit path is effectively development-only.
+			msg := fmt.Sprintf("Boot aborted: plugin load failed: %v", err)
+			if logErr := g.CoreAPI.Logger().Error(msg); logErr != nil {
+			}
+			if env.GO_ENV != env.ENV_PRODUCTION {
+				fmt.Println(msg)
+				os.Exit(1)
+			}
+		}
+		// Run Init for plugins that need no internet-dependent provisioning, so the
+		// device's core function (e.g. the captive portal) comes up offline. Plugins
+		// with unprovisioned system_packages/preinstall are skipped here and have
+		// their Init run later, after the online monitor provisions them.
+		if err := InitLoadedPlugins(g); err != nil {
 			msg := fmt.Sprintf("Boot aborted: plugin initialization failed: %v", err)
 			if logErr := g.CoreAPI.Logger().Error(msg); logErr != nil {
 			}
@@ -40,6 +52,12 @@ func Init(g *api.CoreGlobals) {
 				os.Exit(1)
 			}
 		}
+		// Network-dependent work (each plugin's system_packages, its preinstall/
+		// postinstall scripts, and the deferred Init of plugins that need them)
+		// cannot run during the offline part of boot — opkg/pip need the feed/PyPI.
+		// The online monitor runs it the moment the device has internet (immediately
+		// if it boots already-online) and retries on reconnect.
+		StartOnlineMonitor(g)
 		InitAssets(g)
 		InitAccounts()
 		if err := InitNetwork(); err != nil {

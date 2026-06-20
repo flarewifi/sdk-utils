@@ -9,10 +9,10 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,7 +35,12 @@ const (
 	// errorPrefix = "[ERROR] "
 
 	flarelogBaseMetadataCount = 10
-	maxLogLines               = 50000 // Maximum log lines before rotation
+
+	// maxLogBytes hard-caps the on-disk log file; rotateKeepBytes is how much of
+	// the most recent log is retained when the cap is hit. Sized for routers with
+	// limited flash.
+	maxLogBytes     = 2 << 20 // 2 MiB
+	rotateKeepBytes = 1 << 20 // 1 MiB
 )
 
 type LogLine struct {
@@ -61,7 +66,51 @@ var (
 	queId       = jobque.NewJobQueue[any]()
 	LineCount   atomic.Int64
 	logFilePath = filepath.Join(sdkutils.PathTmpDir, "logs", logFilename)
+
+	// pkgCache memoizes plugin.json package lookups (keyed by plugin dir) so
+	// parsing log lines doesn't hit the filesystem on every line.
+	pkgCache sync.Map // map[string]string
+
+	// Live subscribers for the SSE log tail. publish() fans out each new line
+	// to every subscriber non-blockingly (slow consumers drop lines).
+	subMu sync.RWMutex
+	subs  = make(map[chan *LogLine]struct{})
+
+	// viewWindow caps how many of the most recent file lines the admin viewer
+	// reads/filters per request, bounding CPU/memory on large logs.
+	viewWindow = 20000
 )
+
+// Subscribe registers a live log subscriber for the SSE tail. The returned
+// channel receives every subsequently emitted LogLine; call the returned
+// function to unsubscribe.
+func Subscribe() (<-chan *LogLine, func()) {
+	ch := make(chan *LogLine, 256)
+	subMu.Lock()
+	subs[ch] = struct{}{}
+	subMu.Unlock()
+
+	var once sync.Once
+	return ch, func() {
+		once.Do(func() {
+			subMu.Lock()
+			delete(subs, ch)
+			close(ch)
+			subMu.Unlock()
+		})
+	}
+}
+
+func publish(ll *LogLine) {
+	subMu.RLock()
+	defer subMu.RUnlock()
+	for ch := range subs {
+		select {
+		case ch <- ll:
+		default: // drop for slow consumers; never block the logger
+		}
+	}
+}
 
 func init() {
 	logdir := filepath.Dir(logFilePath)
@@ -221,25 +270,26 @@ func parseLog(logLine []string) (*LogLine, error) {
 	relativePath := sdkutils.StripRootPath(pathRaw)
 	subpaths := strings.Split(relativePath, "/")
 
-	var plugin, filename, filepluginpath, pluginpath string
+	// Caller paths are Go-module-relative, so subpaths[0] is the module name:
+	// "core" for the core, and the package id itself for plugins (their go.mod
+	// module name equals their package, e.g. "com.flarego.wifi-hotspot"). Derive
+	// the package directly from it — no per-line plugin.json read needed for
+	// plugins. For core, resolve the real package id from core/plugin.json
+	// (cached), which is readable relative to the app's working directory.
+	var pkg, filename, filepluginpath string
 
+	filename = subpaths[len(subpaths)-1]
 	if subpaths[0] == "core" {
-		plugin = "core"
-		filename = subpaths[len(subpaths)-1]
-		// TODO: show only details for core when in dev mode
+		pkg = resolvePkg("core")
+		if pkg == "" {
+			pkg = "core"
+		}
 		filepluginpath = "******"
-		pluginpath = plugin
 	} else {
-		plugin = subpaths[1]
-		filename = subpaths[len(subpaths)-1]
-		filepluginpath = strings.Join(subpaths[2:], "/")
-		pluginpath = strings.Join(subpaths[:1], "/")
-	}
-
-	var pluginInfo sdkutils.PluginInfo
-	err := sdkutils.JsonRead(filepath.Join(pluginpath, "plugin.json"), &pluginInfo)
-	if err != nil {
-		return nil, err
+		pkg = subpaths[0]
+		if len(subpaths) > 1 {
+			filepluginpath = strings.Join(subpaths[1:], "/")
+		}
 	}
 
 	var body []string
@@ -272,7 +322,7 @@ func parseLog(logLine []string) (*LogLine, error) {
 		Nano:       nano,
 		DateTime:   fmt.Sprintf("%d-%d-%d %d:%d:%d.%d", year, month, day, hour, minute, second, nano),
 		FullPath:   fullPath,
-		Plugin:     pluginInfo.Package,
+		Plugin:     pkg,
 		PluginPath: filepluginpath,
 		Filename:   filename,
 		Line:       line,
@@ -280,129 +330,209 @@ func parseLog(logLine []string) (*LogLine, error) {
 	}, nil
 }
 
-// Logs the log info to the console with colored texts
-func LogToConsole(file string, line int, level int, title string, body ...any) {
-	// date and time data
+// Emit is the single logging sink. It writes the record to stdout (captured by
+// syslog/logread on OpenWRT and `docker logs` in dev), appends it to the
+// rotating app.log file (the source for the paginated admin viewer), and
+// publishes it to live SSE subscribers. It never touches the database, so it is
+// safe to call from inside a DB transaction.
+func Emit(level int, file string, line int, title string) {
+	logInfo := buildLogInfo(level, file, line, title)
+
+	// stdout — human-readable single line for logread / docker logs.
+	fmt.Printf("[%s] %s %s:%d %s\n",
+		getLevelAsStr(level), time.Now().Format("2006-01-02 15:04:05"),
+		sdkutils.StripRootPath(file), line, title)
+
+	writeLogLine(logInfo)
+
+	// Publish the parsed line to live subscribers (best-effort).
+	if ll, err := parseLog(logInfo); err == nil {
+		publish(ll)
+	}
+}
+
+// LogFilter holds the filter/pagination options for the admin log viewer.
+type LogFilter struct {
+	Package    string // plugin package; "" or "all" = any
+	Level      string // "info" | "debug" | "error"; "" or "all" = any
+	SearchText string // case-insensitive match against message + package
+	Page       int    // 1-based
+	PerPage    int
+}
+
+// ReadLogsFiltered reads the most recent file lines (up to viewWindow), applies
+// the package/level/text filters, orders newest-first, and returns the requested
+// page along with the total number of matching lines.
+func ReadLogsFiltered(f LogFilter) ([]*LogLine, int, error) {
+	totalLines := GetLogLines(logFilename)
+	if totalLines == 0 {
+		return []*LogLine{}, 0, nil
+	}
+
+	start := 0
+	if totalLines > viewWindow {
+		start = totalLines - viewWindow
+	}
+
+	all, err := ReadLogs(start, totalLines)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	levelFilter := -1
+	if f.Level != "" && f.Level != "all" {
+		levelFilter = levelStrToInt(f.Level)
+	}
+	search := strings.ToLower(strings.TrimSpace(f.SearchText))
+
+	matched := make([]*LogLine, 0, len(all))
+	for _, ll := range all {
+		if f.Package != "" && f.Package != "all" && ll.Plugin != f.Package {
+			continue
+		}
+		if levelFilter >= 0 && ll.Level != levelFilter {
+			continue
+		}
+		if search != "" &&
+			!strings.Contains(strings.ToLower(ll.Title), search) &&
+			!strings.Contains(strings.ToLower(ll.Plugin), search) {
+			continue
+		}
+		matched = append(matched, ll)
+	}
+
+	// Newest first.
+	for i, j := 0, len(matched)-1; i < j; i, j = i+1, j-1 {
+		matched[i], matched[j] = matched[j], matched[i]
+	}
+
+	total := len(matched)
+
+	page := f.Page
+	if page < 1 {
+		page = 1
+	}
+	perPage := f.PerPage
+	if perPage < 1 {
+		perPage = 10
+	}
+
+	from := (page - 1) * perPage
+	if from >= total {
+		return []*LogLine{}, total, nil
+	}
+	to := from + perPage
+	if to > total {
+		to = total
+	}
+	return matched[from:to], total, nil
+}
+
+// buildLogInfo serializes a log record into the flarelog field array used by the
+// file format and parseLog.
+func buildLogInfo(level int, file string, line int, title string) []string {
 	now := time.Now()
 	hour, min, sec := now.Clock()
 	year, month, day := now.Date()
 	nano := itoa(now.Nanosecond(), 3)
 
-	metadata := fmt.Sprintf("[%d/%d/%d %d:%d:%d.%d %s:%d]", year, month, day, hour, min, sec, nano, file, line)
-	content := colorize(darkGray, metadata)
-	content = fmt.Sprintf("%s\n%s %s", content, colorizeLevel(level), title)
-
-	// adding all body key-value pairs if any
-	for i, arg := range body {
-		value := reflect.ValueOf(arg)
-		var str string
-
-		switch value.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			str = fmt.Sprintf("%d", value.Int())
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			str = fmt.Sprintf("%d", value.Uint())
-		case reflect.Float32, reflect.Float64:
-			str = fmt.Sprintf("%f", value.Float())
-		case reflect.String:
-			str = value.String()
-		// Add cases for other types as needed
-		default:
-			str = fmt.Sprintf("%v", arg)
-		}
-
-		// if i is last and is even,
-		// means that the value is not given
-		if i == len(body)-1 && i%2 == 0 {
-			content = fmt.Sprintf("%s\n  \"%s\": -", content, str)
-			break
-		}
-
-		// if i is key
-		if i%2 == 0 {
-			content = fmt.Sprintf("%s\n  \"%v\": ", content, str)
-			continue
-		}
-
-		// if i is value
-		content = fmt.Sprintf("%s\"%s\"", content, str)
+	return []string{
+		strconv.Itoa(level), title,
+		strconv.Itoa(year), strconv.Itoa(int(month)), strconv.Itoa(day),
+		strconv.Itoa(hour), strconv.Itoa(min), strconv.Itoa(sec), strconv.Itoa(nano),
+		file, strconv.Itoa(line),
 	}
-
 }
 
-// Logs the log info to the specified file path
-func LogToFile(file string, line int, level int, title string, body ...any) error {
-	_, err := queId.Exec("LogToFile", func() (any, error) {
+// writeLogLine appends a prebuilt log record to the rotating file (serialized,
+// one line). The file is hard-capped at maxLogBytes: when exceeded, the oldest
+// lines are dropped and only the most recent rotateKeepBytes are kept, so the
+// log can never grow without bound. Failures are swallowed so a full/unwritable
+// disk never crashes the caller.
+func writeLogLine(logInfo []string) {
+	queId.Exec("LogToFile", func() (any, error) {
 		logFile, err := openLogFile()
 		if err != nil {
-			return nil, err
-		}
-
-		defer logFile.Close()
-
-		var content [][]string
-
-		// date and time data
-		now := time.Now()
-		hour, min, sec := now.Clock()
-		year, month, day := now.Date()
-		nano := itoa(now.Nanosecond(), 3)
-
-		var logInfo []string
-		logInfo = append(logInfo, strconv.Itoa(level), title, strconv.Itoa(year), strconv.Itoa(int(month)), strconv.Itoa(day), strconv.Itoa(hour), strconv.Itoa(min), strconv.Itoa(sec), strconv.Itoa(nano), file, strconv.Itoa(line))
-
-		// append body content
-		for _, arg := range body {
-			value := reflect.ValueOf(arg)
-			var str string
-
-			// body content string conversion
-			switch value.Kind() {
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				str = fmt.Sprintf("%d", value.Int())
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				str = fmt.Sprintf("%d", value.Uint())
-			case reflect.Float32, reflect.Float64:
-				str = fmt.Sprintf("%f", value.Float())
-			case reflect.String:
-				str = value.String()
-			// Add cases for other types as needed
-			default:
-				str = fmt.Sprintf("%v", arg)
-			}
-
-			logInfo = append(logInfo, str)
-		}
-		content = append(content, logInfo)
-
-		// serialize
-		serialized := sdkutils.Serialize(content)
-
-		// Check if we need to rotate logs to prevent disk fill
-		currentLines := LineCount.Load()
-		if currentLines >= maxLogLines {
-			// Rotate: truncate the log file
-			if err := logFile.Truncate(0); err == nil {
-				logFile.Seek(0, 0)
-				LineCount.Store(0)
-			}
-		}
-
-		// actual logging to file
-		_, err = logFile.WriteString(serialized + "\n")
-		if err != nil {
-			// If write fails (e.g., disk full), silently skip to prevent crashes
 			return nil, nil
 		}
+		defer logFile.Close()
 
-		// increment log file lines by 1
+		rotateIfNeeded(logFile)
+
+		serialized := sdkutils.Serialize([][]string{logInfo})
+		if _, err := logFile.WriteString(serialized + "\n"); err != nil {
+			return nil, nil
+		}
 		LineCount.Add(1)
-
-		// nils for the job que
 		return nil, nil
 	})
+}
 
-	return err
+// rotateIfNeeded caps the log file at maxLogBytes. Once the file grows past the
+// cap it rewrites the file to contain only its most recent rotateKeepBytes
+// (trimmed to start on a line boundary), discarding older lines. This bounds
+// disk usage while preserving recent history. Must be called holding the queId
+// worker (serialized with all other file ops).
+func rotateIfNeeded(f *os.File) {
+	info, err := f.Stat()
+	if err != nil || info.Size() < maxLogBytes {
+		return
+	}
+
+	size := info.Size()
+	start := size - rotateKeepBytes
+	if start < 0 {
+		start = 0
+	}
+
+	buf := make([]byte, size-start)
+	if _, err := f.ReadAt(buf, start); err != nil {
+		return
+	}
+
+	// Drop the leading partial line so the kept tail starts cleanly.
+	if start > 0 {
+		if i := bytes.IndexByte(buf, '\n'); i >= 0 && i+1 <= len(buf) {
+			buf = buf[i+1:]
+		}
+	}
+
+	if err := f.Truncate(0); err != nil {
+		return
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return
+	}
+	if _, err := f.Write(buf); err != nil {
+		return
+	}
+	LineCount.Store(int64(bytes.Count(buf, []byte{'\n'})))
+}
+
+// resolvePkg returns the package name declared in the plugin.json at pluginpath,
+// memoized. Returns "" if it can't be read.
+func resolvePkg(pluginpath string) string {
+	if v, ok := pkgCache.Load(pluginpath); ok {
+		return v.(string)
+	}
+	var info sdkutils.PluginInfo
+	if err := sdkutils.JsonRead(filepath.Join(pluginpath, "plugin.json"), &info); err != nil {
+		return ""
+	}
+	pkgCache.Store(pluginpath, info.Package)
+	return info.Package
+}
+
+func levelStrToInt(level string) int {
+	switch strings.ToLower(level) {
+	case "info":
+		return 0
+	case "debug":
+		return 1
+	case "error":
+		return 2
+	}
+	return -1
 }
 
 // Returns a date string with format: YYYYMMdd
@@ -468,8 +598,9 @@ func colorizeLevel(level int) string {
 
 // Returns the opened log file instance
 func openLogFile() (*os.File, error) {
-	// opening/creating log file
-	logFile, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	// O_RDWR so rotateIfNeeded can read the tail before truncating; O_APPEND
+	// keeps normal writes at EOF.
+	logFile, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}

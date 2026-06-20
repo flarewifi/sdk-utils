@@ -1,141 +1,118 @@
 package logsview
 
 import (
-	"core/db/models"
 	sdkapi "sdk/api"
-
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
-type LogsSearchData struct {
-	Packages          []string
-	Package           string
-	Level             string
-	SearchText        string
-	ActionURL         string
-	LogsRetentionDays int
-	EnableLogging     bool
+type LogRow struct {
+	DateTime string
+	Package  string
+	Level    string
+	Message  string
+	Location string
 }
 
-templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData, pagination templ.Component) {
-	<div class="d-flex align-items-center justify-content-between mb-4">
-		<div class="d-flex align-items-baseline gap-3">
-			<h1 class="h2 mb-0">{ api.Translate("label", "System Logs") }</h1>
-		</div>
+type LogsSearchData struct {
+	Packages   []string
+	Package    string
+	Level      string
+	SearchText string
+	ActionURL  string
+	StreamURL  string
+}
+
+templ Index(api sdkapi.IPluginApi, logs []LogRow, searchData LogsSearchData, pagination templ.Component) {
+	<div class="d-flex align-items-center justify-content-between mb-3">
+		<h1 class="h3 mb-0">{ api.Translate("label", "System Logs") }</h1>
 	</div>
-	// Filter Options and Retention Settings with Tabs
-	<div class="card border mb-4 shadow-sm rounded-3">
-		<div class="card-header bg-body border-bottom">
-			<ul class="nav nav-tabs card-header-tabs" id="logsTab" role="tablist">
-				<li class="nav-item" role="presentation">
-					<button class="nav-link active" id="filter-tab" data-bs-toggle="tab" data-bs-target="#filter-pane" type="button" role="tab" aria-controls="filter-pane" aria-selected="true">
-						<i class="bi bi-funnel me-2"></i>{ api.Translate("label", "Filter") }
+	// Compact toolbar: filters on the left, live/refresh/clear actions on the right.
+	<div class="card border shadow-sm rounded-3 mb-3">
+		<div class="card-body p-2">
+			<div class="d-flex flex-wrap align-items-end gap-2">
+				<form method="POST" action={ templ.SafeURL(searchData.ActionURL) } class="d-flex flex-wrap align-items-end gap-2 flex-grow-1 mb-0">
+					<div class="flex-grow-1" style="min-width: 200px;">
+						<label class="form-label small text-muted mb-1">{ api.Translate("label", "Search") }</label>
+						<input
+							type="text"
+							name="search_text"
+							class="form-control form-control-sm"
+							placeholder={ api.Translate("label", "Message or package") }
+							onchange="document.getElementById('logs-filter-submit').click();"
+							value={ searchData.SearchText }
+						/>
+					</div>
+					<div style="min-width: 130px;">
+						<label class="form-label small text-muted mb-1">{ api.Translate("label", "Level") }</label>
+						<select name="level" class="form-select form-select-sm" onchange="document.getElementById('logs-filter-submit').click();">
+							<option value="">{ api.Translate("label", "All Levels") }</option>
+							<option value="info" selected?={ searchData.Level == "info" }>{ api.Translate("label", "Info") }</option>
+							<option value="debug" selected?={ searchData.Level == "debug" }>{ api.Translate("label", "Debug") }</option>
+							<option value="error" selected?={ searchData.Level == "error" }>{ api.Translate("label", "Error") }</option>
+						</select>
+					</div>
+					<div style="min-width: 180px;">
+						<label class="form-label small text-muted mb-1">{ api.Translate("label", "Package") }</label>
+						<select name="package" class="form-select form-select-sm" onchange="document.getElementById('logs-filter-submit').click();">
+							<option value="">{ api.Translate("label", "All Packages") }</option>
+							for _, pkg := range searchData.Packages {
+								<option value={ pkg } selected?={ pkg == searchData.Package }>{ pkg }</option>
+							}
+						</select>
+					</div>
+					<div class="d-none">
+						<button type="submit" id="logs-filter-submit">{ api.Translate("label", "Search Logs") }</button>
+					</div>
+				</form>
+				<div class="d-flex align-items-center gap-2 ms-auto">
+					<div class="form-check form-switch d-flex align-items-center mb-0">
+						<input class="form-check-input me-2" type="checkbox" role="switch" id="logs-live-toggle"/>
+						<label class="form-check-label small text-nowrap mb-0" for="logs-live-toggle">{ api.Translate("label", "Live tail") }</label>
+					</div>
+					<button type="button" class="btn btn-sm btn-light border" x-on:click="window.location.reload()" title={ api.Translate("label", "Refresh") }>
+						<i class="bi bi-arrow-repeat"></i>
 					</button>
-				</li>
-				<li class="nav-item" role="presentation">
-					<button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-pane" type="button" role="tab" aria-controls="settings-pane" aria-selected="false">
-						<i class="bi bi-gear me-2"></i>{ api.Translate("label", "Settings") }
-					</button>
-				</li>
-			</ul>
-		</div>
-		<div class="card-body p-4">
-			<div class="tab-content" id="logsTabContent">
-				// Filter Tab (Default)
-				<div class="tab-pane fade show active" id="filter-pane" role="tabpanel" aria-labelledby="filter-tab">
-					<form method="POST" action={ templ.SafeURL(searchData.ActionURL) }>
-						<div class="row g-3">
-							<div class="col-md-4">
-								<label class="form-label fs-6">{ api.Translate("label", "Search Logs") }</label>
-								<input
-									type="text"
-									name="search_text"
-									class="form-control fs-6"
-									placeholder={ api.Translate("label", "Message or package") }
-									onchange="document.getElementById('logs-filter-submit').click();"
-									value={ searchData.SearchText }
-								/>
-							</div>
-							<div class="col-md-4">
-								<label class="form-label fs-6">{ api.Translate("label", "Log Level") }</label>
-								<select name="level" class="form-select fs-6" onchange="document.getElementById('logs-filter-submit').click();">
-									<option value="">{ api.Translate("label", "All Levels") }</option>
-									<option value="info" selected?={ searchData.Level == "info" }>{ api.Translate("label", "Info") }</option>
-									<option value="debug" selected?={ searchData.Level == "debug" }>{ api.Translate("label", "Debug") }</option>
-									<option value="error" selected?={ searchData.Level == "error" }>{ api.Translate("label", "Error") }</option>
-								</select>
-							</div>
-							<div class="col-md-4">
-								<label class="form-label fs-6">{ api.Translate("label", "Package") }</label>
-								<select name="package" class="form-select fs-6" onchange="document.getElementById('logs-filter-submit').click();">
-									<option value="">{ api.Translate("label", "All Packages") }</option>
-									for _, pkg := range searchData.Packages {
-										<option value={ pkg } selected?={ pkg == searchData.Package }>{ pkg }</option>
-									}
-								</select>
-							</div>
-							<div class="d-none">
-								<button type="submit" id="logs-filter-submit" class="btn btn-primary btn-sm">{ api.Translate("label", "Search Logs") }</button>
-							</div>
-						</div>
-					</form>
-				</div>
-				// Settings Tab
-				<div class="tab-pane fade" id="settings-pane" role="tabpanel" aria-labelledby="settings-tab">
-					<form method="POST" action={ templ.SafeURL(searchData.ActionURL) }>
-						<div class="mb-3">
-							<div class="form-check form-switch">
-								<input class="form-check-input" type="checkbox" role="switch" id="enable_logging" name="enable_logging" value="1" checked?={ searchData.EnableLogging }/>
-								<label class="form-check-label fs-6" for="enable_logging">{ api.Translate("label", "Enable Logging") }</label>
-							</div>
-							<small class="text-muted">{ api.Translate("label", "When disabled, logs will not be saved to the database") }</small>
-						</div>
-						<div class="mb-3">
-							<label class="form-label fs-6">{ api.Translate("label", "Auto-delete logs older than") }</label>
-							<select name="logs_retention_days" class="form-select fs-6" style="max-width: 200px;">
-								<option value="3" selected?={ searchData.LogsRetentionDays == 3 }>{ api.Translate("label", "3 days") }</option>
-								<option value="7" selected?={ searchData.LogsRetentionDays == 7 }>{ api.Translate("label", "7 days") }</option>
-								<option value="14" selected?={ searchData.LogsRetentionDays == 14 }>{ api.Translate("label", "14 days") }</option>
-								<option value="30" selected?={ searchData.LogsRetentionDays == 30 }>{ api.Translate("label", "30 days") }</option>
-							</select>
-							<small class="text-muted">{ api.Translate("label", "Runs every hour") }</small>
-						</div>
-						<button type="submit" name="save_settings" value="1" class="btn btn-primary px-3 py-2 fs-6">
-							<i class="bi bi-save me-2"></i>{ api.Translate("label", "Save Settings") }
+					<form method="POST" action={ templ.SafeURL(searchData.ActionURL) } class="d-inline mb-0" onsubmit="return confirm('Are you sure you want to clear all logs?')">
+						<button type="submit" name="clear_logs" value="1" class="btn btn-sm btn-outline-danger" title={ api.Translate("label", "Clear All Logs") }>
+							<i class="bi bi-trash"></i>
 						</button>
 					</form>
 				</div>
 			</div>
 		</div>
 	</div>
-	// Logs Table
-	<div class="card border mb-4 shadow-sm rounded-3 mt-3 p-0">
-		<div class="card-header border-bottom bg-body d-flex justify-content-between align-items-center px-4 py-3">
-			<h5 class="mb-0">{ api.Translate("label", "Logs") }</h5>
-			<div class="d-flex gap-2">
-				<button type="button" class="btn btn-sm btn-light border" x-on:click="window.location.reload()">
-					<i class="bi bi-arrow-repeat me-1"></i>{ api.Translate("label", "Refresh") }
-				</button>
-				<form method="POST" action={ templ.SafeURL(searchData.ActionURL) } class="d-inline" onsubmit="return confirm('Are you sure you want to clear all logs?')">
-					<button type="submit" name="clear_logs" value="1" class="btn btn-sm btn-warning">
-						<i class="bi bi-trash me-1"></i>{ api.Translate("label", "Clear All Logs") }
-					</button>
-				</form>
-			</div>
+	// Logs table
+	<div class="card border shadow-sm rounded-3 mb-3">
+		<div class="card-header border-bottom bg-body d-flex justify-content-between align-items-center px-3 py-2">
+			<span class="fw-semibold small text-uppercase text-muted">
+				{ api.Translate("label", "Logs") }
+				<span id="logs-live-badge" class="badge bg-success ms-2" style="display:none;">
+					<i class="bi bi-broadcast me-1"></i>{ api.Translate("label", "Live") }
+				</span>
+			</span>
 		</div>
-		<div class="card-body p-0 table-responsive-lg">
-			<table class="table table-hover mb-0">
-				<thead>
+		<div
+			class="card-body p-0 table-responsive-lg"
+			id="logs-live"
+			data-stream-url={ searchData.StreamURL }
+			data-f-package={ searchData.Package }
+			data-f-level={ searchData.Level }
+			data-f-search={ searchData.SearchText }
+			data-label-info={ api.Translate("label", "Info") }
+			data-label-debug={ api.Translate("label", "Debug") }
+			data-label-error={ api.Translate("label", "Error") }
+		>
+			<table class="table table-hover table-sm align-middle mb-0 logs-table">
+				<thead class="table-light">
 					<tr>
-						<th class="px-2 py-3 ps-4">{ api.Translate("label", "Timestamp") }</th>
-						<th class="px-2 py-3">{ api.Translate("label", "Package") }</th>
-						<th class="px-2 py-3">{ api.Translate("label", "Level") }</th>
-						<th class="px-2 py-3">{ api.Translate("label", "Message") }</th>
+						<th class="px-2 py-2 ps-3 small text-uppercase text-muted fw-semibold" style="width: 1%;">{ api.Translate("label", "Timestamp") }</th>
+						<th class="px-2 py-2 small text-uppercase text-muted fw-semibold" style="width: 1%;">{ api.Translate("label", "Package") }</th>
+						<th class="px-2 py-2 small text-uppercase text-muted fw-semibold" style="width: 1%;">{ api.Translate("label", "Level") }</th>
+						<th class="px-2 py-2 small text-uppercase text-muted fw-semibold">{ api.Translate("label", "Message") }</th>
 					</tr>
 				</thead>
-				<tbody>
+				<tbody id="logs-tbody">
 					if len(logs) == 0 {
-						<tr>
+						<tr id="logs-empty">
 							<td colspan="4" class="text-center text-muted py-4">
 								{ api.Translate("label", "No logs found") }
 							</td>
@@ -143,41 +120,151 @@ templ Index(api sdkapi.IPluginApi, logs []*models.Log, searchData LogsSearchData
 					}
 					for _, log := range logs {
 						<tr>
-							<td class="px-2 py-3 ps-4"><code class="text-muted text-nowrap">{ sdkutils.UtcToLocalTime(log.CreatedAt).Format("2006-01-02 15:04:05") }</code></td>
-							<td class="px-2 py-3"><code class="text-muted text-nowrap">{ log.Package }</code></td>
-							<td class="px-2 py-3">
-								<h5>
-									switch log.Level {
-										case "info":
-											<span class="badge bg-info text-dark">
-												<i class="bi bi-check-circle me-2"></i>
-												{ api.Translate("label", "Info") }
-											</span>
-										case "debug":
-											<span class="badge bg-secondary">
-												<i class="bi bi-info-circle me-2"></i>
-												{ api.Translate("label", "Debug") }
-											</span>
-										case "error":
-											<span class="badge bg-danger">
-												<i class="bi bi-exclamation-triangle me-2"></i>
-												{ api.Translate("label", "Error") }
-											</span>
-										default:
-											<span class="badge bg-light text-dark">
-												<i class="bi bi-info-circle me-2"></i>
-												{ log.Level }
-											</span>
-									}
-								</h5>
+							<td class="px-2 py-1 ps-3"><code class="text-muted text-nowrap small">{ log.DateTime }</code></td>
+							<td class="px-2 py-1"><code class="text-muted text-nowrap small">{ log.Package }</code></td>
+							<td class="px-2 py-1">
+								switch log.Level {
+									case "info":
+										<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
+											<i class="bi bi-check-circle me-1"></i>{ api.Translate("label", "Info") }
+										</span>
+									case "debug":
+										<span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">
+											<i class="bi bi-info-circle me-1"></i>{ api.Translate("label", "Debug") }
+										</span>
+									case "error":
+										<span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">
+											<i class="bi bi-exclamation-triangle me-1"></i>{ api.Translate("label", "Error") }
+										</span>
+									default:
+										<span class="badge bg-light text-dark border">
+											<i class="bi bi-info-circle me-1"></i>{ log.Level }
+										</span>
+								}
 							</td>
-							<td class="px-2 py-3">{ log.Message }</td>
+							<td class="px-2 py-1 font-monospace small log-message">{ log.Message }</td>
 						</tr>
 					}
 				</tbody>
 			</table>
 		</div>
 	</div>
-	// Logs Pagination
+	// Logs pagination
 	@pagination
+	// Live tail: append new log lines via SSE (first page only, respecting filters)
+	@logsStyles()
+	@liveTailScript()
+}
+
+templ logsStyles() {
+	<style type="text/css">
+		.logs-table td { vertical-align: middle; }
+		.logs-table .log-message {
+			white-space: pre-wrap;
+			word-break: break-word;
+			line-height: 1.35;
+		}
+		.logs-table tbody tr { border-color: var(--bs-border-color-translucent); }
+	</style>
+}
+
+templ liveTailScript() {
+	<script type="text/javascript">
+		(function () {
+			var el = document.getElementById('logs-live');
+			var toggle = document.getElementById('logs-live-toggle');
+			var tbody = document.getElementById('logs-tbody');
+			var liveBadge = document.getElementById('logs-live-badge');
+			if (!el || !toggle || !tbody) return;
+
+			var url = el.getAttribute('data-stream-url');
+			var fPkg = el.getAttribute('data-f-package') || '';
+			var fLevel = el.getAttribute('data-f-level') || '';
+			var fSearch = (el.getAttribute('data-f-search') || '').toLowerCase();
+			var prefKey = 'flare.logs.liveTail';
+
+			// Live tail prepends newest lines, so it only makes sense on page 1.
+			var params = new URLSearchParams(window.location.search);
+			var onFirstPage = parseInt(params.get('page') || '1', 10) <= 1;
+			if (!onFirstPage || !url) {
+				toggle.checked = false;
+				toggle.disabled = true;
+				toggle.title = 'Live tail is available on the first page only';
+				return;
+			}
+
+			function matches(it) {
+				if (fPkg && it.package !== fPkg) return false;
+				if (fLevel && it.level !== fLevel) return false;
+				if (fSearch &&
+					(it.message || '').toLowerCase().indexOf(fSearch) < 0 &&
+					(it.package || '').toLowerCase().indexOf(fSearch) < 0) return false;
+				return true;
+			}
+			function esc(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+			// Mirror the server-rendered badges (class + icon + translated label)
+			// so live rows look identical to static ones.
+			var badgeMeta = {
+				info: { cls: 'bg-info-subtle text-info-emphasis border border-info-subtle', icon: 'bi-check-circle', label: el.getAttribute('data-label-info') || 'Info' },
+				debug: { cls: 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle', icon: 'bi-info-circle', label: el.getAttribute('data-label-debug') || 'Debug' },
+				error: { cls: 'bg-danger-subtle text-danger-emphasis border border-danger-subtle', icon: 'bi-exclamation-triangle', label: el.getAttribute('data-label-error') || 'Error' }
+			};
+			function badge(level) {
+				var m = badgeMeta[level] || { cls: 'bg-light text-dark border', icon: 'bi-info-circle', label: level };
+				return '<span class="badge ' + m.cls + '"><i class="bi ' + m.icon + ' me-1"></i>' + esc(m.label) + '</span>';
+			}
+			function onLog(e) {
+				var it; try { it = JSON.parse(e.data); } catch (_) { return; }
+				if (!matches(it)) return;
+				var empty = document.getElementById('logs-empty');
+				if (empty && empty.parentNode) empty.parentNode.removeChild(empty);
+				var tr = document.createElement('tr');
+				tr.innerHTML =
+					'<td class="px-2 py-1 ps-3"><code class="text-muted text-nowrap small">' + esc(it.datetime) + '</code></td>' +
+					'<td class="px-2 py-1"><code class="text-muted text-nowrap small">' + esc(it.package) + '</code></td>' +
+					'<td class="px-2 py-1">' + badge(it.level) + '</td>' +
+					'<td class="px-2 py-1 font-monospace small log-message">' + esc(it.message) + '</td>';
+				tbody.insertBefore(tr, tbody.firstChild);
+				while (tbody.children.length > 200) tbody.removeChild(tbody.lastChild);
+			}
+
+			var es = null;
+			function connect() {
+				if (es) return;
+				es = new EventSource(url);
+				es.addEventListener('open', function () { if (liveBadge) liveBadge.style.display = ''; });
+				es.addEventListener('error', function () { if (liveBadge) liveBadge.style.display = 'none'; });
+				es.addEventListener('log', onLog);
+			}
+			function disconnect() {
+				if (es) { es.close(); es = null; }
+				if (liveBadge) liveBadge.style.display = 'none';
+			}
+
+			// Restore saved preference (default ON).
+			var saved = localStorage.getItem(prefKey);
+			var enabled = saved === null ? true : saved === '1';
+			toggle.checked = enabled;
+			if (enabled) connect();
+
+			toggle.addEventListener('change', function () {
+				if (toggle.checked) {
+					localStorage.setItem(prefKey, '1');
+					connect();
+				} else {
+					localStorage.setItem(prefKey, '0');
+					disconnect();
+				}
+			});
+
+			// Stop streaming when the tab is hidden; resume when visible (if enabled).
+			document.addEventListener('visibilitychange', function () {
+				if (document.hidden) {
+					disconnect();
+				} else if (toggle.checked) {
+					connect();
+				}
+			});
+		})();
+	</script>
 }

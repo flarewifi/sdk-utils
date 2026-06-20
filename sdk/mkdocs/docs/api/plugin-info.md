@@ -22,6 +22,17 @@ The package name of the plugin.
 
 This is a list of system packages required by the plugin.
 
+## PreInstall
+
+Optional path to a shell script run during installation, after `SystemPackages`
+are installed but before the plugin files are copied into place. See
+[plugin.json](./plugin.json.md#preinstall).
+
+## PostInstall
+
+Optional path to a shell script run after the plugin is installed. See
+[plugin.json](./plugin.json.md#postinstall).
+
 ## SDK
 
 This is the minimum SDK version that the plugin supports.

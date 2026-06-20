@@ -22,6 +22,23 @@ const (
 	CurrencyNigerianNaira  = sdkutils.CurrencyNigerianNaira
 )
 
+type PaymentOption struct {
+	UUID        string // Unique, stable identifier (16-char hash based on device property like MAC address)
+	Name        string // Display label for the user
+	RouteName   string
+	RouteParams map[string]string
+}
+
+// IPaymentProvider represents a payment provider.
+// A payment provider can have many payment options.
+type IPaymentProvider interface {
+	// Returns name of the payment provider.
+	Name() string
+
+	// Returns a list of available payment options.
+	OptionsFactory(r *http.Request) []PaymentOption
+}
+
 // IPaymentsApi is used to handle customer payments.
 type IPaymentsApi interface {
 
@@ -51,17 +68,16 @@ type IPaymentsApi interface {
 	// Returns the purchase request if successful, or an error if validation fails.
 	ExtractPurchaseData(r *http.Request) (IPurchaseRequest, error)
 
-	// OnPurchaseEvent registers a callback for purchase events.
-	// Plugins can use this to react to purchase state changes:
-	//   - EventPurchaseSuccess: Emitted after purchase.Confirm() succeeds
-	//   - EventPurchaseFailed: Emitted when purchase.Confirm() or purchase.Execute() fails
-	//   - EventPurchaseCancelled: Emitted after purchase.Cancel() completes
-	//
-	// Deprecated: Use api.Events().OnPurchaseEvent(...) instead.
-	OnPurchaseEvent(event PurchaseEvent, callback func(ctx context.Context, data PurchaseEventData) error)
-
 	// CreatePurchase creates a purchase record programmatically without HTTP checkout flow.
 	// Used for admin-generated purchases like voucher batch sales where no customer device is involved.
 	// DeviceID can be nil for admin purchases.
 	CreatePurchase(ctx context.Context, params CreatePurchaseParams) (IPurchaseRequest, error)
+
+	// HandlePurchaseExecute registers an in-process handler invoked when a
+	// payment provider calls IPurchaseRequest.Execute() for a purchase whose
+	// WebHookRoute matches `route` and whose callback plugin is this plugin.
+	// It replaces the former POST webhook route: register the handler instead
+	// of mounting an HTTP endpoint. The `route` string is used purely as the
+	// dispatch key and no longer needs to be a registered HTTP route.
+	HandlePurchaseExecute(route string, handler PurchaseExecuteHandler)
 }

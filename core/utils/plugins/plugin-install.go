@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"bytes"
+	"core/utils/env"
 	"core/utils/migrate"
 	cmd "core/utils/shell"
 	"database/sql"
@@ -199,7 +200,11 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		installPath = GetPendingUpdatePath(info.Package)
 	}
 
-	if err := InstallSystemPkgs(info.SystemPackages); err != nil {
+	if err := ProvisionSystemPkgs(info); err != nil {
+		return err
+	}
+
+	if err := RunInstallScript(pluginSrc, info, info.PreInstall, "preinstall"); err != nil {
 		return err
 	}
 
@@ -238,6 +243,10 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 	}
 	defer os.RemoveAll(filepath.Join(pluginSrc, "resources/assets/dist")) // Clean up dist folder
 
+	if err := RunInstallScript(pluginSrc, info, info.PostInstall, "postinstall"); err != nil {
+		return err
+	}
+
 	if opts.RemoveSrc {
 		if err := os.RemoveAll(pluginSrc); err != nil {
 			return err
@@ -275,7 +284,11 @@ func InstallPrebuilt(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		installPath = GetPendingUpdatePath(info.Package)
 	}
 
-	if err := InstallSystemPkgs(info.SystemPackages); err != nil {
+	if err := ProvisionSystemPkgs(info); err != nil {
+		return err
+	}
+
+	if err := RunInstallScript(pluginSrc, info, info.PreInstall, "preinstall"); err != nil {
 		return err
 	}
 
@@ -291,12 +304,126 @@ func InstallPrebuilt(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		return err
 	}
 
+	if err := RunInstallScript(pluginSrc, info, info.PostInstall, "postinstall"); err != nil {
+		return err
+	}
+
 	if opts.RemoveSrc {
 		if err := os.RemoveAll(pluginSrc); err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+// RunInstallScript executes an optional plugin lifecycle script
+// (preinstall/postinstall) declared in plugin.json. scriptRel is the path
+// relative to pluginDir; an empty value is a no-op. The script runs with
+// pluginDir as its working directory so it can reference bundled files by
+// relative path, and inherits the server's stdout/stderr for logging.
+//
+// On success it records a version-pinned marker (see ScriptMarkerPath) so the
+// same script is not run again for this plugin version. os_image builds bake
+// plugins in without ever calling this, so the marker is absent on a device's
+// first boot and the boot path (RunInstallScripts) runs the script then.
+//
+// The current build environment is exposed to the script as GO_ENV
+// ("development" | "sandbox" | "staging" | "production"), so a script can guard
+// on it (e.g. `[ "$GO_ENV" = production ] || exit 0`) to skip device-only setup
+// in development. The script also inherits the server's stdout/stderr.
+func RunInstallScript(pluginDir string, info sdkutils.PluginInfo, scriptRel, phase string) error {
+	if scriptRel == "" {
+		return nil
+	}
+
+	// Resolve absolute paths: the working directory is set to the plugin dir, so
+	// passing the script as a path already joined with (a possibly relative)
+	// pluginDir would resolve it twice. An absolute script path + absolute Dir
+	// avoids that, regardless of whether pluginDir is relative.
+	scriptPath := filepath.Join(pluginDir, scriptRel)
+	if !sdkutils.FsExists(scriptPath) {
+		return fmt.Errorf("%s script not found: %s", phase, scriptRel)
+	}
+	absScript, err := filepath.Abs(scriptPath)
+	if err != nil {
+		absScript = scriptPath
+	}
+	absDir, err := filepath.Abs(pluginDir)
+	if err != nil {
+		absDir = pluginDir
+	}
+
+	fmt.Printf("[plugin-install] running %s script: %s\n", phase, scriptRel)
+	if err := cmd.Exec("sh \""+absScript+"\"", &cmd.ExecOpts{
+		Dir:    absDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Env:    append(os.Environ(), "GO_ENV="+env.GoEnvString()),
+	}); err != nil {
+		return fmt.Errorf("%s script failed: %w", phase, err)
+	}
+
+	// Pin the marker to the plugin version that just ran. A write failure is not
+	// fatal to the install — at worst the script runs once more on the next boot,
+	// which the scripts are required to tolerate (idempotent / self-guarding).
+	if err := WriteScriptMarker(info.Package, phase, info.Version); err != nil {
+		fmt.Printf("[plugin-install] warning: could not record %s marker for %s: %v\n", phase, info.Package, err)
+	}
+
+	return nil
+}
+
+// ScriptMarkerPath returns the persistent marker file that records the plugin
+// version for which a given install-script phase (preinstall/postinstall) last
+// completed. It lives under data/storage (not the plugin install dir) so it
+// survives a plugin update that replaces the install dir; the recorded version
+// is what makes the run both once-per-version and re-run on upgrade.
+func ScriptMarkerPath(pkg, phase string) string {
+	return filepath.Join(sdkutils.PathPluginStorageDir, pkg, "install-scripts", phase)
+}
+
+// ReadScriptMarker returns the plugin version recorded for a completed script
+// phase, or "" when the script has never run for this plugin (marker
+// absent/empty) — e.g. on the first boot of an os_image that baked the plugin in.
+func ReadScriptMarker(pkg, phase string) string {
+	b, err := os.ReadFile(ScriptMarkerPath(pkg, phase))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+
+// WriteScriptMarker records that the given phase's script completed for version.
+func WriteScriptMarker(pkg, phase, version string) error {
+	markerPath := ScriptMarkerPath(pkg, phase)
+	if err := os.MkdirAll(filepath.Dir(markerPath), sdkutils.PermDir); err != nil {
+		return err
+	}
+	return os.WriteFile(markerPath, []byte(version), sdkutils.PermFile)
+}
+
+// ProvisionSystemPkgs installs a plugin's declared system_packages exactly once
+// per plugin version, recording a version-pinned "syspkgs" marker (see
+// ScriptMarkerPath) so the opkg work is not repeated on every boot or every
+// internet-up. It requires connectivity — InstallSystemPkgs runs `opkg update`,
+// which hits the package feed — so callers must invoke it only when the device is
+// online: at runtime install time (the dashboard download already proves egress),
+// or from the online monitor's internet-up provisioning pass. A version mismatch
+// (fresh install or upgrade) re-runs it.
+func ProvisionSystemPkgs(info sdkutils.PluginInfo) error {
+	if len(info.SystemPackages) == 0 {
+		return nil
+	}
+	if ReadScriptMarker(info.Package, "syspkgs") == info.Version {
+		return nil
+	}
+	if err := InstallSystemPkgs(info.SystemPackages); err != nil {
+		return err
+	}
+	if err := WriteScriptMarker(info.Package, "syspkgs", info.Version); err != nil {
+		fmt.Printf("[plugin-install] warning: could not record syspkgs marker for %s: %v\n", info.Package, err)
+	}
 	return nil
 }
 

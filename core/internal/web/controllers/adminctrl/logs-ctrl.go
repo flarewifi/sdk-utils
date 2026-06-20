@@ -1,75 +1,83 @@
 package adminctrl
 
 import (
-	"core/db/models"
-	"core/internal/api"
-	logsview "core/resources/views/admin/logs"
-	"core/utils/config"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
-	sdkapi "sdk/api"
 	"strconv"
+	"sync"
+
+	"core/internal/api"
+	"core/internal/modules/logger"
+	logsview "core/resources/views/admin/logs"
+	sse "core/utils/sse"
+	sdkapi "sdk/api"
 )
+
+// sseLogsKey is the dedicated SSE namespace for the admin log tail, so live log
+// lines are delivered only to open log-viewer connections (never broadcast to
+// portal clients on the shared SSE store).
+const sseLogsKey = "admin:logs"
+
+var startLogBroadcasterOnce sync.Once
+
+// logStreamItem is the JSON payload pushed to the live log tail.
+type logStreamItem struct {
+	DateTime string `json:"datetime"`
+	Package  string `json:"package"`
+	Level    string `json:"level"`
+	Message  string `json:"message"`
+	Location string `json:"location"`
+}
 
 func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
 		pkg := params.Get("package")
 		level := params.Get("level")
-		page := params.Get("page")
-		perPage := params.Get("per_page")
 		searchTxt := params.Get("search_text")
-
-		var ipage, iPerPage int
-		var err error
 
 		searchLogsErr := errors.New(g.CoreAPI.Translate("error", "Unable to Search Logs"))
 
-		if page != "" {
-			ipage, err = strconv.Atoi(page)
-			if err != nil {
-				g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
-				g.CoreAPI.LoggerAPI.Error(err.Error())
-				return
-			}
-		}
-		if ipage == 0 {
+		ipage := atoiOr(params.Get("page"), 1)
+		if ipage < 1 {
 			ipage = 1
 		}
-
-		if perPage != "" {
-			iPerPage, err = strconv.Atoi(perPage)
-			if err != nil {
-				g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
-				g.CoreAPI.LoggerAPI.Error(err.Error())
-				return
-			}
-		}
-		if iPerPage == 0 {
+		iPerPage := atoiOr(params.Get("per_page"), 10)
+		if iPerPage < 1 {
 			iPerPage = 10
 		}
 
-		opts := models.LogsPaginateOpts{
-			Page:       ipage,
-			PerPage:    iPerPage,
+		lines, total, err := logger.ReadLogsFiltered(logger.LogFilter{
 			Package:    pkg,
 			Level:      level,
 			SearchText: searchTxt,
-		}
-
-		result, err := g.Models.Log().Paginate(r.Context(), opts)
+			Page:       ipage,
+			PerPage:    iPerPage,
+		})
 		if err != nil {
 			g.CoreAPI.HttpAPI.Response().Error(w, r, searchLogsErr, http.StatusInternalServerError)
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			return
 		}
 
+		rows := make([]logsview.LogRow, 0, len(lines))
+		for _, ll := range lines {
+			rows = append(rows, logsview.LogRow{
+				DateTime: ll.DateTime,
+				Package:  ll.Plugin,
+				Level:    levelName(ll.Level),
+				Message:  ll.Title,
+				Location: ll.Filename + ":" + strconv.Itoa(ll.Line),
+			})
+		}
+
 		pagination := g.CoreAPI.UI().Pagination(&sdkapi.UIPaginationOpts{
 			PageURL:     g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index"),
 			PerPage:     iPerPage,
 			CurrentPage: ipage,
-			ItemsCount:  result.Count,
+			ItemsCount:  int64(total),
 			ExtraParams: map[string]string{
 				"package":     pkg,
 				"level":       level,
@@ -77,36 +85,23 @@ func LogsIndex(g *api.CoreGlobals) http.HandlerFunc {
 			},
 		})
 
-		// Collect package names from all plugins
-		var packages []string
-		pkgs := g.PluginMgr.Plugins()
-		for _, p := range pkgs {
-			info := p.Info()
-			packages = append(packages, info.Package)
-		}
-
-		// Get log settings from application config
-		logsRetentionDays := 3 // default
-		enableLogging := false // default disabled
-		appCfg, err := config.ReadApplicationConfig()
-		if err == nil {
-			if appCfg.LogsRetentionDays > 0 {
-				logsRetentionDays = appCfg.LogsRetentionDays
-			}
-			enableLogging = appCfg.EnableLogging
+		// Collect package names for the filter: the core plus all installed
+		// plugins. (Core logs are tagged with the core package id.)
+		packages := []string{"com.flarego.core"}
+		for _, p := range g.PluginMgr.Plugins() {
+			packages = append(packages, p.Info().Package)
 		}
 
 		searchData := logsview.LogsSearchData{
-			Packages:          packages,
-			Package:           pkg,
-			Level:             level,
-			SearchText:        searchTxt,
-			ActionURL:         g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:search"),
-			LogsRetentionDays: logsRetentionDays,
-			EnableLogging:     enableLogging,
+			Packages:   packages,
+			Package:    pkg,
+			Level:      level,
+			SearchText: searchTxt,
+			ActionURL:  g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:search"),
+			StreamURL:  g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:stream"),
 		}
 
-		logsIndex := logsview.Index(g.CoreAPI, result.Logs, searchData, pagination)
+		logsIndex := logsview.Index(g.CoreAPI, rows, searchData, pagination)
 
 		g.CoreAPI.HttpAPI.Response().AdminView(w, r, sdkapi.ViewPage{
 			PageContent: logsIndex,
@@ -121,65 +116,9 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		pkg := r.FormValue("package")
-		level := r.FormValue("level")
-		searchTxt := r.FormValue("search_text")
-
-		searchURL := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index")
-
-		query := url.Values{}
-
-		if pkg != "" {
-			query.Add("package", pkg)
-		}
-
-		if level != "" {
-			query.Add("level", level)
-		}
-
-		if searchTxt != "" {
-			query.Add("search_text", searchTxt)
-		}
-
-		searchURL += "?" + query.Encode()
-
-		// Handle save_settings action (includes enable_logging and retention days)
-		if r.FormValue("save_settings") == "1" {
-			retentionDaysStr := r.FormValue("logs_retention_days")
-			retentionDays, err := strconv.Atoi(retentionDaysStr)
-			if err != nil || (retentionDays != 3 && retentionDays != 7 && retentionDays != 14 && retentionDays != 30) {
-				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(g.CoreAPI.Translate("error", "Invalid retention period")), http.StatusBadRequest)
-				return
-			}
-
-			// Read current config
-			appCfg, err := config.ReadApplicationConfig()
-			if err != nil {
-				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(g.CoreAPI.Translate("error", "Unable to read configuration")), http.StatusInternalServerError)
-				g.CoreAPI.LoggerAPI.Error(err.Error())
-				return
-			}
-
-			// Update settings
-			appCfg.LogsRetentionDays = retentionDays
-			appCfg.EnableLogging = r.FormValue("enable_logging") == "1"
-
-			// Save config
-			if err := config.WriteApplicationConfig(appCfg); err != nil {
-				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(g.CoreAPI.Translate("error", "Unable to save configuration")), http.StatusInternalServerError)
-				g.CoreAPI.LoggerAPI.Error(err.Error())
-				return
-			}
-
-			successMsg := g.CoreAPI.Translate("success", "Log settings saved successfully")
-			g.CoreAPI.HttpAPI.Response().FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
-			http.Redirect(w, r, g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index"), http.StatusSeeOther)
-			return
-		}
-
-		// Handle clear_logs action
+		// Clear the rotating log file.
 		if r.FormValue("clear_logs") == "1" {
-			if err := g.Models.Log().Clear(r.Context()); err != nil {
+			if err := logger.ClearLogs(); err != nil {
 				g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(g.CoreAPI.Translate("error", "Unable to clear logs")), http.StatusInternalServerError)
 				g.CoreAPI.LoggerAPI.Error(err.Error())
 				return
@@ -188,6 +127,90 @@ func LogsPostSearch(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		// Otherwise apply filters via query params on the index page.
+		query := url.Values{}
+		if pkg := r.FormValue("package"); pkg != "" {
+			query.Add("package", pkg)
+		}
+		if level := r.FormValue("level"); level != "" {
+			query.Add("level", level)
+		}
+		if searchTxt := r.FormValue("search_text"); searchTxt != "" {
+			query.Add("search_text", searchTxt)
+		}
+
+		searchURL := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:logs:index")
+		if encoded := query.Encode(); encoded != "" {
+			searchURL += "?" + encoded
+		}
 		http.Redirect(w, r, searchURL, http.StatusSeeOther)
 	}
+}
+
+// LogsStream is the SSE endpoint for the live log tail. Each connection receives
+// every subsequently emitted log line as a "log" event.
+func LogsStream(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := g.CoreAPI.HttpAPI.Auth().CurrentAcct(r); err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		startLogBroadcasterOnce.Do(startLogBroadcaster)
+
+		s, err := sse.NewSocket(w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		sse.AddSocket(sseLogsKey, s)
+		s.Listen()
+	}
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+// startLogBroadcaster subscribes to the logger once for the process lifetime and
+// fans out each new line to all open log-viewer SSE connections.
+func startLogBroadcaster() {
+	ch, _ := logger.Subscribe()
+	go func() {
+		for ll := range ch {
+			data, err := json.Marshal(logStreamItem{
+				DateTime: ll.DateTime,
+				Package:  ll.Plugin,
+				Level:    levelName(ll.Level),
+				Message:  ll.Title,
+				Location: ll.Filename + ":" + strconv.Itoa(ll.Line),
+			})
+			if err != nil {
+				continue
+			}
+			sse.Emit(sseLogsKey, "log", data)
+		}
+	}()
+}
+
+func levelName(level int) string {
+	switch level {
+	case 1:
+		return "debug"
+	case 2:
+		return "error"
+	default:
+		return "info"
+	}
+}
+
+func atoiOr(s string, def int) int {
+	if s == "" {
+		return def
+	}
+	if v, err := strconv.Atoi(s); err == nil {
+		return v
+	}
+	return def
 }

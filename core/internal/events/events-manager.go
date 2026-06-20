@@ -40,6 +40,7 @@ type EventsManager struct {
 	purchaseCallbacks     map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error
 	voucherCallbacks      map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error
 	voucherBatchCallbacks map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucherBatch) error
+	internetCallbacks     map[sdkapi.InternetEvent][]func(context.Context) error
 
 	// voucherBeforeCreateCallbacks holds the pre-create hooks. They use the same
 	// synchronous dispatch as every other event; a returned error cancels voucher
@@ -56,6 +57,7 @@ func NewEventsManager() *EventsManager {
 		purchaseCallbacks:     make(map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error),
 		voucherCallbacks:      make(map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error),
 		voucherBatchCallbacks: make(map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucherBatch) error),
+		internetCallbacks:     make(map[sdkapi.InternetEvent][]func(context.Context) error),
 	}
 }
 
@@ -119,6 +121,14 @@ func (em *EventsManager) OnClientMerge(cb func(context.Context, sdkapi.EventClie
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.clientMergeCallbacks = append(em.clientMergeCallbacks, cb)
+}
+
+// OnInternetEvent registers a callback that fires whenever internet connectivity
+// changes, as observed by the core's online monitor.
+func (em *EventsManager) OnInternetEvent(event sdkapi.InternetEvent, cb func(context.Context) error) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	em.internetCallbacks[event] = append(em.internetCallbacks[event], cb)
 }
 
 // =============================================================================
@@ -193,6 +203,28 @@ func (em *EventsManager) EmitVoucherBeforeCreate(ctx context.Context, params *sd
 	cbs := append([]func(context.Context, *sdkapi.CreateVouchersParams) error(nil), em.voucherBeforeCreateCallbacks...)
 	em.mu.RUnlock()
 	return dispatch(ctx, cbs, params)
+}
+
+// EmitInternetEvent dispatches an internet connectivity event to all registered
+// callbacks synchronously, in registration order. Callbacks are payload-less, so
+// this does not use the generic dispatch helper; it mirrors its semantics — every
+// callback runs even if one errors, each gets a context bounded by callbackTimeout,
+// and the first non-nil error is returned (the online monitor logs but ignores it).
+func (em *EventsManager) EmitInternetEvent(ctx context.Context, event sdkapi.InternetEvent) error {
+	em.mu.RLock()
+	cbs := append([]func(context.Context) error(nil), em.internetCallbacks[event]...)
+	em.mu.RUnlock()
+
+	var firstErr error
+	for _, cb := range cbs {
+		cbCtx, cancel := context.WithTimeout(ctx, callbackTimeout)
+		err := cb(cbCtx)
+		cancel()
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 // =============================================================================

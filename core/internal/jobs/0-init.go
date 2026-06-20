@@ -12,9 +12,6 @@ func Init(g *api.CoreGlobals) {
 	// Start fingerprint cleanup scheduler (runs at 3AM daily)
 	StartFingerprintCleanupScheduler(g.Database, g.Models)
 
-	// Start log cleanup scheduler (runs at 4AM daily, deletes logs older than 7 days)
-	StartLogCleanupScheduler(g.Database, g.Models)
-
 	// Start session cleanup scheduler (runs at 11:30 PM daily, deletes consumed/expired sessions)
 	StartSessionCleanupScheduler(g.Database, g.Models)
 

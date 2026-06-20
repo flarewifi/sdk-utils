@@ -59,16 +59,6 @@ type DeviceMac struct {
 	LastSeenAt  sql.NullTime
 }
 
-type Log struct {
-	ID         int64
-	Package    sql.NullString
-	Level      string
-	Message    string
-	Filepath   string
-	LineNumber int64
-	CreatedAt  time.Time
-}
-
 type Notification struct {
 	ID        int64
 	Subject   string

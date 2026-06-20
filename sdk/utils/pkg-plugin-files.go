@@ -14,6 +14,7 @@ var PluginFiles = []string{
 	"LICENSE.txt",
 	"plugin.json",
 	"plugin.so",
+	"scripts",
 	"resources/assets/dist",
 	"resources/assets/public",
 	"resources/migrations",
@@ -30,6 +31,7 @@ var PluginFiles = []string{
 var PluginFilesMono = []string{
 	"LICENSE.txt",
 	"plugin.json",
+	"scripts",
 	"resources/assets/dist",
 	"resources/assets/public",
 	"resources/migrations",

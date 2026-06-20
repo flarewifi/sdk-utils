@@ -68,6 +68,7 @@ nav:
       - "IHttpRouterApi": api/http-router-api.md
       - "IEventsApi": api/events-api.md
       - "ILoggerApi": api/logger-api.md
+      - "IMachineApi": api/machine-api.md
       - "IPaymentsApi": api/payments-api.md
       - "IPluginApi": api/plugin-api.md
       - "IPluginsMgrApi": api/plugins-mgr-api.md

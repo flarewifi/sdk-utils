@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"sync"
 
 	"core/db"
 	"core/db/models"
@@ -82,11 +83,53 @@ type PluginApi struct {
 	WifiAPI          *WifiApi
 	StorageAPI       *StorageApi
 	EventsMgr        *events.EventsManager
+
+	// initFn is the plugin's entry point — func Init(api sdkapi.IPluginApi) error.
+	// Loading the plugin (plugin.Open in non-mono, the generated mono loader
+	// otherwise) only resolves and stores it here; RunInit invokes it. Splitting
+	// the two lets the plugin be loaded at boot (offline-safe) while its Init is
+	// held back until any internet-dependent provisioning (system_packages /
+	// preinstall) has completed. See boot.InitLoadedPlugins / ProvisionInstalledPlugins.
+	initFn   func(sdkapi.IPluginApi) error
+	initMu   sync.Mutex
+	initDone bool
 }
 
 func (self *PluginApi) Initialize(coreApi *PluginApi) {
 	self.CoreAPI = coreApi
 	self.HttpAPI.Initialize()
+}
+
+// SetInitFn records the plugin's Init entry point, to be invoked later by RunInit.
+// Loaders call this instead of invoking Init directly.
+func (self *PluginApi) SetInitFn(fn func(sdkapi.IPluginApi) error) {
+	self.initFn = fn
+}
+
+// InitDone reports whether the plugin's Init has already run successfully.
+func (self *PluginApi) InitDone() bool {
+	self.initMu.Lock()
+	defer self.initMu.Unlock()
+	return self.initDone
+}
+
+// RunInit invokes the plugin's Init entry point exactly once. It is safe to call
+// from both the boot goroutine and the online-monitor provisioning goroutine: the
+// first successful run marks the plugin initialized and later calls are no-ops. A
+// failed Init leaves the plugin un-initialized so a later pass can retry.
+func (self *PluginApi) RunInit() error {
+	self.initMu.Lock()
+	defer self.initMu.Unlock()
+	if self.initDone {
+		return nil
+	}
+	if self.initFn != nil {
+		if err := self.initFn(self); err != nil {
+			return err
+		}
+	}
+	self.initDone = true
+	return nil
 }
 
 func (self *PluginApi) Info() sdkutils.PluginInfo {

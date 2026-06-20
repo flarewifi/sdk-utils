@@ -191,6 +191,40 @@ api.Events().OnVoucherBeforeCreate(func(ctx context.Context, params *sdkapi.Crea
 })
 ```
 
+### OnInternetEvent
+
+Registers a callback that fires whenever the machine's internet connectivity changes, as observed by the core's **online monitor** — a background service that periodically probes for internet reachability. The callback runs synchronously in the monitor's goroutine, in registration order; its returned error is logged but does not stop other callbacks.
+
+A callback that does slow work (downloads, package installs, API calls) **must spawn its own goroutine** so it does not stall the monitor's polling loop.
+
+**Available events:**
+
+| Event | Constant | Description |
+|-------|----------|-------------|
+| `"internet:up"` | `sdkapi.EventInternetUp` | The machine gained internet access — at boot once connectivity first arrives, or after an outage is restored |
+| `"internet:down"` | `sdkapi.EventInternetDown` | Internet access was lost |
+
+The core itself subscribes to `EventInternetUp` to run network-dependent install work — a plugin's `system_packages` (`opkg`) and its `preinstall`/`postinstall` scripts — so a machine that was flashed offline is still fully provisioned the moment it reaches the internet. See [`plugin.json`](./plugin.json.md) for how that provisioning works.
+
+```go
+api.Events().OnInternetEvent(sdkapi.EventInternetUp, func(ctx context.Context) error {
+    // Slow work must not block the monitor — run it in a goroutine.
+    go func() {
+        if err := syncPendingDataToCloud(); err != nil {
+            api.Logger().Error("cloud sync failed: " + err.Error())
+        }
+    }()
+    return nil
+})
+
+api.Events().OnInternetEvent(sdkapi.EventInternetDown, func(ctx context.Context) error {
+    api.Logger().Info("machine went offline")
+    return nil
+})
+```
+
+> **Need the current status, not a change?** Use [`api.Machine().IsOnline()`](./machine-api.md#isonline) for a one-off check of whether the machine has internet right now — it reads the same online-monitor signal that drives these events. Subscribe with `OnInternetEvent` to *react* to transitions; call `IsOnline()` to *query* the state at the moment you need it (e.g. just before attempting a network call).
+
 ## Supporting Types
 
 ### SessionEventData
@@ -271,6 +305,13 @@ type PurchaseEventData struct {
 | `sdkapi.EventVoucherUpdated` | `"voucher:updated"` |
 | `sdkapi.EventVoucherDeleted` | `"voucher:deleted"` |
 | `sdkapi.EventVoucherBatchDeleted` | `"voucher:batch_deleted"` |
+
+### InternetEvent Constants
+
+| Constant | Value |
+|----------|-------|
+| `sdkapi.EventInternetUp` | `"internet:up"` |
+| `sdkapi.EventInternetDown` | `"internet:down"` |
 
 ### CreateVouchersParams
 

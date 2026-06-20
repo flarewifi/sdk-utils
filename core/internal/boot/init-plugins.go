@@ -147,7 +147,12 @@ func InitPlugins(g *api.CoreGlobals) error {
 		}
 
 		p := api.NewPluginApi(dir, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr, g.WifiMgr)
-		err = g.PluginMgr.RegisterPlugin(p)
+		// Load (map the .so + resolve Init) but do NOT run Init yet. Init is
+		// deferred to InitLoadedPlugins (offline-safe plugins) or the online
+		// monitor's provisioning pass (plugins whose system_packages/preinstall
+		// must run first, which needs internet). This still surfaces a stale/ABI-
+		// broken .so here at boot, so the dev/prod error handling below is intact.
+		err = g.PluginMgr.LoadPlugin(p)
 		if err != nil {
 			// Dev: a plugin that fails to compile/load aborts boot (see above).
 			// Production: notify the admin and try to recover from backup.
@@ -231,8 +236,10 @@ func LoadFromBackup(g *api.CoreGlobals, pkg string) error {
 		return fmt.Errorf("error getting plugin info: %w", err)
 	}
 
+	// Load only (no Init) to match the main boot loop: a recovered plugin goes
+	// through the same deferred-Init path (InitLoadedPlugins / provisioning).
 	p := api.NewPluginApi(pkgInstallDir, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr, g.WifiMgr)
-	if err := g.PluginMgr.RegisterPlugin(p); err != nil {
+	if err := g.PluginMgr.LoadPlugin(p); err != nil {
 		return err
 	}
 

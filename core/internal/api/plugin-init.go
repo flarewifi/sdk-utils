@@ -11,7 +11,13 @@ import (
 	sdkapi "sdk/api"
 )
 
-func (api *PluginApi) Init() error {
+// Load maps the plugin's compiled .so into the process and resolves its Init
+// entry point, storing it for later invocation via RunInit. It does NOT invoke
+// Init — that is deferred so the plugin can be loaded at boot (offline) while its
+// Init waits for any internet-dependent provisioning (system_packages /
+// preinstall) to complete. plugin.Open is the step that surfaces ABI/version
+// drift, so loading at boot still catches a stale .so early.
+func (api *PluginApi) Load() error {
 	pluginLib := filepath.Join(api.dir, "plugin.so")
 	p, err := plugin.Open(pluginLib)
 	if err != nil {
@@ -34,10 +40,7 @@ func (api *PluginApi) Init() error {
 	}
 
 	if initFn, ok := initSym.(func(sdkapi.IPluginApi) error); ok {
-		if err := initFn(api); err != nil {
-			return err
-		}
-		return nil
+		api.SetInitFn(initFn)
 	}
 
 	return nil

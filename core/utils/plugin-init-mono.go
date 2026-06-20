@@ -135,17 +135,15 @@ func MakePluginInitMono() {
 		if err := migrate.MigrateUp(self.db.DB, pluginDir); err != nil {
 			fmt.Println("Warning: failed to apply migrations for plugin :", pkg)
 		}
-		// Load plugin
+		// Load plugin (do NOT run Init here — store it for deferred invocation
+		// so Init runs after any internet-dependent provisioning, the same as the
+		// non-mono loader). Standard signature: func Init(api sdkapi.IPluginApi) error
 		api = NewPluginApi(pluginDir, info, g.GlobalAssets, self, self.trfkMgr, g.WifiMgr)
-		// Standard signature: func Init(api sdkapi.IPluginApi) error
-		if err := %s.Init(api); err != nil {
-			fmt.Println("Error initializing plugin", pkg, ":", err)
-		} else {
-			api.Initialize(coreAPI)
-			api.LoadAssetsManifest()
-			self.plugins = append(self.plugins, api)
-			fmt.Println("Loaded mono plugin:" + pkg)
-		}
+		api.Initialize(coreAPI)
+		api.LoadAssetsManifest()
+		api.SetInitFn(%s.Init)
+		self.plugins = append(self.plugins, api)
+		fmt.Println("Loaded mono plugin:" + pkg)
 	}
 
 		`, pkg, importVar)

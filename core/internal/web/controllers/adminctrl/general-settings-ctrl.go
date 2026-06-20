@@ -7,8 +7,6 @@ import (
 	"core/internal/api"
 	"core/internal/modules/activation"
 	machineuid "core/internal/modules/machine-uid"
-	"core/internal/web/httpsserver"
-	"core/internal/web/router"
 	generalview "core/resources/views/admin/general"
 	"core/utils/config"
 	"core/utils/env"
@@ -101,12 +99,6 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 					FieldType:  sdkapi.FormFieldTypeString,
 					FieldRules: sdkapi.FormFieldRules{Required: true},
 				},
-				{
-					FieldName:  "admin_web_https",
-					FieldLabel: g.CoreAPI.Translate("label", "Enable HTTPS for Admin Web"),
-					FieldType:  sdkapi.FormFieldTypeBoolean,
-					FieldRules: sdkapi.FormFieldRules{Required: false},
-				},
 			},
 		}
 
@@ -122,7 +114,6 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get form values
 		language, _ := formValues.GetStringValue("language")
 		currency, _ := formValues.GetStringValue("currency")
-		adminWebHttps, _ := formValues.GetBoolValue("admin_web_https")
 
 		// Read current config to preserve the Secret field
 		currentCfg, err := config.ReadApplicationConfig()
@@ -138,9 +129,6 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Check if language changed
 		languageChanged := currentCfg.Lang != language
 
-		// Check if HTTPS setting changed
-		httpsChanged := currentCfg.AdminWebHttps != adminWebHttps
-
 		// Save the application config
 		err = config.WriteApplicationConfig(sdkapi.AppConfig{
 			Lang:              language,
@@ -150,7 +138,6 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			LogsRetentionDays: currentCfg.LogsRetentionDays,
 			EnableLogging:     currentCfg.EnableLogging,
 			PluginMaxFileSize: currentCfg.PluginMaxFileSize,
-			AdminWebHttps:     adminWebHttps,
 		})
 		if err != nil {
 			saveErrorMsg := g.CoreAPI.Translate("error", "Unable to Save Settings")
@@ -159,43 +146,6 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
 			http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)
 			return
-		}
-
-		// Handle HTTPS server toggle if setting changed
-		if httpsChanged {
-			if adminWebHttps {
-				// HTTPS enabled - start server
-				if err := httpsserver.StartHTTPSServer(router.RootRouter); err != nil {
-					// Revert config change
-					revertErr := config.WriteApplicationConfig(sdkapi.AppConfig{
-						Lang:              language,
-						Currency:          currency,
-						Channel:           currentCfg.Channel,
-						Secret:            currentCfg.Secret,
-						LogsRetentionDays: currentCfg.LogsRetentionDays,
-						EnableLogging:     currentCfg.EnableLogging,
-						PluginMaxFileSize: currentCfg.PluginMaxFileSize,
-						AdminWebHttps:     false, // Revert to disabled
-					})
-					if revertErr != nil {
-						g.CoreAPI.LoggerAPI.Error("Failed to revert config after HTTPS start failure: " + revertErr.Error())
-					}
-
-					httpsErrorMsg := g.CoreAPI.Translate("error", "Failed to start HTTPS server")
-					res.FlashMsg(w, r, httpsErrorMsg, sdkapi.FlashMsgError)
-					g.CoreAPI.LoggerAPI.Error("Failed to start HTTPS server: " + err.Error())
-					applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
-					http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)
-					return
-				}
-				httpsStartedMsg := g.CoreAPI.Translate("success", "HTTPS server started")
-				res.FlashMsg(w, r, httpsStartedMsg, sdkapi.FlashMsgSuccess)
-			} else {
-				// HTTPS disabled - stop server
-				httpsserver.StopHTTPSServer()
-				httpsStoppedMsg := g.CoreAPI.Translate("info", "HTTPS server stopped")
-				res.FlashMsg(w, r, httpsStoppedMsg, sdkapi.FlashMsgInfo)
-			}
 		}
 
 		// Handle language switching if language changed
@@ -212,11 +162,8 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			g.CoreAPI.LoggerAPI.Info("Language changed to " + language + ", template cache cleared")
 		}
 
-		// Show success message only if no HTTPS message was already shown
-		if !httpsChanged {
-			successfulSavedMsg := g.CoreAPI.Translate("info", "Settings Successfully Saved")
-			res.FlashMsg(w, r, successfulSavedMsg, sdkapi.FlashMsgSuccess)
-		}
+		successfulSavedMsg := g.CoreAPI.Translate("info", "Settings Successfully Saved")
+		res.FlashMsg(w, r, successfulSavedMsg, sdkapi.FlashMsgSuccess)
 
 		applicationSettingsIndexUrl := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:general:index")
 		http.Redirect(w, r, applicationSettingsIndexUrl, http.StatusSeeOther)

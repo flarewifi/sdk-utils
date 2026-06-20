@@ -22,6 +22,23 @@ machineId := api.Machine().GetID()
 fmt.Printf("Machine ID: %s\n", machineId)
 ```
 
+### IsOnline
+
+Returns whether the machine currently has internet access, as observed by the core's **online monitor** — a background service that periodically probes for internet reachability. This is the same signal that drives `EventInternetUp` / `EventInternetDown` (see [`OnInternetEvent`](./events-api.md#oninternetevent)).
+
+It returns `false` before the monitor's first probe completes — i.e. connectivity is treated as "not known to be up" rather than assumed online.
+
+```go
+if api.Machine().IsOnline() {
+    // safe to do network-dependent work (cloud sync, remote API calls, etc.)
+    syncToCloud()
+} else {
+    api.Logger().Info("machine is offline; deferring sync")
+}
+```
+
+> **Prefer events over polling.** If you want to *react* to the machine coming online or going offline, subscribe with [`api.Events().OnInternetEvent(...)`](./events-api.md#oninternetevent) instead of repeatedly calling `IsOnline()`. Use `IsOnline()` for a one-off check at the moment you need it (e.g. just before attempting a network call).
+
 ## Usage Examples
 
 ### Machine Identification

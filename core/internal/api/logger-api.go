@@ -1,10 +1,7 @@
 package api
 
 import (
-	"context"
-	"core/db/models"
 	"core/internal/modules/logger"
-	"core/utils/config"
 )
 
 const (
@@ -22,86 +19,24 @@ func NewLoggerApi(api *PluginApi) {
 	api.LoggerAPI = loggerApi
 }
 
-// isLoggingEnabled checks if logging is enabled in the application config.
-func (l *LoggerApi) isLoggingEnabled() bool {
-	appCfg, err := config.ReadApplicationConfig()
-	if err != nil {
-		return false // Default to disabled if config cannot be read
-	}
-	return appCfg.EnableLogging
-}
-
+// Info/Debug/Error emit to stdout (syslog/logread) + the rotating app.log file
+// + live SSE subscribers via logger.Emit. They no longer write to the database,
+// so they are safe to call from inside a DB transaction (a logger DB write on
+// the single-connection pool used to self-deadlock an enclosing transaction).
 func (l *LoggerApi) Info(message string) error {
-	calldepth := 1
-	level := 0
-
-	file, line := logger.GetCallerFileLine(calldepth)
-
-	// Always log to console
-	logger.LogToConsole(file, line, level, message)
-
-	// Only write to database if logging is enabled
-	if !l.isLoggingEnabled() {
-		return nil
-	}
-
-	info := l.api.Info()
-	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
-		Package:    info.Package,
-		Level:      LogLevelInfo,
-		Message:    message,
-		Filepath:   file,
-		LineNumber: line,
-	})
-	return err
+	file, line := logger.GetCallerFileLine(1)
+	logger.Emit(0, file, line, message)
+	return nil
 }
 
 func (l *LoggerApi) Debug(message string) error {
-	calldepth := 1
-	level := 1
-
-	file, line := logger.GetCallerFileLine(calldepth)
-
-	// Always log to console
-	logger.LogToConsole(file, line, level, message)
-
-	// Only write to database if logging is enabled
-	if !l.isLoggingEnabled() {
-		return nil
-	}
-
-	info := l.api.Info()
-	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
-		Package:    info.Package,
-		Level:      LogLevelDebug,
-		Message:    message,
-		Filepath:   file,
-		LineNumber: line,
-	})
-	return err
+	file, line := logger.GetCallerFileLine(1)
+	logger.Emit(1, file, line, message)
+	return nil
 }
 
 func (l *LoggerApi) Error(message string) error {
-	calldepth := 1
-	level := 2
-
-	file, line := logger.GetCallerFileLine(calldepth)
-
-	// Always log to console
-	logger.LogToConsole(file, line, level, message)
-
-	// Only write to database if logging is enabled
-	if !l.isLoggingEnabled() {
-		return nil
-	}
-
-	info := l.api.Info()
-	err := l.api.models.Log().Create(context.Background(), models.CreateLogParams{
-		Package:    info.Package,
-		Level:      LogLevelError,
-		Message:    message,
-		Filepath:   file,
-		LineNumber: line,
-	})
-	return err
+	file, line := logger.GetCallerFileLine(1)
+	logger.Emit(2, file, line, message)
+	return nil
 }
