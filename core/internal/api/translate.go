@@ -47,8 +47,15 @@ func TranslateMessage(translationsDir string, msgtype string, msgk string, pairs
 
 	tmpl, err := flaretmpl.GetTextTemplate(f)
 	if err != nil {
+		// First call for this text: the translation file does not exist yet. Persist
+		// the raw text so it can be translated later, but still parse and interpolate
+		// it now so the params are applied — otherwise the very first call would leak
+		// literal <% .key %> placeholders to the user.
 		sdkutils.FsWriteFile(f, []byte(msgk))
-		return msgk
+		tmpl, err = flaretmpl.ParseTextTemplate(msgk)
+		if err != nil {
+			return msgk
+		}
 	}
 
 	vdata := map[any]any{}

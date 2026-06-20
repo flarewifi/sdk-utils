@@ -54,6 +54,15 @@ func GetTextTemplate(path string) (*texttemplate.Template, error) {
 	return tmpl, nil
 }
 
+// ParseTextTemplate parses raw template content (not a file path) using the same
+// custom <% %> delimiters as GetTextTemplate. It is used for the translation
+// first-call fallback, where the on-disk translation file does not exist yet but
+// the message text is itself a valid template that must still interpolate its
+// params instead of leaking literal <% .key %> placeholders to the user.
+func ParseTextTemplate(content string) (*texttemplate.Template, error) {
+	return texttemplate.New("inline").Delims("<%", "%>").Parse(content)
+}
+
 // ClearCache clears all cached templates
 // This should be called when switching languages to ensure new translations are loaded
 func ClearCache() {
