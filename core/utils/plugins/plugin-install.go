@@ -427,11 +427,29 @@ func ProvisionSystemPkgs(info sdkutils.PluginInfo) error {
 	return nil
 }
 
-func InstallSystemPkgs(packages []string) (err error) {
+// systemPkgsInstallAttempts is how many times InstallSystemPkgs retries the opkg
+// work before giving up. Right after boot / an internet-up transition the link is
+// often not yet stable, so `opkg update` (which hits the package feed) can fail
+// transiently; retrying with backoff lets the install succeed once connectivity
+// settles instead of waiting for the next internet-up pass.
+const systemPkgsInstallAttempts = 5
+
+func InstallSystemPkgs(packages []string) error {
 	if len(packages) == 0 {
 		return nil
 	}
 
+	// Retry the whole opkg sequence: 2s, 4s, 6s, 8s backoff between attempts
+	// (see sdkutils.Retry) absorbs the network still stabilizing after boot.
+	_, err := sdkutils.Retry(func() (struct{}, error) {
+		return struct{}{}, installSystemPkgsOnce(packages)
+	}, systemPkgsInstallAttempts)
+	return err
+}
+
+// installSystemPkgsOnce performs a single attempt of the opkg update + install
+// sequence. It is the unit retried by InstallSystemPkgs.
+func installSystemPkgsOnce(packages []string) error {
 	if err := cmd.Exec("opkg update", &cmd.ExecOpts{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
@@ -448,6 +466,10 @@ func InstallSystemPkgs(packages []string) (err error) {
 		if !installed {
 			toBeInstalled = append(toBeInstalled, pkg)
 		}
+	}
+
+	if len(toBeInstalled) == 0 {
+		return nil
 	}
 
 	if err := cmd.Exec("opkg install "+strings.Join(toBeInstalled, " "), &cmd.ExecOpts{
