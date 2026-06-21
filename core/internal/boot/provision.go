@@ -7,11 +7,12 @@ import (
 
 	"core/internal/api"
 	"core/internal/modules/netmon"
+	"core/utils/env"
 	"core/utils/plugins"
 
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // provisioning guards against overlapping provisioning passes: connectivity can
@@ -95,8 +96,10 @@ func ProvisionInstalledPlugins(g *api.CoreGlobals) {
 		dir := p.Dir()
 
 		if err := plugins.ProvisionSystemPkgs(info); err != nil {
-			if logErr := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q system_packages install failed: %v", info.Package, err)); logErr != nil {
-			}
+			// ProvisionSystemPkgs already retried the opkg work several times
+			// (see InstallSystemPkgs); reaching here means it still failed, so
+			// flag it for the operator.
+			notifySystemPkgsFailure(g, info.Package, err)
 			// Leave the marker unwritten so the next internet-up retries; still
 			// attempt the scripts, which may not depend on the packages.
 		}
@@ -137,4 +140,32 @@ func needsProvision(info sdkutils.PluginInfo) bool {
 		return true
 	}
 	return false
+}
+
+// notifySystemPkgsFailure records that a plugin's system_packages could not be
+// installed even after InstallSystemPkgs exhausted its retries — typically the
+// machine's internet is still unstable. The detailed cause is always logged; in
+// production it additionally raises an admin notification so the operator knows
+// the plugin may be degraded until the next internet-up pass succeeds. The
+// user-facing text names only the plugin package, never the underlying opkg
+// error, per the error-message hygiene rules.
+func notifySystemPkgsFailure(g *api.CoreGlobals, pkg string, cause error) {
+	if err := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q system_packages install failed after retries: %v", pkg, cause)); err != nil {
+	}
+
+	if env.GO_ENV != env.ENV_PRODUCTION {
+		return
+	}
+
+	subject := g.CoreAPI.Translate("error", "Plugin packages failed to install")
+	content := fmt.Sprintf("%s: %s", g.CoreAPI.Translate("error", "Required packages for a plugin could not be installed, possibly due to an unstable internet connection. It will be retried automatically when the machine reconnects"), pkg)
+
+	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{
+		Subject: subject,
+		Content: content,
+		Type:    sdkapi.NotificationTypeError,
+	}); err != nil {
+		if logErr := g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin of system_packages install failure for %q: %v", pkg, err)); logErr != nil {
+		}
+	}
 }

@@ -5,7 +5,7 @@ package updates
 import (
 	"testing"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // TestMetaOwnedMembers verifies the member-hiding rule used to collapse meta

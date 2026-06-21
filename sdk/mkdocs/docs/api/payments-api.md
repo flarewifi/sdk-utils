@@ -38,7 +38,6 @@ func handlePurchase(w http.ResponseWriter, r *http.Request) {
         Price:         5.00,
         AnyPrice:      false,
         CallbackRoute: "portal:purchase:callback",
-        WebHookRoute:  "portal:purchase:webhook",
         Metadata: map[string]string{
             "duration": "3600",
         },
@@ -67,10 +66,10 @@ func handlePayment(w http.ResponseWriter, r *http.Request) {
 
 ### FindPurchaseRequestByUUID
 
-Returns a purchase request by its UUID. Useful for webhook handlers that receive the purchase UUID.
+Returns a purchase request by its UUID. Useful for handlers that receive the purchase UUID.
 
 ```go
-func handleWebhook(w http.ResponseWriter, r *http.Request) {
+func handleLookup(w http.ResponseWriter, r *http.Request) {
     uuid := r.URL.Query().Get("purchase_uuid")
 
     purchaseReq, err := api.Payments().FindPurchaseRequestByUUID(uuid)
@@ -95,7 +94,7 @@ fmt.Println(formatted) // e.g., "₱29.99" or "$29.99"
 
 ### ExtractPurchaseData
 
-Extracts and validates purchase data from the request using the `token` query parameter. This method handles both callback requests (GET) and webhook requests (POST).
+Extracts and validates purchase data from the request using the `token` query parameter. This handles the browser callback request (GET) after payment.
 
 The token is a JWT signed with the application secret containing the device ID and purchase UUID. It verifies the token and returns the purchase request. Tokens expire after 5 minutes for security.
 
@@ -111,17 +110,6 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
     if purchaseReq.IsConfirmed() {
         // Show success page
     }
-}
-
-func handleWebhook(w http.ResponseWriter, r *http.Request) {
-    // Same method works for webhooks (POST with ?token=<jwt>)
-    purchaseReq, err := api.Payments().ExtractPurchaseData(r)
-    if err != nil {
-        w.WriteHeader(http.StatusUnauthorized)
-        return
-    }
-
-    // Process webhook...
 }
 ```
 
@@ -152,11 +140,11 @@ func handleAdminVoucherSale(w http.ResponseWriter, r *http.Request) {
 
 ### HandlePurchaseExecute
 
-Registers an in-process handler invoked when a payment provider calls `IPurchaseRequest.Execute()` for a purchase whose `WebHookRoute` matches `route` and whose callback plugin is this plugin. This replaces the former loopback HTTP webhook — register the handler instead of mounting an HTTP endpoint. The `route` string is used purely as the dispatch key.
+Registers this plugin's single in-process handler, invoked when a payment provider calls `IPurchaseRequest.Execute()` for any purchase whose callback plugin is this plugin. There is no name or route to match: the core routes to the handler by the purchase's callback plugin. Branch on `purchase.Sku()`/`Metadata()` inside the handler to fulfil different purchase types; the last registration wins.
 
 ```go
 func Init(api sdkapi.IPluginApi) error {
-    api.Payments().HandlePurchaseExecute("myplugin:purchase:webhook", func(ctx context.Context, purchase sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
+    api.Payments().HandlePurchaseExecute(func(ctx context.Context, purchase sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
         if params.Success {
             if err := purchase.Confirm(ctx); err != nil {
                 return err
@@ -188,7 +176,6 @@ type PurchaseRequest struct {
     Price         float64           // Price of the item
     AnyPrice      bool              // Whether flexible pricing is allowed
     CallbackRoute string            // Route name to redirect after payment
-    WebHookRoute  string            // Route name for payment webhook
     Metadata      map[string]string // Additional metadata
     Processing    bool              // Whether payment is being processed
     PaymentUrl    string            // External payment URL (if any)
@@ -329,7 +316,7 @@ type PaymentOption struct {
 
 **Example:**
 ```go
-import "github.com/flarehotspot/sdk-utils"
+import "github.com/flarewifi/sdk-utils"
 
 func generatePaymentOptionUUID(macAddress string) string {
     normalized := strings.ToUpper(strings.ReplaceAll(macAddress, ":", ""))
@@ -354,15 +341,14 @@ func handleBuyWifi(w http.ResponseWriter, r *http.Request) {
         Description:   "One hour of internet access",
         Price:         10.00,
         CallbackRoute: "myplugin:purchase:callback",
-        WebHookRoute:  "myplugin:purchase:webhook",
     }
 
     api.Payments().Checkout(w, r, purchase)
 }
 
-// 2. Register the in-process purchase handler (replaces the old HTTP webhook)
+// 2. Register the in-process purchase handler
 func Init(api sdkapi.IPluginApi) error {
-    api.Payments().HandlePurchaseExecute("myplugin:purchase:webhook", func(ctx context.Context, purchaseReq sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
+    api.Payments().HandlePurchaseExecute(func(ctx context.Context, purchaseReq sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
         if params.Success {
             if err := purchaseReq.Confirm(ctx); err != nil {
                 return err
@@ -409,7 +395,6 @@ func handleDonation(w http.ResponseWriter, r *http.Request) {
         Price:         0,        // No fixed price
         AnyPrice:      true,     // Allow any amount
         CallbackRoute: "myplugin:donation:callback",
-        WebHookRoute:  "myplugin:donation:webhook",
     }
 
     api.Payments().Checkout(w, r, purchase)

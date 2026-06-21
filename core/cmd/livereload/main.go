@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 	"github.com/gorilla/mux"
 )
 

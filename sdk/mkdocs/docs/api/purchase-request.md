@@ -175,15 +175,6 @@ route := purchaseRequest.CallbackRoute()
 fmt.Printf("Callback route: %s\n", route)
 ```
 
-### WebHookRoute
-
-Returns the webhook route name for the purchase.
-
-```go
-route := purchaseRequest.WebHookRoute()
-fmt.Printf("Webhook route: %s\n", route)
-```
-
 ### Metadata
 
 Returns the metadata map associated with the purchase.
@@ -334,7 +325,7 @@ purchaseRequest.RedirectToCallback(w, r)
 
 ### Confirm
 
-Confirms the purchase. This must be called in the purchase webhook handler after successful payment.
+Confirms the purchase. This must be called in the purchase execute handler after successful payment.
 
 ```go
 ctx := r.Context()
@@ -348,7 +339,7 @@ if err != nil {
 
 ### Cancel
 
-Cancels the purchase. This should be called in the purchase webhook handler when payment fails.
+Cancels the purchase. This should be called in the purchase execute handler when payment fails.
 
 ```go
 ctx := r.Context()
@@ -398,7 +389,6 @@ type PurchaseRequest struct {
     Price         float64           // Price of the item
     AnyPrice      bool              // Whether flexible pricing is allowed
     CallbackRoute string            // Route name to redirect after payment
-    WebHookRoute  string            // Route name for payment webhook
     Metadata      map[string]string // Additional metadata
     Processing    bool              // Whether payment is being processed
     PaymentUrl    string            // External payment URL (if any)
@@ -433,7 +423,7 @@ type CreatePaymentParams struct {
 
 ### ExecuteParams
 
-The `ExecuteParams` struct holds parameters for executing a purchase webhook:
+The `ExecuteParams` struct holds parameters for executing a purchase:
 
 ```go
 type ExecuteParams struct {
@@ -450,14 +440,14 @@ type ExecuteParams struct {
 1. **Create**: Purchase request is created via `api.Payments().Checkout()`
 2. **Payment Selection**: User selects a payment option from available providers
 3. **Payment Processing**: Payment is processed via `CreatePayment()` or `PayWithWallet()`
-4. **Webhook Execution**: Payment provider calls `Execute()` with result
-5. **Confirmation/Cancellation**: Webhook handler calls `Confirm()` or `Cancel()`
+4. **Execute**: Payment provider calls `Execute()` with result
+5. **Confirmation/Cancellation**: Execute handler calls `Confirm()` or `Cancel()`
 6. **Callback Redirect**: User is redirected via `RedirectToCallback()`
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Checkout   │────▶│  Payment    │────▶│  Webhook    │
-│  (Create)   │     │  Selection  │     │  Execute    │
+│  Checkout   │────▶│  Payment    │────▶│  Execute    │
+│  (Create)   │     │  Selection  │     │  (in-proc)  │
 └─────────────┘     └─────────────┘     └──────┬──────┘
                                                │
                     ┌─────────────┐     ┌──────▼──────┐
@@ -513,53 +503,40 @@ func handleCreditCardPayment(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### Webhook Handler
+### Execute Handler
+
+Registered once in `Init` via `HandlePurchaseExecute`. The core invokes it
+in-process when a provider calls `Execute()` — there is no HTTP request to parse;
+the payment result arrives as `ExecuteParams`.
 
 ```go
-func handlePaymentWebhook(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
+func Init(api sdkapi.IPluginApi) error {
+    api.Payments().HandlePurchaseExecute(func(ctx context.Context, purchaseReq sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
+        if params.Success {
+            // Optionally update metadata before confirming
+            if err := purchaseReq.UpdateMetadata(ctx, map[string]string{
+                "transaction_id": "txn_from_gateway",
+            }); err != nil {
+                api.Logger().Error("Failed to update metadata: %v", err)
+            }
 
-    // Extract and validate purchase data from token
-    purchaseReq, err := api.Payments().ExtractPurchaseData(r)
-    if err != nil {
-        http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
-        return
-    }
+            // Confirm the purchase
+            if err := purchaseReq.Confirm(ctx); err != nil {
+                api.Logger().Error("Failed to confirm purchase: %v", err)
+                return err
+            }
 
-    // Parse webhook body for payment result
-    var params sdkapi.ExecuteParams
-    if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-        http.Error(w, "Bad request", http.StatusBadRequest)
-        return
-    }
-
-    if params.Success {
-        // Optionally update metadata before confirming
-        err = purchaseReq.UpdateMetadata(ctx, map[string]string{
-            "transaction_id": "txn_from_gateway",
-        })
-        if err != nil {
-            api.Logger().Error("Failed to update metadata: %v", err)
+            // Execute your business logic (branch on purchaseReq.Sku() if needed)
+            grantAccess(purchaseReq.DeviceID(), purchaseReq.Metadata())
+        } else {
+            // Cancel the purchase
+            if err := purchaseReq.Cancel(ctx); err != nil {
+                api.Logger().Error("Failed to cancel purchase: %v", err)
+            }
         }
-
-        // Confirm the purchase
-        if err := purchaseReq.Confirm(ctx); err != nil {
-            api.Logger().Error("Failed to confirm purchase: %v", err)
-            http.Error(w, "Failed to confirm", http.StatusInternalServerError)
-            return
-        }
-
-        // Execute your business logic
-        metadata := purchaseReq.Metadata()
-        grantAccess(purchaseReq.DeviceID(), metadata)
-    } else {
-        // Cancel the purchase
-        if err := purchaseReq.Cancel(ctx); err != nil {
-            api.Logger().Error("Failed to cancel purchase: %v", err)
-        }
-    }
-
-    w.WriteHeader(http.StatusOK)
+        return nil
+    })
+    return nil
 }
 ```
 

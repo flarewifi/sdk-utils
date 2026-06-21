@@ -14,8 +14,8 @@ github.com/ebitengine/purego v0.8.2 h1:jPPGWs2sZ1UgOSgD2bClL0MJIqu58nOmIcBuXr62z
 github.com/ebitengine/purego v0.8.2/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
 github.com/evanw/esbuild v0.24.0 h1:GZ78naTLp7FKr+K7eNuM/SLs5maeiHYRPsTg6kmdsSE=
 github.com/evanw/esbuild v0.24.0/go.mod h1:D2vIQZqV/vIf/VRHtViaUtViZmG7o+kKmlBfVQuRi48=
-github.com/flarehotspot/sdk-utils v0.1.15 h1:vhldSOa8AB0b4P9Lh3scQs6sajnlUs/Cmz06g1RKcFc=
-github.com/flarehotspot/sdk-utils v0.1.15/go.mod h1:N6fzBykz02/WadwRwdBV966MhX9UBoWiJVZElYDM52o=
+github.com/flarewifi/sdk-utils v0.1.15 h1:RfVIOpp9wLVEfNRlYu1vEX8t1EOo4DmeZRgmgcNcKEs=
+github.com/flarewifi/sdk-utils v0.1.15/go.mod h1:6fWGqokIX08yhCcw3dGBDgf4vtx5o2sKMO3y20NV6OI=
 github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
 github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/go-ole/go-ole v1.2.6 h1:/Fpf6oFPoeFik9ty7siob0G6Ke8QvQEuVcuChpwXzpY=

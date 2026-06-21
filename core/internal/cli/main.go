@@ -15,7 +15,7 @@ import (
 	"core/utils/env"
 	"core/utils/plugins"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func main() {

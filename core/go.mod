@@ -11,7 +11,7 @@ require (
 	github.com/a-h/templ v0.2.793
 	github.com/digineo/go-uci v0.0.0-20210918132103-37c7b10c14fa
 	github.com/evanw/esbuild v0.24.0
-	github.com/flarehotspot/sdk-utils v0.1.15
+	github.com/flarewifi/sdk-utils v0.1.15
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-json v0.10.3
 	github.com/golang-jwt/jwt/v5 v5.2.2

@@ -5,7 +5,7 @@ import (
 
 	"core/utils/config"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // Meta-plugin bundle handling. A meta plugin is a named bundle of other plugins;

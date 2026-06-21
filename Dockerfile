@@ -31,10 +31,10 @@ RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architectur
 # ownership on first creation (Docker seeds empty volumes from the image dir).
 # Without this the volume mountpoint defaults to root:root and the app
 # (running as ubuntu) cannot create data/storage/certs for the HTTPS server.
-RUN mkdir -p /opt/flarehotspot/data/storage /var/cache/go && \
+RUN mkdir -p /opt/flarewifi/data/storage /var/cache/go && \
     touch /etc/.tkn && \
     chown -R ubuntu:ubuntu \
-    /opt/flarehotspot \
+    /opt/flarewifi \
     /var/cache/go \
     /etc/.tkn
 

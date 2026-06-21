@@ -8,7 +8,7 @@ import (
 	"core/internal/api"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func DeviceClearHistoryCtrl(g *api.CoreGlobals) http.HandlerFunc {

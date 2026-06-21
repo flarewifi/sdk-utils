@@ -46,10 +46,9 @@ Flarewifi uses an in-process purchase execution model:
 ### Key Components
 
 1. **CallbackRoute** - Browser redirect route after payment (user-facing, GET request)
-2. **WebHookRoute** - A string dispatch key used to match the registered `PurchaseExecuteHandler` (not an HTTP route)
-3. **Execute()** - Payment provider calls this to invoke the product plugin's handler in-process
-4. **HandlePurchaseExecute()** - Product plugin registers a handler for a given dispatch key
-5. **Confirm()** - Execute handler calls this to mark the purchase complete
+2. **Execute()** - Payment provider calls this to invoke the product plugin's handler in-process
+3. **HandlePurchaseExecute()** - Product plugin registers its single execute handler; the core routes to it by the purchase's callback plugin (no name or route needed)
+4. **Confirm()** - Execute handler calls this to mark the purchase complete
 
 ## Creating a Product Plugin
 
@@ -74,7 +73,6 @@ func PurchaseWifiSession(api sdkapi.IPluginApi) http.HandlerFunc {
             Price:         5.00,
             AnyPrice:      false,
             CallbackRoute: "purchase.wifi.callback",
-            WebHookRoute:  "purchase.wifi.webhook", // dispatch key for HandlePurchaseExecute
             Metadata: map[string]string{
                 "time_mins": "60",
                 "data_mb":   "1024",
@@ -87,7 +85,7 @@ func PurchaseWifiSession(api sdkapi.IPluginApi) http.HandlerFunc {
 
 ### Step 2: Register Execute Handler
 
-Instead of mounting an HTTP webhook route, register an in-process handler in your plugin's `Init` function. When a payment provider calls `purchase.Execute()`, the core invokes your handler directly — no HTTP request, no JWT verification needed.
+Register an in-process handler in your plugin's `Init` function. Each plugin has **one** execute handler — the core routes to it by the purchase's callback plugin, so there's no name or route to match. When a payment provider calls `purchase.Execute()`, the core invokes your handler directly — no HTTP request, no JWT verification needed. Branch on `purchase.Sku()` (or `purchase.Metadata()`) inside the handler to fulfil different purchase types.
 
 ```go
 package main
@@ -97,15 +95,15 @@ import (
     "fmt"
 
     sdkapi "sdk/api"
-    sdkutils "github.com/flarehotspot/sdk-utils"
+    sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func Init(api sdkapi.IPluginApi) error {
     // Register routes
     SetRoutes(api)
 
-    // Register in-process execute handler for "purchase.wifi.webhook" dispatch key
-    api.Payments().HandlePurchaseExecute("purchase.wifi.webhook", func(ctx context.Context, purchase sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
+    // Register this plugin's in-process execute handler (routed by callback plugin)
+    api.Payments().HandlePurchaseExecute(func(ctx context.Context, purchase sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
 
         // Handle payment failure
         if !params.Success {
@@ -205,7 +203,8 @@ func SetRoutes(api sdkapi.IPluginApi) {
     router.Group("/purchase", func(subrouter sdkapi.IHttpRouterInstance) {
         subrouter.Get("/wifi", controllers.PurchaseWifiSession(api)).Name("purchase.wifi")
         subrouter.Get("/callback", controllers.PurchaseCallback(api)).Name("purchase.wifi.callback")
-        // No webhook POST route — handler is registered in-process via HandlePurchaseExecute
+        // The execute handler is registered in-process via HandlePurchaseExecute
+        // and routed by this plugin's package — no HTTP route needed.
     })
 }
 ```
@@ -224,7 +223,7 @@ import (
     "strings"
 
     sdkapi "sdk/api"
-    sdkutils "github.com/flarehotspot/sdk-utils"
+    sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 type MyPaymentProvider struct {
@@ -316,13 +315,18 @@ func Init(api sdkapi.IPluginApi) error {
 
 ## Important Concepts
 
-### CallbackRoute vs WebHookRoute
+### CallbackRoute vs the execute handler
 
-| Aspect | CallbackRoute | WebHookRoute |
-|--------|--------------|--------------|
-| **Purpose** | Browser redirect after payment | Dispatch key for `HandlePurchaseExecute` |
+A purchase has two distinct fulfilment paths. `CallbackRoute` is a field on the
+`PurchaseRequest`; the execute handler is registered separately via
+`HandlePurchaseExecute` and is **not** referenced by any field — the core routes
+to it by the purchase's callback plugin.
+
+| Aspect | CallbackRoute (field) | Execute handler (`HandlePurchaseExecute`) |
+|--------|----------------------|-------------------------------------------|
+| **What it is** | A named browser route on the `PurchaseRequest` | The plugin's in-process fulfilment function |
 | **Transport** | HTTP GET (browser) | In-process function call (no HTTP) |
-| **Authentication** | None required | None required (already in-process) |
+| **Routing** | Mux route name | Matched by the purchase's callback plugin |
 | **Triggers** | Browser redirect after `Execute()` returns | `purchase.Execute()` called by provider |
 | **Use case** | Show success/failure page | Confirm purchase, create session |
 | **Required** | Optional | Required if you need to grant access |
@@ -384,7 +388,7 @@ purchase.Execute(ctx, params)
 #### 4. Always Generate Session UUID
 
 ```go
-import sdkutils "github.com/flarehotspot/sdk-utils"
+import sdkutils "github.com/flarewifi/sdk-utils"
 
 session, err := api.SessionsMgr().CreateSession(ctx, sdkapi.CreateSessionParams{
     UUID:           sdkutils.NewUUID(), // Required!
@@ -412,7 +416,6 @@ p := sdkapi.PurchaseRequest{
     AnyPrice:      true,
     Price:         0,
     CallbackRoute: "purchase.wifi.callback",
-    WebHookRoute:  "purchase.wifi.webhook",
 }
 ```
 
@@ -432,7 +435,6 @@ p := sdkapi.PurchaseRequest{
     AnyPrice:      false,
     Price:         5.00,
     CallbackRoute: "purchase.wifi.callback",
-    WebHookRoute:  "purchase.wifi.webhook",
 }
 ```
 
@@ -443,7 +445,6 @@ Use the `Metadata` field to store custom information:
 ```go
 p := sdkapi.PurchaseRequest{
     // ...
-    WebHookRoute: "purchase.wifi.webhook",
     Metadata: map[string]string{
         "time_mins":  "120",
         "data_mb":    "2048",
@@ -508,22 +509,27 @@ if err = purchase.Confirm(ctx); err != nil {
 }
 ```
 
-### "WebHookRoute is not configured"
+### "No payment handler is registered to receive the payment"
 
-**Cause:** `PurchaseRequest` doesn't have `WebHookRoute` set.
+**Cause:** The product plugin never registered an execute handler, so the core
+has nothing to dispatch to when the provider calls `Execute()`.
 
-**Fix:** Add a dispatch key when creating the purchase:
+**Fix:** Call `HandlePurchaseExecute` in your plugin's `Init` (it takes only the
+handler — the core routes to it by your plugin package):
 
 ```go
-p := sdkapi.PurchaseRequest{
-    // ...
-    WebHookRoute: "purchase.wifi.webhook", // must match HandlePurchaseExecute key
+func Init(api sdkapi.IPluginApi) error {
+    api.Payments().HandlePurchaseExecute(func(ctx context.Context, purchase sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
+        // confirm purchase, create session, etc.
+        return nil
+    })
+    return nil
 }
 ```
 
 ### Execute() Returns Error
 
-**Cause:** Multiple possible issues — handler panicked, handler returned an error, or no handler was registered for the dispatch key.
+**Cause:** Multiple possible issues — handler panicked, handler returned an error, or no handler was registered for the callback plugin.
 
 **Fix:** Check logs for the execute handler:
 
@@ -531,7 +537,7 @@ p := sdkapi.PurchaseRequest{
 docker logs flarewifi-app-1 -f 2>&1 | grep -iE "(execute|handler|dispatch)"
 ```
 
-Also verify the key in `HandlePurchaseExecute` exactly matches `WebHookRoute`.
+Also verify `HandlePurchaseExecute` is actually called during `Init`.
 
 ### User Not Auto-Connected
 
@@ -552,7 +558,7 @@ if !api.SessionsMgr().IsConnected(clnt) {
 **Fix:** Always provide a UUID:
 
 ```go
-import sdkutils "github.com/flarehotspot/sdk-utils"
+import sdkutils "github.com/flarewifi/sdk-utils"
 
 sdkapi.CreateSessionParams{
     UUID: sdkutils.NewUUID(), // required
@@ -572,7 +578,6 @@ type PurchaseRequest struct {
     Price         float64           // Price (ignored if AnyPrice is true)
     AnyPrice      bool              // Allow variable pricing
     CallbackRoute string            // Browser redirect route (optional)
-    WebHookRoute  string            // Dispatch key for HandlePurchaseExecute (required)
     Metadata      map[string]string // Custom data
 }
 ```
@@ -634,7 +639,7 @@ type CreateSessionParams struct {
 ## Best Practices
 
 1. **Register handler before routes** — call `HandlePurchaseExecute` early in `Init`
-2. **Match the dispatch key exactly** — `WebHookRoute` value must equal the key passed to `HandlePurchaseExecute`
+2. **One handler per plugin** — branch on `purchase.Sku()`/`Metadata()` to fulfil different purchase types
 3. **Confirm purchases before creating sessions** — ensures data consistency
 4. **Handle payment failures gracefully** — cancel purchases, log errors
 5. **Log everything** — makes debugging much easier
@@ -646,11 +651,11 @@ type CreateSessionParams struct {
 
 Payment processing in Flarewifi uses an in-process execution model:
 
-1. **Product plugins** create `PurchaseRequest` values with `CallbackRoute` + `WebHookRoute`
-2. **Product plugins** register a `PurchaseExecuteHandler` via `api.Payments().HandlePurchaseExecute(key, handler)`
+1. **Product plugins** create `PurchaseRequest` values with an optional `CallbackRoute`
+2. **Product plugins** register one `PurchaseExecuteHandler` via `api.Payments().HandlePurchaseExecute(handler)`
 3. **Payment providers** collect payment and call `purchase.Execute(ctx, params)`
-4. **`Execute()`** looks up the registered handler by `WebHookRoute` and invokes it in-process
+4. **`Execute()`** looks up the registered handler by the purchase's callback plugin and invokes it in-process
 5. **The handler** confirms the purchase, creates the session, and connects the user
 6. **Browser** optionally redirects to `CallbackRoute`
 
-The key advantage of this model: no HTTP round-trip, no JWT authentication overhead, and no risk of the loopback webhook deadlocking the SQLite connection.
+The key advantage of this model: no HTTP round-trip, no JWT authentication overhead, and no cross-goroutine contention on the single SQLite connection.

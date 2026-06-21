@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func BuildFromLocal(w io.Writer, db *sql.DB, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
@@ -203,7 +203,7 @@ func BuildGoPlugin(gofile string, outfile string, workdir string, envs []string)
 	extraArgs := []string{"-buildmode=plugin"}
 
 	// Route Go's build cache and link-temp onto the app data partition
-	// (PathTmpDir == APP_TMP == /opt/flarehotspot/tmp on-device). Without this,
+	// (PathTmpDir == APP_TMP == /opt/flarewifi/tmp on-device). Without this,
 	// `go build` falls back to $HOME/.cache/go-build and /tmp — on OpenWRT the
 	// tiny rootfs overlay and a RAM-backed tmpfs — and linking a plugin.so against
 	// a full core exhausts them ("no space left on device"). Pointing both at the

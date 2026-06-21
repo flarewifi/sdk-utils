@@ -12,7 +12,7 @@ import (
 	"strings"
 	"syscall"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 var shell string

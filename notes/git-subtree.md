@@ -1,9 +1,9 @@
 # Git subtree for `sdk-utils`
 
-## Add the remote url of `flarehotspot/sdk-utils`
+## Add the remote url of `flarewifi/sdk-utils`
 
 ```sh
-git remote add sdk-utils git@github.com:flarehotspot/sdk-utils.git
+git remote add sdk-utils git@github.com:flarewifi/sdk-utils.git
 ```
 
 ## Split the utils to a `git subtree`.
@@ -42,7 +42,7 @@ git push sdk-utils --tags # pushes the created tag
 
 Then, update the `sdk-utils` library by specifying the version of the newly pushed tag.
 ```sh
-go get -u github.com/flarehotspot/sdk-utils@vx.x.x
+go get -u github.com/flarewifi/sdk-utils@vx.x.x
 ```
 
 ## Building `devkit`

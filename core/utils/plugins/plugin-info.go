@@ -4,7 +4,7 @@ import (
 	"core/utils/config"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func GetInfoFromDef(def sdkutils.PluginSrcDef) (info sdkutils.PluginInfo, err error) {

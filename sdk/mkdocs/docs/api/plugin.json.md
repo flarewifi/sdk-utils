@@ -105,7 +105,7 @@ machine setup would otherwise fail the boot-time install):
 
 ### sdk
 
-The minimum sdk version that the plugin supports. The supported SDK versions are available in [flarehotspot/devkit](https://github.com/flarehotspot/devkit/releases) repository.
+The minimum sdk version that the plugin supports. The supported SDK versions are available in [flarehotspot/devkit](https://github.com/flarewifi/devkit/releases) repository.
 
 ## Example
 

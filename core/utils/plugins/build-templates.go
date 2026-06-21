@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func BuildTemplates(pluginDir string) (err error) {

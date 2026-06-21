@@ -9,7 +9,7 @@ You can download docker from the official [docker website](https://docs.docker.c
 
 ## 2. Download the SDK {#download-sdk}
 
-Download the latest **devkit-x.x.xzip** file from [devkit releases repository](https://github.com/flarehotspot/devkit/releases).
+Download the latest **devkit-x.x.xzip** file from [devkit releases repository](https://github.com/flarewifi/devkit/releases).
 Instructions for downloading the SDK:
 
 - If you are using Windows on x86/64 CPU architecture (non-arm CPU), choose the file with **amd64** in the file name.
@@ -52,5 +52,5 @@ The server will automatically recompile and restart when you make changes to any
 
 ## 4. Upgrading The SDK {#upgrade-sdk}
 
-To upgrade the SDK, download the latest release from the [devkit releases page](https://github.com/flarehotspot/devkit/releases) and extract the contents to your desired destination. Then copy your plugin directory into the `plugins` directory inside the new SDK. Make sure to stop the previous SDK runtime then [start](#start-sdk) the new SDK runtime.
+To upgrade the SDK, download the latest release from the [devkit releases page](https://github.com/flarewifi/devkit/releases) and extract the contents to your desired destination. Then copy your plugin directory into the `plugins` directory inside the new SDK. Make sure to stop the previous SDK runtime then [start](#start-sdk) the new SDK runtime.
 

@@ -70,7 +70,7 @@ deploy-arm64:
 		./output/mono-bin-files \
 		./plugins/installed && \
 		GOTOOLCHAIN=go1.21.13 GO_ARCH=arm64 go run -tags="prod" ./core/cmd/create-mono-bin/main.go && \
-		rsync -avz --delete --exclude='data' output/mono-bin-files/ root@10.0.0.1:/opt/flarehotspot/app/
+		rsync -avz --delete --exclude='data' output/mono-bin-files/ root@10.0.0.1:/opt/flarewifi/app/
 
 translate-help:
 	@go run core/tools/translator/main.go --help

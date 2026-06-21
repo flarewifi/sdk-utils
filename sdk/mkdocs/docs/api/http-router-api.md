@@ -51,7 +51,7 @@ package main
 
 import (
     "net/http"
-    sdkapi "github.com/flarehotspot/sdk-api"
+    sdkapi "github.com/flarewifi/sdk-api"
 )
 
 var Api sdkapi.IPluginApi

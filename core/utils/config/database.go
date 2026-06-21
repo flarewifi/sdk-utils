@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 const databaseJsonFile = "database.json"

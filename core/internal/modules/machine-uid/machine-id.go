@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 const (

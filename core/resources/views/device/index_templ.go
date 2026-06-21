@@ -14,7 +14,7 @@ import (
 	sdkapi "sdk/api"
 	"strconv"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 type DeviceDiagParams struct {

@@ -21,20 +21,19 @@ type PurchasePaymentData struct {
 	WalletRealBal   float64 `json:"wallet_real_bal"`
 }
 
-// ExecuteParams holds parameters for executing a purchase webhook.
+// ExecuteParams holds parameters for executing a purchase.
 type ExecuteParams struct {
 	Amount  float64 `json:"amount"`
 	Success bool    `json:"success"`
 	Message string  `json:"message"`
 }
 
-// PurchaseExecuteHandler handles an in-process purchase execution — the
-// replacement for the former loopback HTTP "webhook". When a payment provider
-// calls IPurchaseRequest.Execute(), the core dispatches directly to the handler
-// registered (via IPaymentsApi.HandlePurchaseExecute) by the purchase's callback
-// plugin for the matching WebHookRoute. It runs synchronously in the provider's
-// goroutine, so there is no second HTTP request or DB connection involved.
-// Returning a non-nil error marks the execution as failed.
+// PurchaseExecuteHandler handles an in-process purchase execution. When a
+// payment provider calls IPurchaseRequest.Execute(), the core dispatches
+// directly to the handler the purchase's callback plugin registered via
+// IPaymentsApi.HandlePurchaseExecute. It runs synchronously in the provider's
+// goroutine, so no HTTP request or extra DB connection is involved. Returning a
+// non-nil error marks the execution as failed.
 type PurchaseExecuteHandler func(ctx context.Context, purchase IPurchaseRequest, params ExecuteParams) error
 
 // PurchaseRequest represents a purchase to be made by the customer.
@@ -45,7 +44,6 @@ type PurchaseRequest struct {
 	Price         float64
 	AnyPrice      bool
 	CallbackRoute string
-	WebHookRoute  string
 	Metadata      map[string]string
 	Processing    bool
 	PaymentUrl    string
@@ -121,9 +119,6 @@ type IPurchaseRequest interface {
 	// Returns the callback route for the purchase.
 	CallbackRoute() string
 
-	// Returns the webhook route for the purchase.
-	WebHookRoute() string
-
 	// Returns the metadata associated with the purchase.
 	Metadata() map[string]string
 
@@ -164,11 +159,11 @@ type IPurchaseRequest interface {
 	RedirectToCallback(w http.ResponseWriter, r *http.Request)
 
 	// Confirm the purchase.
-	// This must be executed in the purchase webhook handler.
+	// This must be executed in the purchase execute handler.
 	Confirm(ctx context.Context) error
 
 	// Cancel the purchase.
-	// This must be executed in the purchase webhook handler.
+	// This must be executed in the purchase execute handler.
 	Cancel(ctx context.Context) error
 
 	// UpdateMetadata updates the metadata associated with the purchase.

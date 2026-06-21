@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 const (
@@ -161,7 +161,7 @@ import (
 	"core/utils/config"
 	"core/utils/env"
 	"core/utils/migrate"
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 
     %s
 )

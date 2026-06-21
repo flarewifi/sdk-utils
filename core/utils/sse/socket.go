@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func NewSocket(w http.ResponseWriter, r *http.Request) (s *SseSocket, err error) {

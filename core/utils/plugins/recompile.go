@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // StageLocalPluginRebuild recompiles a local plugin's plugin.so against the STAGED

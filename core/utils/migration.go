@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func MigrationCreate(pluginDir string, name string) {

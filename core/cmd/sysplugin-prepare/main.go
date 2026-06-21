@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // sysplugin-prepare prepares the build host for a non-mono build with
 // statically-linked system plugins. For every plugin under data/plugins/system/ it:
 //
 //  1. Enforces the three-file plugin entry-point contract:
-//       - Adds //go:build !mono to main.go if no build tag is present.
-//       - Generates main_mono.go from main.go (if absent).
-//       - Generates system/main.go from main.go (if absent).
+//     - Adds //go:build !mono to main.go if no build tag is present.
+//     - Generates main_mono.go from main.go (if absent).
+//     - Generates system/main.go from main.go (if absent).
 //     Once generated, main_mono.go and system/main.go are author-owned —
 //     subsequent runs leave them alone. Delete to force regeneration.
 //  2. Validates that all three required files exist after the generation

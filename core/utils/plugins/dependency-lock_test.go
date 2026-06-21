@@ -26,7 +26,7 @@ func TestResolvedGoModules(t *testing.T) {
 	dir := t.TempDir()
 
 	// external/pkg: a plain external dependency (recorded).
-	// github.com/flarehotspot/sdk-utils: workspace-local (no go.sum entry, excluded).
+	// github.com/flarewifi/sdk-utils: workspace-local (no go.sum entry, excluded).
 	// down/pinned: required at v1.1 but replaced down to v1.0 (recorded at v1.0).
 	// local/fork: filesystem-replaced (excluded).
 	writeFixture(t, dir, "go.mod", `module example.com/plugin
@@ -35,7 +35,7 @@ go 1.21
 
 require (
 	external/pkg v1.2.3
-	github.com/flarehotspot/sdk-utils v0.1.22 // indirect
+	github.com/flarewifi/sdk-utils v0.1.22 // indirect
 	down/pinned v1.1.0
 	local/fork v0.0.0
 )
@@ -63,7 +63,7 @@ down/pinned v1.1.0/go.mod h1:modPINNED11=
 		t.Errorf("external/pkg recorded wrong: %+v", ext)
 	}
 
-	if _, ok := findResolved(deps, "github.com/flarehotspot/sdk-utils"); ok {
+	if _, ok := findResolved(deps, "github.com/flarewifi/sdk-utils"); ok {
 		t.Errorf("workspace-local sdk-utils (no go.sum) must be excluded")
 	}
 

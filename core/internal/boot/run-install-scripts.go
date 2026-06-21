@@ -6,7 +6,7 @@ import (
 	"core/internal/api"
 	"core/utils/plugins"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // Plugin lifecycle scripts (preinstall/postinstall) are normally run by the

@@ -203,7 +203,7 @@ Returns the absolute filesystem path to `data/config/plugins.json`.
 
 ```go
 path := sdkapi.PluginsConfigPath()
-fmt.Println(path) // /opt/flarehotspot/app/data/config/plugins.json
+fmt.Println(path) // /opt/flarewifi/app/data/config/plugins.json
 ```
 
 ### ReadPluginsConfig

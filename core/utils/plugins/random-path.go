@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func RandomPluginPath() string {

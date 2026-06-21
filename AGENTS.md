@@ -233,17 +233,17 @@ data/plugins/local/      # Custom plugins (safe to modify)
 **When working with database outside container:**
 ```bash
 # 1. Checkpoint to flush WAL
-docker exec flarewifi-app-1 sqlite3 /opt/flarehotspot/app/data/db/database.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
+docker exec flarewifi-app-1 sqlite3 /opt/flarewifi/app/data/db/database.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
 
 # 2. Copy all three files
-docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite ./
-docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite-wal ./
-docker cp flarewifi-app-1:/opt/flarehotspot/app/data/db/database.sqlite-shm ./
+docker cp flarewifi-app-1:/opt/flarewifi/app/data/db/database.sqlite ./
+docker cp flarewifi-app-1:/opt/flarewifi/app/data/db/database.sqlite-wal ./
+docker cp flarewifi-app-1:/opt/flarewifi/app/data/db/database.sqlite-shm ./
 
 # 3. After modifications, copy all three back
-docker cp ./database.sqlite flarewifi-app-1:/opt/flarehotspot/app/data/db/
-docker cp ./database.sqlite-wal flarewifi-app-1:/opt/flarehotspot/app/data/db/
-docker cp ./database.sqlite-shm flarewifi-app-1:/opt/flarehotspot/app/data/db/
+docker cp ./database.sqlite flarewifi-app-1:/opt/flarewifi/app/data/db/
+docker cp ./database.sqlite-wal flarewifi-app-1:/opt/flarewifi/app/data/db/
+docker cp ./database.sqlite-shm flarewifi-app-1:/opt/flarewifi/app/data/db/
 ```
 
 **Note:** The Docker container may not have `sqlite3` installed. Work with database files locally after copying them out.

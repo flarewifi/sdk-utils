@@ -13,7 +13,7 @@ import (
 	"core/utils/plugins"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pmgr *PluginsMgr, trfkMgr *network.TrafficMgr, wifiMgr *ubus.WifiMgr) *PluginApi {

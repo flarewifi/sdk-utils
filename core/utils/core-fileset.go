@@ -1,7 +1,7 @@
 package tools
 
 import (
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // CoreFileSet is the set of core-layer paths (relative to the app root) that make

@@ -9,7 +9,7 @@ package sdkapi
 import (
 	"database/sql"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // IPluginApi is the root of all plugin APIs.

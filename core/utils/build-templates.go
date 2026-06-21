@@ -4,7 +4,7 @@ import (
 	"core/utils/plugins"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func BuildTemplates() {

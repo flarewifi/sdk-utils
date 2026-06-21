@@ -10,7 +10,7 @@ import (
 	deviceview "core/resources/views/device"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func DeviceDiagCtrl(g *api.CoreGlobals) http.HandlerFunc {

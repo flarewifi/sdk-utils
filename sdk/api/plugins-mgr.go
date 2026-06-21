@@ -6,7 +6,7 @@
 
 package sdkapi
 
-import sdkutils "github.com/flarehotspot/sdk-utils"
+import sdkutils "github.com/flarewifi/sdk-utils"
 
 // PluginInstallStage names a phase of a plugin install. An install moves through
 // these stages in order; only one terminal stage (Done or Failed) is reached.

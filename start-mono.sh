@@ -1,7 +1,7 @@
 #!/bin/sh
 
 export GOTOOLCHAIN=go1.21.13
-export FLARE_DIR="/opt/flarehotspot"
+export FLARE_DIR="/opt/flarewifi"
 export APP_DIR="$FLARE_DIR/app"
 export APP_TMP="$FLARE_DIR/tmp"
 export DATA_DIR="$FLARE_DIR/data"

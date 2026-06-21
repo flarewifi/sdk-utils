@@ -17,7 +17,7 @@ import (
 	jobque "core/utils/job-que"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // =============================================================================
@@ -788,9 +788,9 @@ func (self *SessionsMgr) loopSessions(startedCh chan<- error, clnt sdkapi.IClien
 			// Emit connection events (runs in this goroutine after unblocking the HTTP handler)
 			clnt.Emit(string(sdkapi.EventSessionConnected), []byte(notify))
 			if session, ok := self.CurrSession(clnt); ok {
-			self.emitSessionEvent(ctx, sdkapi.EventSessionConnected, session)
-		}
-		self.EmitClientEvent(ctx, sdkapi.EventClientConnected, clnt)
+				self.emitSessionEvent(ctx, sdkapi.EventSessionConnected, session)
+			}
+			self.EmitClientEvent(ctx, sdkapi.EventClientConnected, clnt)
 		}
 
 		// Wait for session to end
