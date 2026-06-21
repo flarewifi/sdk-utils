@@ -12,7 +12,7 @@ import (
 	"core/internal/web/middlewares"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func NewPaymentsApi(api *PluginApi, pmgr *PaymentsMgr) {

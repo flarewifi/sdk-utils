@@ -13,7 +13,7 @@ import (
 	"core/resources/views/themes"
 
 	"github.com/a-h/templ"
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 type HttpResponse struct {

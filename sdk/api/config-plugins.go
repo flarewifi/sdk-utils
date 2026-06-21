@@ -9,7 +9,7 @@ package sdkapi
 import (
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // PluginsConfigPath returns the absolute path to data/config/plugins.json.

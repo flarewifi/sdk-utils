@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func InstallSrcDef(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpts) (info sdkutils.PluginInfo, err error) {

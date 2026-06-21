@@ -11,7 +11,7 @@ import (
 
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // provisioning guards against overlapping provisioning passes: connectivity can

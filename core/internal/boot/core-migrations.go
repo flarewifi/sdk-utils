@@ -4,7 +4,7 @@ import (
 	"core/internal/api"
 	"core/utils/migrate"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func RunCoreMigrations(g *api.CoreGlobals) {

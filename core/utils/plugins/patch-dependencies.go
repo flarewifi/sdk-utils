@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // RequiredGoModule represents a module dependency with its path and version.

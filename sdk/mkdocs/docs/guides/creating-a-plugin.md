@@ -38,7 +38,7 @@ If you need to develop an existing plugin, open a terminal and navigate to `data
 ```sh title="Terminal"
 cd [devkit-root]/data/plugins/local
 # Replace the URL with the URL of the plugin you want to clone
-git clone https://github.com/flarehotspot/com.flarego.sample
+git clone https://github.com/flarewifi/com.flarego.sample
 ```
 
 Now you can start developing your plugin.

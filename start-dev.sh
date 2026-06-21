@@ -22,8 +22,8 @@ GO_TAGS="dev"
         go run -tags="${GO_TAGS}" ./core/cmd/build-assets/main.go --core-only
 ) || { echo "Build failed"; exit 1; }
 
-APP_DIR="/opt/flarehotspot/app"
-DATA_DIR="/opt/flarehotspot/data"
+APP_DIR="/opt/flarewifi/app"
+DATA_DIR="/opt/flarewifi/data"
 
 # Clean and prepare app directory
 rm -rf $APP_DIR/*
@@ -55,9 +55,9 @@ touch $APP_DIR/.tmp/.server-up
 APP_DIR="$APP_DIR" APP_TMP="$APP_TMP" ./bin/flare build-plugins || { echo "Build plugins failed"; exit 1; }
 
 # Dev mode: prevent stale update tarballs from wiping app symlinks
-if [ -d "/opt/flarehotspot/data/storage/system/updates" ]; then
-    rm -rf /opt/flarehotspot/data/storage/system/updates/*.tar.gz
-    rm -rf /opt/flarehotspot/data/storage/system/updates/.dl_software_update_complete
+if [ -d "/opt/flarewifi/data/storage/system/updates" ]; then
+    rm -rf /opt/flarewifi/data/storage/system/updates/*.tar.gz
+    rm -rf /opt/flarewifi/data/storage/system/updates/.dl_software_update_complete
 fi
 
 

@@ -32,7 +32,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // Progress-bar bands (0..100) for the staged system update, in order:

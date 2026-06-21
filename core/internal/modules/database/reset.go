@@ -11,7 +11,7 @@ import (
 	"core/utils/config"
 	"core/utils/migrate"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // sqliteFullDSN builds the SQLite connection URI with all required pragmas.

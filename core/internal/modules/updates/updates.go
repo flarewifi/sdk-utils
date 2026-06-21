@@ -17,7 +17,7 @@ import (
 	"sync/atomic"
 
 	"github.com/Masterminds/semver/v3"
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 var (

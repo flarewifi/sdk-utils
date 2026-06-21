@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // BuildOpts controls whether codegen steps run during a build. The sqlc and

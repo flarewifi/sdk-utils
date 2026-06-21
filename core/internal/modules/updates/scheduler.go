@@ -6,7 +6,7 @@ import (
 	cmd "core/utils/shell"
 
 	"github.com/Masterminds/semver/v3"
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // StartScheduledUpdateChecker starts a background goroutine that checks for

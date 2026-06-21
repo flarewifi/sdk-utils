@@ -13,7 +13,7 @@ import (
 	"core/utils/flaretmpl"
 	"core/utils/sysinfo"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // Install ipk files in ./packages directory

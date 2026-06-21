@@ -27,7 +27,7 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver/v3"
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // CheckPluginUpdates returns the update status of every store-sourced plugin

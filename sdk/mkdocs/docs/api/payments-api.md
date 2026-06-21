@@ -329,7 +329,7 @@ type PaymentOption struct {
 
 **Example:**
 ```go
-import "github.com/flarehotspot/sdk-utils"
+import "github.com/flarewifi/sdk-utils"
 
 func generatePaymentOptionUUID(macAddress string) string {
     normalized := strings.ToUpper(strings.ReplaceAll(macAddress, ":", ""))

@@ -11,7 +11,7 @@ package updates
 import (
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func IsDownloaded() bool {

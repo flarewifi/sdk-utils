@@ -5,7 +5,7 @@ import (
 	cmd "core/utils/shell"
 	"fmt"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func BuildQueries(pluginSrc string) error {

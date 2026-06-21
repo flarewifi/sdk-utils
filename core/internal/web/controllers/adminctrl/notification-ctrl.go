@@ -6,8 +6,8 @@ import (
 
 	corethemeadmin "core/resources/views/themes/fallback/admin"
 
+	sdkutils "github.com/flarewifi/sdk-utils"
 	sdkapi "sdk/api"
-	sdkutils "github.com/flarehotspot/sdk-utils"
 )
 
 func NotificationsListCtrl(g *api.CoreGlobals) http.HandlerFunc {

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func NewPluginCfgApi(pkg string) *PluginCfgApi {

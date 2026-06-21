@@ -37,8 +37,8 @@ if [ $? != 0 ]; then
     exit 1
 fi
 
-APP_DIR="/opt/flarehotspot/app"
-DATA_DIR="/opt/flarehotspot/data"
+APP_DIR="/opt/flarewifi/app"
+DATA_DIR="/opt/flarewifi/data"
 
 rm -rf $APP_DIR/*
 mkdir -p $APP_DIR

@@ -3,7 +3,7 @@ package config
 import (
 	jobque "core/utils/job-que"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 var (

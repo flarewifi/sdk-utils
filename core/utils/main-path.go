@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func MainFile() string {

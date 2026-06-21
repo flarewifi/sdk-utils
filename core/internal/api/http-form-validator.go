@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func NewHTTPFormValidator(api *PluginApi) *HTTPFormValidator {

@@ -10,7 +10,7 @@ import (
 	"core/db/models"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // =============================================================================

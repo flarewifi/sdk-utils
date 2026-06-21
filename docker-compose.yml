@@ -6,10 +6,10 @@ services:
       context: .
     volumes:
       - ./:/app
-      - ./data/config:/opt/flarehotspot/data/config
-      - ./data/db:/opt/flarehotspot/data/db
-      - ./data/plugins:/opt/flarehotspot/data/plugins
-      - flare_storage:/opt/flarehotspot/data/storage
+      - ./data/config:/opt/flarewifi/data/config
+      - ./data/db:/opt/flarewifi/data/db
+      - ./data/plugins:/opt/flarewifi/data/plugins
+      - flare_storage:/opt/flarewifi/data/storage
       - ./data/openwrt-files/etc/config:/etc/config
       - ./data/openwrt-files/etc/openwrt_release:/etc/openwrt_release
       - ./data/openwrt-files/etc/os_release.json:/etc/os_release.json

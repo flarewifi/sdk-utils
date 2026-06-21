@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func (d *EncryptedDisk) Mount() error {

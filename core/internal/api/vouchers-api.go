@@ -12,7 +12,7 @@ import (
 	coreQueries "core/db/queries"
 	sdkapi "sdk/api"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func NewVouchersApi(pluginApi *PluginApi) *VouchersApi {

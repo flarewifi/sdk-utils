@@ -10,7 +10,7 @@ import (
 	"core/internal/network"
 	"core/internal/sessmgr"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 type AppState struct {

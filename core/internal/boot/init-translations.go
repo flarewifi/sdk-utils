@@ -4,7 +4,7 @@ import (
 	"core/utils/config"
 	"core/utils/plugins"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func InitTranslations() {

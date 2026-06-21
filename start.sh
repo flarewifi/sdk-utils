@@ -17,7 +17,7 @@
 # only after the full set is staged, so a partial download is never applied.
 
 export GOTOOLCHAIN=go1.21.13
-export FLARE_DIR="/opt/flarehotspot"
+export FLARE_DIR="/opt/flarewifi"
 export APP_DIR="$FLARE_DIR/app"
 export APP_TMP="$FLARE_DIR/tmp"
 export DATA_DIR="$FLARE_DIR/data"
@@ -87,7 +87,7 @@ apply_pkg() {
     echo "Applying staged update: $pkg -> $dest"
 
     if [ "$pkg" = "$CORE_PKG" ]; then
-        # app/data is a SYMLINK to the persistent $DATA_DIR (/opt/flarehotspot/data),
+        # app/data is a SYMLINK to the persistent $DATA_DIR (/opt/flarewifi/data),
         # which holds the device's LIVE state: data/config and data/db must survive the
         # update untouched. The release tarball bundles a data/ tree at its root, and the
         # staged core payload is that whole tarball — so a blanket `cp -a staged/. app/`

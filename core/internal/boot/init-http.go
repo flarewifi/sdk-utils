@@ -9,7 +9,7 @@ import (
 	"core/internal/web"
 	"core/internal/web/router"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {

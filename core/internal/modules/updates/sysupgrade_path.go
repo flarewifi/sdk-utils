@@ -6,7 +6,7 @@ package updates
 import (
 	"path/filepath"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // getSysupgradeDir returns the directory path for sysupgrade files (production)

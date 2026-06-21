@@ -97,7 +97,7 @@ import (
     "fmt"
 
     sdkapi "sdk/api"
-    sdkutils "github.com/flarehotspot/sdk-utils"
+    sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func Init(api sdkapi.IPluginApi) error {
@@ -224,7 +224,7 @@ import (
     "strings"
 
     sdkapi "sdk/api"
-    sdkutils "github.com/flarehotspot/sdk-utils"
+    sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 type MyPaymentProvider struct {
@@ -384,7 +384,7 @@ purchase.Execute(ctx, params)
 #### 4. Always Generate Session UUID
 
 ```go
-import sdkutils "github.com/flarehotspot/sdk-utils"
+import sdkutils "github.com/flarewifi/sdk-utils"
 
 session, err := api.SessionsMgr().CreateSession(ctx, sdkapi.CreateSessionParams{
     UUID:           sdkutils.NewUUID(), // Required!
@@ -552,7 +552,7 @@ if !api.SessionsMgr().IsConnected(clnt) {
 **Fix:** Always provide a UUID:
 
 ```go
-import sdkutils "github.com/flarehotspot/sdk-utils"
+import sdkutils "github.com/flarewifi/sdk-utils"
 
 sdkapi.CreateSessionParams{
     UUID: sdkutils.NewUUID(), // required

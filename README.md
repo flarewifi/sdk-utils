@@ -11,8 +11,8 @@ Flare Hotpost core repository.
 
 Clone the project and prepare the development environment.
 ```sh
-git clone git@github.com:flarehotspot/flarehotspot.git
-cd flarehotspot
+git clone git@github.com:flarewifi/flarewifi.git
+cd flarewifi
 git checkout development
 cp go.work.default go.work
 ```
@@ -75,7 +75,7 @@ The dev HTTPS port is **3443** (production uses 443).
 ### Portal certificate & the Cloudflare token
 
 The portal certificate is **not** generated on the device. The cloud
-([flare-server](https://github.com/flarehotspot/flare-server)) issues a real
+([flare-server](https://github.com/flarewifi/flare-server)) issues a real
 Let's Encrypt certificate for the portal hostname (`captive.flare-local.com` in
 dev) using the **ACME DNS-01 challenge against the Cloudflare zone**, and the
 machine fetches and installs it via cloud-sync. The device only falls back to a
@@ -102,11 +102,11 @@ The database can be managed at [http://localhost:3001](http://localhost:3001)
 
 # Device Activation (Development Environment)
 
-These steps activate a machine locally when running flarehotspot alongside [flare-server](https://github.com/flarehotspot/flare-server). This is for **dev setup only** — not production.
+These steps activate a machine locally when running flarehotspot alongside [flare-server](https://github.com/flarewifi/flare-server). This is for **dev setup only** — not production.
 
 ### Prerequisites
 
-1. **Hostfile configured** — add all required entries to `/etc/hosts`. See the [flare-server README](https://github.com/flarehotspot/flare-server#installation) for the full list.
+1. **Hostfile configured** — add all required entries to `/etc/hosts`. See the [flare-server README](https://github.com/flarewifi/flare-server#installation) for the full list.
 2. **flare-server running** — `make servers` in the flare-server directory.
 3. **Docker running** — both projects rely on Docker Compose.
 
@@ -115,7 +115,7 @@ These steps activate a machine locally when running flarehotspot alongside [flar
 1. **Set up user permissions** — log into [superuser.flare-local.com](http://superuser.flare-local.com), ensure your user has the required permission flags (at minimum `is_internal`).
 2. **Create a B2B Partner** — on the superuser dashboard, create a new B2B Partner and note the **Brand ID**.
 3. **Configure `os_release.json`** — in `openwrt-files/etc/`, copy the correct variant for your architecture (`os_release.x86.json` or `os_release.arm64.json`) to `os_release.json`, then replace the `brand_id` value with the Brand ID from step 2.
-4. **Start both servers** — run `make servers` in the flare-server terminal and `make` in the flarehotspot terminal.
+4. **Start both servers** — run `make servers` in the flare-server terminal and `make` in the flarewifi terminal.
 5. **Activate the machine** — go to [internal.flare-local.com](http://internal.flare-local.com), find the machine by its `machine_id`, and activate it (fill in user details, tick "Is activated", save).
 
 > **Tip:** When extracting `openwrt-files.zip`, watch out for nested `openwrt-files/openwrt-files/` directories. The directory containing `etc/` must be at the project root.
@@ -181,13 +181,13 @@ To clone an existing plugin, run the following command:
 
 ```sh
 cd ./plugins/local
-git clone git@github.com:flarehotspot/com.flarego.example.git
+git clone git@github.com:flarewifi/com.flarego.example.git
 ```
 
 To create a new plugin, run the following command:
 
 ```sh
-cd flarehotspot
+cd flarewifi
 ./scripts/flare.sh create-plugin
 ```
 

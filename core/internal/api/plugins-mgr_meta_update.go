@@ -7,7 +7,7 @@ import (
 	"core/utils/plugins"
 	"fmt"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // RepinMetaRecordsToLatest refreshes every meta-bundle record to the bundle's

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func EsbuildJs(indexfile string, outfile string, target api.Target) (resulti api.BuildResult) {

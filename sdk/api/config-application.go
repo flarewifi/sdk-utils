@@ -6,7 +6,7 @@
 
 package sdkapi
 
-import sdkutils "github.com/flarehotspot/sdk-utils"
+import sdkutils "github.com/flarewifi/sdk-utils"
 
 type SupportedLanguage struct {
 	Code string

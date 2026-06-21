@@ -10,7 +10,7 @@ import (
 	"context"
 	"net/http"
 
-	sdkutils "github.com/flarehotspot/sdk-utils"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // Re-export currency types from sdk-utils
