@@ -70,3 +70,10 @@ if err != nil {
 ```
 
 This method removes the specified path from the plugin's configuration directory. It works for both individual files and directories with nested contents.
+
+---
+
+## Related
+
+- [IConfigApi](../api/config-api.md) — Complete config API reference: `Plugin()`, `Application()`, `Read`, `Write`, `Delete`
+- [Storing Files](./storing-files.md) — For binary files and uploads (images, documents); `IStorageApi` is separate from `IConfigApi`

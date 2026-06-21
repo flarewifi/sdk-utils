@@ -45,7 +45,7 @@ fmt.Println(val) // {Currentcy: "USD", Lang: "en", Secret: "*****"}
 To modify the application configuration, use the `IAppCfgApi.Save` method.
 
 ```go
-err := appCfgAPI.Save(sdkapi.AppCfg{
+err := appCfgAPI.Save(sdkapi.AppConfig{
     Currency: "USD",
     Lang: "en",
     Secret: "xxxxxxxxxx"
@@ -89,7 +89,7 @@ fmt.Println(cfg) // Bandwidth config
 To set the bandwidth configuration of a network interface, use the `IBandwidthCfgApi.Save` method.
 
 ```go
-err := bwdAPI.Save("eth0", sdkapi.BandwdCfg{
+err := bwdAPI.Save("eth0", sdkapi.IBandwdCfg{
     UseGlobal: true,
     GlobalDownMbits: 2,
     GlobalUpMbits: 2,
@@ -192,3 +192,44 @@ if err := cfgAPI.Delete("some_key"); err != nil {
 ```
 
 This method removes the specified path from the plugin's configuration directory. It works for both individual files and directories with nested contents.
+
+## 4. Plugins Config {#plugins-config}
+
+The `config-plugins.go` helpers provide low-level access to `data/config/plugins.json`, which stores metadata about installed plugins and meta-plugin bundle records. These are package-level functions, not methods on `IConfigApi`.
+
+### PluginsConfigPath
+
+Returns the absolute filesystem path to `data/config/plugins.json`.
+
+```go
+path := sdkapi.PluginsConfigPath()
+fmt.Println(path) // /opt/flarehotspot/app/data/config/plugins.json
+```
+
+### ReadPluginsConfig
+
+Reads and parses `data/config/plugins.json` into an `sdkutils.PluginsConfig` struct.
+
+```go
+cfg, err := sdkapi.ReadPluginsConfig()
+if err != nil {
+    // handle error
+}
+fmt.Println(cfg) // sdkutils.PluginsConfig{...}
+```
+
+### WritePluginsConfig
+
+Writes an `sdkutils.PluginsConfig` back to `data/config/plugins.json`. Callers should mutate a value obtained from `ReadPluginsConfig` rather than constructing a partial one.
+
+```go
+cfg, err := sdkapi.ReadPluginsConfig()
+if err != nil {
+    // handle error
+}
+
+// mutate cfg...
+
+if err := sdkapi.WritePluginsConfig(cfg); err != nil {
+    // handle error
+}

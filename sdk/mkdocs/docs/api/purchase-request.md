@@ -306,7 +306,7 @@ fmt.Printf("Wallet Real Balance: $%.2f\n", state.WalletRealBal)
 
 ### Execute
 
-Executes the webhook for the purchase. This makes an internal POST request to the webhook route. The params contain the success status and message to be passed to the webhook handler.
+Executes the purchase by invoking the callback plugin's registered `PurchaseExecuteHandler` (see `IPaymentsApi.HandlePurchaseExecute`) in-process. No HTTP request is made. The params carry the success status and amount passed to that handler.
 
 ```go
 ctx := r.Context()
@@ -405,14 +405,15 @@ type PurchaseRequest struct {
 }
 ```
 
-### PurchaseState
+### PurchasePaymentData
 
-The `PurchaseState` struct represents the current state of a purchase:
+The `PurchasePaymentData` struct represents the current state of a purchase, returned by `State()`:
 
 ```go
-type PurchaseState struct {
+type PurchasePaymentData struct {
     PurchaseID      int64   `json:"purchase_id"`       // Database ID of the purchase
     TotalPayment    float64 `json:"total_payment"`     // Total amount paid
+    PaymentProvider string  `json:"payment_provider"`  // Name of the payment provider used
     WalletDebit     float64 `json:"wallet_debit"`      // Amount debited from wallet
     WalletEndingBal float64 `json:"wallet_ending_bal"` // Wallet balance after purchase
     WalletRealBal   float64 `json:"wallet_real_bal"`   // Actual wallet balance

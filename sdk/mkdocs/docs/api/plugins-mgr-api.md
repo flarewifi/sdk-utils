@@ -116,6 +116,78 @@ The percentages within the build phase are approximate: the cloud build reports
 only coarse states (`queued` / `building` / `done`), so the core ramps a synthetic
 percent to show forward motion during a long compile.
 
+### UninstallPlugin
+
+Removes a plugin or meta bundle. A regular plugin is marked for removal on the next restart. A meta bundle is detected automatically and its bundle record is removed, cascading to its members: any member owned by no remaining bundle and not installed standalone is also marked for removal on the next restart.
+
+```go
+err := api.PluginsMgr().UninstallPlugin("com.example.payment")
+if err != nil {
+    // handle error
+}
+fmt.Println("Plugin marked for removal on next restart")
+```
+
+### MetaPlugins
+
+Returns all installed meta-plugin bundle records.
+
+```go
+bundles, err := api.PluginsMgr().MetaPlugins()
+if err != nil {
+    // handle error
+}
+for _, b := range bundles {
+    fmt.Printf("Meta bundle: %s\n", b.Package)
+}
+```
+
+### MetaMembership
+
+Reports which installed meta bundles own a plugin package and whether it should be treated as a standalone install. A plugin installed on its own (not part of any bundle) is standalone. Returns `([]string{}, true)` when the plugins config cannot be read — the safe default.
+
+```go
+owners, standalone := api.PluginsMgr().MetaMembership("com.example.payment")
+if standalone {
+    fmt.Println("Plugin is installed standalone")
+} else {
+    fmt.Printf("Plugin is owned by bundles: %v\n", owners)
+}
+```
+
+### IsToBeRemoved
+
+Returns `true` if a plugin has been marked for removal on the next restart.
+
+```go
+if api.PluginsMgr().IsToBeRemoved("com.example.payment") {
+    fmt.Println("Plugin is scheduled for removal")
+}
+```
+
+### HasPendingUpdate
+
+Returns `true` if a downloaded update is waiting to be applied for the given plugin.
+
+```go
+if api.PluginsMgr().HasPendingUpdate("com.example.payment") {
+    fmt.Println("Update available — will apply on next restart")
+}
+```
+
+### SourceDef
+
+Returns the source definition for an installed plugin — where it came from and how it was installed (`git`, `store`, `system`, or `local`). Returns a zero-value and `false` if the package is not installed.
+
+```go
+def, ok := api.PluginsMgr().SourceDef("com.example.payment")
+if !ok {
+    fmt.Println("Plugin not installed")
+    return
+}
+fmt.Printf("Installed from: %s\n", def.Src)
+```
+
 ## Usage Examples
 
 ### Checking if a Plugin is Installed

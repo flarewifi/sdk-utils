@@ -33,7 +33,7 @@ This method is only applicable on handlers registered on the [PluginRouter](./ht
 
 ```go
 // handler
-func (r http.ResponseWriter, r *http.Request) {
+func (w http.ResponseWriter, r *http.Request) {
     r.ParseForm()
     username := r.PostFormValue("username")
     password := r.PostFormValue("password")

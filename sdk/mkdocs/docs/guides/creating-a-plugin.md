@@ -265,3 +265,12 @@ The mirror generator copies your root `main.go` verbatim (with package renamed t
 ### My edit to `system/main.go` keeps getting overwritten
 
 That is expected. `system/main.go` is a derived mirror — edit `main.go` at the plugin root instead, and the generator will regenerate `system/main.go` to match.
+
+---
+
+## Related
+
+- [IPluginApi](../api/plugin-api.md) — The root API passed to `Init`; entry point for all SDK functionality
+- [plugin.json](../api/plugin.json.md) — Plugin metadata: name, package, version, permissions, and install scripts
+- [Plugin Info](../api/plugin-info.md) — `api.Info()` for reading the plugin's own metadata at runtime
+- [Routes and Navigation](./routes-and-navigation.md) — Registering HTTP routes inside `Init`

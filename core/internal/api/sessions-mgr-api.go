@@ -171,15 +171,6 @@ func (self *SessionsMgrApi) NewClientDevice(params sdkapi.NewDeviceParams) sdkap
 	return self.pluginApi.SessionMgr.NewClientDevice(params)
 }
 
-// OnSessionEvent registers a callback for session events (delegates to global EventsManager).
-func (self *SessionsMgrApi) OnSessionEvent(event sdkapi.SessionEvent, callback func(context.Context, sdkapi.SessionEventData) error) {
-	self.pluginApi.EventsMgr.OnSessionEvent(event, callback)
-}
-
-func (self *SessionsMgrApi) OnClientEvent(event sdkapi.ClientEvent, callback func(context.Context, sdkapi.IClientDevice) error) {
-	self.pluginApi.EventsMgr.OnClientEvent(event, callback)
-}
-
 // ListSessions returns a paginated list of sessions with optional search and filters.
 func (self *SessionsMgrApi) ListSessions(ctx context.Context, params sdkapi.ListSessionsParams) (sdkapi.ListSessionsResult, error) {
 	q := coreQueries.New(self.pluginApi.db.DB)

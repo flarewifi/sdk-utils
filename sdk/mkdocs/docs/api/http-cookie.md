@@ -46,6 +46,18 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### SetPlainCookie
+
+Sets a plain (unencrypted) cookie value for a given cookie name. Unlike `SetCookie`, the value is stored as-is without any encoding.
+
+```go
+// http handler
+func (w http.ResponseWriter, r *http.Request) {
+    cookieAPI := api.Http().Cookie()
+    cookieAPI.SetPlainCookie(w, "lang", "en", nil)
+}
+```
+
 ### GetCookie
 
 Returns the string value of the cookie
@@ -59,6 +71,22 @@ func (w http.ResponseWriter, r *http.Request) {
         // handle error
     }
     fmt.Println(token) // auth token
+}
+```
+
+### GetPlainCookie
+
+Returns the plain (unencrypted) cookie value for a given cookie name.
+
+```go
+// http handler
+func (w http.ResponseWriter, r *http.Request) {
+    cookieAPI := api.Http().Cookie()
+    lang, err := cookieAPI.GetPlainCookie(r, "lang")
+    if err != nil {
+        // handle error
+    }
+    fmt.Println(lang) // "en"
 }
 ```
 

@@ -111,6 +111,24 @@ type InAppSubscriptionItem struct {
 }
 ```
 
+### UnitAmount
+
+The `UnitAmount` struct represents a monetary amount with a currency code. Used when specifying prices for checkout items.
+
+```go
+type UnitAmount struct {
+    CurrencyCode string  // ISO 4217 currency code (e.g., "USD", "PHP", "CNY")
+    Value        float64 // Numerical amount value
+}
+```
+
+```go
+price := sdkapi.UnitAmount{
+    CurrencyCode: "PHP",
+    Value:        99.00,
+}
+```
+
 ## Usage Examples
 
 ### Protecting Premium Features
@@ -193,5 +211,4 @@ func premiumHandler(w http.ResponseWriter, r *http.Request) {
 - The actual purchase/subscription verification is handled by the underlying payment system
 - Product IDs and Plan IDs must match those configured in your payment provider (Stripe, PayPal, etc.)
 - The middleware automatically redirects users to appropriate payment pages when access is denied
-- Purchase and subscription states are typically cached for performance</content>
-<parameter name="filePath">/Users/adonesp/Projects/flarehotspot/sdk/mkdocs/docs/api/inapp-purchase-api.md
+- Purchase and subscription states are typically cached for performance

@@ -60,6 +60,22 @@ if ipv4 != nil {
 }
 ```
 
+### IpV6Addr
+
+Returns the IPv6 address configuration of the network interface. Returns an error if no IPv6 address is assigned.
+
+```go
+ipv6, err := iface.IpV6Addr()
+if err != nil {
+    // No IPv6 address assigned
+}
+
+if ipv6 != nil {
+    fmt.Printf("IPv6 Address: %s\n", ipv6.Addr)
+    fmt.Printf("Prefix Length: /%d\n", ipv6.PrefixLen)
+}
+```
+
 ### IPNet
 
 Returns the IP network information of the interface as a `*net.IPNet`.
@@ -85,6 +101,17 @@ The `NetworkIpv4` struct represents IPv4 configuration:
 type NetworkIpv4 struct {
     Addr    string // IP address (e.g., "192.168.1.1")
     Netmask int    // Netmask in CIDR notation (e.g., 24 for /24)
+}
+```
+
+### NetworkIpv6
+
+The `NetworkIpv6` struct represents IPv6 configuration:
+
+```go
+type NetworkIpv6 struct {
+    Addr      string // IPv6 address (e.g., "2001:db8::1")
+    PrefixLen int    // Prefix length in bits (e.g., 64 for /64)
 }
 ```
 
@@ -136,5 +163,4 @@ if err != nil {
 }
 
 fmt.Printf("Client %s is connected to interface: %s\n", clientIP, iface.Ifname())
-```</content>
-<parameter name="filePath">/Users/adonesp/Projects/flarehotspot/sdk/mkdocs/docs/api/network-interface.md
+```

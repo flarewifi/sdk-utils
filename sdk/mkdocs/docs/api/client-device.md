@@ -33,6 +33,14 @@ Returns the UUID of the client device as a `string`.
 uuid := clnt.UUID()
 ```
 
+### CookieToken
+
+Returns the cookie token used for cookie validation. An empty string means no cookie token validation is enforced.
+
+```go
+token := clnt.CookieToken()
+```
+
 ### Hostname
 
 Returns a `string` value of the client device hostname.
@@ -126,6 +134,7 @@ The `DeviceData` struct contains:
 |-------|------|-------------|
 | `ID` | `int64` | Database ID |
 | `UUID` | `string` | Device UUID |
+| `CookieToken` | `string` | Cookie token for validation (empty = no enforcement) |
 | `MacAddr` | `string` | MAC address |
 | `Ipv4Addr` | `string` | IPv4 address (empty if device has no IPv4) |
 | `Ipv6Addr` | `string` | IPv6 address (empty if device has no IPv6) |

@@ -778,3 +778,12 @@ func main() {
 | ✅ Reference core tables via foreign keys only | |
 | ✅ Use JOINs to access core table data | |
 | ✅ Keep plugin migrations in plugin directory | |
+
+---
+
+## Related
+
+- [ISessionsMgrApi](../api/sessions-mgr-api.md) — Core sessions table schema reference (foreign key target for plugin tables)
+- [IClientDevice](../api/client-device.md) — Core devices table schema reference
+- [IVouchersApi](../api/voucher-api.md) — Core vouchers table schema reference
+- [Saving Data](./saving-data.md) — For key-value plugin config that does not require a migration

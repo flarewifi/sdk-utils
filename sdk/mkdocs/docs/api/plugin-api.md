@@ -81,6 +81,15 @@ events := api.Events()
 fmt.Println(events) // IEventsApi
 ```
 
+### Firewall
+
+It returns the [IFirewallAPI](./firewall-api.md) object which is used to manage firewall rules.
+
+```go
+firewall := api.Firewall()
+fmt.Println(firewall) // IFirewallAPI
+```
+
 ### Features
 
 Returns the available features of the plugin.
@@ -184,6 +193,15 @@ fmt.Println(resource) // "/path/to/com.mydomain.myplugin/resources/my-resource.t
 ### SessionsMgr
 
 It returns the [ISessionsMgrApi](./sessions-mgr-api.md) object which is used to manage user sessions.
+
+### Storage
+
+It returns the [IStorageApi](./storage-api.md) object which is used to store and retrieve files in the plugin's storage directory.
+
+```go
+storage := api.Storage()
+fmt.Println(storage) // IStorageApi
+```
 
 ```go
 sessionsMgr := api.SessionsMgr()

@@ -39,13 +39,9 @@ type EventsManager struct {
 	clientMergeCallbacks  []func(context.Context, sdkapi.EventClientMergeData) error
 	purchaseCallbacks     map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error
 	voucherCallbacks      map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error
-	voucherBatchCallbacks map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucherBatch) error
+	voucherBatchCallbacks map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error
 	internetCallbacks     map[sdkapi.InternetEvent][]func(context.Context) error
 
-	// voucherBeforeCreateCallbacks holds the pre-create hooks. They use the same
-	// synchronous dispatch as every other event; a returned error cancels voucher
-	// creation (see EmitVoucherBeforeCreate).
-	voucherBeforeCreateCallbacks []func(context.Context, *sdkapi.CreateVouchersParams) error
 }
 
 // NewEventsManager constructs an EventsManager ready for use.
@@ -56,7 +52,7 @@ func NewEventsManager() *EventsManager {
 		clientCallbacks:       make(map[sdkapi.ClientEvent][]func(context.Context, sdkapi.IClientDevice) error),
 		purchaseCallbacks:     make(map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error),
 		voucherCallbacks:      make(map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error),
-		voucherBatchCallbacks: make(map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucherBatch) error),
+		voucherBatchCallbacks: make(map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error),
 		internetCallbacks:     make(map[sdkapi.InternetEvent][]func(context.Context) error),
 	}
 }
@@ -101,18 +97,10 @@ func (em *EventsManager) OnVoucherEvent(event sdkapi.VoucherEvent, cb func(conte
 }
 
 // OnVoucherBatchEvent registers a callback that fires whenever the given voucher-batch event occurs.
-func (em *EventsManager) OnVoucherBatchEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucherBatch) error) {
+func (em *EventsManager) OnVoucherBatchEvent(event sdkapi.VoucherBatchEvent, cb func(context.Context, sdkapi.IVoucherBatch) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.voucherBatchCallbacks[event] = append(em.voucherBatchCallbacks[event], cb)
-}
-
-// OnVoucherBeforeCreate registers a pre-create hook. The hook runs synchronously
-// before a voucher batch is created; returning an error cancels creation.
-func (em *EventsManager) OnVoucherBeforeCreate(cb func(context.Context, *sdkapi.CreateVouchersParams) error) {
-	em.mu.Lock()
-	defer em.mu.Unlock()
-	em.voucherBeforeCreateCallbacks = append(em.voucherBeforeCreateCallbacks, cb)
 }
 
 // OnClientMerge registers a callback that fires after two device records have been
@@ -178,7 +166,7 @@ func (em *EventsManager) EmitVoucherEvent(ctx context.Context, event sdkapi.Vouc
 }
 
 // EmitVoucherBatchEvent dispatches a voucher-batch event to all registered callbacks synchronously.
-func (em *EventsManager) EmitVoucherBatchEvent(ctx context.Context, event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch) error {
+func (em *EventsManager) EmitVoucherBatchEvent(ctx context.Context, event sdkapi.VoucherBatchEvent, batch sdkapi.IVoucherBatch) error {
 	em.mu.RLock()
 	cbs := append([]func(context.Context, sdkapi.IVoucherBatch) error(nil), em.voucherBatchCallbacks[event]...)
 	em.mu.RUnlock()
@@ -192,17 +180,6 @@ func (em *EventsManager) EmitClientMerge(ctx context.Context, data sdkapi.EventC
 	cbs := append([]func(context.Context, sdkapi.EventClientMergeData) error(nil), em.clientMergeCallbacks...)
 	em.mu.RUnlock()
 	return dispatch(ctx, cbs, data)
-}
-
-// EmitVoucherBeforeCreate runs all registered pre-create hooks synchronously, in
-// registration order. Hooks receive a pointer to params and may modify them; a
-// returned error cancels voucher creation. Because hooks may run even after one of
-// them cancels creation, a pre-create hook must be a side-effect-free check.
-func (em *EventsManager) EmitVoucherBeforeCreate(ctx context.Context, params *sdkapi.CreateVouchersParams) error {
-	em.mu.RLock()
-	cbs := append([]func(context.Context, *sdkapi.CreateVouchersParams) error(nil), em.voucherBeforeCreateCallbacks...)
-	em.mu.RUnlock()
-	return dispatch(ctx, cbs, params)
 }
 
 // EmitInternetEvent dispatches an internet connectivity event to all registered

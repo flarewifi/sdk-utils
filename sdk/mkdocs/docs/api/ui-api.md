@@ -37,6 +37,36 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### LineChart
+
+Returns a templ component for rendering an interactive line chart. Requires Chart.js (included in the admin layout).
+
+```go
+func (w http.ResponseWriter, r *http.Request) {
+    min := 0.0
+    data := []sdkapi.LineChartDataPoint{
+        {Label: "Mon", Values: map[string]float64{"sessions": 42, "revenue": 1200}},
+        {Label: "Tue", Values: map[string]float64{"sessions": 58, "revenue": 1800}},
+        {Label: "Wed", Values: map[string]float64{"sessions": 35, "revenue": 950}},
+    }
+
+    chart := api.UI().LineChart(&sdkapi.LineChartOpts{
+        Data: data,
+        Series: []sdkapi.LineChartSeries{
+            {Key: "sessions", Label: "Sessions", Color: "#2563eb"},
+            {Key: "revenue",  Label: "Revenue",  Color: "#16a34a"},
+        },
+        YAxis: &sdkapi.LineChartYAxis{Min: &min},
+        TooltipTemplate: "{label}: {value}",
+        Height: "300px",
+    })
+
+    api.Http().Response().AdminView(w, r, sdkapi.ViewPage{
+        PageContent: views.Dashboard(chart),
+    })
+}
+```
+
 ## Types
 
 ### UIPaginationOpts
@@ -62,6 +92,92 @@ type UIPaginationOpts struct {
 | `ItemsCount` | `int64` | The total count of all items being paginated. |
 | `MaxPagerCount` | `int` | Maximum number of page number links to display. If set to 5, shows something like "1 2 3 4 5 ..." |
 | `ExtraParams` | `map[string]string` | Additional query parameters to include in pagination links (e.g., filters, search terms). |
+
+### LineChartOpts
+
+Configures the line chart component:
+
+```go
+type LineChartOpts struct {
+    ID              string               // HTML element ID (auto-generated if empty)
+    Data            []LineChartDataPoint // Chart data points
+    Series          []LineChartSeries    // Series definitions
+    Tension         *float64             // Curve smoothness (0–1, default 0.4)
+    FillOpacity     []float64            // Gradient opacity [top, bottom]
+    Padding         *LineChartPadding    // Chart padding
+    YAxis           *LineChartYAxis      // Y-axis configuration
+    Height          string               // Container height (default "350px")
+    Class           string               // Additional CSS classes
+    TooltipTemplate string               // Tooltip format, e.g., "{label}: {value} MB"
+    TooltipPrefix   string               // Prefix before value, e.g., "₱"
+    TooltipDecimals *int                 // Decimal places (default: 2)
+    IsStacked       *bool                // Stack series values
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | `string` | HTML `id` attribute for the chart canvas. Auto-generated if empty. |
+| `Data` | `[]LineChartDataPoint` | Ordered data points to plot. |
+| `Series` | `[]LineChartSeries` | Defines which keys to plot and how they look. |
+| `Tension` | `*float64` | Line curve smoothness from 0 (straight) to 1 (very curved). Default 0.4. |
+| `FillOpacity` | `[]float64` | Two-value gradient: `[topOpacity, bottomOpacity]`. |
+| `Padding` | `*LineChartPadding` | Inner padding for the chart canvas. |
+| `YAxis` | `*LineChartYAxis` | Y-axis min, max, and step configuration. |
+| `Height` | `string` | CSS height of the chart container. Default `"350px"`. |
+| `Class` | `string` | Additional CSS classes on the container element. |
+| `TooltipTemplate` | `string` | Tooltip format string using `{label}` and `{value}` placeholders. |
+| `TooltipPrefix` | `string` | String prepended to values in tooltips (e.g., currency symbol). |
+| `TooltipDecimals` | `*int` | Number of decimal places for tooltip values. Default 2. |
+| `IsStacked` | `*bool` | When true, series values are stacked on the Y-axis. |
+
+### LineChartDataPoint
+
+Represents a single point on the X-axis with values for each series:
+
+```go
+type LineChartDataPoint struct {
+    Label  string             // X-axis label (e.g., "Mon", "Jan")
+    Values map[string]float64 // Map of series key → value
+}
+```
+
+### LineChartSeries
+
+Defines one data series (one line on the chart):
+
+```go
+type LineChartSeries struct {
+    Key   string // Matches a key in LineChartDataPoint.Values
+    Label string // Human-readable series label (shown in legend/tooltip)
+    Color string // CSS color (e.g., "#2563eb" or "rgb(37,99,235)")
+}
+```
+
+### LineChartYAxis
+
+Configures the Y-axis scale:
+
+```go
+type LineChartYAxis struct {
+    Min      *float64 // Minimum Y value (nil = auto)
+    Max      *float64 // Maximum Y value (nil = auto)
+    StepSize *float64 // Interval between ticks (nil = auto)
+}
+```
+
+### LineChartPadding
+
+Controls inner padding of the chart canvas:
+
+```go
+type LineChartPadding struct {
+    Top    int
+    Right  int
+    Bottom int
+    Left   int
+}
+```
 
 ## Usage Examples
 

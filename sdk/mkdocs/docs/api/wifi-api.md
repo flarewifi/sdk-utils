@@ -12,6 +12,24 @@ wifiApi := api.Wifi()
 
 ## IWifiApi Methods
 
+### Listen
+
+Returns a channel that receives all WiFi client events as they occur. Use this for lower-level event handling when you need the raw `WifiEvent` struct (including the interface name).
+
+```go
+func Init(api sdkapi.IPluginApi) error {
+    go func() {
+        ch := api.Wifi().Listen()
+        for event := range ch {
+            fmt.Printf("Interface: %s, MAC: %s, Event: %s\n",
+                event.Interface, event.Mac, event.Event)
+        }
+    }()
+
+    return nil
+}
+```
+
 ### OnWifiClientEvent
 
 Registers a callback to be called when a WiFi client connects or disconnects from the access point.
@@ -35,6 +53,18 @@ func Init(api sdkapi.IPluginApi) error {
 ---
 
 ## Types
+
+### WifiEvent
+
+The `WifiEvent` struct carries raw event data from the WiFi subsystem. Received via `Listen()`.
+
+```go
+type WifiEvent struct {
+    Interface string          // WiFi interface name (e.g., "wlan0")
+    Mac       string          // Client MAC address
+    Event     WifiClientEvent // Event type
+}
+```
 
 ### IWifiClient
 

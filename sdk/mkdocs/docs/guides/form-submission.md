@@ -185,5 +185,13 @@ Then we can use the [IFormValues](../api/http-forms-api.md#iformvalues) methods 
 ```
 For additional information about the form rules and validators, refer to [Form Validator](../guides/defining-form-validator.md#form-validator).
 
-!!!note
-    Read the [Error Handling](./error-handling.md) and the [Saving Data](./saving-data.md) guides.
+---
+
+## Related
+
+- [IHttpFormsApi](../api/http-forms-api.md) — `Errors`, `ParseForm`, `IFormValues`, and field type constants
+- [IHttpResponse](../api/http-response.md) — `AdminView`, `FlashMsg`, and `Redirect` used in form handlers
+- [IHttpRouterApi](../api/http-router-api.md) — Registering the `POST` route that receives form submissions
+- [Form Validator](./defining-form-validator.md) — Defining `FormValidator` and `FormFieldValidator` rules
+- [Error Handling](./error-handling.md) — Showing flash messages and form validation errors
+- [Saving Data](./saving-data.md) — Persisting validated form data via `IConfigApi`

@@ -29,11 +29,8 @@ func NewVouchersApi(pluginApi *PluginApi) *VouchersApi {
 type VouchersApi struct {
 	pluginApi *PluginApi
 	eventsMgr interface {
-		OnVoucherEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucher) error)
-		OnVoucherBatchEvent(event sdkapi.VoucherEvent, cb func(context.Context, sdkapi.IVoucherBatch) error)
 		EmitVoucherEvent(ctx context.Context, event sdkapi.VoucherEvent, v sdkapi.IVoucher) error
-		EmitVoucherBatchEvent(ctx context.Context, event sdkapi.VoucherEvent, batch sdkapi.IVoucherBatch) error
-		EmitVoucherBeforeCreate(ctx context.Context, params *sdkapi.CreateVouchersParams) error
+		EmitVoucherBatchEvent(ctx context.Context, event sdkapi.VoucherBatchEvent, batch sdkapi.IVoucherBatch) error
 	}
 }
 
@@ -72,11 +69,13 @@ func (self *VouchersApi) providerPkg() string {
 }
 
 // CreateVouchers creates a batch of vouchers and emits EventVoucherGenerated.
-// Automatically creates a voucher batch record before creating vouchers.
+// Before any DB writes it fires EventVoucherBeforeCreate as a batch event (once)
+// and then as a per-voucher event for each voucher inside the transaction.
+// Either callback may return an error to cancel creation.
 func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.CreateVouchersParams) ([]sdkapi.IVoucher, error) {
 	db := self.pluginApi.db
 
-	// Apply default bandwidth if not specified
+	// Apply default bandwidth if not specified.
 	if params.DownSpeedMbps == 0 {
 		params.DownSpeedMbps = 10
 	}
@@ -84,15 +83,17 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 		params.UpSpeedMbps = 10
 	}
 
-	// Use provided BatchUUID or generate one. Done before the hook so pre-create
-	// callbacks (e.g. reseller credit checks) can reference the final batch UUID.
+	// Guarantee BatchUUID is set before the before-create event so batch-level
+	// callbacks (e.g. reseller credit checks) can reference the final UUID.
 	if params.BatchUUID == "" {
 		params.BatchUUID = generateUUID()
 	}
 
-	// Synchronous pre-create hook: callbacks may modify params or cancel creation by
-	// returning an error. Runs before any DB writes, so cancelling needs no rollback.
-	if err := self.eventsMgr.EmitVoucherBeforeCreate(ctx, &params); err != nil {
+	// Batch-level before-create event: fires once before any DB writes.
+	// An error here cancels creation with no rollback needed.
+	now := time.Now().UTC()
+	previewBatch := &previewVoucherBatch{params: params, providerPkg: self.providerPkg(), now: now}
+	if err := self.eventsMgr.EmitVoucherBatchEvent(ctx, sdkapi.EventVoucherBatchBeforeCreate, previewBatch); err != nil {
 		return nil, err
 	}
 
@@ -101,12 +102,12 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 	batchUUID := params.BatchUUID
 
 	// Wrap batch + voucher creation in a single transaction for atomicity.
-	// If any voucher INSERT fails, the entire batch (including the batch record) is rolled back.
+	// A per-voucher before-create error rolls back all inserts made so far.
 	var created []sdkapi.IVoucher
 	err := sdkutils.RunInTx(db.DB, ctx, func(tx *sql.Tx) error {
 		q := coreQueries.New(tx)
 
-		// Create voucher batch record
+		// Create voucher batch record.
 		amount := sql.NullFloat64{}
 		if params.Amount != nil {
 			amount = sql.NullFloat64{Float64: *params.Amount, Valid: true}
@@ -124,6 +125,20 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 		for i := 0; i < params.Count; i++ {
 			code := generateVoucherCode()
 			uuid := generateVoucherUUID()
+
+			// Per-voucher before-create event: code and UUID are already set so
+			// callbacks can inspect them. An error rolls back the whole transaction.
+			previewV := &previewVoucher{
+				params:      params,
+				code:        code,
+				uuid:        uuid,
+				providerPkg: self.providerPkg(),
+				now:         now,
+			}
+			if err := self.eventsMgr.EmitVoucherEvent(ctx, sdkapi.EventVoucherBeforeCreate, previewV); err != nil {
+				return err
+			}
+
 			expiresAt := sql.NullTime{}
 			if params.ExpiresAt != nil {
 				expiresAt = sql.NullTime{Time: *params.ExpiresAt, Valid: true}
@@ -163,7 +178,7 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 		return nil, err
 	}
 
-	// Emit event after successful commit (outside transaction)
+	// Emit generated event after successful commit (outside transaction).
 	if len(created) > 0 {
 		batch, err := self.FindBatchByUUID(ctx, batchUUID)
 		if err == nil {
@@ -505,15 +520,6 @@ func (self *VouchersApi) getActivated(ctx context.Context) ([]sdkapi.IVoucher, e
 		return nil, fmt.Errorf("unable to get activated vouchers: %w", err)
 	}
 	return self.wrapManyWithRelations(ctx, rows), nil
-}
-
-// OnVoucherEvent registers a callback for a single-voucher event (delegates to global EventsManager).
-func (self *VouchersApi) OnVoucherEvent(event sdkapi.VoucherEvent, callback func(context.Context, sdkapi.IVoucher) error) {
-	self.eventsMgr.OnVoucherEvent(event, callback)
-}
-
-func (self *VouchersApi) OnVoucherBatchEvent(event sdkapi.VoucherEvent, callback func(context.Context, sdkapi.IVoucherBatch) error) {
-	self.eventsMgr.OnVoucherBatchEvent(event, callback)
 }
 
 // FindBatchByUUID finds a voucher batch by its UUID.

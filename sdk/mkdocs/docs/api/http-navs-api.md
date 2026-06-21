@@ -132,7 +132,7 @@ The available `INavCategory` options are:
 - `sdkapi.NavCategoryPayments` - Payment and billing related items
 - `sdkapi.NavCategoryThemes` - Theme selection and customization
 - `sdkapi.NavCategoryNetwork` - Network configuration
-- `sdkapi.NavCategoryTools` - Utility tools and features
+- `sdkapi.NavCategorySettings` - Additional settings
 
 ### Ordering Examples
 
@@ -187,7 +187,7 @@ The `ExtraAttrs` field allows you to add custom HTML attributes to navigation me
 
 // Add multiple attributes
 {
-    Category:   sdkapi.NavCategoryTools,
+    Category:   sdkapi.NavCategorySettings,
     Label:      "External Tool",
     RouteName:  "admin:external-tool",
     ExtraAttrs: map[string]any{

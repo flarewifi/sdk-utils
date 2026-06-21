@@ -44,6 +44,7 @@ nav:
       - "Translations": guides/translations.md
       - "Database Migrations": guides/database-migrations.md
       - "Error Handling": guides/error-handling.md
+      - "Handling Events": guides/handling-events.md
       - "Debugging": guides/debugging.md
       - "Frontend Libraries": guides/frontend-libraries.md
       - "FAQ": guides/faq.md
@@ -57,6 +58,7 @@ nav:
       - "IClientDevice": "api/client-device.md"
       - "IClientSession": "api/client-session.md"
       - "IConfigApi": api/config-api.md
+      - "IEventsApi": api/events-api.md
       - "IFirewallAPI": api/firewall-api.md
       - "IHttpApi": api/http-api.md
       - "IHttpAuth": api/http-auth.md
@@ -66,19 +68,28 @@ nav:
       - "IHttpNavsApi": api/http-navs-api.md
       - "IHttpResponse": api/http-response.md
       - "IHttpRouterApi": api/http-router-api.md
-      - "IEventsApi": api/events-api.md
+      - "IInAppPurchaseApi": api/inapp-purchase-api.md
       - "ILoggerApi": api/logger-api.md
       - "IMachineApi": api/machine-api.md
+      - "INetworkApi": api/network-api.md
+      - "INetworkDevice": api/network-device.md
+      - "INetworkInterface": api/network-interface.md
+      - "ITrafficApi": api/network-traffic.md
+      - "INotification": api/notification.md
       - "IPaymentsApi": api/payments-api.md
       - "IPluginApi": api/plugin-api.md
       - "IPluginsMgrApi": api/plugins-mgr-api.md
+      - "IPurchaseRequest": api/purchase-request.md
       - "ISessionsMgrApi": api/sessions-mgr-api.md
       - "IStorageApi": api/storage-api.md
       - "IThemesApi": api/themes-api.md
+      - "IUciApi": api/uci-api.md
+      - "IUIAPI": api/ui-api.md
+      - "IVouchersApi": api/voucher-api.md
+      - "IWifiApi": api/wifi-api.md
       - "Assets Manifest": api/assets-manifest.md
       - "window.$flare": api/flare-variable.md
       - "plugin.json": api/plugin.json.md
-      - "IUIAPI": api/ui-api.md
       - "Plugin Info": api/plugin-info.md
   - Free Plugins:
       - "Flarewifi Theme": "plugins/com.flarego.default-theme.md"

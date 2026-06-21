@@ -289,11 +289,11 @@ The following field types are supported for form validation:
     FieldName:  "quantity",
     FieldLabel: "Quantity",
     FieldType:  sdkapi.FormFieldTypeInteger,
-    FieldRules: []sdkapi.FormFieldRule{
-        sdkapi.FormFieldRuleRequired,
-        sdkapi.FormFieldRuleNumber,
-        sdkapi.FormFieldRuleMinimum,
-        sdkapi.FormFieldRuleMaximum,
+    FieldRules: sdkapi.FormFieldRules{
+        Required: true,
+        Number:   true,
+        Minimum:  "1",
+        Maximum:  "1000",
     },
 }
 
@@ -302,11 +302,11 @@ The following field types are supported for form validation:
     FieldName:  "price",
     FieldLabel: "Price",
     FieldType:  sdkapi.FormFieldTypeDecimal,
-    FieldRules: []sdkapi.FormFieldRule{
-        sdkapi.FormFieldRuleRequired,
-        sdkapi.FormFieldRuleNumber,
-        sdkapi.FormFieldRuleMinimum,
-        sdkapi.FormFieldRuleMaximum,
+    FieldRules: sdkapi.FormFieldRules{
+        Required: true,
+        Number:   true,
+        Minimum:  "0.01",
+        Maximum:  "9999.99",
     },
 }
 

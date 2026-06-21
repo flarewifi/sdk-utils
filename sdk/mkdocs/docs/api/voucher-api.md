@@ -409,50 +409,63 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### OnVoucherEvent
 
+!!! warning "Deprecated"
+    Use `api.Events().OnVoucherEvent(...)` instead.
+
 Registers a callback to be called when a voucher event occurs.
 
 ```go
-api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherActivated, func(voucher sdkapi.IVoucher) error {
-    api.Logger().Info("Voucher %s activated", voucher.Code())
+api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherActivated, func(ctx context.Context, v sdkapi.IVoucher) error {
+    api.Logger().Info("Voucher %s activated", v.Code())
     return nil
 })
 
-api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherDeleted, func(voucher sdkapi.IVoucher) error {
-    api.Logger().Info("Voucher %s deleted", voucher.Code())
+api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherDeleted, func(ctx context.Context, v sdkapi.IVoucher) error {
+    api.Logger().Info("Voucher %s deleted", v.Code())
     return nil
 })
 ```
 
 ### OnVoucherBatchEvent
 
+!!! warning "Deprecated"
+    Use `api.Events().OnVoucherBatchEvent(...)` instead.
+
 Registers a callback to be called when voucher batch events occur.
 
 ```go
-api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(batch sdkapi.IVoucherBatch) error {
+api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
     api.Logger().Info("Generated batch %s with %d vouchers", batch.UUID(), batch.VouchersCount())
     return nil
 })
 ```
 
-### OnBeforeCreate
+### Before-Create Hooks
 
-Registers a hook called before voucher creation. The hook receives a pointer to params and can modify them. Return an error to block creation.
+Use `api.Events()` to intercept voucher creation before any DB writes:
+
+- **Batch-level check** (fires once, before any DB writes): `OnVoucherBatchEvent(sdkapi.EventVoucherBeforeCreate, ...)`
+- **Per-voucher check** (fires inside the transaction, before each INSERT): `OnVoucherEvent(sdkapi.EventVoucherBeforeCreate, ...)`
 
 ```go
-api.Vouchers().OnBeforeCreate(func(ctx context.Context, params *sdkapi.CreateVouchersParams) error {
-    // Enforce minimum time
-    if params.TimeSecs < 300 {
-        params.TimeSecs = 300 // Minimum 5 minutes
-    }
-    
-    // Enforce maximum voucher count
-    if params.Count > 100 {
+// Batch-level: enforce count or credit limits
+api.Events().OnVoucherBatchEvent(sdkapi.EventVoucherBeforeCreate, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
+    if batch.VouchersCount() > 100 {
         return fmt.Errorf("cannot create more than 100 vouchers at once")
     }
-    
+    return nil
+})
+
+// Per-voucher: inspect individual voucher settings
+api.Events().OnVoucherEvent(sdkapi.EventVoucherBeforeCreate, func(ctx context.Context, v sdkapi.IVoucher) error {
+    if v.TimeSecs() < 300 {
+        return fmt.Errorf("voucher time must be at least 5 minutes")
+    }
     return nil
 })
 ```
+
+See [IEventsApi](./events-api.md#eventvoucherbeforecreate-batch-level-can-cancel) for full documentation.
 
 ---
 
@@ -564,10 +577,12 @@ Parameters for listing vouchers with pagination:
 
 ```go
 type ListVouchersParams struct {
-    Search      *string // Search by code, provider package, or device MAC
-    IsActivated *bool   // Filter by activation status (nil = all)
-    Page        int     // Page number (1-indexed)
-    PerPage     int     // Results per page
+    Search      *string    // Search by code, provider package, or device MAC
+    IsActivated *bool      // Filter by activation status (nil = all)
+    Page        int        // Page number (1-indexed)
+    PerPage     int        // Results per page
+    DateStart   *time.Time // Filter: vouchers created on or after this date
+    DateEnd     *time.Time // Filter: vouchers created on or before this date
 }
 ```
 
@@ -642,17 +657,17 @@ const (
 ```go
 func Init(api sdkapi.IPluginApi) error {
     // Register voucher event handlers
-    api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherActivated, func(v sdkapi.IVoucher) error {
-        api.Logger().Info("Voucher %s activated for device %s", 
+    api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherActivated, func(ctx context.Context, v sdkapi.IVoucher) error {
+        api.Logger().Info("Voucher %s activated for device %s",
             v.Code(), v.Device().MacAddr())
         return nil
     })
-    
-    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(batch sdkapi.IVoucherBatch) error {
+
+    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
         api.Logger().Info("Generated batch %s with %d new vouchers", batch.UUID(), batch.VouchersCount())
         return nil
     })
-    
+
     return nil
 }
 ```

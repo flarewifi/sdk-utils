@@ -124,7 +124,16 @@ Fonts are automatically bundled with your CSS and JS files using the ES Build to
 
 ## Using public assets
 
-Files in the `resources/assets/public` directory can be referenced using the [IHttpHelpers.PublicPath](./http-helpers.md#publicpath) method. For example, if you have an image file located at `resources/assets/public/images/logo.png`, you can reference it in your views like this:
+Files in the `resources/assets/public` directory can be referenced using the [`IHttpHelpers.PublicPath`](../api/http-helpers.md#publicpath) method. For example, if you have an image file located at `resources/assets/public/images/logo.png`, you can reference it in your views like this:
 ```templ
-<img src={  api.Http().Helpers().PublicPath("images/logo.png") } alt="Logo">
+<img src={ api.Http().Helpers().PublicPath("images/logo.png") } alt="Logo">
 ```
+
+---
+
+## Related
+
+- [IHttpResponse](../api/http-response.md) — `PortalView`, `AdminView`, and other render methods
+- [IHttpHelpers](../api/http-helpers.md) — `PublicPath`, `ResourcePath`, and URL generation helpers
+- [Assets Manifest](../api/assets-manifest.md) — Bundling JS and CSS assets for portal and admin views
+- [IHttpRouterApi](../api/http-router-api.md) — Registering routes that serve these views

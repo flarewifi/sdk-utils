@@ -15,7 +15,7 @@ The Storage API allows plugins to store binary files like images, documents, and
 
 ### Uploading Images
 
-Handle image uploads from admin forms:
+Handle image uploads from admin forms. Use [`api.Storage().WriteReader`](../api/storage-api.md#writereader) to save the uploaded stream, [`api.Http().Response().FlashMsg`](../api/http-response.md#flashmsg) for user feedback, and [`api.Http().Response().Redirect`](../api/http-response.md#redirect) to return to the form:
 
 ```go
 package handlers
@@ -275,7 +275,7 @@ func ValidateFileSize(api sdkapi.IPluginApi, size int64) error {
 
 ## Error Handling
 
-Always handle storage errors appropriately:
+Always handle storage errors appropriately. Use [`api.Http().Response().Error`](../api/http-response.md#error) for fatal errors and [`api.Logger()`](../api/logger-api.md) to record details for debugging:
 
 ```go
 _, err := api.Storage().Write("image.png", data)
@@ -306,8 +306,10 @@ if err != nil {
 5. **Security** - Never trust user-provided filenames, sanitize them
 6. **Logging** - Log important storage operations for debugging
 
-## See Also
+## Related
 
-- [Storage API Reference](../api/storage-api.md) - Complete API documentation
-- [HTTP Forms API](../api/http-forms-api.md) - Handling file uploads
-- [Saving Data](./saving-data.md) - For plugin configuration data
+- [IStorageApi](../api/storage-api.md) — Complete storage API: `Write`, `WriteReader`, `Read`, `List`, `Delete`, `Move`, `Exists`, `UrlFor`
+- [IHttpResponse](../api/http-response.md) — `Error`, `FlashMsg`, and `Redirect` methods used in upload handlers
+- [ILoggerApi](../api/logger-api.md) — Logging storage errors with `Errorf`
+- [IHttpFormsApi](../api/http-forms-api.md) — Handling `multipart/form-data` file uploads
+- [Saving Data](./saving-data.md) — For structured plugin configuration data (`IConfigApi`)

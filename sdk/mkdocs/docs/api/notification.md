@@ -69,6 +69,17 @@ if err != nil {
 }
 ```
 
+### MarkAllAsRead
+
+Marks all notifications as read.
+
+```go
+err := api.Notification().MarkAllAsRead(r.Context())
+if err != nil {
+    // handle error
+}
+```
+
 ## Types
 
 ### Notification

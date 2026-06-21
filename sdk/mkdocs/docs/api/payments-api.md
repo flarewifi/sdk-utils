@@ -125,43 +125,51 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### OnPurchaseEvent
+### CreatePurchase
 
-Registers a callback function for purchase events. This allows plugins to react to purchase state changes such as successful payments, failures, or cancellations.
-
-Available purchase events:
-
-| Event | Description | When Emitted |
-|-------|-------------|--------------|
-| `EventPurchaseSuccess` | Purchase was successfully confirmed | After `purchase.Confirm()` succeeds |
-| `EventPurchaseFailed` | Purchase confirmation or execution failed | When `purchase.Confirm()` or `purchase.Execute()` fails |
-| `EventPurchaseCancelled` | Purchase was cancelled by user | After `purchase.Cancel()` completes |
+Creates a purchase record programmatically without the HTTP checkout flow. Used for admin-generated purchases such as voucher batch sales where no customer device is involved. `DeviceID` can be `nil` for admin purchases.
 
 ```go
-// Register for successful purchases
-api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseSuccess, func(data sdkapi.PurchaseEventData) error {
-    api.Logger().Info("Purchase %s confirmed for device %s", 
-        data.Purchase.UUID(), data.Device.MacAddr())
-    
-    // Your business logic here (e.g., send notification, update external system)
-    return nil
-})
+func handleAdminVoucherSale(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
 
-// Register for failed purchases
-api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseFailed, func(data sdkapi.PurchaseEventData) error {
-    api.Logger().Error("Purchase %s failed: %s", data.Purchase.UUID(), data.Reason)
-    
-    // Handle failure (e.g., alert admin, retry logic)
-    return nil
-})
+    purchase, err := api.Payments().CreatePurchase(ctx, sdkapi.CreatePurchaseParams{
+        DeviceID:    nil,          // nil for admin purchases
+        Sku:         "voucher_batch_10x1hr",
+        Name:        "10x 1-Hour Vouchers",
+        Description: "Batch of ten 1-hour WiFi access vouchers",
+        Price:       50.00,
+        Metadata:    map[string]string{"qty": "10"},
+    })
+    if err != nil {
+        // handle error
+        return
+    }
 
-// Register for cancelled purchases
-api.Payments().OnPurchaseEvent(sdkapi.EventPurchaseCancelled, func(data sdkapi.PurchaseEventData) error {
-    api.Logger().Info("Purchase %s cancelled: %s", data.Purchase.UUID(), data.Reason)
-    
-    // Handle cancellation (e.g., analytics, cleanup)
+    fmt.Printf("Created purchase: %s\n", purchase.UUID())
+}
+```
+
+### HandlePurchaseExecute
+
+Registers an in-process handler invoked when a payment provider calls `IPurchaseRequest.Execute()` for a purchase whose `WebHookRoute` matches `route` and whose callback plugin is this plugin. This replaces the former loopback HTTP webhook — register the handler instead of mounting an HTTP endpoint. The `route` string is used purely as the dispatch key.
+
+```go
+func Init(api sdkapi.IPluginApi) error {
+    api.Payments().HandlePurchaseExecute("myplugin:purchase:webhook", func(ctx context.Context, purchase sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
+        if params.Success {
+            if err := purchase.Confirm(ctx); err != nil {
+                return err
+            }
+            // grant access or create session...
+        } else {
+            purchase.Cancel(ctx)
+        }
+        return nil
+    })
+
     return nil
-})
+}
 ```
 
 ---
@@ -199,9 +207,32 @@ const (
 )
 ```
 
+### CreatePurchaseParams
+
+Parameters for creating a purchase programmatically (used with `CreatePurchase`):
+
+```go
+type CreatePurchaseParams struct {
+    DeviceID    *int64            // Optional — nil for admin purchases (e.g., voucher batch sales)
+    Sku         string            // SKU identifier for the purchase
+    Name        string            // Display name of the purchase
+    Description string            // Description of the purchase
+    Price       float64           // Price of the purchase
+    Metadata    map[string]string // Additional metadata
+}
+```
+
+### PurchaseExecuteHandler
+
+The handler type registered via `HandlePurchaseExecute`. Invoked in-process when a payment provider calls `Execute()` on a purchase. Returning a non-nil error marks the execution as failed.
+
+```go
+type PurchaseExecuteHandler func(ctx context.Context, purchase IPurchaseRequest, params ExecuteParams) error
+```
+
 ### PurchaseEvent
 
-The `PurchaseEvent` type represents purchase event types:
+The `PurchaseEvent` type represents purchase event types. Subscribe via `api.Events().OnPurchaseEvent(...)` (not via `api.Payments()`):
 
 ```go
 type PurchaseEvent string
@@ -215,7 +246,7 @@ const (
 
 ### PurchaseEventData
 
-The `PurchaseEventData` struct represents the data associated with a purchase event:
+The `PurchaseEventData` struct is passed to callbacks registered on `api.Events().OnPurchaseEvent(...)`:
 
 ```go
 type PurchaseEventData struct {
@@ -329,45 +360,21 @@ func handleBuyWifi(w http.ResponseWriter, r *http.Request) {
     api.Payments().Checkout(w, r, purchase)
 }
 
-// 2. Handle the webhook (called by payment system)
-func handlePurchaseWebhook(w http.ResponseWriter, r *http.Request) {
-    // Authenticate the webhook request
-    if err := api.Payments().WebhookAuth(r); err != nil {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
-
-    // Parse webhook parameters
-    var params sdkapi.ExecuteParams
-    if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-        http.Error(w, "Bad request", http.StatusBadRequest)
-        return
-    }
-
-    // Find the purchase request
-    purchaseReq, err := api.Payments().FindPurchaseRequestByUUID(params.PurchaseUID)
-    if err != nil {
-        http.Error(w, "Purchase not found", http.StatusNotFound)
-        return
-    }
-
-    ctx := r.Context()
-
-    if params.Success {
-        // Confirm the purchase
-        if err := purchaseReq.Confirm(ctx); err != nil {
-            http.Error(w, "Failed to confirm", http.StatusInternalServerError)
-            return
+// 2. Register the in-process purchase handler (replaces the old HTTP webhook)
+func Init(api sdkapi.IPluginApi) error {
+    api.Payments().HandlePurchaseExecute("myplugin:purchase:webhook", func(ctx context.Context, purchaseReq sdkapi.IPurchaseRequest, params sdkapi.ExecuteParams) error {
+        if params.Success {
+            if err := purchaseReq.Confirm(ctx); err != nil {
+                return err
+            }
+            // Grant access to the user (your business logic)
+            grantWifiAccess(purchaseReq.DeviceID(), purchaseReq.Metadata())
+        } else {
+            purchaseReq.Cancel(ctx)
         }
-
-        // Grant access to the user (your business logic)
-        grantWifiAccess(purchaseReq.DeviceID(), purchaseReq.Metadata())
-    } else {
-        // Cancel the purchase
-        purchaseReq.Cancel(ctx)
-    }
-
-    w.WriteHeader(http.StatusOK)
+        return nil
+    })
+    return nil
 }
 
 // 3. Handle the callback (user redirect after payment)

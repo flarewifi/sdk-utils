@@ -26,20 +26,6 @@ This method returns the [plugin router](#router-instance) of the plugin. Routes 
 pluginRouter := api.Http().Router().PluginRouter()
 ```
 
-### Use {#use}
-
-This method is used to add a global middleware to all routes. It accepts a list of middlewares.
-```go
-middleware := func (next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // do something before the handler function
-        next.ServeHTTP(w, r)
-    })
-}
-
-api.Http().Router().Use(middleware)
-```
-
 ### UseForPortal {#use-for-portal}
 
 This method is used to register middlewares that will wrap the captive portal index page handler (`/portal/index`). This is useful for plugins that need to track portal page views, add custom authentication, implement rate limiting, or perform other operations before the portal page is rendered.

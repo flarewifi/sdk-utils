@@ -4,13 +4,13 @@ The `IEventsApi` is the unified event subscription API for plugins. It provides 
 
 All registration methods are safe to call concurrently. **Dispatch is synchronous:** when an event fires, its callbacks run sequentially in the emitter's goroutine, in registration order. Deciding whether to run async is the handler's responsibility — a callback that must not block the emitting operation (or that runs long) should spawn its own goroutine.
 
-Most events ignore the value a callback returns. A few let a callback **cancel the operation** by returning an error: `OnVoucherBeforeCreate` (cancels voucher creation) and `EventClientBeforeConnect` via `OnClientEvent` (cancels a client connection).
+Most events ignore the value a callback returns. A few let a callback **cancel the operation** by returning an error: `OnVoucherBatchEvent` for `EventVoucherBeforeCreate` (cancels batch creation), `OnVoucherEvent` for `EventVoucherBeforeCreate` (rolls back the batch transaction), and `EventClientBeforeConnect` via `OnClientEvent` (cancels a client connection).
 
 Access the `IEventsApi` via `api.Events()`:
 
 ```go
 func Init(api sdkapi.IPluginApi) error {
-    api.Events().OnSessionEvent(sdkapi.EventSessionCreated, func(data sdkapi.SessionEventData) error {
+    api.Events().OnSessionEvent(sdkapi.EventSessionCreated, func(ctx context.Context, data sdkapi.SessionEventData) error {
         // react to new session
         return nil
     })
@@ -27,7 +27,7 @@ Registers a callback that fires whenever the given session event occurs. The cal
 **Available events:** `sdkapi.EventSessionCreated`, `sdkapi.EventSessionConnected`, `sdkapi.EventSessionDisconnected`, `sdkapi.EventSessionConsumed`, `sdkapi.EventSessionChanged`, `sdkapi.EventSessionDeleted`.
 
 ```go
-api.Events().OnSessionEvent(sdkapi.EventSessionCreated, func(data sdkapi.SessionEventData) error {
+api.Events().OnSessionEvent(sdkapi.EventSessionCreated, func(ctx context.Context, data sdkapi.SessionEventData) error {
     session := data.Session
     log.Printf("Session %s created for device ID %d", session.UUID(), session.DeviceID())
     return nil
@@ -45,12 +45,8 @@ The batch save system coalesces individual periodic session saves into a single 
 **Available events:** `sdkapi.EventSessionBatchUpdated`.
 
 ```go
-api.Events().OnSessionBatchEvent(sdkapi.EventSessionBatchUpdated, func(sessions []sdkapi.IClientSession) error {
-    api.Logger().Info("Batch saved %d sessions", len(sessions))
-    for _, s := range sessions {
-        api.Logger().Info("  Session %d: consumed %d secs, %.2f MB",
-            s.ID(), s.ConsumedTimeSecs(), s.DataConsumption())
-    }
+api.Events().OnSessionBatchEvent(sdkapi.EventSessionBatchUpdated, func(ctx context.Context, sessions []sdkapi.IClientSession) error {
+    api.Logger().Info(fmt.Sprintf("Batch saved %d sessions", len(sessions)))
     return nil
 })
 ```
@@ -75,7 +71,7 @@ Registers a callback that fires whenever the given client device event occurs. T
 
 ```go
 api.Events().OnClientEvent(sdkapi.EventClientConnected, func(ctx context.Context, clnt sdkapi.IClientDevice) error {
-    log.Printf("Device %s connected with IPv4=%s", clnt.MacAddr(), clnt.Ipv4Addr())
+    log.Printf("Device %s connected", clnt.MacAddr())
     return nil
 })
 ```
@@ -110,7 +106,7 @@ This event fires from multiple sources:
 When the callback is invoked, the source device has already been deleted. The data includes the surviving device and the ID/UUID of the deleted device.
 
 ```go
-api.Events().OnClientMerge(func(data sdkapi.EventClientMergeData) error {
+api.Events().OnClientMerge(func(ctx context.Context, data sdkapi.EventClientMergeData) error {
     target := data.Target
     log.Printf("Device %s (%d) merged into %s (%d)",
         data.SourceDeviceUUID, data.SourceDeviceID,
@@ -132,7 +128,7 @@ Registers a callback that fires whenever the given purchase event occurs. The ca
 | `"purchase:cancelled"` | `sdkapi.EventPurchaseCancelled` | Purchase cancelled by the user |
 
 ```go
-api.Events().OnPurchaseEvent(sdkapi.EventPurchaseSuccess, func(data sdkapi.PurchaseEventData) error {
+api.Events().OnPurchaseEvent(sdkapi.EventPurchaseSuccess, func(ctx context.Context, data sdkapi.PurchaseEventData) error {
     log.Printf("Purchase %d completed: %.2f", data.Purchase.ID(), data.Purchase.Price())
     return nil
 })
@@ -146,13 +142,27 @@ Registers a callback that fires whenever a single-voucher lifecycle event occurs
 
 | Event | Constant | Description |
 |-------|----------|-------------|
+| `"voucher:before_create"` | `sdkapi.EventVoucherBeforeCreate` | **Can cancel creation** — fires for each voucher before its INSERT, inside the batch transaction. The voucher is an in-memory preview (`ID == 0`). Returning an error rolls back the whole transaction. |
 | `"voucher:activated"` | `sdkapi.EventVoucherActivated` | Voucher used to start a session |
 | `"voucher:updated"` | `sdkapi.EventVoucherUpdated` | Voucher validity updated |
 | `"voucher:deleted"` | `sdkapi.EventVoucherDeleted` | Voucher deleted |
 
 ```go
-api.Events().OnVoucherEvent(sdkapi.EventVoucherActivated, func(v sdkapi.IVoucher) error {
+api.Events().OnVoucherEvent(sdkapi.EventVoucherActivated, func(ctx context.Context, v sdkapi.IVoucher) error {
     log.Printf("Voucher %s activated for session %d", v.Code(), v.Session().ID())
+    return nil
+})
+```
+
+#### EventVoucherBeforeCreate (per-voucher, can cancel)
+
+Fires inside the batch transaction for each individual voucher before its INSERT. The voucher object is an in-memory preview — `ID()` is 0, `Session()` and `Device()` are nil, but `Code()`, `UUID()`, `BatchUUID()`, and all param-derived fields (`Type()`, `TimeSecs()`, `DataMb()`, etc.) are set. Returning an error rolls back the entire batch.
+
+```go
+api.Events().OnVoucherEvent(sdkapi.EventVoucherBeforeCreate, func(ctx context.Context, v sdkapi.IVoucher) error {
+    if v.TimeSecs() < 300 {
+        return fmt.Errorf("voucher time must be at least 5 minutes")
+    }
     return nil
 })
 ```
@@ -165,27 +175,30 @@ Registers a callback that fires whenever a voucher-batch event occurs. The callb
 
 | Event | Constant | Description |
 |-------|----------|-------------|
-| `"voucher:generated"` | `sdkapi.EventVoucherGenerated` | A batch of vouchers is created |
+| `"voucher:before_create"` | `sdkapi.EventVoucherBatchBeforeCreate` | **Can cancel creation** — fires once before any DB writes, with an in-memory preview batch (`ID == 0`). Returning an error cancels the whole batch. |
+| `"voucher:generated"` | `sdkapi.EventVoucherGenerated` | A batch of vouchers was successfully created |
 | `"voucher:batch_deleted"` | `sdkapi.EventVoucherBatchDeleted` | A voucher batch is deleted |
 
 ```go
-api.Events().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(batch sdkapi.IVoucherBatch) error {
-    log.Printf("Voucher batch %s generated with code length %d", batch.BatchUUID(), batch.CodeLength())
+api.Events().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
+    log.Printf("Voucher batch %s generated with %d vouchers", batch.UUID(), batch.VouchersCount())
     return nil
 })
 ```
 
-### OnVoucherBeforeCreate
+#### EventVoucherBeforeCreate (batch-level, can cancel)
 
-Registers a hook that is called before a batch of vouchers is created. Like all events the hooks run synchronously, in registration order, in the `CreateVouchers` caller's goroutine; the first hook that returns a non-nil error cancels voucher creation (the error is returned to the caller of `CreateVouchers`). Because it runs before any database writes, cancelling needs no rollback.
-
-The hook receives a pointer to the creation params and may modify them (e.g., to enforce quota limits or override defaults). `BatchUUID` and the bandwidth defaults are already populated by the time hooks run, so credit/quota checks can rely on the final `BatchUUID`, `Count`, and `Amount`.
+Fires once before any database writes. The batch object is an in-memory preview — `ID()` is 0, `Vouchers()` returns nil, but `UUID()`, `Amount()`, `VouchersCount()`, and `ProviderPkg()` are all set. This is the right place for batch-level checks such as reseller credit validation, count limits, or quota enforcement. Returning an error cancels creation with no rollback needed.
 
 ```go
-api.Events().OnVoucherBeforeCreate(func(ctx context.Context, params *sdkapi.CreateVouchersParams) error {
+api.Events().OnVoucherBatchEvent(sdkapi.EventVoucherBatchBeforeCreate, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
     maxVouchers := 100
-    if params.Count > maxVouchers {
+    if batch.VouchersCount() > int64(maxVouchers) {
         return fmt.Errorf("cannot create more than %d vouchers at once", maxVouchers)
+    }
+    // Credit check example
+    if amount := batch.Amount(); amount != nil && *amount > 0 {
+        return validateCredits(ctx, *amount, batch.VouchersCount(), batch.UUID())
     }
     return nil
 })
@@ -296,15 +309,28 @@ type PurchaseEventData struct {
 | `sdkapi.EventPurchaseFailed` | `"purchase:failed"` |
 | `sdkapi.EventPurchaseCancelled` | `"purchase:cancelled"` |
 
-### VoucherEvent Constants
+### VoucherEvent Constants (single-voucher — use with `OnVoucherEvent`)
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| `sdkapi.EventVoucherBeforeCreate` | `"voucher:before_create"` | Per-voucher pre-create — returning an error rolls back the batch transaction |
+| `sdkapi.EventVoucherActivated` | `"voucher:activated"` | |
+| `sdkapi.EventVoucherUpdated` | `"voucher:updated"` | |
+| `sdkapi.EventVoucherDeleted` | `"voucher:deleted"` | |
+
+### VoucherBatchEvent Constants (batch-level — use with `OnVoucherBatchEvent`)
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| `sdkapi.EventVoucherBatchBeforeCreate` | `"voucher:before_create"` | Batch pre-create — returning an error cancels creation before any DB writes |
+| `sdkapi.EventVoucherGenerated` | `"voucher:generated"` | Fires after successful batch creation |
+| `sdkapi.EventVoucherBatchDeleted` | `"voucher:batch_deleted"` | |
+
+### PaymentEvent Constants
 
 | Constant | Value |
 |----------|-------|
-| `sdkapi.EventVoucherGenerated` | `"voucher:generated"` |
-| `sdkapi.EventVoucherActivated` | `"voucher:activated"` |
-| `sdkapi.EventVoucherUpdated` | `"voucher:updated"` |
-| `sdkapi.EventVoucherDeleted` | `"voucher:deleted"` |
-| `sdkapi.EventVoucherBatchDeleted` | `"voucher:batch_deleted"` |
+| `sdkapi.EventPaymentOptionsChanged` | `"payment:options:changed"` |
 
 ### InternetEvent Constants
 
@@ -313,22 +339,3 @@ type PurchaseEventData struct {
 | `sdkapi.EventInternetUp` | `"internet:up"` |
 | `sdkapi.EventInternetDown` | `"internet:down"` |
 
-### CreateVouchersParams
-
-The parameters passed to `OnVoucherBeforeCreate` hooks. The hook may modify these values.
-
-```go
-type CreateVouchersParams struct {
-    Count          int
-    Type           SessionType
-    TimeSecs       int64
-    DataMb         int64
-    DownSpeedMbps  int64      // default 10 Mbps if 0
-    UpSpeedMbps    int64      // default 10 Mbps if 0
-    SessionExpDays *int       // nil means session never expires
-    UseGlobal      bool
-    ExpiresAt      *time.Time // nil means voucher never expires
-    BatchUUID      string
-    Amount         *float64
-}
-```

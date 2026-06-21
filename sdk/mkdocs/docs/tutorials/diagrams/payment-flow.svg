@@ -88,17 +88,17 @@
   <!-- Arrow 6->7 -->
   <line x1="680" y1="322" x2="520" y2="322" stroke="#d97706" stroke-width="2" marker-end="url(#arrowhead-orange)"/>
   
-  <!-- Step 7: Trigger Webhook -->
+  <!-- Step 7: In-process Dispatch -->
   <rect x="380" y="300" width="140" height="45" rx="5" fill="white" stroke="#7c3aed" stroke-width="2"/>
-  <text x="450" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#7c3aed">7. Trigger Webhook</text>
-  <text x="450" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">POST to handler</text>
+  <text x="450" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#7c3aed">7. In-process Dispatch</text>
+  <text x="450" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">HandlePurchaseExecute</text>
   
   <!-- Arrow 7->8 -->
   <line x1="380" y1="322" x2="220" y2="322" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead-green)"/>
   
-  <!-- Step 8: WebhookHandler -->
+  <!-- Step 8: ExecuteHandler -->
   <rect x="80" y="300" width="140" height="45" rx="5" fill="white" stroke="#16a34a" stroke-width="2"/>
-  <text x="150" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#166534">8. WebhookHandler</text>
+  <text x="150" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#166534">8. ExecuteHandler</text>
   <text x="150" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#64748b">Process result</text>
   
   <!-- Arrow 8->9 (down) -->

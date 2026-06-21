@@ -359,6 +359,36 @@ The `SessionData` struct contains raw fields and pre-computed values:
 !!! note "Pre-computed Values"
     The `SessionData` struct has no methods - all derived values are pre-computed when `Data()` is called. This ensures consistent values within a single snapshot.
 
+### RawData
+
+Returns a snapshot of raw session data fields as stored in the database (as a `SessionRawData` struct). Unlike `Data()`, `TimeCons` does NOT include elapsed time — it is the exact value stored in the database. Use this for syncing or persistence where you need the base value without elapsed-time adjustment.
+
+```go
+raw := session.RawData()
+fmt.Printf("Stored time cons: %d secs (no elapsed adjustment)\n", raw.TimeCons)
+```
+
+The `SessionRawData` struct contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | `int64` | Session database ID |
+| `UUID` | `string` | Session UUID |
+| `DeviceID` | `int64` | Device database ID |
+| `Type` | `SessionType` | Session type (time/data/time-or-data) |
+| `TimeSecs` | `int` | Allocated time in seconds |
+| `DataMb` | `float64` | Allocated data in MB |
+| `TimeCons` | `int` | Raw stored time consumption (no elapsed adjustment) |
+| `DataCons` | `float64` | Raw stored data consumption in MB |
+| `DownMbits` | `int` | Download speed limit in Mbps |
+| `UpMbits` | `int` | Upload speed limit in Mbps |
+| `UseGlobalSpeed` | `bool` | Whether to use global speed settings |
+| `ExpDays` | `*int` | Expiration days (nil if no expiration) |
+| `StartedAt` | `*time.Time` | Session start time |
+| `ResumedAt` | `*time.Time` | Last resume time (nil if not running) |
+| `CreatedAt` | `time.Time` | Creation timestamp |
+| `UpdatedAt` | `time.Time` | Last update timestamp |
+
 ### IncTimeCons
 
 Increments the consumed session time by `n` seconds. The new value is not saved until the [save](#save) method is called.

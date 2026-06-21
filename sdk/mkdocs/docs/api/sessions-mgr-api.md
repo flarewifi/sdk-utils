@@ -119,7 +119,7 @@ Returns `true` if the [IClientDevice](./client-device.md) is connected to the in
 ```go
 func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
-    isConnected, err = api.SessionsMgr().IsConnected(clnt)
+    isConnected := api.SessionsMgr().IsConnected(clnt)
 }
 ```
 
@@ -243,7 +243,7 @@ Returns the remaining session duration and data for the given [IClientDevice](./
 ```go
 func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
-    summary, err = api.SessionsMgr().SessionSummary(r.Context(), clnt)
+    summary, err := api.SessionsMgr().SessionSummary(r.Context(), clnt)
 }
 ```
 
@@ -369,487 +369,44 @@ func processDeviceData(deviceData ExternalDeviceData) {
 }
 ```
 
-### OnSessionEvent
+### FindRunningSessionByUUID
 
-Registers a callback function for session events. The callback receives a `SessionEventData` struct containing the session and device information.
-
-The event system enables plugins to react to session lifecycle changes in real-time, allowing for features like analytics, notifications, audit logging, and external integrations.
-
-#### Available Session Events
-
-**`sdkapi.EventSessionCreated` - "session:created"**
-
-Fires when a new session is created via `CreateSession()`.
-
-**Use cases:** Track session inventory, initialize session-related resources, sync new sessions to external systems.
+Finds a currently running session by its UUID. Returns the session and `true` if found, or `nil` and `false` if no running session exists with the given UUID. Unlike `FindSessionByUUID` which queries the database, this method only checks in-memory running sessions for better performance when you only need to know if a session is actively connected.
 
 ```go
-api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionCreated, func(data sdkapi.SessionEventData) error {
-    session := data.Session
-    device := data.Device
-    
-    log.Printf("New session created: %s for device %s", session.UUID(), device.MacAddr())
-    return nil
-})
+session, ok := api.SessionsMgr().FindRunningSessionByUUID("660e8400-e29b-41d4-a716-446655440001")
+if ok {
+    fmt.Printf("Session %d is running, %d secs remaining\n", session.ID(), session.RemainingTime())
+}
 ```
 
-**`sdkapi.EventSessionConnected` - "session:connected"**
+### MergeClientDevices
 
-Fires when a device connects to the internet and starts consuming a session.
+Merges the source device into the target device. All sessions, purchases, fingerprints, and wallet balance are transferred from source to target. The source device is deleted after the merge.
 
-**Use cases:** Send welcome notifications, log connection events, start session monitoring.
-
-```go
-api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionConnected, func(data sdkapi.SessionEventData) error {
-    session := data.Session
-    device := data.Device
-    
-    log.Printf("Device %s connected with session %d", device.MacAddr(), session.ID())
-    return nil
-})
-```
-
-**`sdkapi.EventSessionDisconnected` - "session:disconnected"**
-
-Fires when a device disconnects from the internet. The session is paused but not consumed.
-
-**Use cases:** Send disconnect notifications, save consumption state, calculate session duration.
+Active sessions on either device are disconnected before the merge. If the target device had an active session it is reconnected afterward. The `OnClientMerge` event (`EventClientMergeData`) is emitted after a successful merge so plugins can notify external systems.
 
 ```go
-api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionDisconnected, func(data sdkapi.SessionEventData) error {
-    session := data.Session
-    device := data.Device
-    
-    log.Printf("Device %s disconnected, consumed %d seconds", 
-        device.MacAddr(), session.ConsumedTimeSecs())
-    return nil
-})
-```
+func handleMergeDevices(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    targetID := int64(10)
+    sourceID := int64(20)
 
-**`sdkapi.EventSessionConsumed` - "session:expired"**
-
-Fires when a session is fully consumed (time or data exhausted).
-
-**Use cases:** Trigger upsell flows, cleanup resources, send expiry notifications.
-
-```go
-api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionConsumed, func(data sdkapi.SessionEventData) error {
-    session := data.Session
-    device := data.Device
-    
-    log.Printf("Session %d fully consumed for device %s", session.ID(), device.MacAddr())
-    
-    // Send notification to device
-    device.Emit("session:expired", []byte("Your session has expired. Please purchase more time."))
-    return nil
-})
-```
-
-**`sdkapi.EventSessionChanged` - "session:changed"** ⭐
-
-Fires when session data is externally modified via `session.Save()` (time, data, bandwidth, consumption, etc.).
-
-**Important:** This event is NOT emitted during internal state transitions (session start/stop/periodic saves). It only fires when plugins or users explicitly modify a session via `session.Save()`.
-
-**Use cases:** External system synchronization, audit logs of user modifications, database replication.
-
-See [EventSessionChanged Deep Dive](#eventsessionchanged-deep-dive) below for detailed documentation.
-
-**`sdkapi.EventSessionDeleted` - "session:deleted"**
-
-Fires when a session is permanently deleted via `DeleteSession()`.
-
-**Use cases:** Cleanup related records, sync deletions to external systems, audit trail.
-
-```go
-api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionDeleted, func(data sdkapi.SessionEventData) error {
-    session := data.Session
-    device := data.Device
-    
-    log.Printf("Session %d deleted for device %s", session.ID(), device.MacAddr())
-    return nil
-})
-```
-
-#### EventSessionChanged Deep Dive
-
-The `EventSessionChanged` event fires only when a session is explicitly modified via `session.Save()` after using setter methods. This event represents user or plugin-initiated changes, not internal state transitions.
-
-##### When EventSessionChanged Fires
-
-When you modify a session using setter methods and call `Save()`, the event fires with precise change tracking via `SessionChangedFields`.
-
-**What triggers it:**
-
-- Time allocation changes via `SetTimeSecs()` + `Save()`
-- Data allocation changes via `SetDataMb()` + `Save()`
-- Bandwidth changes via `SetDownMbits()`, `SetUpMbits()`, or `SetUseGlobalSpeed()` + `Save()`
-- Expiration changes via `SetExpDays()` + `Save()`
-- Consumption updates (e.g., from external sync or manual adjustments) + `Save()`
-
-**What does NOT trigger it:**
-
-- Session start (`Start()` uses `PersistToDB()` internally, not `Save()`)
-- Session stop (`Stop()` uses `PersistToDB()` internally, not `Save()`)
-- Periodic saves (every 60 seconds for crash protection, uses `PersistToDB()`)
-- Session chaining (when a consumed session is replaced by the next available session)
-- Cloud synchronization (syncing session data from cloud uses `PersistToDB()` to avoid duplicate events)
-
-**Automatic side effects for running sessions:**
-
-When `Save()` is called on a running session, the system automatically:
-
-- **Resets the timer** if time allocation or consumption changed
-- **Updates TC (traffic control) rules** if bandwidth settings changed
-- **Checks if session is consumed** and stops it if resources are exhausted
-
-**Example: Admin adds time to a user's session**
-
-```go
-func addTimeToSession(ctx context.Context, sessionID int64, additionalSecs int) error {
-    session, err := api.SessionsMgr().FindSessionByID(ctx, sessionID)
+    err := api.SessionsMgr().MergeClientDevices(ctx, targetID, sourceID)
     if err != nil {
-        return err
+        // handle error - source device is deleted on success
     }
-    
-    // Add time to existing allocation
-    newTimeSecs := session.TimeSecs() + additionalSecs
-    session.SetTimeSecs(newTimeSecs)
-    
-    // Save triggers EventSessionChanged
-    // If session is running, timer is automatically reset
-    err = session.Save(ctx)
-    if err != nil {
-        return err
-    }
-    
-    log.Printf("Added %d seconds to session %d (now %d total)", 
-        additionalSecs, sessionID, newTimeSecs)
-    return nil
 }
 ```
 
-**Change tracking:** The `ChangedFields` field in `SessionEventData` indicates exactly which fields were modified:
+The merge event carries an `EventClientMergeData` struct:
 
 ```go
-api.SessionsMgr().OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionEventData) error {
-    session := data.Session
-    changed := data.ChangedFields
-    
-    // Check what changed
-    if changed.TimeSecs || changed.TimeCons {
-        log.Printf("Session %d time changed - Remaining: %d secs", 
-            session.ID(), session.RemainingTime())
-    }
-    if changed.DataMb || changed.DataCons {
-        log.Printf("Session %d data changed - Remaining: %.2f MB", 
-            session.ID(), session.RemainingData())
-    }
-    if changed.DownMbits || changed.UpMbits || changed.UseGlobalSpeed {
-        log.Printf("Session %d bandwidth changed - Down: %d, Up: %d Mbps", 
-            session.ID(), session.DownMbits(), session.UpMbits())
-    }
-    
-    return nil
-})
-```
-
-#### Save() vs PersistToDB()
-
-The SDK provides two methods for persisting session changes to the database, each serving a different purpose:
-
-##### session.Save(ctx)
-
-**Use for:** User or plugin-initiated modifications that should trigger `EventSessionChanged`.
-
-**Behavior:**
-- Emits `EventSessionChanged` event if session data actually changed
-- Clears dirty flags after successful save
-- Triggers automatic side effects for running sessions (timer reset, TC rule updates)
-- Use this when an external actor (admin, API, plugin) modifies a session
-
-**Example:**
-```go
-// Admin adds time to a session
-session.SetTimeSecs(session.TimeSecs() + 3600)
-session.Save(ctx) // ✅ Emits EventSessionChanged
-```
-
-##### session.PersistToDB(ctx)
-
-**Use for:** Internal bookkeeping operations that should NOT trigger events.
-
-**Behavior:**
-- Does NOT emit `EventSessionChanged` event
-- Does NOT clear dirty flags (used for periodic snapshots)
-- Does NOT trigger automatic side effects
-- Use this for internal operations like periodic saves or state transitions
-
-**Example:**
-```go
-// Cloud sync updates session from remote data
-session.SetTimeCons(cloudSession.TimeConsumption)
-session.SetDataCons(cloudSession.DataConsumption)
-session.PersistToDB(ctx) // ✅ No event emitted (prevents duplicate sync)
-```
-
-**When to use each:**
-
-| Scenario | Method | Reason |
-|----------|--------|--------|
-| Admin modifies session via UI | `Save()` | Should trigger sync/audit events |
-| API endpoint updates session | `Save()` | Should trigger sync/audit events |
-| Plugin adds time to session | `Save()` | Should trigger sync/audit events |
-| Cloud sync fetches remote changes | `PersistToDB()` | Avoid duplicate sync events |
-| Session start/stop (internal) | `PersistToDB()` | Internal state transition |
-| Periodic save (crash protection) | `PersistToDB()` | Background bookkeeping |
-| Session chaining (consumed→next) | `PersistToDB()` | Internal transition |
-
-**Important:** The core WiFi hotspot system uses `PersistToDB()` for internal operations (`Start()`, `Stop()`, periodic saves), which is why `EventSessionChanged` does NOT fire during these operations. This prevents duplicate event emissions and maintains clean separation between user-initiated changes and internal state management.
-
-#### SessionEventData Structure
-
-All session event callbacks receive a `SessionEventData` struct:
-
-```go
-type SessionEventData struct {
-    Session       IClientSession       // The session that triggered the event
-    Device        IClientDevice        // The device that owns the session
-    ChangedFields SessionChangedFields // Which fields changed (only set for EventSessionChanged)
+type EventClientMergeData struct {
+    Target           IClientDevice // The device that was kept after the merge
+    SourceDeviceID   int64         // DB ID of the deleted source device
+    SourceDeviceUUID string        // UUID of the deleted source device (captured before deletion)
 }
-```
-
-**ChangedFields** is only populated for `EventSessionChanged` events. For other events, all fields will be `false`. See [SessionChangedFields](./client-session.md#sessionchangedfields) for the full list of trackable fields.
-
-**Available methods on `Session`:**
-
-| Method | Return Type | Description |
-|--------|-------------|-------------|
-| `ID()` | `int64` | Session database ID |
-| `UUID()` | `string` | Session unique identifier (globally unique) |
-| `DeviceID()` | `int64` | ID of device that owns this session |
-| `Type()` | `SessionType` | Session type: `"time"`, `"data"`, or `"time-or-data"` |
-| `TimeSecs()` | `int` | Total allocated time in seconds |
-| `DataMb()` | `float64` | Total allocated data in megabytes |
-| `ConsumedTimeSecs()` | `int` | Time consumed so far (includes elapsed time if running) |
-| `ConsumedDataMb()` | `float64` | Data consumed so far (includes active consumption if running) |
-| `RemainingTime()` | `int` | Remaining time in seconds (accounts for running time) |
-| `RemainingData()` | `float64` | Remaining data in MB (accounts for active consumption) |
-| `DownMbits()` | `int` | Download speed limit in Mbps |
-| `UpMbits()` | `int` | Upload speed limit in Mbps |
-| `UseGlobalSpeed()` | `bool` | Whether using global bandwidth settings |
-| `ExpDays()` | `*int` | Expiration days after session start (nil if no expiry) |
-| `IsRunning()` | `bool` | True if session is currently active |
-| `IsConsumed()` | `bool` | True if resources are fully exhausted |
-| `IsExpired()` | `bool` | True if past expiration date |
-| `IsAvailable()` | `bool` | True if session has never been started |
-| `StartedAt()` | `*time.Time` | When session was first started (nil if never started) |
-| `ResumedAt()` | `*time.Time` | When session was last resumed (nil if not running) |
-| `CreatedAt()` | `time.Time` | When session was created |
-| `UpdatedAt()` | `time.Time` | When session was last updated |
-
-**Available methods on `Device`:**
-
-| Method | Return Type | Description |
-|--------|-------------|-------------|
-| `ID()` | `int64` | Device database ID |
-| `UUID()` | `string` | Device unique identifier (globally unique) |
-| `MacAddr()` | `string` | Device MAC address |
-| `Ipv4Addr()` | `string` | Device IPv4 address (empty if device has no IPv4) |
-| `Ipv6Addr()` | `string` | Device IPv6 address (empty if device has no IPv6) |
-| `IpAddr()` | `string` | Primary IP address: IPv4 if available, otherwise IPv6 |
-| `Hostname()` | `string` | Device hostname |
-| `Status()` | `DeviceStatus` | Connection status: connected/disconnected/blocked |
-| `Emit()` | - | Send SSE message to device browser |
-
-#### Complete Plugin Examples
-
-##### Example 1: External System Synchronization
-
-Sync session modifications to external systems (databases, APIs, etc.).
-
-```go
-func (plugin *SyncPlugin) Init(api sdkapi.IPluginApi) error {
-    sessionsMgr := api.SessionsMgr()
-    
-    // Listen for session changes (user modifications only)
-    sessionsMgr.OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionEventData) error {
-        session := data.Session
-        device := data.Device
-        
-        // Prepare update payload
-        update := SessionUpdate{
-            SessionUUID:   session.UUID(),
-            DeviceUUID:    device.UUID(),
-            TimeSecs:      session.TimeSecs(),
-            DataMb:        session.DataMb(),
-            TimeCons:      session.ConsumedTimeSecs(),
-            DataCons:      session.ConsumedDataMb(),
-            DownMbits:     session.DownMbits(),
-            UpMbits:       session.UpMbits(),
-            IsActive:      session.IsRunning(),
-            UpdatedAt:     time.Now(),
-        }
-        
-        // Sync to external system (async to avoid blocking)
-        go plugin.syncToExternalSystem(update)
-        
-        return nil
-    })
-    
-    return nil
-}
-```
-
-##### Example 2: Audit Logging
-
-Create comprehensive audit trail of all session changes.
-
-```go
-func (plugin *AuditPlugin) Init(api sdkapi.IPluginApi) error {
-    sessionsMgr := api.SessionsMgr()
-    
-    sessionsMgr.OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionEventData) error {
-        session := data.Session
-        device := data.Device
-        
-        // Create comprehensive audit log entry
-        auditEntry := AuditLogEntry{
-            EventType:     "session:changed",
-            SessionID:     session.ID(),
-            SessionUUID:   session.UUID(),
-            DeviceID:      device.ID(),
-            DeviceUUID:    device.UUID(),
-            DeviceMAC:     device.MacAddr(),
-            DeviceIPv4:    device.Ipv4Addr(),
-            DeviceIPv6:    device.Ipv6Addr(),
-            SessionType:   string(session.Type()),
-            TimeSecs:      session.TimeSecs(),
-            TimeConsumed:  session.ConsumedTimeSecs(),
-            TimeRemaining: session.RemainingTime(),
-            DataMb:        session.DataMb(),
-            DataConsumed:  session.ConsumedDataMb(),
-            DataRemaining: session.RemainingData(),
-            DownMbits:     session.DownMbits(),
-            UpMbits:       session.UpMbits(),
-            IsRunning:     session.IsRunning(),
-            IsConsumed:    session.IsConsumed(),
-            IsExpired:     session.IsExpired(),
-            Timestamp:     time.Now(),
-        }
-        
-        // Persist to audit log database (async)
-        go plugin.db.CreateAuditLog(auditEntry)
-        
-        return nil
-    })
-    
-    return nil
-}
-```
-
-#### Performance Considerations
-
-**Event frequency:**
-
-- `EventSessionChanged` fires only when explicitly triggered via `session.Save()` after modifications
-- Not emitted during internal operations (start, stop, periodic saves, chaining)
-- Typical frequency: Low (only on user/admin actions like bandwidth changes, time/data additions)
-
-**Best practices:**
-
-1. **Keep callbacks fast** - Avoid expensive computations or blocking operations in the callback
-2. **Use goroutines for I/O** - Network calls, database writes, and file operations should be async
-3. **Handle errors gracefully** - Return errors only for critical failures that should halt event processing
-
-**Example: Efficient event handler**
-
-```go
-sessionsMgr.OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionEventData) error {
-    session := data.Session
-    device := data.Device
-    
-    // FAST: Prepare lightweight data structure
-    update := SessionUpdate{
-        SessionUUID: session.UUID(),
-        DeviceUUID:  device.UUID(),
-        TimeSecs:    session.TimeSecs(),
-        DataMb:      session.DataMb(),
-        IsActive:    session.IsRunning(),
-        Timestamp:   time.Now(),
-    }
-    
-    // ASYNC: Process heavy operations in background
-    go plugin.syncToExternalSystem(update)
-    
-    // Return immediately (callback completes in <1ms)
-    return nil
-})
-```
-
-**Anti-patterns to avoid:**
-
-```go
-// ❌ BAD: Blocking database write
-sessionsMgr.OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionEventData) error {
-    // This blocks ALL session updates for 50-200ms per event!
-    return plugin.db.SaveSessionSnapshot(data.Session)
-})
-
-// ❌ BAD: Synchronous HTTP call
-sessionsMgr.OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionEventData) error {
-    // This blocks for network latency (100ms-2s per event!)
-    return plugin.sendToAPI(data.Session)
-})
-
-// ✅ GOOD: Async processing
-sessionsMgr.OnSessionEvent(sdkapi.EventSessionChanged, func(data sdkapi.SessionEventData) error {
-    // Fast callback, heavy work in background
-    go plugin.db.SaveSessionSnapshot(data.Session)
-    go plugin.sendToAPI(data.Session)
-    return nil // Returns immediately
-})
-```
-
-### OnSessionBatchEvent
-
-Registers a callback that fires whenever a batch of sessions is persisted to the database at once. The callback runs asynchronously and receives a slice of all sessions that were saved in the batch.
-
-The batch save system coalesces individual periodic session saves into a single database transaction every 60 seconds. This dramatically reduces SQLite lock contention when many sessions are running simultaneously. The `EventSessionBatchUpdated` event fires once per batch after a successful commit.
-
-**`sdkapi.EventSessionBatchUpdated` - "session:batch-updated"**
-
-Emitted after the batch save loop successfully persists all dirty sessions to the database. The callback receives all sessions that were included in the batch.
-
-**Use cases:** Bulk cloud synchronization, batch analytics reporting, periodic state snapshots.
-
-```go
-api.Events().OnSessionBatchEvent(sdkapi.EventSessionBatchUpdated, func(sessions []sdkapi.IClientSession) error {
-    api.Logger().Info("Batch saved %d sessions", len(sessions))
-    for _, s := range sessions {
-        api.Logger().Info("  Session %d: consumed %d secs, %.2f MB",
-            s.ID(), s.ConsumedTimeSecs(), s.DataConsumption())
-    }
-    return nil
-})
-```
-
-**Important:** This event fires for periodic consumption saves only — not for session start, stop, or user-initiated changes. Those continue to use individual `EventSession*` events. Use this event when you need to efficiently process multiple session updates in bulk (e.g., syncing consumption data to a cloud server in a single batch request instead of N individual requests).
-
-### OnClientEvent
-
-Registers a callback function for client device events.
-
-Available client events:
-- `"client:created"`
-- `"client:updated"`
-- `"client:connected"`
-- `"client:disconnected"`
-
-```go
-api.SessionsMgr().OnClientEvent("client:connected", func(clnt IClientDevice) {
-    // Handle client connected event
-})
 ```
 
 ### ListSessions
@@ -866,6 +423,7 @@ The `ListSessionsParams` struct contains:
 | `SessionType` | `*SessionType` | Filter by session type: `"time"`, `"data"`, or `"time-or-data"` (nil = all) |
 | `DateStart` | `*time.Time` | Sessions created on or after this date |
 | `DateEnd` | `*time.Time` | Sessions created on or before this date |
+| `PaymentType` | `*SessionPaymentType` | Filter by payment type: `SessionVoucherPaymentType` or `SessionCoinPaymentType` (nil = all) |
 | `TimeSecsGt` | `*int` | Sessions with time_secs greater than this value |
 | `TimeSecsLt` | `*int` | Sessions with time_secs less than this value |
 | `DataMbGt` | `*float64` | Sessions with data_mbytes greater than this value |
@@ -879,10 +437,17 @@ The `SessionFilterAvailability` constants:
 - `SessionFilterConsumed` - Sessions that are fully consumed (time/data exhausted)
 - `SessionFilterExpired` - Sessions that have passed their expiration date
 
+The `ListSessionsResult` struct contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `PaginatedSessions` | `[]IClientSession` | Sessions for the current page |
+| `FilteredSessions` | `[]IClientSession` | All sessions matching the filter (unpaginated, for totals) |
+
 ```go
 func (w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
-    
+
     // List all available sessions, page 1
     result, err := api.SessionsMgr().ListSessions(ctx, sdkapi.ListSessionsParams{
         Availability: &sdkapi.SessionFilterAvailable,
@@ -892,10 +457,10 @@ func (w http.ResponseWriter, r *http.Request) {
     if err != nil {
         // handle error
     }
-    
-    fmt.Printf("Found %d sessions (total: %d)\n", len(result.Sessions), result.Count)
-    for _, session := range result.Sessions {
-        fmt.Printf("Session %d: %s, remaining time: %d secs\n", 
+
+    fmt.Printf("Found %d sessions (total: %d)\n", len(result.PaginatedSessions), len(result.FilteredSessions))
+    for _, session := range result.PaginatedSessions {
+        fmt.Printf("Session %d: %s, remaining time: %d secs\n",
             session.ID(), session.Type(), session.RemainingTime())
     }
 }
@@ -949,9 +514,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ## Updating Sessions
 
-To update a session's time, data, or bandwidth, use the [IClientSession](./client-session.md) setter methods followed by [Save](./client-session.md#save). The `Save()` method automatically applies side effects for running sessions (timer reset, TC rule updates) and emits `EventSessionUpdated`.
-
-For detailed information about the `EventSessionUpdated` event, including when it fires and how to use it in plugins, see [EventSessionUpdated Deep Dive](#eventsessionupdated-deep-dive).
+To update a session's time, data, or bandwidth, use [`session.SetData()`](./client-session.md#setdata) followed by [`session.Save()`](./client-session.md#save). The `Save()` method automatically applies side effects for running sessions (timer reset, TC rule updates) and emits `EventSessionChanged`.
 
 ### Update Remaining Time
 
@@ -963,8 +526,8 @@ if err != nil {
 
 // Set new total time = desired remaining + already consumed
 newTimeSecs := remainingSecs + session.ConsumedTimeSecs()
-session.SetTimeSecs(newTimeSecs)
-err = session.Save(r.Context())
+session.SetData(sdkapi.SessionUpdateData{TimeSecs: sdkutils.IntPtr(newTimeSecs)})
+err = session.Save(r.Context(), nil)
 ```
 
 ### Update Remaining Data
@@ -977,8 +540,8 @@ if err != nil {
 
 // Set new total data = desired remaining + already consumed
 newDataMb := remainingMb + session.ConsumedDataMb()
-session.SetDataMb(newDataMb)
-err = session.Save(r.Context())
+session.SetData(sdkapi.SessionUpdateData{DataMb: sdkutils.Float64Ptr(newDataMb)})
+err = session.Save(r.Context(), nil)
 ```
 
 ### Update Bandwidth
@@ -989,8 +552,10 @@ if err != nil {
     // handle error
 }
 
-session.SetDownMbits(10) // 10 Mbps download
-session.SetUpMbits(5)    // 5 Mbps upload
-session.SetUseGlobalSpeed(false)
-err = session.Save(r.Context())
+session.SetData(sdkapi.SessionUpdateData{
+    DownMbits:      sdkutils.IntPtr(10),
+    UpMbits:        sdkutils.IntPtr(5),
+    UseGlobalSpeed: sdkutils.BoolPtr(false),
+})
+err = session.Save(r.Context(), nil)
 ```

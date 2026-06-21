@@ -20,27 +20,6 @@ const (
 	SessionTypeTimeOrData SessionType = "time-or-data"
 )
 
-// EventClientMergeData carries the context of a device-merge event.
-type EventClientMergeData struct {
-	// Target is the device that was kept after the merge. All sessions, purchases,
-	// fingerprints, and wallet balance from the source device have been transferred to it.
-	Target IClientDevice
-
-	// SourceDeviceID is the database ID of the device that was deleted during the merge.
-	// The source device no longer exists in the database when callbacks are invoked.
-	SourceDeviceID int64
-
-	// SourceDeviceUUID is the local UUID of the device that was deleted during the merge.
-	// Captured before deletion so plugins can notify external systems (e.g. cloud sync).
-	SourceDeviceUUID string
-}
-
-// SessionEventData represents the data associated with a session event.
-type SessionEventData struct {
-	Session       IClientSession
-	ChangedFields SessionChangedFields // Which fields changed (only set for EventSessionChanged)
-}
-
 // ClientSessionSummary represents a summary of a client's session.
 type ClientSessionSummary struct {
 	RemainingTimeSecs int
@@ -204,16 +183,6 @@ type ISessionsMgrApi interface {
 	// and want to use SDK methods like Update(), Emit(), and Subscribe(). The params parameter
 	// contains all device fields from the database row.
 	NewClientDevice(params NewDeviceParams) IClientDevice
-
-	// OnSessionEvent registers a callback for session events.
-	//
-	// Deprecated: Use api.Events().OnSessionEvent(...) instead.
-	OnSessionEvent(event SessionEvent, callback func(ctx context.Context, data SessionEventData) error)
-
-	// OnClientEvent registers a callback for client device events.
-	//
-	// Deprecated: Use api.Events().OnClientEvent(...) instead.
-	OnClientEvent(event ClientEvent, callback func(ctx context.Context, clnt IClientDevice) error)
 
 	// ListSessions returns a paginated list of sessions with optional search and filters.
 	// Search matches against session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code.

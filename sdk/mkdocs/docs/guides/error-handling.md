@@ -20,7 +20,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ## Flash Message
 
-To show error message as flash message, we will use the [IHttpResponse.FlashMsg](../api/http-response.md#flashmsg) method:
+To show error message as flash message, we will use the [IHttpResponse.FlashMsg](../api/http-response.md#flashmsg) method. After showing the message, redirect the user with [IHttpResponse.Redirect](../api/http-response.md#redirect):
 
 ```go
 // handler
@@ -76,7 +76,7 @@ templ MyForm(api sdkapi.IPluginApi, formErrors sdkapi.FormErrors) {
 }
 ```
 
-When form validation fails, redirect back to the form with errors preserved:
+When form validation fails, use [IHttpFormsApi.ParseForm](../api/http-forms-api.md#parseform) to validate and redirect back to the form with errors preserved:
 
 ```go
 // handler for form submission
@@ -91,3 +91,12 @@ func (w http.ResponseWriter, r *http.Request) {
     // Process valid form data...
 }
 ```
+
+---
+
+## Related
+
+- [IHttpResponse](../api/http-response.md) — `Error`, `FlashMsg`, and `Redirect` methods
+- [IHttpFormsApi](../api/http-forms-api.md) — `Errors` and `ParseForm` for form validation
+- [Form Submission](./form-submission.md) — Complete guide for building and handling forms
+- [Form Validator](./defining-form-validator.md) — Defining validation rules with `FormValidator`

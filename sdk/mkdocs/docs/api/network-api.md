@@ -154,5 +154,4 @@ api.Network().OnReady(func() {
 
 - [INetworkDevice](./network-device.md) - Represents a network device
 - [INetworkInterface](./network-interface.md) - Represents a network interface
-- [ITrafficApi](./network-traffic.md) - Provides network traffic monitoring</content>
-<parameter name="filePath">/Users/adonesp/Projects/flarehotspot/sdk/mkdocs/docs/api/network-api.md
+- [ITrafficApi](./network-traffic.md) - Provides network traffic monitoring

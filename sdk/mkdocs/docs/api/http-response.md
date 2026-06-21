@@ -177,6 +177,37 @@ templ WelcomePage(name string) {
 The SDK runtime will automatically detect the new file and watch for changes. It will then generate
 a file called `resources/views/welcome_templ.go` that can be imported and used in rendering [portal views](#portalview) and [admin views](#adminview).
 
+## ViewPage
+
+The `ViewPage` struct is passed to `PortalView`, `AdminView`, and `View` to configure the rendered page:
+
+```go
+type ViewPage struct {
+    Assets        ViewAssets
+    PageContent   templ.Component
+    PreserveFlash bool // If true, flash cookies are not consumed (for intermediate redirect pages)
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Assets` | `ViewAssets` | Optional CSS/JS assets to include from the assets manifest |
+| `PageContent` | `templ.Component` | The templ component to render as the page body |
+| `PreserveFlash` | `bool` | If `true`, flash messages are kept for the next response instead of being consumed immediately. Useful for intermediate redirect pages. |
+
+### ViewAssets
+
+```go
+type ViewAssets struct {
+    JsFile  string
+    CssFile string
+}
+```
+
+Specifies the manifest index keys for the JS and CSS files to include with the view. See [Assets Manifest](./assets-manifest.md) for how to register assets.
+
+---
+
 ## View Assets
 
 To add assets to a [view template](#template-parsing), you need to register your assets first in the portal or admin [assets manifest](./assets-manifest.md).

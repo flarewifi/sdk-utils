@@ -258,3 +258,12 @@ func (w http.ResponseWriter, r *http.Request) {
     // ...
 }
 ```
+
+---
+
+## Related
+
+- [IHttpRouterApi](../api/http-router-api.md) — Router methods: `PluginRouter`, `AdminRouter`, `UrlForRoute`, `UrlForPkgRoute`
+- [IHttpNavsApi](../api/http-navs-api.md) — `PortalNavsFactory` and `AdminNavsFactory` for registering menu items
+- [IHttpApi](../api/http-api.md) — `MuxVars` for extracting URL path parameters
+- [IHttpResponse](../api/http-response.md) — `PortalView` and `AdminView` for rendering views inside route handlers

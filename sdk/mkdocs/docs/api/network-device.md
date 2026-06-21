@@ -165,5 +165,4 @@ for _, device := range devices {
     }
     fmt.Println()
 }
-```</content>
-<parameter name="filePath">/Users/adonesp/Projects/flarehotspot/sdk/mkdocs/docs/api/network-device.md
+```

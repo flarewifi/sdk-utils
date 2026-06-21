@@ -6,14 +6,14 @@ See [Form Submission](./form-submission.md) for a complete usage example.
 
 ## Types
 
-### FormWithValidator
+### FormValidator
 
-The `FormWithValidator` struct defines the validation rules for a form.
+The `FormValidator` struct defines the validation rules for a form. Pass it to [`IHttpFormsApi.ParseForm`](../api/http-forms-api.md#parseform) to validate a form submission.
 
 ```go
-type FormWithValidator struct {
-    FormName       string  
-    FormValidators []FormValidator 
+type FormValidator struct {
+    Name       string
+    Validators []FormFieldValidator
 }
 ```
 
@@ -21,20 +21,20 @@ type FormWithValidator struct {
 
 | Property | Description |
 | ---- | ----|
-| `FormName` | The unique name of the form. This must match the form name used in [Errors](../api/http-forms-api.md#errors). |
-| `FormValidators` | A collection of [FormValidator](#formvalidator) defining validation rules for each field in the form. |
+| `Name` | The unique name of the form. This must match the form name used in [Errors](../api/http-forms-api.md#errors). |
+| `Validators` | A slice of [FormFieldValidator](#formfieldvalidator) defining validation rules for each field. |
 
 ---
 
-### FormValidator
+### FormFieldValidator
 
-The `FormValidator` struct defines validation rules for a single form field.
+The `FormFieldValidator` struct defines validation rules for a single form field.
 
 ```go
-type FormValidator struct {
-    FieldName  string  
-    FieldLabel string  
-    FieldType  string  
+type FormFieldValidator struct {
+    FieldName  string
+    FieldLabel string
+    FieldType  FormFieldType
     FieldRules FormFieldRules
 }
 ```
@@ -45,7 +45,7 @@ type FormValidator struct {
 | ---- | ----|
 | `FieldName` | The unique name of the form field. This must match the `name` attribute in your HTML input. |
 | `FieldLabel` | The label for the field. Used in validation error messages. |
-| `FieldType` | The type of the field. Refer to [Field Types](../api/http-forms-api.md#field-types) for the available types. |
+| `FieldType` | The type of the field. See [Field Types](../api/http-forms-api.md#field-types) for available values. |
 | `FieldRules` | The validation rules for the field. See [FormFieldRules](#formfieldrules). |
 
 ---
@@ -70,23 +70,26 @@ type FormFieldRules struct {
 | Property | Description |
 | ---- | ----|
 | `Required` | Indicates if the field is required. |
-| `Minimum` | Minimum allowed value or minimum number of characters for string values. |
-| `Maximum` | Maximum allowed value or maximum number of characters for string values. |
+| `Email` | Indicates if the field must be a valid email address. |
+| `Number` | Indicates if the field must be numeric. |
+| `Minimum` | Minimum value for numbers, or minimum character length for strings. |
+| `Maximum` | Maximum value for numbers, or maximum character length for strings. |
+| `FileExt` | Allowed file extensions for file inputs, comma-separated (e.g. `"jpg,png,gif"`). |
 
 ---
 
 ## Usage Example
 
-Here's a complete example of defining and using form validators:
+Here is a complete example of defining and using form validators:
 
 ```go
 func saveUserSettings(w http.ResponseWriter, r *http.Request) {
     formsAPI := api.Http().Forms()
-    
+
     // Define validation rules
-    formValidator := sdkapi.FormWithValidator{
-        FormName: "user-settings",
-        FormValidators: []sdkapi.FormValidator{
+    formValidator := sdkapi.FormValidator{
+        Name: "user-settings",
+        Validators: []sdkapi.FormFieldValidator{
             {
                 FieldName:  "username",
                 FieldLabel: "Username",
@@ -120,20 +123,24 @@ func saveUserSettings(w http.ResponseWriter, r *http.Request) {
             },
         },
     }
-    
+
     // Validate the form
-    err := formsAPI.ParseFormWithValidator(w, r, formValidator)
+    formValues, err := formsAPI.ParseForm(w, r, formValidator)
     if err != nil {
         // Validation failed - redirect back to form
         api.Http().Response().Redirect(w, r, "user.settings")
         return
     }
-    
+
     // Validation passed - get form values
-    username := r.FormValue("username")
-    email := r.FormValue("email")
-    age := r.FormValue("age")
-    
+    username, _ := formValues.GetStringValue("username")
+    email, _ := formValues.GetStringValue("email")
+    age, _ := formValues.GetIntValue("age")
+
+    _ = username
+    _ = email
+    _ = age
+
     // Process the validated data...
 }
 ```
@@ -142,6 +149,3 @@ For more information, see:
 - [IHttpFormsApi](../api/http-forms-api.md) - Complete API reference
 - [Form Submission](./form-submission.md) - Complete guide with HTML form examples
 - [Field Types](../api/http-forms-api.md#field-types) - Available field types for validation
-
-
-
