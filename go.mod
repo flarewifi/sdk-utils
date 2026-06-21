@@ -1,4 +1,4 @@
-module github.com/flarehotspot/sdk-utils
+module github.com/flarewifi/sdk-utils
 
 go 1.19
 
