@@ -28,7 +28,6 @@ type CreatePurchaseParams struct {
 	AnyPrice       bool
 	CallbackPlugin string
 	CallbackRoute  string
-	WebHookRoute   string
 	Metadata       map[string]string
 	Processing     bool
 	PaymentUrl     string
@@ -74,7 +73,6 @@ func (self *PurchaseModel) Create(ctx context.Context, params CreatePurchasePara
 		AnyPrice:       params.AnyPrice,
 		CallbackPlugin: params.CallbackPlugin,
 		CallbackRoute:  params.CallbackRoute,
-		WebhookRoute:   params.WebHookRoute,
 		Metadata:       string(b),
 		Processing:     params.Processing,
 		PaymentUrl:     params.PaymentUrl,

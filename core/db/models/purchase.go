@@ -31,7 +31,6 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 		purchase.anyPrice = p.AnyPrice
 		purchase.callbackPluginPkg = p.CallbackPlugin
 		purchase.callbackRoute = p.CallbackRoute
-		purchase.webhookRoute = p.WebhookRoute
 		purchase.processing = p.Processing
 		purchase.paymentUrl = p.PaymentUrl
 
@@ -81,7 +80,6 @@ type Purchase struct {
 	anyPrice          bool
 	callbackPluginPkg string
 	callbackRoute     string
-	webhookRoute      string
 	metadata          map[string]string
 	walletDebit       float64
 	walletTxId        *int64
@@ -158,10 +156,6 @@ func (self *Purchase) CallbackPluginPkg() string {
 
 func (self *Purchase) CallbackRoute() string {
 	return self.callbackRoute
-}
-
-func (self *Purchase) WebHookRoute() string {
-	return self.webhookRoute
 }
 
 func (self *Purchase) Metadata() map[string]string {

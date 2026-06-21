@@ -63,7 +63,7 @@ type IPaymentsApi interface {
 	// The purchase token is passed as a query parameter "token" (?token=<jwt>).
 	// It verifies the JWT token signed with application secret,
 	// extracts the purchase UUID and device ID from claims, and returns the purchase request.
-	// This method handles both callback requests (GET) and webhook requests (POST).
+	// This method handles the browser callback request (GET) after payment.
 	// Token expires after 5 minutes for security.
 	// Returns the purchase request if successful, or an error if validation fails.
 	ExtractPurchaseData(r *http.Request) (IPurchaseRequest, error)
@@ -73,11 +73,10 @@ type IPaymentsApi interface {
 	// DeviceID can be nil for admin purchases.
 	CreatePurchase(ctx context.Context, params CreatePurchaseParams) (IPurchaseRequest, error)
 
-	// HandlePurchaseExecute registers an in-process handler invoked when a
-	// payment provider calls IPurchaseRequest.Execute() for a purchase whose
-	// WebHookRoute matches `route` and whose callback plugin is this plugin.
-	// It replaces the former POST webhook route: register the handler instead
-	// of mounting an HTTP endpoint. The `route` string is used purely as the
-	// dispatch key and no longer needs to be a registered HTTP route.
-	HandlePurchaseExecute(route string, handler PurchaseExecuteHandler)
+	// HandlePurchaseExecute registers this plugin's in-process handler, invoked
+	// when a payment provider calls IPurchaseRequest.Execute() for any purchase
+	// whose callback plugin is this plugin. A plugin has a single execute handler
+	// — branch on purchase.Sku()/Metadata() inside it to fulfil different purchase
+	// types. The last registration wins.
+	HandlePurchaseExecute(handler PurchaseExecuteHandler)
 }

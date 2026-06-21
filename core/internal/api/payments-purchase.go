@@ -38,10 +38,6 @@ func (self *Purchase) Sku() string {
 	return self.purchase.Sku()
 }
 
-func (self *Purchase) WebHookRoute() string {
-	return self.purchase.WebHookRoute()
-}
-
 func (self *Purchase) Name() string {
 	return self.purchase.Name()
 }
@@ -184,11 +180,10 @@ func (self *Purchase) State(ctx context.Context) (sdkapi.PurchasePaymentData, er
 }
 
 // Execute dispatches the purchase to the callback plugin's registered
-// PurchaseExecuteHandler in-process. This replaces the former loopback HTTP
-// "webhook" POST: the handler runs synchronously in the caller's goroutine, so
-// there is no second HTTP request, JWT round-trip, TLS, or extra DB connection
-// involved — which removes the cross-goroutine contention on the single SQLite
-// connection that the HTTP design was prone to.
+// PurchaseExecuteHandler in-process. The handler runs synchronously in the
+// caller's goroutine, so there is no HTTP request, JWT round-trip, TLS, or extra
+// DB connection involved — avoiding cross-goroutine contention on the single
+// SQLite connection.
 func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) error {
 	pmgr := self.api.PluginsMgr()
 	callbackPkg := self.purchase.CallbackPluginPkg()
@@ -198,14 +193,7 @@ func (self *Purchase) Execute(ctx context.Context, params sdkapi.ExecuteParams) 
 		return err
 	}
 
-	route := self.purchase.WebHookRoute()
-	if route == "" {
-		err := errors.New("WebHookRoute is not configured for this purchase")
-		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())
-		return err
-	}
-
-	handler, ok := self.api.PaymentsAPI.paymentsMgr.findExecuteHandler(callbackPkg, route)
+	handler, ok := self.api.PaymentsAPI.paymentsMgr.findExecuteHandler(callbackPkg)
 	if !ok {
 		err := errors.New("No payment handler is registered to receive the payment")
 		self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseFailed, err.Error())

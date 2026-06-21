@@ -54,7 +54,6 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 				AnyPrice:       p.AnyPrice,
 				CallbackPlugin: self.api.Info().Package,
 				CallbackRoute:  p.CallbackRoute,
-				WebHookRoute:   p.WebHookRoute,
 				Metadata:       p.Metadata,
 				Processing:     p.Processing,
 				PaymentUrl:     p.PaymentUrl,
@@ -165,11 +164,10 @@ func (self *PaymentsApi) OnPurchaseEvent(event sdkapi.PurchaseEvent, callback fu
 }
 
 // HandlePurchaseExecute registers the in-process handler invoked when a payment
-// provider calls Purchase.Execute() for a purchase whose callback plugin is this
-// plugin and whose WebHookRoute matches `route`. It replaces the loopback HTTP
-// webhook.
-func (self *PaymentsApi) HandlePurchaseExecute(route string, handler sdkapi.PurchaseExecuteHandler) {
-	self.paymentsMgr.registerExecuteHandler(self.api.Info().Package, route, handler)
+// provider calls Purchase.Execute() for any purchase whose callback plugin is
+// this plugin.
+func (self *PaymentsApi) HandlePurchaseExecute(handler sdkapi.PurchaseExecuteHandler) {
+	self.paymentsMgr.registerExecuteHandler(self.api.Info().Package, handler)
 }
 
 // CreatePurchase creates a purchase record programmatically without HTTP checkout flow.
@@ -186,7 +184,6 @@ func (self *PaymentsApi) CreatePurchase(ctx context.Context, params sdkapi.Creat
 		AnyPrice:       false,
 		CallbackPlugin: self.api.Info().Package,
 		CallbackRoute:  "",
-		WebHookRoute:   "",
 		Metadata:       params.Metadata,
 		Processing:     false,
 		PaymentUrl:     "",
