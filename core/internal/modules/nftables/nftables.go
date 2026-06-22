@@ -24,7 +24,12 @@ const (
 	connMacMap       string = "connected_macs_map"
 	connIpMap        string = "connected_ips_map"
 	connIp6Map       string = "connected_ips6_map"
-	connMacSet       string = "connected_macs_set"
+	connMacSet          string = "connected_macs_set"
+	whitelistMacSet     string = "whitelist_macs"
+	whitelistIpsV4Set   string = "whitelist_client_ips_v4"
+	whitelistIpsV6Set   string = "whitelist_client_ips_v6"
+	whitelistForward    string = "whitelist_forward"
+	whitelistPrerouting string = "whitelist_prerouting"
 )
 
 var (
@@ -91,9 +96,31 @@ func Setup() (err error) {
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIp6Map))
 	// Service port jumps will be appended after this rule for unauthenticated clients.
 
+	// Whitelist sets and chains (used by the whitelist plugin for MAC-based bypass)
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ether_addr; }\n", tableFamily, internetTable, whitelistMacSet))
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv4_addr; flags timeout; }\n", tableFamily, internetTable, whitelistIpsV4Set))
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv6_addr; flags timeout; }\n", tableFamily, internetTable, whitelistIpsV6Set))
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, whitelistForward))
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, whitelistPrerouting))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistMacSet))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistIpsV4Set))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistIpsV6Set))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, whitelistPrerouting, whitelistMacSet))
+
 	// Execute batch command using nft -f - with heredoc for atomic execution
 	nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
 	err = cmd.Exec(nftCmd, nil)
+	if err != nil {
+		return err
+	}
+
+	// Jump rules added after batch — append whitelist_forward (after verdict maps),
+	// insert whitelist_prerouting (before captive portal DNAT).
+	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s counter jump %s", tableFamily, internetTable, forwardChain, whitelistForward), nil)
+	if err != nil {
+		return err
+	}
+	err = cmd.Exec(fmt.Sprintf("nft insert rule %s %s %s counter jump %s", tableFamily, internetTable, preroutingChain, whitelistPrerouting), nil)
 	if err != nil {
 		return err
 	}
@@ -293,6 +320,52 @@ func doConnect(ip string, mac string) error {
 	nftMu.Unlock()
 
 	return nil
+}
+
+func AllowMAC(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Allow MAC (Whitelist)",
+		contextInfo,
+		func() (any, error) {
+			return nil, doAllowMAC(mac)
+		},
+	)
+	return err
+}
+
+func BlockMAC(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Block MAC (Whitelist)",
+		contextInfo,
+		func() (any, error) {
+			return nil, doBlockMAC(mac)
+		},
+	)
+	return err
+}
+
+func doAllowMAC(mac string) error {
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		return fmt.Errorf("invalid MAC address: %v", err)
+	}
+
+	return cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, whitelistMacSet, normalizedMAC), nil)
+}
+
+func doBlockMAC(mac string) error {
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		return fmt.Errorf("invalid MAC address: %v", err)
+	}
+
+	return cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, whitelistMacSet, normalizedMAC), nil)
 }
 
 func doDisconnect(ip string, mac string) error {

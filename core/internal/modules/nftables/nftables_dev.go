@@ -30,6 +30,8 @@ var (
 	nftQue = jobque.NewJobQueue[any]()
 	// connTable tracks connected MACs (MAC → true).
 	connTable = map[string]bool{}
+	// whitelistTable tracks whitelisted MACs (MAC → true).
+	whitelistTable = map[string]bool{}
 
 	// ipToMac maps connected IP address (IPv4 or IPv6) → uppercase normalized MAC.
 	// Populated on Connect, evicted on Disconnect.
@@ -184,6 +186,44 @@ func doConnect(ip string, mac string) error {
 	nftMu.Unlock()
 
 	return nil
+}
+
+func AllowMAC(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Allow MAC (Whitelist)",
+		contextInfo,
+		func() (any, error) {
+			normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+			if err != nil {
+				return nil, fmt.Errorf("invalid MAC address: %v", err)
+			}
+			whitelistTable[normalizedMAC] = true
+			return nil, nil
+		},
+	)
+	return err
+}
+
+func BlockMAC(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Block MAC (Whitelist)",
+		contextInfo,
+		func() (any, error) {
+			normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+			if err != nil {
+				return nil, fmt.Errorf("invalid MAC address: %v", err)
+			}
+			delete(whitelistTable, normalizedMAC)
+			return nil, nil
+		},
+	)
+	return err
 }
 
 func doDisconnect(ip string, mac string) error {
