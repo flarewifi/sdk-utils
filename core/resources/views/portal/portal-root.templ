@@ -23,7 +23,11 @@ templ PortalRootPage(api sdkapi.IPluginApi, lanIP string, redirectPath string) {
 			// Relative redirect keeps the client on the current origin — the portal
 			// hostname served over HTTPS — instead of a hardcoded http:// URL that
 			// would point at the HTTPS port over plain HTTP.
-			window.location.href = redirectPath || '/portal/redirect';
+			// Use replace(), not href=: this redirect fires on load with no user
+			// interaction, so href= would PUSH a history entry and trip Chrome's
+			// "history manipulation intervention" (and trap the back button on this
+			// transient page). replace() swaps the current entry instead.
+			window.location.replace(redirectPath || '/portal/redirect');
 		})();
 		</script>
 	</body>

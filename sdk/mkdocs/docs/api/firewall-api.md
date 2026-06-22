@@ -1,6 +1,19 @@
 # IFirewallAPI
 
-The `IFirewallAPI` provides methods to manage firewall rules for client devices in the Flarewifi system. It allows you to control network access using Destination IP Groups, which provide efficient firewall management for services with multiple IPs.
+The `IFirewallAPI` lets plugins control which client devices can reach the network, and what they can reach, on a machine running behind a captive portal. By default the portal blocks every unauthenticated device; this API is how a plugin opens, scopes, or denies that access.
+
+It is backed by **nftables** (the `inet internet` table) and is built for the constraints of an OpenWRT router: rules use hash-set lookups instead of per-packet connection tracking, so opening access for thousands of clients stays cheap and low-latency. All operations are serialized internally, so the API is safe to call concurrently from multiple handlers.
+
+It groups into three capabilities, smallest scope first:
+
+- **Destination IP Groups** — allow a set of clients to reach a *specific set of destination IPs* (e.g. a payment provider or a portal host), and nothing else. Create the group once, then add/remove clients (optionally with an auto-expiry timeout). Best for scoped, pre-auth access to known services. See [Destination IP Groups](#destination-ip-groups).
+- **Service Ports** — allow clients to reach a *protocol + port* (e.g. UDP/123 NTP, TCP+UDP/53 DNS), optionally restricted to given destination IPs. Best for the handful of services a device needs *before* it authenticates. See [Service Port Management](#service-port-management).
+- **MAC Access Control** — grant or deny a device *full* internet by MAC: `AllowMAC`/`DisallowMAC` whitelist a device past the portal, while `BlockMAC`/`UnblockMAC` are an absolute deny that overrides even an active paid session. See [MAC Access Control](#mac-access-control).
+
+Rules created through this API live in nftables only and are **wiped on reboot** (and on firewall reset) — the plugin owns persistence and must re-apply what it granted on startup (e.g. in `Init()` / `OnReady`).
+
+!!! danger "Do not manage WiFi sessions with this API"
+    `IFirewallAPI` works at the packet level — it opens and closes raw network access. It does **not** create, track, time, account for, pause/resume, or expire client **sessions**. For anything session-related use [`ISessionsMgrApi`](./sessions-mgr-api.md) (via `api.SessionsMgr()`), which owns the session lifecycle (time/data limits, vouchers, pause/resume, expiry) **and drives the firewall for you**. Reaching for `AllowMAC`/`BlockMAC` to grant timed internet bypasses session accounting and desyncs the portal — use `IFirewallAPI` only for access *outside* a session (scoped service access, pre-auth ports, whitelist bypass, hard blocks).
 
 To get an instance of `IFirewallAPI`:
 
@@ -518,13 +531,19 @@ func PreAuthMiddleware(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
 }
 ```
 
-## MAC Whitelist
+## MAC Access Control
 
-The MAC whitelist methods allow plugins to bypass the captive portal for specific devices by MAC address. These are ephemeral — the firewall rule exists only until the next reboot or `BlockMAC` call. The plugin is responsible for persisting the whitelist and re-applying it on startup.
+These methods control a device's internet access by MAC address. They form two
+independent pairs:
+
+- **Whitelist (allow / revoke):** `AllowMAC` ↔ `DisallowMAC` — bypass the captive portal so a device gets internet without a session.
+- **Hard block (deny / undo):** `BlockMAC` ↔ `UnblockMAC` — an absolute deny that overrides everything, including an active session or a whitelist entry.
+
+The pairs are independent: `DisallowMAC` only undoes an `AllowMAC` grant (a device that still has an active session keeps internet), while `BlockMAC` drops traffic *before* the session and whitelist accepts are evaluated, so it wins regardless of state. **Lift a block with `UnblockMAC`, not `DisallowMAC`** (and vice-versa). All four are ephemeral — they exist only until reboot, so persist state and re-apply it on startup.
 
 ### AllowMAC
 
-Opens the firewall for a MAC address, bypassing the captive portal. Handles outbound traffic (upload) and captive portal DNAT bypass. For return traffic (download), the plugin must also manage client IP sets separately.
+Opens the firewall for a MAC address, bypassing the captive portal. Grants working **bidirectional** internet on its own: it resolves the device's current IP from the machine's DHCP/ARP/NDP tables, registers it for return traffic, and keeps it in sync as the IP changes (via the connect hook and a periodic reconcile). The caller does not manage IP sets.
 
 **Parameters:**
 - `mac` (string) - MAC address to allow (any common format, will be normalized)
@@ -533,7 +552,7 @@ Opens the firewall for a MAC address, bypassing the captive portal. Handles outb
 - `error` - Error if MAC format is invalid
 
 ```go
-// Allow a device to bypass captive portal
+// Allow a device to bypass the captive portal
 err := api.Firewall().AllowMAC("aa:bb:cc:dd:ee:ff")
 if err != nil {
     api.Logger().Error("Failed to allow MAC: " + err.Error())
@@ -544,11 +563,35 @@ if err != nil {
 - Idempotent — calling twice for the same MAC is safe
 - MAC is validated and normalized to uppercase before applying
 - Does NOT persist across reboots — caller must re-apply on startup
-- Only handles MAC-based rules (outbound + portal bypass); return traffic requires separate IP management
+- Handles both upload and return traffic internally — no separate IP management needed
+- Independent of sessions: access persists until `DisallowMAC` (or until `BlockMAC` overrides it)
+
+### DisallowMAC
+
+Revokes an `AllowMAC` grant: removes the MAC from the whitelist bypass and clears the return-traffic IPs tracked for it. It is **not** a block — if the device still has an active session it keeps internet through the session path.
+
+**Parameters:**
+- `mac` (string) - MAC address to revoke (any common format, will be normalized)
+
+**Returns:**
+- `error` - Error if MAC format is invalid
+
+```go
+// Revoke a previously granted whitelist bypass
+err := api.Firewall().DisallowMAC("aa:bb:cc:dd:ee:ff")
+if err != nil {
+    api.Logger().Error("Failed to disallow MAC: " + err.Error())
+}
+```
+
+**Notes:**
+- Idempotent — calling for a non-whitelisted MAC is safe (no error)
+- Clears the return-traffic IPs core tracked for the MAC
+- Does NOT block the device — use `BlockMAC` for an absolute deny
 
 ### BlockMAC
 
-Closes the firewall for a previously allowed MAC address.
+Absolutely denies internet access to a MAC, **regardless of whether the device has an active session or is whitelisted**. The deny is evaluated at the top of the forward chain, above every accept rule, so it always wins. In-flight connections are cut immediately (conntrack is flushed). Reverse with `UnblockMAC`.
 
 **Parameters:**
 - `mac` (string) - MAC address to block (any common format, will be normalized)
@@ -557,7 +600,7 @@ Closes the firewall for a previously allowed MAC address.
 - `error` - Error if MAC format is invalid
 
 ```go
-// Block a previously whitelisted device
+// Hard-block a device even if it has a paid session or is whitelisted
 err := api.Firewall().BlockMAC("aa:bb:cc:dd:ee:ff")
 if err != nil {
     api.Logger().Error("Failed to block MAC: " + err.Error())
@@ -565,9 +608,34 @@ if err != nil {
 ```
 
 **Notes:**
-- Idempotent — calling for a non-whitelisted MAC is safe (no error)
-- Does NOT flush associated client IPs — the caller is responsible for cleaning up IP-based return traffic rules
-- MAC is validated and normalized to uppercase before applying
+- Overrides BOTH the session accept and the whitelist accept — an absolute deny
+- The upload deny is keyed on the MAC, so the block survives the device changing IP
+- Cuts existing connections immediately (flushes conntrack for the device's IPs)
+- Idempotent; MAC is validated and normalized to uppercase
+- Does NOT persist across reboots — re-apply on startup if the block must survive a restart
+
+### UnblockMAC
+
+Removes a `BlockMAC` hard block, restoring whatever access the device would otherwise have (an active session and/or a whitelist entry). It grants no access on its own.
+
+**Parameters:**
+- `mac` (string) - MAC address to unblock (any common format, will be normalized)
+
+**Returns:**
+- `error` - Error if MAC format is invalid
+
+```go
+// Lift a hard block
+err := api.Firewall().UnblockMAC("aa:bb:cc:dd:ee:ff")
+if err != nil {
+    api.Logger().Error("Failed to unblock MAC: " + err.Error())
+}
+```
+
+**Notes:**
+- Idempotent — calling for a non-blocked MAC is safe (no error)
+- Removes the upload deny and the download IP denies added at block time
+- Grants nothing by itself — the device regains access only via its session/whitelist
 
 ## Common Use Cases
 
@@ -740,6 +808,19 @@ When you create a destination IP group named "my-service", the following nftable
 - **Ports:** All ports are opened (no port restrictions)
 - **IP Support:** Both IPv4 and IPv6 are supported
 
+### MAC Access Control Precedence
+
+The `forward` chain evaluates rules top-down, first terminal verdict wins. MAC
+access-control rules sit in this order, which is why a hard block always beats a
+grant:
+
+1. **Hard block (drop)** — `blocked_macs` (by source MAC) and `blocked_client_ips_v4/v6` (by destination IP). `BlockMAC` fills these.
+2. **Session accept** — `connected_macs_map` / `connected_ips_map` (set by the session manager).
+3. **Whitelist accept** — `whitelist_macs` / `whitelist_client_ips_v4/v6`. `AllowMAC` fills these.
+4. **Chain policy `drop`** — anything unmatched is blocked.
+
+Because the block rules are first, `BlockMAC` overrides both an active session and a whitelist grant; `AllowMAC` only takes effect when the device is not blocked.
+
 ## Error Handling
 
 ```go
@@ -796,4 +877,4 @@ if err != nil {
 
 - [IClientDevice](./client-device.md) - Represents a client device
 - [ILoggerApi](./logger-api.md) - For logging firewall operations
-- [ISessionsMgrApi](./sessions-mgr-api.md) - For managing client sessions
+- [ISessionsMgrApi](./sessions-mgr-api.md) - **The** API for client WiFi sessions (lifecycle, limits, vouchers, pause/resume) — use it instead of `IFirewallAPI` whenever a session is involved

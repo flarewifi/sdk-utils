@@ -15,10 +15,10 @@ type PluginInfo struct {
 	// PreInstall and PostInstall are optional shell scripts the plugin ships to
 	// run install-time routines (e.g. pip-installing libraries not in the opkg
 	// feed). Paths are relative to the plugin root. PreInstall runs after the
-	// system_packages are installed but before the plugin files are copied into
-	// place; PostInstall runs once the plugin is fully installed. Scripts must
-	// guard their own environment (e.g. `command -v opkg || exit 0`) so they
-	// no-op safely outside the device.
+	// system_packages are installed but before the plugin's Init, so Init can
+	// rely on its setup; PostInstall runs after Init (and is skipped if Init
+	// fails). Scripts must guard their own environment (e.g.
+	// `command -v opkg || exit 0`) so they no-op safely outside the machine.
 	PreInstall  string `json:"preinstall"`
 	PostInstall string `json:"postinstall"`
 }

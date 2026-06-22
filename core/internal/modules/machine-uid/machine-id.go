@@ -15,10 +15,24 @@ import (
 
 const (
 	machineIDCacheFile = "/etc/.mid"
+	osReleaseFile      = "/etc/os_release.json"
 
 	// readableAlphabet excludes ambiguous chars: 0/O, 1/I/l
 	readableAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 )
+
+// onboardNICOnlyDevices maps SBC device models (matched against DeviceModel in
+// /etc/os_release.json) to the single onboard NIC whose MAC is stable. These
+// boards reach their extra ethernet ports through hot-pluggable USB dongles
+// (e.g. orangepi-one/-pc run the LAN bridge on a USB eth1, while the onboard
+// Allwinner EMAC stays eth0), so hashing every MAC would make the machine ID
+// flip whenever a dongle is swapped or re-enumerated. For these boards the ID is
+// derived from the CPU serial plus only the onboard interface. Devices absent
+// from this map keep the legacy all-MACs behavior, preserving existing IDs.
+var onboardNICOnlyDevices = map[string]string{
+	"orangepi-one": "eth0",
+	"orangepi-pc":  "eth0",
+}
 
 var (
 	mu         sync.Mutex
@@ -59,9 +73,19 @@ func calculateMachineUID() string {
 		identifiers = append(identifiers, serial)
 	}
 
-	// Get all physical network interface MACs (excludes docker, virbr, veth, etc.)
-	allMACs := readAllNetworkMACs()
-	identifiers = append(identifiers, allMACs...)
+	// SBCs (e.g. orangepi-one) reach their extra ethernet ports through
+	// hot-pluggable USB dongles, so the full set of MACs is not stable. For
+	// those boards trust only the onboard NIC; every other device keeps hashing
+	// all physical MACs (legacy behavior, preserves existing machine IDs).
+	if iface := onboardNICOnlyDevices[readDeviceModel()]; iface != "" {
+		if mac := readInterfaceMAC(iface); mac != "" {
+			identifiers = append(identifiers, mac)
+		}
+	} else {
+		// Get all physical network interface MACs (excludes docker, virbr, veth, etc.)
+		allMACs := readAllNetworkMACs()
+		identifiers = append(identifiers, allMACs...)
+	}
 
 	// If no identifiers at all, return empty string
 	if len(identifiers) == 0 {
@@ -164,6 +188,17 @@ func readInterfaceMAC(iface string) string {
 	}
 
 	return mac
+}
+
+// readDeviceModel returns the board's DeviceModel from /etc/os_release.json
+// (e.g. "orangepi-one"). Returns "" when the file is missing or unreadable, in
+// which case the caller falls back to the legacy all-MACs strategy.
+func readDeviceModel() string {
+	release, err := sdkutils.ReadOsRelease(osReleaseFile)
+	if err != nil {
+		return ""
+	}
+	return release.DeviceModel
 }
 
 // readCPUSerial reads the serial number from /proc/cpuinfo (common on ARM devices)

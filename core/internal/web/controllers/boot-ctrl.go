@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"core/internal/api"
@@ -11,8 +12,9 @@ import (
 )
 
 const (
-	BootURL       = "/boot"
-	BootStatusURL = "/boot/status"
+	BootURL         = "/boot"
+	BootStatusURL   = "/boot/status"
+	BootProgressURL = "/boot/progress"
 )
 
 func NewBootCtrl(g *api.CoreGlobals) BootCtrl {
@@ -43,15 +45,29 @@ func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := boot.BootPage(&boot.BootPageData{
-		StatusURL: BootStatusURL,
-		API:       ctrl.g.CoreAPI,
-		JsSrc:     jsSrc,
-		CssSrc:    cssSrc,
-		Status:    status,
+		StatusURL:   BootStatusURL,
+		ProgressURL: BootProgressURL,
+		API:         ctrl.g.CoreAPI,
+		JsSrc:       jsSrc,
+		CssSrc:      cssSrc,
+		Status:      status,
 	})
 
 	if err := page.Render(r.Context(), w); err != nil {
 		w.Write([]byte("\n\nTemplate Error:" + err.Error()))
+	}
+}
+
+// BootProgress returns the live boot timeline as JSON for the booting page to
+// poll. It is served only by the BootingRouter; once boot completes and the app
+// router takes over, the page redirects home (driven by BootStatusURL), so this
+// endpoint disappearing is harmless — the client tolerates a failed fetch.
+func (ctrl *BootCtrl) BootProgress(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+
+	if err := json.NewEncoder(w).Encode(ctrl.g.BootProgress.Snapshot()); err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
 	}
 }
 
@@ -60,7 +76,7 @@ func (ctrl *BootCtrl) Middleware(next http.Handler) http.Handler {
 		isAssetPath := helpers.IsAssetPath(r.URL.Path)
 
 		if r.Method == http.MethodGet && !isAssetPath {
-			if r.URL.Path != BootURL && r.URL.Path != BootStatusURL {
+			if r.URL.Path != BootURL && r.URL.Path != BootStatusURL && r.URL.Path != BootProgressURL {
 				http.Redirect(w, r, BootURL, http.StatusSeeOther)
 				return
 			}

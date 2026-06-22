@@ -6,7 +6,17 @@
 
 package sdkapi
 
-import sdkutils "github.com/flarewifi/sdk-utils"
+import (
+	"errors"
+	"net/http"
+
+	sdkutils "github.com/flarewifi/sdk-utils"
+)
+
+// ErrPaymentRequired is returned by InstallPlugin when a paid plugin is being
+// installed on a machine that is not purchased to it. Callers can detect it with
+// errors.Is to show a "purchase required" prompt instead of a generic failure.
+var ErrPaymentRequired = errors.New("payment required")
 
 // PluginInstallStage names a phase of a plugin install. An install moves through
 // these stages in order; only one terminal stage (Done or Failed) is reached.
@@ -64,6 +74,34 @@ type IPluginInstall interface {
 	Done() error
 }
 
+// PluginPurchaseInfo describes whether this machine may install a plugin and
+// at what price, as resolved by the cloud store. Used to gate installs and to
+// drive the store marketplace UI ("Free" / price / "Purchase required").
+type PluginPurchaseInfo struct {
+	Package              string
+	Purchased            bool // free OR already paid/covered for this machine
+	IsFree               bool
+	PricingType          string // "one_time" | "subscription"
+	SubscriptionInterval string // "monthly" | "yearly" (when subscription)
+	PriceUsdCents        int64
+	LocalCurrency        string // developer-chosen currency, if any
+	LocalPriceCents      int64
+	// Price resolved into the machine owner's own currency (buyer's country ->
+	// local price if it matches LocalCurrency, else USD). This is the amount the
+	// checkout will actually charge, so render this for the buyer rather than
+	// re-deriving from PriceUsdCents/LocalPriceCents. Empty/0 from an older cloud.
+	DisplayCurrency   string
+	DisplayPriceCents int64
+	ExpiresAt         int64  // unix seconds; 0 = none / perpetual
+	Reason            string // human-readable explanation when not purchased
+}
+
+// RequiresPayment reports whether install should be blocked pending purchase: a
+// paid plugin this machine is not purchased to.
+func (e PluginPurchaseInfo) RequiresPayment() bool {
+	return !e.IsFree && !e.Purchased
+}
+
 // IPluginsMgrApi is used to get data of installed plugins in the system.
 type IPluginsMgrApi interface {
 
@@ -91,11 +129,17 @@ type IPluginsMgrApi interface {
 	// member is installed (or adopted if already present) and a bundle record is
 	// saved. UninstallPlugin reverses this (it detects and removes meta bundles too).
 	//
-	// The install runs in the background. InstallPlugin returns immediately with a
-	// handle: range over handle.Progress() for stage events and call handle.Done()
-	// for the final result. Callers that only want the result can ignore Progress
-	// and call Done() directly (it blocks until the install finishes).
-	InstallPlugin(def sdkutils.PluginSrcDef) IPluginInstall
+	// For a store plugin, InstallPlugin validates payment up front: if the plugin
+	// is paid and this machine is not purchased to it, InstallPlugin returns
+	// (nil, ErrPaymentRequired) without starting an install. Use errors.Is(err,
+	// ErrPaymentRequired) to redirect the owner to checkout. (The cloud also
+	// withholds the download as an independent backstop.)
+	//
+	// Otherwise the install runs in the background and InstallPlugin returns a
+	// handle with a nil error: range over handle.Progress() for stage events and
+	// call handle.Done() for the final result. Callers that only want the result
+	// can ignore Progress and call Done() directly (it blocks until done).
+	InstallPlugin(def sdkutils.PluginSrcDef) (IPluginInstall, error)
 
 	// UninstallPlugin removes a plugin or meta bundle through a single entry point.
 	// A regular plugin is marked for removal on the next restart. A meta bundle is
@@ -123,4 +167,29 @@ type IPluginsMgrApi interface {
 	// where it came from and how it was installed (git / store / system /
 	// local). Returns (zero-value, false) if the package is not installed.
 	SourceDef(pkg string) (sdkutils.PluginSrcDef, bool)
+
+	// CheckPurchase asks the cloud store whether this machine may install the
+	// given plugin and at what price. Returns the resolved pricing/purchase so
+	// callers can gate installs and render store UI. The install path also enforces
+	// this independently (the cloud withholds the download for unpurchased paid
+	// plugins), so this is for UX, not the only gate.
+	CheckPurchase(pkg string) (PluginPurchaseInfo, error)
+
+	// GetPurchaseURL builds the cloud checkout URL for purchasing pkg. After the
+	// machine owner pays, the cloud redirects the browser back to callbackRouteName
+	// — a route registered by the CALLING plugin on this machine — where the plugin
+	// should call InstallPlugin(pkg) to complete the purchase.
+	//
+	// pairs are forwarded to the callback route exactly like UrlForRoute (key, value,
+	// key, value, ...) to fill its path parameters, e.g.
+	//   GetPurchaseURL(r, "com.flarego.cloud-sync", "admin:store:install:pkg", "pkg", "com.flarego.cloud-sync")
+	// The resolved callback URL also always carries a "?pkg=<pkg>" query param so the
+	// handler knows what to install regardless of the route's own parameters.
+	//
+	// r supplies the machine's browser-facing scheme://host so the cloud redirect
+	// lands back on this device (the same host the owner used to reach the store),
+	// not on loopback. The machine id and cloud checkout host are resolved
+	// internally. Returns an error if pkg/callbackRouteName are empty or the
+	// callback route is not registered.
+	GetPurchaseURL(r *http.Request, pkg string, callbackRouteName string, pairs ...string) (string, error)
 }

@@ -62,7 +62,7 @@ func (self *HttpHelpers) PublicPath(p string) string {
 }
 
 func (self *HttpHelpers) PluginMgr() sdkapi.IPluginsMgrApi {
-	return self.api.PluginsMgrApi
+	return self.api.PluginsMgr()
 }
 
 func (self *HttpHelpers) AdsView() (html template.HTML) {

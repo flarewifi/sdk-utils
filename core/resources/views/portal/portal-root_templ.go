@@ -70,7 +70,7 @@ func PortalRootPage(api sdkapi.IPluginApi, lanIP string, redirectPath string) te
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</p></div><script>\n\t\t(function() {\n\t\t\tvar container = document.getElementById('portal-root-container');\n\t\t\tvar redirectPath = container.getAttribute('data-redirect-path');\n\t\t\t// Relative redirect keeps the client on the current origin — the portal\n\t\t\t// hostname served over HTTPS — instead of a hardcoded http:// URL that\n\t\t\t// would point at the HTTPS port over plain HTTP.\n\t\t\twindow.location.href = redirectPath || '/portal/redirect';\n\t\t})();\n\t\t</script></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</p></div><script>\n\t\t(function() {\n\t\t\tvar container = document.getElementById('portal-root-container');\n\t\t\tvar redirectPath = container.getAttribute('data-redirect-path');\n\t\t\t// Relative redirect keeps the client on the current origin — the portal\n\t\t\t// hostname served over HTTPS — instead of a hardcoded http:// URL that\n\t\t\t// would point at the HTTPS port over plain HTTP.\n\t\t\t// Use replace(), not href=: this redirect fires on load with no user\n\t\t\t// interaction, so href= would PUSH a history entry and trip Chrome's\n\t\t\t// \"history manipulation intervention\" (and trap the back button on this\n\t\t\t// transient page). replace() swaps the current entry instead.\n\t\t\twindow.location.replace(redirectPath || '/portal/redirect');\n\t\t})();\n\t\t</script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

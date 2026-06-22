@@ -59,11 +59,26 @@ type IFirewallAPI interface {
 	RemoveClientFromServicePort(clnt DstIpGroupClient, servicePortName string) error
 
 	// AllowMAC opens the firewall for a MAC address, bypassing the captive portal.
-	// This is ephemeral — the caller is responsible for persistence.
-	// For return traffic, the caller must also manage client IP sets separately.
+	// It grants working bidirectional internet on its own (it resolves and tracks
+	// the device's IP for return traffic internally). This is ephemeral — the
+	// caller is responsible for persisting the whitelist and re-applying on boot.
 	AllowMAC(mac string) error
 
-	// BlockMAC closes the firewall for a previously allowed MAC address.
-	// Does not flush associated client IPs — the caller handles that.
+	// DisallowMAC revokes an AllowMAC grant — it removes the MAC from the whitelist
+	// bypass and clears the return-traffic IPs tracked for it. It is NOT a block:
+	// a device that still has an active session keeps internet through the session.
+	// Use BlockMAC for an absolute deny.
+	DisallowMAC(mac string) error
+
+	// BlockMAC absolutely denies internet access to a MAC, regardless of whether
+	// the device has an active session or is whitelisted. The deny is evaluated
+	// before all accept rules, the device's in-flight connections are cut
+	// immediately, and the block persists until UnblockMAC (ephemeral across
+	// reboots — re-apply on boot if it must survive a restart).
 	BlockMAC(mac string) error
+
+	// UnblockMAC removes a BlockMAC hard block, restoring whatever access the
+	// device would otherwise have (session and/or whitelist). It grants nothing on
+	// its own.
+	UnblockMAC(mac string) error
 }

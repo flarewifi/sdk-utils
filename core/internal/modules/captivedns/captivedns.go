@@ -36,8 +36,11 @@ func Setup(lanIP string) error {
 		return fmt.Errorf("read app config: %w", err)
 	}
 
-	if env.GO_ENV == env.ENV_DEV {
-		cfg.CustomDomain = "captive.flare-local.com"
+	// dev + staging carry no per-machine custom_domain; advertise the build's
+	// fixed captive hostname (captive.<SERVER_DOMAIN>) so split-horizon DNS and
+	// the DHCP option-114 portal URL point at the cert-matching host.
+	if env.GO_ENV == env.ENV_DEV || env.GO_ENV == env.ENV_STAGING {
+		cfg.CustomDomain = env.PortalDomain()
 	}
 
 	domain := strings.TrimSpace(cfg.CustomDomain)

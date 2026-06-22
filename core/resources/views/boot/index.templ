@@ -3,11 +3,12 @@ package boot
 import sdkapi "sdk/api"
 
 type BootPageData struct {
-	API    sdkapi.IPluginApi
-    StatusURL string
-	JsSrc  string
-	CssSrc string
-	Status string
+	API         sdkapi.IPluginApi
+	StatusURL   string
+	ProgressURL string
+	JsSrc       string
+	CssSrc      string
+	Status      string
 }
 
 templ BootPage(data *BootPageData) {
@@ -18,12 +19,28 @@ templ BootPage(data *BootPageData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<link rel="stylesheet" href={ data.CssSrc }/>
 		</head>
-		<body data-status-url={ data.StatusURL }>
+		<body data-status-url={ data.StatusURL } data-progress-url={ data.ProgressURL }>
+			<div class="crt">
+				<div class="terminal" role="status" aria-live="polite">
+					<div class="terminal__bar">
+						<span class="terminal__dots">
+							<i class="terminal__dot terminal__dot--red"></i>
+							<i class="terminal__dot terminal__dot--amber"></i>
+							<i class="terminal__dot terminal__dot--green"></i>
+						</span>
+						<span class="terminal__title">{ data.API.Translate("label", "Boot Progress") }</span>
+					</div>
+					<div class="terminal__body">
+						<p class="terminal__head">{ data.API.Translate("label", "Boot Progress Status") }</p>
+						<p id="status-text" class="terminal__status">{ data.Status }</p>
+						<ul id="boot-steps"></ul>
+						<p class="terminal__prompt">
+							<span class="terminal__user">flarewifi@machine</span>:<span class="terminal__path">~</span>$&nbsp;<span class="terminal__cursor"></span>
+						</p>
+					</div>
+				</div>
+			</div>
 			<script src={ data.JsSrc }></script>
-			<div><h2>{ data.API.Translate("label", "Boot Progress Status") }: </h2> </div>
-			<br/>
-			<p id="status-text">{ data.Status }</p>
-			<hr/>
 		</body>
 	</html>
 }

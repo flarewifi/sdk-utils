@@ -10,6 +10,9 @@ import (
 
 const (
 	activationURL = "/activation"
+	// bootStatusURL is the booting page's readiness probe. It must stay
+	// activation-agnostic — see the exemption in ActivationCheck.
+	bootStatusURL = "/boot/status"
 )
 
 // ActivationCheck ensures the device is activated before allowing access to app routes.
@@ -19,6 +22,17 @@ const (
 func ActivationCheck() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// The boot readiness probe must answer truthfully regardless of
+			// activation. The booting page polls it via XHR and only then does a
+			// top-level navigation to "/". If activation gating turned this into a
+			// redirect, the XHR would chase a cross-origin HTTPS hop (ForceHTTPS on
+			// /activation), fail CORS with status 0, and the booting page would
+			// never leave. Let the subsequent navigation handle activation routing.
+			if r.URL.Path == bootStatusURL {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			isActivationRoute := r.URL.Path == activationURL || strings.HasPrefix(r.URL.Path, activationURL+"/")
 			isActivationStatusRoute := r.URL.Path == activationURL+"/status"
 			isActivated := activation.IsActivated.Load()

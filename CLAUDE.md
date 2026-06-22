@@ -84,6 +84,7 @@ if err := RecordUsage(); err != nil {
 - Check docker logs for `Listening on port :3000`
 - Convert database timestamps from UTC to local time when displayed to UI using `sdkutil.UtcToLocalTime(t)`
 - Put temporary compiled/binary artifacts in `.tmp/` so they are not tracked by git
+- Execute shell commands through the `core/utils/shell` util (`shell.Exec` / `ExecOutput` / `ExecAll` / `ExecWithContext`), never `os/exec` directly — it has a `dev` build-tag variant (`exec_dev.go`) so commands are mocked/guarded in the dev container, and it centralizes error/output handling. For best-effort calls that may fail (e.g. a missing tool), append `2>/dev/null || true` to the command string (see `nftables.go`).
 
 ## Go File Organization
 

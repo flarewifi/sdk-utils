@@ -22,6 +22,11 @@ func IsDev() bool {
 	return env() == "dev"
 }
 
+// IsStaging returns true if running in staging mode
+func IsStaging() bool {
+	return env() == "staging"
+}
+
 // IsProd returns true if running in production mode
 func IsProd() bool {
 	return env() == "prod"

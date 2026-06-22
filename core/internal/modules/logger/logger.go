@@ -35,13 +35,13 @@ const (
 	// errorPrefix = "[ERROR] "
 
 	flarelogBaseMetadataCount = 10
-
-	// maxLogBytes hard-caps the on-disk log file; rotateKeepBytes is how much of
-	// the most recent log is retained when the cap is hit. Sized for routers with
-	// limited flash.
-	maxLogBytes     = 2 << 20 // 2 MiB
-	rotateKeepBytes = 1 << 20 // 1 MiB
 )
+
+// maxLogBytes hard-caps the on-disk log file; rotateKeepBytes is how much of the
+// most recent log is retained when the cap is hit (rotateKeepBytes must stay
+// below maxLogBytes). The values differ by build: the mono build runs on routers
+// with limited flash and stays small, while the non-mono (dev/server) build can
+// afford a much larger log. They live in logger_limits{,_mono}.go.
 
 type LogLine struct {
 	Level      int      `json:"level"`

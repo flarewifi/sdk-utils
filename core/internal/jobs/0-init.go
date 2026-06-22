@@ -22,6 +22,10 @@ func Init(g *api.CoreGlobals) {
 	// cert from the cloud and hot-reloads HTTPS when it changes)
 	StartPortalCertScheduler()
 
+	// Start blocked-plugins scheduler (polls the cloud denylist once a day and
+	// marks offending plugins so the boot loader skips them on the next reboot)
+	StartBlockedPluginsScheduler()
+
 	// Start batch save loop for running sessions (flushes to DB periodically)
 	StartBatchSaveLoop(g.ClientMgr)
 

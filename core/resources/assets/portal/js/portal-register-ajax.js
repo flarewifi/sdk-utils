@@ -36,7 +36,11 @@
    */
   function safeRedirect(url) {
     try {
-      window.location.href = url;
+      // replace(), not href=: this runs after the async register XHR resolves, by
+      // which point the user's gesture may no longer count as a transient
+      // activation — so href= can trip Chrome's history intervention. replace()
+      // also stops the back button from returning to the just-submitted form.
+      window.location.replace(url);
     } catch (e) {
       console.error('[PortalRegister] Redirect failed:', e);
       // Last resort: try direct assignment

@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"net/http"
 	"sync"
 
 	"core/db"
@@ -177,7 +178,23 @@ func (self *PluginApi) InAppPurchases() sdkapi.IInAppPurchasesApi {
 }
 
 func (self *PluginApi) PluginsMgr() sdkapi.IPluginsMgrApi {
-	return self.PluginsMgrApi
+	// Return a per-plugin view bound to this PluginApi. The shared PluginsMgr is a
+	// singleton and can't know which plugin called it, but GetPurchaseURL must
+	// resolve a callback route in the CALLER's namespace — so the wrapper carries
+	// the owner. All other methods pass through to the embedded PluginsMgr.
+	return &pluginScopedPluginsMgr{PluginsMgr: self.PluginsMgrApi, owner: self}
+}
+
+// pluginScopedPluginsMgr adapts the shared PluginsMgr to a single calling plugin.
+// It embeds *PluginsMgr (so every IPluginsMgrApi method is inherited unchanged)
+// and overrides only GetPurchaseURL, which needs the caller's route namespace.
+type pluginScopedPluginsMgr struct {
+	*PluginsMgr
+	owner *PluginApi
+}
+
+func (w *pluginScopedPluginsMgr) GetPurchaseURL(r *http.Request, pkg string, callbackRouteName string, pairs ...string) (string, error) {
+	return w.PluginsMgr.buildPurchaseURL(r, w.owner, pkg, callbackRouteName, pairs...)
 }
 
 func (self *PluginApi) Network() sdkapi.INetworkApi {

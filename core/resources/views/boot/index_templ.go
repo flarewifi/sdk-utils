@@ -11,11 +11,12 @@ import templruntime "github.com/a-h/templ/runtime"
 import sdkapi "sdk/api"
 
 type BootPageData struct {
-	API       sdkapi.IPluginApi
-	StatusURL string
-	JsSrc     string
-	CssSrc    string
-	Status    string
+	API         sdkapi.IPluginApi
+	StatusURL   string
+	ProgressURL string
+	JsSrc       string
+	CssSrc      string
+	Status      string
 }
 
 func BootPage(data *BootPageData) templ.Component {
@@ -46,7 +47,7 @@ func BootPage(data *BootPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Boot Progress"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 17, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 18, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -59,7 +60,7 @@ func BootPage(data *BootPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.CssSrc)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 19, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 20, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -72,52 +73,78 @@ func BootPage(data *BootPageData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.StatusURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 21, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 22, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><script src=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" data-progress-url=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.JsSrc)
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.ProgressURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 22, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 22, Col: 79}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></script><div><h2>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div class=\"crt\"><div class=\"terminal\" role=\"status\" aria-live=\"polite\"><div class=\"terminal__bar\"><span class=\"terminal__dots\"><i class=\"terminal__dot terminal__dot--red\"></i> <i class=\"terminal__dot terminal__dot--amber\"></i> <i class=\"terminal__dot terminal__dot--green\"></i></span> <span class=\"terminal__title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Boot Progress Status"))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Boot Progress"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 23, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 31, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(": </h2></div><br><p id=\"status-text\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</span></div><div class=\"terminal__body\"><p class=\"terminal__head\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.Status)
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Boot Progress Status"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 25, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 34, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><hr></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><p id=\"status-text\" class=\"terminal__status\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var8 string
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.Status)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 35, Col: 64}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><ul id=\"boot-steps\"></ul><p class=\"terminal__prompt\"><span class=\"terminal__user\">flarewifi@machine</span>:<span class=\"terminal__path\">~</span>$&nbsp;<span class=\"terminal__cursor\"></span></p></div></div></div><script src=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var9 string
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(data.JsSrc)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 43, Col: 27}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

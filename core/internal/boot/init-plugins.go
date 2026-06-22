@@ -115,6 +115,23 @@ func InitPlugins(g *api.CoreGlobals) error {
 			continue
 		}
 
+		// Skip plugins withheld by ValidateStorePlugins: a store plugin whose
+		// purchase has lapsed is left on disk but not loaded (the operator was
+		// notified). The marker is cleared automatically once the purchase is
+		// reconfirmed online, so the plugin loads again on a later boot.
+		if plugins.IsDisabled(info.Package) {
+			continue
+		}
+
+		// Skip plugins flagged by the cloud denylist (FetchBlockedPlugins,
+		// reconciled daily by the blocked-plugins job). Files are kept on disk;
+		// the marker is cleared automatically once the plugin drops off the
+		// denylist, so it loads again on a later boot. Distinct from IsDisabled
+		// so a block never resurrects an operator-disabled plugin and vice versa.
+		if plugins.IsBlocked(info.Package) {
+			continue
+		}
+
 		// Run migrations for every installed plugin dir up-front, before the
 		// loader-specific paths diverge. This guarantees system plugins (whose
 		// Go code is statically linked and registered by LoadSystemPlugins

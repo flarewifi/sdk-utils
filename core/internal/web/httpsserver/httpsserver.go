@@ -245,7 +245,7 @@ func StartHTTPSServer(r *mux.Router) error {
 	}
 
 	srv := &http.Server{
-		Handler: r,
+		Handler: withAltSvcClear(r),
 		Addr:    addr,
 	}
 
@@ -261,6 +261,22 @@ func StartHTTPSServer(r *mux.Router) error {
 	}()
 
 	return nil
+}
+
+// withAltSvcClear emits `Alt-Svc: clear` on every HTTPS response. The machine
+// serves TLS over TCP only (HTTP/1.1 + H2) — there is NO QUIC/HTTP-3 listener.
+// But the cloud zone advertises h3 on its Cloudflare-proxied hosts (e.g.
+// `alt-svc: h3=":443"`), which can seed a browser's HTTP/3 broker with an h3
+// entry for the captive-portal hostname as well. The browser then attempts QUIC
+// against the machine's UDP :443 (nothing listens there) and the page fails with
+// ERR_QUIC_PROTOCOL_ERROR. `Alt-Svc: clear` tells the browser to drop any cached
+// alternative-service (h3) for this origin so it stays on TCP. Set on every
+// response (before the wrapped handler writes) so it covers redirects/errors too.
+func withAltSvcClear(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Alt-Svc", "clear")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // StopHTTPSServer gracefully stops the HTTPS server
