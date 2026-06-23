@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	nftables "core/internal/modules/nftables"
 	jobque "core/utils/job-que"
 	"core/utils/shell"
 	sdkapi "sdk/api"
@@ -1286,6 +1287,14 @@ func (self *FirewallApi) ruleContainsJump(exprs []interface{}, targetChain strin
 	}
 
 	return false
+}
+
+func (self *FirewallApi) AllowMAC(mac string) error {
+	return nftables.AllowMAC(mac)
+}
+
+func (self *FirewallApi) BlockMAC(mac string) error {
+	return nftables.BlockMAC(mac)
 }
 
 var _ sdkapi.IFirewallAPI = (*FirewallApi)(nil)

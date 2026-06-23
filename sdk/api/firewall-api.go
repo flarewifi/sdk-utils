@@ -57,4 +57,13 @@ type IFirewallAPI interface {
 
 	// RemoveClientFromServicePort removes access for a specific client device from a named service port.
 	RemoveClientFromServicePort(clnt DstIpGroupClient, servicePortName string) error
+
+	// AllowMAC opens the firewall for a MAC address, bypassing the captive portal.
+	// This is ephemeral — the caller is responsible for persistence.
+	// For return traffic, the caller must also manage client IP sets separately.
+	AllowMAC(mac string) error
+
+	// BlockMAC closes the firewall for a previously allowed MAC address.
+	// Does not flush associated client IPs — the caller handles that.
+	BlockMAC(mac string) error
 }

@@ -518,6 +518,57 @@ func PreAuthMiddleware(api sdkapi.IPluginApi) func(http.Handler) http.Handler {
 }
 ```
 
+## MAC Whitelist
+
+The MAC whitelist methods allow plugins to bypass the captive portal for specific devices by MAC address. These are ephemeral — the firewall rule exists only until the next reboot or `BlockMAC` call. The plugin is responsible for persisting the whitelist and re-applying it on startup.
+
+### AllowMAC
+
+Opens the firewall for a MAC address, bypassing the captive portal. Handles outbound traffic (upload) and captive portal DNAT bypass. For return traffic (download), the plugin must also manage client IP sets separately.
+
+**Parameters:**
+- `mac` (string) - MAC address to allow (any common format, will be normalized)
+
+**Returns:**
+- `error` - Error if MAC format is invalid
+
+```go
+// Allow a device to bypass captive portal
+err := api.Firewall().AllowMAC("aa:bb:cc:dd:ee:ff")
+if err != nil {
+    api.Logger().Error("Failed to allow MAC: " + err.Error())
+}
+```
+
+**Notes:**
+- Idempotent — calling twice for the same MAC is safe
+- MAC is validated and normalized to uppercase before applying
+- Does NOT persist across reboots — caller must re-apply on startup
+- Only handles MAC-based rules (outbound + portal bypass); return traffic requires separate IP management
+
+### BlockMAC
+
+Closes the firewall for a previously allowed MAC address.
+
+**Parameters:**
+- `mac` (string) - MAC address to block (any common format, will be normalized)
+
+**Returns:**
+- `error` - Error if MAC format is invalid
+
+```go
+// Block a previously whitelisted device
+err := api.Firewall().BlockMAC("aa:bb:cc:dd:ee:ff")
+if err != nil {
+    api.Logger().Error("Failed to block MAC: " + err.Error())
+}
+```
+
+**Notes:**
+- Idempotent — calling for a non-whitelisted MAC is safe (no error)
+- Does NOT flush associated client IPs — the caller is responsible for cleaning up IP-based return traffic rules
+- MAC is validated and normalized to uppercase before applying
+
 ## Common Use Cases
 
 ### Portal Redirect with Temporary Firewall Access
