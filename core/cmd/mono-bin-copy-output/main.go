@@ -40,6 +40,14 @@ func main() {
 		"scripts",
 	}
 
+	// Per-partner product version stamped by the software-release build. Mono
+	// devices read it the same way (core/product.json beside plugin.json). Include
+	// it only when present so unstamped trees (old releases, dev) don't panic the
+	// copy below; absent => the device falls back to its core version.
+	if sdkutils.FsExists(filepath.Join(sdkutils.PathAppDir, "core/product.json")) {
+		files = append(files, "core/product.json")
+	}
+
 	for _, f := range files {
 		src := filepath.Join(sdkutils.PathAppDir, f)
 		dest := filepath.Join(outputDir, f)

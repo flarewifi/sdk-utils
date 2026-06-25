@@ -4,9 +4,6 @@ import (
 	"time"
 
 	cmd "core/utils/shell"
-
-	"github.com/Masterminds/semver/v3"
-	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 // StartScheduledUpdateChecker starts a background goroutine that checks for
@@ -28,17 +25,9 @@ func StartScheduledUpdateChecker() {
 }
 
 func performScheduledUpdateCheck() {
-	coreInfo, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
-	if err != nil {
-		return
-	}
-
-	currentVersion, err := semver.NewVersion(coreInfo.Version)
-	if err != nil {
-		return
-	}
-
-	result, err := CheckSoftwareReleaseUpdate(currentVersion)
+	// CheckSoftwareReleaseUpdate sources the machine's product version internally
+	// (core/product.json, falling back to the core version).
+	result, err := CheckSoftwareReleaseUpdate()
 	if err != nil || !result.HasUpdate {
 		return
 	}
