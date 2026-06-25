@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"core/internal/api"
+	"core/internal/modules/activation"
+	"core/internal/modules/bootprogress"
 	"core/internal/modules/netmon"
 	"core/utils/env"
 	"core/utils/plugins"
@@ -19,6 +22,30 @@ import (
 // flap up→down→up while a pass is still running opkg/pip, and we must not start a
 // second pass on top of the first.
 var provisioning atomic.Bool
+
+// validatingStore guards against overlapping store-plugin purchase validation
+// passes for the same reason connectivity can flap mid-pass.
+var validatingStore atomic.Bool
+
+// activating guards against overlapping cloud activation/registration passes: the
+// boot-time kick and the online monitor's per-reconnect kick must not run
+// activation.Validate() concurrently (it writes the activation token file).
+var activating atomic.Bool
+
+// StartActivation runs one cloud registration/activation pass in its own goroutine,
+// behind the `activating` guard so overlapping calls collapse into the in-flight
+// pass. Safe to call repeatedly. Registration is decoupled from provisioning on
+// purpose: the machine must appear in the fleet even when on-device plugin install
+// stalls or OOMs the process. Returns immediately; the pass runs in the background.
+func StartActivation() {
+	if !activating.CompareAndSwap(false, true) {
+		return
+	}
+	go func() {
+		defer activating.Store(false)
+		activation.Validate()
+	}()
+}
 
 // StartOnlineMonitor wires the core's online monitor to network-dependent install
 // work and starts it. On every internet-up transition (including the first probe
@@ -40,13 +67,85 @@ func StartOnlineMonitor(g *api.CoreGlobals) {
 		}
 		go func() {
 			defer provisioning.Store(false)
-			ProvisionInstalledPlugins(g)
+			// Reconnect-time pass: no boot page is showing, so no progress tracker.
+			ProvisionInstalledPlugins(g, nil)
 		}()
+		return nil
+	})
+
+	// Re-validate installed store plugins' purchases each time the machine is
+	// online (immediately at boot if already online). A separate guard + goroutine
+	// from provisioning so the two run concurrently and neither blocks the monitor.
+	g.EventsMgr.OnInternetEvent(sdkapi.EventInternetUp, func(ctx context.Context) error {
+		if !validatingStore.CompareAndSwap(false, true) {
+			return nil
+		}
+		go func() {
+			defer validatingStore.Store(false)
+			ValidateStorePlugins(g)
+		}()
+		return nil
+	})
+
+	// Register/re-validate activation with the cloud each time the machine is online
+	// (immediately at boot if already online, and on every reconnect). The boot
+	// sequence already kicks this once before provisioning; re-running it here makes
+	// registration self-healing for a machine that was offline at boot or whose first
+	// attempt failed — without waiting for a reboot. Guarded + own goroutine like the
+	// passes above, so it runs concurrently and never blocks the monitor.
+	g.EventsMgr.OnInternetEvent(sdkapi.EventInternetUp, func(ctx context.Context) error {
+		StartActivation()
+		return nil
+	})
+
+	// Tell the admin (admin notifications only — never the captive portal) when the
+	// machine loses internet, so they know network setup may be needed. Spawned so a
+	// slow notification write can't stall the monitor's polling loop.
+	g.EventsMgr.OnInternetEvent(sdkapi.EventInternetDown, func(ctx context.Context) error {
+		go notifyOffline(g)
 		return nil
 	})
 
 	monitor := netmon.NewMonitor(g.EventsMgr, g.CoreAPI.Logger())
 	monitor.Start(context.Background())
+}
+
+// provisionBootCap bounds how long boot will BLOCK on the first provisioning pass
+// before proceeding regardless. Provisioning (opkg/pip + the deferred plugins'
+// Init) is shown on the booting page, but it must never hang boot: opkg/pip on a
+// flaky link can stall for minutes, and the captive portal has to come up. If the
+// pass exceeds this cap, boot continues offline-first and the pass keeps running
+// in the background under the provisioning guard (the online monitor also retries
+// on the next internet-up). The cap is generous so a normal install still gates.
+const provisionBootCap = 5 * time.Minute
+
+// RunBootProvisioning runs the boot-time provisioning pass bounded by
+// provisionBootCap, so boot always completes even if opkg/pip or a deferred
+// plugin's Init blocks. It holds the shared `provisioning` guard for the whole
+// pass (even past the cap, while it finishes in the background) so the online
+// monitor's internet-up handler cannot start a second, overlapping pass.
+func RunBootProvisioning(g *api.CoreGlobals) {
+	// Should always succeed here (the monitor isn't started yet), but honor the
+	// guard for safety; if a pass is somehow already in flight, don't start another.
+	if !provisioning.CompareAndSwap(false, true) {
+		return
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer provisioning.Store(false)
+		defer close(done)
+		ProvisionInstalledPlugins(g, g.BootProgress)
+	}()
+
+	select {
+	case <-done:
+		// Provisioning finished within the cap — the gated, common case.
+	case <-time.After(provisionBootCap):
+		// Taking too long: proceed with boot so the captive portal comes up. The
+		// goroutine keeps running under the guard and the monitor will retry later.
+		g.CoreAPI.Logger().Info("boot: provisioning exceeded the boot cap; continuing and finishing it in the background")
+	}
 }
 
 // InitLoadedPlugins runs Init for every loaded plugin whose internet-dependent
@@ -67,8 +166,7 @@ func InitLoadedPlugins(g *api.CoreGlobals) error {
 			continue
 		}
 		if err := p.RunInit(); err != nil {
-			if logErr := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q Init failed: %v", info.Package, err)); logErr != nil {
-			}
+			g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q Init failed: %v", info.Package, err))
 			if firstErr == nil {
 				firstErr = fmt.Errorf("plugin %q: %w", info.Package, err)
 			}
@@ -90,10 +188,35 @@ func InitLoadedPlugins(g *api.CoreGlobals) error {
 //
 // It iterates loaded plugins (not on-disk dirs) so a plugin that failed to load —
 // and was not recovered — is not provisioned. Failures are logged, never fatal.
-func ProvisionInstalledPlugins(g *api.CoreGlobals) {
-	for _, p := range g.PluginMgr.PluginApis() {
+//
+// progress may be nil (the online monitor's reconnect pass, with no boot page
+// showing). When set (the boot-time pass), the current active step's count is
+// updated as each plugin that still needs network-dependent work is processed, so
+// the booting page can show "installing packages, plugin N of M".
+func ProvisionInstalledPlugins(g *api.CoreGlobals, progress *bootprogress.Tracker) {
+	apis := g.PluginMgr.PluginApis()
+
+	// Count plugins with pending network-dependent work up front for the progress
+	// denominator — evaluated before the loop, since each ProvisionSystemPkgs /
+	// install-script call writes a marker that flips needsProvision to false.
+	total := 0
+	if progress != nil {
+		for _, p := range apis {
+			if needsProvision(p.Info()) {
+				total++
+			}
+		}
+	}
+
+	processed := 0
+	for _, p := range apis {
 		info := p.Info()
 		dir := p.Dir()
+
+		if progress != nil && needsProvision(info) {
+			processed++
+			progress.SetActiveProgress(processed, total)
+		}
 
 		if err := plugins.ProvisionSystemPkgs(info); err != nil {
 			// ProvisionSystemPkgs already retried the opkg work several times
@@ -110,8 +233,7 @@ func ProvisionInstalledPlugins(g *api.CoreGlobals) {
 		// (a non-deferred plugin) — InitDone guards the single run.
 		if !p.InitDone() {
 			if err := p.RunInit(); err != nil {
-				if logErr := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q Init failed during provisioning: %v", info.Package, err)); logErr != nil {
-				}
+				g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q Init failed during provisioning: %v", info.Package, err))
 				// Skip postinstall when Init failed — postinstall runs after a
 				// successful Init. A later internet-up retries the whole pass.
 				continue
@@ -119,6 +241,66 @@ func ProvisionInstalledPlugins(g *api.CoreGlobals) {
 		}
 
 		runInstallScriptOnce(g, dir, info, info.PostInstall, "postinstall")
+	}
+}
+
+// ValidateStorePlugins re-checks every installed STORE plugin's purchase with the
+// cloud now that the machine is online, and withholds any whose payment has lapsed
+// (subscription expired, refunded, or dropped from a meta bundle). A withheld
+// plugin is DISABLED — its files are kept on disk but it is skipped by the boot
+// loader on the next boot (a loaded Go .so cannot be unmapped at runtime) — and the
+// admin is notified. Each cloud check is retried (boot-time internet is often
+// unstable); only a definitive "payment required" verdict disables a plugin, so a
+// transient outage never withholds a paid one. A plugin whose purchase is
+// reconfirmed has any stale disabled marker cleared so it loads again next boot.
+//
+// Local/system/devel plugins are not store plugins and are skipped.
+func ValidateStorePlugins(g *api.CoreGlobals) {
+	for _, dir := range plugins.InstalledPluginDirs() {
+		info, err := sdkutils.GetPluginInfoFromPath(dir)
+		if err != nil {
+			continue
+		}
+		def, err := plugins.GetPluginDef(info.Package)
+		if err != nil || def.Src != sdkutils.PluginSrcStore {
+			continue
+		}
+		pkg := info.Package
+
+		// The store package is what the cloud keys purchases on (== the plugin's
+		// own package for store plugins). Retry to ride out unstable boot internet.
+		check, err := sdkutils.Retry(func() (sdkapi.PluginPurchaseInfo, error) {
+			return g.PluginMgr.CheckPurchase(def.StorePackage)
+		}, 5)
+		if err != nil {
+			// Still couldn't reach the cloud after retries — leave the plugin as it
+			// is (never withhold on a connectivity failure). A later internet-up
+			// retries the whole pass.
+			g.CoreAPI.Logger().Error(fmt.Sprintf("validate store plugin %q purchase: %v", pkg, err))
+			continue
+		}
+
+		if check.RequiresPayment() {
+			alreadyDisabled := plugins.IsDisabled(pkg)
+			if err := plugins.DisablePlugin(pkg); err != nil {
+				g.CoreAPI.Logger().Error(fmt.Sprintf("disable unpaid store plugin %q: %v", pkg, err))
+				continue
+			}
+			// Notify only on the transition into the disabled state, so a reconnect
+			// (which re-runs this pass) doesn't re-notify for an already-withheld plugin.
+			if !alreadyDisabled {
+				notifyPluginPaymentRequired(g, pkg)
+			}
+			continue
+		}
+
+		// Purchase confirmed (paid, free, or meta-covered): clear any prior disabled
+		// marker so the loader picks the plugin up again on the next boot.
+		if plugins.IsDisabled(pkg) {
+			if err := plugins.EnablePlugin(pkg); err != nil {
+				g.CoreAPI.Logger().Error(fmt.Sprintf("re-enable store plugin %q after purchase confirmed: %v", pkg, err))
+			}
+		}
 	}
 }
 
@@ -138,6 +320,20 @@ func needsProvision(info sdkutils.PluginInfo) bool {
 	}
 	if info.PreInstall != "" && plugins.ReadScriptMarker(info.Package, "preinstall") != info.Version {
 		return true
+	}
+	return false
+}
+
+// NeedsProvisionAny reports whether any loaded plugin still has network-dependent
+// install work pending for its installed version. Boot uses it to decide whether
+// to hold the booting page through the online-wait + system_packages phases (when
+// true) or come straight up offline-first (when false — the common case once a
+// version is fully provisioned).
+func NeedsProvisionAny(g *api.CoreGlobals) bool {
+	for _, p := range g.PluginMgr.PluginApis() {
+		if needsProvision(p.Info()) {
+			return true
+		}
 	}
 	return false
 }
@@ -165,7 +361,47 @@ func notifySystemPkgsFailure(g *api.CoreGlobals, pkg string, cause error) {
 		Content: content,
 		Type:    sdkapi.NotificationTypeError,
 	}); err != nil {
-		if logErr := g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin of system_packages install failure for %q: %v", pkg, err)); logErr != nil {
-		}
+		g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin of system_packages install failure for %q: %v", pkg, err))
+	}
+}
+
+// notifyPluginPaymentRequired raises an admin notification that a store plugin was
+// disabled because its purchase has lapsed (it is kept on disk but not loaded).
+// Always notifies (regardless of env) since it is an enforcement action the
+// operator must see; the cause is also logged. Admin-only — never surfaced on the
+// captive portal. Names only the package, per the error-message hygiene rules.
+func notifyPluginPaymentRequired(g *api.CoreGlobals, pkg string) {
+	if err := g.CoreAPI.Logger().Error(fmt.Sprintf("store plugin %q disabled: purchase required", pkg)); err != nil {
+	}
+
+	subject := g.CoreAPI.Translate("error", "Plugin disabled — purchase required")
+	content := g.CoreAPI.Translate("error", "The plugin <% .pkg %> was disabled because it is not purchased for this machine. Purchase it to re-enable it on the next restart", "pkg", pkg)
+
+	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{
+		Subject: subject,
+		Content: content,
+		Type:    sdkapi.NotificationTypeError,
+	}); err != nil {
+		g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin that store plugin %q requires payment: %v", pkg, err))
+	}
+}
+
+// notifyOffline raises an admin notification that the machine has no internet, so
+// the operator knows network setup may be required. Admin-only — never surfaced on
+// the captive portal. Fires on every internet-down transition (netmon collapses
+// flaps into a single event), including the first probe at boot if it boots offline.
+func notifyOffline(g *api.CoreGlobals) {
+	if err := g.CoreAPI.Logger().Info("online monitor: machine is offline"); err != nil {
+	}
+
+	subject := g.CoreAPI.Translate("warning", "No internet connection")
+	content := g.CoreAPI.Translate("warning", "The machine has no internet connection. Some features that depend on the cloud are unavailable until connectivity is restored")
+
+	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{
+		Subject: subject,
+		Content: content,
+		Type:    sdkapi.NotificationTypeWarn,
+	}); err != nil {
+		g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin that the machine is offline: %v", err))
 	}
 }

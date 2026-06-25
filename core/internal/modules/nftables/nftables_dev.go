@@ -32,6 +32,8 @@ var (
 	connTable = map[string]bool{}
 	// whitelistTable tracks whitelisted MACs (MAC → true).
 	whitelistTable = map[string]bool{}
+	// blockedTable tracks hard-blocked MACs (MAC → true).
+	blockedTable = map[string]bool{}
 
 	// ipToMac maps connected IP address (IPv4 or IPv6) → uppercase normalized MAC.
 	// Populated on Connect, evicted on Disconnect.
@@ -106,6 +108,33 @@ func IsConnected(mac string) bool {
 		contextInfo,
 		func() (any, error) {
 			return isConnected(mac), nil
+		},
+	)
+
+	if err != nil {
+		return false
+	}
+
+	return result.(bool)
+}
+
+// IsWhitelisted reports whether mac has standing internet access granted via
+// AllowMAC (the whitelist bypass), independent of any session. It is routed
+// through nftQue so the read is serialized with AllowMAC/BlockMAC writes to
+// whitelistTable, matching how IsConnected reads connTable.
+func IsWhitelisted(mac string) bool {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	result, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Check Whitelist Status",
+		contextInfo,
+		func() (any, error) {
+			normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+			if err != nil {
+				return false, nil
+			}
+			return whitelistTable[normalizedMAC], nil
 		},
 	)
 
@@ -207,12 +236,13 @@ func AllowMAC(mac string) error {
 	return err
 }
 
-func BlockMAC(mac string) error {
+// DisallowMAC revokes an AllowMAC whitelist grant (mock: drops from whitelistTable).
+func DisallowMAC(mac string) error {
 	contextInfo := fmt.Sprintf("MAC=%s", mac)
 
 	_, err := nftQue.ExecWithTimeout(
 		30*time.Second,
-		"Block MAC (Whitelist)",
+		"Disallow MAC (Whitelist)",
 		contextInfo,
 		func() (any, error) {
 			normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
@@ -220,6 +250,46 @@ func BlockMAC(mac string) error {
 				return nil, fmt.Errorf("invalid MAC address: %v", err)
 			}
 			delete(whitelistTable, normalizedMAC)
+			return nil, nil
+		},
+	)
+	return err
+}
+
+// BlockMAC hard-blocks a MAC regardless of session/whitelist (mock: blockedTable).
+func BlockMAC(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Block MAC (Hard Deny)",
+		contextInfo,
+		func() (any, error) {
+			normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+			if err != nil {
+				return nil, fmt.Errorf("invalid MAC address: %v", err)
+			}
+			blockedTable[normalizedMAC] = true
+			return nil, nil
+		},
+	)
+	return err
+}
+
+// UnblockMAC removes a hard block (mock: drops from blockedTable).
+func UnblockMAC(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Unblock MAC (Hard Deny)",
+		contextInfo,
+		func() (any, error) {
+			normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+			if err != nil {
+				return nil, fmt.Errorf("invalid MAC address: %v", err)
+			}
+			delete(blockedTable, normalizedMAC)
 			return nil, nil
 		},
 	)

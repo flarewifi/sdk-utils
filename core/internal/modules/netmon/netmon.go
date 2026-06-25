@@ -103,6 +103,40 @@ func (m *Monitor) IsUp() bool {
 	return m.probed.Load() && m.up.Load()
 }
 
+// WaitOnline blocks until a connectivity probe succeeds or timeout elapses,
+// returning true only if the machine became reachable. The first probe runs
+// immediately (an already-online machine returns at once); thereafter it re-probes
+// every interval until the deadline. ctx cancellation aborts the wait.
+//
+// It is used to gate online-only boot work (a plugin's system_packages/install
+// scripts): the boot sequence waits a bounded time for internet so the booting
+// page can show the install phase, then falls back to offline-first boot if the
+// link never appears. It is independent of any running Monitor, so it works during
+// boot before the monitor's polling loop has started.
+func WaitOnline(ctx context.Context, timeout, interval time.Duration) bool {
+	if probe() {
+		return true
+	}
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-timer.C:
+			return false
+		case <-ticker.C:
+			if probe() {
+				return true
+			}
+		}
+	}
+}
+
 // =============================================================================
 // HELPER FUNCTIONS (internal)
 // =============================================================================

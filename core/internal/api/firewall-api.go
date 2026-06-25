@@ -1293,8 +1293,16 @@ func (self *FirewallApi) AllowMAC(mac string) error {
 	return nftables.AllowMAC(mac)
 }
 
+func (self *FirewallApi) DisallowMAC(mac string) error {
+	return nftables.DisallowMAC(mac)
+}
+
 func (self *FirewallApi) BlockMAC(mac string) error {
 	return nftables.BlockMAC(mac)
+}
+
+func (self *FirewallApi) UnblockMAC(mac string) error {
+	return nftables.UnblockMAC(mac)
 }
 
 var _ sdkapi.IFirewallAPI = (*FirewallApi)(nil)

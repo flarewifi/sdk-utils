@@ -128,6 +128,29 @@ func (self *HttpApi) GetClientDevice(r *http.Request) (sdkapi.IClientDevice, err
 	return clnt, nil
 }
 
+// GetRequestHost resolves the client host behind the request straight from the
+// machine's DHCP/ARP/NDP tables (via hostfinder), independent of any device
+// token or registered device record. This is the token-free counterpart to
+// GetClientDevice — it works for any LAN client that can reach the machine,
+// including an admin on the dashboard who never registered through the portal.
+func (self *HttpApi) GetRequestHost(r *http.Request) (sdkapi.RequestHost, error) {
+	h, err := hostfinder.GetHostFromRequest(r)
+	if err != nil {
+		return sdkapi.RequestHost{}, err
+	}
+	if h == nil {
+		return sdkapi.RequestHost{}, fmt.Errorf("no host found for request")
+	}
+	// Convert core's internal hostfinder.HostData to the SDK-facing type.
+	// Uppercase the MAC so callers get a stable form (the dev hostfinder does
+	// not uppercase like the production lease/ARP path does).
+	return sdkapi.RequestHost{
+		MacAddr:  strings.ToUpper(h.MacAddr),
+		IpAddr:   h.IpAddr,
+		Hostname: h.Hostname,
+	}, nil
+}
+
 func (self *HttpApi) Cookie() sdkapi.IHttpCookie {
 	return self.httpCookie
 }

@@ -17,11 +17,6 @@ var httpsExemptPaths = map[string]bool{
 	"/boot/status": true,
 }
 
-// devPortalDomain is the fixed portal hostname used in development. The dev app
-// config carries no custom_domain, but the cloud still issues a valid cert for
-// this hostname, so dev always funnels HTTPS through it.
-const devPortalDomain = "captive.flare-local.com"
-
 // ForceHTTPS is the global middleware that makes both the admin pages and the
 // captive portal always run over HTTPS. It runs on RootRouter, which backs BOTH
 // the HTTP (:80) and HTTPS (:443) listeners, and redirects every plain-HTTP
@@ -30,10 +25,10 @@ const devPortalDomain = "captive.flare-local.com"
 //   - Admin/device-local pages (see isDeviceLocalPath) upgrade to HTTPS on the
 //     SAME host, so the admin dashboard stays reachable by raw IP with no domain
 //     (a cert-name warning is expected there).
-//   - Portal/captive traffic is funneled to the portal domain — dev:
-//     captive.flare-local.com (fixed), prod: the configured custom_domain — which
-//     carries the valid cloud-issued cert and resolves to the device via
-//     split-horizon DNS / /etc/hosts.
+//   - Portal/captive traffic is funneled to the portal domain — dev/staging:
+//     the fixed captive.<SERVER_DOMAIN> (env.PortalDomain()), prod: the
+//     configured custom_domain — which carries the valid cloud-issued cert and
+//     resolves to the device via split-horizon DNS / /etc/hosts.
 //
 // Port 80 stays open and REDIRECTS rather than drops, so OS captive-detection
 // probes are still intercepted; HTTPS can't be transparently intercepted (a
@@ -76,8 +71,11 @@ func redirectHost(r *http.Request) string {
 	if isDeviceLocalPath(r.URL.Path) {
 		return hostWithoutPort(r.Host)
 	}
-	if env.GO_ENV == env.ENV_DEV {
-		return devPortalDomain
+	// dev + staging carry no per-machine custom_domain, but the cloud issues a
+	// valid cert for the build's fixed portal hostname (captive.<SERVER_DOMAIN>),
+	// so funnel there. prod prefers the operator's configured custom_domain.
+	if env.GO_ENV == env.ENV_DEV || env.GO_ENV == env.ENV_STAGING {
+		return env.PortalDomain()
 	}
 	if cfg, err := config.GetCachedAppConfig(); err == nil {
 		if d := strings.TrimSpace(cfg.CustomDomain); d != "" {

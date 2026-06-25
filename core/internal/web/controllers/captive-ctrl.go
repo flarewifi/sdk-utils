@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"core/internal/api"
+	"core/internal/modules/nftables"
 	"core/utils/hostfinder"
 
 	sdkapi "sdk/api"
@@ -49,6 +50,20 @@ func CaptiveApiCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			}
 		}
 
+		// A whitelisted device (AllowMAC) has standing internet access with NO
+		// session — e.g. a whitelist-plugin entry, or the store Buy-Now grant on an
+		// admin device that has no portal record at all. Report it as not captive so
+		// the OS stops showing the captive sign-in. Resolved by MAC independently of
+		// clnt, since such a device may not be a registered client. No
+		// seconds-remaining/can-extend keys: whitelist access is open-ended, not a
+		// timed session. Only checked while still captive (a session already settled
+		// it) to keep the common path off the firewall lookup.
+		if captive, _ := resp["captive"].(bool); captive {
+			if mac := resolveCaptiveMac(r, clnt); mac != "" && nftables.IsWhitelisted(mac) {
+				resp["captive"] = false
+			}
+		}
+
 		json.NewEncoder(w).Encode(resp)
 	}
 }
@@ -75,4 +90,19 @@ func resolveCaptiveDevice(g *api.CoreGlobals, r *http.Request) sdkapi.IClientDev
 		return clnt
 	}
 	return nil
+}
+
+// resolveCaptiveMac returns the MAC of the device behind a captive probe, for
+// the whitelist check. It prefers the already-resolved client's MAC and falls
+// back to source IP→MAC (DHCP/ARP/NDP) so it still works for a whitelisted
+// device with no client record (e.g. the store Buy-Now grant). Returns "" if the
+// MAC cannot be determined.
+func resolveCaptiveMac(r *http.Request, clnt sdkapi.IClientDevice) string {
+	if clnt != nil && clnt.MacAddr() != "" {
+		return clnt.MacAddr()
+	}
+	if h, err := hostfinder.GetHostFromRequest(r); err == nil && h != nil {
+		return h.MacAddr
+	}
+	return ""
 }

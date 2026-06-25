@@ -533,6 +533,77 @@ func IsToBeRemoved(pkg string) bool {
 	return sdkutils.FsExists(uninstallFile)
 }
 
+// disabledMarker is the per-plugin marker file that withholds a plugin from the
+// boot loader WITHOUT removing it. Unlike the "uninstall" marker, the install dir
+// is kept intact, so re-enabling is just deleting this file. Used to gate a store
+// plugin whose purchase has lapsed (subscription expired, refunded, or dropped
+// from a meta bundle) — see boot.ValidateStorePlugins.
+const disabledMarker = "disabled"
+
+// DisablePlugin marks a plugin as disabled: its files are kept on disk but it is
+// skipped by the boot loader (see InitPlugins). Idempotent — disabling an
+// already-disabled plugin just rewrites the marker.
+func DisablePlugin(pkg string) error {
+	installPath := GetInstallPath(pkg)
+	if !sdkutils.FsExists(installPath) {
+		return errors.New("Plugin not installed: " + pkg)
+	}
+	return os.WriteFile(filepath.Join(installPath, disabledMarker), []byte(""), sdkutils.PermFile)
+}
+
+// EnablePlugin clears a plugin's disabled marker so the loader picks it up again
+// on the next boot. No-op (nil) when the plugin is not disabled.
+func EnablePlugin(pkg string) error {
+	marker := filepath.Join(GetInstallPath(pkg), disabledMarker)
+	if !sdkutils.FsExists(marker) {
+		return nil
+	}
+	return os.Remove(marker)
+}
+
+// IsDisabled reports whether a plugin has been disabled (files kept, but skipped
+// by the boot loader).
+func IsDisabled(pkg string) bool {
+	return sdkutils.FsExists(filepath.Join(GetInstallPath(pkg), disabledMarker))
+}
+
+// blockedMarker is the per-plugin marker file that withholds a plugin from the
+// boot loader because the cloud denylist (FetchBlockedPlugins) flags it as
+// offending. It is DISTINCT from disabledMarker on purpose: "disabled" is owned
+// by purchase/operator state and the daily block reconcile must never clear it,
+// while "blocked" is owned solely by the block job, so the job can re-enable a
+// plugin (delete this marker) the moment it drops off the denylist without
+// resurrecting a plugin the operator disabled by hand.
+const blockedMarker = "blocked"
+
+// BlockPlugin marks a plugin as blocked by the cloud denylist: its files are kept
+// on disk but the boot loader skips it (see InitPlugins). Idempotent. A plugin
+// already loaded this boot keeps running until the next reboot — a Go plugin .so
+// cannot be unloaded mid-run — at which point this marker takes effect.
+func BlockPlugin(pkg string) error {
+	installPath := GetInstallPath(pkg)
+	if !sdkutils.FsExists(installPath) {
+		return errors.New("Plugin not installed: " + pkg)
+	}
+	return os.WriteFile(filepath.Join(installPath, blockedMarker), []byte(""), sdkutils.PermFile)
+}
+
+// UnblockPlugin clears a plugin's blocked marker so the loader picks it up again
+// on the next boot. No-op (nil) when the plugin is not blocked.
+func UnblockPlugin(pkg string) error {
+	marker := filepath.Join(GetInstallPath(pkg), blockedMarker)
+	if !sdkutils.FsExists(marker) {
+		return nil
+	}
+	return os.Remove(marker)
+}
+
+// IsBlocked reports whether a plugin has been blocked by the cloud denylist
+// (files kept, but skipped by the boot loader).
+func IsBlocked(pkg string) bool {
+	return sdkutils.FsExists(filepath.Join(GetInstallPath(pkg), blockedMarker))
+}
+
 func UninstallPlugin(pkg string, sqldb *sql.DB) error {
 	meta, err := ReadMetadata(pkg)
 	metaFound := err == nil

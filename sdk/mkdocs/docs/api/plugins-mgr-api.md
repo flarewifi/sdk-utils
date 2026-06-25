@@ -69,8 +69,15 @@ it live, without a server restart. The core owns the entire operation — for st
 plugins this includes requesting a server-side `.so` build, polling it to
 completion, downloading the install-ready tarball, and installing it on the machine.
 
-`InstallPlugin` returns immediately with an `IPluginInstall` **handle**; the install
-runs in the background. The handle exposes:
+For a **store** plugin, `InstallPlugin` validates payment up front: if the plugin
+is paid and this machine is not purchased to it, it returns `(nil,
+ErrPaymentRequired)` **without** starting an install. Detect it with
+`errors.Is(err, sdkapi.ErrPaymentRequired)` and redirect the owner to checkout
+(see `GetPurchaseURL`). The cloud also withholds the download as an independent
+backstop, so this up-front check is not the only gate.
+
+Otherwise `InstallPlugin` returns an `IPluginInstall` **handle** with a `nil`
+error; the install runs in the background. The handle exposes:
 
 - `Progress() <-chan PluginInstallProgress` — a stream of stage events, **closed**
   after the install finishes. Sends are best-effort: a slow consumer may miss
@@ -89,7 +96,15 @@ def := sdkutils.PluginSrcDef{
     StorePluginVersion: "1.2.0", // or "" for latest
 }
 
-h := api.PluginsMgr().InstallPlugin(def)
+h, err := api.PluginsMgr().InstallPlugin(def)
+if err != nil {
+    if errors.Is(err, sdkapi.ErrPaymentRequired) {
+        // Paid plugin not purchased — send the owner to checkout instead.
+        return
+    }
+    api.Logger().Error(fmt.Sprintf("install failed to start: %v", err))
+    return
+}
 
 // Stream progress (e.g. to drive a progress bar or SSE endpoint).
 for ev := range h.Progress() {
@@ -107,8 +122,12 @@ fmt.Println("Plugin installed successfully")
 If you only need the result and not the progress, ignore `Progress()` entirely:
 
 ```go
-if err := api.PluginsMgr().InstallPlugin(def).Done(); err != nil {
-    // handle failure
+h, err := api.PluginsMgr().InstallPlugin(def)
+if err != nil {
+    // payment required or another pre-flight failure
+}
+if err := h.Done(); err != nil {
+    // install failed
 }
 ```
 
@@ -186,6 +205,105 @@ if !ok {
     return
 }
 fmt.Printf("Installed from: %s\n", def.Src)
+```
+
+### CheckPurchase
+
+Asks the cloud store whether this machine may install a given plugin and at what
+price. Use it to **gate installs** and to **render store UI** ("Free" / a price /
+"Purchase required"). It returns a `PluginPurchaseInfo`:
+
+| Field | Meaning |
+|-------|---------|
+| `Package` | The package that was checked. |
+| `Purchased` | `true` when the machine may install it — i.e. the plugin is **free**, already **paid**, or **covered by a meta** bundle. |
+| `IsFree` | The plugin carries no price. |
+| `PricingType` | `"one_time"` or `"subscription"`. |
+| `SubscriptionInterval` | `"monthly"` / `"yearly"` (subscriptions only). |
+| `PriceUsdCents` | International price in USD cents. |
+| `LocalCurrency` / `LocalPriceCents` | Developer-chosen local price, when set. |
+| `DisplayCurrency` / `DisplayPriceCents` | Price resolved into the **machine owner's own currency** (buyer's country → local price if it matches `LocalCurrency`, else USD). This is the amount the checkout will charge — render this for the buyer instead of re-deriving from the USD/local fields. Empty / `0` from an older cloud. |
+| `ExpiresAt` | Unix seconds; `0` = none / perpetual. |
+| `Reason` | Human-readable explanation when not purchased. |
+
+`PluginPurchaseInfo.RequiresPayment()` is the convenience gate — it reports
+`!IsFree && !Purchased`, i.e. a paid plugin this machine has not purchased.
+
+> **Note:** This call is for UX. The install path enforces payment independently
+> (the cloud withholds the download for unpurchased paid plugins, and
+> `InstallPlugin` re-checks up front), so a missing or stale `CheckPurchase`
+> result can never let an unpaid install slip through.
+
+```go
+info, err := api.PluginsMgr().CheckPurchase("com.example.payment")
+if err != nil {
+    api.Logger().Error(fmt.Sprintf("purchase check failed: %v", err))
+    return
+}
+
+switch {
+case info.IsFree:
+    // show an "Install" button
+case info.RequiresPayment():
+    // show "Purchase required" — link the owner to GetPurchaseURL(...)
+default:
+    // already purchased/covered — show "Install"
+}
+```
+
+### GetPurchaseURL
+
+Builds the cloud **checkout URL** for purchasing a plugin. After the machine
+owner pays, the cloud redirects the browser back to `callbackRouteName` — a route
+registered by the **calling** plugin on this machine — where the plugin should
+call `InstallPlugin(pkg)` to complete the purchase.
+
+```go
+GetPurchaseURL(r *http.Request, pkg string, callbackRouteName string, pairs ...string) (string, error)
+```
+
+- `r` supplies the machine's browser-facing `scheme://host`, so the cloud
+  redirect lands back on **this device** (the same host the owner used to reach
+  the store), not on loopback. The machine id and cloud checkout host are
+  resolved internally.
+- `pairs` are forwarded to the callback route exactly like `UrlForRoute`
+  (`key, value, key, value, …`) to fill its path parameters.
+- The resolved callback URL **always** carries a `?pkg=<pkg>` query param, so the
+  callback handler knows what to install regardless of the route's own
+  parameters.
+- Returns an error if `pkg`/`callbackRouteName` are empty or the callback route
+  is not registered. **Render a disabled control rather than a link to an empty
+  string when this errors.**
+
+```go
+purchaseURL, err := api.PluginsMgr().GetPurchaseURL(
+    r,
+    "com.example.payment",
+    "admin:store:purchase:callback",
+)
+if err != nil {
+    api.Logger().Error(fmt.Sprintf("build purchase url: %v", err))
+    // render a disabled "Unavailable" button instead of an empty href
+    return
+}
+// redirect the owner to purchaseURL (or render it as a "Buy Now" link)
+```
+
+The callback route then completes the flow:
+
+```go
+// GET /store/purchase/callback?pkg=com.example.payment
+func PurchaseCallback(api sdkapi.IPluginApi) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        pkg := r.URL.Query().Get("pkg")
+        def := sdkutils.PluginSrcDef{Src: sdkutils.PluginSrcStore, StorePackage: pkg}
+        // Purchase is now granted, so InstallPlugin proceeds past the payment gate.
+        if _, err := api.PluginsMgr().InstallPlugin(def); err != nil {
+            // handle (errors.Is(err, sdkapi.ErrPaymentRequired) should not occur here)
+        }
+        // redirect to the install/progress page
+    }
+}
 ```
 
 ## Usage Examples

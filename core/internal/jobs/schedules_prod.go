@@ -30,6 +30,16 @@ var (
 	// PortalCertInitialDelay - delay before the first portal cert fetch after startup
 	PortalCertInitialDelay = 60 * time.Second
 
+	// BlockedPluginsInterval - how often to poll the cloud denylist of offending
+	// plugins. Once a day is enough: a block only takes effect on the machine's
+	// next reboot anyway (a loaded plugin .so cannot be unloaded mid-run), so a
+	// tighter poll buys nothing. The initial fetch after boot catches plugins
+	// flagged while the machine was offline.
+	BlockedPluginsInterval = 24 * time.Hour
+
+	// BlockedPluginsInitialDelay - delay before the first denylist fetch after startup
+	BlockedPluginsInitialDelay = 90 * time.Second
+
 	// SessionCleanupInterval - runs daily at 23:30 (calculated dynamically)
 	// Set to 0 to use time-of-day scheduling instead of interval
 	SessionCleanupInterval = time.Duration(0)

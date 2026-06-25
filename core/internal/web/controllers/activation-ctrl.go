@@ -9,6 +9,7 @@ import (
 	"core/internal/modules/activation"
 	machineuid "core/internal/modules/machine-uid"
 	activationview "core/resources/views/activation"
+	"core/utils/env"
 	cmd "core/utils/shell"
 )
 
@@ -30,6 +31,7 @@ func (ctrl *ActivationCtrl) ActivationPage(w http.ResponseWriter, r *http.Reques
 	page := activationview.ActivationPage(&activationview.ActivationPageData{
 		API:       ctrl.g.CoreAPI,
 		MachineID: machineID,
+		SiteURL:   env.SiteURL(),
 	})
 
 	if err := page.Render(r.Context(), w); err != nil {

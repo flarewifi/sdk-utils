@@ -2,22 +2,28 @@
 
 ## Fields
 
-The `plugin.json` file contains the metadata of the plugin. It is a JSON file located in the root directory of a plugin. It contains the following fields:
+The `plugin.json` file contains the metadata of the plugin. It is a JSON file located in the root directory of a plugin. Only the fields below are recognized — any other keys are silently ignored.
 
 ### name
-The name of the plugin.
+*(required)* The name of the plugin.
 
 ### package
-The package name of the plugin. It should be unique and in reverse domain format. Example: `com.mydomain.myplugin`.
+*(required)* The package name of the plugin. It should be unique and in reverse domain format. Example: `com.mydomain.myplugin`.
 
 ### description
-The description of the plugin.
+*(required)* The description of the plugin.
 
 ### version
 
-The version of the plugin. It should follow the [Semantic Versioning](https://semver.org/) format. Example: `1.0.0`
+*(required)* The version of the plugin. It should follow the [Semantic Versioning](https://semver.org/) format. Example: `1.0.0`
+
+The version is also what makes the network-dependent install phases
+(`system_packages`, `preinstall`, `postinstall`) run **once per version**: each
+phase records the version it last completed for, so bumping the version re-runs
+them on the next reconnect (and leaving it unchanged does not).
 
 ### system_packages
+*(optional)*
 
 List of system packages required by the plugin. These are installed via `opkg`
 (the install runs `opkg update` then `opkg install` for any not already present).
@@ -56,7 +62,7 @@ version and is retried on the next reconnect if it failed.
 
 ### preinstall
 
-Optional path (relative to the plugin root) to a shell script run **after**
+*(optional)* Path (relative to the plugin root) to a shell script run **after**
 `system_packages` are installed and **before the plugin's `Init`**. Because `Init`
 waits for it, `preinstall` is the right place for anything `Init` depends on — for
 example `pip`-installing a Python library (not in the `opkg` feed) that the plugin
@@ -75,10 +81,14 @@ present when it runs.
 
 ### postinstall
 
-Optional path (relative to the plugin root) to a shell script run **after** the
+*(optional)* Path (relative to the plugin root) to a shell script run **after** the
 plugin's `Init`. Also **gated on internet connectivity**. Use it for work that
 should happen once the plugin is already running; anything `Init` itself depends on
 belongs in `preinstall` instead.
+
+Because it runs after `Init`, `postinstall` is **skipped when `Init` fails** — the
+whole provisioning pass (system packages → preinstall → Init → postinstall) is
+retried on the next reconnect instead.
 
 ```sh
 #!/bin/sh
@@ -105,7 +115,7 @@ machine setup would otherwise fail the boot-time install):
 
 ### sdk
 
-The minimum sdk version that the plugin supports. The supported SDK versions are available in [flarehotspot/devkit](https://github.com/flarewifi/devkit/releases) repository.
+*(optional)* The minimum sdk version that the plugin supports. The supported SDK versions are available in [flarehotspot/devkit](https://github.com/flarewifi/devkit/releases) repository.
 
 ## Example
 

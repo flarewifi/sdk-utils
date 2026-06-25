@@ -6,6 +6,7 @@ import (
 	"core/db"
 	"core/db/models"
 	"core/internal/events"
+	"core/internal/modules/bootprogress"
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/sessmgr"
@@ -30,6 +31,7 @@ type CoreGlobals struct {
 	PluginMgr      *PluginsMgr
 	PaymentsMgr    *PaymentsMgr
 	EventsMgr      *events.EventsManager
+	BootProgress   *bootprogress.Tracker
 }
 
 func NewGlobals() *CoreGlobals {
@@ -77,6 +79,7 @@ func NewGlobals() *CoreGlobals {
 		PluginMgr:      plgnMgr,
 		PaymentsMgr:    pmtMgr,
 		EventsMgr:      eventsMgr,
+		BootProgress:   bootprogress.New(),
 	}
 
 	return g

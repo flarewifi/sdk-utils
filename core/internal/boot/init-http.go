@@ -16,6 +16,13 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	web.SetupBootRoutes(g)
 	server := web.StartServer(router.BootingRouter, false)
 
+	// Serve the booting page over HTTPS too, not just HTTP, so clients that reach
+	// the machine over TLS during boot (e.g. https:// captive-portal probes, or a
+	// browser that cached the HTTPS portal origin) get the booting page instead of
+	// a refused connection. Best-effort: a cert error here must not block the HTTP
+	// booting page, mirroring the post-boot call below which also ignores the error.
+	web.StartHTTPSServer(router.BootingRouter)
+
 	// Wait for boot process to complete
 	<-bootCh
 
@@ -28,6 +35,12 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	defer cancel()
 
 	server.Shutdown(ctx)
+
+	// Stop the booting HTTPS listener before restarting it on RootRouter below.
+	// StartHTTPSServer is a no-op while the server is already running and the live
+	// server keeps the handler it was started with (BootingRouter), so without this
+	// stop the app would keep serving booting routes over TLS.
+	web.StopHTTPSServer()
 
 	// Restart the server with all routes
 	web.SetupAppRoutes(g)

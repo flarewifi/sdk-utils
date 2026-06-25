@@ -1,7 +1,7 @@
-//go:build prod
+//go:build staging
 
 package tags
 
 func env() string {
-	return "prod"
+	return "staging"
 }

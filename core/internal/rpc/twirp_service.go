@@ -23,7 +23,7 @@ func GetTwirpServiceAndCtx() (rpc_flarewifi_v2.FlarehotspotService, context.Cont
 	srv := rpc_flarewifi_v2.NewFlarehotspotServiceProtobufClient(url, httpClient)
 	header := make(http.Header)
 	header.Set("Authorization", "Bearer "+env.RPC_TOKEN)
-	header.Set("Forward-To", env.RPC_UPSTREAM_URL)
+	header.Set("Forward-To", env.RpcUpstreamURL())
 
 	ctx := context.Background()
 	ctx, err := twirp.WithHTTPRequestHeaders(ctx, header)

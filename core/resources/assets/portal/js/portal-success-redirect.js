@@ -9,7 +9,10 @@
     var redirectURL = container.getAttribute('data-redirect-url');
     if (redirectURL) {
       setTimeout(function() {
-        window.location.href = redirectURL;
+        // replace(), not href=: this fires automatically (no user gesture), so
+        // href= would push a history entry and trip Chrome's history-manipulation
+        // intervention. replace() also keeps the back button off this success page.
+        window.location.replace(redirectURL);
       }, 1500);
     }
   }

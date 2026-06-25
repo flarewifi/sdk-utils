@@ -32,7 +32,7 @@ markdown_extensions:
   - def_list
 
 nav:
-  - Guides:
+  - Tutorials:
       - "Getting Started": guides/getting-started.md
       - "Creating a plugin": guides/creating-a-plugin.md
       - "Routes and Navigation": guides/routes-and-navigation.md
@@ -48,7 +48,7 @@ nav:
       - "Debugging": guides/debugging.md
       - "Frontend Libraries": guides/frontend-libraries.md
       - "FAQ": guides/faq.md
-  - Tutorials:
+  - Examples:
       - "Manage Sessions": tutorials/manage-sessions.md
       - "Accept Payments": tutorials/accepting-payments.md
       - "Create Theme": tutorials/creating-a-theme

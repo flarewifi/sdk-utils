@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
 
 	sdkplugin "sdk/api"
@@ -12,6 +15,7 @@ import (
 	"core/db"
 	"core/db/models"
 	"core/internal/events"
+	machineuid "core/internal/modules/machine-uid"
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/plugindeps"
@@ -19,12 +23,19 @@ import (
 	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/internal/sessmgr"
 	"core/utils/config"
+	"core/utils/env"
 	"core/utils/migrate"
 	"core/utils/plugins"
 	cmd "core/utils/shell"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
+
+// ErrPaymentRequired is returned by install paths when a paid plugin is being
+// installed on a machine that is not purchased to it. Callers (e.g. the store UI)
+// can detect it with errors.Is to show "purchase required" instead of a failure.
+// It aliases the SDK sentinel so errors.Is matches across the plugin boundary.
+var ErrPaymentRequired = sdkplugin.ErrPaymentRequired
 
 func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr, eventsMgr *events.EventsManager) *PluginsMgr {
 	pmgr := &PluginsMgr{
@@ -176,18 +187,33 @@ func (self *PluginsMgr) GetPortalTheme() (*PluginApi, *ThemesApi, bool, error) {
 //
 // ForceInstall routes the build straight to plugins/installed instead of staging
 // it as a pending update.
-func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) sdkplugin.IPluginInstall {
+func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) (sdkplugin.IPluginInstall, error) {
 	pkg := def.StorePackage
 	if pkg == "" {
 		pkg = def.LocalPath
 	}
+
+	// Validate payment up front for store installs so the caller gets a synchronous
+	// ErrPaymentRequired (and can redirect to checkout) instead of only discovering
+	// it later via the background handle. fetchStoreRelease still re-checks during
+	// the install, and the cloud withholds the download, so this is not the only gate.
+	if def.Src == sdkutils.PluginSrcStore {
+		info, err := self.CheckPurchase(def.StorePackage)
+		if err != nil {
+			return nil, fmt.Errorf("InstallPlugin: validate purchase for %q: %w", def.StorePackage, err)
+		}
+		if info.RequiresPayment() {
+			return nil, fmt.Errorf("%w: %q", ErrPaymentRequired, def.StorePackage)
+		}
+	}
+
 	h := newPluginInstall(pkg)
 	// The install runs in the background so the caller can stream Progress() while
 	// it proceeds; finish() records the result and closes the handle exactly once.
 	go func() {
 		h.finish(self.runInstall(def, h.emit))
 	}()
-	return h
+	return h, nil
 }
 
 // runInstall performs a plugin install synchronously, reporting stage progress
@@ -375,6 +401,14 @@ func (self *PluginsMgr) fetchStoreRelease(pkg string, version string) (storeRele
 		return storeRelease{}, fmt.Errorf("fetch release %q for %q: %w", version, pkg, err)
 	}
 
+	// Payment gate. The cloud sets requires_payment (and withholds the zip URL)
+	// for a paid plugin this machine is not purchased to. This is the single choke
+	// point for both standalone installs and meta-member installs, so a dropped
+	// meta member that the machine wants to keep is caught here too.
+	if resp.GetRequiresPayment() {
+		return storeRelease{}, fmt.Errorf("%w: %q", ErrPaymentRequired, pkg)
+	}
+
 	rel := storeRelease{
 		IsMeta:  resp.GetIsMeta(),
 		Name:    resp.GetName(),
@@ -394,6 +428,83 @@ func (self *PluginsMgr) fetchStoreRelease(pkg string, version string) (storeRele
 	}
 
 	return rel, nil
+}
+
+// CheckPurchase asks the cloud store whether this machine may install pkg and
+// at what price. Auth and machine identity are handled by the shared RPC client.
+func (self *PluginsMgr) CheckPurchase(pkg string) (sdkplugin.PluginPurchaseInfo, error) {
+	if pkg == "" {
+		return sdkplugin.PluginPurchaseInfo{}, errors.New("package is required")
+	}
+
+	srv, ctx := corerpc.GetTwirpServiceAndCtx()
+	resp, err := srv.CheckPluginPurchase(ctx, &rpc_flarewifi_v2.CheckPluginPurchaseRequest{
+		Package: pkg,
+	})
+	if err != nil {
+		return sdkplugin.PluginPurchaseInfo{}, fmt.Errorf("check purchase for %q: %w", pkg, err)
+	}
+
+	return sdkplugin.PluginPurchaseInfo{
+		Package:              pkg,
+		Purchased:            resp.GetPurchased(),
+		IsFree:               resp.GetIsFree(),
+		PricingType:          resp.GetPricingType(),
+		SubscriptionInterval: resp.GetSubscriptionInterval(),
+		PriceUsdCents:        resp.GetPriceUsdCents(),
+		LocalCurrency:        resp.GetLocalCurrency(),
+		LocalPriceCents:      resp.GetLocalPriceCents(),
+		DisplayCurrency:      resp.GetDisplayCurrency(),
+		DisplayPriceCents:    resp.GetDisplayPriceCents(),
+		ExpiresAt:            resp.GetExpiresAt(),
+		Reason:               resp.GetReason(),
+	}, nil
+}
+
+// buildPurchaseURL is the implementation behind IPluginsMgrApi.GetPurchaseURL.
+// It is called by the per-plugin wrapper (see PluginApi.PluginsMgr), which
+// supplies the calling plugin (owner) so the callback route resolves in that
+// plugin's namespace. See the interface doc for the full contract.
+func (self *PluginsMgr) buildPurchaseURL(r *http.Request, owner *PluginApi, pkg string, callbackRouteName string, pairs ...string) (string, error) {
+	if pkg == "" {
+		return "", errors.New("package is required")
+	}
+	if callbackRouteName == "" {
+		return "", errors.New("callback route name is required")
+	}
+
+	// The machine's browser-facing base URL (the LAN IP / hostname the owner used
+	// to reach the store), so the cloud redirect lands back on this device rather
+	// than on loopback.
+	scheme := "http"
+	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		scheme = "https"
+	}
+	machineBaseURL := scheme + "://" + r.Host
+
+	// Resolve the calling plugin's callback route to a relative path. pairs fill the
+	// route's path parameters exactly like UrlForRoute.
+	callbackPath := owner.HttpAPI.httpRouter.UrlForRoute(sdkplugin.PluginRouteName(callbackRouteName), pairs...)
+	if callbackPath == "" {
+		return "", fmt.Errorf("callback route %q is not registered", callbackRouteName)
+	}
+
+	// Always carry the package so the handler knows what to install, regardless of
+	// the route's own parameters. Use "&" if UrlForRoute already produced a query.
+	sep := "?"
+	if strings.Contains(callbackPath, "?") {
+		sep = "&"
+	}
+	returnURL := machineBaseURL + callbackPath + sep + "pkg=" + url.QueryEscape(pkg)
+
+	_, machineID := machineuid.GetMachineUID()
+
+	// env.WebBaseURL() is the cloud dashboard origin (www.<SERVER_DOMAIN>) where
+	// the plugin-checkout page is served.
+	return env.WebBaseURL() + "/plugin-checkout" +
+		"?machine_id=" + url.QueryEscape(machineID) +
+		"&package=" + url.QueryEscape(pkg) +
+		"&return_url=" + url.QueryEscape(returnURL), nil
 }
 
 // installStoreMeta installs every member of a store meta bundle and records the

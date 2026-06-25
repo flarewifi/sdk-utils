@@ -25,6 +25,12 @@ var (
 	// PortalCertInitialDelay - delay before the first portal cert fetch after startup
 	PortalCertInitialDelay = 15 * time.Second
 
+	// BlockedPluginsInterval - how often to poll the cloud denylist (fast in dev)
+	BlockedPluginsInterval = 600 * time.Second
+
+	// BlockedPluginsInitialDelay - delay before the first denylist fetch after startup
+	BlockedPluginsInitialDelay = 20 * time.Second
+
 	// SessionCleanupInterval - how often to run session cleanup
 	SessionCleanupInterval = 500 * time.Second
 

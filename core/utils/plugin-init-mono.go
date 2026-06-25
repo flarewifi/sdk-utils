@@ -118,6 +118,15 @@ func MakePluginInitMono() {
 
 	// Loading plugin
 	pkg = "%s"
+
+	// Skip plugins flagged by the cloud denylist (FetchBlockedPlugins, reconciled
+	// daily by the blocked-plugins job into a per-plugin marker). A mono plugin is
+	// statically linked, so a block can't unload it mid-run — this guard simply
+	// never registers it, so the block takes effect on the next reboot. Mirrors the
+	// non-mono loader's plugins.IsBlocked check in boot.InitPlugins.
+	if plugins.IsBlocked(pkg) {
+		fmt.Println("Skipping blocked mono plugin: " + pkg)
+	} else {
 	fmt.Println("Loading mono plugin:" + pkg)
 
 	pluginDir = filepath.Join(sdkutils.PathPluginInstallDir, pkg)
@@ -145,6 +154,7 @@ func MakePluginInitMono() {
 		self.plugins = append(self.plugins, api)
 		fmt.Println("Loaded mono plugin:" + pkg)
 	}
+	}
 
 		`, pkg, importVar)
 	}
@@ -161,6 +171,7 @@ import (
 	"core/utils/config"
 	"core/utils/env"
 	"core/utils/migrate"
+	"core/utils/plugins"
 	sdkutils "github.com/flarewifi/sdk-utils"
 
     %s
