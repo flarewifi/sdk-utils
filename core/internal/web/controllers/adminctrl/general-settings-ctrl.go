@@ -29,11 +29,14 @@ func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// Get machine ID
 		_, machineID := machineuid.GetMachineUID()
 
-		// Get software version
-		pluginInfo, err := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir)
-		softwareVersion := "unknown"
-		if err == nil {
-			softwareVersion = pluginInfo.Version
+		// Get software version — the per-partner product version from
+		// core/product.json (IMachineApi.ProductVersion; the same value reported for
+		// software-update eligibility). In local dev the reflex build generates
+		// product.json from the core/plugin.json version, so this still shows the core
+		// version there (see core/cmd/gen-product-version).
+		softwareVersion := g.CoreAPI.Machine().ProductVersion()
+		if softwareVersion == "" {
+			softwareVersion = "unknown"
 		}
 
 		// Get form errors if any

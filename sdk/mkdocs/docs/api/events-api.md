@@ -238,6 +238,27 @@ api.Events().OnInternetEvent(sdkapi.EventInternetDown, func(ctx context.Context)
 
 > **Need the current status, not a change?** Use [`api.Machine().IsOnline()`](./machine-api.md#isonline) for a one-off check of whether the machine has internet right now — it reads the same online-monitor signal that drives these events. Subscribe with `OnInternetEvent` to *react* to transitions; call `IsOnline()` to *query* the state at the moment you need it (e.g. just before attempting a network call).
 
+> **Emission starts after boot.** The online monitor begins probing — and therefore emits `EventInternetUp`/`EventInternetDown` — only once boot completes (`EventBoot`, below). During boot the WAN link is still coming up, so probing then would emit a spurious `EventInternetDown` and surface a false "no internet" notification on every reboot.
+
+### OnBoot
+
+Registers a callback that fires **once**, after the machine's boot sequence has fully completed — the captive portal is up, the network is initialized, and provisioning has run or been deferred. The callback runs synchronously in the boot goroutine, in registration order; its returned error is logged but does not stop other callbacks. Spawn a goroutine if it must do slow work, so it does not stall boot finalization.
+
+**Available events:**
+
+| Event | Constant | Description |
+|-------|----------|-------------|
+| `"boot:complete"` | `sdkapi.EventBoot` | The boot sequence finished; the machine is fully up |
+
+Use it to start work that should only begin once the machine is fully booted (the core uses it to gate the online monitor's connectivity emissions). A callback that starts a long-lived service must **not** retain the passed `ctx` — it is cancelled when the callback returns; capture `context.Background()` instead.
+
+```go
+api.Events().OnBoot(sdkapi.EventBoot, func(ctx context.Context) error {
+    api.Logger().Info("machine fully booted")
+    return nil
+})
+```
+
 ## Supporting Types
 
 ### SessionEventData
@@ -338,4 +359,10 @@ type PurchaseEventData struct {
 |----------|-------|
 | `sdkapi.EventInternetUp` | `"internet:up"` |
 | `sdkapi.EventInternetDown` | `"internet:down"` |
+
+### BootEvent Constants
+
+| Constant | Value |
+|----------|-------|
+| `sdkapi.EventBoot` | `"boot:complete"` |
 

@@ -48,11 +48,13 @@ func StartActivation() {
 }
 
 // StartOnlineMonitor wires the core's online monitor to network-dependent install
-// work and starts it. On every internet-up transition (including the first probe
-// at boot, if the device is already online) it runs a provisioning pass that
-// installs each loaded plugin's system_packages and runs its preinstall and
-// postinstall scripts — the steps that need the network and therefore cannot run
-// reliably during the offline part of boot.
+// work and arranges for it to start once boot completes (it subscribes to EventBoot
+// rather than starting the monitor inline — see the bottom of this function). On
+// every internet-up transition (including the monitor's first probe, if the device
+// is already online when boot finishes) it runs a provisioning pass that installs
+// each loaded plugin's system_packages and runs its preinstall and postinstall
+// scripts — the steps that need the network and therefore cannot run reliably
+// during the offline part of boot.
 //
 // Plugins can subscribe to the same EventInternetUp / EventInternetDown signals
 // via api.Events().OnInternetEvent.
@@ -106,8 +108,20 @@ func StartOnlineMonitor(g *api.CoreGlobals) {
 		return nil
 	})
 
+	// Defer the monitor's polling loop until boot completes (EventBoot). During boot
+	// the WAN link is still coming up (DHCP/PPPoE/default route), so probing then can
+	// emit a spurious EventInternetDown — a false "No internet connection" admin
+	// notification on every reboot — and run the internet-up provisioning/activation
+	// passes while boot is still finalizing. Starting after boot:complete gates both.
+	//
+	// Capture context.Background() for the monitor's lifetime: the ctx handed to a
+	// boot callback is cancelled the moment the callback returns, so retaining it
+	// would stop the polling loop almost immediately.
 	monitor := netmon.NewMonitor(g.EventsMgr, g.CoreAPI.Logger())
-	monitor.Start(context.Background())
+	g.EventsMgr.OnBoot(sdkapi.EventBoot, func(ctx context.Context) error {
+		monitor.Start(context.Background())
+		return nil
+	})
 }
 
 // provisionBootCap bounds how long boot will BLOCK on the first provisioning pass

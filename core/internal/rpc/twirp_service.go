@@ -5,22 +5,22 @@ import (
 	"fmt"
 	machineuid "core/internal/modules/machine-uid"
 	rpcutil "core/internal/modules/rpc"
-	"core/internal/rpc/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/env"
 	"net/http"
 
 	"github.com/twitchtv/twirp"
 )
 
-const RPC_API_VERSION = "v2"
+const RPC_API_VERSION = "v3"
 
-func GetTwirpServiceAndCtx() (rpc_flarewifi_v2.FlarehotspotService, context.Context) {
+func GetTwirpServiceAndCtx() (rpc_flarewifi_v3.FlarehotspotService, context.Context) {
 	url := env.RPC_PROXY_URL + "/flarewifi/" + RPC_API_VERSION
 
 	// Create HTTP client with custom RoundTripper for Cloudflare Worker validation
 	_, machineID := machineuid.GetMachineUID()
 	httpClient := rpcutil.NewCloudflareClient(machineID)
-	srv := rpc_flarewifi_v2.NewFlarehotspotServiceProtobufClient(url, httpClient)
+	srv := rpc_flarewifi_v3.NewFlarehotspotServiceProtobufClient(url, httpClient)
 	header := make(http.Header)
 	header.Set("Authorization", "Bearer "+env.RPC_TOKEN)
 	header.Set("Forward-To", env.RpcUpstreamURL())

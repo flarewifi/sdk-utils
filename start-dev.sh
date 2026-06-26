@@ -15,6 +15,12 @@ GO_TAGS="dev"
         go run -tags="${GO_TAGS}" ./core/cmd/sysplugin-prepare/main.go && \
         go run -tags="${GO_TAGS}" ./core/cmd/build-cli/main.go && \
         ./bin/flare fix-workspace && \
+        # Generate core/product.json from the core/plugin.json version. The
+        # software-release build stamps product.json with the per-partner product
+        # version; dev has no such stamp, so generate a stand-in (== core version)
+        # each reload. product.json is gitignored, and reflex ignores it (see
+        # docker-cmd.sh) so writing it does not retrigger a rebuild loop.
+        go run -tags="${GO_TAGS}" ./core/cmd/gen-product-version/main.go && \
         # Rebuild core assets (resources/assets/dist) on every reload. `flare
         # build-plugins` below only rebuilds plugin assets, so without this a core
         # JS/CSS edit would never reach the browser. --core-only keeps the hot

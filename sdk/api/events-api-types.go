@@ -31,6 +31,9 @@ type PaymentEvent string
 // observed by the core's online monitor.
 type InternetEvent string
 
+// BootEvent represents a milestone in the machine's boot sequence.
+type BootEvent string
+
 // Session events.
 const (
 	EventSessionCreated      SessionEvent = "session:created"
@@ -140,6 +143,17 @@ const (
 	// access has been lost. Use it to pause network-dependent work or surface an
 	// offline state in the UI.
 	EventInternetDown InternetEvent = "internet:down"
+)
+
+// Boot events.
+const (
+	// EventBoot is emitted once, after the boot sequence has fully completed (the
+	// captive portal is up, the network is initialized, and provisioning has run or
+	// been deferred). The core uses it to defer the online monitor's connectivity
+	// emissions until boot is done, so a still-initializing WAN during reboot cannot
+	// surface a spurious "no internet" notification. Plugins can subscribe to run
+	// work that should only start once the machine is fully booted.
+	EventBoot BootEvent = "boot:complete"
 )
 
 // SessionEventData represents the data associated with a session event.

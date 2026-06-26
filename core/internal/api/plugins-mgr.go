@@ -20,7 +20,7 @@ import (
 	"core/internal/network"
 	"core/internal/plugindeps"
 	corerpc "core/internal/rpc"
-	"core/internal/rpc/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/internal/sessmgr"
 	"core/utils/config"
 	"core/utils/env"
@@ -393,7 +393,7 @@ func (self *PluginsMgr) fetchStoreRelease(pkg string, version string) (storeRele
 	}
 
 	srv, ctx := corerpc.GetTwirpServiceAndCtx()
-	resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v2.FetchLatestPluginReleaseByPackageRequest{
+	resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest{
 		PluginPackage: pkg,
 		Version:       version,
 	})
@@ -438,7 +438,7 @@ func (self *PluginsMgr) CheckPurchase(pkg string) (sdkplugin.PluginPurchaseInfo,
 	}
 
 	srv, ctx := corerpc.GetTwirpServiceAndCtx()
-	resp, err := srv.CheckPluginPurchase(ctx, &rpc_flarewifi_v2.CheckPluginPurchaseRequest{
+	resp, err := srv.CheckPluginPurchase(ctx, &rpc_flarewifi_v3.CheckPluginPurchaseRequest{
 		Package: pkg,
 	})
 	if err != nil {

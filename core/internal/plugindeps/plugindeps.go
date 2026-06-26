@@ -10,7 +10,7 @@ import (
 
 	machineuid "core/internal/modules/machine-uid"
 	corerpc "core/internal/rpc"
-	v2 "core/internal/rpc/rpc_flarewifi_v2"
+	v3 "core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/plugins"
 )
 
@@ -26,7 +26,7 @@ func Fetch(coreVersion string) []plugins.LockedGoModule {
 	srv, ctx := corerpc.GetTwirpServiceAndCtx()
 	_, machineID := machineuid.GetMachineUID()
 
-	resp, err := srv.FetchPluginDependencies(ctx, &v2.FetchPluginDependenciesRequest{
+	resp, err := srv.FetchPluginDependencies(ctx, &v3.FetchPluginDependenciesRequest{
 		MachineId:   machineID,
 		CoreVersion: coreVersion,
 	})

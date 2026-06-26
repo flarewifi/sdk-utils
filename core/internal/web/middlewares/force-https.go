@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"core/internal/web/helpers"
 	"core/utils/config"
 	"core/utils/env"
 )
@@ -17,18 +18,21 @@ var httpsExemptPaths = map[string]bool{
 	"/boot/status": true,
 }
 
-// ForceHTTPS is the global middleware that makes both the admin pages and the
-// captive portal always run over HTTPS. It runs on RootRouter, which backs BOTH
-// the HTTP (:80) and HTTPS (:443) listeners, and redirects every plain-HTTP
-// request to its HTTPS equivalent. The redirect TARGET host depends on the path:
+// ForceHTTPS is the global middleware that fixes the scheme + host of admin and
+// captive-portal traffic — but ONLY when a custom_domain is configured. It runs on
+// RootRouter, which backs BOTH the HTTP and HTTPS listeners. The target depends on
+// the path:
 //
-//   - Admin/device-local pages (see isDeviceLocalPath) upgrade to HTTPS on the
+//   - Admin/device-local pages (see isDeviceLocalPath) are forced to HTTPS on the
 //     SAME host, so the admin dashboard stays reachable by raw IP with no domain
 //     (a cert-name warning is expected there).
-//   - Portal/captive traffic is funneled to the portal domain — dev/staging:
-//     the fixed captive.<SERVER_DOMAIN> (env.PortalDomain()), prod: the
-//     configured custom_domain — which carries the valid cloud-issued cert and
-//     resolves to the device via split-horizon DNS / /etc/hosts.
+//   - Portal/captive traffic is funneled to the configured custom_domain over the
+//     portal scheme: HTTPS in prod/staging (the valid cloud-issued cert), plain
+//     HTTP in local dev (no cert for the dev portal host). See portalScheme.
+//
+// When NO custom_domain is configured (config.HasCustomDomain is false) the
+// machine serves a self-signed cert, so forcing a scheme would only produce cert
+// warnings: this middleware becomes a pass-through and plain HTTP is served as-is.
 //
 // Port 80 stays open and REDIRECTS rather than drops, so OS captive-detection
 // probes are still intercepted; HTTPS can't be transparently intercepted (a
@@ -37,9 +41,13 @@ var httpsExemptPaths = map[string]bool{
 func ForceHTTPS() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Already HTTPS — direct TLS, or terminated by a proxy that set the
-			// forwarded-proto header. Serve as-is.
-			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			// Sub-resource requests (assets, EventSource/XHR, favicon, images) are
+			// scheme-agnostic: serve them on the scheme they were requested so they
+			// MATCH the embedding page. The admin/portal scheme split applies to
+			// top-level page navigations only — cross-scheme-redirecting a sub-resource
+			// of an admin (HTTPS) page to the portal scheme (HTTP) trips the browser's
+			// mixed-content blocker (and a redirect/retry loop). See isSubresourceRequest.
+			if isSubresourceRequest(r) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -50,10 +58,34 @@ func ForceHTTPS() func(http.Handler) http.Handler {
 				return
 			}
 
-			// 302 is the redirect most universally followed by OS captive-detection
-			// agents; the portal/admin flows that might POST are always reached from
-			// an already-HTTPS page, so they never hit this branch over HTTP.
-			http.Redirect(w, r, httpsURL(redirectHost(r), r.URL.RequestURI()), http.StatusFound)
+			// No custom_domain => self-signed cert, no cloud-issued host to funnel
+			// to. Don't force any scheme; serve as-is.
+			if !config.HasCustomDomain() {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			isHTTPS := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+
+			// Admin/device-local pages: always HTTPS on the request's own host.
+			if isDeviceLocalPath(r.URL.Path) {
+				if isHTTPS {
+					next.ServeHTTP(w, r)
+					return
+				}
+				http.Redirect(w, r, httpsURL(hostWithoutPort(r.Host), r.URL.RequestURI()), http.StatusFound)
+				return
+			}
+
+			// Captive portal pages: funnel to the custom_domain over the portal
+			// scheme (HTTP in dev, HTTPS otherwise). Already there => serve.
+			domain := portalDomain()
+			if domain != "" && strings.EqualFold(hostWithoutPort(r.Host), domain) && isHTTPS == (portalScheme() == "https") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// 302 is the redirect most universally followed by OS captive-detection agents.
+			http.Redirect(w, r, portalURL(domain, r.URL.RequestURI()), http.StatusFound)
 		})
 	}
 }
@@ -62,35 +94,70 @@ func ForceHTTPS() func(http.Handler) http.Handler {
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
-// redirectHost resolves the HTTPS redirect target host. Admin/device-local paths
-// stay on the request's own host so the admin dashboard works over IP with no
-// domain; everything else (portal + captive) goes to the portal domain — the
-// fixed dev hostname in development, the configured custom_domain in production
-// (falling back to the request host when prod has none configured).
-func redirectHost(r *http.Request) string {
-	if isDeviceLocalPath(r.URL.Path) {
-		return hostWithoutPort(r.Host)
+// isSubresourceRequest reports whether a request is a sub-resource load (asset,
+// EventSource/XHR, favicon, image, …) rather than a top-level page navigation. The
+// admin/portal scheme split (see ForceHTTPS / RedirectToPortalDomain) must NOT
+// apply to sub-resources: they have to be served on the scheme of their embedding
+// page, or the browser blocks them as mixed content. Detection:
+//   - Static asset paths (by extension) are always sub-resources.
+//   - Modern browsers tag sub-resources with Sec-Fetch-Mode != "navigate".
+//
+// Clients that send no Sec-Fetch-Mode (older browsers, OS captive-portal probes)
+// are treated as navigations so those probes are still funneled to the portal.
+func isSubresourceRequest(r *http.Request) bool {
+	if helpers.IsAssetPath(r.URL.Path) {
+		return true
 	}
-	// dev + staging carry no per-machine custom_domain, but the cloud issues a
-	// valid cert for the build's fixed portal hostname (captive.<SERVER_DOMAIN>),
-	// so funnel there. prod prefers the operator's configured custom_domain.
-	if env.GO_ENV == env.ENV_DEV || env.GO_ENV == env.ENV_STAGING {
-		return env.PortalDomain()
+	if mode := r.Header.Get("Sec-Fetch-Mode"); mode != "" && mode != "navigate" {
+		return true
 	}
-	if cfg, err := config.GetCachedAppConfig(); err == nil {
-		if d := strings.TrimSpace(cfg.CustomDomain); d != "" {
-			return d
-		}
-	}
-	return hostWithoutPort(r.Host)
+	return false
 }
 
-// isDeviceLocalPath reports whether a path must stay on the device's own host
-// (LAN IP / localhost) rather than being funneled to the portal domain: the admin
-// UI, admin login, and the activation page. This keeps admin reachable by IP only.
+// portalDomain returns the configured captive-portal hostname (custom_domain), or
+// "" when none is set. In local dev config forces it to captive.flare-local.com.
+func portalDomain() string {
+	if cfg, err := config.GetCachedAppConfig(); err == nil {
+		return strings.TrimSpace(cfg.CustomDomain)
+	}
+	return ""
+}
+
+// portalScheme is the scheme captive-portal pages are served over: plain HTTP in
+// local dev (no valid cert for the dev portal host) and HTTPS everywhere else (the
+// cloud-issued cert). Admin pages are always HTTPS regardless of this.
+func portalScheme() string {
+	if env.GO_ENV == env.ENV_DEV {
+		return "http"
+	}
+	return "https"
+}
+
+// portalURL builds the captive-portal URL on the given host using portalScheme and
+// the matching listener port (omitting the port when it is the scheme default).
+func portalURL(host, uri string) string {
+	scheme := portalScheme()
+	port := env.HTTPS_PORT
+	if scheme == "http" {
+		port = env.HTTP_PORT
+	}
+	if (scheme == "https" && port == 443) || (scheme == "http" && port == 80) {
+		return fmt.Sprintf("%s://%s%s", scheme, host, uri)
+	}
+	return fmt.Sprintf("%s://%s:%d%s", scheme, host, port, uri)
+}
+
+// isDeviceLocalPath reports whether a path must stay on the device's own host over
+// HTTPS rather than being funneled to the portal domain (which is plain HTTP in dev):
+// the admin UI, admin login, and the activation page. This keeps admin reachable by IP
+// only and never downgraded to HTTP.
+//
+// The login is matched by suffix because its render path (/login) and its form-POST
+// handler live on different prefixes — the handler is a generic plugin route
+// (/p/<pkg>/<ver>/login), NOT an /admin route — yet both must stay on HTTPS.
 func isDeviceLocalPath(path string) bool {
 	return strings.HasPrefix(path, "/admin") ||
-		path == "/login" ||
+		strings.HasSuffix(path, "/login") ||
 		strings.HasPrefix(path, "/activation")
 }
 

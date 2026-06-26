@@ -3,9 +3,10 @@ package activation
 import (
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
-	"core/internal/rpc/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/config"
 	"core/utils/crypt"
+	"core/utils/product"
 	"core/utils/tags"
 	"encoding/json"
 	"errors"
@@ -70,7 +71,7 @@ func clearPendingMachineUpdate() {
 }
 
 // buildMachineInfo builds a MachineInfo struct from system information
-func buildMachineInfo(machineID string) (*rpc_flarewifi_v2.MachineInfo, error) {
+func buildMachineInfo(machineID string) (*rpc_flarewifi_v3.MachineInfo, error) {
 	release, err := sdkutils.ReadOsRelease(osReleaseFile)
 	if err != nil {
 		return nil, err
@@ -86,11 +87,16 @@ func buildMachineInfo(machineID string) (*rpc_flarewifi_v2.MachineInfo, error) {
 		return nil, err
 	}
 
-	return &rpc_flarewifi_v2.MachineInfo{
-		DeviceModel:    release.DeviceModel,
-		DeviceConfig:   release.DeviceConfig,
-		MachineId:      machineID,
-		CurrentVersion: info.Version,
+	return &rpc_flarewifi_v3.MachineInfo{
+		DeviceModel:  release.DeviceModel,
+		DeviceConfig: release.DeviceConfig,
+		MachineId:    machineID,
+		// CoreVersion is the ABI identity (core/plugin.json); ProductVersion is the
+		// per-partner update lineage (core/product.json, falling back to the core
+		// version on unstamped builds). The cloud registers CoreVersion as the
+		// machine's version and decides update-eligibility from ProductVersion.
+		CoreVersion:    info.Version,
+		ProductVersion: product.Version(),
 		BrandId:        release.BrandId,
 		Os:             strings.ToLower(release.Os),
 		OsVersion:      release.OsVersion,
@@ -114,7 +120,7 @@ func updateMachineIDOnCloud(oldID, newID string) bool {
 		return false
 	}
 
-	req := &rpc_flarewifi_v2.UpdateMachineInfoRequest{
+	req := &rpc_flarewifi_v3.UpdateMachineInfoRequest{
 		MachineId:   oldID,
 		MachineInfo: machineInfo,
 	}
@@ -296,12 +302,13 @@ func checkActivationOnline() (ok bool, err error) {
 	}
 
 	_, machineID := machineuid.GetMachineUID()
-	params := rpc_flarewifi_v2.MachineActivationRequest{
-		MachineInfo: &rpc_flarewifi_v2.MachineInfo{
+	params := rpc_flarewifi_v3.MachineActivationRequest{
+		MachineInfo: &rpc_flarewifi_v3.MachineInfo{
 			DeviceModel:    release.DeviceModel,
 			DeviceConfig:   release.DeviceConfig,
 			MachineId:      machineID,
-			CurrentVersion: info.Version,
+			CoreVersion:    info.Version,
+			ProductVersion: product.Version(),
 			BrandId:        release.BrandId,
 			Os:             strings.ToLower(release.Os),
 			OsVersion:      release.OsVersion,
@@ -315,7 +322,7 @@ func checkActivationOnline() (ok bool, err error) {
 		},
 	}
 
-	var act *rpc_flarewifi_v2.MachineActivationResponse
+	var act *rpc_flarewifi_v3.MachineActivationResponse
 	maxAttempts := 3
 	retryDelays := []time.Duration{0, 5 * time.Second, 10 * time.Second}
 

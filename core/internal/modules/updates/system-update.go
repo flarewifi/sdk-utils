@@ -212,6 +212,19 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		return errors.New("staged core payload is missing bin/flare (corrupt download)")
 	}
 
+	// Stamp the target PRODUCT version into the staged core's core/product.json so the
+	// device reports it after the update (start.sh's blanket overlay then copies it to
+	// app/core/product.json). A non-mono update ships only the compiled core_arch_bin,
+	// which is CACHE-SHARED across every product-version release built on the same core
+	// version + platform — so the cloud cannot bake a single product version into it.
+	// The server instead tells us the exact product version in this update response
+	// (update.Version == FetchLatest's productVersionString), which is the authoritative
+	// value to stamp. Without this an old device (no product.json) updating to a new
+	// release would keep falling back to its core version. See product.Version().
+	if err := stampStagedProductVersion(coreDest, update); err != nil {
+		return fmt.Errorf("stamp staged product version: %w", err)
+	}
+
 	// The release tarball bundles plugin SOURCES under data/plugins/{local,devel} so the
 	// device can recompile local plugins against the new core (start.sh relocates these
 	// into the persistent data dir on apply). But a package can ship source yet be
@@ -235,11 +248,25 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	// (cloud builds + on-device recompiles). Switch the page label off "Downloading".
 	setPhase(PhaseCompiling)
 
+	// Resolve the TARGET core (ABI) version from the staged core's plugin.json — the
+	// authoritative ABI identity every plugin .so must be compiled against. This is the
+	// CORE version (core/plugin.json "version", e.g. 1.1.13), which is INDEPENDENT of
+	// update.Version, the per-partner PRODUCT version (e.g. 1.1.12-beta.3): the two
+	// diverge whenever a release bumps the core repo without bumping the product label.
+	// Using the product version here asks the cloud to build plugins for the wrong (or
+	// a non-existent/deleted) core, failing with "no server-side core build available".
+	// The staged core was already extracted + verified above, so read its version
+	// directly; a read failure means the payload is corrupt (treat as a hard error).
+	stagedCore, err := sdkutils.GetPluginInfoFromPath(filepath.Join(coreDest, "core"))
+	if err != nil {
+		return fmt.Errorf("read staged core version: %w", err)
+	}
+	targetCore := stagedCore.Version
+
 	// 2. Stage every store plugin, REBUILT by the cloud against the target core
 	//    version so each .so is ABI-matched to the core it will boot with. We pass
 	//    the latest plugin release (version == "") since the latest plugin and
 	//    latest core are co-developed and known to compile together.
-	targetCore := update.Version.String()
 	pluginPkgs, err := storePluginPackages()
 	if err != nil {
 		return fmt.Errorf("enumerate store plugins: %w", err)
@@ -411,6 +438,22 @@ func convertDevelPluginsToLocal() error {
 	}
 
 	return nil
+}
+
+// stampStagedProductVersion writes the target product version into the staged core's
+// core/product.json ({"version": "..."}), the file product.Version() reads. The
+// non-mono core update is the shared, product-agnostic core_arch_bin, so the cloud
+// never embeds product.json in it; the device stamps the product version the server
+// reported for this update (update.Version) so the apply overlay carries it onto the
+// device. The shape mirrors core/utils/product.productInfo. A nil/empty version is a
+// hard error: a release that reached staging always carries a parsed product version.
+func stampStagedProductVersion(coreDest string, update *SoftwareReleaseUpdate) error {
+	if update == nil || update.Version == nil {
+		return errors.New("missing product version for staged core")
+	}
+
+	productPath := filepath.Join(coreDest, "core", "product.json")
+	return sdkutils.JsonWrite(productPath, map[string]string{"version": update.Version.String()})
 }
 
 // downloadAndExtractCore streams the self-contained core tarball to a temp file

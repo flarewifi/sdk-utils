@@ -41,7 +41,7 @@ type EventsManager struct {
 	voucherCallbacks      map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error
 	voucherBatchCallbacks map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error
 	internetCallbacks     map[sdkapi.InternetEvent][]func(context.Context) error
-
+	bootCallbacks         map[sdkapi.BootEvent][]func(context.Context) error
 }
 
 // NewEventsManager constructs an EventsManager ready for use.
@@ -54,6 +54,7 @@ func NewEventsManager() *EventsManager {
 		voucherCallbacks:      make(map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error),
 		voucherBatchCallbacks: make(map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error),
 		internetCallbacks:     make(map[sdkapi.InternetEvent][]func(context.Context) error),
+		bootCallbacks:         make(map[sdkapi.BootEvent][]func(context.Context) error),
 	}
 }
 
@@ -117,6 +118,13 @@ func (em *EventsManager) OnInternetEvent(event sdkapi.InternetEvent, cb func(con
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.internetCallbacks[event] = append(em.internetCallbacks[event], cb)
+}
+
+// OnBoot registers a callback that fires once the boot sequence has completed.
+func (em *EventsManager) OnBoot(event sdkapi.BootEvent, cb func(context.Context) error) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	em.bootCallbacks[event] = append(em.bootCallbacks[event], cb)
 }
 
 // =============================================================================
@@ -190,6 +198,29 @@ func (em *EventsManager) EmitClientMerge(ctx context.Context, data sdkapi.EventC
 func (em *EventsManager) EmitInternetEvent(ctx context.Context, event sdkapi.InternetEvent) error {
 	em.mu.RLock()
 	cbs := append([]func(context.Context) error(nil), em.internetCallbacks[event]...)
+	em.mu.RUnlock()
+
+	var firstErr error
+	for _, cb := range cbs {
+		cbCtx, cancel := context.WithTimeout(ctx, callbackTimeout)
+		err := cb(cbCtx)
+		cancel()
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+// EmitBootEvent dispatches a boot-milestone event to all registered callbacks
+// synchronously, in registration order. Like EmitInternetEvent the callbacks are
+// payload-less: every callback runs even if one errors, each gets a context bounded
+// by callbackTimeout, and the first non-nil error is returned (boot logs but ignores
+// it). A callback that starts a long-lived service must NOT retain the passed ctx —
+// it is cancelled when the callback returns; capture context.Background() instead.
+func (em *EventsManager) EmitBootEvent(ctx context.Context, event sdkapi.BootEvent) error {
+	em.mu.RLock()
+	cbs := append([]func(context.Context) error(nil), em.bootCallbacks[event]...)
 	em.mu.RUnlock()
 
 	var firstErr error

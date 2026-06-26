@@ -3,7 +3,7 @@ package updates
 import (
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
-	"core/internal/rpc/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/config"
 	"core/utils/product"
 	"core/utils/tags"
@@ -102,15 +102,25 @@ func CheckSoftwareReleaseUpdate() (*SoftwareReleaseUpdate, error) {
 	// "stable", hiding every beta/development release. Always send it.
 	_, machineID := machineuid.GetMachineUID()
 
+	// The machine's ABI core version (core/plugin.json). Best-effort: the server uses
+	// ProductVersion for update-eligibility, so an unreadable core version doesn't block
+	// the check — it only omits the informational ABI value.
+	coreVersion := ""
+	if coreInfo, cerr := sdkutils.GetPluginInfoFromPath(sdkutils.PathCoreDir); cerr == nil {
+		coreVersion = coreInfo.Version
+	}
+
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
-	params := rpc_flarewifi_v2.FetchLatestSoftwareReleaseRequest{
-		MachineId:      machineID,
-		DeviceModel:    release.DeviceModel,
-		DeviceConfig:   release.DeviceConfig,
-		// The machine reports its PRODUCT version (the per-partner release lineage)
-		// for update eligibility — NOT its core version. product.Version falls back
-		// to the core version on builds that were never stamped (older images / dev).
-		CurrentVersion: product.Version(),
+	params := rpc_flarewifi_v3.FetchLatestSoftwareReleaseRequest{
+		MachineId:    machineID,
+		DeviceModel:  release.DeviceModel,
+		DeviceConfig: release.DeviceConfig,
+		// CoreVersion is the ABI identity (core/plugin.json). ProductVersion is the
+		// per-partner release lineage the server compares for update-eligibility;
+		// product.Version falls back to the core version on builds that were never
+		// stamped (older images / dev).
+		CoreVersion:    coreVersion,
+		ProductVersion: product.Version(),
 		BrandId:        release.BrandId,
 		Os:             strings.ToLower(release.Os),
 		OsVersion:      release.OsVersion,
