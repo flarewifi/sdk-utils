@@ -5,6 +5,7 @@ import (
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v2"
 	"core/utils/config"
+	"core/utils/product"
 	"core/utils/tags"
 	"crypto/md5"
 	"encoding/base64"
@@ -84,7 +85,7 @@ type SoftwareReleaseUpdate struct {
 	ForceUpdate         bool
 }
 
-func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleaseUpdate, error) {
+func CheckSoftwareReleaseUpdate() (*SoftwareReleaseUpdate, error) {
 	release, err := sdkutils.ReadOsRelease(osReleaseFile)
 	if err != nil {
 		return nil, err
@@ -106,7 +107,10 @@ func CheckSoftwareReleaseUpdate(currentVersion *semver.Version) (*SoftwareReleas
 		MachineId:      machineID,
 		DeviceModel:    release.DeviceModel,
 		DeviceConfig:   release.DeviceConfig,
-		CurrentVersion: currentVersion.String(),
+		// The machine reports its PRODUCT version (the per-partner release lineage)
+		// for update eligibility — NOT its core version. product.Version falls back
+		// to the core version on builds that were never stamped (older images / dev).
+		CurrentVersion: product.Version(),
 		BrandId:        release.BrandId,
 		Os:             strings.ToLower(release.Os),
 		OsVersion:      release.OsVersion,

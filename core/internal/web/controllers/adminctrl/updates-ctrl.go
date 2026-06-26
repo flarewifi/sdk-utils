@@ -12,7 +12,6 @@ import (
 	sdkapi "sdk/api"
 	"sync/atomic"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/a-h/templ"
 )
 
@@ -90,8 +89,9 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		csrfHTML := api.HttpAPI.Helpers().CsrfHtmlTag(r)
 		maxSizeMB := updates.GetMaxFileSizeMB()
 		allowedExts := updates.GetAllowedExtensions()
-		coreInfo := api.Info()
-		currentVersion := coreInfo.Version
+		// Display the machine's product version (what it reports for updates), not
+		// the core version.
+		currentVersion := api.Machine().ProductVersion()
 		page := updatesview.SoftwareUpdatesPage(api, channel, nil, false, uploadUrl, csrfHTML, maxSizeMB, allowedExts, currentVersion)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
@@ -115,17 +115,14 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		api := g.CoreAPI
-		coreInfo := api.Info()
+
+		// The machine's current version for both the update comparison (server-side)
+		// and display is its PRODUCT version (per-partner lineage), not the core
+		// version. CheckSoftwareReleaseUpdate sources it internally.
+		currentVersion := api.Machine().ProductVersion()
 
 		checkUpdateErr := errors.New(g.CoreAPI.Translate("error", "Unable to Check Updates"))
-		currentVersion, err := semver.NewVersion(coreInfo.Version)
-		if err != nil {
-			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, false, checkUpdateErr)
-			page.Render(r.Context(), w)
-			return
-		}
-
-		result, err := updates.CheckSoftwareReleaseUpdate(currentVersion)
+		result, err := updates.CheckSoftwareReleaseUpdate()
 		if err != nil {
 			page := updatesview.CheckForUpdatesPartial(api, updatesview.SoftwareUpdate{}, false, checkUpdateErr)
 			page.Render(r.Context(), w)
@@ -150,7 +147,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			update = updatesview.SoftwareUpdate{
 				HasUpdate:        true,
 				NewVersion:       result.Version.String(),
-				CurrentVersion:   currentVersion.String(),
+				CurrentVersion:   currentVersion,
 				ReleaseNotes:     result.ReleaseNotes,
 				ReleaseNotesHTML: releaseNotesHTML,
 				IsSysupgrade:     result.IsSysupgrade,
@@ -159,7 +156,7 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			// Software is up to date - set current version for display
 			update = updatesview.SoftwareUpdate{
 				HasUpdate:      false,
-				CurrentVersion: currentVersion.String(),
+				CurrentVersion: currentVersion,
 			}
 		}
 

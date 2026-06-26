@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"path/filepath"
+
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
@@ -32,7 +34,7 @@ import (
 // core-update tarball carry it — matching the software-release packaging, which
 // strips it after the core is built.
 func CoreFileSet() []string {
-	return []string{
+	files := []string{
 		"core/go.mod",
 		"core/go.sum",
 		"core/sqlc.yml",
@@ -45,6 +47,19 @@ func CoreFileSet() []string {
 		"scripts",
 		"go.work.default",
 	}
+
+	// Per-partner product version stamped by the software-release build. Ships in
+	// both the fresh-install core layer and the core UPDATE tarball so a device
+	// always reports its current product version after an update (unlike
+	// /etc/os_release.json, which is flash-only). Included only when present:
+	// unstamped trees (releases built before this existed, dev) omit it without
+	// panicking the packager (BuildOutput errors on a missing listed file), and the
+	// device then falls back to its core version via product.Version().
+	if sdkutils.FsExists(filepath.Join(sdkutils.PathCoreDir, "product.json")) {
+		files = append(files, "core/product.json")
+	}
+
+	return files
 }
 
 // CoreCustomFiles are the renamed copies both packagers emit: go.work (from
