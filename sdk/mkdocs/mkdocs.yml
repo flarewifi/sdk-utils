@@ -1,8 +1,8 @@
 ---
-site_name: Flarewifi Developers
+site_name: Flarewifi Docs
 site_url: https://developer.flarehotspot.com
-site_description: "Flarewifi platform for developers:
-  Build. Innovate. Get Paid."
+site_description: "Official developer documentation for the Flarewifi platform:
+  plugin SDK, APIs, and guides."
 
 theme:
   name: material
@@ -42,16 +42,17 @@ nav:
       - "Saving Data": guides/saving-data.md
       - "Storing Files": guides/storing-files.md
       - "Translations": guides/translations.md
+      - "Core Database Tables": guides/core-database.md
       - "Database Migrations": guides/database-migrations.md
       - "Error Handling": guides/error-handling.md
       - "Handling Events": guides/handling-events.md
       - "Debugging": guides/debugging.md
-      - "Frontend Libraries": guides/frontend-libraries.md
       - "FAQ": guides/faq.md
   - Examples:
-      - "Manage Sessions": tutorials/manage-sessions.md
       - "Accept Payments": tutorials/accepting-payments.md
-      - "Create Theme": tutorials/creating-a-theme
+      - "Create Theme":
+          - "Creating a Theme": tutorials/creating-a-theme/index.md
+          - "Customizing the Admin Interface": tutorials/creating-a-theme/page2.md
   - API Reference:
       - "IAccountsApi": api/accounts-api.md
       - "IAdsApi": api/ads-api.md
@@ -68,7 +69,7 @@ nav:
       - "IHttpNavsApi": api/http-navs-api.md
       - "IHttpResponse": api/http-response.md
       - "IHttpRouterApi": api/http-router-api.md
-      - "IInAppPurchaseApi": api/inapp-purchase-api.md
+      - "IInAppPurchasesApi": api/inapp-purchases-api.md
       - "ILoggerApi": api/logger-api.md
       - "IMachineApi": api/machine-api.md
       - "INetworkApi": api/network-api.md

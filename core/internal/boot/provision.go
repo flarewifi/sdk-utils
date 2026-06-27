@@ -179,6 +179,13 @@ func InitLoadedPlugins(g *api.CoreGlobals) error {
 			// Deferred to the internet-up provisioning pass.
 			continue
 		}
+		// Show each plugin on the booting page as its Init runs — but only when the
+		// loader didn't already publish the per-plugin checklist during load (mono;
+		// see loaderEmitsPluginProgress). For non-mono the load loop owns the
+		// checklist, so re-emitting here would list every plugin twice.
+		if !loaderEmitsPluginProgress {
+			g.BootProgress.Substep(pluginDisplayName(info))
+		}
 		if err := p.RunInit(); err != nil {
 			g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q Init failed: %v", info.Package, err))
 			if firstErr == nil {
@@ -187,6 +194,15 @@ func InitLoadedPlugins(g *api.CoreGlobals) error {
 		}
 	}
 	return firstErr
+}
+
+// pluginDisplayName is the human-facing label for a plugin on the booting page:
+// its declared Name, falling back to the package id when a plugin omits a name.
+func pluginDisplayName(info sdkutils.PluginInfo) string {
+	if info.Name != "" {
+		return info.Name
+	}
+	return info.Package
 }
 
 // ProvisionInstalledPlugins runs the network-dependent install steps for every
@@ -258,15 +274,22 @@ func ProvisionInstalledPlugins(g *api.CoreGlobals, progress *bootprogress.Tracke
 	}
 }
 
-// ValidateStorePlugins re-checks every installed STORE plugin's purchase with the
-// cloud now that the machine is online, and withholds any whose payment has lapsed
-// (subscription expired, refunded, or dropped from a meta bundle). A withheld
-// plugin is DISABLED — its files are kept on disk but it is skipped by the boot
-// loader on the next boot (a loaded Go .so cannot be unmapped at runtime) — and the
-// admin is notified. Each cloud check is retried (boot-time internet is often
-// unstable); only a definitive "payment required" verdict disables a plugin, so a
-// transient outage never withholds a paid one. A plugin whose purchase is
-// reconfirmed has any stale disabled marker cleared so it loads again next boot.
+// ValidateStorePlugins re-checks every installed STORE plugin with the cloud now
+// that the machine is online and withholds any that can no longer run here. Two
+// verdicts disable a plugin, checked in this order:
+//   - UNAVAILABLE: the cloud reports the plugin as withdrawn/disabled by its
+//     developer (check.Available == false) — it can never be installed or loaded,
+//     whatever its price. Disabled regardless of free/paid.
+//   - PAYMENT LAPSED: a paid plugin this machine is no longer purchased to
+//     (subscription expired, refunded, or dropped from a meta bundle).
+//
+// A withheld plugin is DISABLED — its files are kept on disk but it is skipped by
+// the boot loader on the next boot (a loaded Go .so cannot be unmapped at runtime)
+// — and the admin is notified (with the matching reason). Each cloud check is
+// retried (boot-time internet is often unstable); only a definitive verdict
+// disables, so a transient outage never withholds a working plugin. A plugin that
+// comes back available AND purchased has any stale disabled marker cleared so it
+// loads again next boot.
 //
 // Local/system/devel plugins are not store plugins and are skipped.
 func ValidateStorePlugins(g *api.CoreGlobals) {
@@ -291,6 +314,24 @@ func ValidateStorePlugins(g *api.CoreGlobals) {
 			// is (never withhold on a connectivity failure). A later internet-up
 			// retries the whole pass.
 			g.CoreAPI.Logger().Error(fmt.Sprintf("validate store plugin %q purchase: %v", pkg, err))
+			continue
+		}
+
+		// A plugin the cloud reports as unavailable (currently: withdrawn/disabled by
+		// its developer) can never be installed or loaded, whatever its price. Gate it
+		// BEFORE the payment check — mirroring the install/resolve order — so a withdrawn
+		// plugin is disabled regardless of free/paid, and the admin sees a "no longer
+		// available" reason instead of a misleading "purchase required". A paid but
+		// unpurchased plugin stays Available and falls through to the payment branch.
+		if !check.Available {
+			alreadyDisabled := plugins.IsDisabled(pkg)
+			if err := plugins.DisablePlugin(pkg); err != nil {
+				g.CoreAPI.Logger().Error(fmt.Sprintf("disable unavailable store plugin %q: %v", pkg, err))
+				continue
+			}
+			if !alreadyDisabled {
+				notifyPluginUnavailable(g, pkg)
+			}
 			continue
 		}
 
@@ -363,7 +404,10 @@ func notifySystemPkgsFailure(g *api.CoreGlobals, pkg string, cause error) {
 	if err := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q system_packages install failed after retries: %v", pkg, cause)); err != nil {
 	}
 
-	if env.GO_ENV != env.ENV_PRODUCTION {
+	// Only dev stays silent (failures show in the console); every deployed device
+	// (staging, sandbox, production) notifies the operator that a plugin may be
+	// degraded until the next internet-up pass.
+	if env.IsDevEnv() {
 		return
 	}
 
@@ -397,6 +441,28 @@ func notifyPluginPaymentRequired(g *api.CoreGlobals, pkg string) {
 		Type:    sdkapi.NotificationTypeError,
 	}); err != nil {
 		g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin that store plugin %q requires payment: %v", pkg, err))
+	}
+}
+
+// notifyPluginUnavailable raises an admin notification that a store plugin was
+// disabled because the cloud reports it as no longer available — its developer has
+// withdrawn it from the store. Distinct from notifyPluginPaymentRequired: there is
+// nothing the operator can purchase to bring it back, so the wording must not imply
+// payment. Always notifies (regardless of env) since it is an enforcement action the
+// operator must see; the cause is also logged. Admin-only — never surfaced on the
+// captive portal. Names only the package, per the error-message hygiene rules.
+func notifyPluginUnavailable(g *api.CoreGlobals, pkg string) {
+	g.CoreAPI.Logger().Error(fmt.Sprintf("store plugin %q disabled: no longer available in the store", pkg))
+
+	subject := g.CoreAPI.Translate("error", "Plugin disabled — no longer available")
+	content := g.CoreAPI.Translate("error", "The plugin <% .pkg %> was disabled because it has been withdrawn from the store by its developer and can no longer be installed or updated", "pkg", pkg)
+
+	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{
+		Subject: subject,
+		Content: content,
+		Type:    sdkapi.NotificationTypeError,
+	}); err != nil {
+		g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin that store plugin %q is no longer available: %v", pkg, err))
 	}
 }
 

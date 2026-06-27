@@ -145,7 +145,6 @@ body {
     color: #8fb7a6;
     font-size: 12px;
     letter-spacing: 0.08em;
-    text-transform: lowercase;
 }
 
 .terminal__body {
@@ -203,6 +202,13 @@ body {
 .boot-step-done::before {
     content: "[  OK  ] ";
     color: var(--term-green);
+}
+
+/* Child lines (plugins under "Loading plugins"): indentation comes from leading
+   spaces in the label (white-space: pre); this just mutes them a touch so the
+   nesting under the parent phase reads at a glance. */
+.boot-step-sub {
+    opacity: 0.85;
 }
 
 .boot-step-active {

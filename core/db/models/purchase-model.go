@@ -36,8 +36,6 @@ type CreatePurchaseParams struct {
 // UpdatePurchaseParams holds parameters for updating a purchase
 type UpdatePurchaseParams struct {
 	ID              int64
-	WalletDebit     float64
-	WalletTxID      *int64
 	CancelledAt     *time.Time
 	ConfirmedAt     *time.Time
 	CancelledReason *string
@@ -135,11 +133,6 @@ func (self *PurchaseModel) Update(ctx context.Context, params UpdatePurchasePara
 		cancellReason = *params.CancelledReason
 	}
 
-	var walletTxID sql.NullInt64
-	if params.WalletTxID != nil {
-		walletTxID = sql.NullInt64{Int64: *params.WalletTxID, Valid: true}
-	}
-
 	// Convert *time.Time to interface{} for nullable timestamps
 	var cancelledAt interface{}
 	if params.CancelledAt != nil {
@@ -151,8 +144,6 @@ func (self *PurchaseModel) Update(ctx context.Context, params UpdatePurchasePara
 	}
 
 	err := self.db.Queries.UpdatePurchase(ctx, queries.UpdatePurchaseParams{
-		WalletDebit:     params.WalletDebit,
-		WalletTxID:      walletTxID,
 		CancelledAt:     cancelledAt,
 		ConfirmedAt:     confirmedAt,
 		CancelledReason: cancellReason,

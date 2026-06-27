@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 
 	"core/internal/api"
 	"core/internal/web/helpers"
@@ -44,6 +45,8 @@ func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
 		status = ctrl.g.CoreAPI.Translate("info", "The software is booting, please wait")
 	}
 
+	redirectTo := r.URL.Query().Get("redirect_to")
+
 	page := boot.BootPage(&boot.BootPageData{
 		StatusURL:   BootStatusURL,
 		ProgressURL: BootProgressURL,
@@ -51,6 +54,7 @@ func (ctrl *BootCtrl) BootPage(w http.ResponseWriter, r *http.Request) {
 		JsSrc:       jsSrc,
 		CssSrc:      cssSrc,
 		Status:      status,
+		RedirectTo:  redirectTo,
 	})
 
 	if err := page.Render(r.Context(), w); err != nil {
@@ -77,7 +81,8 @@ func (ctrl *BootCtrl) Middleware(next http.Handler) http.Handler {
 
 		if r.Method == http.MethodGet && !isAssetPath {
 			if r.URL.Path != BootURL && r.URL.Path != BootStatusURL && r.URL.Path != BootProgressURL {
-				http.Redirect(w, r, BootURL, http.StatusSeeOther)
+				redirectTo := url.QueryEscape(r.URL.String())
+				http.Redirect(w, r, BootURL+"?redirect_to="+redirectTo, http.StatusSeeOther)
 				return
 			}
 		}

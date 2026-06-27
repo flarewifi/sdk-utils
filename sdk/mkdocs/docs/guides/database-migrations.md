@@ -1,6 +1,6 @@
 # Database Migrations and Queries Guide
 
-This comprehensive guide covers database migrations and query development for Flarewifi plugins. Flarewifi supports both PostgreSQL and SQLite databases using `sqlc` for type-safe query generation.
+This comprehensive guide covers database migrations and query development for Flarewifi plugins. Flarewifi uses `sqlc` for type-safe query generation against the plugin database.
 
 ## Table of Contents
 
@@ -9,7 +9,7 @@ This comprehensive guide covers database migrations and query development for Fl
 3. [Migration File Best Practices](#migration-file-best-practices)
 4. [Query Development Guidelines](#query-development-guidelines)
 5. [Plugin-Specific Considerations](#plugin-specific-considerations)
-6. [SQL Compatibility Between PostgreSQL and SQLite](#sql-compatibility-between-postgresql-and-sqlite)
+6. [Writing Portable SQL](#writing-portable-sql)
 7. [sqlc Configuration](#sqlc-configuration)
 8. [Code Generation Workflow](#code-generation-workflow)
 
@@ -19,11 +19,9 @@ This comprehensive guide covers database migrations and query development for Fl
 
 ### Architecture
 
-Flarewifi uses a dual-database architecture:
-
-- **PostgreSQL**: Production environment with extensive type overrides
-- **SQLite**: Development/OpenWRT environment with minimal overrides
-- **sqlc**: Code generation tool for type-safe database queries
+- **sqlc**: Code generation tool that turns your SQL into type-safe Go queries
+- Plugins own their tables and reference core tables via foreign keys
+- Write standard, portable SQL so queries run unchanged across environments
 
 ### Directory Structure
 
@@ -32,12 +30,9 @@ Flarewifi uses a dual-database architecture:
 ├── resources/
 │   ├── migrations/          # Database schema migrations
 │   └── queries/             # SQL queries for sqlc
-│       ├── sqlite/          # SQLite-specific queries (optional)
-│       └── postgres/        # PostgreSQL-specific queries (optional)
 ├── db/
 │   └── queries/             # Generated Go code from sqlc
-├── sqlc.postgres.yml        # PostgreSQL sqlc configuration (optional)
-└── sqlc.sqlite.yml          # SQLite sqlc configuration (optional)
+└── sqlc.yml                 # sqlc configuration (optional)
 ```
 
 ---
@@ -58,7 +53,7 @@ To create migration files for your database, you can use the `create-migration` 
 
 This will create new migration files in the `resources/migrations` directory of your plugin. The files will be named with a timestamp and a description of the migration.
 
-**Important:** SQL commands must be compatible with **both PostgreSQL and SQLite** databases.
+**Important:** Use standard, portable SQL in migrations (see [Writing Portable SQL](#writing-portable-sql)).
 
 ---
 
@@ -118,17 +113,27 @@ CREATE UNIQUE INDEX IF NOT EXISTS index_table_name_unique_field ON {plugin_prefi
 CREATE TABLE IF NOT EXISTS my_plugin_vouchers (
     id INTEGER PRIMARY KEY,
     code VARCHAR(10) NOT NULL DEFAULT '',
-    validity_count INT NOT NULL DEFAULT 0,
-    validity_unit INT NOT NULL DEFAULT 0,
-    speed INT NOT NULL DEFAULT 0,
-    status INT NOT NULL DEFAULT 1,
-    device_ip VARCHAR(17) NOT NULL DEFAULT 'N/A',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    session_type VARCHAR(10) NOT NULL DEFAULT 'time',
+    time_secs INTEGER NOT NULL DEFAULT 0,
+    data_mb INTEGER NOT NULL DEFAULT 0,
+    down_speed_mbps INTEGER NOT NULL DEFAULT 0,
+    up_speed_mbps INTEGER NOT NULL DEFAULT 0,
+    device_id INTEGER,                          -- FK to core devices (local, stable id)
+    session_uuid VARCHAR(255),                  -- link sessions by uuid, NOT by id
+    activated_at TIMESTAMP,                     -- NULL = available, non-NULL = activated
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (device_id) REFERENCES devices (id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_vouchers_code ON my_plugin_vouchers(code);
-CREATE INDEX IF NOT EXISTS idx_vouchers_status ON my_plugin_vouchers(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_vouchers_code ON my_plugin_vouchers(code);
+CREATE INDEX IF NOT EXISTS idx_vouchers_activated_at ON my_plugin_vouchers(activated_at);
 ```
+
+> **Why `session_uuid`, not `session_id`?** A session may live only in the cloud
+> without a stable local integer id, so plugins reference sessions by their
+> `uuid` (a plain `VARCHAR` column, **no** foreign key to `sessions.id`). A
+> foreign key to a local `devices.id` is fine — client devices are always local.
 
 #### Adding Columns
 
@@ -157,7 +162,7 @@ DROP TABLE IF EXISTS {plugin_prefix}_table_name;
 ALTER TABLE table_name DROP COLUMN IF EXISTS column_name;
 ```
 
-> **Note:** SQLite has limited `ALTER TABLE` support. For complex column changes, you may need to recreate the table.
+> **Note:** `ALTER TABLE` support can be limited. For complex column changes, you may need to recreate the table.
 
 #### Dropping Indexes
 
@@ -169,29 +174,27 @@ DROP INDEX IF EXISTS index_name;
 
 | Purpose | Recommended Type | Notes |
 |---------|------------------|-------|
-| Primary Key | `INTEGER PRIMARY KEY` | Auto-incrementing in both databases |
+| Primary Key | `INTEGER PRIMARY KEY` | Auto-incrementing by default |
 | Short Text | `VARCHAR(255)` | Use appropriate length |
 | Long Text | `TEXT` | For descriptions, content |
 | Whole Numbers | `INTEGER` or `INT` | Maps to `int64` in Go |
 | Precise Decimals | `DECIMAL(18, 9)` | For prices, measurements |
 | Currency | `DECIMAL(8, 2)` | For monetary values |
-| Boolean | `BOOLEAN` | `TRUE`/`FALSE` (SQLite stores as 0/1) |
+| Boolean | `BOOLEAN` | `TRUE`/`FALSE` (may be stored as 0/1) |
 | Timestamps | `TIMESTAMP` | Use `DEFAULT CURRENT_TIMESTAMP` |
 | UUID/Unique ID | `VARCHAR(36)` | Store as string |
 
 ### Common Pitfalls to Avoid
 
-1. **Don't use PostgreSQL-only syntax:**
+1. **Avoid vendor-specific column types and functions:**
    - ❌ `SERIAL` - Use `INTEGER PRIMARY KEY` instead
    - ❌ `UUID` type - Use `VARCHAR(36)` instead
    - ❌ `JSONB` - Use `TEXT` and parse in Go
    - ❌ `ARRAY` types - Use separate tables or JSON in TEXT
    - ❌ `gen_random_uuid()` - Generate UUIDs in Go code
-
-2. **Don't use SQLite-only syntax:**
    - ❌ `AUTOINCREMENT` keyword - `INTEGER PRIMARY KEY` auto-increments by default
 
-3. **Always use `IF NOT EXISTS` / `IF EXISTS`:**
+2. **Always use `IF NOT EXISTS` / `IF EXISTS`:**
    ```sql
    CREATE TABLE IF NOT EXISTS ...
    CREATE INDEX IF NOT EXISTS ...
@@ -199,10 +202,10 @@ DROP INDEX IF EXISTS index_name;
    DROP INDEX IF EXISTS ...
    ```
 
-4. **Always create paired up/down migrations:**
+3. **Always create paired up/down migrations:**
    - Every `.up.sql` must have a corresponding `.down.sql`
 
-5. **Use consistent naming conventions:**
+4. **Use consistent naming conventions:**
    - Table names: `{plugin_prefix}_table_name` (snake_case)
    - Index names: `idx_{table}_{column}` or `index_{table}_{column}`
 
@@ -254,9 +257,9 @@ UPDATE users SET name = @name WHERE id = @id;
 ```sql
 -- name: CreateVoucher :exec
 INSERT INTO my_plugin_vouchers
-    (code, validity_count, validity_unit, speed)
+    (code, session_type, time_secs, down_speed_mbps, up_speed_mbps)
 VALUES
-    (@code, @validity_count, @validity_unit, @speed);
+    (@code, @session_type, @time_secs, @down_speed_mbps, @up_speed_mbps);
 
 -- With RETURNING (to get the ID)
 -- name: CreatePaymentTrace :one
@@ -291,11 +294,20 @@ SELECT COUNT(id) FROM my_plugin_vouchers;
 -- name: UpdateVoucher :exec
 UPDATE my_plugin_vouchers
 SET
-    status = @status,
-    device_ip = @device_ip,
-    validity_count = @validity_count,
-    validity_unit = @validity_unit,
-    speed = @speed
+    session_type = @session_type,
+    time_secs = @time_secs,
+    data_mb = @data_mb,
+    down_speed_mbps = @down_speed_mbps,
+    up_speed_mbps = @up_speed_mbps
+WHERE id = @id;
+
+-- Mark a voucher activated (NULL activated_at means still available)
+-- name: ActivateVoucher :exec
+UPDATE my_plugin_vouchers
+SET
+    device_id = @device_id,
+    session_uuid = @session_uuid,
+    activated_at = CURRENT_TIMESTAMP
 WHERE id = @id;
 
 -- With timestamp update
@@ -377,31 +389,20 @@ DO UPDATE SET
     updated_at = CURRENT_TIMESTAMP;
 ```
 
-### Database-Specific Queries
+### Keep Queries Portable
 
-When queries require database-specific syntax, create separate files:
+Prefer standard SQL so a single query works across environments. When you need
+date/time math, compute the bounds in Go and pass them as parameters instead of
+using database-specific date functions:
 
-```
-resources/queries/
-├── common-queries.sql      # Works on both databases
-├── sqlite/
-│   └── time-queries.sql    # SQLite-specific
-└── postgres/
-    └── time-queries.sql    # PostgreSQL-specific
-```
-
-**Add engine comment to database-specific queries:**
-
-```sql
--- name: FindAvailableSession :one
--- engine: sqlite
-SELECT * FROM sessions WHERE ...
+```go
+cutoff := time.Now().UTC().AddDate(0, 0, -30)
+rows, err := q.FindRecent(ctx, cutoff)
 ```
 
 ```sql
--- name: FindAvailableSession :one
--- engine: postgresql
-SELECT * FROM sessions WHERE ...
+-- name: FindRecent :many
+SELECT * FROM my_plugin_events WHERE created_at >= @cutoff ORDER BY created_at DESC;
 ```
 
 ---
@@ -432,6 +433,20 @@ my_company_payment_traces
 
 ### Referencing Core Tables
 
+!!! danger "Core tables are read-only"
+    Plugins may **only read** from core tables (`devices`, `sessions`, `vouchers`,
+    `purchases`, `payments`, etc.). **Never** `INSERT`, `UPDATE`, `DELETE`,
+    `ALTER`, or `DROP` a core table from a plugin migration or query, and never
+    add columns or indexes to one.
+
+    - Access core data through **`SELECT` + `JOIN`** only.
+    - Link plugin rows to core rows with **foreign keys** pointing *at* core
+      tables — never the reverse.
+    - To mutate core data (create a session, activate a voucher, confirm a
+      purchase), call the **SDK APIs** (`api.SessionsMgr()`, `api.Vouchers()`,
+      `api.Payments()`, …), which enforce invariants and emit events. Writing the
+      tables directly bypasses that logic and will corrupt core state.
+
 #### Using Foreign Keys
 
 ```sql
@@ -450,8 +465,8 @@ CREATE TABLE IF NOT EXISTS my_plugin_free_trial_usage (
 -- name: GetConsumedVouchers :many
 SELECT v.*
 FROM my_plugin_vouchers v
-INNER JOIN sessions s ON v.session_id = s.id
-WHERE v.status = @status
+INNER JOIN sessions s ON v.session_uuid = s.uuid
+WHERE v.activated_at IS NOT NULL
 AND s.time_secs - s.consumption_secs <= 0
 ORDER BY v.created_at DESC 
 LIMIT @row_limit OFFSET @row_offset;
@@ -475,135 +490,62 @@ CREATE INDEX IF NOT EXISTS idx_sessions_purchases_session_id ON my_plugin_sessio
 
 ---
 
-## SQL Compatibility Between PostgreSQL and SQLite
+## Writing Portable SQL
 
-### Data Type Mapping
+Write standard SQL that does not depend on a specific database engine. The
+conventions below keep plugin migrations and queries portable.
 
-| PostgreSQL | SQLite | Go Type | Notes |
-|------------|--------|---------|-------|
-| `INTEGER` | `INTEGER` | `int64` | Use for all integers |
-| `SERIAL` | `INTEGER PRIMARY KEY` | `int64` | Auto-increment |
-| `VARCHAR(n)` | `VARCHAR(n)` | `string` | Compatible |
-| `TEXT` | `TEXT` | `string` | Compatible |
-| `DECIMAL(p,s)` | `DECIMAL(p,s)` | `float64` | Compatible |
-| `BOOLEAN` | `BOOLEAN` | `bool` | SQLite stores as 0/1 |
-| `TIMESTAMP` | `TIMESTAMP` | `time.Time` | Compatible |
-| `UUID` | `VARCHAR(36)` | `string` | Use VARCHAR for compatibility |
-| `JSONB` | `TEXT` | `[]byte` | Parse JSON in Go |
+### Recommended Types
 
-### Function Differences
+| Purpose | Type | Go Type | Notes |
+|---------|------|---------|-------|
+| Auto-increment key | `INTEGER PRIMARY KEY` | `int64` | Avoid `SERIAL` |
+| Integer | `INTEGER` | `int64` | |
+| Short text | `VARCHAR(n)` | `string` | |
+| Long text | `TEXT` | `string` | |
+| Decimal | `DECIMAL(p,s)` | `float64` | |
+| Boolean | `BOOLEAN` | `bool` | May be stored as 0/1 |
+| Timestamp | `TIMESTAMP` | `time.Time` | |
+| UUID / unique id | `VARCHAR(36)` | `string` | Avoid a native `UUID` type |
+| JSON | `TEXT` | `[]byte` | Parse in Go; avoid `JSONB` |
 
-#### Current Timestamp
+### Timestamps and Date Math
 
-| PostgreSQL | SQLite |
-|------------|--------|
-| `NOW()` | `datetime('now')` |
-| `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` |
+- Use `CURRENT_TIMESTAMP` for default / "now" values in migrations and simple queries.
+- Store all timestamps in **UTC**.
+- Do **not** use database-specific date functions. Compute time bounds in Go and
+  pass them as parameters:
 
-**Use `CURRENT_TIMESTAMP` for compatibility in migrations and simple queries.**
-
-#### Date/Time Arithmetic
-
-**SQLite:**
-```sql
-datetime(started_at, '+' || exp_days || ' days')
-datetime('now') < datetime(started_at, '+' || exp_days || ' days')
-CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
+```go
+// Compute in Go instead of in SQL:
+expiry := startedAt.AddDate(0, 0, expDays)
+elapsedSecs := int64(time.Since(startedAt).Seconds())
 ```
 
-**PostgreSQL:**
 ```sql
-started_at + (exp_days * interval '1 day')
-NOW() < started_at + (exp_days * interval '1 day')
-EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER
+-- name: FindActiveSessions :many
+SELECT * FROM sessions WHERE started_at IS NOT NULL AND @now < @expiry;
 ```
 
-#### Type Casting
+### Type Casting
 
-**SQLite:**
-```sql
-CAST(value AS INTEGER)
-CAST(value AS REAL)
-```
-
-**PostgreSQL:**
-```sql
-value::INTEGER
-value::REAL
-```
-
-### Complete Example: Database-Specific Queries
-
-**SQLite (`resources/queries/sqlite/sessions-sqlite.sql`):**
-```sql
--- name: FindAvailableSessionForDevice :one
--- engine: sqlite
-SELECT * FROM sessions
-WHERE device_id = @device_id
-AND (
-    (session_type = 'time' AND consumption_secs < time_secs)
-    OR (session_type = 'data' AND consumption_mb < data_mbytes)
-    OR (session_type = 'time-or-data' AND consumption_mb < data_mbytes AND consumption_secs < time_secs)
-)
-AND (
-    (exp_days IS NULL OR started_at IS NULL)
-    OR (
-        exp_days IS NOT NULL
-        AND started_at IS NOT NULL
-        AND datetime('now') < datetime(started_at, '+' || exp_days || ' days')
-    )
-)
-LIMIT 1;
-
--- name: BulkUpdateTimeConsumption :exec
--- engine: sqlite
-UPDATE sessions
-SET consumption_secs = consumption_secs + CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
-WHERE started_at IS NOT NULL;
-```
-
-**PostgreSQL (`resources/queries/postgres/sessions-pg.sql`):**
-```sql
--- name: FindAvailableSessionForDevice :one
--- engine: postgresql
-SELECT * FROM sessions
-WHERE device_id = @device_id
-AND (
-    (session_type = 'time' AND consumption_secs < time_secs)
-    OR (session_type = 'data' AND consumption_mb < data_mbytes)
-    OR (session_type = 'time-or-data' AND consumption_mb < data_mbytes AND consumption_secs < time_secs)
-)
-AND (
-    (exp_days IS NULL OR started_at IS NULL)
-    OR (
-        exp_days IS NOT NULL
-        AND started_at IS NOT NULL
-        AND NOW() < started_at + (exp_days * interval '1 day')
-    )
-)
-LIMIT 1;
-
--- name: BulkUpdateTimeConsumption :exec
--- engine: postgresql
-UPDATE sessions
-SET consumption_secs = consumption_secs + EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER
-WHERE started_at IS NOT NULL;
-```
+Use the standard `CAST(value AS INTEGER)` / `CAST(value AS REAL)` form rather than
+engine-specific cast operators.
 
 ---
 
 ## sqlc Configuration
 
-### Plugin sqlc Configuration Files
+### Plugin sqlc Configuration
 
-Plugins can define custom type overrides by creating `sqlc.postgres.yml` and/or `sqlc.sqlite.yml` in the plugin root.
+Plugins can define custom type overrides in an `sqlc.yml` in the plugin root. The
+most common need is forcing the Go type for specific columns — for example, making
+a nullable `SUM()` result a `sql.NullFloat64`:
 
-**Example `sqlc.postgres.yml`:**
 ```yaml
 version: '2'
 sql:
-  - engine: postgresql
-    queries: [resources/queries]
+  - queries: [resources/queries]
     schema: [resources/migrations]
     gen:
       go:
@@ -616,23 +558,6 @@ sql:
             go_type:
               import: database/sql
               type: NullFloat64
-```
-
-**Example `sqlc.sqlite.yml`:**
-```yaml
-version: '2'
-sql:
-  - engine: sqlite
-    queries: [resources/queries]
-    schema: [resources/migrations]
-    gen:
-      go:
-        package: queries
-        out: db/queries
-        sql_package: database/sql
-        overrides:
-          - column: findsales.amount
-            go_type: float64
 ```
 
 ### Common Type Overrides
@@ -672,12 +597,16 @@ overrides:
 ### Running sqlc Generation
 
 ```bash
-# Generate for PostgreSQL
-./scripts/sqlc-gen.sh ./data/plugins/local/my-plugin postgres
-
-# Generate for SQLite
-./scripts/sqlc-gen.sh ./data/plugins/local/my-plugin sqlite
+./scripts/sqlc-gen.sh <plugin_directory>
+# e.g.
+./scripts/sqlc-gen.sh ./data/plugins/local/my-plugin
 ```
+
+> **Note:** The script needs core's `sqlc.yml` for foreign-key resolution, so run
+> it from the repository root (where the `core/` directory lives). If the plugin
+> has no `resources/queries/` directory, generation is **skipped** (the script
+> exits successfully without producing any output) — that is expected for plugins
+> with no SQL queries.
 
 ### What the Script Does
 
@@ -701,15 +630,16 @@ import (
 )
 
 func main() {
-    db, _ := sql.Open("sqlite3", "database.db")
+    db, _ := sql.Open(driverName, dataSourceName)
     q := queries.New(db)
     
     // Create
     err := q.CreateVoucher(context.Background(), queries.CreateVoucherParams{
         Code:          "ABC123",
-        ValidityCount: 30,
-        ValidityUnit:  1,
-        Speed:         10,
+        SessionType:   "time",
+        TimeSecs:      3600, // 1 hour
+        DownSpeedMbps: 10,
+        UpSpeedMbps:   10,
     })
     
     // Read
@@ -724,11 +654,11 @@ func main() {
     // Update
     err = q.UpdateVoucher(context.Background(), queries.UpdateVoucherParams{
         ID:            1,
-        Status:        2,
-        DeviceIp:      "192.168.1.100",
-        ValidityCount: 60,
-        ValidityUnit:  1,
-        Speed:         20,
+        SessionType:   "time",
+        TimeSecs:      7200, // 2 hours
+        DataMb:        0,
+        DownSpeedMbps: 20,
+        UpSpeedMbps:   20,
     })
     
     // Delete
@@ -757,7 +687,7 @@ func main() {
 | ✅ Use named parameters (`@param_name`) | ❌ Never hardcode values that should be parameters |
 | ✅ Use `LIMIT 1` for `:one` queries | |
 | ✅ Include `RETURNING id` for INSERT with `:one` | |
-| ✅ Create database-specific files only when necessary | |
+| ✅ Write portable SQL (avoid engine-specific syntax) | |
 | ✅ Use `COALESCE` for nullable aggregations | |
 
 ### Performance
@@ -768,7 +698,7 @@ func main() {
 | ✅ Add indexes on foreign key columns |
 | ✅ Use pagination for list queries (`LIMIT`/`OFFSET`) |
 | ✅ Use appropriate data types to minimize storage |
-| ✅ Test queries with both PostgreSQL and SQLite |
+| ✅ Test queries against the target database |
 
 ### Plugin Isolation
 

@@ -55,7 +55,7 @@ func CreateDevkit() {
 	// Build core/plugin.so
 	BuildCore(plugins.BuildOpts{})
 
-	// Copy devkit files. data/plugins/system is optional — FlareWiFi may ship no
+	// Copy devkit files. data/plugins/system is optional — Flarewifi may ship no
 	// system plugins, leaving the directory absent — so append it only when
 	// present to avoid panicking on a missing source (see CoreFileSet).
 	files := devkitFiles

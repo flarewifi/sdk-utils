@@ -59,7 +59,7 @@ func (q *Queries) CreatePurchase(ctx context.Context, arg CreatePurchaseParams) 
 
 const findPendingPurchase = `-- name: FindPendingPurchase :one
 SELECT
-    id, uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, wallet_debit, wallet_tx_id, processing, payment_url, payment_note, confirmed_at, cancelled_at, cancelled_reason, created_at
+    id, uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url, payment_note, confirmed_at, cancelled_at, cancelled_reason, created_at
 FROM
     purchases
 WHERE
@@ -85,8 +85,6 @@ func (q *Queries) FindPendingPurchase(ctx context.Context, deviceID sql.NullInt6
 		&i.CallbackRoute,
 		&i.WebhookRoute,
 		&i.Metadata,
-		&i.WalletDebit,
-		&i.WalletTxID,
 		&i.Processing,
 		&i.PaymentUrl,
 		&i.PaymentNote,
@@ -100,7 +98,7 @@ func (q *Queries) FindPendingPurchase(ctx context.Context, deviceID sql.NullInt6
 
 const findPurchase = `-- name: FindPurchase :one
 SELECT
-    id, uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, wallet_debit, wallet_tx_id, processing, payment_url, payment_note, confirmed_at, cancelled_at, cancelled_reason, created_at
+    id, uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url, payment_note, confirmed_at, cancelled_at, cancelled_reason, created_at
 FROM
     purchases
 WHERE
@@ -124,8 +122,6 @@ func (q *Queries) FindPurchase(ctx context.Context, id int64) (Purchase, error) 
 		&i.CallbackRoute,
 		&i.WebhookRoute,
 		&i.Metadata,
-		&i.WalletDebit,
-		&i.WalletTxID,
 		&i.Processing,
 		&i.PaymentUrl,
 		&i.PaymentNote,
@@ -139,7 +135,7 @@ func (q *Queries) FindPurchase(ctx context.Context, id int64) (Purchase, error) 
 
 const findPurchaseByDeviceId = `-- name: FindPurchaseByDeviceId :one
 SELECT
-    id, uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, wallet_debit, wallet_tx_id, processing, payment_url, payment_note, confirmed_at, cancelled_at, cancelled_reason, created_at
+    id, uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url, payment_note, confirmed_at, cancelled_at, cancelled_reason, created_at
 FROM
     purchases
 WHERE
@@ -163,8 +159,6 @@ func (q *Queries) FindPurchaseByDeviceId(ctx context.Context, id sql.NullInt64) 
 		&i.CallbackRoute,
 		&i.WebhookRoute,
 		&i.Metadata,
-		&i.WalletDebit,
-		&i.WalletTxID,
 		&i.Processing,
 		&i.PaymentUrl,
 		&i.PaymentNote,
@@ -178,7 +172,7 @@ func (q *Queries) FindPurchaseByDeviceId(ctx context.Context, id sql.NullInt64) 
 
 const findPurchaseByUUID = `-- name: FindPurchaseByUUID :one
 SELECT
-    id, uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, wallet_debit, wallet_tx_id, processing, payment_url, payment_note, confirmed_at, cancelled_at, cancelled_reason, created_at
+    id, uuid, device_id, sku, name, description, price, any_price, callback_plugin, callback_route, webhook_route, metadata, processing, payment_url, payment_note, confirmed_at, cancelled_at, cancelled_reason, created_at
 FROM
     purchases
 WHERE
@@ -202,8 +196,6 @@ func (q *Queries) FindPurchaseByUUID(ctx context.Context, uuid string) (Purchase
 		&i.CallbackRoute,
 		&i.WebhookRoute,
 		&i.Metadata,
-		&i.WalletDebit,
-		&i.WalletTxID,
 		&i.Processing,
 		&i.PaymentUrl,
 		&i.PaymentNote,
@@ -219,21 +211,17 @@ const updatePurchase = `-- name: UpdatePurchase :exec
 UPDATE
     purchases
 SET
-    wallet_debit = ?1,
-    wallet_tx_id = ?2,
-    cancelled_at = ?3,
-    confirmed_at = ?4,
-    cancelled_reason = ?5,
-    processing = ?6,
-    payment_url = ?7,
-    payment_note = ?8
+    cancelled_at = ?1,
+    confirmed_at = ?2,
+    cancelled_reason = ?3,
+    processing = ?4,
+    payment_url = ?5,
+    payment_note = ?6
 WHERE
-    id = ?9
+    id = ?7
 `
 
 type UpdatePurchaseParams struct {
-	WalletDebit     float64
-	WalletTxID      sql.NullInt64
 	CancelledAt     interface{}
 	ConfirmedAt     interface{}
 	CancelledReason string
@@ -245,8 +233,6 @@ type UpdatePurchaseParams struct {
 
 func (q *Queries) UpdatePurchase(ctx context.Context, arg UpdatePurchaseParams) error {
 	_, err := q.db.ExecContext(ctx, updatePurchase,
-		arg.WalletDebit,
-		arg.WalletTxID,
 		arg.CancelledAt,
 		arg.ConfirmedAt,
 		arg.CancelledReason,

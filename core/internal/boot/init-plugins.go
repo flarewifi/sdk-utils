@@ -4,6 +4,7 @@ package boot
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"path/filepath"
 
@@ -18,44 +19,45 @@ import (
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
+// loaderEmitsPluginProgress reports whether InitPlugins itself publishes the
+// per-plugin booting-page checklist. In the non-mono build, plugins are mapped
+// from .so one at a time here — the visibly slow phase — so the loader emits the
+// checklist during load and InitLoadedPlugins must NOT re-emit it (mono's loader
+// is instant, so it defers to InitLoadedPlugins; see the mono variant).
+const loaderEmitsPluginProgress = true
+
 func InitPlugins(g *api.CoreGlobals) error {
 	db := g.CoreAPI.SqlDB()
 	localPlugins := plugins.LocalPluginSrcDefs()
 	systemPlugins := plugins.SystemPluginSrcDefs()
 	develPlugins := plugins.DevelPluginSrcDefs()
 
-	if env.GO_ENV != env.ENV_PRODUCTION {
-		for _, def := range systemPlugins {
-			if info, err := sdkutils.GetPluginInfoFromPath(def.LocalPath); err == nil && plugins.IsToBeRemoved(info.Package) {
-				continue
-			}
-			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
-			if err != nil {
-				return fmt.Errorf("error installing plugin %s: %w", def.LocalPath, err)
-			}
-		}
+	// Compile/install phase. In dev this rebuilds each plugin's source into a .so,
+	// which is the genuinely slow part of bringing plugins up (the .so mapping in
+	// the load loop below is comparatively quick). Surface it as its own booting-page
+	// phase with a per-plugin checklist so the long wait isn't a blank "Loading
+	// plugins". System/local defs are dev-only; devel defs are always installed and
+	// abort boot on failure only outside production (historical best-effort there).
+	g.BootProgress.Advance(g.CoreAPI.Translate("info", "Compiling plugins"))
 
-		for _, def := range localPlugins {
-			if info, err := sdkutils.GetPluginInfoFromPath(def.LocalPath); err == nil && plugins.IsToBeRemoved(info.Package) {
-				continue
-			}
-			_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
-			if err != nil {
-				return fmt.Errorf("error installing plugin %s: %w", def.LocalPath, err)
-			}
+	// Production ships prebuilt .so files and never recompiles at boot; dev and
+	// staging recompile from source so an edited plugin comes up without a manual
+	// build. A compile failure aborts the boot ONLY in dev — on a deployed staging
+	// device an abort is a non-zero exit that makes start.sh roll the whole software
+	// update back (reverting a good update over one un-rebuildable plugin), so
+	// staging tolerates it and keeps booting with that plugin absent (see env.IsDevEnv).
+	abortOnCompileErr := env.IsDevEnv()
+	if env.GO_ENV != env.ENV_PRODUCTION {
+		if err := compilePluginDefs(g, db, systemPlugins, abortOnCompileErr); err != nil {
+			return err
+		}
+		if err := compilePluginDefs(g, db, localPlugins, abortOnCompileErr); err != nil {
+			return err
 		}
 	}
 
-	for _, def := range develPlugins {
-		_, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def})
-		if err != nil {
-			// Devel plugins are development-only; in non-production a failure to
-			// install one must abort boot like any other plugin (production keeps
-			// the historical best-effort behavior — devel plugins ship there).
-			if env.GO_ENV != env.ENV_PRODUCTION {
-				return fmt.Errorf("error installing devel plugin %s: %w", def.LocalPath, err)
-			}
-		}
+	if err := compilePluginDefs(g, db, develPlugins, abortOnCompileErr); err != nil {
+		return err
 	}
 
 	// Get current language for translations (only needed if not in dev mode)
@@ -91,6 +93,10 @@ func InitPlugins(g *api.CoreGlobals) error {
 	// dlopen a plugin.so file that does not exist for them.
 	g.PluginMgr.LoadSystemPlugins(g)
 
+	// Load (map the .so) phase — distinct from the compile phase above. Each plugin
+	// is checked off as it is mapped.
+	g.BootProgress.Advance(g.CoreAPI.Translate("info", "Loading plugins"))
+
 	// Load plugins
 	pluginDirs := plugins.InstalledPluginDirs()
 	for _, dir := range pluginDirs {
@@ -101,9 +107,10 @@ func InitPlugins(g *api.CoreGlobals) error {
 
 			// In development every plugin must load successfully: abort boot so
 			// the failure is fixed instead of silently shipping a broken plugin
-			// set. Production stays resilient (notify + restore from backup +
-			// keep booting) so one bad plugin can't brick a device in the field.
-			if env.GO_ENV != env.ENV_PRODUCTION {
+			// set. Every deployed device (staging, sandbox, production) stays
+			// resilient (notify + restore from backup + keep booting) so one bad
+			// plugin can't brick a device — or revert a good update — in the field.
+			if env.IsDevEnv() {
 				return fmt.Errorf("plugin %q failed to load: %w", pkg, err)
 			}
 
@@ -129,6 +136,16 @@ func InitPlugins(g *api.CoreGlobals) error {
 		// denylist, so it loads again on a later boot. Distinct from IsDisabled
 		// so a block never resurrects an operator-disabled plugin and vice versa.
 		if plugins.IsBlocked(info.Package) {
+			continue
+		}
+
+		// Skip a plugin that was SKIPPED during a software update (its build failed and
+		// the operator chose to continue): its .so is ABI-locked to the PREVIOUS core
+		// and would fail plugin.Open against this one. Outside production that load
+		// failure aborts boot and start.sh rolls the whole update back; skipping the
+		// stale .so lets the new core boot cleanly with the plugin absent until a later
+		// update rebuilds it (which clears the marker by replacing the install dir).
+		if plugins.IsUpdateSkipped(info.Package) {
 			continue
 		}
 
@@ -163,6 +180,12 @@ func InitPlugins(g *api.CoreGlobals) error {
 			}
 		}
 
+		// Surface each plugin on the booting page as it is loaded — this map-the-.so
+		// step is the visibly slow part of "Loading plugins" (Init, which runs later
+		// in InitLoadedPlugins, is comparatively instant). The name is a plugin-
+		// supplied display string, not translatable, so it carries no translation key.
+		g.BootProgress.Substep(pluginDisplayName(info))
+
 		p := api.NewPluginApi(dir, info, g.GlobalAssets, g.PluginMgr, g.TrafficMgr, g.WifiMgr)
 		// Load (map the .so + resolve Init) but do NOT run Init yet. Init is
 		// deferred to InitLoadedPlugins (offline-safe plugins) or the online
@@ -172,8 +195,9 @@ func InitPlugins(g *api.CoreGlobals) error {
 		err = g.PluginMgr.LoadPlugin(p)
 		if err != nil {
 			// Dev: a plugin that fails to compile/load aborts boot (see above).
-			// Production: notify the admin and try to recover from backup.
-			if env.GO_ENV != env.ENV_PRODUCTION {
+			// Deployed devices (staging, sandbox, production): notify the admin and
+			// try to recover from backup, then keep booting.
+			if env.IsDevEnv() {
 				return fmt.Errorf("plugin %q failed to load: %w", info.Package, err)
 			}
 
@@ -187,6 +211,45 @@ func InitPlugins(g *api.CoreGlobals) error {
 	return nil
 }
 
+// compilePluginDefs installs/compiles each src def, checking it off on the booting
+// page first so the (dev) rebuild of each plugin is visible under "Compiling
+// plugins". A def already flagged for removal is skipped silently. abortOnErr
+// turns an install failure into a boot-aborting error (system/local + non-prod
+// devel); otherwise the failure is tolerated (production devel, best-effort).
+func compilePluginDefs(g *api.CoreGlobals, db *sql.DB, defs []sdkutils.PluginSrcDef, abortOnErr bool) error {
+	for _, def := range defs {
+		info, infoErr := sdkutils.GetPluginInfoFromPath(def.LocalPath)
+		if infoErr == nil && plugins.IsToBeRemoved(info.Package) {
+			continue
+		}
+		// A local plugin skipped during a software update (build failed, operator
+		// continued) must not be recompiled here either: its source still fails to
+		// build against the new core, and with abortOnErr this would abort the whole
+		// boot — exactly the revert this marker prevents. Leave it skipped until a
+		// later update rebuilds it.
+		if infoErr == nil && plugins.IsUpdateSkipped(info.Package) {
+			continue
+		}
+		g.BootProgress.Substep(compileDisplayName(info, infoErr, def.LocalPath))
+		if _, err := plugins.InstallSrcDef(db, def, plugins.InstallOpts{ForceInstall: true, Def: def}); err != nil {
+			if abortOnErr {
+				return fmt.Errorf("error installing plugin %s: %w", def.LocalPath, err)
+			}
+		}
+	}
+	return nil
+}
+
+// compileDisplayName is the booting-page label for a plugin being compiled: its
+// declared Name when readable, else the source directory's base name (the plugin
+// info may not parse yet at compile time, so pluginDisplayName isn't enough).
+func compileDisplayName(info sdkutils.PluginInfo, infoErr error, localPath string) string {
+	if infoErr == nil && info.Name != "" {
+		return info.Name
+	}
+	return filepath.Base(localPath)
+}
+
 // notifyPluginLoadFailure records a plugin load/compile failure surfaced at boot
 // (e.g. a stale plugin.so that fails plugin.Open with "different version of
 // package", or any other dlopen error). The detailed cause is always logged for
@@ -198,7 +261,10 @@ func notifyPluginLoadFailure(g *api.CoreGlobals, pkg string, cause error) {
 	if err := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q failed to load: %v", pkg, cause)); err != nil {
 	}
 
-	if env.GO_ENV != env.ENV_PRODUCTION {
+	// Dev surfaces failures in the console/logs and aborts boot, so no admin
+	// notification is raised. Every deployed device (staging, sandbox, production)
+	// keeps booting, so it must tell the operator which plugin is unavailable.
+	if env.IsDevEnv() {
 		return
 	}
 
@@ -225,7 +291,9 @@ func notifyPluginBackupFailure(g *api.CoreGlobals, pkg string, cause error) {
 	if err := g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q failed to restore from backup: %v", pkg, cause)); err != nil {
 	}
 
-	if env.GO_ENV != env.ENV_PRODUCTION {
+	// As in notifyPluginLoadFailure: only dev stays silent; every deployed device
+	// notifies the operator that the plugin needs a reinstall.
+	if env.IsDevEnv() {
 		return
 	}
 

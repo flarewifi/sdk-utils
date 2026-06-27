@@ -42,6 +42,14 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	// stop the app would keep serving booting routes over TLS.
 	web.StopHTTPSServer()
 
+	// Both booting listeners are down now, so /boot/progress is gone and nothing
+	// reads the boot timeline again. Free it (the per-plugin checklist can hold a
+	// couple dozen steps) and drop the shut-down booting server — InitHttpServer
+	// never returns (it blocks on StartServer below), so without this both would
+	// stay reachable, and thus alive, for the machine's entire uptime.
+	g.BootProgress.Release()
+	server = nil
+
 	// Restart the server with all routes
 	web.SetupAppRoutes(g)
 

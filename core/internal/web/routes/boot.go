@@ -29,7 +29,15 @@ func BootRoutes(g *api.CoreGlobals) {
 		w.WriteHeader(http.StatusExpectationFailed)
 	}).Methods(http.MethodGet)
 
-	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Catch-all for any other path. This MUST be a registered route, not
+	// r.NotFoundHandler: gorilla/mux only runs r.Use() middleware for *matched*
+	// routes, so the NotFoundHandler bypasses RedirectToLanIP and bootCtrl.Middleware
+	// entirely — an unknown path (e.g. a reloaded /admin page) would land on /boot
+	// WITHOUT the redirect_to param. Registering it as a route lets the middleware
+	// chain run, so bootCtrl.Middleware captures the original URL into redirect_to.
+	// Only non-GET / asset requests slip past the middleware to this handler; they
+	// have nothing to remember, so they just fall through to the boot page.
+	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, controllers.BootURL, http.StatusFound)
 	})
 }

@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"core/internal/api"
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v3"
@@ -15,7 +16,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarewifi/sdk-utils"
@@ -27,6 +30,11 @@ var (
 	ErrDownload         = errors.New("System update error: download failed")
 	ErrExtract          = errors.New("System update error: extract failed")
 	ErrChecksumMismatch = errors.New("System update error: checksum verification failed")
+	// ErrUpdateCancelled is returned by the staging flow when the admin chose to
+	// skip the whole update at the plugin-build-failure confirmation gate. It is a
+	// clean, user-initiated stop — NOT surfaced as a download error — so the staging
+	// goroutine treats it as a quiet exit (see StageSystemUpdate/StagePluginsUpdate).
+	ErrUpdateCancelled = errors.New("System update cancelled by admin")
 
 	osReleaseFile        = "/etc/os_release.json"
 	downloadCompleteFile = ".dl_software_update_complete"
@@ -47,6 +55,26 @@ var (
 	// live). It lets the download flow finish without prompting for a reboot. Reset
 	// at the start of every stage/download.
 	pluginUpdateApplied atomic.Bool
+
+	// Plugin-build-failure confirmation gate. When one or more plugins fail to build
+	// during staging, the staging goroutine PAUSES here and waits for the admin to
+	// choose continue (skip the failed plugins, apply the rest) or cancel (skip the
+	// whole update). awaitingConfirm gates the download-status page into rendering the
+	// dialog; confirmCh delivers the admin's choice back to the paused goroutine.
+	awaitingConfirm atomic.Bool
+	confirmMu       sync.Mutex
+	confirmFailed   []PluginBuildFailure // plugins that failed to build (shown in the dialog)
+	confirmCh       chan bool            // true = continue, false = cancel; buffered(1)
+
+	// Meta-member-removal confirmation gate. A parallel gate to the build-failure one
+	// above: when re-pinning a meta bundle during an update would UNINSTALL a member
+	// (dropped from the bundle's new release and now orphaned), staging PAUSES here so
+	// the admin can abort or continue. The two gates never arm simultaneously (the
+	// re-pin runs after the build-failure gate has resolved).
+	awaitingRemovalConfirm atomic.Bool
+	removalConfirmMu       sync.Mutex
+	removedMembers         []api.MetaMemberRemoval // members to be uninstalled (shown in the dialog)
+	removalConfirmCh       chan bool               // true = continue, false = abort; buffered(1)
 )
 
 // UpdatePhase identifies which stage of an in-flight upgrade is running, so the
@@ -388,4 +416,139 @@ func DownloadedBytes() int64 {
 
 func TotalSizeBytes() int64 {
 	return totalSizeBytes.Load()
+}
+
+// AwaitingPluginConfirm reports whether staging is paused waiting for the admin to
+// resolve the plugin-build-failure dialog (continue or cancel). The download-status
+// page uses it to render the dialog instead of the progress bar.
+func AwaitingPluginConfirm() bool {
+	return awaitingConfirm.Load()
+}
+
+// PluginBuildFailure is one row of the build-failure confirmation dialog: the
+// package that failed and a clean, human-readable reason (the cloud's message for a
+// disabled plugin or a compile error, or the staging error for a local plugin).
+type PluginBuildFailure struct {
+	Package string
+	Reason  string
+}
+
+// FailedPluginBuilds returns the plugins that failed to build (package + reason),
+// for display in the confirmation dialog. Returns a copy so callers can't mutate the
+// gate's state.
+func FailedPluginBuilds() []PluginBuildFailure {
+	confirmMu.Lock()
+	defer confirmMu.Unlock()
+	return append([]PluginBuildFailure(nil), confirmFailed...)
+}
+
+// waitForPluginFailureDecision pauses the staging goroutine until the admin resolves
+// the dialog, returning true to continue (skip the failed plugins, apply the rest)
+// or false to cancel the whole update. It publishes the failed list and arms the
+// decision channel before blocking, and clears the gate state on return. Called only
+// from the staging goroutine, and only when failed is non-empty.
+func waitForPluginFailureDecision(failed []PluginBuildFailure) bool {
+	confirmMu.Lock()
+	confirmFailed = append([]PluginBuildFailure(nil), failed...)
+	confirmCh = make(chan bool, 1)
+	ch := confirmCh
+	confirmMu.Unlock()
+
+	awaitingConfirm.Store(true)
+	proceed := <-ch
+	awaitingConfirm.Store(false)
+
+	confirmMu.Lock()
+	confirmFailed = nil
+	confirmCh = nil
+	confirmMu.Unlock()
+	return proceed
+}
+
+// WaitForStagingToStop blocks until no staging/download is in flight (downloading
+// flag cleared) or the timeout elapses. A caller that just cancelled uses it so the
+// staging goroutine has finished its teardown — flag cleared, staged set discarded —
+// BEFORE redirecting. Without this the updates index would see IsDownloading()==true
+// and bounce the admin straight back to the progress page (which, for a core update,
+// would even auto-restart staging) — the "stuck in Compiling Plugins" symptom.
+func WaitForStagingToStop(timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for downloading.Load() {
+		if !time.Now().Before(deadline) {
+			return
+		}
+		time.Sleep(40 * time.Millisecond)
+	}
+}
+
+// ResolvePluginFailureDecision delivers the admin's choice to the paused staging
+// goroutine: proceed=true continues (skip the failed plugins), proceed=false cancels
+// the whole update. Safe to call when nothing is waiting (no-op) and safe against a
+// double click — the channel is buffered(1) and the send is non-blocking, so a second
+// resolve is dropped rather than blocking the request.
+func ResolvePluginFailureDecision(proceed bool) {
+	confirmMu.Lock()
+	ch := confirmCh
+	confirmMu.Unlock()
+	if ch == nil {
+		return
+	}
+	select {
+	case ch <- proceed:
+	default:
+	}
+}
+
+// AwaitingMetaRemovalConfirm reports whether staging is paused waiting for the admin
+// to resolve the meta-member-removal dialog (continue or abort). The download-status
+// page uses it to render the dialog instead of the progress bar.
+func AwaitingMetaRemovalConfirm() bool {
+	return awaitingRemovalConfirm.Load()
+}
+
+// RemovedMetaMembers returns the members that re-pinning would uninstall, for display
+// in the confirmation dialog. Returns a copy so callers can't mutate the gate state.
+func RemovedMetaMembers() []api.MetaMemberRemoval {
+	removalConfirmMu.Lock()
+	defer removalConfirmMu.Unlock()
+	return append([]api.MetaMemberRemoval(nil), removedMembers...)
+}
+
+// waitForMetaRemovalDecision pauses the staging goroutine until the admin resolves
+// the dialog, returning true to continue (apply the re-pin and remove the members)
+// or false to abort the whole update. Mirrors waitForPluginFailureDecision. Called
+// only from the staging goroutine, and only when removals is non-empty.
+func waitForMetaRemovalDecision(removals []api.MetaMemberRemoval) bool {
+	removalConfirmMu.Lock()
+	removedMembers = append([]api.MetaMemberRemoval(nil), removals...)
+	removalConfirmCh = make(chan bool, 1)
+	ch := removalConfirmCh
+	removalConfirmMu.Unlock()
+
+	awaitingRemovalConfirm.Store(true)
+	proceed := <-ch
+	awaitingRemovalConfirm.Store(false)
+
+	removalConfirmMu.Lock()
+	removedMembers = nil
+	removalConfirmCh = nil
+	removalConfirmMu.Unlock()
+	return proceed
+}
+
+// ResolveMetaRemovalDecision delivers the admin's choice to the paused staging
+// goroutine: proceed=true continues, proceed=false aborts the whole update. Safe to
+// call when nothing is waiting (no-op) and against a double click (buffered(1),
+// non-blocking send), so the shared continue/cancel routes can resolve both gates.
+func ResolveMetaRemovalDecision(proceed bool) {
+	removalConfirmMu.Lock()
+	ch := removalConfirmCh
+	removalConfirmMu.Unlock()
+	if ch == nil {
+		return
+	}
+	select {
+	case ch <- proceed:
+	default:
+	}
 }

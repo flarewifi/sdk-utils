@@ -227,7 +227,7 @@ type FormFieldValidator struct {
 | `FieldName` | The unique name of the form field. This must match the `name` attribute in your HTML input. |
 | `FieldLabel` | The label for the field. Used in validation error messages. |
 | `FieldType` | The type of the field. See [Field Types](#field-types) for available types. |
-| `FieldRules` | The validation rules for the field. See [FormFieldRule](#formfieldrule). |
+| `FieldRules` | The validation rules for the field. See [FormFieldRules](#formfieldrules). |
 
 ---
 

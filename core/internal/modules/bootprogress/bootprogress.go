@@ -26,11 +26,14 @@ const (
 // Step is one milestone in the boot timeline. Current/Total are non-zero only for
 // counted phases (e.g. installing packages for plugin 2 of 5); the page formats
 // the count itself so the translated Label stays free of interpolated numbers.
+// Indent marks a child line nested under the preceding top-level step (e.g. each
+// plugin listed under "Loading plugins"); the page renders it indented.
 type Step struct {
 	Label   string     `json:"label"`
 	Status  StepStatus `json:"status"`
 	Current int        `json:"current,omitempty"`
 	Total   int        `json:"total,omitempty"`
+	Indent  bool       `json:"indent,omitempty"`
 }
 
 // Snapshot is an immutable copy of the timeline, safe to serialize to the page.
@@ -50,15 +53,29 @@ func New() *Tracker {
 	return &Tracker{}
 }
 
-// Advance completes the current active step (if any) and starts a new active step
-// with the given label. Calling it for each milestone produces the running
-// checklist the booting page renders.
+// Advance starts a new top-level phase. It completes ALL still-active steps first
+// — both the previous phase and any child left active under it — so a parent phase
+// is ticked only once the next phase begins (i.e. after all its children finished).
 func (t *Tracker) Advance(label string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.completeLastLocked()
+	t.completeAllActiveLocked()
 	t.steps = append(t.steps, Step{Label: label, Status: StatusActive})
+}
+
+// Substep starts a new active child step, indented under the current phase. It
+// completes only the previous SIBLING child (the last active indented step) and
+// deliberately leaves the parent phase active, so the parent stays "in progress"
+// until every child is done and the next Advance/Done ticks it off.
+func (t *Tracker) Substep(label string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if n := len(t.steps); n > 0 && t.steps[n-1].Status == StatusActive && t.steps[n-1].Indent {
+		t.steps[n-1].Status = StatusDone
+	}
+	t.steps = append(t.steps, Step{Label: label, Status: StatusActive, Indent: true})
 }
 
 // SetActiveProgress records a count (e.g. "2 of 5") on the current active step.
@@ -74,13 +91,14 @@ func (t *Tracker) SetActiveProgress(current, total int) {
 	}
 }
 
-// Done marks the current active step complete. Called once at the end of boot so
-// the final milestone is checked off before the page redirects to the app.
+// Done marks all still-active steps complete. Called once at the end of boot so
+// the final phase (and any child left active under it) is checked off before the
+// page redirects to the app.
 func (t *Tracker) Done() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.completeLastLocked()
+	t.completeAllActiveLocked()
 }
 
 // Snapshot returns an independent copy of the timeline for serialization.
@@ -93,14 +111,34 @@ func (t *Tracker) Snapshot() Snapshot {
 	return Snapshot{Steps: out}
 }
 
+// Release drops the recorded timeline so the GC can reclaim it. Call it once boot
+// is complete and the booting HTTP server has shut down — at that point /boot/
+// progress is gone and nothing reads the steps again, yet the Tracker is still
+// reachable via CoreGlobals for the whole process lifetime. The checklist can hold
+// a couple dozen Steps (each plugin appears under both the "Compiling plugins" and
+// "Loading plugins" phases), so releasing it returns that memory for good. After
+// Release, Snapshot returns an empty timeline; the zero-length slice keeps any
+// late, stray call safe rather than panicking.
+func (t *Tracker) Release() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.steps = nil
+}
+
 // =============================================================================
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
-// completeLastLocked flips a trailing active step to done. Callers must hold the
-// write lock.
-func (t *Tracker) completeLastLocked() {
-	if n := len(t.steps); n > 0 && t.steps[n-1].Status == StatusActive {
-		t.steps[n-1].Status = StatusDone
+// completeAllActiveLocked flips every still-active step to done. Used when a phase
+// ends (Advance/Done) so both the phase and any child left active under it are
+// ticked together. In a well-formed sequence the only active steps are the current
+// phase and its last child, so this never touches an already-finished earlier
+// phase. Callers must hold the write lock.
+func (t *Tracker) completeAllActiveLocked() {
+	for i := range t.steps {
+		if t.steps[i].Status == StatusActive {
+			t.steps[i].Status = StatusDone
+		}
 	}
 }

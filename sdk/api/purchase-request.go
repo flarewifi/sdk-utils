@@ -16,9 +16,6 @@ type PurchasePaymentData struct {
 	PurchaseID      int64   `json:"purchase_id"`
 	TotalPayment    float64 `json:"total_payment"`
 	PaymentProvider string  `json:"payment_provider"`
-	WalletDebit     float64 `json:"wallet_debit"`
-	WalletEndingBal float64 `json:"wallet_ending_bal"`
-	WalletRealBal   float64 `json:"wallet_real_bal"`
 }
 
 // ExecuteParams holds parameters for executing a purchase.
@@ -95,12 +92,6 @@ type IPurchaseRequest interface {
 	// Returns true if the purchase request has a fixed price.
 	IsFixedPrice() bool
 
-	// Returns the wallet debit amount for the purchase.
-	WalletDebit() float64
-
-	// Returns the wallet transaction ID if available.
-	WalletTxID() *int64
-
 	// Returns the timestamp when the purchase was confirmed.
 	ConfirmedAt() *time.Time
 
@@ -141,10 +132,6 @@ type IPurchaseRequest interface {
 
 	// Create a payment for the purchase.
 	CreatePayment(ctx context.Context, params CreatePaymentParams) error
-
-	// Pay using the customers wallet.
-	// The amount will be debitted from the wallet once the purchase request has been confirmed.
-	PayWithWallet(ctx context.Context, amount float64) error
 
 	// Returns the state of the purchase.
 	// The state includes the total accumulated payment for the purchase and other important details.

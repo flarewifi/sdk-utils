@@ -2,6 +2,18 @@
 
 The `IThemesApi` is used to register custom themes for the Flarewifi admin interface and user portal. Themes control the layout, styling, and appearance of the application.
 
+## Theme Types
+
+Flarewifi has two independent theme slots. A single plugin may register one, the other, or both — and only one of each kind can be active at a time.
+
+### Admin Theme
+
+The **admin theme** controls the layout and appearance of the **admin dashboard** — the post-login management pages. Admin themes must use Bootstrap 5 (`CssLibBootstrap5`). Register one with [`NewAdminTheme`](#newadmintheme).
+
+### Portal Theme
+
+The **portal theme** controls the layout and appearance of the **captive portal** — the user-facing pages such as the login and home screens. Portal themes typically use Bootstrap 3 (`CssLibBootstrap3`) for maximum device compatibility. Register one with [`NewPortalTheme`](#newportaltheme).
+
 ## Accessing IThemesApi
 
 ```go

@@ -18,6 +18,7 @@
 package updates
 
 import (
+	"context"
 	"core/internal/api"
 	"core/internal/plugindeps"
 	"core/utils/config"
@@ -31,6 +32,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
@@ -71,6 +74,7 @@ func StageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) {
 	totalSizeBytes.Store(0)
 	downloadError.Store(nil)
 	pluginUpdateApplied.Store(false)
+	awaitingConfirm.Store(false)
 	// A core update begins by downloading the core tarball; stageSystemUpdate flips
 	// to PhaseCompiling once it starts staging plugins.
 	setPhase(PhaseDownloading)
@@ -79,6 +83,14 @@ func StageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) {
 		defer downloading.Store(false)
 
 		if err := stageSystemUpdate(g, update); err != nil {
+			// A clean, admin-initiated cancel at the build-failure gate is not an error:
+			// discard the staged set and exit quietly so the page redirects to the
+			// updates index (the cancel endpoint does the redirect) rather than showing
+			// a scary download error.
+			if errors.Is(err, ErrUpdateCancelled) {
+				_ = sdkutils.FsEmptyDir(sdkutils.PathSystemUpdateDir)
+				return
+			}
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("stage system update: %v", err))
 			downloadError.Store(&err)
 			// Discard the partial set so a stale/incomplete staging is never left
@@ -112,6 +124,7 @@ func StagePluginsUpdate(g *api.CoreGlobals) {
 	totalSizeBytes.Store(0)
 	downloadError.Store(nil)
 	pluginUpdateApplied.Store(false)
+	awaitingConfirm.Store(false)
 	// A plugin-only update downloads no core tarball — the whole run is staging
 	// plugins (cloud builds + on-device recompiles), so report compiling throughout.
 	setPhase(PhaseCompiling)
@@ -120,6 +133,11 @@ func StagePluginsUpdate(g *api.CoreGlobals) {
 		defer downloading.Store(false)
 
 		if err := stagePluginsUpdate(g); err != nil {
+			// Admin cancelled at the build-failure gate — quiet exit, no error shown.
+			if errors.Is(err, ErrUpdateCancelled) {
+				_ = sdkutils.FsEmptyDir(sdkutils.PathSystemUpdateDir)
+				return
+			}
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("stage plugins update: %v", err))
 			downloadError.Store(&err)
 			_ = sdkutils.FsEmptyDir(sdkutils.PathSystemUpdateDir)
@@ -159,25 +177,49 @@ func stagePluginsUpdate(g *api.CoreGlobals) error {
 	}
 
 	// Stage every store plugin, rebuilt by the cloud against the CURRENT core (empty
-	// coreVersion) so each .so stays ABI-matched to the core it already boots with.
+	// coreVersion) so each .so stays ABI-matched to the core it already boots with. A
+	// plugin whose server-side build fails does NOT abort the run — there is no core
+	// change here, so every other plugin keeps its working .so and can still update.
+	// Failures are collected and resolved at the confirmation gate below; stagedCount
+	// tracks the successes so an all-failed run doesn't write a reboot marker for nothing.
+	stagedCount := 0
+	failedPlugins := []PluginBuildFailure{}
 	for i, pkg := range pluginPkgs {
 		if err := g.PluginMgr.StagePluginUpdate(pkg, "", ""); err != nil {
-			return fmt.Errorf("stage plugin %s: %w", pkg, err)
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: store plugin %q failed to build: %v", pkg, err))
+			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Reason: buildFailureReason(err)})
+		} else {
+			stagedCount++
 		}
 		downloadPercent.Store(int32((i + 1) * 99 / len(pluginPkgs)))
+	}
+
+	// Build-failure gate: nothing is committed until the admin decides. Cancel skips
+	// the whole update (returns ErrUpdateCancelled); continue applies the rest and
+	// records the skipped plugins. A no-failure run passes straight through.
+	if err := confirmOrCancelOnFailures(g, failedPlugins); err != nil {
+		return err
 	}
 
 	// Re-pin meta-bundle records to their latest version so a bundle stops showing
 	// "update available" once its members are refreshed (or, for local-member
 	// bundles, applies the version bump outright). Best-effort: a lookup failure
 	// must not abort an otherwise-staged update.
-	if err := g.PluginMgr.RepinMetaRecordsToLatest(); err != nil {
+	if err := g.PluginMgr.RepinMetaRecordsToLatest(metaRemovalConfirmCallback(g)); err != nil {
+		// The admin declined the member-removal dialog → discard the whole staged set,
+		// exactly like cancelling at the build-failure gate. Any other error is
+		// best-effort and must not abort an otherwise-staged update.
+		if errors.Is(err, api.ErrMetaMemberRemovalCancelled) {
+			return ErrUpdateCancelled
+		}
 		g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("repin meta records: %v", err))
 	}
 
-	if len(pluginPkgs) == 0 {
-		// Nothing was staged for reboot — the repin above is the whole change and is
-		// already live. Signal the no-reboot terminal state instead of a marker.
+	if stagedCount == 0 {
+		// Nothing was actually staged for reboot — either there were no store plugins,
+		// or every one was skipped (server-side build failed). The repin above is the
+		// only change and is already live, so signal the no-reboot terminal state
+		// instead of writing a marker that would prompt a pointless reboot.
 		pluginUpdateApplied.Store(true)
 		return nil
 	}
@@ -272,21 +314,20 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		return fmt.Errorf("enumerate store plugins: %w", err)
 	}
 
+	// A store plugin failing its server-side build must NOT abort the whole update —
+	// the core is already staged and the remaining plugins can still ship. Collect the
+	// failures (both store here and local below) and let the admin decide at the gate
+	// after both loops. Only com.flarego.core failing (handled by downloadAndExtractCore
+	// above) is fatal.
+	failedPlugins := []PluginBuildFailure{}
 	for i, pkg := range pluginPkgs {
 		if err := g.PluginMgr.StagePluginUpdate(pkg, "", targetCore); err != nil {
-			return fmt.Errorf("stage plugin %s: %w", pkg, err)
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: store plugin %q failed to build: %v", pkg, err))
+			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Reason: buildFailureReason(err)})
 		}
 		// Advance the bar across the store-plugin band.
 		pct := coreDownloadEndPct + (i+1)*(storePluginsEndPct-coreDownloadEndPct)/len(pluginPkgs)
 		downloadPercent.Store(int32(pct))
-	}
-
-	// Re-pin meta-bundle records to their latest version. Members are ordinary
-	// store plugins already staged above; this only advances the bundle metadata
-	// so a bundle stops showing "update available" after its members are refreshed.
-	// Best-effort: a lookup failure must not abort an otherwise-staged update.
-	if err := g.PluginMgr.RepinMetaRecordsToLatest(); err != nil {
-		g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("repin meta records: %v", err))
 	}
 
 	// 3. Stage every LOCAL plugin, recompiled ON-DEVICE against the STAGED core so
@@ -296,10 +337,14 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	//    progress bar reflects it. start.sh applies the staged package on reboot,
 	//    atomically with the core, and can roll it back. Build against coreDest (the
 	//    staged new core), NOT the live one.
-	localTargets, err := plugins.InstalledLocalPluginSrcDirs()
+	allLocalTargets, err := plugins.InstalledLocalPluginSrcDirs()
 	if err != nil {
 		return fmt.Errorf("enumerate local plugins: %w", err)
 	}
+	// Drop disabled/blocked local plugins up front (before computing the band
+	// percentages below) so the boot loader's skip set and the recompile set agree —
+	// a local plugin the loader won't load is not worth compiling against the new core.
+	localTargets := filterStageableLocalPlugins(allLocalTargets)
 	// Fetch the TARGET core version's dependency lock ONCE so every local plugin is
 	// rebuilt against the same module versions+hashes as the staged core and the
 	// cloud-built store plugins beside it. Empty/unreachable => nil => unpinned.
@@ -315,11 +360,54 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		}
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("Compiling plugin %s (%d/%d)", pluginName, i+1, len(localTargets)))
 
+		// A local plugin whose on-device recompile fails is collected (not fatal) and
+		// resolved at the gate below — same policy as the store plugins above. Its old
+		// .so stays on disk ABI-mismatched with the staged core, so the boot loader's
+		// load-failure path handles it; only com.flarego.core failing is fatal.
 		if err := plugins.StageLocalPluginRebuild(srcDir, coreDest, pinnedDeps); err != nil {
-			return fmt.Errorf("stage local plugin %s: %w", srcDir, err)
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: local plugin %q failed to build: %v", pluginName, err))
+			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pluginName, Reason: buildFailureReason(err)})
 		}
 		pct := storePluginsEndPct + (i+1)*(99-storePluginsEndPct)/len(localTargets)
 		downloadPercent.Store(int32(pct))
+	}
+
+	// Build-failure gate: with the core already staged, pause for the admin before
+	// committing. Cancel discards the whole staged set (no update — not even the core);
+	// continue applies the core plus the plugins that DID build and records the rest as
+	// skipped. A no-failure run passes straight through.
+	if err := confirmOrCancelOnFailures(g, failedPlugins); err != nil {
+		return err
+	}
+
+	// The operator chose to continue past the build failures. Each skipped plugin's
+	// old .so is ABI-locked to the PREVIOUS core and would fail to load against the
+	// staged one; outside production that load — or the boot-time recompile of a local
+	// plugin — aborts boot and start.sh rolls the WHOLE update back (the "reverts on
+	// reboot" symptom). Flag each skipped plugin so the boot loader leaves its stale
+	// .so alone: the new core then boots cleanly with the plugin absent until a later
+	// update rebuilds it (which clears the marker by replacing the install dir).
+	// Best-effort — a marker write must not abort an otherwise-committed update. Only
+	// the CORE path does this; a plugin-only update keeps the current core, so a failed
+	// plugin's existing .so is still ABI-valid and must keep loading.
+	for _, f := range failedPlugins {
+		if err := plugins.MarkUpdateSkipped(f.Package); err != nil {
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: failed to flag skipped plugin %q: %v", f.Package, err))
+		}
+	}
+
+	// Re-pin meta-bundle records to their latest version (only now that we're
+	// committing). Members are ordinary store plugins already staged above; this only
+	// advances the bundle metadata so a bundle stops showing "update available" after
+	// its members are refreshed. Best-effort: a lookup failure must not abort the update.
+	if err := g.PluginMgr.RepinMetaRecordsToLatest(metaRemovalConfirmCallback(g)); err != nil {
+		// The admin declined the member-removal dialog → discard the whole staged set,
+		// exactly like cancelling at the build-failure gate. Any other error is
+		// best-effort and must not abort an otherwise-staged update.
+		if errors.Is(err, api.ErrMetaMemberRemovalCancelled) {
+			return ErrUpdateCancelled
+		}
+		g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("repin meta records: %v", err))
 	}
 
 	// 4. Commit: the marker gates the boot-time apply. Written LAST so a crash
@@ -554,8 +642,114 @@ func storePluginPackages() ([]string, error) {
 		if _, isMeta := metaPkgs[meta.Package]; isMeta {
 			continue
 		}
+		// Don't rebuild a plugin the boot loader will skip anyway (see
+		// skipStagingForUpdate). For a store plugin this also avoids a hard failure:
+		// the cloud withholds the download URL for an unpaid plugin, which would
+		// otherwise abort the whole staged update at "build completed without a
+		// download url".
+		if skipStagingForUpdate(meta.Package) {
+			continue
+		}
 		pkgs = append(pkgs, meta.Package)
 	}
 
 	return pkgs, nil
+}
+
+// skipStagingForUpdate reports whether a plugin must be excluded from the staged
+// software update — it is DISABLED or BLOCKED, the same two markers the boot
+// loader honors (see boot.InitPlugins), so the freshly built .so would never be
+// loaded. "Disabled" is also how a lapsed purchase is represented on-device:
+// boot.ValidateStorePlugins writes the disabled marker for any store plugin whose
+// payment is required but not satisfied. So a disabled OR payment-lapsed plugin is
+// skipped here, and "blocked" (cloud denylist) is skipped for the same reason —
+// compiling something that won't boot is wasted work (and, for store plugins,
+// would fail the whole update).
+func skipStagingForUpdate(pkg string) bool {
+	return plugins.IsDisabled(pkg) || plugins.IsBlocked(pkg)
+}
+
+// filterStageableLocalPlugins drops local plugin source dirs whose plugin is
+// disabled or blocked (skipStagingForUpdate), so the on-device recompile step
+// matches the boot loader's skip set. A dir whose plugin.json can't be read is
+// kept (its package — and thus its marker state — is unknown; recompiling and
+// letting the loader decide is the safe fallback, mirroring the loop below).
+func filterStageableLocalPlugins(srcDirs []string) []string {
+	stageable := make([]string, 0, len(srcDirs))
+	for _, srcDir := range srcDirs {
+		info, err := sdkutils.GetPluginInfoFromPath(srcDir)
+		if err == nil && skipStagingForUpdate(info.Package) {
+			continue
+		}
+		stageable = append(stageable, srcDir)
+	}
+	return stageable
+}
+
+// confirmOrCancelOnFailures gates the commit step on the admin's decision when one or
+// more plugins failed to build. With no failures it returns nil immediately (proceed).
+// Otherwise it PAUSES staging until the admin resolves the dialog and either:
+//   - cancel → returns ErrUpdateCancelled so the caller discards the whole staged set
+//     (no update applies, not even the core); or
+//   - continue → records each skipped plugin for the admin's audit trail and returns
+//     nil so the caller commits the core plus the plugins that did build.
+//
+// The detailed per-plugin build error was already logged in the staging loops; the
+// audit notification below stays generic (names only the package), per the
+// error-message hygiene rules.
+func confirmOrCancelOnFailures(g *api.CoreGlobals, failed []PluginBuildFailure) error {
+	if len(failed) == 0 {
+		return nil
+	}
+
+	if !waitForPluginFailureDecision(failed) {
+		return ErrUpdateCancelled
+	}
+
+	for _, f := range failed {
+		notifyPluginUpdateSkipped(g, f.Package)
+	}
+	return nil
+}
+
+// metaRemovalConfirmCallback builds the confirm callback handed to
+// RepinMetaRecordsToLatest. When re-pinning a meta bundle would UNINSTALL a member,
+// it PAUSES staging and renders the abort/continue dialog (via the removal gate);
+// returning true continues (apply the re-pin + removals), false aborts. A run with
+// no removals never reaches here — RepinMetaRecordsToLatest only invokes the
+// callback when the planned-removal set is non-empty.
+func metaRemovalConfirmCallback(g *api.CoreGlobals) func([]api.MetaMemberRemoval) bool {
+	return func(removals []api.MetaMemberRemoval) bool {
+		return waitForMetaRemovalDecision(removals)
+	}
+}
+
+// buildFailureReason extracts a clean, user-facing reason from a staging error: the
+// cloud's PluginBuildError message when present (a disabled plugin, or a compile
+// error reported by the server build), otherwise the error text (e.g. a local
+// plugin's on-device recompile failure).
+func buildFailureReason(err error) string {
+	var be *api.PluginBuildError
+	if errors.As(err, &be) && be.Reason != "" {
+		return be.Reason
+	}
+	return err.Error()
+}
+
+// notifyPluginUpdateSkipped raises an admin notification that a plugin was skipped
+// during the software update (its build failed and the admin chose to continue with
+// the rest). It is the persistent record behind the transient confirmation dialog.
+// Always notifies (not gated on env) — the operator explicitly triggered the update
+// and must see which plugins it left behind.
+func notifyPluginUpdateSkipped(g *api.CoreGlobals, pkg string) {
+	subject := g.CoreAPI.Translate("error", "Plugin update skipped")
+	content := g.CoreAPI.Translate("error", "The plugin <% .pkg %> could not be built and was skipped during the software update. The rest of the update was applied; try updating this plugin again later", "pkg", pkg)
+
+	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{
+		Subject: subject,
+		Content: content,
+		Type:    sdkapi.NotificationTypeError,
+	}); err != nil {
+		g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin that plugin %q was skipped during update: %v", pkg, err))
+	}
 }

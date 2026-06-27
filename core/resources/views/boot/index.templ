@@ -9,17 +9,18 @@ type BootPageData struct {
 	JsSrc       string
 	CssSrc      string
 	Status      string
+	RedirectTo  string
 }
 
 templ BootPage(data *BootPageData) {
 	<!DOCTYPE html>
 	<html lang="en" data-bs-theme="auto">
 		<head>
-			<title>{ data.API.Translate("label", "Flarewifi is booting...") }</title>
+			<title>{ data.API.Translate("label", "System Startup") }</title>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<link rel="stylesheet" href={ data.CssSrc }/>
 		</head>
-		<body data-status-url={ data.StatusURL } data-progress-url={ data.ProgressURL }>
+		<body data-status-url={ data.StatusURL } data-progress-url={ data.ProgressURL } data-redirect-url={ data.RedirectTo }>
 			<div class="crt">
 				<div class="terminal" role="status" aria-live="polite">
 					<div class="terminal__bar">
@@ -28,7 +29,7 @@ templ BootPage(data *BootPageData) {
 							<i class="terminal__dot terminal__dot--amber"></i>
 							<i class="terminal__dot terminal__dot--green"></i>
 						</span>
-						<span class="terminal__title">{ data.API.Translate("label", "Flarewifi is booting...") }</span>
+						<span class="terminal__title">{ data.API.Translate("label", "Boot Sequence In Progress") }</span>
 					</div>
 					<div class="terminal__body">
 						<p class="terminal__head">{ data.API.Translate("label", "Boot Progress Status") }</p>

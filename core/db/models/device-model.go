@@ -76,7 +76,7 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 
 	cookieToken := sdkutils.NewUUID()
 
-	// Wrap device + MAC + wallet creation in a single transaction.
+	// Wrap device + MAC creation in a single transaction.
 	// If any step fails, the entire operation is rolled back automatically.
 	var dev *Device
 	txErr := sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
@@ -120,14 +120,6 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		})
 		if err != nil {
 			return fmt.Errorf("failed to record MAC address for new device: %w", err)
-		}
-
-		_, err = q.CreateWallet(ctx, queries.CreateWalletParams{
-			DeviceID: dId,
-			Balance:  0.0,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create wallet for new device: %w", err)
 		}
 
 		return nil
@@ -262,7 +254,7 @@ func (self *DeviceModel) BackfillEmptyUUIDs(ctx context.Context) error {
 }
 
 // MergeDevices merges sourceDeviceID into targetDeviceID.
-// Transfers all data (sessions, purchases, fingerprints, MACs, wallet) from source
+// Transfers all data (sessions, purchases, fingerprints, MACs) from source
 // to target, then deletes the source device.
 func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourceDeviceID int64) error {
 	tx, err := self.db.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
@@ -314,46 +306,7 @@ func (self *DeviceModel) MergeDevices(ctx context.Context, targetDeviceID, sourc
 		return fmt.Errorf("failed to transfer MAC addresses: %w", err)
 	}
 
-	// 5. Merge wallets - transfer balance and transactions
-	sourceWallet, err := qtx.FindWalletByDeviceId(ctx, sourceDeviceID)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("failed to find source wallet: %w", err)
-		}
-	} else {
-		targetWallet, err := qtx.FindWalletByDeviceId(ctx, targetDeviceID)
-		if err != nil {
-			return fmt.Errorf("failed to find target wallet: %w", err)
-		}
-
-		// Transfer wallet transactions from source to target wallet
-		err = qtx.TransferWalletTransactions(ctx, queries.TransferWalletTransactionsParams{
-			TargetWalletID: targetWallet.ID,
-			SourceWalletID: sourceWallet.ID,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to transfer wallet transactions: %w", err)
-		}
-
-		// Add source wallet balance to target wallet
-		if sourceWallet.Balance > 0 {
-			err = qtx.AddToWalletBalance(ctx, queries.AddToWalletBalanceParams{
-				Amount:   sourceWallet.Balance,
-				DeviceID: targetDeviceID,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to add wallet balance: %w", err)
-			}
-		}
-
-		// Delete source wallet (transactions already transferred)
-		err = qtx.DeleteWalletByDeviceId(ctx, sourceDeviceID)
-		if err != nil {
-			return fmt.Errorf("failed to delete source wallet: %w", err)
-		}
-	}
-
-	// 6. Delete the source device
+	// 5. Delete the source device
 	err = qtx.DeleteDevice(ctx, sourceDeviceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete source device: %w", err)

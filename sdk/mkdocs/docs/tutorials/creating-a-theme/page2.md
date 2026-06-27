@@ -100,7 +100,7 @@ The admin index page can be fully customized to show relevant information and qu
 
 ### Creating the Dashboard Page
 
-Create a simple dashboard page template. See the [rendering views guide](../guides/rendering-views.md) for more information on templ syntax:
+Create a simple dashboard page template. See the [rendering views guide](../../guides/rendering-views.md) for more information on templ syntax:
 
 ```templ
 templ AdminIndexPage(api sdkapi.IPluginApi, data interface{}) {
@@ -187,4 +187,4 @@ To make your theme translatable, use the translation system in your templates:
 
 Create translation files in `resources/translations/[lang]/label/` for each language you want to support.
 
-[← Back to Main Guide](index.md) | [Portal Customization →](page3.md)
+[← Back to Main Guide](index.md)

@@ -36,8 +36,6 @@ LIMIT 1;
 UPDATE
     purchases
 SET
-    wallet_debit = @wallet_debit,
-    wallet_tx_id = @wallet_tx_id,
     cancelled_at = @cancelled_at,
     confirmed_at = @confirmed_at,
     cancelled_reason = @cancelled_reason,
