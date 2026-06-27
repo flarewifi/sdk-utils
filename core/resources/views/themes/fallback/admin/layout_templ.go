@@ -167,7 +167,7 @@ func sidebar(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" alt=\"FlareWiFi\"></a></div><nav class=\"fw-sidebar-items\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" alt=\"Flarewifi\"></a></div><nav class=\"fw-sidebar-items\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

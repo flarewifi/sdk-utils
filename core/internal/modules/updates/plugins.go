@@ -21,7 +21,7 @@ package updates
 import (
 	"core/internal/api"
 	"core/internal/rpc"
-	"core/internal/rpc/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/config"
 	"core/utils/plugins"
 	"fmt"
@@ -66,7 +66,7 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 			continue
 		}
 
-		resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v2.FetchLatestPluginReleaseByPackageRequest{
+		resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest{
 			PluginPackage: m.Package,
 		})
 		if err != nil {
@@ -115,7 +115,7 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 			continue
 		}
 
-		resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v2.FetchLatestPluginReleaseByPackageRequest{
+		resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest{
 			PluginPackage: meta.Package,
 		})
 		if err != nil {

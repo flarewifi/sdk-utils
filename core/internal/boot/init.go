@@ -12,6 +12,8 @@ import (
 	"core/internal/modules/netmon"
 	coretheme "core/internal/theme"
 	"core/utils/env"
+
+	sdkapi "sdk/api"
 )
 
 // How long the boot sequence waits for internet before falling back to
@@ -92,11 +94,11 @@ func Init(g *api.CoreGlobals) {
 		// the provisioning pass synchronously so the page shows "waiting for internet"
 		// and "installing packages (N/M)" instead of dropping the user into a
 		// half-initialized app. If the machine stays offline past the wait, fall back
-		// to offline-first boot — the online monitor (started just below) runs the
-		// pass the moment connectivity appears and retries on reconnect.
+		// to offline-first boot — the online monitor (started once boot completes, on
+		// EventBoot) runs the pass the moment connectivity appears and retries on reconnect.
 		//
-		// Doing the first pass here, before StartOnlineMonitor, also avoids racing the
-		// monitor's immediate internet-up handler; its later pass is an idempotent
+		// Doing the first pass here, before the monitor is even started, also avoids
+		// racing the monitor's internet-up handler; that later pass is an idempotent
 		// no-op because the version-pinned markers are already written.
 		//
 		// RunBootProvisioning bounds the wait (provisionBootCap): provisioning runs
@@ -131,6 +133,13 @@ func Init(g *api.CoreGlobals) {
 		jobs.Init(g)
 
 		g.BootProgress.Done()
+
+		// Boot is fully complete: signal subscribers (notably the online monitor,
+		// which only now begins emitting connectivity events — see StartOnlineMonitor).
+		if err := g.EventsMgr.EmitBootEvent(ctx, sdkapi.EventBoot); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("boot: EventBoot handler error: %v", err))
+		}
+
 		bootCh <- struct{}{}
 	}()
 

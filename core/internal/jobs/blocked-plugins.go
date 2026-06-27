@@ -3,7 +3,7 @@ package jobs
 import (
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
-	"core/internal/rpc/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/plugins"
 	"time"
 
@@ -41,7 +41,7 @@ func reconcileBlockedPlugins() {
 	}
 
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
-	resp, err := srv.FetchBlockedPlugins(ctx, &rpc_flarewifi_v2.FetchBlockedPluginsRequest{
+	resp, err := srv.FetchBlockedPlugins(ctx, &rpc_flarewifi_v3.FetchBlockedPluginsRequest{
 		MachineId: machineID,
 	})
 	if err != nil {

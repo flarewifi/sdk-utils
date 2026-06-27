@@ -6,7 +6,7 @@ import (
 	"context"
 	machineuid "core/internal/modules/machine-uid"
 	corerpc "core/internal/rpc"
-	v2 "core/internal/rpc/rpc_flarewifi_v2"
+	v3 "core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/plugins"
 	"fmt"
 	"os"
@@ -82,7 +82,7 @@ func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string,
 	_, machineID := machineuid.GetMachineUID()
 
 	emit.call(sdkplugin.PluginInstallStageQueued, 15, "")
-	resp, err := srv.RequestPluginBuild(ctx, &v2.RequestPluginBuildRequest{
+	resp, err := srv.RequestPluginBuild(ctx, &v3.RequestPluginBuildRequest{
 		MachineId:   machineID,
 		Package:     pkg,
 		Version:     version,
@@ -120,13 +120,13 @@ func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string,
 
 // awaitPluginBuild polls the cloud build until it is ready, failed, or times out,
 // returning the install-ready tarball URL on success.
-func (self *PluginsMgr) awaitPluginBuild(srv v2.FlarehotspotService, ctx context.Context, machineID string, buildID int64, emit progressEmitter) (string, error) {
+func (self *PluginsMgr) awaitPluginBuild(srv v3.FlarehotspotService, ctx context.Context, machineID string, buildID int64, emit progressEmitter) (string, error) {
 	deadline := time.Now().Add(pluginBuildPollTimeout)
 	// The cloud reports only coarse states, so ramp a synthetic percent within the
 	// build phase (30→70) so a long compile still shows forward motion.
 	buildPercent := 30
 	for {
-		st, err := srv.GetPluginBuildStatus(ctx, &v2.GetPluginBuildStatusRequest{
+		st, err := srv.GetPluginBuildStatus(ctx, &v3.GetPluginBuildStatusRequest{
 			MachineId: machineID,
 			BuildId:   buildID,
 		})

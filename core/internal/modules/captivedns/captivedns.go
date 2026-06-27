@@ -11,7 +11,6 @@ import (
 
 	"core/internal/modules/uci"
 	"core/utils/config"
-	"core/utils/env"
 	cmd "core/utils/shell"
 )
 
@@ -36,13 +35,9 @@ func Setup(lanIP string) error {
 		return fmt.Errorf("read app config: %w", err)
 	}
 
-	// dev + staging carry no per-machine custom_domain; advertise the build's
-	// fixed captive hostname (captive.<SERVER_DOMAIN>) so split-horizon DNS and
-	// the DHCP option-114 portal URL point at the cert-matching host.
-	if env.GO_ENV == env.ENV_DEV || env.GO_ENV == env.ENV_STAGING {
-		cfg.CustomDomain = env.PortalDomain()
-	}
-
+	// A custom_domain is the cloud-issued portal hostname. When it is empty there
+	// is no portal host to advertise, so split-horizon DNS and the DHCP option-114
+	// portal URL are skipped (the no-op below). Holds in dev, staging, and prod.
 	domain := strings.TrimSpace(cfg.CustomDomain)
 	if domain == "" || lanIP == "" {
 		return nil

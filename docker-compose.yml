@@ -22,7 +22,7 @@ services:
     ports:
       - 3000:3000
       - 3333:3333
-      - 3443:3443
+      - 443:443
       - 8000:8000
     networks:
       flare_network:

@@ -45,9 +45,9 @@ func BootPage(data *BootPageData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Boot Progress"))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Flarewifi is booting..."))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 18, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 18, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -97,9 +97,9 @@ func BootPage(data *BootPageData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Boot Progress"))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.API.Translate("label", "Flarewifi is booting..."))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 31, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/boot/index.templ`, Line: 31, Col: 92}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {

@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"core/utils/config"
 	"core/utils/env"
 	sdkutils "github.com/flarewifi/sdk-utils"
 	"github.com/gorilla/mux"
@@ -88,11 +89,13 @@ func ensureTLSCertificates() error {
 		return err
 	}
 
-	// Prefer the cert embedded into the release by the software-release build before
-	// falling back to a self-signed cert. This is the first-boot head start: a fresh
-	// install serves the real cloud-issued portal cert immediately. The runtime
-	// cloud-sync fetch (StartPortalCertScheduler) keeps it current afterwards.
-	if seedFromDefaults() {
+	// The release-embedded seed cert is the cloud-issued cert for the configured
+	// custom_domain. Only use it when a custom_domain is set: it is the first-boot
+	// head start so a fresh install serves the real portal cert immediately (the
+	// runtime cloud-sync fetch keeps it current afterwards). With NO custom_domain
+	// there is no host for that cert to match, so skip seeding and generate a
+	// self-signed cert below.
+	if config.HasCustomDomain() && seedFromDefaults() {
 		return nil
 	}
 
@@ -111,8 +114,8 @@ func ensureTLSCertificates() error {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{"FlareWifi"},
-			CommonName:   "FlareWifi Router",
+			Organization: []string{"Flarewifi"},
+			CommonName:   "Flarewifi Router",
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour), // 10 years

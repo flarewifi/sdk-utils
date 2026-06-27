@@ -54,8 +54,9 @@ type Monitor struct {
 	logger   sdkapi.ILoggerApi
 	interval time.Duration
 
-	// up holds the last observed state. It starts as "unknown" (never probed) so
-	// the very first probe always emits, giving subscribers an initial signal.
+	// up holds the last observed state. It starts as "unknown" (never probed): the
+	// first probe emits EventInternetUp if online (so an already-online machine
+	// signals subscribers at once), but never emits EventInternetDown — see check.
 	up      atomic.Bool
 	probed  atomic.Bool
 	started atomic.Bool
@@ -141,9 +142,24 @@ func WaitOnline(ctx context.Context, timeout, interval time.Duration) bool {
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
-// check runs one probe and emits an event only when the state changes (or on the
-// first probe). Emission is synchronous per the events contract; subscribers that
-// do slow work spawn their own goroutine, so this does not stall the loop.
+// check runs one probe and emits a connectivity event on a meaningful change.
+// Emission is synchronous per the events contract; subscribers that do slow work
+// spawn their own goroutine, so this does not stall the loop.
+//
+// State is unknown → up/down. The two directions are deliberately asymmetric:
+//
+//   - EventInternetUp fires whenever the machine becomes reachable, INCLUDING the
+//     very first probe of an already-online machine, so boot provisioning, store
+//     re-validation, and activation kick off immediately rather than a poll later.
+//
+//   - EventInternetDown fires ONLY on a real up→down transition (the machine had
+//     internet and lost it). It is NOT emitted for the unknown→down case — i.e. a
+//     cold first probe that comes back offline. At boot the WAN is often still
+//     coming up (DHCP lease / PPPoE / default route), so that first probe routinely
+//     fails for a few seconds even on a machine that is genuinely online. Emitting
+//     Down there fired a false "No internet connection" admin notification on every
+//     reboot (notifyOffline), which then silently cleared when the next probe
+//     succeeded. A machine never observed online hasn't "lost" connectivity.
 func (m *Monitor) check(ctx context.Context) {
 	online := probe()
 
@@ -151,8 +167,14 @@ func (m *Monitor) check(ctx context.Context) {
 	first := !m.probed.Swap(true)
 	m.up.Store(online)
 
-	if !first && online == prev {
-		return // no transition
+	if online {
+		if !first && prev {
+			return // already up — no transition
+		}
+	} else {
+		if first || !prev {
+			return // first probe offline, or still offline — not a loss of internet
+		}
 	}
 
 	event := sdkapi.EventInternetDown

@@ -3,7 +3,7 @@ package jobs
 import (
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
-	"core/internal/rpc/rpc_flarewifi_v2"
+	"core/internal/rpc/rpc_flarewifi_v3"
 	"time"
 )
 
@@ -29,7 +29,7 @@ func performMachinePing() {
 
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
 
-	_, err := srv.MachinePing(ctx, &rpc_flarewifi_v2.MachinePingRequest{
+	_, err := srv.MachinePing(ctx, &rpc_flarewifi_v3.MachinePingRequest{
 		MachineId: machineID,
 	})
 

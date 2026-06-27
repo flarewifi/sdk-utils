@@ -41,12 +41,15 @@ func main() {
 	}
 
 	// Per-partner product version stamped by the software-release build. Mono
-	// devices read it the same way (core/product.json beside plugin.json). Include
-	// it only when present so unstamped trees (old releases, dev) don't panic the
-	// copy below; absent => the device falls back to its core version.
-	if sdkutils.FsExists(filepath.Join(sdkutils.PathAppDir, "core/product.json")) {
-		files = append(files, "core/product.json")
+	// devices read it the same way (core/product.json beside plugin.json). It is
+	// MANDATORY: a mono release must carry it so the device reports a product version
+	// for update-eligibility, so refuse to package without it. The software-release
+	// build stamps it (CloneAndParseRelease); local dev seeds it via
+	// gen-product-version, so a missing file here is a real build defect.
+	if !sdkutils.FsExists(filepath.Join(sdkutils.PathAppDir, "core/product.json")) {
+		panic("core/product.json is missing; refusing to package a mono release without a product version")
 	}
+	files = append(files, "core/product.json")
 
 	for _, f := range files {
 		src := filepath.Join(sdkutils.PathAppDir, f)
