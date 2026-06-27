@@ -15,6 +15,7 @@ require (
 require (
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	github.com/ulikunitz/xz v0.5.15 // indirect
 )
