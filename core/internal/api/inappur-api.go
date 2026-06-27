@@ -14,12 +14,12 @@ type InAppPurchaseApi struct {
 	plugin *PluginApi
 }
 
-func (self *InAppPurchaseApi) CheckOneTimePurchase(sdkapi.InAppOneTimePurchaseStatus) error {
-	return nil
+func (self *InAppPurchaseApi) CheckOneTimePurchase(productID string) (sdkapi.InAppOneTimePurchaseStatus, error) {
+	return sdkapi.InAppOneTimePurchaseStatus{}, nil
 }
 
-func (self *InAppPurchaseApi) CheckSubscription(sdkapi.InAppSubscription) error {
-	return nil
+func (self *InAppPurchaseApi) CheckSubscription(planID string) (sdkapi.InAppSubscriptionStatus, error) {
+	return sdkapi.InAppSubscriptionStatus{}, nil
 }
 
 func (self *InAppPurchaseApi) PurchaseGuardMiddleware(sdkapi.InAppOneTimePurchaseStatus) func(http.Handler) http.Handler {
