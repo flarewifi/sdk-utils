@@ -47,6 +47,8 @@ func AdminRoutes(g *api.CoreGlobals) {
 			subrouter.Post("/query", adminctrl.QuerySoftwareUpdatesCtrl(g)).Name("admin:updates:query")
 			subrouter.Get("/download", adminctrl.DownloadUpdatePageCtrl(g)).Name("admin:updates:download")
 			subrouter.Post("/download/status", adminctrl.DownloadStatusPartialCtrl(g)).Name("admin:updates:download-status")
+			subrouter.Post("/download/continue", adminctrl.DownloadContinueCtrl(g)).Name("admin:updates:download-continue")
+			subrouter.Post("/download/cancel", adminctrl.DownloadCancelCtrl(g)).Name("admin:updates:download-cancel")
 			subrouter.Get("/download/done", adminctrl.DownloadDoneCtrl(g)).Name("admin:updates:download-done")
 			subrouter.Post("/sysupgrade/upload", adminctrl.SysupgradeUploadCtrl(g)).Name("admin:updates:sysupgrade-upload")
 			subrouter.Get("/sysupgrade/success", adminctrl.SysupgradeSuccessPageCtrl(g)).Name("admin:updates:sysupgrade-success")

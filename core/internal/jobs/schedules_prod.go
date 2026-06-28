@@ -40,6 +40,15 @@ var (
 	// BlockedPluginsInitialDelay - delay before the first denylist fetch after startup
 	BlockedPluginsInitialDelay = 90 * time.Second
 
+	// InstalledPluginsReportInterval - daily backstop. Install/uninstall hooks
+	// trigger an immediate report (pluginreport.ReportNowAsync), so the periodic
+	// tick only needs to catch drift; the full snapshot is self-healing and the
+	// boot report captures anything applied while offline or on reboot.
+	InstalledPluginsReportInterval = 24 * time.Hour
+
+	// InstalledPluginsReportInitialDelay - delay before the first installed-plugins report after startup
+	InstalledPluginsReportInitialDelay = 120 * time.Second
+
 	// SessionCleanupInterval - runs daily at 23:30 (calculated dynamically)
 	// Set to 0 to use time-of-day scheduling instead of interval
 	SessionCleanupInterval = time.Duration(0)

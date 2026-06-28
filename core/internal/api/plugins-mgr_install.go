@@ -1,6 +1,10 @@
 package api
 
-import sdkplugin "sdk/api"
+import (
+	"core/internal/modules/pluginreport"
+
+	sdkplugin "sdk/api"
+)
 
 // progressEmitter reports an install's progress to the caller's handle. It never
 // blocks and is safe to call from the install goroutine. The build/install
@@ -71,4 +75,11 @@ func (p *pluginInstall) finish(err error) {
 	}
 	close(p.progress)
 	close(p.done)
+
+	// On a successful install, nudge the cloud to re-read this machine's installed
+	// plugins so the new (or updated) plugin shows up without waiting for the daily
+	// report. Coalesced, so installing every member of a meta yields one report.
+	if err == nil {
+		pluginreport.ReportNowAsync()
+	}
 }

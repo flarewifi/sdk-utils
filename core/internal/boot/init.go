@@ -43,17 +43,23 @@ func Init(g *api.CoreGlobals) {
 		coretheme.SetAdminTheme(g.CoreAPI)
 		coretheme.SetPortalTheme(g.CoreAPI)
 
-		g.BootProgress.Advance(g.CoreAPI.Translate("info", "Loading plugins"))
 		// InitPlugins now only LOADS plugins (maps each .so, resolves Init); it
-		// does not run Init. A load failure (e.g. a stale/ABI-broken .so) still
-		// aborts the boot in development so the failure is visible in docker logs /
-		// reflex instead of booting a broken plugin set; production notifies +
-		// recovers from backup and keeps going.
+		// does not run Init. It owns its own booting-page phases — "Compiling
+		// plugins" then "Loading plugins" (non-mono), or just "Loading plugins"
+		// (mono) — so no phase is advanced here. A load failure (e.g. a stale/ABI-
+		// broken .so) still aborts the boot in development so the failure is visible
+		// in docker logs / reflex instead of booting a broken plugin set; production
+		// notifies + recovers from backup and keeps going.
 		if err := InitPlugins(g); err != nil {
 			msg := fmt.Sprintf("Boot aborted: plugin load failed: %v", err)
 			if logErr := g.CoreAPI.Logger().Error(msg); logErr != nil {
 			}
-			if env.GO_ENV != env.ENV_PRODUCTION {
+			// Only a local dev build aborts the boot here. Every deployed device
+			// (staging, sandbox, production) keeps booting: a non-zero exit would make
+			// start.sh treat boot as a crash and roll the whole staged update back,
+			// reverting a good update over one un-rebuilt/ABI-stale plugin. See
+			// env.IsDevEnv.
+			if env.IsDevEnv() {
 				fmt.Println(msg)
 				os.Exit(1)
 			}
@@ -66,7 +72,9 @@ func Init(g *api.CoreGlobals) {
 			msg := fmt.Sprintf("Boot aborted: plugin initialization failed: %v", err)
 			if logErr := g.CoreAPI.Logger().Error(msg); logErr != nil {
 			}
-			if env.GO_ENV != env.ENV_PRODUCTION {
+			// Deployed devices (staging, sandbox, production) keep booting; only dev
+			// aborts. Same rationale as the InitPlugins gate above — see env.IsDevEnv.
+			if env.IsDevEnv() {
 				fmt.Println(msg)
 				os.Exit(1)
 			}

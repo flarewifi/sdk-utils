@@ -64,14 +64,6 @@ func (self *Purchase) Price() float64 {
 	return price
 }
 
-func (self *Purchase) WalletDebit() float64 {
-	return self.purchase.WalletDebit()
-}
-
-func (self *Purchase) WalletTxID() *int64 {
-	return self.purchase.WalletTxID()
-}
-
 func (self *Purchase) ConfirmedAt() *time.Time {
 	return self.purchase.ConfirmedAt()
 }
@@ -133,23 +125,8 @@ func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePay
 	return err
 }
 
-func (self *Purchase) PayWithWallet(ctx context.Context, dbt float64) error {
-	err := self.purchase.Update(ctx, dbt, nil, self.purchase.CancelledAt(), self.purchase.ConfirmedAt(), nil)
-	return err
-}
-
 func (self *Purchase) State(ctx context.Context) (sdkapi.PurchasePaymentData, error) {
 	state := sdkapi.PurchasePaymentData{}
-
-	device, err := self.api.models.Device().Find(ctx, self.deviceId)
-	if err != nil {
-		return state, err
-	}
-
-	wallet, err := device.Wallet(ctx)
-	if err != nil {
-		return state, err
-	}
 
 	total, err := self.purchase.TotalPayment(ctx)
 	if err != nil {
@@ -166,15 +143,9 @@ func (self *Purchase) State(ctx context.Context) (sdkapi.PurchasePaymentData, er
 		paymentProvider = payments[0].Provider()
 	}
 
-	walletDebit := self.purchase.WalletDebit()
-	walletEndBal := wallet.Balance() - walletDebit
-
 	state.PurchaseID = self.purchase.ID()
 	state.TotalPayment = total
 	state.PaymentProvider = paymentProvider
-	state.WalletDebit = walletDebit
-	state.WalletEndingBal = walletEndBal
-	state.WalletRealBal = wallet.Balance()
 
 	return state, nil
 }

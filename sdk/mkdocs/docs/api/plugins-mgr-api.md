@@ -224,10 +224,15 @@ price. Use it to **gate installs** and to **render store UI** ("Free" / a price 
 | `LocalCurrency` / `LocalPriceCents` | Developer-chosen local price, when set. |
 | `DisplayCurrency` / `DisplayPriceCents` | Price resolved into the **machine owner's own currency** (buyer's country → local price if it matches `LocalCurrency`, else USD). This is the amount the checkout will charge — render this for the buyer instead of re-deriving from the USD/local fields. Empty / `0` from an older cloud. |
 | `ExpiresAt` | Unix seconds; `0` = none / perpetual. |
-| `Reason` | Human-readable explanation when not purchased. |
+| `Available` | `false` when some issue prevents install at all — e.g. the developer has **withdrawn the plugin from the store**. `Reason` explains why. `true` (installable) from an older cloud. |
+| `Reason` | Human-readable explanation when the plugin is **not available** or **not purchased**. |
 
 `PluginPurchaseInfo.RequiresPayment()` is the convenience gate — it reports
 `!IsFree && !Purchased`, i.e. a paid plugin this machine has not purchased.
+**Availability is a separate, prior concern:** an `Available == false` plugin cannot
+be installed at any price, so check `Available` **first** — show its `Reason` rather
+than a "purchase required" prompt. `InstallPlugin` enforces the same order and
+returns `ErrPluginDisabled` (not `ErrPaymentRequired`) for an unavailable package.
 
 > **Note:** This call is for UX. The install path enforces payment independently
 > (the cloud withholds the download for unpurchased paid plugins, and
@@ -242,6 +247,8 @@ if err != nil {
 }
 
 switch {
+case !info.Available:
+    // show "Unavailable" with info.Reason; no install/checkout
 case info.IsFree:
     // show an "Install" button
 case info.RequiresPayment():

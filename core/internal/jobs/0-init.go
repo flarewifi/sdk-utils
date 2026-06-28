@@ -26,6 +26,10 @@ func Init(g *api.CoreGlobals) {
 	// marks offending plugins so the boot loader skips them on the next reboot)
 	StartBlockedPluginsScheduler()
 
+	// Start installed-plugins report scheduler (reports the machine's full set of
+	// installed plugins so the cloud can track current installs + install history)
+	StartInstalledPluginsReportScheduler()
+
 	// Start batch save loop for running sessions (flushes to DB periodically)
 	StartBatchSaveLoop(g.ClientMgr)
 

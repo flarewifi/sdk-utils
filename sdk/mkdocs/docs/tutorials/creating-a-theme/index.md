@@ -32,7 +32,7 @@ This tutorial will guide you through creating a custom theme plugin for Flarewif
 
 ## Step 1: Create the Basic Plugin Structure
 
-First, follow the [general plugin creation guide](../guides/creating-a-plugin.md) to create a new plugin using the `create-plugin` command. This will set up the basic plugin structure, `main.go` file, and necessary configuration.
+First, follow the [general plugin creation guide](../../guides/creating-a-plugin.md) to create a new plugin using the `create-plugin` command. This will set up the basic plugin structure, `main.go` file, and necessary configuration.
 
 After creating the basic plugin, continue with the theme-specific implementation below.
 
@@ -277,7 +277,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 
 ## Step 8: Create Template Views
 
-Use the templ template engine to create your views. See the [rendering views guide](../guides/rendering-views.md) for detailed information on creating and using templ templates.
+Use the templ template engine to create your views. See the [rendering views guide](../../guides/rendering-views.md) for detailed information on creating and using templ templates.
 
 Create files like:
 
@@ -424,7 +424,7 @@ templ LoginPage(api sdkapi.IPluginApi, csrfHtml string, data sdkapi.LoginPageDat
 }
 ```
 
-Example `resources/views/admin/layout.templ` (see the [rendering views guide](../guides/rendering-views.md) for templ syntax details):
+Example `resources/views/admin/layout.templ` (see the [rendering views guide](../../guides/rendering-views.md) for templ syntax details):
 
 ```templ
 package admin
@@ -466,7 +466,7 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 
 ## Step 9: Add Assets
 
-Create your CSS and JavaScript files in `resources/assets/`. Create manifest files to define which assets to include. See the [assets manifest documentation](../api/assets-manifest.md) for detailed information on manifest file structure.
+Create your CSS and JavaScript files in `resources/assets/`. Create manifest files to define which assets to include. See the [assets manifest documentation](../../api/assets-manifest.md) for detailed information on manifest file structure.
 
 Based on the code examples above, you'll need these asset files:
 
@@ -497,7 +497,7 @@ Based on the code examples above, you'll need these asset files:
 
 ## Step 10: Add Translations (Optional)
 
-Create translation files in `resources/translations/` for different languages. See the [translations guide](../guides/translations.md) for detailed information on how to implement translations in your plugin.
+Create translation files in `resources/translations/` for different languages. See the [translations guide](../../guides/translations.md) for detailed information on how to implement translations in your plugin.
 
 ```
 resources/translations/
@@ -550,4 +550,3 @@ The development environment automatically watches for file changes and rebuilds 
 ## Next Steps
 
 - [Customizing Admin Interface](page2.md)
-- [Advanced Portal Features](page3.md)

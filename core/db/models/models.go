@@ -13,8 +13,6 @@ type Models struct {
 	sessionModel           *SessionModel
 	purchaseModel          *PurchaseModel
 	paymentModel           *PaymentModel
-	walletModel            *WalletModel
-	walletTrnsModel        *WalletTrnsModel
 	notificationModel      *NotificationModel
 }
 
@@ -28,8 +26,6 @@ func New(dtb *db.Database) *Models {
 	sessionModel := NewSessionModel(dtb, &models)
 	purchaseModel := NewPurchaseModel(dtb, &models)
 	paymentModel := NewPaymentModel(dtb, &models)
-	walletModel := NewWalletModel(dtb, &models)
-	walletTrnsModel := NewWalletTrnsModel(dtb, &models)
 
 	models.deviceModel = deviceModel
 	models.deviceFingerprintModel = deviceFingerprintModel
@@ -38,8 +34,6 @@ func New(dtb *db.Database) *Models {
 	models.sessionModel = sessionModel
 	models.purchaseModel = purchaseModel
 	models.paymentModel = paymentModel
-	models.walletModel = walletModel
-	models.walletTrnsModel = walletTrnsModel
 	models.notificationModel = NewNotificationModel(dtb, &models)
 
 	return &models
@@ -67,14 +61,6 @@ func (self *Models) Purchase() *PurchaseModel {
 
 func (self *Models) Payment() *PaymentModel {
 	return self.paymentModel
-}
-
-func (self *Models) Wallet() *WalletModel {
-	return self.walletModel
-}
-
-func (self *Models) WalletTrns() *WalletTrnsModel {
-	return self.walletTrnsModel
 }
 
 func (self *Models) DeviceLog() *DeviceLogModel {

@@ -34,13 +34,13 @@ api.Events().OnSessionEvent(sdkapi.EventSessionCreated, func(ctx context.Context
 })
 ```
 
-The callback receives a [`SessionEventData`](#sessioneventdata-structure) struct containing the session and details about which fields changed (for `EventSessionChanged`).
+The callback receives a [`SessionEventData`](#sessioneventdata) struct containing the session and details about which fields changed (for `EventSessionChanged`).
 
 ### OnSessionBatchEvent
 
 Registers a callback that fires whenever a batch of sessions is persisted to the database at once. The callback runs synchronously in the emitter's goroutine and receives a slice of all sessions that were saved in the batch; spawn a goroutine if it must not block.
 
-The batch save system coalesces individual periodic session saves into a single database transaction every 60 seconds, reducing SQLite lock contention when many sessions are running simultaneously.
+The batch save system coalesces individual periodic session saves into a single database transaction every 60 seconds, reducing database lock contention when many sessions are running simultaneously.
 
 **Available events:** `sdkapi.EventSessionBatchUpdated`.
 

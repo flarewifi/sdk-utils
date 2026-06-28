@@ -1,7 +1,7 @@
 # IClientDevice
 
 The `IClientDevice` represents a client device/host connected in your network and is possibly accessing the captive portal using a browser.
-It can be retrieved using the [Http.GetClientDevice](./http-api.md#getclientdevice) method in your [handler](../guides/routes-and-links.md#handlerfunc).
+It can be retrieved using the [Http.GetClientDevice](./http-api.md#getclientdevice) method in your [handler](./http-router-api.md#handler-function).
 
 ```go title="main.go"
 // http handler

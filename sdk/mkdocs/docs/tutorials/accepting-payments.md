@@ -658,4 +658,4 @@ Payment processing in Flarewifi uses an in-process execution model:
 5. **The handler** confirms the purchase, creates the session, and connects the user
 6. **Browser** optionally redirects to `CallbackRoute`
 
-The key advantage of this model: no HTTP round-trip, no JWT authentication overhead, and no cross-goroutine contention on the single SQLite connection.
+The key advantage of this model: no HTTP round-trip, no JWT authentication overhead, and no cross-goroutine contention on the single database connection.

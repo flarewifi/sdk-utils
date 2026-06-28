@@ -92,8 +92,6 @@ type Purchase struct {
 	CallbackRoute   string
 	WebhookRoute    string
 	Metadata        string
-	WalletDebit     float64
-	WalletTxID      sql.NullInt64
 	Processing      bool
 	PaymentUrl      string
 	PaymentNote     string
@@ -151,22 +149,4 @@ type VoucherBatch struct {
 	Metadata    sql.NullString
 	CreatedAt   sql.NullTime
 	UpdatedAt   sql.NullTime
-}
-
-type Wallet struct {
-	ID        int64
-	Uuid      string
-	DeviceID  int64
-	Balance   float64
-	CreatedAt time.Time
-}
-
-type WalletTransaction struct {
-	ID          int64
-	Uuid        string
-	WalletID    int64
-	Amount      float64
-	NewBalance  float64
-	Description string
-	CreatedAt   time.Time
 }

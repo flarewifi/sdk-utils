@@ -15,6 +15,7 @@ window.addEventListener('load', function () {
   // Boot endpoints come from body data attributes (no hardcoded URLs).
   var statusURL = document.body.getAttribute('data-status-url');
   var progressURL = document.body.getAttribute('data-progress-url');
+  var redirectURL = document.body.getAttribute('data-redirect-url') || '/';
 
   function checkStatus(callback) {
     var xhr = new XMLHttpRequest();
@@ -33,6 +34,17 @@ window.addEventListener('load', function () {
   // ([  OK  ] / [ .... ]) is supplied by CSS ::before keyed on the boot-step-*
   // class, so here we emit only the label. Counted steps (package install) append
   // an "(n/m)" suffix formatted here so the translated label stays number-free.
+  // Plugin names rendered as child lines are plugin-supplied (incl. third-party
+  // store plugins), so escape before injecting into innerHTML.
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function renderSteps(steps) {
     var list = document.getElementById('boot-steps');
     if (!list || !steps) {
@@ -42,11 +54,20 @@ window.addEventListener('load', function () {
     var html = '';
     for (var i = 0; i < steps.length; i++) {
       var step = steps[i];
-      var label = step.label;
+      var label = escapeHtml(step.label);
       if (step.total) {
         label = label + ' (' + step.current + '/' + step.total + ')';
       }
-      html += '<li class="boot-step boot-step-' + step.status + '">' + label + '</li>';
+      // Child lines (e.g. each plugin under "Loading plugins") are indented after
+      // the status tag. The tag is a fixed-width ::before column and .boot-step uses
+      // white-space: pre, so leading spaces here keep the tags aligned while nesting
+      // the label.
+      var cls = 'boot-step boot-step-' + step.status;
+      if (step.indent) {
+        cls += ' boot-step-sub';
+        label = '  ' + label;
+      }
+      html += '<li class="' + cls + '">' + label + '</li>';
     }
     list.innerHTML = html;
   }
@@ -80,7 +101,7 @@ window.addEventListener('load', function () {
         // replace(), not href=: automatic post-boot redirect (no user gesture),
         // so href= would push a history entry and trip Chrome's history
         // intervention; replace() also keeps the back button off the booting page.
-        window.location.replace('/');
+        window.location.replace(redirectURL);
       } else {
         setTimeout(tick, 1000); // Check again after 1 second
       }

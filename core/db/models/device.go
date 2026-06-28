@@ -182,21 +182,6 @@ func (self *Device) Update(ctx context.Context, params sdkapi.UpdateDeviceParams
 	return nil
 }
 
-func (self *Device) Wallet(ctx context.Context) (*Wallet, error) {
-	w, err := self.db.Queries.FindWalletByDeviceId(ctx, self.id)
-	if err != nil {
-		return nil, err
-	}
-
-	wallet := NewWallet(self.db, self.models)
-	wallet.id = w.ID
-	wallet.deviceId = w.DeviceID
-	wallet.balance = w.Balance
-	wallet.createdAt = w.CreatedAt
-
-	return wallet, nil
-}
-
 func (self *Device) NextSession(ctx context.Context) (*Session, error) {
 	sRow, err := self.db.Queries.FindAvailableSessionForDevice(ctx, self.id)
 	if err != nil {

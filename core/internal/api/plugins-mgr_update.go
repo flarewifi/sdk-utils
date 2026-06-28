@@ -27,6 +27,16 @@ const (
 	pluginBuildPollTimeout  = 10 * time.Minute
 )
 
+// PluginBuildError carries a clean, user-facing reason for a failed server-side
+// plugin build — e.g. a plugin the developer disabled, or a compiler message from
+// the cloud — as opposed to an internal/transport error. The software-update UI
+// shows Reason verbatim, so it must read as an explanation. Build/staging code
+// returns this (wrapped with %w) whenever the cloud reported a specific reason via
+// the build response's error_message; callers extract it with errors.As.
+type PluginBuildError struct{ Reason string }
+
+func (e *PluginBuildError) Error() string { return e.Reason }
+
 // StagePluginUpdate requests a server-side prebuild of a store plugin, downloads
 // the install-ready tarball, and extracts it into the unified staging directory
 // (data/storage/system/updates/{pkg}) WITHOUT touching the live install. The
@@ -74,7 +84,7 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 //
 // The mono twin of this method always errors: mono machines statically link
 // plugins at core-build time, so there is nothing a prebuilt .so could load into.
-func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string, emit progressEmitter) (string, error) {
+func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string, emit progressEmitter, extraMetas ...*v3.InstalledMeta) (string, error) {
 	// The prebuild RPCs live on the core-owned FlarehotspotService (flarehotspot.v2),
 	// NOT the store plugin's store.v1 — core and plugin must keep separate proto
 	// files so their descriptors don't collide in the same process.
@@ -93,9 +103,20 @@ func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string,
 		// of this binary — i.e. the toolchain it was compiled with — the authoritative
 		// ABI value, independent of when the machine last registered.
 		GoVersion: sdkutils.GO_VERSION,
+		// Report installed bundles so the build backstop resolves meta-member coverage
+		// against the INSTALLED meta version, matching FetchLatestPluginReleaseByPackage.
+		InstalledMetas: self.installedMetasReport(extraMetas...),
 	})
 	if err != nil {
 		return "", fmt.Errorf("request build for %s: %w", pkg, err)
+	}
+
+	// Synchronous refusal: the cloud rejected the build outright (e.g. the plugin was
+	// disabled by its developer) and returned a failed status with a specific reason
+	// rather than enqueuing a bot build. Surface that reason — there is no build to
+	// poll. Wrapped as PluginBuildError so the software-update UI can show WHY.
+	if resp.GetBuildStatus() == pluginBuildStatusFailed {
+		return "", &PluginBuildError{Reason: resp.GetErrorMessage()}
 	}
 
 	// Fast path: the cloud already had this (plugin, core version, platform) built
@@ -138,7 +159,13 @@ func (self *PluginsMgr) awaitPluginBuild(srv v3.FlarehotspotService, ctx context
 		case pluginBuildStatusOK:
 			return st.GetDownloadUrl(), nil
 		case pluginBuildStatusFailed:
-			return "", fmt.Errorf("server build %d failed: %s", buildID, st.GetErrorMessage())
+			// Carry the cloud's reason verbatim for the UI; fall back to the build id
+			// when the server gave no message (so the failure is still traceable).
+			reason := st.GetErrorMessage()
+			if reason == "" {
+				reason = fmt.Sprintf("server build %d failed", buildID)
+			}
+			return "", &PluginBuildError{Reason: reason}
 		case pluginBuildStatusProcessing:
 			emit.call(sdkplugin.PluginInstallStageBuilding, buildPercent, "")
 			if buildPercent < 70 {

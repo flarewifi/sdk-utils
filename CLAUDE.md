@@ -12,6 +12,10 @@
 - **"device"** = a **client device** (a client host such as a phone/laptop) connecting *through* the machine. Reserve "device" for these: `IClientDevice`, `client:*` events, sessions, vouchers, MAC/IP of a client, etc.
 - ⚠️ "device" alone is ambiguous — never use it to mean the machine. In docs (`sdk/mkdocs`), comments, log/user-facing text, and translations, say "machine" when you mean the router and "client device" when you mean a client host. Example fixed in `sdk/mkdocs`: `OnInternetEvent` / `plugin.json` install-script docs now say "machine has internet", "machine went offline", "production machine".
 
+## Naming & branding
+
+- ⚠️ Spell the product name **"Flarewifi"** (capital F, rest lowercase) — **never "FlareWiFi"**, "FlareWifi", or "flarewifi" (except in code identifiers/paths). Apply this in all docs (`sdk/mkdocs`), comments, and user-facing text/translations.
+
 ## ⚠️ CRITICAL: Core vs Plugin Development
 
 **DEFAULT: Plugin Development** (unless user explicitly requests core modification)

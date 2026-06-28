@@ -604,6 +604,44 @@ func IsBlocked(pkg string) bool {
 	return sdkutils.FsExists(filepath.Join(GetInstallPath(pkg), blockedMarker))
 }
 
+// updateSkippedMarker is the per-plugin marker file that withholds a plugin from
+// the boot loader because its build was SKIPPED during a software update: its
+// on-device recompile (local) or cloud build (store) failed and the operator chose
+// to continue with the rest of the update (see updates.stageSystemUpdate).
+//
+// It exists to stop a single un-rebuilt plugin from reverting an otherwise-good
+// CORE update. After a core update the plugin's old .so is ABI-locked to the
+// PREVIOUS core, so loading it against the new core fails (plugin.Open "different
+// version of package"). Outside production that load failure — or the boot-time
+// recompile of a local plugin — aborts boot (boot.Init os.Exit(1)) and start.sh
+// rolls the WHOLE update back. Skipping the stale .so at boot lets the new core
+// come up cleanly with the plugin simply absent until it is rebuilt.
+//
+// DISTINCT from disabledMarker/blockedMarker so the purchase/operator and cloud-
+// denylist owners never clash with it. It is intentionally NOT consulted by
+// skipStagingForUpdate, so the next software update still RE-ATTEMPTS the build; a
+// successful rebuild re-stages the plugin and start.sh replaces its whole install
+// dir, clearing this marker automatically.
+const updateSkippedMarker = "update-skipped"
+
+// MarkUpdateSkipped flags a plugin as skipped during a software update so the boot
+// loader (and the dev/staging boot-time recompile) leave its stale, ABI-mismatched
+// .so alone instead of aborting boot over it. No-op (nil) when the plugin has no
+// install dir — there is no stale .so to skip, so nothing to mark. Idempotent.
+func MarkUpdateSkipped(pkg string) error {
+	installPath := GetInstallPath(pkg)
+	if !sdkutils.FsExists(installPath) {
+		return nil
+	}
+	return os.WriteFile(filepath.Join(installPath, updateSkippedMarker), []byte(""), sdkutils.PermFile)
+}
+
+// IsUpdateSkipped reports whether a plugin was skipped during a software update
+// (files kept, but skipped by the boot loader until a later update rebuilds it).
+func IsUpdateSkipped(pkg string) bool {
+	return sdkutils.FsExists(filepath.Join(GetInstallPath(pkg), updateSkippedMarker))
+}
+
 func UninstallPlugin(pkg string, sqldb *sql.DB) error {
 	meta, err := ReadMetadata(pkg)
 	metaFound := err == nil

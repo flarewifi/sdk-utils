@@ -1,13 +1,8 @@
 # Rendering Views {#rendering-views}
 
-While Go has a built-in templating engine, it's quite limited in features and has a weird syntax compared to other languages and frameworks.
-To provide a better developer experience, we've decided to use [templ](https://templ.guide) as our templating engine.
+Flarewifi renders HTML with [templ](https://templ.guide) — a templating engine with first-class Go integration: LSP autocompletion, compile-time type checking, and templates that compile to pure Go for speed.
 
-`Templ` has great Go integration and provides a lot of features that make it easier to work with templates.
-For example, it has LSP that integrates well with the Go language server and provides autocompletion and type checking within your templates.
-Another advantage is that `templ` translates into pure Go code which improves the performance of our application.
-
-Paired with [htmx](https://htmx.org/), we can build modern web applicatoins that doesn't require complicated setup and doesn't prevent us from supporting outdated browsers used in some old phones and devices. The `htmx` object is always available in the browser when you render your templates using [IHttpResponse.PortalView](../api/http-response.md#portalview) or [IHttpResponse.AdminView](../api/http-response.md#adminview).
+Paired with [htmx](https://htmx.org/), you can build modern, interactive pages without a heavy frontend toolchain while still supporting the older browsers found on some phones. The `htmx` object is always available when you render via [IHttpResponse.PortalView](../api/http-response.md#portalview) or [IHttpResponse.AdminView](../api/http-response.md#adminview).
 
 ## Creating a templ template
 

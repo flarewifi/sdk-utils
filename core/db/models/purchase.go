@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"core/db"
@@ -42,12 +41,7 @@ func NewPurchase(dtb *db.Database, mdls *Models, p *queries.Purchase) (*Purchase
 		}
 
 		purchase.metadata = metadata
-		purchase.walletDebit = p.WalletDebit
 		purchase.cancelledReason = &p.CancelledReason
-
-		if p.WalletTxID.Valid {
-			purchase.walletTxId = &p.WalletTxID.Int64
-		}
 
 		// Handle interface{} for nullable timestamps
 		if p.ConfirmedAt != nil {
@@ -81,8 +75,6 @@ type Purchase struct {
 	callbackPluginPkg string
 	callbackRoute     string
 	metadata          map[string]string
-	walletDebit       float64
-	walletTxId        *int64
 	confirmedAt       *time.Time
 	cancelledAt       *time.Time
 	cancelledReason   *string
@@ -124,14 +116,6 @@ func (self *Purchase) Price() float64 {
 
 func (self *Purchase) AnyPrice() bool {
 	return self.anyPrice
-}
-
-func (self *Purchase) WalletDebit() float64 {
-	return self.walletDebit
-}
-
-func (self *Purchase) WalletTxID() *int64 {
-	return self.walletTxId
 }
 
 func (self *Purchase) ConfirmedAt() *time.Time {
@@ -190,116 +174,26 @@ func (self *Purchase) Device(ctx context.Context) (*Device, error) {
 }
 
 func (self *Purchase) Confirm(ctx context.Context) error {
-	var txid *int64
-	dbt := self.walletDebit
-
-	// Only process wallet debit if there's a device associated
-	if self.deviceId != nil && dbt > 0 {
-		dev, err := self.Device(ctx)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-
-		wallet, err := dev.Wallet(ctx)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-
-		newBal := wallet.Balance() - dbt
-		err = wallet.Update(ctx, newBal)
-		if err != nil {
-			return errors.New("unable to update balance: " + err.Error())
-		}
-
-		desc := "Partial payment for " + self.description
-		trns, err := self.models.walletTrnsModel.Create(ctx, CreateWalletTrnsParams{
-			WalletID:    wallet.ID(),
-			Amount:      -dbt,
-			NewBalance:  newBal,
-			Description: desc,
-		})
-		if err != nil {
-			return err
-		}
-
-		id := trns.ID()
-		txid = &id
-	}
-
 	now := time.Now().UTC()
-	err := self.Update(ctx, dbt, txid, nil, &now, nil)
-	if err != nil {
-		return err
-	}
 
-	// Clear processing state when purchase is confirmed
+	// Clear processing state when purchase is confirmed.
+	// Must be set before Update() so it gets persisted to database.
 	self.processing = false
 	self.paymentUrl = ""
 
-	return nil
+	return self.Update(ctx, nil, &now, nil)
 }
 
 func (self *Purchase) Cancel(ctx context.Context) error {
-	pmtTotal, err := self.TotalPayment(ctx)
-	if err != nil {
-		return err
-	}
-
 	reason := "Cancelled purchase: " + self.description
-	dbt := self.walletDebit
 	cancelledAt := time.Now().UTC()
 
-	// Clear processing state when purchase is cancelled
-	// Must be set before Update() so it gets persisted to database
+	// Clear processing state when purchase is cancelled.
+	// Must be set before Update() so it gets persisted to database.
 	self.processing = false
 	self.paymentUrl = ""
 
-	// Only process refund if there's a device associated and payment was made
-	if self.deviceId != nil && pmtTotal > 0 {
-		dev, err := self.Device(ctx)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-
-		wallet, err := dev.Wallet(ctx)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-
-		err = wallet.IncBalance(ctx, pmtTotal)
-		if err != nil {
-			log.Println("Error updating wallet balance: ", err)
-			return err
-		}
-
-		trns, err := self.models.walletTrnsModel.Create(ctx, CreateWalletTrnsParams{
-			WalletID:    wallet.ID(),
-			Amount:      pmtTotal,
-			NewBalance:  wallet.Balance(),
-			Description: "Refund for " + reason,
-		})
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-
-		trnsId := trns.ID()
-		err = self.Update(ctx, dbt, &trnsId, &cancelledAt, nil, &reason)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = self.Update(ctx, dbt, nil, &cancelledAt, nil, &reason)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return self.Update(ctx, &cancelledAt, nil, &reason)
 }
 
 func (self *Purchase) Payments(ctx context.Context) ([]*Payment, error) {
@@ -318,16 +212,12 @@ func (self *Purchase) TotalPayment(ctx context.Context) (float64, error) {
 		total += p.Amount()
 	}
 
-	total += self.WalletDebit()
-
 	return total, nil
 }
 
-func (self *Purchase) Update(ctx context.Context, dbt float64, wtxID *int64, cancelledAt, confirmedAt *time.Time, reason *string) error {
+func (self *Purchase) Update(ctx context.Context, cancelledAt, confirmedAt *time.Time, reason *string) error {
 	err := self.models.purchaseModel.Update(ctx, UpdatePurchaseParams{
 		ID:              self.id,
-		WalletDebit:     dbt,
-		WalletTxID:      wtxID,
 		CancelledAt:     cancelledAt,
 		ConfirmedAt:     confirmedAt,
 		CancelledReason: reason,
@@ -338,8 +228,6 @@ func (self *Purchase) Update(ctx context.Context, dbt float64, wtxID *int64, can
 		return err
 	}
 
-	self.walletDebit = dbt
-	self.walletTxId = wtxID
 	self.cancelledAt = cancelledAt
 	self.confirmedAt = confirmedAt
 	self.cancelledReason = reason
@@ -354,8 +242,6 @@ func (self *Purchase) SetProcessing(ctx context.Context, paymentUrl string) erro
 
 	err := self.models.purchaseModel.Update(ctx, UpdatePurchaseParams{
 		ID:              self.id,
-		WalletDebit:     self.walletDebit,
-		WalletTxID:      self.walletTxId,
 		CancelledAt:     self.cancelledAt,
 		ConfirmedAt:     self.confirmedAt,
 		CancelledReason: self.cancelledReason,

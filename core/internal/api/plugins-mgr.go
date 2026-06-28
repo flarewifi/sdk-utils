@@ -16,6 +16,7 @@ import (
 	"core/db/models"
 	"core/internal/events"
 	machineuid "core/internal/modules/machine-uid"
+	"core/internal/modules/pluginreport"
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/plugindeps"
@@ -36,6 +37,14 @@ import (
 // can detect it with errors.Is to show "purchase required" instead of a failure.
 // It aliases the SDK sentinel so errors.Is matches across the plugin boundary.
 var ErrPaymentRequired = sdkplugin.ErrPaymentRequired
+
+// ErrPluginDisabled is returned by resolve/install paths when a plugin has been
+// disabled by its developer in the cloud store — withdrawn and no longer
+// installable or updatable, regardless of price or prior purchase. It is distinct
+// from ErrPaymentRequired so the software-update dialog reports "plugin disabled"
+// instead of a misleading "payment required" (the cloud signals it via the resolve
+// response's disabled flag; see fetchStoreRelease).
+var ErrPluginDisabled = errors.New("plugin disabled")
 
 func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr, eventsMgr *events.EventsManager) *PluginsMgr {
 	pmgr := &PluginsMgr{
@@ -201,6 +210,12 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) (sdkplugin.IPlu
 		info, err := self.CheckPurchase(def.StorePackage)
 		if err != nil {
 			return nil, fmt.Errorf("InstallPlugin: validate purchase for %q: %w", def.StorePackage, err)
+		}
+		// Availability is gated before payment: a plugin that can't be installed at
+		// all (currently: withdrawn/disabled by its developer) must report that rather
+		// than a misleading "payment required" (mirrors fetchStoreRelease's order).
+		if !info.Available {
+			return nil, fmt.Errorf("%w: %q", ErrPluginDisabled, def.StorePackage)
 		}
 		if info.RequiresPayment() {
 			return nil, fmt.Errorf("%w: %q", ErrPaymentRequired, def.StorePackage)
@@ -387,18 +402,59 @@ type storeMember struct {
 // latest when version is empty). For a meta bundle it returns IsMeta with the
 // pinned member list. Auth and machine identity are handled by the shared RPC
 // client; any resolved URL is transient and never persisted on the source def.
-func (self *PluginsMgr) fetchStoreRelease(pkg string, version string) (storeRelease, error) {
+// installedMetasReport builds the machine's installed meta bundles (package +
+// installed version) for an RPC request, so the cloud resolves meta-member coverage
+// against the version this machine actually has installed (not the meta's latest
+// release). `extra` entries are appended and OVERRIDE a config entry with the same
+// package — used during a bundle's FIRST install, when the meta record isn't in the
+// plugins config yet but the version being installed must still grant its paid
+// members coverage. A config read error is non-fatal: we send whatever `extra` we
+// have (empty ⇒ the server falls back to latest-release coverage).
+func (self *PluginsMgr) installedMetasReport(extra ...*rpc_flarewifi_v3.InstalledMeta) []*rpc_flarewifi_v3.InstalledMeta {
+	byPkg := map[string]string{}
+	if cfg, err := config.ReadPluginsConfig(); err != nil {
+		self.CoreAPI.Logger().Error(fmt.Sprintf("installedMetasReport: read plugins config: %v", err))
+	} else {
+		for _, m := range cfg.MetaPlugins {
+			byPkg[m.Package] = m.Version
+		}
+	}
+	for _, e := range extra {
+		if e != nil && e.GetPackage() != "" {
+			byPkg[e.GetPackage()] = e.GetVersion()
+		}
+	}
+	if len(byPkg) == 0 {
+		return nil
+	}
+	out := make([]*rpc_flarewifi_v3.InstalledMeta, 0, len(byPkg))
+	for pkg, ver := range byPkg {
+		out = append(out, &rpc_flarewifi_v3.InstalledMeta{Package: pkg, Version: ver})
+	}
+	return out
+}
+
+func (self *PluginsMgr) fetchStoreRelease(pkg string, version string, extraMetas ...*rpc_flarewifi_v3.InstalledMeta) (storeRelease, error) {
 	if pkg == "" {
 		return storeRelease{}, errors.New("store package is required")
 	}
 
 	srv, ctx := corerpc.GetTwirpServiceAndCtx()
 	resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest{
-		PluginPackage: pkg,
-		Version:       version,
+		PluginPackage:  pkg,
+		Version:        version,
+		InstalledMetas: self.installedMetasReport(extraMetas...),
 	})
 	if err != nil {
 		return storeRelease{}, fmt.Errorf("fetch release %q for %q: %w", version, pkg, err)
+	}
+
+	// Disabled gate. The cloud sets disabled (and withholds the zip URL) for a
+	// plugin its developer has withdrawn from the store. Checked BEFORE the payment
+	// gate so a disabled paid plugin reports "plugin disabled" rather than a
+	// misleading "payment required" (the server gates it in the same order).
+	if resp.GetDisabled() {
+		return storeRelease{}, fmt.Errorf("%w: %q", ErrPluginDisabled, pkg)
 	}
 
 	// Payment gate. The cloud sets requires_payment (and withholds the zip URL)
@@ -439,7 +495,8 @@ func (self *PluginsMgr) CheckPurchase(pkg string) (sdkplugin.PluginPurchaseInfo,
 
 	srv, ctx := corerpc.GetTwirpServiceAndCtx()
 	resp, err := srv.CheckPluginPurchase(ctx, &rpc_flarewifi_v3.CheckPluginPurchaseRequest{
-		Package: pkg,
+		Package:        pkg,
+		InstalledMetas: self.installedMetasReport(),
 	})
 	if err != nil {
 		return sdkplugin.PluginPurchaseInfo{}, fmt.Errorf("check purchase for %q: %w", pkg, err)
@@ -458,6 +515,10 @@ func (self *PluginsMgr) CheckPurchase(pkg string) (sdkplugin.PluginPurchaseInfo,
 		DisplayPriceCents:    resp.GetDisplayPriceCents(),
 		ExpiresAt:            resp.GetExpiresAt(),
 		Reason:               resp.GetReason(),
+		// A disabled plugin (withdrawn by its developer) is the current cause of
+		// unavailability; map it to the general Available flag so callers gate on
+		// "can this be installed at all" rather than one specific reason.
+		Available: !resp.GetDisabled(),
 	}, nil
 }
 
@@ -533,7 +594,7 @@ func (self *PluginsMgr) installStoreMeta(def sdkutils.PluginSrcDef, rel storeRel
 			StorePackage:       m.Package,
 			StorePluginVersion: m.Version,
 		}
-		if err := self.installStoreMember(memberDef, def.StorePackage); err != nil {
+		if err := self.installStoreMember(memberDef, def.StorePackage, rel.Version); err != nil {
 			self.rollbackMeta(installed)
 			return fmt.Errorf("install member %q: %w", m.Package, err)
 		}
@@ -565,8 +626,15 @@ func (self *PluginsMgr) installStoreMeta(def sdkutils.PluginSrcDef, rel storeRel
 // registers it live. The install is recorded as non-standalone (AsMetaMember);
 // the bundle->member ownership itself is tracked by the meta record's member
 // list (cfg.MetaPlugins), not in the member's own metadata.
-func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg string) error {
-	rel, err := self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion)
+//
+// metaVersion is the version of the bundle being installed. It is reported to the
+// cloud as an in-progress installed meta (overriding any config entry) so the
+// payment gate covers a PAID member during the bundle's first install — before the
+// meta record exists in the plugins config.
+func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg, metaVersion string) error {
+	installing := &rpc_flarewifi_v3.InstalledMeta{Package: metaPkg, Version: metaVersion}
+
+	rel, err := self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion, installing)
 	if err != nil {
 		return err
 	}
@@ -574,7 +642,7 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg st
 		return fmt.Errorf("meta plugin %q cannot be a member of another meta", def.StorePackage)
 	}
 
-	tarballURL, err := self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "", nil)
+	tarballURL, err := self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "", nil, installing)
 	if err != nil {
 		return err
 	}
@@ -611,6 +679,17 @@ func (self *PluginsMgr) rollbackMeta(installed []string) {
 // line of defense, enforced regardless of which caller (UI, RPC, meta rollback)
 // reaches it.
 func (self *PluginsMgr) UninstallPlugin(pkg string) error {
+	err := self.uninstallPlugin(pkg)
+	if err == nil {
+		// Nudge the cloud to re-read installed plugins so the uninstall is reflected
+		// promptly. The report excludes marked-to-remove packages, so the plugin
+		// drops out of the snapshot now even though its files clear on the next reboot.
+		pluginreport.ReportNowAsync()
+	}
+	return err
+}
+
+func (self *PluginsMgr) uninstallPlugin(pkg string) error {
 	if self.isMetaPlugin(pkg) {
 		return self.uninstallMeta(pkg)
 	}

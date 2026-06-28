@@ -1,12 +1,29 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 
 	"core/utils/config"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
+
+// MetaMemberRemoval describes one member plugin that re-pinning a meta bundle to
+// its latest release would UNINSTALL from this machine: the member was dropped from
+// the bundle's new member set and, after the re-pin, is owned by no remaining bundle
+// and not installed standalone. Surfaced to the admin in the software-update
+// confirmation dialog before the removal is applied.
+type MetaMemberRemoval struct {
+	MetaPackage string // bundle the member was dropped from
+	MetaName    string // bundle display name
+	Member      string // member package to be uninstalled
+}
+
+// ErrMetaMemberRemovalCancelled is returned by RepinMetaRecordsToLatest when the
+// admin declines the member-removal confirmation. Nothing is applied. The update
+// flow maps it to its own cancellation so the whole staged update is discarded.
+var ErrMetaMemberRemovalCancelled = errors.New("meta member removal cancelled by admin")
 
 // Meta-plugin bundle handling. A meta plugin is a named bundle of other plugins;
 // it has no plugin.so of its own. Its bundle -> members mapping lives in

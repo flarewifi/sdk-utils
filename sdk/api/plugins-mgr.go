@@ -93,11 +93,14 @@ type PluginPurchaseInfo struct {
 	DisplayCurrency   string
 	DisplayPriceCents int64
 	ExpiresAt         int64  // unix seconds; 0 = none / perpetual
-	Reason            string // human-readable explanation when not purchased
+	Available         bool   // false if some issue prevents install (e.g. the developer disabled the plugin). See Reason.
+	Reason            string // human-readable explanation when not available or not purchased
 }
 
 // RequiresPayment reports whether install should be blocked pending purchase: a
-// paid plugin this machine is not purchased to.
+// paid plugin this machine is not purchased to. Availability is a SEPARATE concern
+// — an unavailable plugin (Available == false) cannot be installed at any price, so
+// check Available first (install paths gate it ahead of this).
 func (e PluginPurchaseInfo) RequiresPayment() bool {
 	return !e.IsFree && !e.Purchased
 }

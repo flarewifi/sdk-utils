@@ -6,11 +6,16 @@ import (
 	updatesview "core/resources/views/admin/updates"
 	"core/utils/config"
 	"core/utils/markdown"
+	"core/utils/tags"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
 	sdkapi "sdk/api"
 	"sync/atomic"
+	"time"
 
 	"github.com/a-h/templ"
 )
@@ -88,7 +93,9 @@ func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		uploadUrl := api.HttpAPI.Helpers().UrlForRoute("admin:updates:sysupgrade-upload")
 		csrfHTML := api.HttpAPI.Helpers().CsrfHtmlTag(r)
 		maxSizeMB := updates.GetMaxFileSizeMB()
-		allowedExts := updates.GetAllowedExtensions()
+		// The upload control accepts both firmware images and software-release archives;
+		// advertise the broader set in the file picker (routing is content-based).
+		allowedExts := updates.GetAcceptedUploadExtensions()
 		// Display the machine's product version (what it reports for updates), not
 		// the core version.
 		currentVersion := api.Machine().ProductVersion()
@@ -229,6 +236,27 @@ func DownloadStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		// Staging paused: one or more plugins failed to build and we are waiting for
+		// the admin to continue (skip them) or cancel. Render the decision dialog in
+		// place of the progress bar; the surrounding poll keeps this live.
+		if updates.AwaitingPluginConfirm() {
+			page := updatesview.PluginBuildFailedPartial(api, updates.FailedPluginBuilds())
+			if err := page.Render(r.Context(), w); err != nil {
+				api.LoggerAPI.Error(err.Error())
+			}
+			return
+		}
+
+		// Staging paused: re-pinning a meta bundle would uninstall a member. Render the
+		// abort/continue dialog in place of the progress bar; the poll keeps it live.
+		if updates.AwaitingMetaRemovalConfirm() {
+			page := updatesview.MetaMemberRemovalPartial(api, updates.RemovedMetaMembers())
+			if err := page.Render(r.Context(), w); err != nil {
+				api.LoggerAPI.Error(err.Error())
+			}
+			return
+		}
+
 		// Plugin-only upgrade that applied live (a meta-bundle bump) — nothing to
 		// reboot for. Flash success and return to the updates page.
 		if updates.PluginUpdateApplied() {
@@ -282,20 +310,66 @@ func DownloadDoneCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
+// DownloadContinueCtrl resolves the plugin-build-failure dialog with "continue":
+// the paused staging goroutine resumes, skips the failed plugins, and commits the
+// rest. It returns no body — the download page's 1s poll picks up the resumed state
+// and drives the flow to completion (download-done, or a live-applied success), so
+// there is no redirect here that could re-trigger the download.
+func DownloadContinueCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Resolve whichever gate is armed — build-failure or meta-member-removal. The
+		// inactive one's Resolve is a no-op, so calling both is safe.
+		updates.ResolvePluginFailureDecision(true)
+		updates.ResolveMetaRemovalDecision(true)
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// DownloadCancelCtrl resolves the plugin-build-failure dialog with "cancel": the
+// staging goroutine discards the whole staged set and exits quietly (no update is
+// applied, not even the core). It redirects back to the updates page with an info
+// flash so the polling page stops and the admin lands somewhere sensible.
+func DownloadCancelCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		res := api.HttpAPI.Response()
+		// Resolve whichever gate is armed (the inactive one's Resolve is a no-op).
+		updates.ResolvePluginFailureDecision(false)
+		updates.ResolveMetaRemovalDecision(false)
+		// Wait for the staging goroutine to finish unwinding (clear the in-flight flag
+		// and discard the staged set) before redirecting. Otherwise the index page sees
+		// IsDownloading()==true and bounces back to the progress page — the "stuck in
+		// Compiling Plugins" symptom. Cleanup is fast (discard the staged dir); the cap
+		// just bounds a pathological case.
+		updates.WaitForStagingToStop(10 * time.Second)
+		res.FlashMsg(w, r, api.Translate("info", "Software update cancelled"), sdkapi.FlashMsgInfo)
+		res.Redirect(w, r, "admin:updates:index")
+	}
+}
+
+// SysupgradeUploadCtrl handles the manual update upload. The same control accepts two
+// kinds of file and routes by CONTENT, not by the filename the browser sent:
+//   - a raw OS firmware image (.bin/.img) → the sysupgrade flash flow, or
+//   - a software-release tarball (software-release[-mono]_*.tar.gz) → staged for
+//     apply-on-reboot.
+//
+// A software-release tarball is always gzip-compressed; a firmware image is not, so a
+// cheap 2-byte gzip probe is the first discriminator. A non-gzip upload takes the
+// firmware path unchanged (byte-identical to the original behavior).
 func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
 
-		// Parse multipart form (100 MB max)
-		if err := r.ParseMultipartForm(updates.MaxSysupgradeFileSize); err != nil {
+		// maxMemory only sets the in-RAM threshold; larger parts spill to disk. Keep it
+		// modest so a 300 MB release isn't buffered in memory.
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
 			errMsg := api.Translate("error", "Failed to parse upload form")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
-		// Get uploaded file
 		file, header, err := r.FormFile("sysupgrade_file")
 		if err != nil {
 			errMsg := api.Translate("error", "No file uploaded")
@@ -305,50 +379,128 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 		defer file.Close()
 
-		// Validate file
-		if err := updates.ValidateSysupgradeFile(header.Filename, header.Size); err != nil {
-			var errMsg string
-			switch err {
-			case updates.ErrInvalidFileExtension:
-				errMsg = api.Translate("error", "Invalid file type. Only .bin and .img files are allowed") + "."
-			case updates.ErrFileTooLarge:
-				errMsg = api.Translate("error", "File size exceeds maximum allowed limit") + "."
-			default:
-				errMsg = api.Translate("error", "File validation failed")
-			}
-			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin:updates:index")
+		// Not gzip → a raw firmware image; run the existing sysupgrade flow directly off
+		// the upload stream (no temp file, no extra copy).
+		isGzip, _ := updates.IsGzip(file)
+		if !isGzip {
+			handleSysupgradeUpload(g, w, r, file, header.Filename, header.Size)
 			return
 		}
 
-		// Save the file
-		if err := updates.SaveSysupgradeFile(file, header.Filename); err != nil {
-			errMsg := api.Translate("error", "Failed to save firmware file")
-			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin:updates:index")
-			return
-		}
-
-		// Validate firmware compatibility and create completion marker
-		// This is the shared path for both local uploads and remote downloads
-		if err := updates.FinalizeSysupgrade(); err != nil {
-			var errMsg string
-			switch err {
-			case updates.ErrIncompatibleFirmware:
-				errMsg = api.Translate("error", "The uploaded firmware is not compatible with this device") + "."
-			default:
-				errMsg = api.Translate("error", "Firmware validation failed")
-			}
-			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-			res.Redirect(w, r, "admin:updates:index")
-			return
-		}
-
-		// Success - redirect to success page with options
-		successMsg := api.Translate("success", "Firmware uploaded and validated successfully")
-		res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
-		res.Redirect(w, r, "admin:updates:sysupgrade-success")
+		handleSoftwareReleaseUpload(g, w, r, file, header)
 	}
+}
+
+// handleSysupgradeUpload validates and saves a raw firmware image read from src, then
+// runs the shared finalize (sysupgrade -T compatibility test + completion marker).
+// src must be positioned at the start of the upload.
+func handleSysupgradeUpload(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, src io.Reader, filename string, size int64) {
+	api := g.CoreAPI
+	res := api.HttpAPI.Response()
+
+	if err := updates.ValidateSysupgradeFile(filename, size); err != nil {
+		var errMsg string
+		switch err {
+		case updates.ErrInvalidFileExtension:
+			errMsg = api.Translate("error", "Invalid file type. Upload a .bin or .img firmware image, or a software release archive") + "."
+		case updates.ErrFileTooLarge:
+			errMsg = api.Translate("error", "File size exceeds maximum allowed limit") + "."
+		default:
+			errMsg = api.Translate("error", "File validation failed")
+		}
+		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+		res.Redirect(w, r, "admin:updates:index")
+		return
+	}
+
+	if err := updates.SaveSysupgradeFile(src, filename); err != nil {
+		errMsg := api.Translate("error", "Failed to save firmware file")
+		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+		res.Redirect(w, r, "admin:updates:index")
+		return
+	}
+
+	// Validate firmware compatibility and create completion marker. This is the shared
+	// path for both local uploads and remote downloads.
+	if err := updates.FinalizeSysupgrade(); err != nil {
+		var errMsg string
+		switch err {
+		case updates.ErrIncompatibleFirmware:
+			errMsg = api.Translate("error", "The uploaded firmware is not compatible with this device") + "."
+		default:
+			errMsg = api.Translate("error", "Firmware validation failed")
+		}
+		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+		res.Redirect(w, r, "admin:updates:index")
+		return
+	}
+
+	successMsg := api.Translate("success", "Firmware uploaded and validated successfully")
+	res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
+	res.Redirect(w, r, "admin:updates:sysupgrade-success")
+}
+
+// handleSoftwareReleaseUpload spools a gzip upload to a temp file, confirms it is a
+// flarewifi software-release tarball whose build flavor matches this machine, then
+// stages it for apply-on-reboot. A gzip upload that is NOT a recognized release falls
+// back to the firmware path — some firmware images are gzip-compressed, so a missed
+// guess should still be validated by sysupgrade -T rather than rejected outright.
+func handleSoftwareReleaseUpload(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, file multipart.File, header *multipart.FileHeader) {
+	api := g.CoreAPI
+	res := api.HttpAPI.Response()
+
+	if header.Size > updates.MaxSoftwareReleaseFileSize {
+		errMsg := api.Translate("error", "File size exceeds maximum allowed limit") + "."
+		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+		res.Redirect(w, r, "admin:updates:index")
+		return
+	}
+
+	tmpPath, err := updates.SaveUploadToTemp(file)
+	if err != nil {
+		errMsg := api.Translate("error", "Failed to save uploaded file")
+		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+		res.Redirect(w, r, "admin:updates:index")
+		return
+	}
+	defer os.Remove(tmpPath)
+
+	info, err := updates.InspectRelease(tmpPath)
+	if err != nil || !info.IsRelease {
+		// gzip but not a recognized release — maybe a gzip-compressed firmware image.
+		// Reopen the spooled file and let the firmware path validate it.
+		f, oerr := os.Open(tmpPath)
+		if oerr != nil {
+			errMsg := api.Translate("error", "Failed to read uploaded file")
+			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin:updates:index")
+			return
+		}
+		defer f.Close()
+		handleSysupgradeUpload(g, w, r, f, header.Filename, header.Size)
+		return
+	}
+
+	// Reject a release built for the other app flavor: applying a mono whole-app
+	// tarball on a non-mono machine (or vice versa) would brick it.
+	if info.IsMono != tags.HasGoTag("mono") {
+		errMsg := api.Translate("error", "This software release was built for a different system type and cannot be installed on this machine") + "."
+		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+		res.Redirect(w, r, "admin:updates:index")
+		return
+	}
+
+	if err := updates.StageLocalSoftwareRelease(g, tmpPath); err != nil {
+		api.LoggerAPI.Error(fmt.Sprintf("stage local software release: %v", err))
+		errMsg := api.Translate("error", "Failed to stage the uploaded software release") + "."
+		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+		res.Redirect(w, r, "admin:updates:index")
+		return
+	}
+
+	successMsg := api.Translate("success", "Software release uploaded and staged. Reboot to apply the update")
+	res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
+	res.Redirect(w, r, "admin:updates:download-done")
 }
 
 func SysupgradeSuccessPageCtrl(g *api.CoreGlobals) http.HandlerFunc {

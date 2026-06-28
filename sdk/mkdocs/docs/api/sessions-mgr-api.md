@@ -382,7 +382,7 @@ if ok {
 
 ### MergeClientDevices
 
-Merges the source device into the target device. All sessions, purchases, fingerprints, and wallet balance are transferred from source to target. The source device is deleted after the merge.
+Merges the source device into the target device. All sessions, purchases, and fingerprints are transferred from source to target. The source device is deleted after the merge.
 
 Active sessions on either device are disconnected before the merge. If the target device had an active session it is reconnected afterward. The `OnClientMerge` event (`EventClientMergeData`) is emitted after a successful merge so plugins can notify external systems.
 

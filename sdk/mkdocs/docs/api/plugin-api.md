@@ -117,7 +117,7 @@ fmt.Println(http) // IHttpApi
 
 ### InAppPurchases
 
-It returns the [IInAppPurchasesApi](./in-app-purchases-api.md) object which is used to create and manage in-app purchases.
+It returns the [IInAppPurchasesApi](./inapp-purchases-api.md) object which is used to create and manage in-app purchases.
 
 ```go
 inAppPurchases := api.InAppPurchases()

@@ -165,7 +165,7 @@ type SessionEventData struct {
 // EventClientMergeData carries the context of a device-merge event.
 type EventClientMergeData struct {
 	// Target is the device that was kept after the merge. All sessions, purchases,
-	// fingerprints, and wallet balance from the source device have been transferred to it.
+	// and fingerprints from the source device have been transferred to it.
 	Target IClientDevice
 
 	// SourceDeviceID is the database ID of the device that was deleted during the merge.

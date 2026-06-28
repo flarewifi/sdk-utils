@@ -77,7 +77,7 @@ func (q *Queries) FindAllPaymentsByPurchaseId(ctx context.Context, purchaseID in
 
 const findCompletedPurchasesByPaymentOptionUUID = `-- name: FindCompletedPurchasesByPaymentOptionUUID :many
 SELECT
-  purchases.id, purchases.uuid, purchases.device_id, purchases.sku, purchases.name, purchases.description, purchases.price, purchases.any_price, purchases.callback_plugin, purchases.callback_route, purchases.webhook_route, purchases.metadata, purchases.wallet_debit, purchases.wallet_tx_id, purchases.processing, purchases.payment_url, purchases.payment_note, purchases.confirmed_at, purchases.cancelled_at, purchases.cancelled_reason, purchases.created_at
+  purchases.id, purchases.uuid, purchases.device_id, purchases.sku, purchases.name, purchases.description, purchases.price, purchases.any_price, purchases.callback_plugin, purchases.callback_route, purchases.webhook_route, purchases.metadata, purchases.processing, purchases.payment_url, purchases.payment_note, purchases.confirmed_at, purchases.cancelled_at, purchases.cancelled_reason, purchases.created_at
 FROM
   purchases
 INNER JOIN
@@ -109,8 +109,6 @@ func (q *Queries) FindCompletedPurchasesByPaymentOptionUUID(ctx context.Context,
 			&i.CallbackRoute,
 			&i.WebhookRoute,
 			&i.Metadata,
-			&i.WalletDebit,
-			&i.WalletTxID,
 			&i.Processing,
 			&i.PaymentUrl,
 			&i.PaymentNote,
@@ -159,7 +157,7 @@ func (q *Queries) FindPayment(ctx context.Context, id int64) (Payment, error) {
 
 const findPurchasesByPaymentOptionUUID = `-- name: FindPurchasesByPaymentOptionUUID :many
 SELECT
-  purchases.id, purchases.uuid, purchases.device_id, purchases.sku, purchases.name, purchases.description, purchases.price, purchases.any_price, purchases.callback_plugin, purchases.callback_route, purchases.webhook_route, purchases.metadata, purchases.wallet_debit, purchases.wallet_tx_id, purchases.processing, purchases.payment_url, purchases.payment_note, purchases.confirmed_at, purchases.cancelled_at, purchases.cancelled_reason, purchases.created_at
+  purchases.id, purchases.uuid, purchases.device_id, purchases.sku, purchases.name, purchases.description, purchases.price, purchases.any_price, purchases.callback_plugin, purchases.callback_route, purchases.webhook_route, purchases.metadata, purchases.processing, purchases.payment_url, purchases.payment_note, purchases.confirmed_at, purchases.cancelled_at, purchases.cancelled_reason, purchases.created_at
 FROM
   purchases
 INNER JOIN
@@ -190,8 +188,6 @@ func (q *Queries) FindPurchasesByPaymentOptionUUID(ctx context.Context, paymentO
 			&i.CallbackRoute,
 			&i.WebhookRoute,
 			&i.Metadata,
-			&i.WalletDebit,
-			&i.WalletTxID,
 			&i.Processing,
 			&i.PaymentUrl,
 			&i.PaymentNote,

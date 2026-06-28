@@ -8,7 +8,7 @@ The following are the available methods in `IHttpAuth`.
 
 ### CurrentAcct
 
-It returns the current admin user [IAccount](./accounts-api.md#account-instance) instance from http request and an `error` if any. This method is only applicable on handlers registered on the [AdminRouter](./http-router-api.md#adminrouter).
+It returns the current admin user [IAccount](./accounts-api.md#account-instance) instance from http request and an `error` if any. This method is only applicable on handlers registered on the [AdminRouter](./http-router-api.md#admin-router).
 
 ```go
 // handler
@@ -29,7 +29,7 @@ Checks if the user is authenticated. This will perform cookie checks and does no
 
 It authenticates an account using a username and password.
 It returns an [IAccount](./accounts-api.md#account-instance) instance and an `error` if any.
-This method is only applicable on handlers registered on the [PluginRouter](./http-router-api.md#pluginrouter), otherwise the request is blocked by the authentication middleware.
+This method is only applicable on handlers registered on the [PluginRouter](./http-router-api.md#plugin-router), otherwise the request is blocked by the authentication middleware.
 
 ```go
 // handler

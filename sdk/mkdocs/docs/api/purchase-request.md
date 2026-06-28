@@ -1,6 +1,6 @@
 # IPurchaseRequest
 
-The `IPurchaseRequest` interface represents a purchase request record in the Flarewifi payment system. It provides methods to manage the lifecycle of a purchase, including creating payments, handling wallet payments, and confirming or canceling purchases.
+The `IPurchaseRequest` interface represents a purchase request record in the Flarewifi payment system. It provides methods to manage the lifecycle of a purchase, including creating payments and confirming or canceling purchases.
 
 Purchase requests are created through [IPaymentsApi.Checkout()](./payments-api.md#checkout) and can be retrieved using `api.Payments().GetPurchaseRequest(r)` or `api.Payments().FindPurchaseRequestByUUID(uuid)`.
 
@@ -92,26 +92,6 @@ if purchaseRequest.IsFixedPrice() {
     fmt.Println("Fixed price purchase")
 } else {
     fmt.Println("Flexible price purchase")
-}
-```
-
-### WalletDebit
-
-Returns the wallet debit amount for the purchase.
-
-```go
-walletDebit := purchaseRequest.WalletDebit()
-fmt.Printf("Wallet debit: $%.2f\n", walletDebit)
-```
-
-### WalletTxID
-
-Returns the wallet transaction ID if available, or `nil` if no wallet payment was made.
-
-```go
-txID := purchaseRequest.WalletTxID()
-if txID != nil {
-    fmt.Printf("Wallet Transaction ID: %d\n", *txID)
 }
 ```
 
@@ -262,23 +242,9 @@ if err != nil {
 }
 ```
 
-### PayWithWallet
-
-Pays for the purchase using the customer's wallet balance. The amount will be debited from the wallet once the purchase request has been confirmed.
-
-```go
-ctx := r.Context()
-
-amount := 10.00
-err := purchaseRequest.PayWithWallet(ctx, amount)
-if err != nil {
-    // handle insufficient funds or other error
-}
-```
-
 ### State
 
-Returns the current state of the purchase, including payment totals and wallet information.
+Returns the current state of the purchase, including payment totals.
 
 ```go
 ctx := r.Context()
@@ -290,9 +256,7 @@ if err != nil {
 
 fmt.Printf("Purchase ID: %d\n", state.PurchaseID)
 fmt.Printf("Total Payment: $%.2f\n", state.TotalPayment)
-fmt.Printf("Wallet Debit: $%.2f\n", state.WalletDebit)
-fmt.Printf("Wallet Ending Balance: $%.2f\n", state.WalletEndingBal)
-fmt.Printf("Wallet Real Balance: $%.2f\n", state.WalletRealBal)
+fmt.Printf("Payment Provider: %s\n", state.PaymentProvider)
 ```
 
 ### Execute
@@ -401,12 +365,9 @@ The `PurchasePaymentData` struct represents the current state of a purchase, ret
 
 ```go
 type PurchasePaymentData struct {
-    PurchaseID      int64   `json:"purchase_id"`       // Database ID of the purchase
-    TotalPayment    float64 `json:"total_payment"`     // Total amount paid
-    PaymentProvider string  `json:"payment_provider"`  // Name of the payment provider used
-    WalletDebit     float64 `json:"wallet_debit"`      // Amount debited from wallet
-    WalletEndingBal float64 `json:"wallet_ending_bal"` // Wallet balance after purchase
-    WalletRealBal   float64 `json:"wallet_real_bal"`   // Actual wallet balance
+    PurchaseID      int64   `json:"purchase_id"`      // Database ID of the purchase
+    TotalPayment    float64 `json:"total_payment"`    // Total amount paid
+    PaymentProvider string  `json:"payment_provider"` // Name of the payment provider used
 }
 ```
 
@@ -439,7 +400,7 @@ type ExecuteParams struct {
 
 1. **Create**: Purchase request is created via `api.Payments().Checkout()`
 2. **Payment Selection**: User selects a payment option from available providers
-3. **Payment Processing**: Payment is processed via `CreatePayment()` or `PayWithWallet()`
+3. **Payment Processing**: Payment is processed via `CreatePayment()`
 4. **Execute**: Payment provider calls `Execute()` with result
 5. **Confirmation/Cancellation**: Execute handler calls `Confirm()` or `Cancel()`
 6. **Callback Redirect**: User is redirected via `RedirectToCallback()`
@@ -566,47 +527,6 @@ func handlePaymentCallback(w http.ResponseWriter, r *http.Request) {
         // Unknown state
         http.Redirect(w, r, "/", http.StatusFound)
     }
-}
-```
-
-### Wallet Payment
-
-```go
-func handleWalletPayment(w http.ResponseWriter, r *http.Request) {
-    purchaseReq, err := api.Payments().GetPurchaseRequest(r)
-    if err != nil {
-        api.Http().Response().FlashMsg(w, r, "No pending purchase", sdkapi.FlashMsgError)
-        return
-    }
-
-    ctx := r.Context()
-
-    // Pay with wallet
-    err = purchaseReq.PayWithWallet(ctx, purchaseReq.Price())
-    if err != nil {
-        api.Http().Response().FlashMsg(w, r, "Insufficient wallet balance", sdkapi.FlashMsgError)
-        return
-    }
-
-    // Check if fully paid
-    state, err := purchaseReq.State(ctx)
-    if err != nil {
-        // handle error
-        return
-    }
-
-    if state.TotalPayment >= purchaseReq.Price() {
-        // Fully paid - confirm purchase
-        err = purchaseReq.Confirm(ctx)
-        if err != nil {
-            // handle error
-            return
-        }
-
-        api.Http().Response().FlashMsg(w, r, "Purchase complete!", sdkapi.FlashMsgSuccess)
-    }
-
-    purchaseReq.RedirectToCallback(w, r)
 }
 ```
 

@@ -102,8 +102,8 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 			</style>
 			<div class="card shadow-sm border border-light-subtle" id="firmware-upload-card">
 				<div class="card-header border-bottom border-light-subtle p-4 bg-transparent">
-					<h4 class="fw-semibold">{ api.Translate("label", "Manual Firmware Upload") }</h4>
-					<p>{ api.Translate("info", "Install firmware from a file for advanced users") }.</p>
+					<h4 class="fw-semibold">{ api.Translate("label", "Manual Update Upload") }</h4>
+					<p>{ api.Translate("info", "Install a firmware image or a software release from a file for advanced users") }.</p>
 				</div>
 				<div class="card-body p-4">
 					<!-- Upload Form -->
@@ -130,8 +130,8 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 									<path d="m17 8-5-5-5 5"></path>
 									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
 								</svg>
-								<h5 class="fw-semibold mb-1">{ api.Translate("label", "Upload Firmware File") }</h5>
-								<p class="mb-2">{ api.Translate("info", "Select a .bin, .img, or .firmware file") }</p>
+								<h5 class="fw-semibold mb-1">{ api.Translate("label", "Upload Update File") }</h5>
+								<p class="mb-2">{ api.Translate("info", "Select a .bin or .img firmware image, or a software release (.tar.gz) file") }</p>
 								<span class="btn bg-purple text-light">
 									<span class="d-flex align-items-center gap-2 fw-semibold">
 										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload-icon lucide-upload">
@@ -166,7 +166,7 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 								<line x1="12" x2="12" y1="8" y2="12"></line>
 								<line x1="12" x2="12.01" y1="16" y2="16"></line>
 							</svg>
-							<p>{ api.Translate("info", "Only upload firmware files from trusted sources. Invalid firmware may damage your device") }.</p>
+							<p>{ api.Translate("info", "Only upload files from trusted sources. An invalid firmware image or software release may damage your device") }.</p>
 						</div>
 					</form>
 				</div>
