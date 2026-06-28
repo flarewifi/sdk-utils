@@ -1,0 +1,16 @@
+package admin
+
+import sdkapi "sdk/api"
+
+templ SampleAdminPage(api sdkapi.IPluginApi) {
+	<div class="row justify-content-center">
+		<div class="col-lg-8">
+			<div class="card shadow-sm">
+				<div class="card-body">
+					<h1 class="card-title h3">{ api.Translate("label", "Hello from the Devkit sample plugin") }</h1>
+					<p class="mb-0">{ api.Translate("label", "This page renders inside the Devkit Theme. Copy this plugin as a starting point for your own.") }</p>
+				</div>
+			</div>
+		</div>
+	</div>
+}

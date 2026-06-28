@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"core/utils/config"
+	"core/utils/env"
 	"errors"
 	"fmt"
 	"os"
@@ -78,7 +79,25 @@ func ConfigPluginSrcDefsWithPkg() []sdkutils.PluginMetadata {
 	return metadataList
 }
 
+// DevelPluginSrcDefs lists the editable, rebuilt-from-source plugins under
+// data/plugins/devel/. These are a development-only convenience and load ONLY in
+// dev and devkit builds (both compile to GO_ENV == ENV_DEV). Staging and
+// production ignore the devel directory entirely.
+//
+// This is the single authoritative gate, enforced for every caller:
+//   - non-mono boot (boot.InitPlugins) — runtime: env.GO_ENV is baked into the
+//     device binary, so a staging/prod device sees an empty list.
+//   - mono generation (tools.MakePluginInitMono / mono-bin-prepare) — build time:
+//     the prepare tool is compiled with the target's env build tag (derived from
+//     the builder's RAILS_ENV), so devel plugins are never even statically linked
+//     into a staging/prod mono binary, nor copied into plugins/installed.
+//
+// Returning nil here (rather than gating at each call site) means no current or
+// future caller can accidentally pull devel plugins into a deployed build.
 func DevelPluginSrcDefs() []sdkutils.PluginSrcDef {
+	if !env.IsDevEnv() {
+		return nil
+	}
 	list := []sdkutils.PluginSrcDef{}
 	paths := SearchPluginDirs(sdkutils.PathPluginDevelDir)
 	for _, pluginPath := range paths {

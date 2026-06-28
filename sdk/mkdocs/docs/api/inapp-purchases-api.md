@@ -76,7 +76,7 @@ guard := api.InAppPurchases().PurchaseGuardMiddleware(sdkapi.InAppOneTimePurchas
     ProductID: "premium_feature_1",
 })
 
-router := api.Http().Router().PluginRouter()
+router := api.Http().Router().HttpRouter(nil)
 router.Get("/premium-feature", func(w http.ResponseWriter, r *http.Request) {
     // Intended: only runs once the customer owns the product.
     // NOTE: currently the guard is a no-op and always allows access.
@@ -95,7 +95,7 @@ guard := api.InAppPurchases().SubscriptionGuardMiddleware(sdkapi.InAppSubscripti
     SubscriptionFrequency: sdkapi.InAppSubscriptionMonthly,
 })
 
-router := api.Http().Router().PluginRouter()
+router := api.Http().Router().HttpRouter(nil)
 router.Get("/premium-content", func(w http.ResponseWriter, r *http.Request) {
     // Intended: only runs for active subscribers.
     // NOTE: currently the guard is a no-op and always allows access.

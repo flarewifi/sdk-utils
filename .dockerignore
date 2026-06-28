@@ -1,0 +1,22 @@
+# Keep the docker build context small. These are either heavy/ephemeral or
+# provided at runtime via the compose bind-mount (./:/app), so excluding them from
+# the build context does not affect the in-repo `docker compose` image build
+# (which only COPYs .go-version, core/go.mod, core/go.sum, scripts/install-tools.sh)
+# nor the runtime mount. The devkit builder (Dockerfile.devkit) re-creates bin/ and
+# core/plugin.so itself, and statically links the committed Devkit theme system
+# plugin re-included below.
+.git
+.tmp
+output
+node_modules
+**/node_modules
+data
+# Re-include the committed Devkit theme system plugin so the devkit builder's
+# `COPY . .` carries it (sysplugin-prepare statically links it into core/plugin.so).
+# Everything else under data/ stays excluded. The Developer plugin is intentionally
+# NOT re-included: it is local-dev-only and excluded from the devkit distribution
+# (make-devkit.sh also stashes it out of the build).
+!data/plugins/system/com.flarego.devkit
+plugins
+bin
+*.so

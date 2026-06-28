@@ -28,6 +28,7 @@ import (
 	"core/utils/migrate"
 	"core/utils/plugins"
 	cmd "core/utils/shell"
+	"core/utils/tags"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
@@ -197,6 +198,19 @@ func (self *PluginsMgr) GetPortalTheme() (*PluginApi, *ThemesApi, bool, error) {
 // ForceInstall routes the build straight to plugins/installed instead of staging
 // it as a pending update.
 func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) (sdkplugin.IPluginInstall, error) {
+	// Devkit builds may only install plugins from on-disk source under
+	// data/plugins/local/ or data/plugins/devel/. Store and git installs are
+	// rejected so the core never contacts the cloud. The developer panel uploads
+	// land in the local directory (built once, then loaded); the devel directory
+	// holds editable in-tree sources rebuilt at boot.
+	if tags.IsDevkit() {
+		withinLocal := pathWithinDir(def.LocalPath, sdkutils.PathPluginLocalDir)
+		withinDevel := pathWithinDir(def.LocalPath, sdkutils.PathPluginDevelDir)
+		if def.Src != sdkutils.PluginSrcLocal || (!withinLocal && !withinDevel) {
+			return nil, fmt.Errorf("InstallPlugin: devkit builds may only install plugins from %s or %s", sdkutils.PathPluginLocalDir, sdkutils.PathPluginDevelDir)
+		}
+	}
+
 	pkg := def.StorePackage
 	if pkg == "" {
 		pkg = def.LocalPath
@@ -744,4 +758,19 @@ func (self *PluginsMgr) RerunPluginMigrations(newDB *sql.DB) error {
 	}
 
 	return nil
+}
+
+// pathWithinDir reports whether localPath resolves to a location inside dir
+// (or dir itself). Used by the devkit install guard to confine local installs to
+// data/plugins/devel/. A path that cannot be resolved is treated as outside.
+func pathWithinDir(localPath, dir string) bool {
+	abs, err := filepath.Abs(localPath)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(dir, abs)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }

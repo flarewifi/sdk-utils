@@ -19,20 +19,20 @@ var httpsExemptPaths = map[string]bool{
 }
 
 // ForceHTTPS is the global middleware that fixes the scheme + host of admin and
-// captive-portal traffic — but ONLY when a custom_domain is configured. It runs on
-// RootRouter, which backs BOTH the HTTP and HTTPS listeners. The target depends on
-// the path:
+// captive-portal traffic — but ONLY when this build has a portal domain
+// (env.PortalDomain, i.e. staging/prod; never dev/devkit). It runs on RootRouter,
+// which backs BOTH the HTTP and HTTPS listeners. The target depends on the path:
 //
 //   - Admin/device-local pages (see isDeviceLocalPath) are forced to HTTPS on the
 //     SAME host, so the admin dashboard stays reachable by raw IP with no domain
 //     (a cert-name warning is expected there).
-//   - Portal/captive traffic is funneled to the configured custom_domain over the
-//     portal scheme: HTTPS in prod/staging (the valid cloud-issued cert), plain
-//     HTTP in local dev (no cert for the dev portal host). See portalScheme.
+//   - Portal/captive traffic is funneled to the portal domain over the portal
+//     scheme: HTTPS on staging/prod (the valid cloud-issued cert). See portalScheme.
 //
-// When NO custom_domain is configured (config.HasCustomDomain is false) the
-// machine serves a self-signed cert, so forcing a scheme would only produce cert
-// warnings: this middleware becomes a pass-through and plain HTTP is served as-is.
+// When this build has NO portal domain (config.HasCustomDomain is false — dev/
+// devkit) the machine serves a self-signed cert, so forcing a scheme would only
+// produce cert warnings: this middleware becomes a pass-through and plain HTTP is
+// served as-is.
 //
 // Port 80 stays open and REDIRECTS rather than drops, so OS captive-detection
 // probes are still intercepted; HTTPS can't be transparently intercepted (a
@@ -58,8 +58,8 @@ func ForceHTTPS() func(http.Handler) http.Handler {
 				return
 			}
 
-			// No custom_domain => self-signed cert, no cloud-issued host to funnel
-			// to. Don't force any scheme; serve as-is.
+			// No portal domain (dev/devkit) => self-signed cert, no cloud-issued
+			// host to funnel to. Don't force any scheme; serve as-is.
 			if !config.HasCustomDomain() {
 				next.ServeHTTP(w, r)
 				return
@@ -77,8 +77,8 @@ func ForceHTTPS() func(http.Handler) http.Handler {
 				return
 			}
 
-			// Captive portal pages: funnel to the custom_domain over the portal
-			// scheme (HTTP in dev, HTTPS otherwise). Already there => serve.
+			// Captive portal pages: funnel to the portal domain over the portal
+			// scheme (HTTPS on staging/prod). Already there => serve.
 			domain := portalDomain()
 			if domain != "" && strings.EqualFold(hostWithoutPort(r.Host), domain) && isHTTPS == (portalScheme() == "https") {
 				next.ServeHTTP(w, r)
@@ -114,13 +114,12 @@ func isSubresourceRequest(r *http.Request) bool {
 	return false
 }
 
-// portalDomain returns the configured captive-portal hostname (custom_domain), or
-// "" when none is set. In local dev config forces it to captive.flare-local.com.
+// portalDomain returns this build's captive-portal hostname, or "" when there is
+// none. It is derived purely from the build environment (empty in dev/devkit,
+// captive.nexifi.ph on staging, captive.flarewifi.com on prod) — application.json's
+// custom_domain is intentionally ignored for now. See env.PortalDomain.
 func portalDomain() string {
-	if cfg, err := config.GetCachedAppConfig(); err == nil {
-		return strings.TrimSpace(cfg.CustomDomain)
-	}
-	return ""
+	return env.PortalDomain()
 }
 
 // portalScheme is the scheme captive-portal pages are served over: plain HTTP in

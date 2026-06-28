@@ -64,7 +64,7 @@ func main() {}
 
 func Init(api sdkapi.IPluginApi) {
 	// Your plugin code here
-	adminRouter := api.Http().Router().AdminRouter()
+	adminRouter := api.Http().Router().AdminRouter(nil)
 
 	adminRouter.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		homePage := views.Home()

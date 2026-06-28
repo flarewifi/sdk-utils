@@ -26,7 +26,7 @@ import (
 func main() {}
 
 func Init(api sdkapi.IPluginApi) error {
-    pluginRouter := api.Http().Router().PluginRouter()
+    pluginRouter := api.Http().Router().HttpRouter(nil)
     pluginRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
         vars := api.Http().MuxVars(r)
         name := vars["name"]
@@ -70,7 +70,7 @@ import (
 func main() {}
 
 func Init(api sdkapi.IPluginApi) error {
-    adminRouter := api.Http().Router().AdminRouter()
+    adminRouter := api.Http().Router().AdminRouter(nil)
     adminRouter.Get("/welcome/{name}", func (w http.ResponseWriter, r *http.Request) {
         vars := api.Http().MuxVars(r)
         name := vars["name"]
@@ -263,7 +263,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ## Related
 
-- [IHttpRouterApi](../api/http-router-api.md) — Router methods: `PluginRouter`, `AdminRouter`, `UrlForRoute`, `UrlForPkgRoute`
+- [IHttpRouterApi](../api/http-router-api.md) — Router methods: `HttpRouter(opts)`, `AdminRouter(opts)`, `UrlForRoute`, `UrlForPkgRoute`
 - [IHttpNavsApi](../api/http-navs-api.md) — `PortalNavsFactory` and `AdminNavsFactory` for registering menu items
 - [IHttpApi](../api/http-api.md) — `MuxVars` for extracting URL path parameters
 - [IHttpResponse](../api/http-response.md) — `PortalView` and `AdminView` for rendering views inside route handlers

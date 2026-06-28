@@ -189,6 +189,14 @@ func CheckActivationFileExists() bool {
 }
 
 func Validate() {
+	// Devkit builds never contact the cloud: treat the machine as activated and
+	// skip all online/offline token validation. This also protects the manual
+	// re-check endpoint from flipping IsActivated to false via a failed dial.
+	if devkitBypass() {
+		IsActivated.Store(true)
+		return
+	}
+
 	IsValidating.Store(true)
 	defer IsValidating.Store(false)
 

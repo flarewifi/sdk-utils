@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
@@ -124,7 +126,14 @@ func BuildPluginSo(pluginSrcDir string, workdir string, opts BuildOpts) error {
 	// workdir/plugins/<package> IS the core module. Skipping the extra
 	// ./core copy avoids two workspace entries declaring `module core`.
 	isCoreBuild := filepath.Clean(pluginSrcDir) == filepath.Clean(sdkutils.PathCoreDir)
-	if !isCoreBuild {
+
+	// In a devkit build the core is closed-source: only the compiled core/plugin.so
+	// and core/resources ship — no core Go source. 3rd-party plugins compile
+	// against the SDK alone (sdk/api has zero `core` dependency), so skip copying
+	// and `use`-ing ./core. Without this, runtime plugin builds would require core
+	// source that the devkit deliberately omits.
+	copyCore := !isCoreBuild && !tags.IsDevkit()
+	if copyCore {
 		if err := sdkutils.FsCopyDir(filepath.Join(appDir, "core"), filepath.Join(workdir, "core"), nil); err != nil {
 			return err
 		}
@@ -148,6 +157,25 @@ func BuildPluginSo(pluginSrcDir string, workdir string, opts BuildOpts) error {
 				return fmt.Errorf("copying system plugin %s into core build workspace: %w", rel, err)
 			}
 			systemPluginUsePaths = append(systemPluginUsePaths, "./"+rel)
+
+			// In a devkit build, core/go.mod carries a require+replace for each
+			// statically-linked system plugin (added in-place by make-devkit for
+			// the flare CLI build, where the replace is relative to the repo-root
+			// core/: ../data/plugins/system/<n>). Here core/go.mod has been copied
+			// to workdir/plugins/core, so that relative path is wrong. Rewrite it to
+			// ../../data/plugins/system/<n>, which matches the `use ./<rel>` written
+			// to this workspace's go.work below. Under -trimpath a bare require
+			// resolved only via `use` still fetches; the replace path must line up
+			// with the use path string for the /system subpackage to resolve.
+			if tags.IsDevkit() {
+				modPath, err := readGoModModulePath(srcAbs)
+				if err != nil {
+					return fmt.Errorf("reading module path for system plugin %s: %w", rel, err)
+				}
+				if err := goModEditReplace(goBuildPath, modPath, "../../"+rel); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -163,7 +191,7 @@ use (
     ./sdk/utils
 `, sdkutils.GO_VERSION)
 
-	if !isCoreBuild {
+	if copyCore {
 		goWork += "    ./core\n"
 	}
 	goWork += fmt.Sprintf("    ./plugins/%s\n", info.Package)
@@ -231,5 +259,35 @@ func BuildGoPlugin(gofile string, outfile string, workdir string, envs []string)
 		return err
 	}
 
+	return nil
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+// readGoModModulePath returns the module path from the go.mod in goModDir.
+func readGoModModulePath(goModDir string) (string, error) {
+	b, err := os.ReadFile(filepath.Join(goModDir, "go.mod"))
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "module ") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "module ")), nil
+		}
+	}
+	return "", fmt.Errorf("no module directive in %s/go.mod", goModDir)
+}
+
+// goModEditReplace sets a path replace for modPath in the go.mod located at
+// moduleDir (overwriting any existing replace for that module).
+func goModEditReplace(moduleDir, modPath, replPath string) error {
+	cmd := exec.Command(GoBin(), "mod", "edit", "-replace="+modPath+"="+replPath)
+	cmd.Dir = moduleDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("go mod edit -replace %s=%s in %s: %w\n%s", modPath, replPath, moduleDir, err, out)
+	}
 	return nil
 }

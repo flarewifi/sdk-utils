@@ -24,8 +24,12 @@ type AppConfig struct {
 	PluginMaxFileSize int64 `json:"plugin_max_file_size"`
 
 	// Shared captive-portal hostname served locally with a valid, cloud-issued
-	// certificate. Used for split-horizon DNS, the RFC 8910 advertisement, and
-	// the TLS SAN. Example: captive.flarewifi.com (dev: captive.flare-local.com).
+	// certificate (split-horizon DNS, RFC 8910 advertisement, TLS SAN).
+	//
+	// NOTE: currently IGNORED — the captive-portal hostname is derived from the
+	// build environment instead (env.PortalDomain: "" in dev/devkit,
+	// captive.nexifi.ph on staging, captive.flarewifi.com on prod). This field is
+	// retained for when per-machine custom domains are reintroduced.
 	CustomDomain string `json:"custom_domain"`
 }
 

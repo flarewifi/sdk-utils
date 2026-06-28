@@ -38,13 +38,15 @@ type IThemesApi interface {
 	// Returns nil if no portal theme is configured or if the theme plugin is not found.
 	GetPortalTheme() IPluginApi
 
-	// AdminPreviewMeta returns the preview metadata registered by this plugin's admin theme.
-	// Returns nil if this plugin has not registered an admin theme or no preview metadata was provided.
-	AdminPreviewMeta() *ThemePreviewMeta
+	// AdminPreviewImage returns the preview image filename registered by this plugin's admin theme.
+	// The filename is relative to the plugin's "resources/assets/public" folder.
+	// Returns an empty string if this plugin has not registered an admin theme or no preview image was provided.
+	AdminPreviewImage() string
 
-	// PortalPreviewMeta returns the preview metadata registered by this plugin's portal theme.
-	// Returns nil if this plugin has not registered a portal theme or no preview metadata was provided.
-	PortalPreviewMeta() *ThemePreviewMeta
+	// PortalPreviewImage returns the preview image filename registered by this plugin's portal theme.
+	// The filename is relative to the plugin's "resources/assets/public" folder.
+	// Returns an empty string if this plugin has not registered a portal theme or no preview image was provided.
+	PortalPreviewImage() string
 }
 
 type FlashMsg struct {
@@ -60,25 +62,11 @@ type IThemeComponents interface {
 	Scripts() templ.Component
 }
 
-// ThemePreviewMeta contains visual metadata for rendering theme preview cards
-// in the admin theme selector. Theme plugins provide this so the admin UI can
-// display an accurate visual preview without hardcoded colors.
-type ThemePreviewMeta struct {
-	Background     string // CSS background value (color, gradient, or image URL)
-	CardColor      string // Card/surface background color
-	PrimaryColor   string // Primary brand color
-	SecondaryColor string // Secondary color
-	AccentColor    string // Accent color
-	ButtonColor    string // CTA/button color
-	TextColor      string // Main text color
-	LogoPosition   string // "top" or "center" (portal themes only)
-}
-
 type AdminThemeOpts struct {
 	CssLib           CSSLib
 	JsFile           string
 	CssFile          string
-	PreviewMeta      *ThemePreviewMeta
+	PreviewImage     string // image located in in resources/assets/public folder of the plugin, used for previewing the theme in the admin dashboard
 	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IThemeComponents)
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage
 }
@@ -91,7 +79,7 @@ type PortalThemeOpts struct {
 	JsFile           string
 	CssFile          string
 	CssLib           CSSLib
-	PreviewMeta      *ThemePreviewMeta
+	PreviewImage     string // image located in in resources/assets/public folder of the plugin, used for previewing the theme in the admin dashboard
 	LayoutBuilder    func(w http.ResponseWriter, r *http.Request, builder IThemeComponents)
 	LoginPageFactory func(w http.ResponseWriter, r *http.Request, data LoginPageData) ViewPage
 	IndexPageFactory func(w http.ResponseWriter, r *http.Request) ViewPage

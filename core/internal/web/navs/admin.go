@@ -151,7 +151,43 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			},
 		}
 
+		themesNavs := []sdkapi.AdminNavItemOpt{
+			{
+				Category:  sdkapi.NavCategoryThemes,
+				Label:     g.CoreAPI.Translate("label", "Admin Dashboard"),
+				RouteName: "admin:themes:admin",
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Admin Theme"),
+					g.CoreAPI.Translate("label", "Dashboard Theme"),
+					g.CoreAPI.Translate("label", "Admin Style"),
+					g.CoreAPI.Translate("label", "appearance"),
+					g.CoreAPI.Translate("label", "config"),
+					g.CoreAPI.Translate("label", "settings"),
+					g.CoreAPI.Translate("label", "layout"),
+				},
+				Order: 4100,
+				Icon:  "<i class='bi bi-layout-text-window-reverse'></i>",
+			},
+			{
+				Category:  sdkapi.NavCategoryThemes,
+				Label:     g.CoreAPI.Translate("label", "Captive Portal"),
+				RouteName: "admin:themes:portal",
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Portal Theme"),
+					g.CoreAPI.Translate("label", "Login Theme"),
+					g.CoreAPI.Translate("label", "Captive Portal Style"),
+					g.CoreAPI.Translate("label", "wifi"),
+					g.CoreAPI.Translate("label", "splash"),
+					g.CoreAPI.Translate("label", "access"),
+					g.CoreAPI.Translate("label", "authentication"),
+				},
+				Order: 4200,
+				Icon:  "<i class='bi bi-phone'></i>",
+			},
+		}
+
 		adminNavs := append(quickAccessNavs, systemNavs...)
+		adminNavs = append(adminNavs, themesNavs...)
 		return adminNavs
 	})
 }

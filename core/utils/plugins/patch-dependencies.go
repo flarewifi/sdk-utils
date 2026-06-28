@@ -242,6 +242,15 @@ func GetInstalledModules() ([]RequiredGoModule, error) {
 		pluginGoModFile := filepath.Join(pluginDir, "go.mod")
 
 		if !sdkutils.FsExists(pluginGoModFile) {
+			// A statically-linked plugin (mono build / system plugin) has its Go
+			// compiled into core/plugin.so, so its installed data (bundled mono
+			// file set) legitimately has NO go.mod. It contributes no plugin Go
+			// deps — skip it, but do NOT delete it (that would wipe a valid
+			// plugin's resources, e.g. the devkit's statically-linked theme). Only
+			// a dir that is not a valid plugin at all (no plugin.json) is garbage.
+			if sdkutils.FsExists(filepath.Join(pluginDir, "plugin.json")) {
+				continue
+			}
 			os.RemoveAll(pluginDir)
 			continue
 		}

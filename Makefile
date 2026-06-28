@@ -55,9 +55,22 @@ sync-version:
 		'go run -tags="prod" ./core/cmd/sync-versions/main.go'
 
 devkit:
-	docker compose -f ./docker-compose.yml \
-		-f ./core/build/devkit/extras/docker-compose.override.yml \
-		run -it --rm --build app sh -c ./make-devkit.sh
+	@# Multi-arch devkit. A CGO -buildmode=plugin core .so can't be cross-compiled,
+	@# so each arch is compiled natively in its own buildx platform pass (the
+	@# non-native one runs under QEMU — SLOW but correct). All staging (system-plugin
+	@# link, sysplugin-prepare, core/go.mod edits, compiles) happens inside the
+	@# throwaway builder layer, so the host tree is never mutated. buildx writes one
+	@# unzipped tree per platform under output/devkit-stage/; merge-devkit.sh unions
+	@# them into a single fat zip that select-arch.sh resolves at container boot.
+	@# Prereqs: a docker-container buildx builder + QEMU binfmt (Docker Desktop ships
+	@# both; on bare Linux: docker run --privileged --rm tonistiigi/binfmt --install all).
+	docker buildx inspect flare-devkit >/dev/null 2>&1 || \
+		docker buildx create --name flare-devkit --driver docker-container --bootstrap
+	docker buildx build --builder flare-devkit \
+		--platform linux/amd64,linux/arm64 \
+		-f devkit/Dockerfile.devkit --target export \
+		--output type=local,dest=output/devkit-stage .
+	./devkit/merge-devkit.sh
 
 restart: down default
 

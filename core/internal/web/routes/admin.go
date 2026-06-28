@@ -13,7 +13,7 @@ import (
 func AdminRoutes(g *api.CoreGlobals) {
 	authMw := middlewares.AdminAuth(g.CoreAPI)
 	rootR := router.RootRouter
-	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter()
+	adminR := g.CoreAPI.HttpAPI.Router().AdminRouter(nil)
 
 	// HTTPS is enforced globally by middlewares.ForceHTTPS (applied on RootRouter
 	// in SetupAppRoutes), so no per-route HTTPS redirect is needed here.
@@ -33,7 +33,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 
 	// Register auth:login on the core static plugin router so UrlForRoute("auth:login")
 	// resolves correctly when the fallback core theme is active (com.flarego.core#static#auth:login).
-	g.CoreAPI.HttpAPI.Router().StaticPluginRouter().Post("/login", controllers.AdminAuthenticateCtrl(g)).Name("auth:login")
+	g.CoreAPI.HttpAPI.Router().HttpRouter(&sdkapi.HttpRouterOpts{Static: true}).Post("/login", controllers.AdminAuthenticateCtrl(g)).Name("auth:login")
 	adminR.Get("/events", adminSseCtrl).Name(api.RouteNameAdminSSE)
 
 	adminR.Group("/system", func(subrouter sdkapi.IHttpRouterInstance) {
@@ -79,7 +79,8 @@ func AdminRoutes(g *api.CoreGlobals) {
 	})
 
 	adminR.Group("/themes", func(subrouter sdkapi.IHttpRouterInstance) {
-		subrouter.Get("/index", adminctrl.GetAvailableThemes(g)).Name("admin:themes:index")
+		subrouter.Get("/admin", adminctrl.AdminThemesPage(g)).Name("admin:themes:admin")
+		subrouter.Get("/portal", adminctrl.PortalThemesPage(g)).Name("admin:themes:portal")
 		subrouter.Post("/save", adminctrl.SaveThemeSettings(g)).Name("admin:themes:save")
 	})
 

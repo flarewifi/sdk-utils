@@ -1,0 +1,84 @@
+# syntax=docker/dockerfile:1
+#
+# Multi-stage devkit build. The `builder` stage copies the FULL repo (including
+# closed-source core Go) and assembles the devkit TREE in an image layer — so the
+# host working tree is never mutated (no transient core/go.mod edits leak out).
+# The `export` stage carries ONLY the produced tree; the source-bearing builder
+# layer is discarded and never distributed.
+#
+# Built once per architecture via buildx (see `make devkit`): a CGO
+# -buildmode=plugin core .so can't be cross-compiled, so each arch is compiled
+# natively in its own platform pass (under QEMU when emulated). DEVKIT_NO_ZIP makes
+# the builder emit an unzipped tree per platform; merge-devkit.sh then unions the
+# two into a single fat zip.
+#
+# Usage (see `make devkit`):
+#   docker buildx build --platform linux/amd64,linux/arm64 \
+#     -f Dockerfile.devkit --target export \
+#     --output type=local,dest=output/devkit-stage .
+
+# =============================================================================
+# builder — compiles flare CLI + core.so (dev devkit), statically links the
+# Devkit theme, and runs create-devkit to emit the output/devkit/<name> tree.
+# =============================================================================
+FROM ubuntu:24.04 AS builder
+
+RUN apt-get update && apt-get install -y \
+    wget \
+    tar \
+    gzip \
+    make \
+    gcc \
+    git \
+    sudo \
+    zip \
+    rsync \
+    tree \
+    nodejs \
+    npm
+
+WORKDIR /app
+
+ENV PATH=${PATH}:/home/ubuntu/go/bin
+ENV PATH=${PATH}:/usr/local/go/bin
+
+# Install go (pinned via .go-version).
+COPY .go-version .
+RUN wget https://go.dev/dl/go$(cat .go-version).linux-$(dpkg --print-architecture).tar.gz \
+        -O golang.tar.gz && \
+        rm -rf /usr/local/go && \
+        tar -C /usr/local -xzf golang.tar.gz && \
+        rm -rf golang.tar.gz
+
+RUN mkdir -p /opt/flarewifi/data/storage /var/cache/go && \
+    touch /etc/.tkn && \
+    chown -R ubuntu:ubuntu \
+    /opt/flarewifi \
+    /var/cache/go \
+    /etc/.tkn && \
+    chown -R ubuntu:ubuntu /app
+
+USER ubuntu
+
+# Toolchain (reflex, sqlc, templ) — cached unless install-tools.sh changes.
+COPY --chown=ubuntu:ubuntu scripts/install-tools.sh scripts/install-tools.sh
+RUN ./scripts/install-tools.sh
+
+# Pre-download core deps — cached unless core go.mod/go.sum change.
+COPY --chown=ubuntu:ubuntu core/go.mod core/go.sum core/
+RUN cd core && go mod download
+
+# Copy the full build tree (source lives only in this throwaway layer) and
+# assemble the per-arch devkit tree. core/go.mod staging edits happen here, never
+# on the host. DEVKIT_NO_ZIP makes create-devkit leave the tree unzipped so the
+# host-side merge-devkit.sh can union the two platforms into one fat zip.
+ENV DEVKIT_NO_ZIP=1
+COPY --chown=ubuntu:ubuntu . .
+RUN ./devkit/make-devkit.sh
+
+# =============================================================================
+# export — scratch image holding only the unzipped devkit tree, one per platform,
+# extracted via `buildx --output type=local` into dest/linux_<arch>/.
+# =============================================================================
+FROM scratch AS export
+COPY --from=builder /app/output/devkit/ /

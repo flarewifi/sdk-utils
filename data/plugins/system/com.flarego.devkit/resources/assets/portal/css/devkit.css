@@ -1,0 +1,4 @@
+/* Devkit portal theme tweaks (Bootstrap 3 basic captive layout) */
+.portal-wrap { margin-top: 24px; }
+.nav-stacked > li { margin-bottom: 8px; }
+.nav-stacked > li > a img { height: 20px; margin-right: 6px; vertical-align: middle; }

@@ -10,7 +10,7 @@ import (
 	gouci "github.com/digineo/go-uci"
 
 	"core/internal/modules/uci"
-	"core/utils/config"
+	"core/utils/env"
 	cmd "core/utils/shell"
 )
 
@@ -24,21 +24,17 @@ const (
 	lanSection = "lan"
 )
 
-// Setup points <custom_domain> at the router's LAN IP for connected clients
-// (split-horizon) and advertises the captive-portal API URL via DHCP option 114,
-// then reloads dnsmasq. It is idempotent: prior entries for the same domain and
-// for option 114 are replaced rather than duplicated. A missing custom_domain or
-// LAN IP is a no-op (nothing to advertise).
+// Setup points the captive-portal hostname at the router's LAN IP for connected
+// clients (split-horizon) and advertises the captive-portal API URL via DHCP
+// option 114, then reloads dnsmasq. It is idempotent: prior entries for the same
+// domain and for option 114 are replaced rather than duplicated. A build with no
+// portal domain (dev/devkit) or a missing LAN IP is a no-op (nothing to advertise).
 func Setup(lanIP string) error {
-	cfg, err := config.GetCachedAppConfig()
-	if err != nil {
-		return fmt.Errorf("read app config: %w", err)
-	}
-
-	// A custom_domain is the cloud-issued portal hostname. When it is empty there
-	// is no portal host to advertise, so split-horizon DNS and the DHCP option-114
-	// portal URL are skipped (the no-op below). Holds in dev, staging, and prod.
-	domain := strings.TrimSpace(cfg.CustomDomain)
+	// The portal hostname is the cloud-issued portal domain, derived from the build
+	// environment (env.PortalDomain). When it is empty (dev/devkit) there is no
+	// portal host to advertise, so split-horizon DNS and the DHCP option-114 portal
+	// URL are skipped (the no-op below). Set on staging and prod.
+	domain := env.PortalDomain()
 	if domain == "" || lanIP == "" {
 		return nil
 	}
