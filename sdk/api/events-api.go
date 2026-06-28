@@ -120,12 +120,12 @@ type IEventsApi interface {
 	// Available events: EventInternetUp, EventInternetDown.
 	OnInternetEvent(event InternetEvent, callback func(ctx context.Context) error)
 
-	// OnBoot registers a callback that fires once the machine's boot sequence has
+	// OnBootEvent registers a callback that fires once the machine's boot sequence has
 	// fully completed. The callback runs synchronously in the boot goroutine, in
 	// registration order; its returned error is logged but does not stop other
 	// callbacks. Spawn a goroutine if it must do slow work, so it does not stall
 	// the rest of boot finalization.
 	//
 	// Available events: EventBoot.
-	OnBoot(event BootEvent, callback func(ctx context.Context) error)
+	OnBootEvent(event BootEvent, callback func(ctx context.Context) error)
 }
