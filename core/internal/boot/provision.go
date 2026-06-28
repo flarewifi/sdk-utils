@@ -118,7 +118,7 @@ func StartOnlineMonitor(g *api.CoreGlobals) {
 	// boot callback is cancelled the moment the callback returns, so retaining it
 	// would stop the polling loop almost immediately.
 	monitor := netmon.NewMonitor(g.EventsMgr, g.CoreAPI.Logger())
-	g.EventsMgr.OnBoot(sdkapi.EventBoot, func(ctx context.Context) error {
+	g.EventsMgr.OnBootEvent(sdkapi.EventBoot, func(ctx context.Context) error {
 		monitor.Start(context.Background())
 		return nil
 	})

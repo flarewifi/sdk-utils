@@ -121,7 +121,7 @@ func (em *EventsManager) OnInternetEvent(event sdkapi.InternetEvent, cb func(con
 }
 
 // OnBoot registers a callback that fires once the boot sequence has completed.
-func (em *EventsManager) OnBoot(event sdkapi.BootEvent, cb func(context.Context) error) {
+func (em *EventsManager) OnBootEvent(event sdkapi.BootEvent, cb func(context.Context) error) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.bootCallbacks[event] = append(em.bootCallbacks[event], cb)
