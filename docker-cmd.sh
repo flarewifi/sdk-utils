@@ -28,6 +28,7 @@ reflex \
     -R 'data\/config\/.*' \
     -R 'data\/storage\/.*' \
     -R 'resources\/assets\/dist\/.*' \
+    -R 'resources\/translations\/.*\.json$' \
     -R 'plugins\/installed\/.*' \
     -R 'plugins\/backups\/.*' \
     -R 'plugins\/updates\/.*' \

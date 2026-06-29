@@ -109,12 +109,6 @@ func (self *PluginsMgr) LoadSystemPlugins(g *CoreGlobals) {}
 	if err != nil {
 		fmt.Println("Error getting plugin info from path: " + err.Error())
 	} else {
-		// Ensure plugin translations are available for current language (skip in dev mode)
-		if env.GO_ENV != env.ENV_DEV {
-			if err := sdkutils.EnsureTranslations(pluginDir, currentLang); err != nil {
-				fmt.Println("Warning: Failed to ensure translations for plugin", pkg, ":", err)
-			}
-		}
 		// Run migrations
 		if err := migrate.MigrateUp(self.db.DB, pluginDir); err != nil {
 			fmt.Println("Warning: failed to apply migrations for plugin :", pkg)
@@ -145,8 +139,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"core/utils/config"
-	"core/utils/env"
 	"core/utils/migrate"
 	sdkutils "github.com/flarewifi/sdk-utils"
     %s
@@ -154,15 +146,6 @@ import (
 
 func (self *PluginsMgr) LoadSystemPlugins(g *CoreGlobals) {
 	coreAPI := self.CoreAPI
-
-	// Get current language for translations (only needed if not in dev mode)
-	currentLang := "en"
-	if env.GO_ENV != env.ENV_DEV {
-		cfg, err := config.ReadApplicationConfig()
-		if err == nil {
-			currentLang = cfg.Lang
-		}
-	}
 
 	var pkg, pluginDir string
 	var api *PluginApi

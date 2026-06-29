@@ -40,7 +40,6 @@ func Init(g *api.CoreGlobals) {
 
 		InitOpkg()
 		RunCoreMigrations(g)
-		InitTranslations()
 		coretheme.SetAdminTheme(g.CoreAPI)
 		coretheme.SetPortalTheme(g.CoreAPI)
 

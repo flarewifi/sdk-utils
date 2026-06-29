@@ -9,11 +9,8 @@ import (
 	machineuid "core/internal/modules/machine-uid"
 	generalview "core/resources/views/admin/general"
 	"core/utils/config"
-	"core/utils/env"
-	"core/utils/flaretmpl"
 	"core/utils/sysinfo"
-
-	sdkutils "github.com/flarewifi/sdk-utils"
+	"core/utils/translations"
 )
 
 func GeneralSettingsIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
@@ -151,18 +148,12 @@ func GeneralSettingsSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Handle language switching if language changed
+		// Handle language switching if language changed. Catalogs are cached in
+		// memory keyed by (dir, lang), so clearing the cache makes the next lookup
+		// load the new language's JSON — no file moves, no compression.
 		if languageChanged {
-			if env.GO_ENV != env.ENV_DEV {
-				// In production, physically switch language files
-				if err := sdkutils.SwitchAllLanguages(currentCfg.Lang, language); err != nil {
-					g.CoreAPI.LoggerAPI.Error("Failed to switch language: " + err.Error())
-					// Don't fail the save operation, just log the error
-				}
-			}
-			// Clear template cache in both dev and production to ensure new language translations are loaded
-			flaretmpl.ClearCache()
-			g.CoreAPI.LoggerAPI.Info("Language changed to " + language + ", template cache cleared")
+			translations.ClearCache()
+			g.CoreAPI.LoggerAPI.Info("Language changed to " + language + ", translation cache cleared")
 		}
 
 		successfulSavedMsg := g.CoreAPI.Translate("info", "Settings Successfully Saved")

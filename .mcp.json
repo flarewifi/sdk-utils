@@ -4,6 +4,14 @@
       "type": "stdio",
       "command": "npx",
       "args": ["@playwright/mcp@latest"]
+    },
+    "flarewifi-translations": {
+      "type": "stdio",
+      "command": "sh",
+      "args": [
+        "-c",
+        "GOTOOLCHAIN=local go run -tags dev ./core/cmd/translations-mcp -root ."
+      ]
     }
   }
 }

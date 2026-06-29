@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"core/internal/api"
-	"core/utils/config"
 	"core/utils/env"
 	"core/utils/migrate"
 	"core/utils/plugins"
@@ -83,15 +82,6 @@ func InitPlugins(g *api.CoreGlobals) error {
 	// staging/production.
 	if err := compilePluginDefs(g, db, develPlugins, abortOnCompileErr); err != nil {
 		return err
-	}
-
-	// Get current language for translations (only needed if not in dev mode)
-	currentLang := "en"
-	if env.GO_ENV != env.ENV_DEV {
-		cfg, err := config.ReadApplicationConfig()
-		if err == nil {
-			currentLang = cfg.Lang
-		}
 	}
 
 	// Process pending removals before loading plugins
@@ -197,12 +187,6 @@ func InitPlugins(g *api.CoreGlobals) error {
 		// parallel bookkeeping needed.
 		if _, alreadyLoaded := g.PluginMgr.FindByPkg(info.Package); alreadyLoaded {
 			continue
-		}
-
-		// Ensure plugin translations are available for current language (skip in dev mode)
-		if env.GO_ENV != env.ENV_DEV {
-			if err := sdkutils.EnsureTranslations(dir, currentLang); err != nil {
-			}
 		}
 
 		// Surface each plugin on the booting page as it is loaded — this map-the-.so
