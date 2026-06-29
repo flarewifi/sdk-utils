@@ -1,9 +1,19 @@
 package sdkutils
 
-import (
-	"errors"
-	"strings"
-)
+// WSV (Whitespace-Separated Values) line codec.
+//
+// A WSV line is a sequence of values separated by whitespace, where any value
+// containing whitespace, a double quote, a hash, or a line break is wrapped in
+// double quotes (with `""` escaping a literal quote and `"/"` escaping a line
+// break). An empty value serializes to `""` and a literal `-` to `"-"`; a bare
+// `-` decodes back to the empty string. A `#` outside of quotes starts a
+// comment and ends the line.
+//
+// The core logger uses this to encode each log record's fields onto a single
+// line and to parse those lines back when tailing. Only the two functions used
+// there are exported: Serialize (encode) and ParseLineAsArray (decode).
+
+import "errors"
 
 const codepoint_LINEFEED = 0x0A
 const codepoint_DOUBLEQUOTE = 0x22
@@ -11,10 +21,33 @@ const codepoint_HASH = 0x23
 const codepoint_SLASH = 0x2F
 
 type basicWsvCharIterator struct {
-	chars     []rune
-	index     int
-	lineIndex int
+	chars []rune
+	index int
 }
+
+// ParseLineAsArray parses a single WSV line into its field values.
+func ParseLineAsArray(line string) ([]string, error) {
+	return parseLine(line)
+}
+
+// Serialize encodes rows of values into a WSV document, one line per row.
+func Serialize(rows [][]string) string {
+	isFirst := true
+	result := ""
+	for _, row := range rows {
+		if !isFirst {
+			result += "\n"
+		} else {
+			isFirst = false
+		}
+		result += serializeRow(row)
+	}
+	return result
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
 
 func (x *basicWsvCharIterator) isEnd() bool {
 	return x.index >= len(x.chars)
@@ -63,48 +96,8 @@ func getCodePoints(s string) []rune {
 	return result
 }
 
-// Parses a WSV document's line as an array of strings.
-func ParseAsArray(content string) ([]string, error) {
-	return ParseLineAsArray(content)
-}
-
-// Parses a WSV document as a jagged array of strings.
-func ParseAsJaggedArray(content string) ([][]string, error) {
-	return ParseDocument(content)
-}
-
-func ParseDocument(content string) ([][]string, error) {
-	var lines = strings.Split(content, "\n")
-
-	var result [][]string
-	for i := 0; i < len(lines); i++ {
-
-		var lineStr = lines[i]
-		lineValues, err := parseLine(lineStr, i)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, lineValues)
-
-	}
-	return result, nil
-}
-
-// Takes in a string that represents a line of a file
-// and returns a slice of string
-func ParseLineAsArray(content string) ([]string, error) {
-	result, err := ParseDocument(content)
-	if err != nil {
-		return nil, err
-	}
-	if len(result) == 0 {
-		return nil, errors.New("empty document")
-	}
-	return result[0], nil
-}
-
-func parseLine(lineStrWithoutLinefeed string, lineIndex int) ([]string, error) {
-	var iterator = basicWsvCharIterator{getCodePoints(lineStrWithoutLinefeed), 0, lineIndex}
+func parseLine(lineStrWithoutLinefeed string) ([]string, error) {
+	var iterator = basicWsvCharIterator{getCodePoints(lineStrWithoutLinefeed), 0}
 	var values []string
 	for {
 		skipWhitespace(&iterator)
@@ -203,15 +196,6 @@ func skipWhitespace(iterator *basicWsvCharIterator) {
 	}
 }
 
-// func needsDoubleQuotes(value string) bool {
-// 	if len(value) == 0 || value == "-" {
-// 		return true
-// 	}
-
-// 	chars := getCodePoints(value)
-// 	return containsSpecialChar(chars)
-// }
-
 func containsSpecialChar(chars []rune) bool {
 	for _, c := range chars {
 		if isWhitespace(c) || c == codepoint_LINEFEED || c == codepoint_DOUBLEQUOTE || c == codepoint_HASH {
@@ -248,7 +232,7 @@ func serializeValue(value string) string {
 	}
 }
 
-func SerializeRow(values []string) string {
+func serializeRow(values []string) string {
 	isFirst := true
 	result := ""
 	for _, value := range values {
@@ -258,20 +242,6 @@ func SerializeRow(values []string) string {
 			isFirst = false
 		}
 		result += serializeValue(value)
-	}
-	return result
-}
-
-func Serialize(values [][]string) string {
-	isFirst := true
-	result := ""
-	for _, line := range values {
-		if !isFirst {
-			result += "\n"
-		} else {
-			isFirst = false
-		}
-		result += SerializeRow(line)
 	}
 	return result
 }
