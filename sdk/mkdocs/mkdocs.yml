@@ -54,6 +54,8 @@ nav:
           - "Creating a Theme": tutorials/creating-a-theme/index.md
           - "Customizing the Admin Interface": tutorials/creating-a-theme/page2.md
   - API Reference:
+      - "IPluginApi": api/plugin-api.md # Must always be on top
+      - "Assets Manifest": api/assets-manifest.md
       - "IAccountsApi": api/accounts-api.md
       - "IAdsApi": api/ads-api.md
       - "IClientDevice": "api/client-device.md"
@@ -75,23 +77,21 @@ nav:
       - "INetworkApi": api/network-api.md
       - "INetworkDevice": api/network-device.md
       - "INetworkInterface": api/network-interface.md
-      - "ITrafficApi": api/network-traffic.md
       - "INotification": api/notification.md
       - "IPaymentsApi": api/payments-api.md
-      - "IPluginApi": api/plugin-api.md
       - "IPluginsMgrApi": api/plugins-mgr-api.md
       - "IPurchaseRequest": api/purchase-request.md
       - "ISessionsMgrApi": api/sessions-mgr-api.md
       - "IStorageApi": api/storage-api.md
       - "IThemesApi": api/themes-api.md
+      - "ITrafficApi": api/network-traffic.md
       - "IUciApi": api/uci-api.md
       - "IUIAPI": api/ui-api.md
       - "IVouchersApi": api/voucher-api.md
       - "IWifiApi": api/wifi-api.md
-      - "Assets Manifest": api/assets-manifest.md
-      - "window.$flare": api/flare-variable.md
-      - "plugin.json": api/plugin.json.md
       - "Plugin Info": api/plugin-info.md
+      - "plugin.json": api/plugin.json.md
+      - "window.$flare": api/flare-variable.md
   - Free Plugins:
       - "Flarewifi Theme": "plugins/com.flarego.default-theme.md"
 

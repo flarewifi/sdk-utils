@@ -85,20 +85,18 @@ deploy-arm64:
 		GOTOOLCHAIN=go1.21.13 GO_ARCH=arm64 go run -tags="prod" ./core/cmd/create-mono-bin/main.go && \
 		rsync -avz --delete --exclude='data' output/mono-bin-files/ root@10.0.0.1:/opt/flarewifi/app/
 
+# Translations are per-language JSON catalogs (resources/translations/<lang>.json).
+# The translations-mcp binary is an MCP server for AI tools (summarize/query/work);
+# with -check it runs the CI gate: fail if any code key is missing from en.json.
 translate-help:
-	@go run core/tools/translator/main.go --help
+	@go run -tags="dev" ./core/cmd/translations-mcp -h || true
 
 translate-check:
-	@go run -tags="dev" ./core/tools/translator \
-		--validate \
-		--markdown-report=.tmp/reports/translation_validation_report.md
+	@go run -tags="dev" ./core/cmd/translations-mcp -check
 
-# Language-specific translation checks
-translate-check-%:
-	@go run -tags="dev" ./core/tools/translator \
-		--language=$* \
-		--validate \
-		--markdown-report=.tmp/reports/translation_validation_$*_report.md
+# Require a minimum per-language coverage percentage (e.g. make translate-check-coverage MIN=80)
+translate-check-coverage:
+	@go run -tags="dev" ./core/cmd/translations-mcp -check -min=$(or $(MIN),80)
 
 status:
 	@./scripts/status.sh

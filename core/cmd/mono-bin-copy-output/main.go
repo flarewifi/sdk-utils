@@ -3,6 +3,7 @@ package main
 import (
 	tools "core/utils"
 	toolsenv "core/utils/env"
+	"core/utils/translations"
 	"flag"
 	"fmt"
 	"path/filepath"
@@ -69,10 +70,12 @@ func main() {
 	}
 	fmt.Printf("Copied: %s -> start.sh\n", tools.StartScriptSrc())
 
-	// Skip translation compression in dev mode
+	// Minify the JSON translation catalogs in production builds (dev ships the
+	// pretty-printed source as-is). Per-language JSON is tiny, so minification
+	// replaces the old per-language .tar.gz compression entirely.
 	if toolsenv.GO_ENV != toolsenv.ENV_DEV {
-		if err := sdkutils.CompressAllTranslations(outputDir); err != nil {
-			panic(fmt.Errorf("failed to compress translations: %w", err))
+		if err := translations.MinifyAllCatalogs(outputDir); err != nil {
+			panic(fmt.Errorf("failed to minify translations: %w", err))
 		}
 	}
 
