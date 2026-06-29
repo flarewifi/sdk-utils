@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"math/rand"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -79,26 +78,4 @@ func TrimRedundantWords(input string, separator string) string {
 	}
 
 	return strings.Join(result, separator)
-}
-
-// FilenameFromTranslationKey converts a translation key to a filesystem-safe filename
-// Escapes characters forbidden on Linux (/) and Windows (< > : " | * ? \) filesystems
-// for cross-platform safety
-func FilenameFromTranslationKey(key string) string {
-	// Characters forbidden on Windows: < > : " | ? * \
-	// Characters forbidden on Linux: / (and null byte)
-	// We escape these for cross-platform safety
-	needsEscaping := false
-	for _, ch := range key {
-		if ch == '/' || ch == 0 || ch == '<' || ch == '>' || ch == ':' ||
-			ch == '"' || ch == '|' || ch == '?' || ch == '*' || ch == '\\' {
-			needsEscaping = true
-			break
-		}
-	}
-
-	if needsEscaping {
-		return url.PathEscape(key)
-	}
-	return key
 }
