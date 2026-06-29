@@ -14,17 +14,8 @@ import (
 func SetPortalTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
 		JsFile:  "theme-fallback.js",
-		CssFile: "theme-fallback.css",
-		PreviewMeta: &sdkapi.ThemePreviewMeta{
-			Background:     "#0d0d1a",
-			CardColor:      "rgba(255, 255, 255, 0.15)",
-			PrimaryColor:   "#2563eb",
-			SecondaryColor: "#3b82f6",
-			AccentColor:    "#60a5fa",
-			ButtonColor:    "#2563eb",
-			TextColor:      "#ffffff",
-			LogoPosition:   "top",
-		},
+		CssFile:      "theme-fallback.css",
+		PreviewImage: "",
 		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
 			data := corethemeportal.PortalLayoutData{Components: c}
 			layout := corethemeportal.PortalLayout(data)

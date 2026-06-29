@@ -17,17 +17,10 @@ import (
 // SetAdminTheme registers the built-in core admin theme on CoreAPI.
 func SetAdminTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewAdminTheme(sdkapi.AdminThemeOpts{
-		JsFile:  "theme-fallback.js",
-		CssFile: "theme-fallback.css",
-		CssLib:  sdkapi.CssLibBootstrap5,
-		PreviewMeta: &sdkapi.ThemePreviewMeta{
-			Background:     "#f9fafb",
-			PrimaryColor:   "#2563eb",
-			SecondaryColor: "#3b82f6",
-			AccentColor:    "#60a5fa",
-			ButtonColor:    "#2563eb",
-			TextColor:      "#1f2937",
-		},
+		JsFile:       "theme-fallback.js",
+		CssFile:      "theme-fallback.css",
+		CssLib:       sdkapi.CssLibBootstrap5,
+		PreviewImage: "",
 		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
 			notifs, err := api.Notification().GetUnreadNotifications(r.Context())
 			if err != nil {
@@ -38,6 +31,7 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
 				Components:    c,
 				Notifications: notifs,
 				CurrentPath:   corethemeadmin.CurrentPathFromRequest(r),
+				Navs:          api.Http().Navs().GetAdminNavs(r),
 			}
 			layout := corethemeadmin.AdminLayout(api, data)
 			if err := layout.Render(r.Context(), w); err != nil {

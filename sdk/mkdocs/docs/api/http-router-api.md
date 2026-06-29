@@ -1,10 +1,33 @@
 # IHttpRouterApi
-The `IHttpRouterApi` is the backend for http routing in Flarewifi. There are four (4) kinds of http routers:
+The `IHttpRouterApi` is the backend for http routing in Flarewifi. There are two (2) router methods, each configured with an options struct:
 
-- `AdminRouter` - a router for the admin pages of the plugin that requires admin authentication.
-- `PluginRouter` - a router for general purpose routing within the plugin.
-- `StaticAdminRouter` - a version-independent admin router whose paths persist across plugin version updates.
-- `StaticPluginRouter` - a version-independent plugin router whose paths persist across plugin version updates.
+- `AdminRouter(opts *AdminRouterOpts)` - a router for the admin pages of the plugin that requires admin authentication and is always served over HTTPS.
+- `HttpRouter(opts *HttpRouterOpts)` - a general-purpose router for the plugin, with no authentication.
+
+The options structs select a variant of each router:
+
+```go
+type AdminRouterOpts struct {
+    Static bool // Routes persist across plugin version updates (/admin/static/{package}/{path}).
+}
+
+type HttpRouterOpts struct {
+    HttpsOnly bool // Routes are served only over HTTPS (plain-HTTP is redirected to HTTPS).
+    Static    bool // Routes persist across plugin version updates (/p/static/{package}/{path}).
+}
+```
+
+Passing `nil` (or a zero-value struct) returns the default variant. For `HttpRouter`, `Static` takes precedence over `HttpsOnly` when both are set.
+
+> **Migration from the old API:** the former `PluginRouter()`, `HttpsRouter()`, `StaticPluginRouter()`, and `StaticAdminRouter()` methods have been removed in favor of the two opts-based methods. Update your calls as follows:
+>
+> | Old call | New call |
+> |----------|----------|
+> | `AdminRouter()` | `AdminRouter(nil)` |
+> | `PluginRouter()` / `HttpRouter()` | `HttpRouter(nil)` |
+> | `HttpsRouter()` | `HttpRouter(&sdkapi.HttpRouterOpts{HttpsOnly: true})` |
+> | `StaticPluginRouter()` | `HttpRouter(&sdkapi.HttpRouterOpts{Static: true})` |
+> | `StaticAdminRouter()` | `AdminRouter(&sdkapi.AdminRouterOpts{Static: true})` |
 
 ---
 
@@ -13,17 +36,37 @@ The `IHttpRouterApi` is the backend for http routing in Flarewifi. There are fou
 Below are the available methods in `IHttpRouterApi`:
 
 ### Admin Router {#admin-router}
-This method returns the [admin router](#router-instance) for the admin routes. Routes generated from the admin router are prefixed with `/admin` and are only accessible to authenticated user [accounts](./accounts-api.md#account-instance). To get the admin router instance:
+This method returns the [admin router](#router-instance) for the admin routes. Routes generated from the admin router are prefixed with `/admin` and are only accessible to authenticated user [accounts](./accounts-api.md#account-instance). Admin routes are always served over HTTPS. To get the admin router instance:
 
 ```go
-adminRouter := api.Http().Router().AdminRouter()
+adminRouter := api.Http().Router().AdminRouter(nil)
 ```
 
-### Plugin Router {#plugin-router}
-This method returns the [plugin router](#router-instance) of the plugin. Routes generated from the plugin router are accessible to all users. To get the plugin router instance:
+To get a **version-independent** admin router whose paths persist across plugin version updates (accessible at `/admin/static/{package}/{path}`), pass `Static: true`:
 
 ```go
-pluginRouter := api.Http().Router().PluginRouter()
+staticAdminRouter := api.Http().Router().AdminRouter(&sdkapi.AdminRouterOpts{Static: true})
+```
+
+### Http Router {#plugin-router}
+This method returns the [plugin router](#router-instance) of the plugin. Routes generated from the http router are accessible to all users over either scheme (HTTP or HTTPS) with no authentication middleware. To get the http router instance:
+
+```go
+httpRouter := api.Http().Router().HttpRouter(nil)
+```
+
+The `HttpRouterOpts` select a variant of the same router:
+
+```go
+// HTTPS-only — plain-HTTP requests are redirected to HTTPS. Use for public
+// endpoints that must run over TLS (secure callbacks, webhooks, login posts).
+// Accessible at /p/https/{package}/{version}/{path}.
+httpsRouter := api.Http().Router().HttpRouter(&sdkapi.HttpRouterOpts{HttpsOnly: true})
+
+// Static — routes persist across plugin version updates. Use for public-facing
+// URLs that must remain stable, such as payment callbacks or QR code links.
+// Accessible at /p/static/{package}/{path}.
+staticRouter := api.Http().Router().HttpRouter(&sdkapi.HttpRouterOpts{Static: true})
 ```
 
 ### UseForPortal {#use-for-portal}
@@ -101,22 +144,6 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 }
 ```
 
-### Static Admin Router {#static-admin-router}
-
-This method returns the [static admin router](#router-instance) for the plugin. Routes registered here are accessible at `/admin/static/{package}/{path}` and **persist across plugin version updates**. Like the regular admin router, these routes require admin authentication. Use static routes for URLs you want to remain stable even after bumping the plugin version — for example, webhook endpoints or external integrations.
-
-```go
-staticAdminRouter := api.Http().Router().StaticAdminRouter()
-```
-
-### Static Plugin Router {#static-plugin-router}
-
-This method returns the [static plugin router](#router-instance) for the plugin. Routes registered here are accessible at `/p/static/{package}/{path}` and **persist across plugin version updates**. Use static routes for public-facing URLs that must remain stable, such as payment callbacks or QR code links.
-
-```go
-staticPluginRouter := api.Http().Router().StaticPluginRouter()
-```
-
 ### UrlForRoute
 
 This method generates the URL for a route by name. It automatically resolves the correct URL whether the route was registered on a versioned or static router — no separate method needed for static routes.
@@ -138,7 +165,7 @@ url := api.Http().Router().UrlForPkgRoute("com.mydomain.myplugin", "portal.welco
 
 ## IHttpRouterInstance {#router-instance}
 
-`IHttpRouterInstance` is a router instance used to generate routes for the plugin. Routes can be generated using a [PluginRouter](#plugin-router), an [AdminRouter](#admin-router), a [StaticPluginRouter](#static-plugin-router), or a [StaticAdminRouter](#static-admin-router). Below are the methods available in the router instance:
+`IHttpRouterInstance` is a router instance used to generate routes for the plugin. The same instance type is returned by `AdminRouter(...)` and `HttpRouter(...)` regardless of the options passed. Below are the methods available in the router instance:
 
 ### Group
 
@@ -148,7 +175,7 @@ This can be used to nest more route groups. Take a look at the example below:
 
 ```go
 // Get the router instance
-router := api.Http().Router().PluginRouter()
+router := api.Http().Router().HttpRouter(nil)
 router.Group("/payments", func (subrouter sdkhttp.HttpRouterInstance) {
     // Add route for /payments/received
     subrouter.Post("/receieved", func(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +189,7 @@ router.Group("/payments", func (subrouter sdkhttp.HttpRouterInstance) {
 This method is used to create a route for the `GET` http method. It accepts tree (or more) arguments, the first argument is the route path, the second argument is the [handler function](#handler-function) and the third and subsequent arguments are the list of (optional) [middlewares](#middlewares). Take a look at the example below:
 
 ```go
-router := api.Http().Router().PluginRouter()
+router := api.Http().Router().HttpRouter(nil)
 router.Get("/payments/options", func(w http.ResponseWriter, r *http.Request) {
     // Handle the request
 }).Name("payments.options") // set the route name
@@ -173,7 +200,7 @@ router.Get("/payments/options", func(w http.ResponseWriter, r *http.Request) {
 This method is used to create a route for the `POST` http method. It accepts three (or more) arguments, the first argument is the route path, the second argument is the [handler function](#handler-function) and the third and subsequent arguments are the list of (optional) [middlewares](#middlewares). Take a look at the example below:
 
 ```go
-router := api.Http().Router().AdminRouter()
+router := api.Http().Router().AdminRouter(nil)
 router.Post("/settings/save", func(w http.ResponseWriter, r *http.Request) {
     // Handle the request
 }).Name("settings.save") // set the route name
@@ -198,18 +225,18 @@ The same `Name()` method is used for both versioned and static routes — the co
 
 ```go
 // Versioned route
-router := api.Http().Router().PluginRouter()
+router := api.Http().Router().HttpRouter(nil)
 router.Get("/purchase/wifi", handler).Name("purchase:wifi")
 
-adminRouter := api.Http().Router().AdminRouter()
+adminRouter := api.Http().Router().AdminRouter(nil)
 adminRouter.Get("/sessions", handler).Name("admin:sessions:list")
 
 // Static route — same Name() method
-staticRouter := api.Http().Router().StaticPluginRouter()
+staticRouter := api.Http().Router().HttpRouter(&sdkapi.HttpRouterOpts{Static: true})
 staticRouter.Get("/purchase/wifi", handler).Name("purchase:wifi")
 // accessible at: /p/static/com.mydomain.myplugin/purchase/wifi
 
-staticAdminRouter := api.Http().Router().StaticAdminRouter()
+staticAdminRouter := api.Http().Router().AdminRouter(&sdkapi.AdminRouterOpts{Static: true})
 staticAdminRouter.Get("/sessions/export", handler).Name("admin:sessions:export")
 // accessible at: /admin/static/com.mydomain.myplugin/sessions/export
 ```
@@ -242,7 +269,7 @@ func(w http.ResponseWriter, r *http.Request) {
 Handler functions are used when you register a route to a router. An example below is a handler function that gets executed when a user navigates to `/welcome` URL.
 
 ```go
-pluginRouter := api.Http().Router().PluginRouter()
+pluginRouter := api.Http().Router().HttpRouter(nil)
 pluginRouter.Get("/welcome", func (w http.ResponseWriter, r *http.Request) {
     // Handler function code here...
     w.Write([]byte("Welcome to Flarewifi!"))
@@ -273,7 +300,7 @@ middleware := func (next http.Handler) http.Handler {
 Below is using a middleware for plugin sub-router:
 
 ```go
-api.Http().Router().PluginRouter().Group("/payments", func (subrouter IHttpRouterInstance) {
+api.Http().Router().HttpRouter(nil).Group("/payments", func (subrouter IHttpRouterInstance) {
     subrouter.Use(middleware)
 })
 ```
@@ -281,27 +308,28 @@ api.Http().Router().PluginRouter().Group("/payments", func (subrouter IHttpRoute
 Below is using a middleware for admin sub-router:
 
 ```go
-api.Http().Router().AdminRouter().Group("/settings", func (subrouter IHttpRouterInstance) {
+api.Http().Router().AdminRouter(nil).Group("/settings", func (subrouter IHttpRouterInstance) {
     subrouter.Use(middleware)
 })
 ```
 
-In the examples above, the middleware is used to perform operations on the request before it reaches the handler function inside the sub-router. But it can also be used directly on the [PluginRouter](#plugin-router) or the [AdminRouter](#admin-router).
+In the examples above, the middleware is used to perform operations on the request before it reaches the handler function inside the sub-router. But it can also be used directly on the [HttpRouter](#plugin-router) or the [AdminRouter](#admin-router).
 
 ---
 
 ## Static Routers {#static-routers}
 
-Static routers provide version-independent URLs that persist across plugin version updates. Use them for any URL that must remain stable over time — payment callbacks, QR code links, webhook endpoints, or bookmarkable admin pages.
+A **static** router (selected with `Static: true`) provides version-independent URLs that persist across plugin version updates. Use them for any URL that must remain stable over time — payment callbacks, QR code links, webhook endpoints, or bookmarkable admin pages.
 
 ### Path structure
 
-| Router | Path pattern |
-|--------|-------------|
-| `PluginRouter` | `/p/{package}/{version}/{path}` |
-| `AdminRouter` | `/admin/{package}/{version}/{path}` |
-| `StaticPluginRouter` | `/p/static/{package}/{path}` |
-| `StaticAdminRouter` | `/admin/static/{package}/{path}` |
+| Router call | Path pattern |
+|-------------|-------------|
+| `HttpRouter(nil)` | `/p/{package}/{version}/{path}` |
+| `HttpRouter(&HttpRouterOpts{HttpsOnly: true})` | `/p/https/{package}/{version}/{path}` |
+| `HttpRouter(&HttpRouterOpts{Static: true})` | `/p/static/{package}/{path}` |
+| `AdminRouter(nil)` | `/admin/{package}/{version}/{path}` |
+| `AdminRouter(&AdminRouterOpts{Static: true})` | `/admin/static/{package}/{path}` |
 
 ### Example — stable payment callback
 
@@ -309,7 +337,7 @@ Static routers provide version-independent URLs that persist across plugin versi
 func Init(api sdkapi.IPluginApi) error {
     // This URL stays the same even after a plugin version bump:
     // /p/static/com.mydomain.myplugin/payments/callback
-    api.Http().Router().StaticPluginRouter().
+    api.Http().Router().HttpRouter(&sdkapi.HttpRouterOpts{Static: true}).
         Post("/payments/callback", handlePaymentCallback).
         Name("payments:callback")
 
@@ -326,7 +354,7 @@ func handlePaymentCallback(w http.ResponseWriter, r *http.Request) {
 ```go
 func Init(api sdkapi.IPluginApi) error {
     // /admin/static/com.mydomain.myplugin/sessions/export
-    api.Http().Router().StaticAdminRouter().
+    api.Http().Router().AdminRouter(&sdkapi.AdminRouterOpts{Static: true}).
         Get("/sessions/export", handleExport).
         Name("admin:sessions:export")
 

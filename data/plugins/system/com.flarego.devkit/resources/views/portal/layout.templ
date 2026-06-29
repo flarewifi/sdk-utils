@@ -1,0 +1,30 @@
+package portal
+
+import sdkapi "sdk/api"
+
+type PortalLayoutData struct {
+	Components sdkapi.IThemeComponents
+}
+
+templ PortalLayout(data PortalLayoutData) {
+	<!DOCTYPE html>
+	<html lang="en" { data.Components.HtmlAttrs()... }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			@data.Components.Head()
+		</head>
+		<body { data.Components.BodyAttrs()... }>
+			<div class="container">
+				<div class="row">
+					<div class="col-xs-12 col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3">
+						<div class="portal-wrap">
+							@data.Components.PageContent()
+						</div>
+					</div>
+				</div>
+			</div>
+			@data.Components.Scripts()
+		</body>
+	</html>
+}

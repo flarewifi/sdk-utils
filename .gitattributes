@@ -1,0 +1,4 @@
+# The devkit ships shell scripts that run inside a Linux container (and via Docker
+# + WSL2 on Windows). Force LF on checkout so a Windows clone never rewrites them
+# to CRLF, which would make the container's /bin/sh fail with "bad interpreter".
+*.sh text eol=lf

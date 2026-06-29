@@ -1,0 +1,9 @@
+{
+  "theme.css": [
+    "./vendor/bootstrap-3.4.1/css/bootstrap.css",
+    "./portal/css/devkit.css"
+  ],
+  "theme.js": [
+    "./portal/js/devkit.js"
+  ]
+}

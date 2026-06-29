@@ -198,7 +198,7 @@ import (
 )
 
 func SetRoutes(api sdkapi.IPluginApi) {
-    router := api.Http().Router().PluginRouter()
+    router := api.Http().Router().HttpRouter(nil)
 
     router.Group("/purchase", func(subrouter sdkapi.IHttpRouterInstance) {
         subrouter.Get("/wifi", controllers.PurchaseWifiSession(api)).Name("purchase.wifi")

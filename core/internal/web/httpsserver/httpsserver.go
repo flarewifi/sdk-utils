@@ -89,12 +89,12 @@ func ensureTLSCertificates() error {
 		return err
 	}
 
-	// The release-embedded seed cert is the cloud-issued cert for the configured
-	// custom_domain. Only use it when a custom_domain is set: it is the first-boot
-	// head start so a fresh install serves the real portal cert immediately (the
-	// runtime cloud-sync fetch keeps it current afterwards). With NO custom_domain
-	// there is no host for that cert to match, so skip seeding and generate a
-	// self-signed cert below.
+	// The release-embedded seed cert is the cloud-issued cert for this build's
+	// portal domain. Only use it when the build has a portal domain (staging/prod):
+	// it is the first-boot head start so a fresh install serves the real portal cert
+	// immediately (the runtime cloud-sync fetch keeps it current afterwards). With
+	// NO portal domain (dev/devkit) there is no host for that cert to match, so skip
+	// seeding and generate a self-signed cert below.
 	if config.HasCustomDomain() && seedFromDefaults() {
 		return nil
 	}

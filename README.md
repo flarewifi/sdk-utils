@@ -38,65 +38,61 @@ make
 ```
 ## HTTPS (captive portal + admin)
 
-**Both the captive portal and the admin dashboard always run over HTTPS**, in dev
-and in production. Every plain-HTTP request is redirected to HTTPS (the HTTP
-listener stays up only to redirect, which is also how OS captive-portal probes are
-caught — see `middlewares.ForceHTTPS`). The redirect **target host depends on the
-page**:
+Whether the portal and admin are forced onto HTTPS depends on whether the build
+has a **portal domain** — and that is derived purely from the build environment
+(`env.PortalDomain`), not from any config:
 
-| You open (HTTP) | Redirects to (HTTPS) | Why |
+| Build | Portal domain | Scheme behavior |
 |---|---|---|
-| `http://localhost:3000/` (portal) | `https://captive.flare-local.com:3443/` | portal domain → **valid cert** |
-| `http://localhost:3000/admin` (admin) | `https://localhost:3443/admin` | **same host** → admin works by IP, cert-name warning expected |
+| **dev / devkit** | *(none — empty)* | **legacy plain-HTTP flow.** Self-signed cert; `ForceHTTPS` is a pass-through, so nothing is redirected and the portal/admin are reachable over plain HTTP at the machine host (`http://localhost:3000/`). |
+| **staging** | `captive.nexifi.ph` | scheme split + force HTTPS + cloud-issued cert (below) |
+| **prod** | `captive.flarewifi.com` | scheme split + force HTTPS + cloud-issued cert (below) |
 
-- **Portal/captive** traffic goes to the portal domain: **`captive.flare-local.com`**
-  in dev (fixed), the configured **`custom_domain`** in production (e.g.
-  `captive.flarewifi.com`), so it is served with the valid cloud-issued cert.
-- **Admin** stays on the **same host**, so the dashboard is reachable by raw IP with
-  **no domain required** (e.g. `https://10.0.0.1/admin`); the served cert is for the
-  portal domain, so a name-mismatch warning is expected — accept it.
+**On staging/prod**, both the captive portal and the admin dashboard run over
+HTTPS. Every plain-HTTP request is redirected to HTTPS (the HTTP listener stays up
+only to redirect, which is also how OS captive-portal probes are caught — see
+`middlewares.ForceHTTPS`). The redirect **target host depends on the page**:
 
-The dev HTTPS port is **3443** (production uses 443).
+- **Portal/captive** traffic is funneled to the portal domain (e.g.
+  `captive.flarewifi.com`) so it is served with the valid cloud-issued cert.
+- **Admin** stays on the **same host**, so the dashboard is reachable by raw IP
+  with **no domain required** (e.g. `https://10.0.0.1/admin`); the served cert is
+  for the portal domain, so a name-mismatch warning is expected — accept it.
 
-> **Dev:** add the portal hostname to `/etc/hosts` so the browser resolves it to
-> the local container:
-> ```
-> 127.0.0.1 captive.flare-local.com
-> ```
+> **Dev note:** because dev has no portal domain, there is no `captive.*` host to
+> add to `/etc/hosts` and no HTTPS redirect — just open `http://localhost:3000/`.
 
-> **Production — DNS requirement:** the portal domain (`captive.flarewifi.com`, or
-> whatever `custom_domain` is set to) **must resolve to the device's LAN gateway IP
-> `10.0.0.1`**. The device's own dnsmasq does this with a split-horizon entry, so
-> any client on the device's network — and the admin operator — reach the local
-> server (with its valid cert) instead of the public internet. If the domain does
-> not point to `10.0.0.1`, the HTTPS redirect lands off-device and the portal/admin
-> become unreachable.
+> **Staging/prod — DNS requirement:** the portal domain **must resolve to the
+> device's LAN gateway IP `10.0.0.1`**. The device's own dnsmasq does this with a
+> split-horizon entry, so any client on the device's network — and the admin
+> operator — reach the local server (with its valid cert) instead of the public
+> internet. If the domain does not point to `10.0.0.1`, the HTTPS redirect lands
+> off-device and the portal/admin become unreachable.
 
 ### Portal certificate & the Cloudflare token
 
-The portal certificate is **not** generated on the device. The cloud
-([flare-server](https://github.com/flarewifi/flare-server)) issues a real
-Let's Encrypt certificate for the portal hostname (`captive.flare-local.com` in
-dev) using the **ACME DNS-01 challenge against the Cloudflare zone**, and the
-machine fetches and installs it via cloud-sync. The device only falls back to a
-self-signed cert when no cloud-issued cert is available yet.
+The portal certificate is **not** generated on the device, and only **staging/prod**
+builds fetch one (dev has no portal domain, so it always serves the self-signed
+fallback). The cloud ([flare-server](https://github.com/flarewifi/flare-server))
+issues a real Let's Encrypt certificate for the portal hostname using the **ACME
+DNS-01 challenge against the Cloudflare zone**, and the machine fetches and installs
+it via cloud-sync. The device falls back to a self-signed cert when no cloud-issued
+cert is available yet.
 
-For dev HTTPS to serve a proper (Let's Encrypt **staging**) cert, the
-**flare-server** must have a valid Cloudflare API token set — a token with
-*DNS:Edit* permission on the `flare-local.com` zone:
+For the cloud to issue that cert, **flare-server** must have a valid Cloudflare API
+token set — a token with *DNS:Edit* permission on the corresponding zone (e.g.
+`nexifi.ph` for staging, `flarewifi.com` for prod):
 
 ```sh
 # in the flare-server repo's .env
-CLOUDFLARE_TOKEN=<cloudflare-api-token-with-DNS-edit-on-flare-local.com>
+CLOUDFLARE_TOKEN=<cloudflare-api-token-with-DNS-edit-on-the-zone>
 # optional: switch from Let's Encrypt staging (default) to production
 # ACME_DIRECTORY_URL=https://acme-v02.api.letsencrypt.org/directory
 ```
 
 Without it, `flare-server` logs `portalcert: CLOUDFLARE_TOKEN is not set` and no
 cert is issued, so the device serves the self-signed fallback (browser shows an
-"untrusted certificate" warning). With the **staging** directory (the dev
-default) the chain is real but signed by Let's Encrypt's staging root, so the
-browser still warns until the cloud is pointed at the production ACME directory.
+"untrusted certificate" warning).
 
 The database can be managed at [http://localhost:3001](http://localhost:3001)
 

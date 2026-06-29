@@ -1,0 +1,115 @@
+name: Publish devkit
+# Pushing to the `devkit` branch publishes the devkit to the separate
+# flarewifi/devkit repo: the multi-arch fat zip as a Release asset, and the
+# sdk/mkdocs site via FTP (same mechanism the marketing site uses).
+#
+# A CGO -buildmode=plugin core .so can't be cross-compiled, so each arch is built
+# natively on its own runner (no QEMU); a merge job unions the per-arch trees into
+# one fat zip that select-arch.sh resolves at container boot.
+on:
+  push:
+    branches: [devkit]
+  workflow_dispatch:
+jobs:
+  # Build each arch natively, ship the tree as a tarball artifact (tar preserves
+  # the +x bits and dotfiles that upload-artifact would otherwise drop).
+  build:
+    name: Build devkit (${{ matrix.arch }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - {arch: amd64, runner: [flarewifi-ci, x64]}
+          - {arch: arm64, runner: [flarewifi-ci, arm64]}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      # Single-platform buildx with type=local writes the tree to the dest ROOT
+      # (not a linux_<arch>/ subdir); the merge job re-creates that layout.
+      - name: Build devkit tree
+        run: |
+          docker buildx build \
+            --platform linux/${{ matrix.arch }} \
+            -f devkit/Dockerfile.devkit --target export \
+            --output type=local,dest=output/stage .
+      - name: Tar tree (preserve perms + dotfiles)
+        run: tar -czf devkit-${{ matrix.arch }}.tar.gz -C output/stage .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devkit-${{ matrix.arch }}
+          path: devkit-${{ matrix.arch }}.tar.gz
+          retention-days: 1
+  # Merge both arch trees into the fat zip and publish it as a Release asset in
+  # flarewifi/devkit (cross-repo, so it needs the PAT, not GITHUB_TOKEN).
+  release:
+    name: Release to flarewifi/devkit
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4 # for devkit/merge-devkit.sh
+      - uses: actions/download-artifact@v4 # both artifacts into the workspace
+      # merge-devkit.sh expects output/devkit-stage/linux_{amd64,arm64}/ — the
+      # layout buildx produces for a multi-platform build. Reconstruct it from the
+      # per-arch tarballs, then union into output/devkit/flarewifi-devkit-<v>.zip.
+      - name: Reconstruct buildx layout + merge
+        run: |
+          mkdir -p output/devkit-stage/linux_amd64 output/devkit-stage/linux_arm64
+          tar -xzf devkit-amd64/devkit-amd64.tar.gz -C output/devkit-stage/linux_amd64
+          tar -xzf devkit-arm64/devkit-arm64.tar.gz -C output/devkit-stage/linux_arm64
+          ./devkit/merge-devkit.sh
+      # The release tag tracks the core version (core/plugin.json), the single
+      # source of truth for the build's version.
+      - name: Resolve version + zip
+        id: meta
+        run: |
+          ver=$(jq -r .version core/plugin.json)
+          zip=$(ls output/devkit/flarewifi-devkit-*.zip)
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "zip=$zip"     >> "$GITHUB_OUTPUT"
+      # Fail (do NOT overwrite) if the tag already exists — a release is
+      # immutable; bump core/plugin.json to publish a new one.
+      - name: Publish release (fails on duplicate tag)
+        env:
+          GH_TOKEN: ${{ secrets.DEVKIT_REPO_TOKEN }}
+        run: |
+          tag="v${{ steps.meta.outputs.version }}"
+          zip="${{ steps.meta.outputs.zip }}"
+          if gh release view "$tag" --repo flarewifi/devkit >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists in flarewifi/devkit — bump core/plugin.json version to publish a new release." >&2
+            exit 1
+          fi
+          gh release create "$tag" "$zip" --repo flarewifi/devkit \
+            --title "Devkit $tag" \
+            --notes "Flarewifi plugin devkit $tag (multi-arch: linux/amd64 + linux/arm64)."
+  # Build the SDK docs and mirror them to FTP — the same lftp approach the
+  # marketing site uses. Runs on the self-hosted runner so the FTP host sees a
+  # known, allowlistable IP. mirror --delete is safe ONLY because /web is a
+  # docs-dedicated account; drop it if that account ever shares /web.
+  docs:
+    name: Deploy docs (FTP)
+    needs: release
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install mkdocs mkdocs-material
+      - name: Build mkdocs site
+        run: mkdocs build -f sdk/mkdocs/mkdocs.yml # -> sdk/mkdocs/site
+      - name: Deploy to FTP
+        env:
+          FTP_HOST: ${{ secrets.DOCS_FTP_HOST }}
+          FTP_USER: ${{ secrets.DOCS_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.DOCS_FTP_PASSWORD }}
+        run: |-
+          command -v lftp >/dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y lftp)
+          lftp -c "
+          set ftp:ssl-allow no
+          open ftp://$FTP_USER:$FTP_PASSWORD@$FTP_HOST:21
+          cd /web
+          lcd sdk/mkdocs/site
+          mirror --verbose --continue --reverse --delete .
+          quit
+          "

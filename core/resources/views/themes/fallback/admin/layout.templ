@@ -10,6 +10,43 @@ type AdminLayoutData struct {
 	Components    sdkapi.IThemeComponents
 	Notifications []sdkapi.Notification
 	CurrentPath   string
+	Navs          []sdkapi.AdminNavList
+}
+
+// categoryHasActive reports whether any item in the category is the current
+// route, so the dropdown trigger can be highlighted when one of its children
+// is active.
+func categoryHasActive(list sdkapi.AdminNavList) bool {
+	for _, item := range list.Items {
+		if item.IsCurrent {
+			return true
+		}
+	}
+	return false
+}
+
+func navTriggerClass(active bool) string {
+	klass := "fw-nav-trigger"
+	if active {
+		klass += " active"
+	}
+	return klass
+}
+
+func navLinkClass(active bool) string {
+	klass := "fw-nav-link"
+	if active {
+		klass += " active"
+	}
+	return klass
+}
+
+func menuItemClass(active bool) string {
+	klass := "fw-nav-menu-item"
+	if active {
+		klass += " active"
+	}
+	return klass
 }
 
 templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
@@ -23,20 +60,16 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 		<body { data.Components.BodyAttrs()... }>
 			<div
 				class="fw-layout"
-				x-data="{ sidebarOpen: false, notifOpen: false, modalOpen: false }"
+				x-data="{ mobileOpen: false, notifOpen: false, modalOpen: false }"
 				@show-notif-modal.window="modalOpen = true"
 			>
-				<div class="fw-sidebar-overlay" x-show="sidebarOpen" x-transition.opacity @click="sidebarOpen = false" x-cloak></div>
-				@sidebar(api, data)
-				<div class="fw-right">
-					<header class="fw-topbar">
-						@topbar(api, data)
-					</header>
-					<main class="fw-main">
-						<div id="flash" class="fw-flash"></div>
-						@data.Components.PageContent()
-					</main>
-				</div>
+				<header class="fw-topbar">
+					@topbar(api, data)
+				</header>
+				<main class="fw-main">
+					<div id="flash" class="fw-flash"></div>
+					@data.Components.PageContent()
+				</main>
 				<div
 					class="fw-modal"
 					id="notifModal"
@@ -53,16 +86,8 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 	</html>
 }
 
-func navItemClass(currentPath, href string) string {
-	klass := "fw-sub-nav-item"
-	if currentPath == href {
-		klass += " active"
-	}
-	return klass
-}
-
 // CurrentPathFromRequest returns the request path; used by admin.go to populate
-// AdminLayoutData.CurrentPath so the sidebar can mark the active item.
+// AdminLayoutData.CurrentPath.
 func CurrentPathFromRequest(r *http.Request) string {
 	if r == nil || r.URL == nil {
 		return ""
@@ -70,43 +95,48 @@ func CurrentPathFromRequest(r *http.Request) string {
 	return r.URL.Path
 }
 
-templ sidebar(api sdkapi.IPluginApi, data AdminLayoutData) {
-	{{
-		dashboardUrl := api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "admin:dashboard")
-		themesUrl := api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "admin:themes:index")
-	}}
-	<aside class="fw-sidebar" :class="sidebarOpen && 'open'">
-		<div class="fw-sidebar-logo">
-			<a href="/admin">
-				<img class="fw-logo" src={ api.Http().Helpers().PublicPath("images/flarewifi_logo.png") } alt="Flarewifi"/>
-			</a>
-		</div>
-		<nav class="fw-sidebar-items">
-			<div class={ navItemClass(data.CurrentPath, themesUrl) }>
-				<a href={ templ.SafeURL(themesUrl) }>
-					<span>{ api.Translate("label", "Select Theme") }</span>
-				</a>
-			</div>
-			<div class={ navItemClass(data.CurrentPath, dashboardUrl) }>
-				<a href={ templ.SafeURL(dashboardUrl) }>
-					<span>{ api.Translate("label", "System Status") }</span>
-				</a>
-			</div>
-		</nav>
-		<div class="fw-sidebar-footer">
-			<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:auth:logout")) } onsubmit="return confirm('Are you sure you want to logout?')">
-				<button type="submit" class="fw-logout">{ api.Translate("label", "Logout") }</button>
-			</form>
-		</div>
-	</aside>
+templ navIcon(icon string) {
+	if icon != "" {
+		<span class="fw-nav-icon">@templ.Raw(icon)</span>
+	}
 }
 
 templ topbar(api sdkapi.IPluginApi, data AdminLayoutData) {
-	<button class="fw-sidebar-toggle" @click="sidebarOpen = !sidebarOpen" type="button" aria-label="Toggle sidebar">
-		<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-			<path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"></path>
-		</svg>
-	</button>
+	<div class="fw-topbar-left">
+		<a class="fw-brand" href="/admin">
+			<img class="fw-logo" src={ api.Http().Helpers().PublicPath("images/flarewifi_logo.png") } alt="Flarewifi"/>
+		</a>
+		<button class="fw-nav-toggle" @click="mobileOpen = !mobileOpen" type="button" aria-label="Toggle navigation">
+			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+				<path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"></path>
+			</svg>
+		</button>
+	</div>
+	<nav class="fw-nav" :class="mobileOpen && 'open'">
+		for _, list := range data.Navs {
+			if len(list.Items) == 1 {
+				<a class={ navLinkClass(list.Items[0].IsCurrent) } href={ templ.SafeURL(list.Items[0].RouteUrl) } @click="mobileOpen = false">
+					@navIcon(list.Items[0].Icon)
+					<span>{ list.Items[0].Label }</span>
+				</a>
+			} else {
+				<div class="fw-nav-dropdown" x-data="{ open: false }" @click.outside="open = false">
+					<button type="button" class={ navTriggerClass(categoryHasActive(list)) } @click="open = !open">
+						<span>{ list.Label }</span>
+						<span class="fw-caret" :class="open && 'open'">▾</span>
+					</button>
+					<div class="fw-nav-menu" x-show="open" x-transition x-cloak>
+						for _, item := range list.Items {
+							<a class={ menuItemClass(item.IsCurrent) } href={ templ.SafeURL(item.RouteUrl) } @click="open = false; mobileOpen = false">
+								@navIcon(item.Icon)
+								<span>{ item.Label }</span>
+							</a>
+						}
+					</div>
+				</div>
+			}
+		}
+	</nav>
 	<div class="fw-topbar-right">
 		@NotificationForm(api, data.Notifications)
 		<a href={ templ.SafeURL(api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "admin:user:index")) } class="fw-admin-link">
@@ -115,5 +145,13 @@ templ topbar(api sdkapi.IPluginApi, data AdminLayoutData) {
 			</svg>
 			<span>Admin</span>
 		</a>
+		<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:auth:logout")) } onsubmit="return confirm('Are you sure you want to logout?')">
+			<button type="submit" class="fw-logout-btn" title={ api.Translate("label", "Logout") } aria-label={ api.Translate("label", "Logout") }>
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+					<path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"></path>
+					<path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"></path>
+				</svg>
+			</button>
+		</form>
 	</div>
 }

@@ -21,7 +21,8 @@ const (
 type HttpRouterApi struct {
 	api                *PluginApi
 	adminRouter        *HttpRouterInstance
-	pluginRouter       *HttpRouterInstance
+	httpRouter         *HttpRouterInstance
+	httpsRouter        *HttpRouterInstance
 	staticAdminRouter  *HttpRouterInstance
 	staticPluginRouter *HttpRouterInstance
 	portalMiddlewares  []func(http.Handler) http.Handler
@@ -30,13 +31,15 @@ type HttpRouterApi struct {
 func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegister) *HttpRouterApi {
 	prefix := fmt.Sprintf("/%s/%s", api.info.Package, api.info.Version)
 	pluginMux := router.PluginRouter.PathPrefix(prefix).Subrouter()
+	httpsMux := router.HttpsPluginRouter.PathPrefix(prefix).Subrouter()
 	adminMux := router.AdminRouter.PathPrefix(prefix).Subrouter()
 
 	staticPrefix := fmt.Sprintf("/%s", api.info.Package)
 	staticPluginMux := router.StaticPluginRouter.PathPrefix(staticPrefix).Subrouter()
 	staticAdminMux := router.StaticAdminRouter.PathPrefix(staticPrefix).Subrouter()
 
-	pluginRouter := NewHttpRouterInstance(api, pluginMux, false)
+	httpRouter := NewHttpRouterInstance(api, pluginMux, false)
+	httpsRouter := NewHttpRouterInstance(api, httpsMux, false)
 	adminRouter := NewHttpRouterInstance(api, adminMux, true)
 	staticPluginRouter := NewStaticHttpRouterInstance(api, staticPluginMux, false)
 	staticAdminRouter := NewStaticHttpRouterInstance(api, staticAdminMux, true)
@@ -44,7 +47,8 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegis
 	return &HttpRouterApi{
 		api:                api,
 		adminRouter:        adminRouter,
-		pluginRouter:       pluginRouter,
+		httpRouter:         httpRouter,
+		httpsRouter:        httpsRouter,
 		staticAdminRouter:  staticAdminRouter,
 		staticPluginRouter: staticPluginRouter,
 		portalMiddlewares:  []func(http.Handler) http.Handler{},
@@ -52,26 +56,46 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegis
 }
 
 func (self *HttpRouterApi) Initialize() {
-	// HTTPS is enforced globally by middlewares.ForceHTTPS on RootRouter (see
-	// web.SetupAppRoutes); plugin admin routers only need auth here.
+	// HTTPS for admin pages is enforced globally by middlewares.ForceHTTPS on
+	// RootRouter (see web.SetupAppRoutes); the admin routers only need auth here.
 	self.adminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
 	self.staticAdminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
+
+	// The HttpsRouter is unconditionally HTTPS-only (no auth): both listeners
+	// share RootRouter, so a per-instance guard is what keeps its routes off the
+	// plain-HTTP listener.
+	self.httpsRouter.Use(middlewares.RequireHTTPS())
 }
 
-func (self *HttpRouterApi) AdminRouter() sdkapi.IHttpRouterInstance {
+// AdminRouter returns a router whose routes require an authenticated admin
+// session. Admin routes are always served over HTTPS; when opts.Static is set,
+// the returned router serves routes at /admin/static/{package}/{path} that
+// persist across plugin version updates.
+func (self *HttpRouterApi) AdminRouter(opts *sdkapi.AdminRouterOpts) sdkapi.IHttpRouterInstance {
+	if opts != nil && opts.Static {
+		return self.staticAdminRouter
+	}
 	return self.adminRouter
 }
 
-func (self *HttpRouterApi) PluginRouter() sdkapi.IHttpRouterInstance {
-	return self.pluginRouter
-}
-
-func (self *HttpRouterApi) StaticAdminRouter() sdkapi.IHttpRouterInstance {
-	return self.staticAdminRouter
-}
-
-func (self *HttpRouterApi) StaticPluginRouter() sdkapi.IHttpRouterInstance {
-	return self.staticPluginRouter
+// HttpRouter returns a general-purpose plugin router with no authentication.
+// The opts select a variant of the same router family:
+//   - opts.Static:    routes persist across plugin version updates
+//                     (/p/static/{package}/{path}).
+//   - opts.HttpsOnly: routes are served only over HTTPS.
+//   - nil / zero:     served over either scheme at the versioned plugin path.
+//
+// Static takes precedence over HttpsOnly when both are set.
+func (self *HttpRouterApi) HttpRouter(opts *sdkapi.HttpRouterOpts) sdkapi.IHttpRouterInstance {
+	if opts != nil {
+		switch {
+		case opts.Static:
+			return self.staticPluginRouter
+		case opts.HttpsOnly:
+			return self.httpsRouter
+		}
+	}
+	return self.httpRouter
 }
 
 func (self *HttpRouterApi) Use(middleware ...func(http.Handler) http.Handler) {

@@ -8,7 +8,7 @@ import (
 
 func PaymentRoutes(g *api.CoreGlobals) {
 
-	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
+	portalR := g.CoreAPI.HttpAPI.Router().HttpRouter(nil)
 	paymentsCtrl := controllers.PaymentOptionsCtrl(g)
 	optionsListCtrl := controllers.PaymentOptionsListCtrl(g)
 	cancelPurchaseCtrl := controllers.CancelPurchaseCtrl(g)

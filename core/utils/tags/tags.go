@@ -10,11 +10,19 @@ func HasGoTag(tag string) bool {
 func GetBuildTags() string {
 	tags := []string{
 		env(),
+		devkit(),
 		mono(),
 		cgoTag(),
 		database(),
 	}
 	return strings.Join(tags, " ")
+}
+
+// IsDevkit returns true when compiled with the devkit build tag (the
+// developer-distribution build). Backed by the devkit()/!devkit build-tag
+// variants, so it is resolved at compile time.
+func IsDevkit() bool {
+	return devkit() == "devkit"
 }
 
 // IsDev returns true if running in development mode

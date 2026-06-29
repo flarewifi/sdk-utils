@@ -1,3 +1,5 @@
+//go:build !devkit
+
 package rpc
 
 import (

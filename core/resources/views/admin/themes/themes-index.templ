@@ -2,49 +2,174 @@ package themes
 
 import "sdk/api"
 
-type ThemeOption struct {
-	Label string
-	Value string
+// ThemeCard is the view model for a single selectable theme in the picker.
+// PreviewURL is the resolved public URL of the theme's PreviewImage, or
+// empty when the theme provides no preview image (a neutral placeholder is
+// shown in that case).
+type ThemeCard struct {
+	Package     string
+	Name        string
+	Description string
+	IsCurrent   bool
+	PreviewURL  string
 }
 
-templ AdminThemesIndex(api sdkapi.IPluginApi, portalThemes []ThemeOption, adminThemes []ThemeOption, currentPortal string, currentAdmin string) {
-	{{
-		hasPortal := len(portalThemes) > 0
-		hasAdmin := len(adminThemes) > 0
-	}}
-	<div>
-		<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:themes:save")) }>
-			<div class="mb-3">
-				<label for="portal_theme" class="form-label">{ api.Translate("label", "Select Portal Theme") }</label>
-				if hasPortal {
-					<select class="form-select" id="portal_theme" name="portal_theme" required>
-						for _, opt := range portalThemes {
-							<option value={ opt.Value } if currentPortal == opt.Value { selected }>{ opt.Label }</option>
-						}
-					</select>
-				} else {
-					<div class="alert alert-danger" role="alert">
-						{ api.Translate("error", "No portal theme is installed. Install a portal theme plugin to choose one here.") }
+// AdminThemesPage renders the admin dashboard theme picker.
+// The admin selection is interactive; the current portal theme is carried
+// through as a hidden field so the combined save handler keeps it unchanged.
+templ AdminThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentAdminPkg string, currentPortalPkg string, saveUrl string) {
+	@themePickerStyles()
+	<div
+		class="fw-theme-select"
+		data-current={ currentAdminPkg }
+		data-field="admin_theme"
+	>
+		<div class="d-flex align-items-center mb-4">
+			<div>
+				<h4 class="mb-1">{ api.Translate("label", "Admin Dashboard Theme") }</h4>
+				<p class="text-body-secondary mb-0 small">{ api.Translate("info", "Select a theme for the admin dashboard") }</p>
+			</div>
+		</div>
+		if len(cards) == 0 {
+			<div class="alert alert-warning" role="alert">
+				{ api.Translate("error", "No admin theme is installed. Install an admin theme plugin to choose one here.") }
+			</div>
+		} else {
+			<div class="row g-4 mb-4">
+				for _, card := range cards {
+					<div class="col-12 col-md-6 col-lg-4">
+						@themeCard(card)
 					</div>
 				}
 			</div>
-			<div class="mb-3">
-				<label for="admin_theme" class="form-label">{ api.Translate("label", "Select Admin Theme") }</label>
-				if hasAdmin {
-					<select class="form-select" id="admin_theme" name="admin_theme" required>
-						for _, opt := range adminThemes {
-							<option value={ opt.Value } if currentAdmin == opt.Value { selected }>{ opt.Label }</option>
-						}
-					</select>
-				} else {
-					<div class="alert alert-danger" role="alert">
-						{ api.Translate("error", "No admin theme is installed. Install an admin theme plugin to choose one here.") }
-					</div>
-				}
-			</div>
-			if hasPortal && hasAdmin {
-				<button type="submit" class="btn btn-primary">{ api.Translate("label", "Save Settings") }</button>
-			}
-		</form>
+			<form method="POST" action={ templ.SafeURL(saveUrl) }>
+				<input type="hidden" name="portal_theme" value={ currentPortalPkg }/>
+				<input type="hidden" name="admin_theme" class="fw-theme-input" value={ currentAdminPkg }/>
+				@stickySave(api)
+			</form>
+		}
 	</div>
+	@themePickerScript()
+}
+
+// PortalThemesPage renders the captive portal theme picker.
+templ PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg string, currentAdminPkg string, saveUrl string) {
+	@themePickerStyles()
+	<div
+		class="fw-theme-select"
+		data-current={ currentPortalPkg }
+		data-field="portal_theme"
+	>
+		<div class="d-flex align-items-center mb-4">
+			<div>
+				<h4 class="mb-1">{ api.Translate("label", "Captive Portal Theme") }</h4>
+				<p class="text-body-secondary mb-0 small">{ api.Translate("info", "Select a theme for the captive portal login page") }</p>
+			</div>
+		</div>
+		if len(cards) == 0 {
+			<div class="alert alert-warning" role="alert">
+				{ api.Translate("error", "No portal theme is installed. Install a portal theme plugin to choose one here.") }
+			</div>
+		} else {
+			<div class="row g-4 mb-4">
+				for _, card := range cards {
+					<div class="col-12 col-md-6 col-lg-4">
+						@themeCard(card)
+					</div>
+				}
+			</div>
+			<form method="POST" action={ templ.SafeURL(saveUrl) }>
+				<input type="hidden" name="admin_theme" value={ currentAdminPkg }/>
+				<input type="hidden" name="portal_theme" class="fw-theme-input" value={ currentPortalPkg }/>
+				@stickySave(api)
+			</form>
+		}
+	</div>
+	@themePickerScript()
+}
+
+// themeCard renders one selectable theme. Selection state is driven by a
+// vanilla-JS click handler so the picker is independent of whichever admin
+// theme is currently active (it cannot assume Alpine is loaded).
+templ themeCard(card ThemeCard) {
+	<div
+		class={ "card fw-theme-card overflow-hidden h-100", templ.KV("fw-theme-card-selected", card.IsCurrent) }
+		data-pkg={ card.Package }
+		onclick="fwSelectTheme(this)"
+	>
+		<div class="fw-theme-preview position-relative">
+			if card.PreviewURL != "" {
+				<img src={ card.PreviewURL } alt={ card.Name } class="fw-theme-preview-img"/>
+			} else {
+				<div class="fw-theme-placeholder">
+					<i class="bi bi-palette"></i>
+					<span class="fw-theme-placeholder-name">{ card.Name }</span>
+				</div>
+			}
+			<div class="fw-theme-check">
+				<i class="bi bi-check-lg"></i>
+			</div>
+			if card.IsCurrent {
+				<span class="badge fw-badge-current">Current</span>
+			}
+		</div>
+		<div class="card-body border-top">
+			<h6 class="card-title mb-1">{ card.Name }</h6>
+			if card.Description != "" {
+				<p class="card-text text-body-secondary small mb-0">{ card.Description }</p>
+			}
+		</div>
+	</div>
+}
+
+templ stickySave(api sdkapi.IPluginApi) {
+	<div class="fw-sticky-save" style="display: none;">
+		<button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 shadow-lg">
+			<i class="bi bi-check-lg"></i>
+			{ api.Translate("label", "Switch Theme") }
+		</button>
+	</div>
+}
+
+templ themePickerStyles() {
+	<style>
+		.fw-theme-card { cursor: pointer; transition: box-shadow .15s ease, border-color .15s ease; border: 2px solid transparent; }
+		.fw-theme-card:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
+		.fw-theme-card-selected { border-color: var(--bs-primary); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
+		.fw-theme-preview { aspect-ratio: 16 / 10; background-color: var(--bs-secondary-bg); overflow: hidden; }
+		.fw-theme-preview-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+		.fw-theme-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; color: var(--bs-secondary-color); }
+		.fw-theme-placeholder i { font-size: 2rem; }
+		.fw-theme-placeholder-name { font-size: .85rem; font-weight: 500; }
+		.fw-theme-check { position: absolute; top: .5rem; right: .5rem; width: 1.75rem; height: 1.75rem; border-radius: 50%; background-color: var(--bs-primary); color: #fff; display: none; align-items: center; justify-content: center; }
+		.fw-theme-card-selected .fw-theme-check { display: flex; }
+		.fw-badge-current { position: absolute; top: .5rem; left: .5rem; background-color: var(--bs-success); }
+		.fw-sticky-save { position: sticky; bottom: 1.5rem; display: flex; justify-content: flex-start; margin-top: 1rem; z-index: 5; }
+	</style>
+}
+
+templ themePickerScript() {
+	<script>
+		// ES5-only: toggle selection, update the hidden input, and reveal the
+		// sticky "Switch Theme" bar only when the choice differs from current.
+		function fwSelectTheme(el) {
+			var root = el;
+			while (root && root.className.indexOf('fw-theme-select') === -1) {
+				root = root.parentNode;
+			}
+			if (!root) { return; }
+			var pkg = el.getAttribute('data-pkg');
+			var cards = root.getElementsByClassName('fw-theme-card');
+			for (var i = 0; i < cards.length; i++) {
+				cards[i].className = cards[i].className.replace(' fw-theme-card-selected', '').replace('fw-theme-card-selected', '');
+			}
+			el.className = el.className + ' fw-theme-card-selected';
+			var inputs = root.getElementsByClassName('fw-theme-input');
+			if (inputs.length > 0) { inputs[0].value = pkg; }
+			var bars = root.getElementsByClassName('fw-sticky-save');
+			if (bars.length > 0) {
+				bars[0].style.display = (pkg !== root.getAttribute('data-current')) ? 'flex' : 'none';
+			}
+		}
+	</script>
 }

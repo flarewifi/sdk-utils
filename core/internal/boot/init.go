@@ -12,6 +12,7 @@ import (
 	"core/internal/modules/netmon"
 	coretheme "core/internal/theme"
 	"core/utils/env"
+	"core/utils/tags"
 
 	sdkapi "sdk/api"
 )
@@ -90,8 +91,13 @@ func Init(g *api.CoreGlobals) {
 		// Kicking it here, in its own guarded goroutine, lets registration complete in
 		// parallel and survive a later provisioning failure; the online monitor
 		// re-attempts it on every reconnect (see StartOnlineMonitor).
-		activation.CheckActivationFileExists()
-		StartActivation()
+		// Devkit builds never register with the cloud: activation is bypassed
+		// (the machine is treated as activated — see the activation devkit variant)
+		// so no machine row is created server-side and no domain is contacted.
+		if !tags.IsDevkit() {
+			activation.CheckActivationFileExists()
+			StartActivation()
+		}
 
 		// Network-dependent work (each plugin's system_packages, its preinstall/
 		// postinstall scripts, and the deferred Init of plugins that need them)
@@ -114,7 +120,11 @@ func Init(g *api.CoreGlobals) {
 		// a flaky link — and boot must never hang on it, or the captive portal never
 		// comes up. Past the cap, boot proceeds offline-first and the pass finishes in
 		// the background under the provisioning guard.
-		if NeedsProvisionAny(g) {
+		// Devkit builds skip network-dependent provisioning entirely: there is no
+		// real hardware/feed to install system_packages onto, and waiting for
+		// internet here would needlessly stall the booting page. Plugins' Init
+		// still runs above via InitLoadedPlugins.
+		if !tags.IsDevkit() && NeedsProvisionAny(g) {
 			g.BootProgress.Advance(g.CoreAPI.Translate("info", "Waiting for internet connection"))
 			if netmon.WaitOnline(ctx, provisionOnlineWait, provisionProbeInterval) {
 				g.BootProgress.Advance(g.CoreAPI.Translate("info", "Installing required packages"))

@@ -11,21 +11,26 @@ import "net/http"
 type MuxRouteName string
 type PluginRouteName string
 
+type HttpRouterOpts struct {
+	HttpsOnly bool // If true, the router will only serve HTTPS requests and redirect HTTP requests to HTTPS.
+	Static    bool // If true, the router will serve static routes that persist across plugin version updates.
+}
+
+type AdminRouterOpts struct {
+	Static bool // If true, the router will serve static routes that persist across plugin version updates.
+}
+
 type IHttpRouterApi interface {
 
-	// Returns a plugin router with authentication middleware.
-	AdminRouter() IHttpRouterInstance
+	// AdminRouter returns a router whose routes require an authenticated admin
+	// session. Admin routes are always served over HTTPS, so the only option is
+	// Static (routes that persist across plugin version updates).
+	AdminRouter(opts *AdminRouterOpts) IHttpRouterInstance
 
-	// Returns a generic plugin router.
-	PluginRouter() IHttpRouterInstance
-
-	// Returns a static admin router. Routes registered here are accessible at
-	// /admin/static/{package}/{path} and persist across plugin version updates.
-	StaticAdminRouter() IHttpRouterInstance
-
-	// Returns a static plugin router. Routes registered here are accessible at
-	// /p/static/{package}/{path} and persist across plugin version updates.
-	StaticPluginRouter() IHttpRouterInstance
+	// HttpRouter returns a general-purpose plugin router. Routes are accessible
+	// over either scheme at /p/{package}/{version}/{path} with no authentication
+	// middleware.
+	HttpRouter(opts *HttpRouterOpts) IHttpRouterInstance
 
 	// Register middlewares for captive portal page.
 	// This middlewares are used to wrap the captive portal index page handler.

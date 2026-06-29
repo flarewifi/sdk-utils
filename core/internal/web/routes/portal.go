@@ -13,7 +13,7 @@ import (
 func PortalRoutes(g *api.CoreGlobals) {
 
 	rootR := router.RootRouter
-	portalR := g.CoreAPI.HttpAPI.Router().PluginRouter()
+	portalR := g.CoreAPI.HttpAPI.Router().HttpRouter(nil)
 
 	// Funnel all portal traffic to the shared portal hostname over HTTPS so it is
 	// served with the valid cloud-issued cert. Replaces the legacy redirect-to-LAN-IP

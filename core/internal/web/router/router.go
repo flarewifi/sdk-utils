@@ -17,6 +17,7 @@ var (
 	RootRouter         *mux.Router
 	BootingRouter      *mux.Router
 	PluginRouter       *mux.Router
+	HttpsPluginRouter  *mux.Router
 	AdminRouter        *mux.Router
 	StaticPluginRouter *mux.Router
 	StaticAdminRouter  *mux.Router
@@ -31,6 +32,10 @@ func init() {
 	PluginRouter = RootRouter.PathPrefix("/p").Subrouter()
 	AdminRouter = RootRouter.PathPrefix("/admin").Subrouter()
 	StaticPluginRouter = RootRouter.PathPrefix("/p/static").Subrouter()
+	// HTTPS-only plugin routes live under /p/https. Like /p/static, this is a
+	// sibling sub-prefix of /p; gorilla resolves it via match-backtracking (try
+	// /p first, then fall through here when no /p subroute matches).
+	HttpsPluginRouter = RootRouter.PathPrefix("/p/https").Subrouter()
 	StaticAdminRouter = RootRouter.PathPrefix("/admin/static").Subrouter()
 }
 

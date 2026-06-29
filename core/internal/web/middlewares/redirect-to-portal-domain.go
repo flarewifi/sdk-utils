@@ -6,14 +6,13 @@ import (
 )
 
 // RedirectToPortalDomain funnels portal traffic to the shared captive-portal
-// hostname (custom_domain) over the portal scheme — HTTPS in prod/staging (the
-// valid, cloud-issued cert), plain HTTP in local dev (no cert for the dev portal
-// host); see portalScheme. Clients resolve that hostname to this router via
-// split-horizon DNS (prod) or /etc/hosts (dev).
+// hostname (env.PortalDomain) over HTTPS — the valid, cloud-issued cert on
+// staging/prod. Clients resolve that hostname to this router via split-horizon
+// DNS. See portalScheme.
 //
 // It is a pass-through when the request is already on that hostname over the
-// portal scheme, or when no custom_domain is configured (preserving the legacy
-// IP/HTTP flow).
+// portal scheme, or when this build has no portal domain (dev/devkit), preserving
+// the legacy IP/HTTP flow.
 func RedirectToPortalDomain() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

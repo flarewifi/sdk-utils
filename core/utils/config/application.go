@@ -4,20 +4,12 @@ import (
 	"fmt"
 	"path/filepath"
 	sdkapi "sdk/api"
-	"strings"
 	"sync"
 
 	"core/utils/env"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
-
-// devCustomDomain is the fixed captive-portal hostname used in local dev, where
-// machines carry no per-machine custom_domain. Forcing it here turns on the
-// portal scheme split in middlewares.ForceHTTPS (admin over HTTPS, portal over
-// HTTP) and funnels portal traffic to this host. Clients resolve it to the dev
-// machine via /etc/hosts / Traefik.
-const devCustomDomain = "captive.flare-local.com"
 
 const applicationJsonFile = "application.json"
 
@@ -77,34 +69,21 @@ func updateAppConfigCache(cfg sdkapi.AppConfig) {
 	appConfigCache = &cfg
 }
 
-// HasCustomDomain reports whether a non-empty custom_domain is configured. It is
-// the single predicate that gates the machine's "has a cloud-issued portal cert"
-// behavior, applied uniformly in dev, staging, and prod:
+// HasCustomDomain reports whether this build has a captive-portal hostname, i.e.
+// whether env.PortalDomain() is non-empty. It is the single predicate that gates
+// the machine's "has a cloud-issued portal cert" behavior:
 //
-//   - set   => fetch/serve the cloud-issued cert for that domain and force
-//     HTTP->HTTPS (funnel portal traffic to the cert-matching host).
-//   - empty => serve a self-signed cert and DO NOT force HTTP->HTTPS (there is no
-//     cloud cert to funnel to, so forcing TLS would only yield cert warnings).
+//   - set (staging/prod) => fetch/serve the cloud-issued cert for that domain and
+//     force HTTP->HTTPS (funnel portal traffic to the cert-matching host).
+//   - empty (dev/devkit) => serve a self-signed cert and DO NOT force HTTP->HTTPS
+//     (no cloud cert to funnel to, so forcing TLS would only yield cert warnings).
 //
-// Consumers: middlewares.ForceHTTPS, httpsserver.ensureTLSCertificates (seed),
-// and jobs.performPortalCertFetch (cloud cert fetch).
+// The portal domain is derived from the build environment, NOT application.json's
+// custom_domain (ignored for now) — see env.PortalDomain. Consumers:
+// middlewares.ForceHTTPS, httpsserver.ensureTLSCertificates (seed), and
+// jobs.performPortalCertFetch (cloud cert fetch).
 func HasCustomDomain() bool {
-	cfg, err := GetCachedAppConfig()
-	if err != nil {
-		return false
-	}
-	return strings.TrimSpace(cfg.CustomDomain) != ""
-}
-
-// forceDevCustomDomain pins CustomDomain to devCustomDomain in local dev. Applied
-// as config leaves this package (read + write-through cache); never persisted to
-// the file, so the on-disk config stays env-agnostic. Prod/staging keep their
-// configured value untouched.
-func forceDevCustomDomain(cfg sdkapi.AppConfig) sdkapi.AppConfig {
-	if env.GO_ENV == env.ENV_DEV {
-		cfg.CustomDomain = devCustomDomain
-	}
-	return cfg
+	return env.PortalDomain() != ""
 }
 
 var defaultAppCfg = sdkapi.AppConfig{
@@ -126,7 +105,7 @@ func ReadApplicationConfig() (sdkapi.AppConfig, error) {
 		fmt.Println("Generating default application configuration...")
 		defaultFile := filepath.Join(sdkutils.PathDefaultsDir, applicationJsonFile)
 		err = writeConfigFile(defaultFile, defaultAppCfg)
-		return forceDevCustomDomain(defaultAppCfg), err
+		return defaultAppCfg, err
 	}
 
 	if cfg.Lang == "" {
@@ -149,7 +128,7 @@ func ReadApplicationConfig() (sdkapi.AppConfig, error) {
 		cfg.PluginMaxFileSize = defaultAppCfg.PluginMaxFileSize
 	}
 
-	return forceDevCustomDomain(cfg), nil
+	return cfg, nil
 }
 
 func WriteApplicationConfig(cfg sdkapi.AppConfig) error {
@@ -157,6 +136,6 @@ func WriteApplicationConfig(cfg sdkapi.AppConfig) error {
 	if err != nil {
 		return err
 	}
-	updateAppConfigCache(forceDevCustomDomain(cfg))
+	updateAppConfigCache(cfg)
 	return nil
 }

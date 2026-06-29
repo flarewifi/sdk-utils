@@ -13,6 +13,7 @@ import (
 	"core/utils/env"
 	"core/utils/migrate"
 	"core/utils/plugins"
+	"core/utils/tags"
 
 	sdkapi "sdk/api"
 
@@ -31,6 +32,21 @@ func InitPlugins(g *api.CoreGlobals) error {
 	localPlugins := plugins.LocalPluginSrcDefs()
 	systemPlugins := plugins.SystemPluginSrcDefs()
 	develPlugins := plugins.DevelPluginSrcDefs()
+
+	// Devel plugins are a development-only convenience: editable source under
+	// data/plugins/devel/ that is rebuilt from scratch on every boot. They are
+	// compiled and loaded ONLY in dev and devkit builds (both run as ENV_DEV).
+	// Staging and production ignore the devel directory entirely — a deployed
+	// device ships and loads only its prebuilt local/system plugins.
+	//
+	// plugins.DevelPluginSrcDefs() is the authoritative gate and already returns
+	// an empty list outside dev/devkit (see its doc comment), so this is normally
+	// a no-op. It is kept as a defensive reaffirmation at the boot path: a
+	// development-only directory must never load on a deployed device, even if the
+	// chokepoint's behavior changes.
+	if !env.IsDevEnv() {
+		develPlugins = nil
+	}
 
 	// Compile/install phase. In dev this rebuilds each plugin's source into a .so,
 	// which is the genuinely slow part of bringing plugins up (the .so mapping in
@@ -51,11 +67,20 @@ func InitPlugins(g *api.CoreGlobals) error {
 		if err := compilePluginDefs(g, db, systemPlugins, abortOnCompileErr); err != nil {
 			return err
 		}
-		if err := compilePluginDefs(g, db, localPlugins, abortOnCompileErr); err != nil {
-			return err
+		// Devkit, like production, ships/installs prebuilt local .so files and must
+		// NOT recompile them at boot: an uploaded plugin is built once at install
+		// time (the developer panel's InstallPlugin call) and thereafter only
+		// loaded. Only a pure dev/sandbox/staging build rebuilds local source on
+		// every boot so an edited in-tree plugin comes up without a manual build.
+		if !tags.IsDevkit() {
+			if err := compilePluginDefs(g, db, localPlugins, abortOnCompileErr); err != nil {
+				return err
+			}
 		}
 	}
 
+	// develPlugins is nil outside dev/devkit (gated above), so this is a no-op on
+	// staging/production.
 	if err := compilePluginDefs(g, db, develPlugins, abortOnCompileErr); err != nil {
 		return err
 	}

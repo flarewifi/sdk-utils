@@ -23,9 +23,9 @@ func StartPortalCertScheduler() {
 }
 
 func performPortalCertFetch() {
-	// No custom_domain => the machine serves a self-signed cert; there is no
-	// cloud-issued portal cert to fetch (and fetching one would clobber the
-	// self-signed cert). Holds in dev, staging, and prod alike.
+	// No portal domain (dev/devkit) => the machine serves a self-signed cert; there
+	// is no cloud-issued portal cert to fetch (and fetching one would clobber the
+	// self-signed cert). Staging/prod have a portal domain and do fetch.
 	if !config.HasCustomDomain() {
 		return
 	}

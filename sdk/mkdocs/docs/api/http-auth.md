@@ -29,7 +29,7 @@ Checks if the user is authenticated. This will perform cookie checks and does no
 
 It authenticates an account using a username and password.
 It returns an [IAccount](./accounts-api.md#account-instance) instance and an `error` if any.
-This method is only applicable on handlers registered on the [PluginRouter](./http-router-api.md#plugin-router), otherwise the request is blocked by the authentication middleware.
+This method is only applicable on handlers registered on the [HttpRouter](./http-router-api.md#plugin-router), otherwise the request is blocked by the authentication middleware.
 
 ```go
 // handler
@@ -49,7 +49,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 It signs in an account with an [IAccount](./accounts-api.md#account-instance) instance by setting a cookie in the http response header.
 It returns an `error` if any.
-This method is only applicable on handlers registered on the [PluginRouter](./http-router-api.md#plugin-router), otherwise the request is blocked by the authentication middleware.
+This method is only applicable on handlers registered on the [HttpRouter](./http-router-api.md#plugin-router), otherwise the request is blocked by the authentication middleware.
 
 ```go
 // handler
@@ -71,7 +71,7 @@ func (w http.ResponseWriter, r *http.Request) {
 ### SignOut
 
 It signs out an [Account](./accounts-api.md#account-instance) by removing the cookie from the http response header.
-It returns an `error` if any. This method works on [PluginRouter](./http-router-api.md#plugin-router) and [AdminRouter](./http-router-api.md#admin-router).
+It returns an `error` if any. This method works on [HttpRouter](./http-router-api.md#plugin-router) and [AdminRouter](./http-router-api.md#admin-router).
 
 ```go
 // handler

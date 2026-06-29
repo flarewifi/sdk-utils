@@ -1,0 +1,8 @@
+{
+  "name": "Devkit",
+  "package": "com.flarego.devkit",
+  "description": "Default Devkit theme for Flarewifi plugin UI development",
+  "version": "1.0.0",
+  "system_packages": null,
+  "sdk": ""
+}

@@ -1,0 +1,66 @@
+---
+# Self-contained devkit compose. Unlike the in-repo flarewifi compose (which
+# assumes the parent flare-server stack: an external flare_network, pg/pgadmin),
+# this runs standalone on a 3rd-party developer's machine. It overwrites the repo
+# docker-compose.yml that the packager copies in. Bundled helper services: the
+# plugin API documentation site (mkdocs) and a SQLite database browser.
+#
+# The flare server binds :3000 (http) and :443 (https, self-signed cert generated
+# on first boot under data/storage/certs).
+#
+# Architecture: the devkit ships native binaries for BOTH linux/amd64 and
+# linux/arm64, and select-arch.sh activates the matching set at boot via
+# `dpkg --print-architecture`. So there is deliberately NO `platform:` pin — the
+# container runs at the host's native arch with no QEMU emulation: Apple Silicon
+# and Windows-on-ARM (Docker + WSL2) → arm64; Windows x86 (WSL2) and Linux x86 →
+# amd64; Linux ARM → arm64.
+services:
+  app:
+    build:
+      context: .
+    volumes:
+      - ./:/app
+      - ./data/config:/opt/flarewifi/data/config
+      - ./data/db:/opt/flarewifi/data/db
+      - ./data/plugins:/opt/flarewifi/data/plugins
+      - flare_storage:/opt/flarewifi/data/storage
+      - ./data/openwrt-files/etc/config:/etc/config
+      - ./data/openwrt-files/etc/openwrt_release:/etc/openwrt_release
+      - ./data/openwrt-files/etc/os_release.json:/etc/os_release.json
+      - gocache:/var/cache/go
+    environment:
+      - GOCACHE=/var/cache/go/cache
+      - GOMODCACHE=/var/cache/go/mod
+      - TZ=${TZ:-UTC}
+    ports:
+      - "3000:3000" # admin + captive portal (http)
+      - "443:443"   # admin + captive portal (https, self-signed)
+      - "8000:8000" # livereload websocket
+
+  # Plugin API documentation site (mkdocs-material), served at
+  # http://localhost:3002. Built from the bundled sdk/mkdocs and live-reloaded as
+  # the docs are edited. python:3.11-alpine is multi-arch, so it builds natively on
+  # both amd64 and arm64 hosts.
+  docs:
+    build:
+      context: ./sdk/mkdocs
+    volumes:
+      - ./sdk/mkdocs:/docs
+    ports:
+      - "3002:8000"
+
+  # Browse the SQLite database at http://localhost:3001. Pinned to linux/amd64
+  # (coleifer/sqlite-web publishes no arm64 image) so it still runs on Apple
+  # Silicon / arm hosts under emulation — acceptable for this lightweight helper.
+  sqliteweb:
+    image: coleifer/sqlite-web
+    platform: linux/amd64
+    volumes:
+      - ./data/db:/data
+    ports:
+      - "3001:8080"
+    command: sqlite_web -H 0.0.0.0 -x /data/database.sqlite
+
+volumes:
+  gocache:
+  flare_storage:
