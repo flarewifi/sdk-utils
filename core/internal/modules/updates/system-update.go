@@ -185,6 +185,15 @@ func stagePluginsUpdate(g *api.CoreGlobals) error {
 	stagedCount := 0
 	failedPlugins := []PluginBuildFailure{}
 	for i, pkg := range pluginPkgs {
+		// A bundled meta member is pinned by its bundle, not updated on its own — it
+		// moves only via the RepinMetaRecordsToLatest pass below. Skip it here so it
+		// isn't bumped to its own latest (and so the StagePluginUpdate guard doesn't
+		// mis-report it as a build failure). There is no core change in a plugin-only
+		// update, so the member keeps its working .so until its bundle re-pins.
+		if g.PluginMgr.IsManagedMetaMember(pkg) {
+			downloadPercent.Store(int32((i + 1) * 99 / len(pluginPkgs)))
+			continue
+		}
 		if err := g.PluginMgr.StagePluginUpdate(pkg, "", ""); err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: store plugin %q failed to build: %v", pkg, err))
 			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Reason: buildFailureReason(err)})

@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	cmd "core/utils/shell"
 	"errors"
 	"fmt"
 	"os"
@@ -39,25 +38,15 @@ func BuildAssets(pluginDir string) (err error) {
 
 	fmt.Printf("Building plugin assets for %s in: %s\n", pkg, pluginDir)
 
-	if !sdkutils.FsExists(filepath.Join(sdkutils.PathCoreDir, "node_modules")) {
-		if _, err := sdkutils.Retry(func() (any, error) {
-			if err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: sdkutils.PathCoreDir, Stdout: os.Stdout}); err != nil {
-				return nil, fmt.Errorf("failed to install core node modules: %w", err)
-			}
-			return nil, nil
-		}, 3); err != nil {
-			return err
-		}
-	}
-
-	if sdkutils.FsExists(filepath.Join(pluginDir, "package.json")) {
-		if _, err := sdkutils.Retry(func() (any, error) {
-			err := cmd.Exec("npm install", &cmd.ExecOpts{Dir: pluginDir, Stdout: os.Stdout})
-			return nil, err
-		}, 3); err != nil {
-			return fmt.Errorf("failed to install plugin node modules: %w", err)
-		}
-	}
+	// No `npm install` here: bundling is done by the Go-native esbuild library,
+	// which only needs npm to resolve BARE module specifiers (e.g.
+	// `require("jquery")`) against node_modules. Every library a plugin uses is
+	// vendored into its resources/assets (and shared libs are exposed via the
+	// `@flare/lib` esbuild alias → core/resources/assets/lib), so esbuild
+	// resolves real file paths with no node/npm on the machine at all. This is
+	// what lets on-device plugin recompiles run on apk OpenWRT, whose feeds no
+	// longer ship a binary `node`. A bare specifier that wasn't vendored now
+	// fails the build with a clear esbuild "could not resolve" error.
 
 	// Clean up dist folder
 	if err = os.RemoveAll(filepath.Join(pluginDir, DistDir)); err != nil {

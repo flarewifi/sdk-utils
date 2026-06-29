@@ -137,7 +137,7 @@ The admin interface always uses Bootstrap 5. You can use Bootstrap 5 classes in 
 
 ## JavaScript Enhancements
 
-You may use ES5-compatible JavaScript, and the admin interface supports jQuery, htmx, and Alpine.js for building interactive features.
+The admin interface supports jQuery, htmx, and **Alpine.js v3** for building interactive features (admin assets are bundled at ES2017, so modern JavaScript is fine here). This differs from the **portal**, which runs Alpine v2 and must stay ES5 — see [Alpine.js: portal v2 vs admin v3](../../api/assets-manifest.md#alpine-versions).
 
 ### Theme JavaScript
 

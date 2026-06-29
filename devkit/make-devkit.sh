@@ -13,11 +13,14 @@ GO_TAGS="dev devkit $DB_DRIVER"
 # on-disk location is what a plain local-dev `start-dev.sh` run links too, which is
 # the point: iterate the plugin without rebuilding the devkit.
 #
-# Local-dev-only plugins that must NOT ship in the devkit (e.g. the developer
-# upload/install panel, com.flarego.developer) live under data/plugins/devel
-# instead. Devel plugins are compiled at runtime by the flare CLI and are never
-# copied into the release nor static-linked, so they stay out of the distribution
-# automatically — no exclusion step is needed here.
+# Local-dev-only plugins that must NOT ship in the devkit live under
+# data/plugins/devel instead. Devel plugins are compiled at runtime by the flare
+# CLI and are never copied into the release nor static-linked, so they stay out of
+# the distribution automatically — no exclusion step is needed here.
+#
+# (The developer upload/install panel used to live here as com.flarego.developer;
+# it has since been folded into the com.flarego.devkit system plugin and now ships
+# with the devkit itself.)
 
 # Revert the transient `require`/`replace` entries link_system_plugin_modules adds
 # to the protected core/go.mod. The plugin SOURCE is committed (never staged), so

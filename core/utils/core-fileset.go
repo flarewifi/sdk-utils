@@ -38,8 +38,6 @@ func CoreFileSet() []string {
 		"core/go.mod",
 		"core/go.sum",
 		"core/sqlc.yml",
-		"core/package.json",
-		"core/package-lock.json",
 		"core/plugin.json",
 		"core/resources",
 		"core/utils",

@@ -1,9 +1,9 @@
 package plugins
 
 import (
-	"bytes"
 	"core/utils/env"
 	"core/utils/migrate"
+	"core/utils/pkgmgr"
 	cmd "core/utils/shell"
 	"database/sql"
 	"errors"
@@ -447,19 +447,19 @@ func InstallSystemPkgs(packages []string) error {
 	return err
 }
 
-// installSystemPkgsOnce performs a single attempt of the opkg update + install
-// sequence. It is the unit retried by InstallSystemPkgs.
+// installSystemPkgsOnce performs a single attempt of the package-index update +
+// install sequence using the machine's package manager (opkg or apk, resolved by
+// pkgmgr.Detect). It is the unit retried by InstallSystemPkgs.
 func installSystemPkgsOnce(packages []string) error {
-	if err := cmd.Exec("opkg update", &cmd.ExecOpts{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}); err != nil {
+	mgr := pkgmgr.Detect()
+
+	if err := mgr.Update(); err != nil {
 		return err
 	}
 
 	toBeInstalled := []string{}
 	for _, pkg := range packages {
-		installed, err := IsSystemPackageInstalled(pkg)
+		installed, err := mgr.IsInstalled(pkg)
 		if err != nil {
 			return err
 		}
@@ -468,40 +468,14 @@ func installSystemPkgsOnce(packages []string) error {
 		}
 	}
 
-	if len(toBeInstalled) == 0 {
-		return nil
-	}
-
-	if err := cmd.Exec("opkg install "+strings.Join(toBeInstalled, " "), &cmd.ExecOpts{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	return mgr.Install(toBeInstalled)
 }
 
-// IsSystemPackageInstalled checks if a package is installed on OpenWrt. It runs
-// through the shell wrapper (not a raw exec) so the dev build can stub opkg out.
-func IsSystemPackageInstalled(opkgPackage string) (bool, error) {
-	var output bytes.Buffer
-	if err := cmd.ExecOutput("opkg list-installed", &output); err != nil {
-		return false, fmt.Errorf("failed to execute opkg: %v, output: %s", err, output.String())
-	}
-
-	// opkg list-installed lines look like "pkgname - version"; match the package
-	// name exactly so e.g. "python3" doesn't satisfy "python3-light".
-	for _, line := range strings.Split(output.String(), "\n") {
-		name := strings.TrimSpace(line)
-		if i := strings.IndexByte(name, ' '); i >= 0 {
-			name = name[:i]
-		}
-		if name == opkgPackage {
-			return true, nil
-		}
-	}
-	return false, nil
+// IsSystemPackageInstalled checks if a package is installed on the machine using
+// the detected package manager (opkg or apk). It runs through the shell wrapper
+// (not a raw exec) so the dev build can stub the package manager out.
+func IsSystemPackageInstalled(pkg string) (bool, error) {
+	return pkgmgr.Detect().IsInstalled(pkg)
 }
 
 func RunMigrations(sqldb *sql.DB, pluginDir string) (err error) {

@@ -218,7 +218,7 @@ data/plugins/local/      # Custom plugins (safe to modify)
 - **Go**, **SQLite**, **templ**, **sqlc**, **gorilla/mux**
 - **Bootstrap 3.4.1** - Portal/login (`PortalView`)
 - **Bootstrap 5.3.3** - Admin/dashboard (`AdminView`)
-- **htmx v1.9.12**, **Alpine.js**, **jQuery**
+- **htmx v1.9.12**, **Alpine.js** (portal: **v2** ES5/IE11 build; admin: **v3**), **jQuery**
 
 ## Database
 
@@ -310,9 +310,17 @@ Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural l
 **CSS:** Bootstrap 3 (portal) vs Bootstrap 5 (admin) - never mix  
 **JavaScript:** ES5 only (`var`, `function() {}`, no template literals)  
 **DOM Manipulation:** Use jQuery from the core `global.js` - it's already loaded and available  
-**Interactivity:** Use htmx and Alpine.js - avoid custom JavaScript when possible  
+**Interactivity:** Use htmx and Alpine.js - avoid custom JavaScript when possible (Alpine is **v2** on the portal, **v3** on admin - see "Frontend libraries" below; never vendor your own copy)  
 **Real-time Updates:** Use Server-Sent Events (SSE) for live UI updates, not polling  
 **URLs:** `templ.SafeURL(api.Http().Helpers().UrlForRoute("route:name"))`
+
+### Frontend libraries: vendor, don't npm
+
+- **There is no `npm`/`node_modules` on the machine.** Plugin assets are bundled by a Go-native esbuild that only resolves **real files in the source tree** — a bare specifier like `require("jquery")` or `import X from "somelib"` **fails the build** ("could not resolve"). Nothing runs `npm install` (asset bundling is `core/utils/plugins/build-assets.go`).
+- **Vendor a library** by dropping its browser/ESM dist into the plugin's `resources/assets/lib/vendor/` as `<lib>-v<version>.<ext>`, then importing it by a **relative path**, e.g. `var $ = require("../../lib/vendor/jquery-v3.7.1.js");`. CSS libs vendor the same way.
+- **Shared libs are already vendored by core** in `core/resources/assets/lib/vendor/` and reachable via the esbuild alias `@flare/lib` (configured in `core/utils/plugins/esbuild.go`), e.g. `import Alpine from "@flare/lib/vendor/alpinejs-v3.15.1.js";`. jQuery and `window.Alpine` are also exposed as globals, so most plugins need no import.
+- **⚠️ Alpine.js: portal runs v2, admin runs v3 — and core already loads/auto-starts both.** The portal asset bundle targets **ES5** (old client-device WebViews predating `Proxy`, e.g. Android 4.x), and Alpine v3's `Proxy` reactivity is **unpolyfillable**, so the portal uses Alpine **v2** (`@flare/lib/vendor/alpinejs-ie11-v2.8.2.js`, the IE11 build with a `defineProperty` Proxy polyfill) while admin uses **v3** (`alpinejs-v3.15.1.js`, ES2017). **Never vendor your own Alpine** in a plugin/theme — it double-loads against core's. Use the global `window.Alpine` / `x-*` attributes. **Portal markup must stay within the v2 API:** declare all `x-data` props up-front (the polyfill can't add reactive props after creation), use `@click.away` not `@click.outside` (`.outside`/`.self` are v3-only), and avoid `Alpine.store`/`$store`/`Alpine.data`/`x-effect`. Admin (v3) has none of these limits. Driven by the per-surface esbuild target split in `core/utils/plugins/build-assets.go` (admin=ES2017, portal=ES5).
+- `package.json`/`package-lock.json` are gone from core and plugins (vestigial). Full plugin-author guide: `sdk/mkdocs/docs/api/assets-manifest.md` → "Vendoring frontend libraries (no npm)" / "Alpine.js: portal v2 vs admin v3".
 
 ## Plugin Development
 

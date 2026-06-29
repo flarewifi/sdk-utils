@@ -18,6 +18,19 @@ import (
 // errors.Is to show a "purchase required" prompt instead of a generic failure.
 var ErrPaymentRequired = errors.New("payment required")
 
+// StoreReleaseError carries an operator-safe reason from the cloud store for why a
+// plugin release could not be resolved for install — e.g. the requested version is
+// published on a different release channel than the machine's, or it does not exist
+// at all. Reason is curated server-side and safe to render in the admin UI: unlike a
+// raw RPC/transport error it never contains the cloud endpoint URL, domains, or
+// secrets. Callers detect it with errors.As to show the real cause instead of a
+// generic "installation failed" message.
+type StoreReleaseError struct {
+	Reason string
+}
+
+func (e *StoreReleaseError) Error() string { return e.Reason }
+
 // PluginInstallStage names a phase of a plugin install. An install moves through
 // these stages in order; only one terminal stage (Done or Failed) is reached.
 type PluginInstallStage string

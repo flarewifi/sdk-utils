@@ -160,6 +160,20 @@ func isDeviceLocalPath(path string) bool {
 		strings.HasPrefix(path, "/activation")
 }
 
+// IsHTTPS reports whether the request arrived over TLS (directly or via a
+// terminating proxy that set X-Forwarded-Proto). Exported so handlers outside
+// this package can make the same scheme decision ForceHTTPS/RequireHTTPS use.
+func IsHTTPS(r *http.Request) bool {
+	return r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+}
+
+// HTTPSURL returns the HTTPS URL for the request's own host and URI (port
+// normalized to the configured HTTPS listener). Exported so handlers can
+// redirect a page onto HTTPS using the same host/port rules as the middlewares.
+func HTTPSURL(r *http.Request) string {
+	return httpsURL(hostWithoutPort(r.Host), r.URL.RequestURI())
+}
+
 func hostWithoutPort(host string) string {
 	if i := strings.IndexByte(host, ':'); i >= 0 {
 		return host[:i]

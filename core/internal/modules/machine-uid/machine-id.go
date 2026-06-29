@@ -30,8 +30,9 @@ const (
 // derived from the CPU serial plus only the onboard interface. Devices absent
 // from this map keep the legacy all-MACs behavior, preserving existing IDs.
 var onboardNICOnlyDevices = map[string]string{
-	"orangepi-one": "eth0",
-	"orangepi-pc":  "eth0",
+	"orangepi-one":    "eth0",
+	"orangepi-pc":     "eth0",
+	"orangepi-zero-3": "eth0",
 }
 
 var (

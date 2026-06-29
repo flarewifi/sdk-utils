@@ -31,6 +31,7 @@ import (
 	"core/utils/tags"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
+	"github.com/twitchtv/twirp"
 )
 
 // ErrPaymentRequired is returned by install paths when a paid plugin is being
@@ -214,6 +215,16 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) (sdkplugin.IPlu
 	pkg := def.StorePackage
 	if pkg == "" {
 		pkg = def.LocalPath
+	}
+
+	// A plugin that is currently a member of an installed meta bundle (and not also
+	// installed standalone) is pinned by its bundle — installing/updating it on its
+	// own would bump it off the bundle's release. Reject it here so the store UI
+	// cannot manage a bundled member à la carte; it must go through the bundle.
+	// Bundle installs reach their members via installStoreMember (not this path), so
+	// expanding a bundle is unaffected.
+	if self.IsManagedMetaMember(pkg) {
+		return nil, fmt.Errorf("InstallPlugin: %w: %q", ErrMetaMemberNotStandalone, pkg)
 	}
 
 	// Validate payment up front for store installs so the caller gets a synchronous
@@ -460,6 +471,14 @@ func (self *PluginsMgr) fetchStoreRelease(pkg string, version string, extraMetas
 		InstalledMetas: self.installedMetasReport(extraMetas...),
 	})
 	if err != nil {
+		// The cloud signals operator-safe rejections (off-channel version, version
+		// not found) with deliberate twirp codes the transport layer never emits.
+		// Translate those into a StoreReleaseError carrying the curated reason so the
+		// store UI can show it; any other error (incl. transport errors that would
+		// leak the endpoint URL) stays wrapped and only reaches the logs.
+		if reason := operatorSafeStoreReason(err); reason != "" {
+			return storeRelease{}, fmt.Errorf("fetch release %q for %q: %w", version, pkg, &sdkplugin.StoreReleaseError{Reason: reason})
+		}
 		return storeRelease{}, fmt.Errorf("fetch release %q for %q: %w", version, pkg, err)
 	}
 
@@ -498,6 +517,25 @@ func (self *PluginsMgr) fetchStoreRelease(pkg string, version string, extraMetas
 	}
 
 	return rel, nil
+}
+
+// operatorSafeStoreReason returns a curated, UI-safe reason string when err is a
+// store-resolve rejection the cloud raised with a deliberate twirp code, else "".
+// FailedPrecondition (version published on another channel) and NotFound (version
+// does not exist) are application codes the cloud sets intentionally; the twirp
+// transport layer raises Internal/Unavailable for connection failures, so gating on
+// these two codes guarantees we never surface a message containing the endpoint URL.
+func operatorSafeStoreReason(err error) string {
+	var twerr twirp.Error
+	if !errors.As(err, &twerr) {
+		return ""
+	}
+	switch twerr.Code() {
+	case twirp.FailedPrecondition, twirp.NotFound:
+		return twerr.Msg()
+	default:
+		return ""
+	}
 }
 
 // CheckPurchase asks the cloud store whether this machine may install pkg and

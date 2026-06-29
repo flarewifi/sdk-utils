@@ -35,14 +35,11 @@ var (
 		// the workspace resolves ./core normally.
 		"core/go.mod",
 		"core/go.sum",
-		// Core JS deps + manifests. Plugin asset bundling (esbuild) imports shared
-		// libs (e.g. alpinejs) from core/node_modules; shipping it prebuilt (~1MB,
-		// produced by BuildAssets in the builder) lets plugin asset builds run
-		// offline — without it the runtime would `npm install` in core/ and fail
-		// when core/package.json is absent. Not logic, just third-party JS.
-		"core/package.json",
-		"core/package-lock.json",
-		"core/node_modules",
+		// NOTE: core/node_modules + core/package.json are intentionally NOT shipped.
+		// Plugin asset bundling (esbuild) no longer resolves bare specifiers against
+		// node_modules — shared libs (e.g. alpinejs) are vendored under
+		// core/resources/assets/lib/vendor and reached via the `@flare/lib` esbuild
+		// alias, which ships with "core/resources" below. Nothing runs `npm install`.
 		// Core runtime data (no Go logic): the compiled .so reads migrations +
 		// translations from core/resources at runtime; the json files carry
 		// version metadata (product.json is a prebuilt stand-in so the runtime

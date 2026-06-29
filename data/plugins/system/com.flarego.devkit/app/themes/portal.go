@@ -27,12 +27,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 			}
 		},
 		LoginPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.LoginPageData) sdkapi.ViewPage {
-			csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)
-			page := auth.LoginPage(api, csrfHtml, data)
-			return sdkapi.ViewPage{
-				Assets:      sdkapi.ViewAssets{},
-				PageContent: page,
-			}
+			return loginViewPage(api, r, data)
 		},
 		IndexPageFactory: func(w http.ResponseWriter, r *http.Request) sdkapi.ViewPage {
 			// Devkit portal index avoids session lookups (no real routing in the
@@ -45,4 +40,20 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
 			}
 		},
 	})
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+// loginViewPage builds the login ViewPage. It is shared by the portal theme's
+// LoginPageFactory (initial render of /login) and the HTTPS-only GET /login
+// handler (the re-render landing spot for a 302-downgraded login POST), so both
+// paths produce an identical, CSRF-protected form.
+func loginViewPage(api sdkapi.IPluginApi, r *http.Request, data sdkapi.LoginPageData) sdkapi.ViewPage {
+	csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)
+	return sdkapi.ViewPage{
+		Assets:      sdkapi.ViewAssets{},
+		PageContent: auth.LoginPage(api, csrfHtml, data),
+	}
 }
