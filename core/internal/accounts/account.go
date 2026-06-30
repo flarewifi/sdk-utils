@@ -1,12 +1,14 @@
 package accounts
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 	"github.com/goccy/go-json"
+	"golang.org/x/crypto/bcrypt"
 
 	"core/internal/modules/events"
 	sse "core/utils/sse"
@@ -35,7 +37,25 @@ func (acct *Account) Username() string {
 
 // Auth returns true if the password is correct
 func (acct *Account) Auth(pw string) bool {
-	return acct.Passwd == pw
+	if isBcryptHash(acct.Passwd) {
+		return bcrypt.CompareHashAndPassword([]byte(acct.Passwd), []byte(pw)) == nil
+	}
+
+	if acct.Passwd != pw {
+		return false
+	}
+
+	hashed, err := hashPassword(pw)
+	if err != nil {
+		log.Printf("warn: failed to migrate password for %s to bcrypt: %v", acct.Uname, err)
+		return true
+	}
+	acct.Passwd = hashed
+	if err := acct.Save(); err != nil {
+		log.Printf("warn: failed to save migrated password for %s: %v", acct.Uname, err)
+		acct.Passwd = pw
+	}
+	return true
 }
 
 // Permissions returns the permissions of the account
@@ -80,14 +100,14 @@ func (acct *Account) Save() error {
 
 // Update updates the account with new username, password and permissions
 func (acct *Account) Update(uname string, pass string, perms []string) error {
-	_, err := Update(acct.Uname, uname, pass, perms)
+	updated, err := Update(acct.Uname, uname, pass, perms)
 	if err != nil {
 		return err
 	}
 
-	acct.Uname = uname
-	acct.Passwd = pass
-	acct.Perms = perms
+	acct.Uname = updated.Uname
+	acct.Passwd = updated.Passwd
+	acct.Perms = updated.Perms
 	return nil
 }
 

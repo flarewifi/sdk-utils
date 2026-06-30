@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	sdkapi "sdk/api"
 	"slices"
+	"strings"
 	"sync"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 	"github.com/goccy/go-json"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -54,6 +56,13 @@ func EnsureAdminAcct() error {
 	f := FilepathForUser(AdminUsername)
 	if !sdkutils.FsExists(f) {
 		acct := DefaultAdminAcct()
+		if !isBcryptHash(acct.Passwd) {
+			hashedPasswd, err := hashPassword(acct.Passwd)
+			if err != nil {
+				return err
+			}
+			acct.Passwd = hashedPasswd
+		}
 		content, err := json.Marshal(acct)
 		if err != nil {
 			return err
@@ -121,9 +130,13 @@ func Find(username string) (*Account, error) {
 }
 
 func Create(uname string, passwd string, perms []string) (*Account, error) {
+	hashedPasswd, err := hashPassword(passwd)
+	if err != nil {
+		return nil, err
+	}
 	acct := Account{
 		Uname:  uname,
-		Passwd: passwd,
+		Passwd: hashedPasswd,
 		Perms:  perms,
 	}
 
@@ -157,6 +170,12 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 
 	if pass == "" {
 		pass = prevAcct.Passwd
+	} else {
+		hashedPass, err := hashPassword(pass)
+		if err != nil {
+			return nil, err
+		}
+		pass = hashedPass
 	}
 
 	if len(perms) == 0 {
@@ -267,4 +286,20 @@ func NewPerm(name string, description string) error {
 
 	perms.Store(name, description)
 	return nil
+}
+
+const bcryptCost = 8
+
+func hashPassword(plaintext string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcryptCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
+}
+
+func isBcryptHash(s string) bool {
+	return strings.HasPrefix(s, "$2a$") ||
+		strings.HasPrefix(s, "$2b$") ||
+		strings.HasPrefix(s, "$2y$")
 }

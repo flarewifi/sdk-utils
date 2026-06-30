@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -40,13 +41,11 @@ func (self *HttpAuth) CurrentAcct(r *http.Request) (sdkapi.IAccount, error) {
 func (self *HttpAuth) IsAuthenticated(r *http.Request) (sdkapi.IAccount, error) {
 	authtoken, err := self.api.CoreAPI.HttpAPI.Cookie().GetCookie(r, AUTH_TOKEN_COOKIE)
 	if err != nil {
-		// Try header if cookie not found
 		bearer := r.Header.Get("Authorization")
 		splitToken := strings.Split(bearer, "Bearer ")
 		if len(splitToken) != 2 {
 			return nil, errors.New("invalid auth token")
 		}
-
 		authtoken = splitToken[1]
 	}
 
@@ -55,19 +54,35 @@ func (self *HttpAuth) IsAuthenticated(r *http.Request) (sdkapi.IAccount, error) 
 		return nil, err
 	}
 
-	token, err := jsonwebtoken.VerifyToken(authtoken, appcfg.Secret)
+	var foundAcct *accounts.Account
+	token, err := jwt.Parse(authtoken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return nil, errors.New("invalid claims")
+		}
+		username, ok := claims["username"].(string)
+		if !ok || username == "" {
+			return nil, errors.New("missing username in token")
+		}
+		acct, err := accounts.Find(username)
+		if err != nil {
+			return nil, err
+		}
+		foundAcct = acct
+		return []byte(appcfg.Secret + acct.Passwd), nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !(ok && token.Valid) {
-		return nil, errors.New("invalid jwt claims")
+	if !token.Valid {
+		return nil, errors.New("invalid auth token")
 	}
 
-	username := claims["username"].(string)
-
-	return accounts.Find(username)
+	return foundAcct, nil
 }
 
 func (self *HttpAuth) Authenticate(username string, password string) (sdkapi.IAccount, error) {
@@ -82,6 +97,11 @@ func (self *HttpAuth) Authenticate(username string, password string) (sdkapi.IAc
 		return nil, ErrAuthenticationFailed
 	}
 
+	acct, err = accounts.Find(username)
+	if err != nil {
+		return nil, ErrAuthenticationFailed
+	}
+
 	return acct, nil
 }
 
@@ -91,8 +111,14 @@ func (self *HttpAuth) SignIn(w http.ResponseWriter, acct sdkapi.IAccount) error 
 		return err
 	}
 
+	a, ok := acct.(*accounts.Account)
+	if !ok {
+		return errors.New("unsupported account type")
+	}
+
+	signingKey := appcfg.Secret + a.Passwd
 	payload := map[string]string{"username": acct.Username()}
-	token, err := jsonwebtoken.GenerateToken(payload, appcfg.Secret)
+	token, err := jsonwebtoken.GenerateToken(payload, signingKey)
 	if err != nil {
 		return err
 	}
@@ -102,6 +128,6 @@ func (self *HttpAuth) SignIn(w http.ResponseWriter, acct sdkapi.IAccount) error 
 }
 
 func (self *HttpAuth) SignOut(w http.ResponseWriter) error {
-	self.api.CoreAPI.HttpAPI.Cookie().SetCookie(w, AUTH_TOKEN_COOKIE, "", nil)
+	self.api.CoreAPI.HttpAPI.Cookie().DeleteCookie(w, AUTH_TOKEN_COOKIE)
 	return nil
 }
