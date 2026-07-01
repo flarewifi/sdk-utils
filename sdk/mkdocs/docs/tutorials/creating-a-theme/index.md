@@ -500,35 +500,35 @@ Based on the code examples above, you'll need these asset files:
 
 ## Step 10: Add Translations (Optional)
 
-Create translation files in `resources/translations/` for different languages. See the [translations guide](../../guides/translations.md) for detailed information on how to implement translations in your plugin.
+Create one JSON catalog per language in `resources/translations/`. See the [translations guide](../../guides/translations.md) for detailed information on how to implement translations in your plugin.
 
 ```
 resources/translations/
-├── en/
-│   ├── info/
-│   │   └── Logged in successfully.txt
-│   └── error/
-│       └── Invalid credentials.txt
-└── es/
-    ├── info/
-    │   └── Logged in successfully.txt
-    └── error/
-        └── Invalid credentials.txt
+├── en.json
+└── es.json
 ```
 
-Example translation file `resources/translations/en/label/dashboard.txt`:
-```
-Dashboard
+Each catalog is keyed by message type, then by the English source text. `en.json` is the registry (value == key):
+```json title="resources/translations/en.json"
+{
+  "label": { "Dashboard": "Dashboard" },
+  "info": { "Logged in successfully": "Logged in successfully" },
+  "error": { "Invalid credentials": "Invalid credentials" }
+}
 ```
 
-Example translation file `resources/translations/es/label/dashboard.txt`:
-```
-Panel de Control
+`es.json` supplies the Spanish translations for the same keys:
+```json title="resources/translations/es.json"
+{
+  "label": { "Dashboard": "Panel de Control" },
+  "info": { "Logged in successfully": "Sesión iniciada correctamente" },
+  "error": { "Invalid credentials": "Credenciales no válidas" }
+}
 ```
 
-Use translations in your templates:
+Use translations in your templates by passing the English source text:
 ```templ
-<h1>{ api.Translate("label", "dashboard") }</h1>
+<h1>{ api.Translate("label", "Dashboard") }</h1>
 ```
 
 ## Step 11: Build and Test

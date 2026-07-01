@@ -369,7 +369,7 @@ if found {
     configAPI := paymentPlugin.Config()
 
     // Use the plugin's translation function
-    message := paymentPlugin.Translate("label", "payment_success")
+    message := paymentPlugin.Translate("label", "Payment successful")
     fmt.Println(message)
 }
 ```

@@ -185,6 +185,6 @@ To make your theme translatable, use the translation system in your templates:
 <h3>{ api.Translate("label", "System Status") }</h3>
 ```
 
-Create translation files in `resources/translations/[lang]/label/` for each language you want to support.
+Add the English source text (`"System Status"`) as a key under the `label` type in `resources/translations/en.json`, then supply a translation for the same key in each `resources/translations/<lang>.json` catalog you want to support. See the [translations guide](../../guides/translations.md) for the full format.
 
 [← Back to Main Guide](index.md)
