@@ -29,28 +29,30 @@ func (q *Queries) ActivateVoucher(ctx context.Context, arg ActivateVoucherParams
 	return err
 }
 
-const countExpiredUnusedVouchers = `-- name: CountExpiredUnusedVouchers :one
-SELECT COUNT(*) FROM vouchers
-WHERE activated_at IS NULL AND expires_at IS NOT NULL AND expires_at < ?1
+const countUnusedVouchers = `-- name: CountUnusedVouchers :one
+SELECT COUNT(*) FROM vouchers WHERE activated_at IS NULL AND created_at < ?1
 `
 
-// Counts vouchers that expired before ever being activated.
-// cutoff_date should be calculated in Go: time.Now().UTC()
-func (q *Queries) CountExpiredUnusedVouchers(ctx context.Context, cutoffDate sql.NullTime) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countExpiredUnusedVouchers, cutoffDate)
+// Counts UNUSED (never activated) vouchers older than the 90-day age threshold.
+// These are never auto-deleted (rule 2); the count only drives the daily warning.
+// cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -90)
+func (q *Queries) CountUnusedVouchers(ctx context.Context, cutoffDate sql.NullTime) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUnusedVouchers, cutoffDate)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countStaleActivatedVouchers = `-- name: CountStaleActivatedVouchers :one
-SELECT COUNT(*) FROM vouchers WHERE activated_at IS NOT NULL AND session_id IS NULL
+const countUsedVouchers = `-- name: CountUsedVouchers :one
+SELECT COUNT(*) FROM vouchers WHERE activated_at IS NOT NULL AND activated_at < ?1
 `
 
-// Counts activated vouchers whose session has already been cleaned up (session_id SET NULL by FK cascade).
-// These are safe to delete as they served their purpose and have no parent session.
-func (q *Queries) CountStaleActivatedVouchers(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countStaleActivatedVouchers)
+// Counts USED (activated) vouchers past the 30-day retention window, keyed on
+// activated_at. Decoupled from the parent session: a used voucher is kept 30 days
+// from activation regardless of whether its session still exists.
+// cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -30)
+func (q *Queries) CountUsedVouchers(ctx context.Context, cutoffDate sql.NullTime) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsedVouchers, cutoffDate)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -128,13 +130,13 @@ func (q *Queries) DeleteActivatedVouchers(ctx context.Context, providerPkg strin
 	return err
 }
 
-const deleteStaleActivatedVouchers = `-- name: DeleteStaleActivatedVouchers :exec
-DELETE FROM vouchers WHERE activated_at IS NOT NULL AND session_id IS NULL
+const deleteUsedVouchers = `-- name: DeleteUsedVouchers :exec
+DELETE FROM vouchers WHERE activated_at IS NOT NULL AND activated_at < ?1
 `
 
-// Deletes activated vouchers whose session has already been cleaned up (session_id SET NULL by FK cascade).
-func (q *Queries) DeleteStaleActivatedVouchers(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, deleteStaleActivatedVouchers)
+// Deletes USED (activated) vouchers activated more than the retention window ago.
+func (q *Queries) DeleteUsedVouchers(ctx context.Context, cutoffDate sql.NullTime) error {
+	_, err := q.db.ExecContext(ctx, deleteUsedVouchers, cutoffDate)
 	return err
 }
 

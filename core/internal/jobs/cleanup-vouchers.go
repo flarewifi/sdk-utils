@@ -52,40 +52,42 @@ func performVoucherCleanup(database *db.Database, mdls *models.Models, coreAPI *
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Delete stale activated vouchers: activated_at IS NOT NULL but session_id IS NULL
-	// because the FK ON DELETE SET NULL fired when the nightly session cleanup removed
-	// the parent session. The voucher served its purpose and has no further use.
-	staleCount, err := database.Queries.CountStaleActivatedVouchers(ctx)
+	// Delete USED (activated) vouchers past the 30-day retention window, keyed on
+	// activated_at. Decoupled from the parent session: a used voucher is kept 30 days
+	// from activation whether or not its session still exists.
+	usedCutoff := sql.NullTime{Time: time.Now().UTC().AddDate(0, 0, -usedResourceRetentionDays), Valid: true}
+	usedCount, err := database.Queries.CountUsedVouchers(ctx, usedCutoff)
 	if err != nil {
-		coreAPI.Logger().Error(fmt.Sprintf("voucher cleanup: count stale activated failed: %v", err))
+		coreAPI.Logger().Error(fmt.Sprintf("voucher cleanup: count used failed: %v", err))
 		return
 	}
-	if staleCount > 0 {
-		if err := database.Queries.DeleteStaleActivatedVouchers(ctx); err != nil {
-			coreAPI.Logger().Error(fmt.Sprintf("voucher cleanup: delete stale activated failed: %v", err))
+	if usedCount > 0 {
+		if err := database.Queries.DeleteUsedVouchers(ctx, usedCutoff); err != nil {
+			coreAPI.Logger().Error(fmt.Sprintf("voucher cleanup: delete used failed: %v", err))
 			return
 		}
 	}
 
-	// Notify admin about vouchers that expired before ever being activated.
-	cutoff := sql.NullTime{Time: time.Now().UTC(), Valid: true}
-	expiredCount, err := database.Queries.CountExpiredUnusedVouchers(ctx, cutoff)
+	// Notify admin about UNUSED (never activated) vouchers older than 90 days. These
+	// are kept (never auto-deleted) so the admin can review; the warning recurs daily.
+	unusedCutoff := sql.NullTime{Time: time.Now().UTC().AddDate(0, 0, -unusedResourceMinAgeDays), Valid: true}
+	unusedCount, err := database.Queries.CountUnusedVouchers(ctx, unusedCutoff)
 	if err != nil {
-		coreAPI.Logger().Error(fmt.Sprintf("voucher cleanup: count expired unused failed: %v", err))
+		coreAPI.Logger().Error(fmt.Sprintf("voucher cleanup: count unused failed: %v", err))
 		return
 	}
-	if expiredCount > 0 {
-		notifyExpiredUnusedVouchers(ctx, database, coreAPI, expiredCount)
+	if unusedCount > 0 {
+		notifyUnusedVouchers(ctx, database, coreAPI, unusedCount)
 	}
 }
 
-// notifyExpiredUnusedVouchers warns the admin about vouchers that expired before use.
-// Like the session cleanup, the rows are kept (not deleted), so the warning is throttled
-// to avoid re-notifying on every nightly run while the condition persists.
-func notifyExpiredUnusedVouchers(ctx context.Context, database *db.Database, coreAPI *api.PluginApi, count int64) {
-	subject := coreAPI.Translate("warning", "Expired vouchers detected")
+// notifyUnusedVouchers warns the admin about vouchers created long ago that were
+// never activated. The rows are kept (not deleted), so the warning is throttled to
+// fire at most once per day while the condition persists.
+func notifyUnusedVouchers(ctx context.Context, database *db.Database, coreAPI *api.PluginApi, count int64) {
+	subject := coreAPI.Translate("warning", "Unused vouchers detected")
 
-	throttleCutoff := time.Now().UTC().Add(-notificationThrottleWindow)
+	throttleCutoff := time.Now().UTC().Add(-unusedNotifyThrottle)
 	recent, err := database.Queries.CountRecentNotificationsBySubject(ctx, queries.CountRecentNotificationsBySubjectParams{
 		Subject:    subject,
 		CutoffDate: throttleCutoff,
@@ -99,7 +101,7 @@ func notifyExpiredUnusedVouchers(ctx context.Context, database *db.Database, cor
 	}
 
 	content := coreAPI.Translate("warning",
-		"There are <% .count %> vouchers that expired without being used.",
+		"There are <% .count %> vouchers created over 90 days ago that were never used.",
 		"count", count)
 	if err := coreAPI.Notification().AddNotification(ctx, sdkapi.AddNotificationParams{
 		Subject: subject,

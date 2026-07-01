@@ -67,6 +67,7 @@ type Notification struct {
 	Type      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	ReadAt    sql.NullTime
 }
 
 type Payment struct {

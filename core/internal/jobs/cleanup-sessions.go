@@ -65,7 +65,7 @@ func performSessionCleanup(database *db.Database, mdls *models.Models, coreAPI *
 	// Notify admin about sessions created more than 90 days ago that were never started
 	// (i.e. vouchers sold/created but never redeemed). These are flagged rather than
 	// deleted so the admin can review and decide.
-	cutoff := time.Now().UTC().AddDate(0, 0, -90)
+	cutoff := time.Now().UTC().AddDate(0, 0, -unusedResourceMinAgeDays)
 	unstartedCount, err := database.Queries.CountUnstartedSessions(ctx, cutoff)
 	if err != nil {
 		coreAPI.Logger().Error(fmt.Sprintf("session cleanup: count unstarted failed: %v", err))
@@ -83,7 +83,7 @@ func performSessionCleanup(database *db.Database, mdls *models.Models, coreAPI *
 func notifyUnstartedSessions(ctx context.Context, database *db.Database, coreAPI *api.PluginApi, count int64) {
 	subject := coreAPI.Translate("warning", "Unstarted sessions detected")
 
-	throttleCutoff := time.Now().UTC().Add(-notificationThrottleWindow)
+	throttleCutoff := time.Now().UTC().Add(-unusedNotifyThrottle)
 	recent, err := database.Queries.CountRecentNotificationsBySubject(ctx, queries.CountRecentNotificationsBySubjectParams{
 		Subject:    subject,
 		CutoffDate: throttleCutoff,

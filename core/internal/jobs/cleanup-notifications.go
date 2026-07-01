@@ -2,22 +2,21 @@ package jobs
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
 	"core/db"
 	"core/db/models"
+	"core/db/queries"
 	"core/internal/api"
+
+	sdkapi "sdk/api"
 )
 
-// notificationThrottleWindow is how long an identical cleanup warning (same subject)
-// suppresses a repeat, so a persistent condition (e.g. unstarted sessions, expired
-// vouchers) doesn't create a fresh notification on every nightly run. Shared by the
-// session and voucher cleanup jobs.
-const notificationThrottleWindow = 7 * 24 * time.Hour
-
-// StartNotificationCleanupScheduler starts a daily job that caps the notifications
-// table to its newest rows so it can't grow without bound. Runs at 2:00 AM in production.
+// StartNotificationCleanupScheduler starts a daily job that ages out long-read
+// notifications and caps the unread pile-up so the table can't grow without bound.
+// Runs at 2:00 AM in production.
 func StartNotificationCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) {
 	go func() {
 		if NotificationCleanupInterval > 0 {
@@ -51,9 +50,20 @@ func performNotificationCleanup(database *db.Database, mdls *models.Models, core
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Keep only the newest notifications; the retention cap lives in the SQL. A run
-	// with fewer rows than the cap matches nothing and is a cheap no-op.
+	// Standardized retention: delete notifications that have been READ for more than
+	// the retention window. Unread rows (including the daily unused-resource warnings)
+	// are untouched here — they are only bounded by the backstop cap below.
+	readCutoff := sql.NullTime{Time: time.Now().UTC().AddDate(0, 0, -readNotificationRetentionDays), Valid: true}
+	if err := database.Queries.DeleteReadNotificationsOlderThan(ctx, queries.DeleteReadNotificationsOlderThanParams{
+		Status:     int64(sdkapi.NotificationStatusRead),
+		CutoffDate: readCutoff,
+	}); err != nil {
+		coreAPI.Logger().Error(fmt.Sprintf("notification cleanup: delete long-read failed: %v", err))
+	}
+
+	// Backstop: cap the unread pile-up so a persistent daily-warning condition can't
+	// grow the table without bound. A run with fewer rows than the cap is a no-op.
 	if err := database.Queries.DeleteNotificationsExceedingLimit(ctx); err != nil {
-		coreAPI.Logger().Error(fmt.Sprintf("notification cleanup failed: %v", err))
+		coreAPI.Logger().Error(fmt.Sprintf("notification cleanup: cap failed: %v", err))
 	}
 }

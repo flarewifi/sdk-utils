@@ -7,6 +7,7 @@ package queries
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -85,18 +86,38 @@ WHERE id NOT IN (
 )
 `
 
-// Retention cap: keeps only the newest 200 notifications and deletes the rest.
-// Read notifications are already deleted on open, so this bounds the UNREAD
-// pile-up (including this subsystem's own nightly warnings). The limit is
-// hardcoded here (same pattern as DeleteOldDeviceLogs); id DESC is a tiebreaker
-// for rows sharing a created_at second.
+// Retention backstop: keeps only the newest 200 notifications and deletes the rest.
+// Read notifications are aged out by DeleteReadNotificationsOlderThan, so this only
+// bounds the UNREAD pile-up (e.g. the daily unused-resource warnings, which are
+// never auto-deleted). The limit is hardcoded here (same pattern as
+// DeleteOldDeviceLogs); id DESC is a tiebreaker for rows sharing a created_at second.
 func (q *Queries) DeleteNotificationsExceedingLimit(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteNotificationsExceedingLimit)
 	return err
 }
 
+const deleteReadNotificationsOlderThan = `-- name: DeleteReadNotificationsOlderThan :exec
+DELETE FROM notifications
+WHERE status = ?1 AND read_at IS NOT NULL AND read_at < ?2
+`
+
+type DeleteReadNotificationsOlderThanParams struct {
+	Status     int64
+	CutoffDate sql.NullTime
+}
+
+// Standardized notification retention: delete notifications that have been READ
+// for more than the retention window. read_at is stamped when a notification is
+// marked read (see UpdateNotificationStatus / MarkAllAsRead); unread rows have a
+// NULL read_at and are never swept here. cutoff_date is computed in Go
+// (time.Now().UTC().AddDate(0, 0, -30)); @status is NotificationStatusRead (1).
+func (q *Queries) DeleteReadNotificationsOlderThan(ctx context.Context, arg DeleteReadNotificationsOlderThanParams) error {
+	_, err := q.db.ExecContext(ctx, deleteReadNotificationsOlderThan, arg.Status, arg.CutoffDate)
+	return err
+}
+
 const getByID = `-- name: GetByID :one
-SELECT id, subject, content, status, type, created_at, updated_at
+SELECT id, subject, content, status, type, created_at, updated_at, read_at
 FROM
   notifications
 WHERE
@@ -116,12 +137,13 @@ func (q *Queries) GetByID(ctx context.Context, id int64) (Notification, error) {
 		&i.Type,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReadAt,
 	)
 	return i, err
 }
 
 const getUnreadNotifications = `-- name: GetUnreadNotifications :many
-SELECT id, subject, content, status, type, created_at, updated_at
+SELECT id, subject, content, status, type, created_at, updated_at, read_at
 FROM notifications
 WHERE status = ?1
 ORDER BY created_at DESC
@@ -144,6 +166,7 @@ func (q *Queries) GetUnreadNotifications(ctx context.Context, status int64) ([]N
 			&i.Type,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReadAt,
 		); err != nil {
 			return nil, err
 		}
@@ -163,11 +186,13 @@ UPDATE
   notifications
 SET
   status = ?1,
+  read_at = datetime('now'),
   updated_at = datetime('now')
 WHERE
   status != ?1
 `
 
+// Only ever marks rows read, so read_at is always stamped to now.
 func (q *Queries) MarkAllAsRead(ctx context.Context, status int64) error {
 	_, err := q.db.ExecContext(ctx, markAllAsRead, status)
 	return err
@@ -178,6 +203,7 @@ UPDATE
   notifications
 SET
   status = ?1,
+  read_at = CASE WHEN ?1 = 1 THEN datetime('now') ELSE NULL END,
   updated_at = datetime('now')
 WHERE
   id = ?2
@@ -188,6 +214,8 @@ type UpdateNotificationStatusParams struct {
 	ID     int64
 }
 
+// read_at is stamped when a notification transitions to read (status = 1) and
+// cleared when marked unread, so the cleanup job can age out long-read rows.
 func (q *Queries) UpdateNotificationStatus(ctx context.Context, arg UpdateNotificationStatusParams) error {
 	_, err := q.db.ExecContext(ctx, updateNotificationStatus, arg.Status, arg.ID)
 	return err

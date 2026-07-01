@@ -49,16 +49,16 @@ func ShowNotificationContentCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Fetch the notification for rendering BEFORE deleting it — opening a
-		// notification marks it read, and read notifications are removed from the DB.
+		// Opening a notification marks it read (not deleted). Read notifications are
+		// kept and aged out later by the cleanup job (30 days after being read).
 		notif, err := notifsAPI.GetNotificationByID(r.Context(), idInt)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		if err := notifsAPI.DeleteNotification(r.Context(), idInt); err != nil {
-			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to delete read notification: %v", err))
+		if err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to mark notification read: %v", err))
 		}
 
 		w.Header().Set("HX-Trigger", "notificationRead")
@@ -79,8 +79,8 @@ func UpdateNotificationCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		if err := notifsAPI.DeleteNotification(r.Context(), idInt); err != nil {
-			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to delete read notification: %v", err))
+		if err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to mark notification read: %v", err))
 		}
 
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
@@ -98,8 +98,8 @@ func ClearAllNotificationsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		notifsAPI := g.CoreAPI.Notification()
 
-		if err := notifsAPI.DeleteAllNotifications(r.Context()); err != nil {
-			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to delete all notifications: %v", err))
+		if err := notifsAPI.MarkAllAsRead(r.Context()); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to mark all notifications read: %v", err))
 		}
 
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())

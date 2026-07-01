@@ -11,7 +11,9 @@ import (
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/config"
+	"core/utils/crypt"
 	"core/utils/plugins"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -112,11 +114,24 @@ func collect() []*rpc_flarewifi_v3.InstalledPlugin {
 			source = "store"
 		}
 
+		// Hash the installed plugin.so so the cloud can verify the binary against the
+		// build's recorded hash. Absent for statically-linked/system plugins (compiled
+		// into core/plugin.so) and meta bundles below — those report an empty hash. A
+		// hash failure must not drop the plugin from the snapshot, so ignore the error.
+		soHash := ""
+		soPath := filepath.Join(dir, "plugin.so")
+		if sdkutils.FsExists(soPath) {
+			if h, err := crypt.SHA256File(soPath); err == nil {
+				soHash = h
+			}
+		}
+
 		list = append(list, &rpc_flarewifi_v3.InstalledPlugin{
 			Package: info.Package,
 			Name:    info.Name,
 			Version: info.Version,
 			Source:  source,
+			SoHash:  soHash,
 		})
 	}
 
