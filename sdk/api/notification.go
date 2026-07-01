@@ -43,4 +43,6 @@ type INotificationAPI interface {
 	GetNotificationByID(ctx context.Context, id int64) (Notification, error)
 	UpdateNotificationStatus(ctx context.Context, id int64, status NotificationStatus) error
 	MarkAllAsRead(ctx context.Context) error
+	DeleteNotification(ctx context.Context, id int64) error
+	DeleteAllNotifications(ctx context.Context) error
 }

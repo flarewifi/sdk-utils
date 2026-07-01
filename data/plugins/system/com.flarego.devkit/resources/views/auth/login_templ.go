@@ -31,7 +31,7 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"panel panel-default\" style=\"margin-top: 40px;\"><div class=\"panel-body\"><h1 class=\"h3 text-center\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"card\" style=\"margin-top: 40px;\"><div class=\"card-body\"><h1 class=\"h3 text-center\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -97,7 +97,7 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"form-group\"><label for=\"username\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"mb-3\"><label for=\"username\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -110,7 +110,7 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label> <input type=\"text\" class=\"form-control\" name=\"username\" id=\"username\" placeholder=\"admin\" required></div><div class=\"form-group\"><label for=\"password\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</label> <input type=\"text\" class=\"form-control\" name=\"username\" id=\"username\" placeholder=\"admin\" required></div><div class=\"mb-3\"><label for=\"password\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -136,14 +136,14 @@ func LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" required></div><button type=\"submit\" class=\"btn btn-primary btn-block\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" required></div><button type=\"submit\" class=\"btn btn-primary w-100\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Sign In"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 28, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/auth/login.templ`, Line: 28, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {

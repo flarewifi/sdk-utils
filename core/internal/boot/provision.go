@@ -474,7 +474,7 @@ func notifyOffline(g *api.CoreGlobals) {
 	if err := g.CoreAPI.Logger().Info("online monitor: machine is offline"); err != nil {
 	}
 
-	subject := g.CoreAPI.Translate("warning", "No internet connection")
+	subject := g.CoreAPI.Translate("warning", "Internet Monitor: Connection went down.")
 	content := g.CoreAPI.Translate("warning", "The machine has no internet connection. Some features that depend on the cloud are unavailable until connectivity is restored")
 
 	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{

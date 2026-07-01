@@ -2,6 +2,7 @@ package adminctrl
 
 import (
 	"core/internal/api"
+	"fmt"
 	"net/http"
 
 	corethemeadmin "core/resources/views/themes/fallback/admin"
@@ -48,13 +49,16 @@ func ShowNotificationContentCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		if err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead); err != nil {
-		}
-
+		// Opening a notification marks it read (not deleted). Read notifications are
+		// kept and aged out later by the cleanup job (30 days after being read).
 		notif, err := notifsAPI.GetNotificationByID(r.Context(), idInt)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
+		}
+
+		if err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to mark notification read: %v", err))
 		}
 
 		w.Header().Set("HX-Trigger", "notificationRead")
@@ -76,6 +80,7 @@ func UpdateNotificationCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		}
 
 		if err := notifsAPI.UpdateNotificationStatus(r.Context(), idInt, sdkapi.NotificationStatusRead); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to mark notification read: %v", err))
 		}
 
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())
@@ -94,6 +99,7 @@ func ClearAllNotificationsCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		notifsAPI := g.CoreAPI.Notification()
 
 		if err := notifsAPI.MarkAllAsRead(r.Context()); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("failed to mark all notifications read: %v", err))
 		}
 
 		notifs, err := notifsAPI.GetUnreadNotifications(r.Context())

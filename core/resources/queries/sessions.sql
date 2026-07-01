@@ -396,36 +396,50 @@ AND (
 DELETE FROM sessions WHERE id = @id;
 
 -- name: DeleteConsumedOrExpiredSessions :exec
--- Deletes sessions where time/data has been fully consumed OR expiration date has passed.
--- Used by the session cleanup job to remove stale sessions.
+-- Standardized retention for USED sessions: delete consumed/expired sessions only
+-- after a 30-day grace, so a used resource is kept 30 days before removal.
+-- Grace anchor per branch (sessions have no reliable "consumed_at" timestamp;
+-- consumption updates do NOT bump updated_at):
+--   * consumed  -> 30 days after started_at (proxy; consumption happens near start)
+--   * expired   -> 30 days after the expiry moment (started_at + exp_days)
+-- started_at is non-null for any consumed or expired session.
 DELETE FROM sessions WHERE
-  -- Consumed: time/data exhausted
+  -- Consumed: time/data exhausted, kept 30 days from start
   (
-    (session_type = 'time' AND consumption_secs >= time_secs)
-    OR (session_type = 'data' AND consumption_mb >= data_mbytes)
-    OR (session_type = 'time-or-data' AND (consumption_secs >= time_secs OR consumption_mb >= data_mbytes))
+    (
+      (session_type = 'time' AND consumption_secs >= time_secs)
+      OR (session_type = 'data' AND consumption_mb >= data_mbytes)
+      OR (session_type = 'time-or-data' AND (consumption_secs >= time_secs OR consumption_mb >= data_mbytes))
+    )
+    AND started_at IS NOT NULL
+    AND datetime('now') >= datetime(started_at, '+30 days')
   )
   OR
-  -- Expired: passed expiration date
+  -- Expired: passed expiration date, kept 30 days after expiry
   (
     exp_days IS NOT NULL
     AND started_at IS NOT NULL
-    AND datetime('now') >= datetime(started_at, '+' || exp_days || ' days')
+    AND datetime('now') >= datetime(started_at, '+' || exp_days || ' days', '+30 days')
   );
 
 -- name: CountConsumedOrExpiredSessions :one
--- Counts sessions where time/data has been fully consumed OR expiration date has passed.
+-- Counts sessions eligible for deletion by DeleteConsumedOrExpiredSessions (same
+-- predicate, including the 30-day grace) so the count-before-delete stays in lockstep.
 SELECT COUNT(*) FROM sessions WHERE
   (
-    (session_type = 'time' AND consumption_secs >= time_secs)
-    OR (session_type = 'data' AND consumption_mb >= data_mbytes)
-    OR (session_type = 'time-or-data' AND (consumption_secs >= time_secs OR consumption_mb >= data_mbytes))
+    (
+      (session_type = 'time' AND consumption_secs >= time_secs)
+      OR (session_type = 'data' AND consumption_mb >= data_mbytes)
+      OR (session_type = 'time-or-data' AND (consumption_secs >= time_secs OR consumption_mb >= data_mbytes))
+    )
+    AND started_at IS NOT NULL
+    AND datetime('now') >= datetime(started_at, '+30 days')
   )
   OR
   (
     exp_days IS NOT NULL
     AND started_at IS NOT NULL
-    AND datetime('now') >= datetime(started_at, '+' || exp_days || ' days')
+    AND datetime('now') >= datetime(started_at, '+' || exp_days || ' days', '+30 days')
   );
 
 -- name: GetMostRecentSessionTimeForDevice :one
@@ -434,4 +448,9 @@ SELECT COUNT(*) FROM sessions WHERE
 SELECT MAX(COALESCE(started_at, created_at)) as last_activity
 FROM sessions
 WHERE device_id = @device_id;
+
+-- name: CountUnstartedSessions :one
+-- Counts sessions that were created but never started (voucher never redeemed).
+-- cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -90)
+SELECT COUNT(*) FROM sessions WHERE started_at IS NULL AND created_at < @cutoff_date;
 

@@ -30,6 +30,7 @@ import (
 	cmd "core/utils/shell"
 	"core/utils/tags"
 
+	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarewifi/sdk-utils"
 	"github.com/twitchtv/twirp"
 )
@@ -47,6 +48,13 @@ var ErrPaymentRequired = sdkplugin.ErrPaymentRequired
 // instead of a misleading "payment required" (the cloud signals it via the resolve
 // response's disabled flag; see fetchStoreRelease).
 var ErrPluginDisabled = errors.New("plugin disabled")
+
+// ErrPluginBlocked is returned by on-device install paths (local/git) when the
+// plugin being installed is on the superuser denylist, as answered live by the
+// cloud (IsPluginBlocked) keyed on its plugin.json package/name. Distinct from
+// ErrPluginDisabled (a developer withdrawal) — this is an operator block. The
+// wrapped message carries the operator-supplied reason when one was given.
+var ErrPluginBlocked = errors.New("plugin blocked")
 
 func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr, eventsMgr *events.EventsManager) *PluginsMgr {
 	pmgr := &PluginsMgr{
@@ -217,15 +225,12 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) (sdkplugin.IPlu
 		pkg = def.LocalPath
 	}
 
-	// A plugin that is currently a member of an installed meta bundle (and not also
-	// installed standalone) is pinned by its bundle — installing/updating it on its
-	// own would bump it off the bundle's release. Reject it here so the store UI
-	// cannot manage a bundled member à la carte; it must go through the bundle.
-	// Bundle installs reach their members via installStoreMember (not this path), so
-	// expanding a bundle is unaffected.
-	if self.IsManagedMetaMember(pkg) {
-		return nil, fmt.Errorf("InstallPlugin: %w: %q", ErrMetaMemberNotStandalone, pkg)
-	}
+	// Membership enforcement is server-side now: an à-la-carte build of a plugin
+	// pinned by an installed bundle is refused by the cloud (RequestPluginBuild's
+	// managed-member gate), and the store UI disables the button via the server's
+	// managed_by_meta signal. We deliberately do NOT pre-check config/plugins.json
+	// here — the cloud is the single source of truth for bundle membership, so a
+	// machine with a tampered config cannot smuggle a member install past it.
 
 	// Validate payment up front for store installs so the caller gets a synchronous
 	// ErrPaymentRequired (and can redirect to checkout) instead of only discovering
@@ -256,6 +261,48 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) (sdkplugin.IPlu
 	return h, nil
 }
 
+// checkPluginBlocked asks the cloud whether a plugin (identified by its plugin.json
+// package/name) is on the superuser denylist, returning ErrPluginBlocked (wrapping
+// the operator-supplied reason, when given) if so. It is the install-time gate for
+// on-device installs, wired in as the InstallOpts.PreBuild hook so a blocked plugin
+// is refused BEFORE it is compiled on-device. Its signature matches PreBuild.
+//
+// Fail-open by design: a missing machine identity or any cloud/transport error
+// leaves the install to proceed. This mirrors the daily denylist reconcile
+// (jobs.reconcileBlockedPlugins), which never blocks on a failed fetch — a cloud
+// outage must not break installs, and the marker-based boot loader still catches a
+// blocked plugin on the next reboot. The recover() contains the shared RPC helper,
+// which panics on a header error and would otherwise crash the install goroutine.
+func (self *PluginsMgr) checkPluginBlocked(info sdkutils.PluginInfo) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = nil
+		}
+	}()
+
+	_, machineID := machineuid.GetMachineUID()
+	if machineID == "" {
+		return nil
+	}
+
+	srv, ctx := corerpc.GetTwirpServiceAndCtx()
+	resp, rpcErr := srv.IsPluginBlocked(ctx, &rpc_flarewifi_v3.IsPluginBlockedRequest{
+		MachineId: machineID,
+		Package:   info.Package,
+		Name:      info.Name,
+	})
+	if rpcErr != nil {
+		return nil
+	}
+	if resp.GetBlocked() {
+		if reason := strings.TrimSpace(resp.GetReason()); reason != "" {
+			return fmt.Errorf("%w: %s", ErrPluginBlocked, reason)
+		}
+		return ErrPluginBlocked
+	}
+	return nil
+}
+
 // runInstall performs a plugin install synchronously, reporting stage progress
 // through emit (never nil here — the InstallPlugin handle supplies it). The
 // percentages are coarse, monotonic checkpoints: the cloud build only reports
@@ -274,7 +321,7 @@ func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitt
 	case sdkutils.PluginSrcStore:
 		emit.call(sdkplugin.PluginInstallStageResolving, 5, "")
 		var rel storeRelease
-		rel, err = self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion)
+		rel, err = self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion, "")
 		if err != nil {
 			return fmt.Errorf("InstallPlugin: %w", err)
 		}
@@ -287,7 +334,7 @@ func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitt
 		// rel.Version is the concrete semver the lookup resolved (the prebuild
 		// RPC rejects an empty version when def.StorePluginVersion was "latest").
 		var tarballURL string
-		tarballURL, err = self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "", emit)
+		tarballURL, err = self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "", emit, "")
 		if err != nil {
 			return fmt.Errorf("InstallPlugin: %w", err)
 		}
@@ -306,6 +353,7 @@ func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitt
 			RemoveSrc:    true,
 			ForceInstall: true,
 			PinnedDeps:   pinned,
+			PreBuild:     self.checkPluginBlocked,
 		})
 
 	case sdkutils.PluginSrcLocal:
@@ -314,6 +362,7 @@ func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitt
 			Def:          def,
 			ForceInstall: true,
 			PinnedDeps:   pinned,
+			PreBuild:     self.checkPluginBlocked,
 		})
 
 	default:
@@ -427,39 +476,14 @@ type storeMember struct {
 // latest when version is empty). For a meta bundle it returns IsMeta with the
 // pinned member list. Auth and machine identity are handled by the shared RPC
 // client; any resolved URL is transient and never persisted on the source def.
-// installedMetasReport builds the machine's installed meta bundles (package +
-// installed version) for an RPC request, so the cloud resolves meta-member coverage
-// against the version this machine actually has installed (not the meta's latest
-// release). `extra` entries are appended and OVERRIDE a config entry with the same
-// package — used during a bundle's FIRST install, when the meta record isn't in the
-// plugins config yet but the version being installed must still grant its paid
-// members coverage. A config read error is non-fatal: we send whatever `extra` we
-// have (empty ⇒ the server falls back to latest-release coverage).
-func (self *PluginsMgr) installedMetasReport(extra ...*rpc_flarewifi_v3.InstalledMeta) []*rpc_flarewifi_v3.InstalledMeta {
-	byPkg := map[string]string{}
-	if cfg, err := config.ReadPluginsConfig(); err != nil {
-		self.CoreAPI.Logger().Error(fmt.Sprintf("installedMetasReport: read plugins config: %v", err))
-	} else {
-		for _, m := range cfg.MetaPlugins {
-			byPkg[m.Package] = m.Version
-		}
-	}
-	for _, e := range extra {
-		if e != nil && e.GetPackage() != "" {
-			byPkg[e.GetPackage()] = e.GetVersion()
-		}
-	}
-	if len(byPkg) == 0 {
-		return nil
-	}
-	out := make([]*rpc_flarewifi_v3.InstalledMeta, 0, len(byPkg))
-	for pkg, ver := range byPkg {
-		out = append(out, &rpc_flarewifi_v3.InstalledMeta{Package: pkg, Version: ver})
-	}
-	return out
-}
-
-func (self *PluginsMgr) fetchStoreRelease(pkg string, version string, extraMetas ...*rpc_flarewifi_v3.InstalledMeta) (storeRelease, error) {
+//
+// installingMeta names the bundle currently being expanded ("" for a normal
+// à-la-carte fetch). It is forwarded to the cloud, which validates that pkg is a real
+// member of that bundle and resolves the member's coverage against it — so a paid
+// member is covered even during the bundle's first install, before the machine reports
+// the meta as installed. The machine no longer reports its full installed-meta list;
+// the cloud derives that from server state (machine_plugins).
+func (self *PluginsMgr) fetchStoreRelease(pkg string, version string, installingMeta string) (storeRelease, error) {
 	if pkg == "" {
 		return storeRelease{}, errors.New("store package is required")
 	}
@@ -468,7 +492,7 @@ func (self *PluginsMgr) fetchStoreRelease(pkg string, version string, extraMetas
 	resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest{
 		PluginPackage:  pkg,
 		Version:        version,
-		InstalledMetas: self.installedMetasReport(extraMetas...),
+		InstallingMeta: installingMeta,
 	})
 	if err != nil {
 		// The cloud signals operator-safe rejections (off-channel version, version
@@ -547,8 +571,7 @@ func (self *PluginsMgr) CheckPurchase(pkg string) (sdkplugin.PluginPurchaseInfo,
 
 	srv, ctx := corerpc.GetTwirpServiceAndCtx()
 	resp, err := srv.CheckPluginPurchase(ctx, &rpc_flarewifi_v3.CheckPluginPurchaseRequest{
-		Package:        pkg,
-		InstalledMetas: self.installedMetasReport(),
+		Package: pkg,
 	})
 	if err != nil {
 		return sdkplugin.PluginPurchaseInfo{}, fmt.Errorf("check purchase for %q: %w", pkg, err)
@@ -631,22 +654,42 @@ func (self *PluginsMgr) installStoreMeta(def sdkutils.PluginSrcDef, rel storeRel
 	}
 
 	var installed []string
+	memberUpdated := false
 	memberPkgs := make([]string, 0, len(rel.Members))
 
 	for _, m := range rel.Members {
 		memberPkgs = append(memberPkgs, m.Package)
-
-		// Already present — adopt it; ownership is recorded by the meta record.
-		if _, ok := self.FindByPkg(m.Package); ok {
-			continue
-		}
 
 		memberDef := sdkutils.PluginSrcDef{
 			Src:                sdkutils.PluginSrcStore,
 			StorePackage:       m.Package,
 			StorePluginVersion: m.Version,
 		}
-		if err := self.installStoreMember(memberDef, def.StorePackage, rel.Version); err != nil {
+
+		// Already present: adopt as-is UNLESS this bundle release pins a newer
+		// version, in which case update the member to it. Without this, re-pinning a
+		// bundle to a new release would bump the meta record but leave every existing
+		// member stranded on its old version (the pre-fix bug).
+		if existing, ok := self.FindByPkg(m.Package); ok {
+			if !memberNeedsUpdate(existing.Info().Version, m.Version) {
+				continue
+			}
+			// Update in place but do NOT re-register: the old member .so is already
+			// mapped into this process and Go's plugin.Open cannot hot-reload it, so
+			// re-registering would re-Init the stale cached .so. Overwriting the files
+			// (ForceInstall) stages the new build; a reboot below loads it cleanly. An
+			// updated member is NOT added to `installed` — a later rollback must not
+			// uninstall a member that predated this bundle update.
+			if err := self.installStoreMember(memberDef, def.StorePackage, false); err != nil {
+				self.rollbackMeta(installed)
+				return fmt.Errorf("update member %q: %w", m.Package, err)
+			}
+			memberUpdated = true
+			continue
+		}
+
+		// Fresh member: install and register live so it works without a reboot.
+		if err := self.installStoreMember(memberDef, def.StorePackage, true); err != nil {
 			self.rollbackMeta(installed)
 			return fmt.Errorf("install member %q: %w", m.Package, err)
 		}
@@ -666,8 +709,11 @@ func (self *PluginsMgr) installStoreMeta(def sdkutils.PluginSrcDef, rel storeRel
 
 	// Same as a single store install: a member may have bumped a shared module in the
 	// lock, leaving a local plugin stale. Recompile conflicting local plugins pinned
-	// to the lock and reboot to apply if any were recompiled.
-	if recompiled := self.reconcileLocalPluginsWithLock(plugindeps.Fetch("")); recompiled {
+	// to the lock and reboot to apply if any were recompiled. A member update also
+	// needs a reboot on its own — the refreshed .so was staged, not hot-loaded — so
+	// reboot when either happened.
+	recompiled := self.reconcileLocalPluginsWithLock(plugindeps.Fetch(""))
+	if recompiled || memberUpdated {
 		self.rebootToApplyRecompiledPlugins(def.StorePackage)
 	}
 
@@ -679,14 +725,19 @@ func (self *PluginsMgr) installStoreMeta(def sdkutils.PluginSrcDef, rel storeRel
 // the bundle->member ownership itself is tracked by the meta record's member
 // list (cfg.MetaPlugins), not in the member's own metadata.
 //
-// metaVersion is the version of the bundle being installed. It is reported to the
-// cloud as an in-progress installed meta (overriding any config entry) so the
-// payment gate covers a PAID member during the bundle's first install — before the
-// meta record exists in the plugins config.
-func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg, metaVersion string) error {
-	installing := &rpc_flarewifi_v3.InstalledMeta{Package: metaPkg, Version: metaVersion}
-
-	rel, err := self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion, installing)
+// metaPkg is passed to the cloud as installing_meta on both the release fetch and the
+// build request, so the cloud (a) covers a PAID member via the bundle during the
+// bundle's first install — before the meta record exists on-device or in
+// machine_plugins — and (b) recognizes the member build as a legitimate bundle
+// expansion rather than a refused à-la-carte install of a bundle-pinned member.
+//
+// register controls live registration. Pass true for a fresh member so it loads and
+// works without a reboot. Pass false when updating an already-loaded member: its old
+// .so is already mapped into the process and Go's plugin.Open cannot hot-reload it,
+// so the overwritten files are only picked up on the next reboot; re-registering here
+// would re-Init the stale cached .so.
+func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg string, register bool) error {
+	rel, err := self.fetchStoreRelease(def.StorePackage, def.StorePluginVersion, metaPkg)
 	if err != nil {
 		return err
 	}
@@ -694,7 +745,7 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg, m
 		return fmt.Errorf("meta plugin %q cannot be a member of another meta", def.StorePackage)
 	}
 
-	tarballURL, err := self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "", nil, installing)
+	tarballURL, err := self.fetchPrebuiltPluginURL(def.StorePackage, rel.Version, "", nil, metaPkg)
 	if err != nil {
 		return err
 	}
@@ -708,9 +759,29 @@ func (self *PluginsMgr) installStoreMember(def sdkutils.PluginSrcDef, metaPkg, m
 		return err
 	}
 
+	// Updating an already-loaded member: files are staged on disk, reboot applies them.
+	if !register {
+		return nil
+	}
+
 	installPath := plugins.GetInstallPath(info.Package)
 	p := NewPluginApi(installPath, info, self.globalAssets, self, self.trfkMgr, self.wifiMgr)
 	return self.RegisterPlugin(p)
+}
+
+// memberNeedsUpdate reports whether a bundle re-pin should reinstall an already-present
+// member: true only when the bundle's pinned version parses as strictly newer than the
+// installed one. Comparing semver (not string equality) avoids downgrading a member the
+// machine already has ahead of this bundle and skips a needless reinstall when they
+// match. If either version is unparseable, fall back to string inequality so a differing
+// non-semver pin still triggers an update rather than being silently skipped.
+func memberNeedsUpdate(installedVersion, pinnedVersion string) bool {
+	cur, curErr := semver.NewVersion(installedVersion)
+	next, nextErr := semver.NewVersion(pinnedVersion)
+	if curErr != nil || nextErr != nil {
+		return installedVersion != pinnedVersion
+	}
+	return next.GreaterThan(cur)
 }
 
 // rollbackMeta marks freshly-installed meta members for removal after a failed

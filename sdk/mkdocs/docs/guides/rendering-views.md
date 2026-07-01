@@ -2,7 +2,7 @@
 
 Flarewifi renders HTML with [templ](https://templ.guide) — a templating engine with first-class Go integration: LSP autocompletion, compile-time type checking, and templates that compile to pure Go for speed.
 
-Paired with [htmx](https://htmx.org/), you can build modern, interactive pages without a heavy frontend toolchain while still supporting the older browsers found on some phones. The `htmx` object is always available when you render via [IHttpResponse.PortalView](../api/http-response.md#portalview) or [IHttpResponse.AdminView](../api/http-response.md#adminview).
+Paired with [htmx](https://htmx.org/), you can build modern, interactive pages without a heavy frontend toolchain. The `htmx` object is always available when you render via [IHttpResponse.PortalView](../api/http-response.md#portalview) or [IHttpResponse.AdminView](../api/http-response.md#adminview).
 
 ## Creating a templ template
 
@@ -82,8 +82,8 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-!!! note "Caveats"
-    Javascripts for the captive portal must be written using `ES5` syntax to support older devices. The assets builder may throw an error if you use `ES6` syntax.
+!!! note "Modern browsers"
+    The app targets modern browsers only. Both the captive portal and admin asset bundles compile to **ES2017**, so modern JavaScript (arrow functions, template literals, `class`, etc.) is fine on both surfaces.
 
 ## Adding global plugin assets
 

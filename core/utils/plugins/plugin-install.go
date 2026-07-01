@@ -43,6 +43,12 @@ func InstallFromLocalPath(db *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpt
 		return
 	}
 
+	if opts.PreBuild != nil {
+		if err = opts.PreBuild(info); err != nil {
+			return
+		}
+	}
+
 	opts.RemoveSrc = false
 
 	err = InstallPlugin(def.LocalPath, db, opts)
@@ -106,6 +112,12 @@ func InstallFromGitSrc(sqldb *sql.DB, def sdkutils.PluginSrcDef, opts InstallOpt
 		return sdkutils.PluginInfo{}, err
 	}
 
+	if opts.PreBuild != nil {
+		if err := opts.PreBuild(info); err != nil {
+			return sdkutils.PluginInfo{}, err
+		}
+	}
+
 	if err := InstallPlugin(sdkutils.StripRootPath(clonePath), sqldb, opts); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
@@ -126,6 +138,14 @@ type InstallOpts struct {
 	// the other installed plugins. Nil = build unpinned (the lock was unavailable or
 	// empty). Callers in internal/api populate it via plugindeps.Fetch.
 	PinnedDeps []LockedGoModule
+	// PreBuild, when non-nil, is invoked with the plugin's parsed plugin.json info
+	// once the source is materialized (cloned/on disk) but BEFORE any build,
+	// migration, or install work. Returning an error aborts the install with that
+	// error and no side effects. Used by internal/api to enforce the cloud denylist
+	// (refuse a blocked plugin before spending time compiling its .so on-device).
+	// This util package must not dial the cloud itself (layering), so the caller
+	// supplies the check as a closure.
+	PreBuild func(info sdkutils.PluginInfo) error
 }
 
 func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {

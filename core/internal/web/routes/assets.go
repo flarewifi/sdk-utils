@@ -37,6 +37,14 @@ func GlobalAssets(g *api.CoreGlobals) {
 	r.PathPrefix(assets.AdminCssHref).Handler(cacheMw(controllers.GlobalAdminCssCtrl(g)))
 	r.PathPrefix(assets.PortalJsSrc).Handler(cacheMw(controllers.GlobalPortalJsCtrl(g)))
 	r.PathPrefix(assets.PortalCssHref).Handler(cacheMw(controllers.GlobalPortalCssCtrl(g)))
+
+	// Serve sidecar assets (fonts, images) that esbuild emits alongside the
+	// global CSS bundle — e.g. bootstrap-icons' web fonts, which the bundled CSS
+	// references by relative URL under /assets/globals/. The four handlers above
+	// match only the hashed JS/CSS bundle paths and are registered first, so this
+	// directory server (registered last) only ever handles those sidecar files.
+	coreDistFs := http.FileServer(http.Dir(g.CoreAPI.Resource("assets/dist")))
+	r.PathPrefix("/assets/globals/").Handler(cacheMw(http.StripPrefix("/assets/globals/", coreDistFs)))
 }
 
 func setupAssetsRoutes(r *mux.Router, p sdkapi.IPluginApi) {

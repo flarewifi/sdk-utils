@@ -469,7 +469,7 @@
   });
 }(typeof define === 'function' && define.amd ? define : function(deps, factory) {
   if (typeof module !== 'undefined' && module.exports) { //Node
-    module.exports = factory(require('./jquery-v1.12.4.js'));
+    module.exports = factory(require('./jquery-v3.7.1.js'));
   } else {
     window.toastr = factory(window.jQuery);
   }

@@ -110,19 +110,14 @@ templ AdminIndexPage(api sdkapi.IPluginApi, data interface{}) {
 
 ## CSS Customization
 
-The admin interface uses Bootstrap v5. The login and portal pages use Bootstrap v3 for compatibility with older captive portal browsers. Both interfaces use ES5 syntax only for maximum browser compatibility.
+Both the admin and portal interfaces use **Bootstrap 5**. The app targets modern browsers only, and both asset bundles compile to ES2017.
 
-!!! important "Theme plugins must bundle their own Bootstrap"
-    When creating a theme plugin, you must include your own copy of the required Bootstrap version in your theme's `vendor/` directory:
-
-    - **Admin**: Bootstrap v5 CSS + JS + Bootstrap Icons
-    - **Login/Portal**: Bootstrap v3 CSS (JS is not required)
-    
-    Reference these files in your manifest and stylesheets (see [Step 9: Add Assets](index.md#step-9-add-assets) in the main guide).
+!!! important "Bootstrap is provided by core — do not vendor it"
+    **Bootstrap 5.3.3 is a core global**, auto-loaded on **every** admin and portal page (like jQuery, htmx, and Alpine). Theme plugins **must not** include their own Bootstrap in `vendor/`, add Bootstrap entries to their manifest, or `@import`/`require` Bootstrap — your theme inherits it globally on both surfaces. (Bootstrap Icons 1.13.1 is likewise a core global on admin.)
 
 ### Using Bootstrap 5
 
-The admin interface always uses Bootstrap 5. You can use Bootstrap 5 classes in your custom styles:
+Both interfaces use Bootstrap 5. You can use Bootstrap 5 classes in your custom styles:
 
 ```css
 /* resources/assets/admin/css/theme.css */
@@ -137,7 +132,7 @@ The admin interface always uses Bootstrap 5. You can use Bootstrap 5 classes in 
 
 ## JavaScript Enhancements
 
-The admin interface supports jQuery, htmx, and **Alpine.js v3** for building interactive features (admin assets are bundled at ES2017, so modern JavaScript is fine here). This differs from the **portal**, which runs Alpine v2 and must stay ES5 — see [Alpine.js: portal v2 vs admin v3](../../api/assets-manifest.md#alpine-versions).
+Both the admin and portal interfaces support jQuery, htmx, and **Alpine.js v3** for building interactive features. All asset bundles are compiled at ES2017, so modern JavaScript is fine on both surfaces — see [Alpine.js](../../api/assets-manifest.md#alpine-versions).
 
 ### Theme JavaScript
 
@@ -168,7 +163,7 @@ $(function() {
 - **Assets not loading**: Check manifest files and file paths
 - **Layout not rendering**: Verify templ syntax and data structures
 - **Navigation not showing**: Ensure proper nav data handling
-- **JavaScript errors**: Check for ES5 compatibility
+- **JavaScript errors**: Check the browser console (modern ES2017 JavaScript is supported)
 
 ### Debug Tips
 
@@ -185,6 +180,6 @@ To make your theme translatable, use the translation system in your templates:
 <h3>{ api.Translate("label", "System Status") }</h3>
 ```
 
-Create translation files in `resources/translations/[lang]/label/` for each language you want to support.
+Add the English source text (`"System Status"`) as a key under the `label` type in `resources/translations/en.json`, then supply a translation for the same key in each `resources/translations/<lang>.json` catalog you want to support. See the [translations guide](../../guides/translations.md) for the full format.
 
 [← Back to Main Guide](index.md)

@@ -2,9 +2,6 @@
   "global.js": [
     "./portal/js/globals.js"
   ],
-  "polyfills.js": [
-    "./portal/js/polyfills.js"
-  ],
   "payment-options.js": [
     "./portal/payments/payment-options.js"
   ],

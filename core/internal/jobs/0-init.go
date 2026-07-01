@@ -34,8 +34,20 @@ func Init(g *api.CoreGlobals) {
 	// Start fingerprint cleanup scheduler (runs at 3AM daily)
 	StartFingerprintCleanupScheduler(g.Database, g.Models)
 
-	// Start session cleanup scheduler (runs at 11:30 PM daily, deletes consumed/expired sessions)
-	StartSessionCleanupScheduler(g.Database, g.Models)
+	// Start session cleanup scheduler (runs at 11:30 PM daily, deletes consumed/expired
+	// sessions and notifies admin about sessions never started in 90+ days)
+	StartSessionCleanupScheduler(g.Database, g.Models, g.CoreAPI)
+
+	// Start device log cleanup scheduler (runs every hour, deletes logs older than 90 days)
+	StartDeviceLogCleanupScheduler(g.Database, g.Models, g.CoreAPI)
+
+	// Start notification cleanup scheduler (runs at 2:00 AM daily, caps the
+	// notifications table to its newest rows so it can't grow unbounded)
+	StartNotificationCleanupScheduler(g.Database, g.Models, g.CoreAPI)
+
+	// Start voucher cleanup scheduler (runs at 2:15 AM daily, deletes stale activated
+	// vouchers and notifies admin about vouchers that expired before use)
+	StartVoucherCleanupScheduler(g.Database, g.Models, g.CoreAPI)
 
 	// Start batch save loop for running sessions (flushes to DB periodically)
 	StartBatchSaveLoop(g.ClientMgr)

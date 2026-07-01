@@ -55,6 +55,14 @@ func (n *NotificationAPI) MarkAllAsRead(ctx context.Context) error {
 	return n.models.Notification().MarkAllAsRead(ctx)
 }
 
+func (n *NotificationAPI) DeleteNotification(ctx context.Context, id int64) error {
+	return n.models.Notification().DeleteNotification(ctx, id)
+}
+
+func (n *NotificationAPI) DeleteAllNotifications(ctx context.Context) error {
+	return n.models.Notification().DeleteAllNotifications(ctx)
+}
+
 func (n *NotificationAPI) sendEvent(api *PluginApi, notif *sdkapi.Notification) {
 	accts, err := api.AcctAPI.GetAll()
 	if err != nil {

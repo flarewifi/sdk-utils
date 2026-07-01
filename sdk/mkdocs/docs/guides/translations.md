@@ -4,45 +4,79 @@
 
 To translate texts, we will use the [Translate](../api/plugin-api.md#translate) method from [PluginApi](../api/plugin-api.md).
 
-The [Translate](../api/plugin-api.md#translate) method receives a message type and message key string and returns the translated text. The method will look for the translation in the `resources/translations/[lang]/[type]/[file].txt` file in your plugin.
+The [Translate](../api/plugin-api.md#translate) method receives a **message type** and the **English source text** and returns the translated text. The method looks the text up in a single per-language JSON catalog in your plugin:
 
-The `[lang]` placeholder is the language code set in the [application config](../api/config-api.md#application), e.g. `en` for English.
-
-The `[type]` placeholder is the type of the translation message, e.g. `label` for labels and button texts. Other types are `info` and `error`.
-
-The `[file]` placeholder is the message key of the translation message.
-
-For example, to translate message key "save" to the target language, we can use the following code:
-```go
-saveText := api.Translate("label", "save")
+```
+resources/translations/<lang>.json
 ```
 
-In this example, the [IPluginApi.Translate](../api/plugin-api.md#translate) method will look for the file `resources/translations/en/label/save.txt`. The contents of the file will be used as the template for the translated text. For more advanced translations, see [PluginApi.Translate](../api/plugin-api.md#translate) method documentation.
+The `<lang>` placeholder is the language code set in the [application config](../api/config-api.md#application), e.g. `en` for English. There is **one JSON file per language** (`en.json`, `es.json`, `fr.json`, …) — not a tree of per-string `.txt` files.
 
-The translate method can also be called within views using the `{ api.Translate("label", "save") }` helper method. For example:
+Each catalog is a JSON object keyed first by message type, then by the English source text, whose value is the translation:
+
+``` json title="resources/translations/es.json"
+{
+  "label": {
+    "Save": "Guardar",
+    "Cancel": "Cancelar"
+  },
+  "error": {
+    "Invalid input": "Entrada no válida"
+  }
+}
+```
+
+The six supported message types (the top-level keys of every catalog) are: `label`, `error`, `success`, `info`, `warning`, and `type`.
+
+**The lookup key is the English source text itself** — you pass the full, natural-language message, not a short symbolic key:
+
+```go
+saveText := api.Translate("label", "Save")
+```
+
+Here `Translate` looks in the active language's catalog for `["label"]["Save"]`. The translate method can also be called within views using the same helper:
 
 ```html
-<h1>{ api.Translate("label", "save") }</h1>
+<h1>{ api.Translate("label", "Save") }</h1>
 ```
 
-When a translation file is missing, the running code will automatically generate it for each supported language. You can edit the translation files once they are generated.
+### The English catalog is the registry
+
+`en.json` is the source-of-truth **registry** of every translatable string. In it, each value is identical to its key (`"Save": "Save"`) — it exists to enumerate the strings your plugin uses, and its presence marks a component as migrated.
+
+Other languages are intentionally **sparse**: a translator only fills in the strings that have been translated. When a key is **absent** (or the whole `<lang>.json` is missing), `Translate` falls back to the **English source text you passed in** — it is never written back to disk as English, and it never errors. This means:
+
+- You can call `Translate` with a brand-new string and it will render correctly (as English) before any catalog entry exists.
+- Untranslated strings are simply omitted from non-English files, keeping them small and easy to review.
+
+### Populating catalogs (tooling, not runtime)
+
+Unlike the old system, the runtime **does not auto-generate** translation files. Missing keys are added to `en.json` by the `translations-mcp` tooling, whose `sync` command scans your plugin's `.go` and `.templ` source for `Translate("type", "text")` calls and appends any missing keys (with `value == key`) to `en.json`. Translators then fill in each `<lang>.json`. The `check` / `find_untranslated` commands report coverage gaps.
+
+In development (`GO_ENV=dev`) catalogs are re-read from disk on every call, so edits to a `<lang>.json` show up live without a rebuild; production caches parsed catalogs and the build minifies them into compact single-line JSON.
 
 ## 2. Translations With Variables
 
-Let's say you want to display an amount in a label. You can use the  [IPluginApi.Translate](../api/plugin-api.md#translate) method with variables to achieve this. For example, if you have the following translation text with a vairable `amount`:
+Let's say you want to display an amount in a label. You can use the  [IPluginApi.Translate](../api/plugin-api.md#translate) method with variables to achieve this. Placeholders use the `<% .name %>` delimiters (a Go `text/template` with custom `<% %>` delims — **not** `{{ }}`, which would print literally).
 
-``` title="resources/translations/en/label/paid_amount.txt"
-You paid <% .currency %> <% .amount %>
+The English source text — placeholders and all — is the catalog key. So a translated entry looks like this:
+
+``` json title="resources/translations/es.json"
+{
+  "label": {
+    "You paid <% .currency %> <% .amount %>": "Pagaste <% .currency %> <% .amount %>"
+  }
+}
 ```
 
-Then you can substitue the variable `amount` with the actual value following like this:
+Then you substitute the variables `currency` and `amount` with actual values by passing **key/value pairs** after the text:
 ```go
-txt := api.Translate("label", "paid_amount", "currency", "PHP", "amount", 100)
+txt := api.Translate("label", "You paid <% .currency %> <% .amount %>", "currency", "PHP", "amount", 100)
 ```
 
 Likewise, you can use the [IPluginApi.Translate](../api/plugin-api.md#translate) method in views to achieve the same result:
 ```templ
-<p>{ api.Translate("label", "paid_amount", "amount", 100) }</p>
+<p>{ api.Translate("label", "You paid <% .currency %> <% .amount %>", "currency", "PHP", "amount", 100) }</p>
 ```
 
 ## 3. Best Practices for Translation Keys
@@ -93,14 +127,22 @@ errStr = validtr.api.Translate("error", "Input value does not meet the required 
 
 ### Translation File Structure
 
-For the good example above, create a translation file at:
-```
-resources/translations/en/error/Input value does not meet the required minimum characters.txt
+For the good example above, the English source text becomes a key under the `error` type in `en.json`, and each language file supplies its own translation using the same `<% %>` placeholders:
+
+``` json title="resources/translations/en.json (registry — value == key)"
+{
+  "error": {
+    "Input value does not meet the required minimum characters": "Input value does not meet the required minimum characters"
+  }
+}
 ```
 
-With content using Go template placeholders:
-```
-<% .label %> must be at least <% .min %> characters
+``` json title="resources/translations/es.json (translated, with placeholders)"
+{
+  "error": {
+    "Input value does not meet the required minimum characters": "<% .label %> debe tener al menos <% .min %> caracteres"
+  }
+}
 ```
 
 ### Common Generic Translation Keys

@@ -136,3 +136,20 @@ WHERE batch_uuid = @batch_uuid;
 -- name: DeleteVouchersByBatchUUID :exec
 DELETE FROM vouchers
 WHERE batch_uuid = @batch_uuid;
+
+-- name: CountUsedVouchers :one
+-- Counts USED (activated) vouchers past the 30-day retention window, keyed on
+-- activated_at. Decoupled from the parent session: a used voucher is kept 30 days
+-- from activation regardless of whether its session still exists.
+-- cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -30)
+SELECT COUNT(*) FROM vouchers WHERE activated_at IS NOT NULL AND activated_at < @cutoff_date;
+
+-- name: DeleteUsedVouchers :exec
+-- Deletes USED (activated) vouchers activated more than the retention window ago.
+DELETE FROM vouchers WHERE activated_at IS NOT NULL AND activated_at < @cutoff_date;
+
+-- name: CountUnusedVouchers :one
+-- Counts UNUSED (never activated) vouchers older than the 90-day age threshold.
+-- These are never auto-deleted (rule 2); the count only drives the daily warning.
+-- cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -90)
+SELECT COUNT(*) FROM vouchers WHERE activated_at IS NULL AND created_at < @cutoff_date;

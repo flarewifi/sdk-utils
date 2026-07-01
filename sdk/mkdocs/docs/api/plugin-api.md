@@ -228,19 +228,23 @@ fmt.Println(themes) // IThemesApi
 
 ### Translate
 
-It is a utility function used to convert a message key into a translated string. Example usage:
+It is a utility function used to convert an English source text into a translated string. Example usage:
 
 ```go
-msg := api.Translate("info", "payment_received", "amount", 1.00)
-fmt.Println(msg) // "Payment received USD 1.0.0"
+msg := api.Translate("info", "Payment received: USD <% .amount %>", "amount", 1.00)
+fmt.Println(msg) // "Payment received: USD 1.00"
 ```
 
-In this example, given that the [application](../api/config-api.md#application) language is set to `en`, the system will look for the file `resources/translations/en/info/payment_received.txt` inside your plugin directory. If the file is found, the system will use the contents of the file as the translation template.
+Given that the [application](../api/config-api.md#application) language is set to `en`, the system looks up the source text in the per-language catalog `resources/translations/en.json` inside your plugin directory — a single JSON file keyed by message type, then by the English source text. If a translation is found it is used as the template; otherwise the English source text you passed is used as-is. See the [Translations guide](../guides/translations.md) for the full catalog format.
 
-Sometimes we want to put variables inside the translation message. In this example, we want to pass the `amount` as a parameter to the message. We can do that by passing the amount param as key-value pairs to the `Translate` method. Internally, the param pairs are converted into a type `map[any]any`. To use the `amount` param in the translation file, we'll enclose it with `<%` and `%>` delimiters (with dot prefix). Therefore the content of `payment_received.txt` should be:
+Sometimes we want to put variables inside the translation message. In this example, we pass the `amount` as a parameter to the message by appending key-value pairs to the `Translate` method. Internally, the param pairs are converted into a type `map[any]any`. To use the `amount` param in the message, enclose it with `<%` and `%>` delimiters (with a dot prefix). The catalog entry in `en.json` therefore looks like:
 
-```go
-Payment received: USD <% .amount %>
+```json
+{
+  "info": {
+    "Payment received: USD <% .amount %>": "Payment received: USD <% .amount %>"
+  }
+}
 ```
 
 ### Uci

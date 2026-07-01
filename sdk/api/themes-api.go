@@ -15,8 +15,10 @@ import (
 type CSSLib string
 
 const (
+	// CssLibBootstrap5 is the only supported CSS library. Bootstrap 5 is provided
+	// globally by core (admin + portal); Bootstrap 3 was removed when the machine
+	// dropped old-browser support.
 	CssLibBootstrap5 CSSLib = "bootstrap5"
-	CssLibBootstrap3 CSSLib = "bootstrap3"
 )
 
 type IThemesApi interface {

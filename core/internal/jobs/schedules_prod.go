@@ -53,6 +53,14 @@ var (
 	// Set to 0 to use time-of-day scheduling instead of interval
 	SessionCleanupInterval = time.Duration(0)
 
+	// NotificationCleanupInterval - runs daily at 2:00 AM (calculated dynamically)
+	// Set to 0 to use time-of-day scheduling instead of interval
+	NotificationCleanupInterval = time.Duration(0)
+
+	// VoucherCleanupInterval - runs daily at 2:15 AM (calculated dynamically)
+	// Set to 0 to use time-of-day scheduling instead of interval
+	VoucherCleanupInterval = time.Duration(0)
+
 	// BatchSaveInterval controls how often the batch save loop snapshots
 	// time consumption for all running sessions and persists them to the
 	// database in a single transaction.
@@ -66,6 +74,17 @@ const (
 
 	SessionCleanupHour   = 23
 	SessionCleanupMinute = 30
+
+	// LogCleanupInterval is 1h in prod (interval-based), but hour/minute
+	// constants are kept for the wall-clock fallback path.
+	LogCleanupHour   = 1
+	LogCleanupMinute = 0
+
+	NotificationCleanupHour   = 2
+	NotificationCleanupMinute = 0
+
+	VoucherCleanupHour   = 2
+	VoucherCleanupMinute = 15
 
 	// MaxFingerprintsPerDevice - maximum fingerprints to keep per device
 	// Older fingerprints beyond this limit are deleted during cleanup

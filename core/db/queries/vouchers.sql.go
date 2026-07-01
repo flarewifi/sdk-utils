@@ -29,6 +29,35 @@ func (q *Queries) ActivateVoucher(ctx context.Context, arg ActivateVoucherParams
 	return err
 }
 
+const countUnusedVouchers = `-- name: CountUnusedVouchers :one
+SELECT COUNT(*) FROM vouchers WHERE activated_at IS NULL AND created_at < ?1
+`
+
+// Counts UNUSED (never activated) vouchers older than the 90-day age threshold.
+// These are never auto-deleted (rule 2); the count only drives the daily warning.
+// cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -90)
+func (q *Queries) CountUnusedVouchers(ctx context.Context, cutoffDate sql.NullTime) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUnusedVouchers, cutoffDate)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsedVouchers = `-- name: CountUsedVouchers :one
+SELECT COUNT(*) FROM vouchers WHERE activated_at IS NOT NULL AND activated_at < ?1
+`
+
+// Counts USED (activated) vouchers past the 30-day retention window, keyed on
+// activated_at. Decoupled from the parent session: a used voucher is kept 30 days
+// from activation regardless of whether its session still exists.
+// cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -30)
+func (q *Queries) CountUsedVouchers(ctx context.Context, cutoffDate sql.NullTime) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsedVouchers, cutoffDate)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createVoucher = `-- name: CreateVoucher :one
 INSERT INTO vouchers
     (uuid, code, provider_pkg, session_type, time_secs, data_mb, down_speed_mbps, up_speed_mbps, session_exp_days, use_global, expires_at, batch_uuid)
@@ -98,6 +127,16 @@ AND provider_pkg = ?1
 
 func (q *Queries) DeleteActivatedVouchers(ctx context.Context, providerPkg string) error {
 	_, err := q.db.ExecContext(ctx, deleteActivatedVouchers, providerPkg)
+	return err
+}
+
+const deleteUsedVouchers = `-- name: DeleteUsedVouchers :exec
+DELETE FROM vouchers WHERE activated_at IS NOT NULL AND activated_at < ?1
+`
+
+// Deletes USED (activated) vouchers activated more than the retention window ago.
+func (q *Queries) DeleteUsedVouchers(ctx context.Context, cutoffDate sql.NullTime) error {
+	_, err := q.db.ExecContext(ctx, deleteUsedVouchers, cutoffDate)
 	return err
 }
 

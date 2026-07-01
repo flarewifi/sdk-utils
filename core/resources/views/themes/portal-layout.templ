@@ -17,11 +17,10 @@ type PortalAssets struct {
 }
 
 type PortalLayoutData struct {
-	PageUUID     string
-	Assets       PortalAssets
-	SseURL       string
-	PolyfillsURL string
-	Flash        *sdkapi.FlashMsg
+	PageUUID string
+	Assets   PortalAssets
+	SseURL   string
+	Flash    *sdkapi.FlashMsg
 }
 
 templ PortalHead(api sdkapi.IPluginApi, data PortalLayoutData) {
@@ -39,7 +38,6 @@ templ PortalHead(api sdkapi.IPluginApi, data PortalLayoutData) {
 	if data.Assets.PageCssHref != "" {
 		<link rel="stylesheet" href={ data.Assets.PageCssHref }/>
 	}
-	<script nomodule="" src={ data.PolyfillsURL }></script>
 }
 
 templ PortalScripts(data PortalAssets, flash *sdkapi.FlashMsg) {

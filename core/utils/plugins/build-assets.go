@@ -76,7 +76,9 @@ func BuildAssets(pluginDir string) (err error) {
 			return fmt.Errorf("failed to read portal manifest: %w", err)
 		}
 
-		if results, err := compileManifest(pluginDir, manifest, api.ES5); err != nil {
+		// Portal assets target ES2017 (same as admin) — the machine now supports
+		// only modern browsers, so the old ES5/IE11 captive-portal target is gone.
+		if results, err := compileManifest(pluginDir, manifest, api.ES2017); err != nil {
 			return fmt.Errorf("failed to compile portal manifest: %w", err)
 		} else {
 			outManifest.PortalAssets = results

@@ -10,10 +10,8 @@ package api
 
 import (
 	"errors"
-
-	v3 "core/internal/rpc/rpc_flarewifi_v3"
 )
 
-func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string, emit progressEmitter, extraMetas ...*v3.InstalledMeta) (string, error) {
+func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string, emit progressEmitter, installingMeta string) (string, error) {
 	return "", errors.New("store plugin installs are not supported on monolithic builds; plugins ship with the system release")
 }
