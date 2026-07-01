@@ -13,7 +13,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ## Which Alpine.js version runs on the portal and admin?
 
-Core ships a single Alpine major — **v3** — loaded and auto-started on **both** the portal and admin. The full Alpine v3 API (`Alpine.store()` / `$store`, `Alpine.data()`, `x-effect`, the `@click.outside` modifier, adding reactive props after init) works on both surfaces. Both bundles target ES2017 and the app supports modern browsers only, so there are no legacy portal constraints.
+Core ships Alpine **v3**, loaded and auto-started on **both** the portal and admin. The full Alpine v3 API (`Alpine.store()` / `$store`, `Alpine.data()`, `x-effect`, the `@click.outside` modifier, adding reactive props after init) works on both surfaces. Both bundles target ES2017 for modern browsers.
 
-Both surfaces use the core-provided Alpine, so don't vendor your own. See [Alpine.js: v3 on both surfaces](../api/assets-manifest.md#alpine-versions).
+Both surfaces use the core-provided Alpine, so don't vendor your own. See [Alpine.js](../api/assets-manifest.md#alpine-versions).
 

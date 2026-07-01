@@ -165,7 +165,7 @@ The `$flare.ui` namespace contains UI components available in admin views.
 
 ### $flare.ui.line_chart {#flare-ui-line-chart}
 
-A lightweight (~4KB) SVG stacked area chart utility. No dependencies, ES5 compatible.
+A lightweight (~4KB) SVG stacked area chart utility with no dependencies.
 
 #### Availability
 

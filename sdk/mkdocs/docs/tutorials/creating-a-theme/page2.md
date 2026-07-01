@@ -110,7 +110,7 @@ templ AdminIndexPage(api sdkapi.IPluginApi, data interface{}) {
 
 ## CSS Customization
 
-Both the admin and portal interfaces use **Bootstrap 5** — there is no more Bootstrap 3 split. The app targets modern browsers only, and both asset bundles compile to ES2017.
+Both the admin and portal interfaces use **Bootstrap 5**. The app targets modern browsers only, and both asset bundles compile to ES2017.
 
 !!! important "Bootstrap is provided by core — do not vendor it"
     **Bootstrap 5.3.3 is a core global**, auto-loaded on **every** admin and portal page (like jQuery, htmx, and Alpine). Theme plugins **must not** include their own Bootstrap in `vendor/`, add Bootstrap entries to their manifest, or `@import`/`require` Bootstrap — your theme inherits it globally on both surfaces. (Bootstrap Icons 1.13.1 is likewise a core global on admin.)
@@ -132,7 +132,7 @@ Both interfaces use Bootstrap 5. You can use Bootstrap 5 classes in your custom 
 
 ## JavaScript Enhancements
 
-Both the admin and portal interfaces support jQuery, htmx, and **Alpine.js v3** for building interactive features. All asset bundles are compiled at ES2017, so modern JavaScript is fine on both surfaces — see [Alpine.js: v3 on both surfaces](../../api/assets-manifest.md#alpine-versions).
+Both the admin and portal interfaces support jQuery, htmx, and **Alpine.js v3** for building interactive features. All asset bundles are compiled at ES2017, so modern JavaScript is fine on both surfaces — see [Alpine.js](../../api/assets-manifest.md#alpine-versions).
 
 ### Theme JavaScript
 

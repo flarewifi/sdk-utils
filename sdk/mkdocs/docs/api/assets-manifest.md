@@ -114,20 +114,19 @@ Libraries currently vendored under `@flare/lib/vendor`:
 - `alpinejs-v3.15.1.js` — Alpine **v3**, used by **both admin and portal** assets (all bundles target ES2017).
 - `bootstrap-v5.3.3` (CSS + JS) — Bootstrap **5.3.3**, loaded globally by core on **both admin and portal**. See [Bootstrap is a core global](#bootstrap-global).
 - `bootstrap-icons-v1.13.1` — Bootstrap Icons **1.13.1**, a core global (admin).
-- `htmx-v1.9.12.js` (plus the extensions `htmx-ext-sse-v1.19.12.js` and `htmx-ext-loading-states-v1.19.12.js`)
+- `htmx-v2.0.10.js` (plus the extensions `htmx-ext-sse-v2.2.4.js` and `htmx-ext-loading-states-v2.0.2.js`)
 - `jquery-v3.7.1.js`
 - `toastr.js` / `toastr.css`
 - `awesome-notifications-v3.1.3.js` / `awesome-notifications-v3.1.3.css`
-- Polyfills: `event-source-polyfill.js`, `domparser-polyfill.js`, `xmldom-entities-v0.6.0.js`
 
 Note that core already exposes **jQuery**, **`window.Alpine`**, and **Bootstrap 5** as globals on **both** the portal and admin (it loads and auto-starts Alpine for you), so most plugins and themes can use them directly without importing or vendoring anything.
 
 !!! warning "Do not vendor your own Alpine or Bootstrap"
-    Core is the single source of Alpine and Bootstrap. Vendoring your own copy in a plugin or theme **double-loads** the library against the core-provided instance. Use the global `window.Alpine` / plain `x-*` attributes and the global Bootstrap 5 classes/JS instead. Both surfaces run the **same** Alpine major (v3) and the **same** Bootstrap major (5) — see below.
+    Core is the single source of Alpine and Bootstrap. Vendoring your own copy in a plugin or theme **double-loads** the library against the core-provided instance. Use the global `window.Alpine` / plain `x-*` attributes and the global Bootstrap 5 classes/JS instead. Both admin and portal run Alpine v3 and Bootstrap 5 — see below.
 
 ### Bootstrap is a core global {#bootstrap-global}
 
-**Bootstrap 5.3.3 is provided by core as a global asset** — it is auto-loaded on **every** admin and portal page through core's global bundles (`globals.js` / `global.css` and the portal equivalents), exactly like jQuery, htmx, and Alpine. There is a single Bootstrap major everywhere; the old Bootstrap 3 portal path is gone.
+**Bootstrap 5.3.3 is provided by core as a global asset** — it is auto-loaded on **every** admin and portal page through core's global bundles (`globals.js` / `global.css` and the portal equivalents), exactly like jQuery, htmx, and Alpine. There is a single Bootstrap major, used everywhere.
 
 Because Bootstrap is global, **plugins and themes must not vendor or reference their own Bootstrap** — no `vendor/bootstrap-*` files, no Bootstrap entries in your manifest, and no `@import`/`require` of Bootstrap. Just use the Bootstrap 5 classes and JS; they are already on the page. Bootstrap Icons 1.13.1 is likewise a core global (admin).
 
@@ -169,8 +168,6 @@ Dark mode uses the same mechanism: scope variable overrides under `[data-bs-them
 
 Reference: Bootstrap's [CSS variables](https://getbootstrap.com/docs/5.3/customize/css-variables/) and [color modes](https://getbootstrap.com/docs/5.3/customize/color-modes/) docs.
 
-### Alpine.js: v3 on both surfaces {#alpine-versions}
+### Alpine.js {#alpine-versions}
 
-Core ships a single Alpine major — **v3 (`alpinejs-v3.15.1.js`)** — loaded and auto-started on **both** the portal and admin. Both asset bundles compile to **ES2017**, so the full Alpine v3 API (`Alpine.store()` / `$store`, `Alpine.data()`, `x-effect`, `@click.outside`, adding reactive props after init, etc.) works everywhere, including the portal.
-
-The app targets **modern browsers only**, so there are no legacy ES5/IE11 constraints on portal markup or scripts. Just use `window.Alpine` and `x-*` attributes directly.
+Core ships Alpine **v3 (`alpinejs-v3.15.1.js`)**, loaded and auto-started on both the portal and admin. Both asset bundles compile to **ES2017**, so the full Alpine v3 API (`Alpine.store()` / `$store`, `Alpine.data()`, `x-effect`, `@click.outside`, adding reactive props after init, etc.) is available on every page. Just use `window.Alpine` and `x-*` attributes directly.

@@ -150,7 +150,7 @@ const (
 ```
 
 !!! note "CSS Library"
-    Bootstrap 5 (`CssLibBootstrap5`) is the only supported CSS library, for **both** admin and portal themes. Bootstrap 5.3.3 is provided globally by core, so themes do **not** vendor their own Bootstrap. (Bootstrap 3 has been removed.)
+    Bootstrap 5 (`CssLibBootstrap5`) is the only supported CSS library, for **both** admin and portal themes. Bootstrap 5.3.3 is provided globally by core, so themes do **not** vendor their own Bootstrap.
 
 ### Theme preview images
 

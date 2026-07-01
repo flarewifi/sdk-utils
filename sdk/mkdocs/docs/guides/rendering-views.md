@@ -2,7 +2,7 @@
 
 Flarewifi renders HTML with [templ](https://templ.guide) — a templating engine with first-class Go integration: LSP autocompletion, compile-time type checking, and templates that compile to pure Go for speed.
 
-Paired with [htmx](https://htmx.org/), you can build modern, interactive pages without a heavy frontend toolchain while still supporting the older browsers found on some phones. The `htmx` object is always available when you render via [IHttpResponse.PortalView](../api/http-response.md#portalview) or [IHttpResponse.AdminView](../api/http-response.md#adminview).
+Paired with [htmx](https://htmx.org/), you can build modern, interactive pages without a heavy frontend toolchain. The `htmx` object is always available when you render via [IHttpResponse.PortalView](../api/http-response.md#portalview) or [IHttpResponse.AdminView](../api/http-response.md#adminview).
 
 ## Creating a templ template
 

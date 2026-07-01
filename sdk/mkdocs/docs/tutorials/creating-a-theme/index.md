@@ -10,7 +10,7 @@ This tutorial will guide you through creating a custom theme plugin for Flarewif
 - A Flarewifi development environment set up
 
 !!! important "Bootstrap is provided by core — do not vendor it"
-    **Bootstrap 5.3.3 is provided by core as a global asset** (CSS + JS), auto-loaded on **every** admin and portal page — exactly like jQuery, htmx, and Alpine. Theme plugins **must not** vendor or reference their own Bootstrap: no `vendor/bootstrap-*` files, no Bootstrap entries in your manifest, and no `@import`/`require` of Bootstrap. Your theme inherits Bootstrap 5 globally on both surfaces; just use the Bootstrap 5 classes and JS. (Bootstrap Icons 1.13.1 is likewise a core global on admin.) Bootstrap 3 has been removed.
+    **Bootstrap 5.3.3 is provided by core as a global asset** (CSS + JS), auto-loaded on **every** admin and portal page — exactly like jQuery, htmx, and Alpine. Theme plugins **must not** vendor or reference their own Bootstrap: no `vendor/bootstrap-*` files, no Bootstrap entries in your manifest, and no `@import`/`require` of Bootstrap. Your theme inherits Bootstrap 5 globally on both surfaces; just use the Bootstrap 5 classes and JS. (Bootstrap Icons 1.13.1 is likewise a core global on admin.)
 
 ## Step 1: Create the Basic Plugin Structure
 
@@ -360,7 +360,7 @@ templ PortalLayout(data PortalLayoutData) {
 ```
 
 !!! note "Alpine.js is provided by core — don't vendor your own"
-    `@data.Components.Scripts()` emits the core portal asset bundle, which already loads and auto-starts **Alpine.js** (and jQuery + htmx + Bootstrap 5). Use `window.Alpine` / `x-*` attributes directly in your portal markup; do **not** vendor your own Alpine copy — it would double-load against core's. The portal and admin both run **Alpine v3**, and both bundles target ES2017, so the full Alpine v3 API (`@click.outside`, `Alpine.store`, `x-effect`, adding reactive props after init, etc.) works on both surfaces. See [Alpine.js: v3 on both surfaces](../../api/assets-manifest.md#alpine-versions).
+    `@data.Components.Scripts()` emits the core portal asset bundle, which already loads and auto-starts **Alpine.js** (and jQuery + htmx + Bootstrap 5). Use `window.Alpine` / `x-*` attributes directly in your portal markup; do **not** vendor your own Alpine copy — it would double-load against core's. The portal and admin both run **Alpine v3**, and both bundles target ES2017, so the full Alpine v3 API (`@click.outside`, `Alpine.store`, `x-effect`, adding reactive props after init, etc.) works on both surfaces. See [Alpine.js](../../api/assets-manifest.md#alpine-versions).
 
 ### resources/views/portal/index.templ
 
