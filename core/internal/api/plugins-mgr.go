@@ -49,6 +49,13 @@ var ErrPaymentRequired = sdkplugin.ErrPaymentRequired
 // response's disabled flag; see fetchStoreRelease).
 var ErrPluginDisabled = errors.New("plugin disabled")
 
+// ErrPluginBlocked is returned by on-device install paths (local/git) when the
+// plugin being installed is on the superuser denylist, as answered live by the
+// cloud (IsPluginBlocked) keyed on its plugin.json package/name. Distinct from
+// ErrPluginDisabled (a developer withdrawal) — this is an operator block. The
+// wrapped message carries the operator-supplied reason when one was given.
+var ErrPluginBlocked = errors.New("plugin blocked")
+
 func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr, eventsMgr *events.EventsManager) *PluginsMgr {
 	pmgr := &PluginsMgr{
 		db:        d,
@@ -254,6 +261,48 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) (sdkplugin.IPlu
 	return h, nil
 }
 
+// checkPluginBlocked asks the cloud whether a plugin (identified by its plugin.json
+// package/name) is on the superuser denylist, returning ErrPluginBlocked (wrapping
+// the operator-supplied reason, when given) if so. It is the install-time gate for
+// on-device installs, wired in as the InstallOpts.PreBuild hook so a blocked plugin
+// is refused BEFORE it is compiled on-device. Its signature matches PreBuild.
+//
+// Fail-open by design: a missing machine identity or any cloud/transport error
+// leaves the install to proceed. This mirrors the daily denylist reconcile
+// (jobs.reconcileBlockedPlugins), which never blocks on a failed fetch — a cloud
+// outage must not break installs, and the marker-based boot loader still catches a
+// blocked plugin on the next reboot. The recover() contains the shared RPC helper,
+// which panics on a header error and would otherwise crash the install goroutine.
+func (self *PluginsMgr) checkPluginBlocked(info sdkutils.PluginInfo) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = nil
+		}
+	}()
+
+	_, machineID := machineuid.GetMachineUID()
+	if machineID == "" {
+		return nil
+	}
+
+	srv, ctx := corerpc.GetTwirpServiceAndCtx()
+	resp, rpcErr := srv.IsPluginBlocked(ctx, &rpc_flarewifi_v3.IsPluginBlockedRequest{
+		MachineId: machineID,
+		Package:   info.Package,
+		Name:      info.Name,
+	})
+	if rpcErr != nil {
+		return nil
+	}
+	if resp.GetBlocked() {
+		if reason := strings.TrimSpace(resp.GetReason()); reason != "" {
+			return fmt.Errorf("%w: %s", ErrPluginBlocked, reason)
+		}
+		return ErrPluginBlocked
+	}
+	return nil
+}
+
 // runInstall performs a plugin install synchronously, reporting stage progress
 // through emit (never nil here — the InstallPlugin handle supplies it). The
 // percentages are coarse, monotonic checkpoints: the cloud build only reports
@@ -304,6 +353,7 @@ func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitt
 			RemoveSrc:    true,
 			ForceInstall: true,
 			PinnedDeps:   pinned,
+			PreBuild:     self.checkPluginBlocked,
 		})
 
 	case sdkutils.PluginSrcLocal:
@@ -312,6 +362,7 @@ func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitt
 			Def:          def,
 			ForceInstall: true,
 			PinnedDeps:   pinned,
+			PreBuild:     self.checkPluginBlocked,
 		})
 
 	default:
