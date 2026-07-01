@@ -66,7 +66,7 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 
 	// RequestPluginBuild needs a concrete semver, so resolve "latest" first.
 	if version == "" {
-		rel, err := self.fetchStoreRelease(pkg, "")
+		rel, err := self.fetchStoreRelease(pkg, "", "")
 		if err != nil {
 			return fmt.Errorf("StagePluginUpdate: resolve latest %s: %w", pkg, err)
 		}
@@ -76,7 +76,10 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 		version = rel.Version
 	}
 
-	downloadURL, err := self.fetchPrebuiltPluginURL(pkg, version, coreVersion, nil)
+	// installingMeta is empty here: a plugin-only update of a bundle member is refused
+	// by the cloud (managed-member gate), and a core-update rebuild (coreVersion set)
+	// is exempted by that same gate via core_version — so no bundle context is needed.
+	downloadURL, err := self.fetchPrebuiltPluginURL(pkg, version, coreVersion, nil, "")
 	if err != nil {
 		return fmt.Errorf("StagePluginUpdate: %w", err)
 	}
@@ -95,7 +98,7 @@ func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) erro
 //
 // The mono twin of this method always errors: mono machines statically link
 // plugins at core-build time, so there is nothing a prebuilt .so could load into.
-func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string, emit progressEmitter, extraMetas ...*v3.InstalledMeta) (string, error) {
+func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string, emit progressEmitter, installingMeta string) (string, error) {
 	// The prebuild RPCs live on the core-owned FlarehotspotService (flarehotspot.v2),
 	// NOT the store plugin's store.v1 — core and plugin must keep separate proto
 	// files so their descriptors don't collide in the same process.
@@ -114,9 +117,12 @@ func (self *PluginsMgr) fetchPrebuiltPluginURL(pkg, version, coreVersion string,
 		// of this binary — i.e. the toolchain it was compiled with — the authoritative
 		// ABI value, independent of when the machine last registered.
 		GoVersion: sdkutils.GO_VERSION,
-		// Report installed bundles so the build backstop resolves meta-member coverage
-		// against the INSTALLED meta version, matching FetchLatestPluginReleaseByPackage.
-		InstalledMetas: self.installedMetasReport(extraMetas...),
+		// The bundle being expanded, if any (empty for a standalone/core-update build).
+		// The cloud validates membership, grants a paid member coverage via the bundle on
+		// first install, and uses it (with core_version) to distinguish a legitimate
+		// bundle/core-update build from a refused à-la-carte build of a bundle-pinned
+		// member. Other installed bundles are derived server-side from machine_plugins.
+		InstallingMeta: installingMeta,
 	})
 	if err != nil {
 		return "", fmt.Errorf("request build for %s: %w", pkg, err)

@@ -38,7 +38,7 @@ func (self *PluginsMgr) RepinMetaRecordsToLatest(confirmRemoval func([]MetaMembe
 	// toward orphan decisions below.
 	repins := make(map[string]sdkutils.MetaPlugin, len(cfg.MetaPlugins))
 	for _, m := range cfg.MetaPlugins {
-		rel, err := self.fetchStoreRelease(m.Package, "")
+		rel, err := self.fetchStoreRelease(m.Package, "", "")
 		if err != nil {
 			self.CoreAPI.Logger().Error(fmt.Sprintf("RepinMetaRecordsToLatest: fetch latest %s: %v", m.Package, err))
 			continue
