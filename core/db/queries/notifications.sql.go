@@ -7,7 +7,27 @@ package queries
 
 import (
 	"context"
+	"time"
 )
+
+const countRecentNotificationsBySubject = `-- name: CountRecentNotificationsBySubject :one
+SELECT COUNT(*) FROM notifications
+WHERE subject = ?1 AND created_at >= ?2
+`
+
+type CountRecentNotificationsBySubjectParams struct {
+	Subject    string
+	CutoffDate time.Time
+}
+
+// Counts notifications with the same subject created on/after cutoff_date. Used to
+// throttle repeat warnings so a persistent condition doesn't re-notify every night.
+func (q *Queries) CountRecentNotificationsBySubject(ctx context.Context, arg CountRecentNotificationsBySubjectParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countRecentNotificationsBySubject, arg.Subject, arg.CutoffDate)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const createNotification = `-- name: CreateNotification :one
 INSERT INTO notifications (
@@ -34,6 +54,45 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteAllNotifications = `-- name: DeleteAllNotifications :exec
+DELETE FROM notifications
+`
+
+func (q *Queries) DeleteAllNotifications(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteAllNotifications)
+	return err
+}
+
+const deleteNotification = `-- name: DeleteNotification :exec
+DELETE FROM notifications
+WHERE
+  id = ?1
+`
+
+func (q *Queries) DeleteNotification(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteNotification, id)
+	return err
+}
+
+const deleteNotificationsExceedingLimit = `-- name: DeleteNotificationsExceedingLimit :exec
+DELETE FROM notifications
+WHERE id NOT IN (
+  SELECT id FROM notifications
+  ORDER BY created_at DESC, id DESC
+  LIMIT 200
+)
+`
+
+// Retention cap: keeps only the newest 200 notifications and deletes the rest.
+// Read notifications are already deleted on open, so this bounds the UNREAD
+// pile-up (including this subsystem's own nightly warnings). The limit is
+// hardcoded here (same pattern as DeleteOldDeviceLogs); id DESC is a tiebreaker
+// for rows sharing a created_at second.
+func (q *Queries) DeleteNotificationsExceedingLimit(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteNotificationsExceedingLimit)
+	return err
 }
 
 const getByID = `-- name: GetByID :one

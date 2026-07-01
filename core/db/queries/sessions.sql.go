@@ -8,6 +8,7 @@ package queries
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const bulkUpdateTimeConsumption = `-- name: BulkUpdateTimeConsumption :exec
@@ -51,6 +52,19 @@ SELECT COUNT(*) FROM sessions WHERE
 // Counts sessions where time/data has been fully consumed OR expiration date has passed.
 func (q *Queries) CountConsumedOrExpiredSessions(ctx context.Context) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countConsumedOrExpiredSessions)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUnstartedSessions = `-- name: CountUnstartedSessions :one
+SELECT COUNT(*) FROM sessions WHERE started_at IS NULL AND created_at < ?1
+`
+
+// Counts sessions that were created but never started (voucher never redeemed).
+// cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -90)
+func (q *Queries) CountUnstartedSessions(ctx context.Context, cutoffDate time.Time) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUnstartedSessions, cutoffDate)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

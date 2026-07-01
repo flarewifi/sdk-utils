@@ -29,6 +29,33 @@ func (q *Queries) ActivateVoucher(ctx context.Context, arg ActivateVoucherParams
 	return err
 }
 
+const countExpiredUnusedVouchers = `-- name: CountExpiredUnusedVouchers :one
+SELECT COUNT(*) FROM vouchers
+WHERE activated_at IS NULL AND expires_at IS NOT NULL AND expires_at < ?1
+`
+
+// Counts vouchers that expired before ever being activated.
+// cutoff_date should be calculated in Go: time.Now().UTC()
+func (q *Queries) CountExpiredUnusedVouchers(ctx context.Context, cutoffDate sql.NullTime) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countExpiredUnusedVouchers, cutoffDate)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countStaleActivatedVouchers = `-- name: CountStaleActivatedVouchers :one
+SELECT COUNT(*) FROM vouchers WHERE activated_at IS NOT NULL AND session_id IS NULL
+`
+
+// Counts activated vouchers whose session has already been cleaned up (session_id SET NULL by FK cascade).
+// These are safe to delete as they served their purpose and have no parent session.
+func (q *Queries) CountStaleActivatedVouchers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countStaleActivatedVouchers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createVoucher = `-- name: CreateVoucher :one
 INSERT INTO vouchers
     (uuid, code, provider_pkg, session_type, time_secs, data_mb, down_speed_mbps, up_speed_mbps, session_exp_days, use_global, expires_at, batch_uuid)
@@ -98,6 +125,16 @@ AND provider_pkg = ?1
 
 func (q *Queries) DeleteActivatedVouchers(ctx context.Context, providerPkg string) error {
 	_, err := q.db.ExecContext(ctx, deleteActivatedVouchers, providerPkg)
+	return err
+}
+
+const deleteStaleActivatedVouchers = `-- name: DeleteStaleActivatedVouchers :exec
+DELETE FROM vouchers WHERE activated_at IS NOT NULL AND session_id IS NULL
+`
+
+// Deletes activated vouchers whose session has already been cleaned up (session_id SET NULL by FK cascade).
+func (q *Queries) DeleteStaleActivatedVouchers(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteStaleActivatedVouchers)
 	return err
 }
 

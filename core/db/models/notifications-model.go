@@ -83,3 +83,11 @@ func (nm *NotificationModel) GetNotificationByID(ctx context.Context, id int64) 
 func (nm *NotificationModel) MarkAllAsRead(ctx context.Context) error {
 	return nm.db.Queries.MarkAllAsRead(ctx, int64(sdkapi.NotificationStatusRead))
 }
+
+func (nm *NotificationModel) DeleteNotification(ctx context.Context, id int64) error {
+	return nm.db.Queries.DeleteNotification(ctx, id)
+}
+
+func (nm *NotificationModel) DeleteAllNotifications(ctx context.Context) error {
+	return nm.db.Queries.DeleteAllNotifications(ctx)
+}

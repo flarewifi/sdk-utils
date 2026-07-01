@@ -435,3 +435,8 @@ SELECT MAX(COALESCE(started_at, created_at)) as last_activity
 FROM sessions
 WHERE device_id = @device_id;
 
+-- name: CountUnstartedSessions :one
+-- Counts sessions that were created but never started (voucher never redeemed).
+-- cutoff_date should be calculated in Go: time.Now().UTC().AddDate(0, 0, -90)
+SELECT COUNT(*) FROM sessions WHERE started_at IS NULL AND created_at < @cutoff_date;
+

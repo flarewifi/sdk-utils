@@ -136,3 +136,18 @@ WHERE batch_uuid = @batch_uuid;
 -- name: DeleteVouchersByBatchUUID :exec
 DELETE FROM vouchers
 WHERE batch_uuid = @batch_uuid;
+
+-- name: CountStaleActivatedVouchers :one
+-- Counts activated vouchers whose session has already been cleaned up (session_id SET NULL by FK cascade).
+-- These are safe to delete as they served their purpose and have no parent session.
+SELECT COUNT(*) FROM vouchers WHERE activated_at IS NOT NULL AND session_id IS NULL;
+
+-- name: DeleteStaleActivatedVouchers :exec
+-- Deletes activated vouchers whose session has already been cleaned up (session_id SET NULL by FK cascade).
+DELETE FROM vouchers WHERE activated_at IS NOT NULL AND session_id IS NULL;
+
+-- name: CountExpiredUnusedVouchers :one
+-- Counts vouchers that expired before ever being activated.
+-- cutoff_date should be calculated in Go: time.Now().UTC()
+SELECT COUNT(*) FROM vouchers
+WHERE activated_at IS NULL AND expires_at IS NOT NULL AND expires_at < @cutoff_date;

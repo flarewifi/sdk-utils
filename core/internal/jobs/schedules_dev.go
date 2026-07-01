@@ -41,6 +41,12 @@ var (
 	// SessionCleanupInterval - how often to run session cleanup
 	SessionCleanupInterval = 500 * time.Second
 
+	// NotificationCleanupInterval - how often to run notification cleanup
+	NotificationCleanupInterval = 500 * time.Second
+
+	// VoucherCleanupInterval - how often to run voucher cleanup
+	VoucherCleanupInterval = 500 * time.Second
+
 	// BatchSaveInterval controls how often the batch save loop snapshots
 	// time consumption for all running sessions and persists them to the
 	// database in a single transaction.
@@ -54,6 +60,15 @@ const (
 
 	SessionCleanupHour   = 23
 	SessionCleanupMinute = 30
+
+	LogCleanupHour   = 1
+	LogCleanupMinute = 0
+
+	NotificationCleanupHour   = 2
+	NotificationCleanupMinute = 0
+
+	VoucherCleanupHour   = 2
+	VoucherCleanupMinute = 15
 
 	// MaxFingerprintsPerDevice - maximum fingerprints to keep per device
 	// In dev mode, use same value as production
