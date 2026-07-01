@@ -30,6 +30,7 @@ var (
 		"tc",
 		"nft",
 		"opkg",
+		"apk",
 		"shutdown",
 		"reboot",
 		"halt",
@@ -72,10 +73,10 @@ func Exec(command string, opts *ExecOpts) error {
 }
 
 func ExecOutput(command string, out io.Writer) error {
-	// opkg is not available in the dev container; treat package queries as
-	// returning no output (nothing installed) so plugin system_packages
-	// installs become a no-op in dev.
-	if strings.HasPrefix(command, "opkg") {
+	// Neither opkg nor apk is available in the dev container; treat package
+	// queries as returning no output (nothing installed) so plugin
+	// system_packages installs become a no-op in dev.
+	if strings.HasPrefix(command, "opkg") || strings.HasPrefix(command, "apk") {
 		return nil
 	}
 

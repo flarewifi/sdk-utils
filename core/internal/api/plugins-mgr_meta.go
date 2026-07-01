@@ -25,6 +25,14 @@ type MetaMemberRemoval struct {
 // flow maps it to its own cancellation so the whole staged update is discarded.
 var ErrMetaMemberRemovalCancelled = errors.New("meta member removal cancelled by admin")
 
+// ErrMetaMemberNotStandalone is returned by the install/update entry points when a
+// plugin that is currently a member of an installed meta bundle (and was NOT also
+// installed standalone) is targeted on its own. Such a member is pinned by its
+// bundle, so it must be installed/updated through the bundle — never individually.
+// Callers can detect it with errors.Is to show a "manage through its bundle"
+// message instead of a generic failure.
+var ErrMetaMemberNotStandalone = errors.New("plugin is a meta-bundle member and can only be updated through its bundle")
+
 // Meta-plugin bundle handling. A meta plugin is a named bundle of other plugins;
 // it has no plugin.so of its own. Its bundle -> members mapping lives in
 // data/config/plugins.json (cfg.MetaPlugins), which is the single source of truth
@@ -102,6 +110,17 @@ func (self *PluginsMgr) MetaMembership(pkg string) (owners []string, standalone 
 	}
 	owners = metaOwnersOf(cfg, pkg)
 	return owners, isStandalone(cfg, pkg) || len(owners) == 0
+}
+
+// IsManagedMetaMember reports whether pkg is currently owned by an installed meta
+// bundle and was NOT also installed standalone — i.e. a member managed entirely
+// through its bundle. Such a member is pinned by the bundle's release and must not
+// be installed or updated individually; the install/update entry points reject it
+// with ErrMetaMemberNotStandalone. A plugin owned by no bundle, or one the user
+// also installed on its own, is NOT managed (returns false) and updates normally.
+func (self *PluginsMgr) IsManagedMetaMember(pkg string) bool {
+	_, standalone := self.MetaMembership(pkg)
+	return !standalone
 }
 
 // isMetaPlugin reports whether pkg is an installed meta bundle (has a record in

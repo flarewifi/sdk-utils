@@ -14,7 +14,7 @@ require('../../lib/vendor/htmx-ext-sse-v1.19.12.js');
 require('./notify.js');
 require('./flash.js');
 
-import Alpine from 'alpinejs';
+import Alpine from '@flare/lib/vendor/alpinejs-v3.15.1.js';
 window.Alpine = Alpine;
 
 $(document).ready(function () {

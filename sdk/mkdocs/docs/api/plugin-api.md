@@ -147,7 +147,7 @@ It returns the [ILoggerAPI](./logger-api.md) object which is used to log events 
 
 ### Network
 
-It returns the [INetworkApi](../network-api/) object which is used to manage the network.
+It returns the [INetworkApi](./network-api.md) object which is used to manage the network.
 
 ```go
 network := api.Network()

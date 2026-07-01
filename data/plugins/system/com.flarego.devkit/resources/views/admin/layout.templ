@@ -52,7 +52,7 @@ templ AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) {
 								}
 							}
 						</ul>
-						<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:auth:logout")) }>
+						<form method="POST" action={ templ.SafeURL(api.Http().Router().UrlForRoute("admin:auth:logout")) }>
 							<button class="btn btn-outline-light btn-sm" type="submit">{ api.Translate("label", "Logout") }</button>
 						</form>
 					</div>

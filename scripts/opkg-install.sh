@@ -1,27 +1,25 @@
 #!/bin/sh
 
-# Check for node, node-npm, and rsync and install them if missing
+# Check for rsync and install it if missing.
+# Works on both opkg (OpenWRT <= 24.10) and apk (OpenWRT >= 25.0 / snapshots).
+#
+# node/npm are intentionally NOT installed: frontend assets are bundled by the
+# Go-native esbuild library against libraries vendored into each plugin's
+# resources/assets, so nothing on-device runs `npm install`. (The apk feeds for
+# the newest OpenWRT line no longer ship a binary `node` anyway.)
 
-# Check and install node
-if ! command -v node >/dev/null 2>&1; then
-  echo "node not found, installing..."
-  opkg update && opkg install node
+if command -v apk >/dev/null 2>&1; then
+  PKG_UPDATE="apk update"
+  PKG_INSTALL="apk add"
 else
-  echo "node is already installed."
-fi
-
-# Check and install npm
-if ! command -v npm >/dev/null 2>&1; then
-  echo "npm not found, installing..."
-  opkg update && opkg install node-npm
-else
-  echo "npm is already installed."
+  PKG_UPDATE="opkg update"
+  PKG_INSTALL="opkg install"
 fi
 
 # Check and install rsync
 if ! command -v rsync >/dev/null 2>&1; then
   echo "rsync not found, installing..."
-  opkg update && opkg install rsync
+  $PKG_UPDATE && $PKG_INSTALL rsync
 else
   echo "rsync is already installed."
 fi

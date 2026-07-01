@@ -377,6 +377,9 @@ templ PortalLayout(data PortalLayoutData) {
 }
 ```
 
+!!! note "Alpine.js is provided by core — don't vendor your own"
+    `@data.Components.Scripts()` emits the core portal asset bundle, which already loads and auto-starts **Alpine.js** (and jQuery + htmx). Use `window.Alpine` / `x-*` attributes directly in your portal markup; do **not** vendor your own Alpine copy — it would double-load against core's. The portal runs **Alpine v2** (an ES5/IE11 build, for old client-device WebViews), so portal markup must stay within the v2 API — declare all `x-data` properties up-front, use `@click.away` (not `@click.outside`), and avoid v3-only features. The admin surface runs Alpine v3. See [Alpine.js: portal v2 vs admin v3](../../api/assets-manifest.md#alpine-versions) for the full list of constraints.
+
 ### resources/views/portal/index.templ
 
 ```templ

@@ -1,6 +1,7 @@
 package httpsserver
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -72,6 +73,31 @@ func isCertificateExpired() (bool, error) {
 	return time.Until(cert.NotAfter) < renewalThreshold, nil
 }
 
+// currentCertIsSelfSigned reports whether the cert currently on disk is one of our
+// self-signed fallbacks (a self-signed cert has Issuer == Subject), as opposed to a
+// cloud-issued cert (signed by a real CA, so Issuer != Subject). A missing or
+// unparseable cert returns false so the caller falls back to the plain expiry check.
+// This is what lets ensureTLSCertificates refuse to keep a never-expiring self-signed
+// fallback in place of the embedded cloud cert on a portal-domain build.
+func currentCertIsSelfSigned() bool {
+	if !sdkutils.FsExists(certFile) {
+		return false
+	}
+	certData, err := os.ReadFile(certFile)
+	if err != nil {
+		return false
+	}
+	block, _ := pem.Decode(certData)
+	if block == nil {
+		return false
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(cert.RawIssuer, cert.RawSubject)
+}
+
 // ensureTLSCertificates checks if TLS certificates exist and are valid, generates them if needed
 func ensureTLSCertificates() error {
 	// Check if certificates need renewal
@@ -80,7 +106,16 @@ func ensureTLSCertificates() error {
 		return fmt.Errorf("error checking certificate expiration: %v", err)
 	}
 
-	if !expired {
+	// Keep a non-expired cert that's already on disk — EXCEPT a self-signed fallback
+	// on a build that is supposed to serve the cloud-issued cert (HasCustomDomain).
+	// The fallback is minted with a 10-year validity, so it never trips
+	// isCertificateExpired; once written it would otherwise shadow the embedded cloud
+	// cert FOREVER. That is exactly what strands a device which self-signed on an
+	// earlier boot (e.g. before NTP synced, or before the image shipped a seed cert) —
+	// including across a reflash, since certFile lives on the persistent data partition
+	// (data/storage/certs), not in the re-imaged app/. Falling through here lets the
+	// seed step below replace that fallback with the real cert.
+	if !expired && !(config.HasCustomDomain() && currentCertIsSelfSigned()) {
 		return nil
 	}
 
@@ -96,6 +131,14 @@ func ensureTLSCertificates() error {
 	// NO portal domain (dev/devkit) there is no host for that cert to match, so skip
 	// seeding and generate a self-signed cert below.
 	if config.HasCustomDomain() && seedFromDefaults() {
+		return nil
+	}
+
+	// We can land here with a still-valid (non-expired) self-signed cert when the
+	// build has a portal domain but no seed was usable yet (the cloud hasn't issued a
+	// portal cert). Keep the existing fallback rather than churning a fresh self-signed
+	// keypair on every call; the runtime cloud-sync fetch installs the real cert later.
+	if !expired {
 		return nil
 	}
 
@@ -176,20 +219,16 @@ func seedFromDefaults() bool {
 		return false
 	}
 
-	// The key must actually match the cert, and the cert must be currently valid.
+	// The key must actually match the cert. We deliberately do NOT reject the seed on
+	// its validity window (NotBefore/NotAfter): a fresh router boots with an unsynced
+	// clock (no RTC, NTP hasn't run yet) that is frequently BEHIND the cert's
+	// NotBefore, so a perfectly good cloud cert would look "not yet valid" and be
+	// dropped — the original reason the machine self-signed despite shipping a valid
+	// cert. A domain-matching cloud cert is strictly better than a self-signed one even
+	// when the local clock disagrees about validity, and the runtime cloud-sync fetch
+	// (jobs.performPortalCertFetch) replaces it with a current cert once the clock and
+	// network are up.
 	if _, err := tls.X509KeyPair(certPEM, keyPEM); err != nil {
-		return false
-	}
-	block, _ := pem.Decode(certPEM)
-	if block == nil {
-		return false
-	}
-	leaf, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return false
-	}
-	now := time.Now()
-	if now.Before(leaf.NotBefore) || now.After(leaf.NotAfter) {
 		return false
 	}
 

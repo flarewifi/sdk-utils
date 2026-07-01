@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"core/internal/api"
+	"core/internal/web/middlewares"
 	"errors"
 	"net/http"
 	sdkapi "sdk/api"
@@ -9,6 +10,17 @@ import (
 
 func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Render the login page over HTTPS. Its form posts to the HTTPS-only auth
+		// route, so an HTTP page would post over HTTP and get bounced HTTP→HTTPS
+		// (302) — which browsers downgrade to a GET, dropping the credentials and
+		// kicking the user back to the form. In prod ForceHTTPS already serves
+		// /login over HTTPS (this is a no-op); in dev (plain HTTP) this redirect is
+		// what puts the page — and therefore its form POST — on HTTPS.
+		if !middlewares.IsHTTPS(r) {
+			http.Redirect(w, r, middlewares.HTTPSURL(r), http.StatusSeeOther)
+			return
+		}
+
 		if _, err := g.CoreAPI.HttpAPI.Auth().IsAuthenticated(r); err == nil {
 			http.Redirect(w, r, "/admin", http.StatusSeeOther)
 			return

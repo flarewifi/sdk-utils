@@ -244,7 +244,7 @@ func AdminLayout(api sdkapi.IPluginApi, data AdminLayoutData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var14 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:auth:logout"))
+		var templ_7745c5c3_Var14 templ.SafeURL = templ.SafeURL(api.Http().Router().UrlForRoute("admin:auth:logout"))
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var14)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
