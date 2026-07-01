@@ -20,9 +20,10 @@ var (
 )
 
 type Account struct {
-	Uname  string   `json:"username"`
-	Passwd string   `json:"password"`
-	Perms  []string `json:"permissions"`
+	Uname      string   `json:"username"`
+	Passwd     string   `json:"password"`
+	PasswdHash string   `json:"password_hash"`
+	Perms      []string `json:"permissions"`
 }
 
 // return the file path of yaml file
@@ -37,8 +38,8 @@ func (acct *Account) Username() string {
 
 // Auth returns true if the password is correct
 func (acct *Account) Auth(pw string) bool {
-	if isBcryptHash(acct.Passwd) {
-		return bcrypt.CompareHashAndPassword([]byte(acct.Passwd), []byte(pw)) == nil
+	if acct.PasswdHash != "" {
+		return bcrypt.CompareHashAndPassword([]byte(acct.PasswdHash), []byte(pw)) == nil
 	}
 
 	if acct.Passwd != pw {
@@ -50,10 +51,11 @@ func (acct *Account) Auth(pw string) bool {
 		log.Printf("warn: failed to migrate password for %s to bcrypt: %v", acct.Uname, err)
 		return true
 	}
-	acct.Passwd = hashed
+	acct.PasswdHash = hashed
 	if err := acct.Save(); err != nil {
 		log.Printf("warn: failed to save migrated password for %s: %v", acct.Uname, err)
-		acct.Passwd = pw
+		acct.PasswdHash = ""
+		return false
 	}
 	return true
 }
@@ -107,6 +109,7 @@ func (acct *Account) Update(uname string, pass string, perms []string) error {
 
 	acct.Uname = updated.Uname
 	acct.Passwd = updated.Passwd
+	acct.PasswdHash = updated.PasswdHash
 	acct.Perms = updated.Perms
 	return nil
 }

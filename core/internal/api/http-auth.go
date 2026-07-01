@@ -72,7 +72,7 @@ func (self *HttpAuth) IsAuthenticated(r *http.Request) (sdkapi.IAccount, error) 
 			return nil, err
 		}
 		foundAcct = acct
-		return []byte(appcfg.Secret + acct.Passwd), nil
+		return []byte(appcfg.Secret + acct.PasswdHash), nil
 	})
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (self *HttpAuth) SignIn(w http.ResponseWriter, acct sdkapi.IAccount) error 
 		return errors.New("unsupported account type")
 	}
 
-	signingKey := appcfg.Secret + a.Passwd
+	signingKey := appcfg.Secret + a.PasswdHash
 	payload := map[string]string{"username": acct.Username()}
 	token, err := jsonwebtoken.GenerateToken(payload, signingKey)
 	if err != nil {

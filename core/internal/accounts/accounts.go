@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	sdkapi "sdk/api"
 	"slices"
-	"strings"
 	"sync"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
@@ -56,13 +55,17 @@ func EnsureAdminAcct() error {
 	f := FilepathForUser(AdminUsername)
 	if !sdkutils.FsExists(f) {
 		acct := DefaultAdminAcct()
-		if !isBcryptHash(acct.Passwd) {
+		if acct.PasswdHash == "" {
+			if acct.Passwd == "" {
+				return fmt.Errorf("default admin account has no password set")
+			}
 			hashedPasswd, err := hashPassword(acct.Passwd)
 			if err != nil {
 				return err
 			}
-			acct.Passwd = hashedPasswd
+			acct.PasswdHash = hashedPasswd
 		}
+		acct.Passwd = ""
 		content, err := json.Marshal(acct)
 		if err != nil {
 			return err
@@ -135,9 +138,9 @@ func Create(uname string, passwd string, perms []string) (*Account, error) {
 		return nil, err
 	}
 	acct := Account{
-		Uname:  uname,
-		Passwd: hashedPasswd,
-		Perms:  perms,
+		Uname:      uname,
+		PasswdHash: hashedPasswd,
+		Perms:      perms,
 	}
 
 	b, err := json.Marshal(&acct)
@@ -168,14 +171,18 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 		return nil, errors.New("Renaming the super admin account is not allowed.")
 	}
 
+	passHash := prevAcct.PasswdHash
 	if pass == "" {
-		pass = prevAcct.Passwd
+		if passHash == "" {
+			pass = prevAcct.Passwd
+		}
 	} else {
 		hashedPass, err := hashPassword(pass)
 		if err != nil {
 			return nil, err
 		}
-		pass = hashedPass
+		pass = ""
+		passHash = hashedPass
 	}
 
 	if len(perms) == 0 {
@@ -183,9 +190,10 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 	}
 
 	acct := Account{
-		Uname:  newName,
-		Passwd: pass,
-		Perms:  perms,
+		Uname:      newName,
+		Passwd:     pass,
+		PasswdHash: passHash,
+		Perms:      perms,
 	}
 
 	if acct.Uname == AdminUsername && !HasAllPerms(&acct, sdkapi.AcctPermMaster) {
@@ -298,8 +306,3 @@ func hashPassword(plaintext string) (string, error) {
 	return string(hashed), nil
 }
 
-func isBcryptHash(s string) bool {
-	return strings.HasPrefix(s, "$2a$") ||
-		strings.HasPrefix(s, "$2b$") ||
-		strings.HasPrefix(s, "$2y$")
-}
