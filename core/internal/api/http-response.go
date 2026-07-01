@@ -121,13 +121,11 @@ func (self *HttpResponse) PortalView(w http.ResponseWriter, r *http.Request, v s
 	}
 
 	sseURL := coreAPI.HttpAPI.Helpers().UrlForRoute("portal:sse")
-	polyfillsURL := coreAPI.Http().Helpers().PortalAssetPath("polyfills.js")
 	data := themes.PortalLayoutData{
-		PageUUID:     pageUUID,
-		Assets:       assets,
-		SseURL:       sseURL,
-		PolyfillsURL: polyfillsURL,
-		Flash:        flash,
+		PageUUID: pageUUID,
+		Assets:   assets,
+		SseURL:   sseURL,
+		Flash:    flash,
 	}
 	head := themes.PortalHead(self.api.CoreAPI, data)
 	scripts := themes.PortalScripts(data.Assets, flash)

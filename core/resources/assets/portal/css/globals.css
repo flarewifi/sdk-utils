@@ -1,1 +1,5 @@
+/* Bootstrap 5 is provided globally by core so every portal page is styled
+   regardless of the active theme (themes no longer vendor Bootstrap; Bootstrap 3
+   is gone). Imported first so the active theme's CSS cascades after it. */
+@import '../../lib/vendor/bootstrap-v5.3.3.css';
 @import '../../lib/vendor/toastr.css';

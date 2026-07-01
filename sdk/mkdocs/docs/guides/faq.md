@@ -11,9 +11,9 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-## Why does my portal Alpine.js code behave differently from admin?
+## Which Alpine.js version runs on the portal and admin?
 
-Core ships **two different Alpine majors**: the **portal** runs **Alpine v2** (an ES5/IE11 build that runs on old client-device WebViews), while the **admin** runs **Alpine v3**. So v3-only features — `Alpine.store()` / `$store`, `Alpine.data()`, `x-effect`, the `@click.outside` modifier — work in admin but **not** in the portal. In portal markup, declare all `x-data` properties up-front and use `@click.away` instead of `@click.outside`.
+Core ships a single Alpine major — **v3** — loaded and auto-started on **both** the portal and admin. The full Alpine v3 API (`Alpine.store()` / `$store`, `Alpine.data()`, `x-effect`, the `@click.outside` modifier, adding reactive props after init) works on both surfaces. Both bundles target ES2017 and the app supports modern browsers only, so there are no legacy portal constraints.
 
-Both are loaded and auto-started by core, so don't vendor your own Alpine. See [Alpine.js: portal v2 vs admin v3](../api/assets-manifest.md#alpine-versions) for the full list of constraints.
+Both surfaces use the core-provided Alpine, so don't vendor your own. See [Alpine.js: v3 on both surfaces](../api/assets-manifest.md#alpine-versions).
 

@@ -3,8 +3,8 @@ package auth
 import sdkapi "sdk/api"
 
 templ LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageData) {
-	<div class="panel panel-default" style="margin-top: 40px;">
-		<div class="panel-body">
+	<div class="card" style="margin-top: 40px;">
+		<div class="card-body">
 			<h1 class="h3 text-center">{ api.Translate("label", "Device Admin Dashboard") }</h1>
 			<p class="text-center text-muted">{ api.Translate("label", "Flarewifi Hotspot Router") }</p>
 			if data.LoginError != nil {
@@ -17,15 +17,15 @@ templ LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageDat
 			     /p/https/.../login URL (no insecure-form warning under ForceHTTPS). -->
 			<form id="login-form" method="POST" action={ templ.SafeURL(api.Http().Router().UrlForRoute("auth:login")) }>
 				@templ.Raw(csrfHTML)
-				<div class="form-group">
+				<div class="mb-3">
 					<label for="username">{ api.Translate("label", "Username") }</label>
 					<input type="text" class="form-control" name="username" id="username" placeholder="admin" required/>
 				</div>
-				<div class="form-group">
+				<div class="mb-3">
 					<label for="password">{ api.Translate("label", "Password") }</label>
 					<input type="password" class="form-control" name="password" id="password" placeholder={ api.Translate("label", "Enter password") } required/>
 				</div>
-				<button type="submit" class="btn btn-primary btn-block">{ api.Translate("label", "Sign In") }</button>
+				<button type="submit" class="btn btn-primary w-100">{ api.Translate("label", "Sign In") }</button>
 			</form>
 		</div>
 	</div>

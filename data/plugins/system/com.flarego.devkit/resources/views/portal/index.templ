@@ -7,16 +7,14 @@ templ PortalIndexPage(api sdkapi.IPluginApi, navs []sdkapi.PortalNavItem) {
 		<h1>{ api.Translate("label", "Welcome") }</h1>
 		<p class="text-muted">{ api.Translate("label", "Flarewifi captive portal (Devkit preview)") }</p>
 	</div>
-	<ul class="nav nav-stacked">
+	<div class="d-grid gap-2 portal-nav">
 		for _, nav := range navs {
-			<li>
-				<a class="btn btn-primary btn-block" href={ templ.SafeURL(nav.RouteUrl) } { templ.Attributes(nav.ExtraAttrs)... }>
-					if nav.IconUrl != "" {
-						<img src={ nav.IconUrl } alt=""/>
-					}
-					{ nav.Label }
-				</a>
-			</li>
+			<a class="btn btn-primary" href={ templ.SafeURL(nav.RouteUrl) } { templ.Attributes(nav.ExtraAttrs)... }>
+				if nav.IconUrl != "" {
+					<img src={ nav.IconUrl } alt=""/>
+				}
+				{ nav.Label }
+			</a>
 		}
-	</ul>
+	</div>
 }

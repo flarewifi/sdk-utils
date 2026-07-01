@@ -82,8 +82,8 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-!!! note "Caveats"
-    Javascripts for the captive portal must be written using `ES5` syntax to support older devices. The assets builder may throw an error if you use `ES6` syntax.
+!!! note "Modern browsers"
+    The app targets modern browsers only. Both the captive portal and admin asset bundles compile to **ES2017**, so modern JavaScript (arrow functions, template literals, `class`, etc.) is fine on both surfaces.
 
 ## Adding global plugin assets
 

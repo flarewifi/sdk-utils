@@ -111,40 +111,66 @@ import Alpine from "@flare/lib/vendor/alpinejs-v3.15.1.js";
 
 Libraries currently vendored under `@flare/lib/vendor`:
 
-- `alpinejs-v3.15.1.js` — Alpine **v3**, used by **admin** assets (admin bundles target ES2017). See [Alpine.js: portal v2 vs admin v3](#alpine-versions).
-- `alpinejs-ie11-v2.8.2.js` — Alpine **v2** (IE11 build), used by **portal** assets (portal bundles target ES5). See [Alpine.js: portal v2 vs admin v3](#alpine-versions).
+- `alpinejs-v3.15.1.js` — Alpine **v3**, used by **both admin and portal** assets (all bundles target ES2017).
+- `bootstrap-v5.3.3` (CSS + JS) — Bootstrap **5.3.3**, loaded globally by core on **both admin and portal**. See [Bootstrap is a core global](#bootstrap-global).
+- `bootstrap-icons-v1.13.1` — Bootstrap Icons **1.13.1**, a core global (admin).
 - `htmx-v1.9.12.js` (plus the extensions `htmx-ext-sse-v1.19.12.js` and `htmx-ext-loading-states-v1.19.12.js`)
-- `jquery-v1.12.4.js`
+- `jquery-v3.7.1.js`
 - `toastr.js` / `toastr.css`
 - `awesome-notifications-v3.1.3.js` / `awesome-notifications-v3.1.3.css`
 - Polyfills: `event-source-polyfill.js`, `domparser-polyfill.js`, `xmldom-entities-v0.6.0.js`
 
-Note that core already exposes **jQuery** and **`window.Alpine`** as globals on **both** the portal and admin (it loads and auto-starts Alpine for you), so most plugins and themes can use Alpine directly without importing or vendoring anything.
+Note that core already exposes **jQuery**, **`window.Alpine`**, and **Bootstrap 5** as globals on **both** the portal and admin (it loads and auto-starts Alpine for you), so most plugins and themes can use them directly without importing or vendoring anything.
 
-!!! warning "Do not vendor your own Alpine"
-    Core is the single source of Alpine. Vendoring your own copy in a plugin or theme **double-loads** Alpine against the core-provided instance (and may load the wrong major). Use the global `window.Alpine` / plain `x-*` attributes instead. The portal and admin run **different Alpine majors** — see below.
+!!! warning "Do not vendor your own Alpine or Bootstrap"
+    Core is the single source of Alpine and Bootstrap. Vendoring your own copy in a plugin or theme **double-loads** the library against the core-provided instance. Use the global `window.Alpine` / plain `x-*` attributes and the global Bootstrap 5 classes/JS instead. Both surfaces run the **same** Alpine major (v3) and the **same** Bootstrap major (5) — see below.
 
-### Portal JavaScript stays ES5 {#vendor-es5}
+### Bootstrap is a core global {#bootstrap-global}
 
-The portal runs on older client browsers, so **portal JavaScript must remain ES5** (`var`, `function () {}`, no arrow functions / template literals) — this applies to vendored portal libraries too. Pick the ES5-compatible dist of any library you vendor for the portal. Admin assets are not subject to this restriction (admin bundles target ES2017).
+**Bootstrap 5.3.3 is provided by core as a global asset** — it is auto-loaded on **every** admin and portal page through core's global bundles (`globals.js` / `global.css` and the portal equivalents), exactly like jQuery, htmx, and Alpine. There is a single Bootstrap major everywhere; the old Bootstrap 3 portal path is gone.
 
-### Alpine.js: portal v2 vs admin v3 {#alpine-versions}
+Because Bootstrap is global, **plugins and themes must not vendor or reference their own Bootstrap** — no `vendor/bootstrap-*` files, no Bootstrap entries in your manifest, and no `@import`/`require` of Bootstrap. Just use the Bootstrap 5 classes and JS; they are already on the page. Bootstrap Icons 1.13.1 is likewise a core global (admin).
 
-Core ships **two different majors** of Alpine, one per surface, because the portal and admin asset bundles compile to different JavaScript targets:
+### Customizing the Bootstrap look {#customizing-bootstrap}
 
-| Surface | Alpine version | esbuild target | Why |
-|---------|----------------|----------------|-----|
-| **Admin** | v3 (`alpinejs-v3.15.1.js`) | ES2017 | Operator-facing; runs on modern browsers |
-| **Portal** | **v2** (`alpinejs-ie11-v2.8.2.js`) | ES5 | Client-device-facing; must run on old captive-portal WebViews |
+You do **not** need Sass to re-theme Bootstrap here (there is no Sass build step in this project — see [Vendoring frontend libraries](#vendoring)). Bootstrap 5 exposes a large library of **CSS custom properties (CSS variables)** at the `:root` level and inside individual components, so you can retheme it from a plain stylesheet — one of your theme/plugin's own manifest CSS bundles, which core loads **after** the global Bootstrap CSS so your rules win.
 
-**Why the portal can't use Alpine v3:** Alpine v3's reactivity is built on the JavaScript `Proxy`, which **cannot be polyfilled** for engines that predate it (e.g. the Android 4.x WebView / Chromium &lt;49 that still show up on budget client phones). Alpine v2's official IE11 build ships a `defineProperty`-based Proxy polyfill and is already ES5, so it works on those devices and bundles cleanly at the portal's ES5 target. Alpine v3 has no ES5 path.
+There are two supported approaches, both plain CSS:
 
-Both are loaded and auto-started by core, so you normally just use `window.Alpine` and `x-*` attributes. But **portal markup and scripts must stay within the Alpine v2 API**:
+**1. Override Bootstrap's CSS variables (preferred).** Re-declare the `--bs-*` variables. Because Bootstrap's own rules read these variables, overriding them recolors components globally without you having to target each selector:
 
-!!! warning "Portal Alpine is v2 — API constraints"
-    - **Declare every `x-data` property up-front.** The v2 Proxy polyfill cannot make properties reactive if they are added *after* the component is created.
-    - **No v3-only features** in portal code: `Alpine.store()` / `$store`, `Alpine.data()`, `x-effect`, `x-id`, `x-teleport`, `x-modelable`.
-    - **Use `@click.away`, not `@click.outside`** (`.outside` and `.self` are v3-only modifiers).
-    - Array mutations that don't reassign the variable (`push`, `pop`, index assignment) may not be detected — reassign the array to trigger updates.
+```css
+/* your theme's admin/css/theme.css (a manifest entry) */
+:root {
+  --bs-primary: #e8590c;
+  --bs-primary-rgb: 232, 89, 12;   /* keep the -rgb pair in sync; used by rgba() utilities */
+  --bs-body-font-family: "Helvetica Neue", sans-serif;
+  --bs-border-radius: 0.5rem;
+}
 
-    The **admin** surface is on v3 and has none of these restrictions — `Alpine.store`, `$store`, `x-effect`, etc. are all available there.
+/* Component-scoped variables work too — restyle just one component */
+.card {
+  --bs-card-bg: #1a1d21;
+  --bs-card-border-color: rgba(255, 255, 255, 0.15);
+}
+```
+
+Dark mode uses the same mechanism: scope variable overrides under `[data-bs-theme="dark"]` (the attribute the admin layout already sets), e.g. `[data-bs-theme="dark"] { --bs-body-bg: #1a1d21; }`.
+
+**2. Traditional CSS overrides.** For anything not exposed as a variable, just write normal rules that target Bootstrap's classes. Rely on load order (your bundle loads after core's global CSS) rather than `!important`:
+
+```css
+.btn-primary { text-transform: uppercase; letter-spacing: 0.03em; }
+.navbar { box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05); }
+```
+
+!!! warning "Don't fork Bootstrap to customize it"
+    Re-theme through variables/overrides in **your own** CSS bundle. Re-vendoring or `@import`ing a modified `bootstrap.css` re-introduces the double-load this whole section warns against — and your copy silently drifts from the core version.
+
+Reference: Bootstrap's [CSS variables](https://getbootstrap.com/docs/5.3/customize/css-variables/) and [color modes](https://getbootstrap.com/docs/5.3/customize/color-modes/) docs.
+
+### Alpine.js: v3 on both surfaces {#alpine-versions}
+
+Core ships a single Alpine major — **v3 (`alpinejs-v3.15.1.js`)** — loaded and auto-started on **both** the portal and admin. Both asset bundles compile to **ES2017**, so the full Alpine v3 API (`Alpine.store()` / `$store`, `Alpine.data()`, `x-effect`, `@click.outside`, adding reactive props after init, etc.) works everywhere, including the portal.
+
+The app targets **modern browsers only**, so there are no legacy ES5/IE11 constraints on portal markup or scripts. Just use `window.Alpine` and `x-*` attributes directly.

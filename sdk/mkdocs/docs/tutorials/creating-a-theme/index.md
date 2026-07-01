@@ -9,26 +9,8 @@ This tutorial will guide you through creating a custom theme plugin for Flarewif
 - Familiarity with the [templ](https://templ.guide/) template engine
 - A Flarewifi development environment set up
 
-!!! important "Bootstrap Requirements"
-    Theme plugins must bundle their own copy of Bootstrap. The versions depend on the interface:
-
-    - **Admin interface**: Bootstrap **v5** (CSS + JS) — the admin layout relies on Bootstrap 5 classes.
-    - **Login page**: Bootstrap **v3** (CSS only, no JS required).
-    - **Portal page**: Bootstrap **v3** (CSS only, no JS required).
-
-    Include these files in your theme's `vendor/` directory and reference them in your manifest files. For example, the admin manifest should include:
-
-    ```json
-    "./vendor/bootstrap-5/css/bootstrap.css",
-    "./vendor/bootstrap-5/js/bootstrap.bundle.js",
-    "./vendor/bootstrap-icons/bootstrap-icons.min.css"
-    ```
-
-    And the portal manifest should import Bootstrap 3 CSS in your portal stylesheet:
-
-    ```css
-    @import 'vendor/bootstrap-3/css/bootstrap.css';
-    ```
+!!! important "Bootstrap is provided by core — do not vendor it"
+    **Bootstrap 5.3.3 is provided by core as a global asset** (CSS + JS), auto-loaded on **every** admin and portal page — exactly like jQuery, htmx, and Alpine. Theme plugins **must not** vendor or reference their own Bootstrap: no `vendor/bootstrap-*` files, no Bootstrap entries in your manifest, and no `@import`/`require` of Bootstrap. Your theme inherits Bootstrap 5 globally on both surfaces; just use the Bootstrap 5 classes and JS. (Bootstrap Icons 1.13.1 is likewise a core global on admin.) Bootstrap 3 has been removed.
 
 ## Step 1: Create the Basic Plugin Structure
 
@@ -165,7 +147,7 @@ func SetAdminTheme(api sdkapi.IPluginApi) {
     api.Themes().NewAdminTheme(sdkapi.AdminThemeOpts{
         JsFile:  "theme.js",
         CssFile: "theme.css",
-        CssLib:  sdkapi.CssLibBootstrap5, // Bootstrap 5 is the only supported admin CSS library
+        CssLib:  sdkapi.CssLibBootstrap5, // Bootstrap 5 is the only supported CSS library (admin + portal)
         LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
             // Get navigation items
             navs := api.Http().Navs().GetAdminNavs(r)
@@ -378,7 +360,7 @@ templ PortalLayout(data PortalLayoutData) {
 ```
 
 !!! note "Alpine.js is provided by core — don't vendor your own"
-    `@data.Components.Scripts()` emits the core portal asset bundle, which already loads and auto-starts **Alpine.js** (and jQuery + htmx). Use `window.Alpine` / `x-*` attributes directly in your portal markup; do **not** vendor your own Alpine copy — it would double-load against core's. The portal runs **Alpine v2** (an ES5/IE11 build, for old client-device WebViews), so portal markup must stay within the v2 API — declare all `x-data` properties up-front, use `@click.away` (not `@click.outside`), and avoid v3-only features. The admin surface runs Alpine v3. See [Alpine.js: portal v2 vs admin v3](../../api/assets-manifest.md#alpine-versions) for the full list of constraints.
+    `@data.Components.Scripts()` emits the core portal asset bundle, which already loads and auto-starts **Alpine.js** (and jQuery + htmx + Bootstrap 5). Use `window.Alpine` / `x-*` attributes directly in your portal markup; do **not** vendor your own Alpine copy — it would double-load against core's. The portal and admin both run **Alpine v3**, and both bundles target ES2017, so the full Alpine v3 API (`@click.outside`, `Alpine.store`, `x-effect`, adding reactive props after init, etc.) works on both surfaces. See [Alpine.js: v3 on both surfaces](../../api/assets-manifest.md#alpine-versions).
 
 ### resources/views/portal/index.templ
 
@@ -546,8 +528,8 @@ The development environment automatically watches for file changes and rebuilds 
 - Start by copying the default theme and modifying it
 - Use the SDK API documentation for available methods
 - Test your theme on different screen sizes
-- Ensure your CSS is compatible with the chosen CSS library (Bootstrap 3 or 5)
-- Keep your JavaScript ES5 compatible for maximum browser support
+- Ensure your CSS is compatible with Bootstrap 5 (the core-provided CSS library, on both admin and portal)
+- Modern JavaScript (ES2017) is fine — the app targets modern browsers only
 - Changes are automatically rebuilt - just refresh your browser to see updates
 
 ## Next Steps

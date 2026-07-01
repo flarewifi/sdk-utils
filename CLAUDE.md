@@ -75,7 +75,7 @@ if err := RecordUsage(); err != nil {
 
 **DO NOT:**
 - Import `sdk/api` into `sdk/utils` (import cycle)
-- Use ES6+ JavaScript (ES5 only: `var`, `function() {}`)
+- Vendor your own Bootstrap or Alpine — both are core-provided globals (see "Frontend libraries" below)
 - Hardcode text/URLs (use `api.Translate()` / `api.Http().Helpers().UrlForRoute()`)
 - Modify core files without permission
 - Discard errors or create resources without rollback
@@ -216,9 +216,10 @@ data/plugins/local/      # Custom plugins (safe to modify)
 ## Tech Stack
 
 - **Go**, **SQLite**, **templ**, **sqlc**, **gorilla/mux**
-- **Bootstrap 3.4.1** - Portal/login (`PortalView`)
-- **Bootstrap 5.3.3** - Admin/dashboard (`AdminView`)
-- **htmx v1.9.12**, **Alpine.js** (portal: **v2** ES5/IE11 build; admin: **v3**), **jQuery**
+- **Bootstrap 5.3.3** - core global on **both** admin (`AdminView`) and portal/login (`PortalView`); Bootstrap 3 is removed
+- **bootstrap-icons 1.13.1** - core global (admin)
+- **htmx v1.9.12**, **Alpine.js v3.15.1** (core global on both admin and portal), **jQuery 3.7.1**
+- Modern browsers only; asset bundles target **ES2017** (admin + portal)
 
 ## Database
 
@@ -307,10 +308,10 @@ Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural l
 
 ## Frontend
 
-**CSS:** Bootstrap 3 (portal) vs Bootstrap 5 (admin) - never mix  
-**JavaScript:** ES5 only (`var`, `function() {}`, no template literals)  
-**DOM Manipulation:** Use jQuery from the core `global.js` - it's already loaded and available  
-**Interactivity:** Use htmx and Alpine.js - avoid custom JavaScript when possible (Alpine is **v2** on the portal, **v3** on admin - see "Frontend libraries" below; never vendor your own copy)  
+**CSS:** Bootstrap 5 everywhere (admin + portal) - a core-provided global; never vendor your own Bootstrap  
+**JavaScript:** Modern browsers only; bundles target ES2017 (admin + portal), so modern JS is fine  
+**DOM Manipulation:** Use jQuery (3.7.1) from the core `global.js` - it's already loaded and available  
+**Interactivity:** Use htmx and Alpine.js (v3 on both surfaces) - avoid custom JavaScript when possible; never vendor your own copy (see "Frontend libraries" below)  
 **Real-time Updates:** Use Server-Sent Events (SSE) for live UI updates, not polling  
 **URLs:** `templ.SafeURL(api.Http().Helpers().UrlForRoute("route:name"))`
 
@@ -318,9 +319,10 @@ Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural l
 
 - **There is no `npm`/`node_modules` on the machine.** Plugin assets are bundled by a Go-native esbuild that only resolves **real files in the source tree** — a bare specifier like `require("jquery")` or `import X from "somelib"` **fails the build** ("could not resolve"). Nothing runs `npm install` (asset bundling is `core/utils/plugins/build-assets.go`).
 - **Vendor a library** by dropping its browser/ESM dist into the plugin's `resources/assets/lib/vendor/` as `<lib>-v<version>.<ext>`, then importing it by a **relative path**, e.g. `var $ = require("../../lib/vendor/jquery-v3.7.1.js");`. CSS libs vendor the same way.
-- **Shared libs are already vendored by core** in `core/resources/assets/lib/vendor/` and reachable via the esbuild alias `@flare/lib` (configured in `core/utils/plugins/esbuild.go`), e.g. `import Alpine from "@flare/lib/vendor/alpinejs-v3.15.1.js";`. jQuery and `window.Alpine` are also exposed as globals, so most plugins need no import.
-- **⚠️ Alpine.js: portal runs v2, admin runs v3 — and core already loads/auto-starts both.** The portal asset bundle targets **ES5** (old client-device WebViews predating `Proxy`, e.g. Android 4.x), and Alpine v3's `Proxy` reactivity is **unpolyfillable**, so the portal uses Alpine **v2** (`@flare/lib/vendor/alpinejs-ie11-v2.8.2.js`, the IE11 build with a `defineProperty` Proxy polyfill) while admin uses **v3** (`alpinejs-v3.15.1.js`, ES2017). **Never vendor your own Alpine** in a plugin/theme — it double-loads against core's. Use the global `window.Alpine` / `x-*` attributes. **Portal markup must stay within the v2 API:** declare all `x-data` props up-front (the polyfill can't add reactive props after creation), use `@click.away` not `@click.outside` (`.outside`/`.self` are v3-only), and avoid `Alpine.store`/`$store`/`Alpine.data`/`x-effect`. Admin (v3) has none of these limits. Driven by the per-surface esbuild target split in `core/utils/plugins/build-assets.go` (admin=ES2017, portal=ES5).
-- `package.json`/`package-lock.json` are gone from core and plugins (vestigial). Full plugin-author guide: `sdk/mkdocs/docs/api/assets-manifest.md` → "Vendoring frontend libraries (no npm)" / "Alpine.js: portal v2 vs admin v3".
+- **Shared libs are already vendored by core** in `core/resources/assets/lib/vendor/` and reachable via the esbuild alias `@flare/lib` (configured in `core/utils/plugins/esbuild.go`), e.g. `import Alpine from "@flare/lib/vendor/alpinejs-v3.15.1.js";`. jQuery (3.7.1) and `window.Alpine` are also exposed as globals, so most plugins need no import.
+- **⚠️ Bootstrap 5.3.3 is a core-provided global** — auto-loaded on **every** admin AND portal page via core's global bundles (`globals.js` + `global.css` and the portal equivalents), exactly like jQuery/htmx/Alpine. **Never vendor or reference your own Bootstrap** in a plugin/theme (no `vendor/bootstrap-*`, no manifest bootstrap entries, no `@import`/`require` of bootstrap) — you inherit it globally. Bootstrap 3 is removed; it's Bootstrap 5 everywhere. bootstrap-icons 1.13.1 is a core global (admin).
+- **⚠️ Alpine.js v3.15.1 runs on BOTH admin and portal — core loads/auto-starts it.** Both asset bundles target **ES2017** (the app supports modern browsers only), so the full Alpine v3 API works on both surfaces (`@click.outside`, `Alpine.store`/`$store`, `Alpine.data`, `x-effect`, adding reactive props after init, etc.). **Never vendor your own Alpine** in a plugin/theme — it double-loads against core's. Use the global `window.Alpine` / `x-*` attributes. (The old portal Alpine v2 / ES5 / IE11 constraints no longer apply.)
+- `package.json`/`package-lock.json` are gone from core and plugins (vestigial). Full plugin-author guide: `sdk/mkdocs/docs/api/assets-manifest.md` → "Vendoring frontend libraries (no npm)" / "Bootstrap is a core global" / "Alpine.js: v3 on both surfaces".
 
 ## Plugin Development
 
@@ -357,7 +359,7 @@ Only create custom functions if needed functionality doesn't exist in `sdk/utils
 | Plugin modifying core tables | Create plugin tables with foreign keys, use JOINs |
 | URL not working in templ | Wrap with `templ.SafeURL()` |
 | Asset not loading | Check manifest.json matches `ViewAssets{JsFile: "key"}` |
-| ES6 syntax error | Convert to ES5: `var`, `function() {}` |
+| Vendoring Bootstrap/Alpine | Don't — both are core-provided globals (Bootstrap 5, Alpine v3) on admin + portal |
 | 2+ templ edit failures | Stop and consult @frontend |
 | Creating custom helper function | Check `sdk/utils/` first (UUID, strings, validators, pagination, etc.) |
 | **Copying only database.sqlite** | **Copy ALL 3 WAL files; checkpoint first: `PRAGMA wal_checkpoint(TRUNCATE);`** |

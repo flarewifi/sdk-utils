@@ -10,14 +10,14 @@ import (
 	"com.flarego.devkit/resources/views/portal"
 )
 
-// SetPortalTheme registers the Devkit portal theme: a basic Bootstrap 3 captive
+// SetPortalTheme registers the Devkit portal theme: a basic Bootstrap 5 captive
 // portal layout with a simple login and landing page. It intentionally avoids
 // session/routing dependencies so it renders in the devkit (no real routing).
 func SetPortalTheme(api sdkapi.IPluginApi) {
 	api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
 		JsFile:       "theme.js",
 		CssFile:      "theme.css",
-		CssLib:       sdkapi.CssLibBootstrap3,
+		CssLib:       sdkapi.CssLibBootstrap5,
 		PreviewImage: "images/devkit-portal.svg",
 		LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
 			data := portal.PortalLayoutData{Components: c}

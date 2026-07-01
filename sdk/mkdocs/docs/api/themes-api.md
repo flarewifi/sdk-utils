@@ -12,7 +12,7 @@ The **admin theme** controls the layout and appearance of the **admin dashboard*
 
 ### Portal Theme
 
-The **portal theme** controls the layout and appearance of the **captive portal** — the user-facing pages such as the login and home screens. Portal themes typically use Bootstrap 3 (`CssLibBootstrap3`) for maximum device compatibility. Register one with [`NewPortalTheme`](#newportaltheme).
+The **portal theme** controls the layout and appearance of the **captive portal** — the user-facing pages such as the login and home screens. Portal themes use Bootstrap 5 (`CssLibBootstrap5`) — the same as admin. Register one with [`NewPortalTheme`](#newportaltheme).
 
 ## Accessing IThemesApi
 
@@ -48,7 +48,7 @@ Registers a new portal theme. The portal theme controls the layout and appearanc
 api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
     JsFile:           "theme.js",
     CssFile:          "theme.css",
-    CssLib:           sdkapi.CssLibBootstrap3,
+    CssLib:           sdkapi.CssLibBootstrap5,
     LayoutBuilder:    layoutBuilderFunc,
     LoginPageFactory: loginPageFactoryFunc,
     IndexPageFactory: indexPageFactoryFunc,
@@ -145,14 +145,12 @@ The `CSSLib` type specifies which CSS framework the theme uses:
 type CSSLib string
 
 const (
-    CssLibBootstrap5 CSSLib = "bootstrap5"  // Bootstrap 5.3.3 - Admin only
-    CssLibBootstrap3 CSSLib = "bootstrap3"  // Bootstrap 3.4.1 - Portal only
+    CssLibBootstrap5 CSSLib = "bootstrap5"  // Bootstrap 5.3.3 - admin and portal
 )
 ```
 
-!!! warning "CSS Library Restrictions"
-    - **Admin themes** must use `CssLibBootstrap5`
-    - **Portal themes** typically use `CssLibBootstrap3` for maximum device compatibility
+!!! note "CSS Library"
+    Bootstrap 5 (`CssLibBootstrap5`) is the only supported CSS library, for **both** admin and portal themes. Bootstrap 5.3.3 is provided globally by core, so themes do **not** vendor their own Bootstrap. (Bootstrap 3 has been removed.)
 
 ### Theme preview images
 
@@ -185,7 +183,7 @@ type AdminThemeOpts struct {
 
 | Field | Description |
 |-------|-------------|
-| `CssLib` | CSS framework to use (must be `CssLibBootstrap5` for admin) |
+| `CssLib` | CSS framework to use (must be `CssLibBootstrap5`) |
 | `JsFile` | Main JavaScript file from assets manifest |
 | `CssFile` | Main CSS file from assets manifest |
 | `PreviewImage` | Optional preview image filename (under `resources/assets/public`) shown in the admin theme selector |
@@ -462,7 +460,7 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
     api.Themes().NewPortalTheme(sdkapi.PortalThemeOpts{
         JsFile:  "theme.js",
         CssFile: "theme.css",
-        CssLib:       sdkapi.CssLibBootstrap3,
+        CssLib:       sdkapi.CssLibBootstrap5,
         PreviewImage: "images/portal-preview.png", // resources/assets/public/images/portal-preview.png
         LayoutBuilder: func(w http.ResponseWriter, r *http.Request, c sdkapi.IThemeComponents) {
             data := portal.PortalLayoutData{Components: c}
@@ -739,7 +737,7 @@ func Init(api sdkapi.IPluginApi) error {
 
 2. **Use translations for all text** - Call `api.Translate()` for user-facing strings
 
-3. **Use ES5 JavaScript** - Portal pages must support older browsers on embedded devices
+3. **Modern JavaScript is fine** - Both admin and portal bundles target ES2017 (modern browsers only)
 
 4. **Test on multiple devices** - Portal themes should work on phones, tablets, and desktops
 
@@ -747,7 +745,7 @@ func Init(api sdkapi.IPluginApi) error {
 
 6. **Handle errors gracefully** - Check for errors in factory functions and provide fallbacks
 
-7. **Use the correct CSS library** - Bootstrap 5 for admin, Bootstrap 3 for portal
+7. **Use the core-provided CSS library** - Bootstrap 5 for both admin and portal; don't vendor your own Bootstrap
 
 ---
 
