@@ -10,6 +10,7 @@ import (
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v3"
+	"core/utils/config"
 	"core/utils/plugins"
 	"sync"
 	"time"
@@ -77,8 +78,15 @@ func worker() {
 // source "store" (the cloud links it to its plugins row by package); every other
 // origin (local, git, system) reports "local". Plugins MARKED for removal are
 // excluded so an uninstall (which only takes effect on the next reboot) is
-// reflected immediately. Meta bundles have no install dir and are omitted — only
-// individual plugins are reported.
+// reflected immediately.
+//
+// Meta bundles have no install dir, so the plugin-dir scan below can't see them —
+// but the cloud needs to know which bundles a machine has installed to resolve
+// meta-member coverage (a paid plugin that is free because it belongs to a free or
+// purchased bundle) from server state. So the machine's meta RECORDS are reported
+// too, as source "store" (a bundle links to its plugins row, is_meta = true, by
+// package). Without this the cloud never records the bundle and every one of its
+// paid members reads as unpaid.
 func collect() []*rpc_flarewifi_v3.InstalledPlugin {
 	// package -> install source, from the plugins config (source of truth for how
 	// each package was installed). Packages absent here default to "local".
@@ -110,6 +118,23 @@ func collect() []*rpc_flarewifi_v3.InstalledPlugin {
 			Version: info.Version,
 			Source:  source,
 		})
+	}
+
+	// Report installed meta bundles from the plugins config (they have no install dir
+	// above). A meta record's presence IS its installed state — there is no
+	// "marked for removal" for a bundle, so no such filter is needed here.
+	if cfg, err := config.ReadPluginsConfig(); err == nil {
+		for _, meta := range cfg.MetaPlugins {
+			if meta.Package == "" {
+				continue
+			}
+			list = append(list, &rpc_flarewifi_v3.InstalledPlugin{
+				Package: meta.Package,
+				Name:    meta.Name,
+				Version: meta.Version,
+				Source:  sdkutils.PluginSrcStore,
+			})
+		}
 	}
 	return list
 }
