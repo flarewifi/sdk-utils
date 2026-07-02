@@ -13,6 +13,15 @@ const (
 	MatchCNA                      // CNA-CNA SmartMatch (OS-family only — weaker signal)
 )
 
+// ConcurrencyTolerance is the maximum presence-window overlap between two device
+// rows that is still treated as "not concurrent". A genuine identity split (same
+// physical device, cookie lost, re-registers as a new row) produces a near-instant
+// handoff: the old row goes quiet within seconds of the new row appearing, so the
+// windows barely touch. Two DIFFERENT physical devices that are both in use overlap
+// for as long as they coexist (minutes to days). This tolerance absorbs the handoff
+// slop while still catching any real concurrency.
+const ConcurrencyTolerance = 2 * time.Minute
+
 // MergeCandidate represents a device being evaluated for merging.
 type MergeCandidate struct {
 	DeviceID     int64
@@ -21,6 +30,14 @@ type MergeCandidate struct {
 	CurrentMAC   string // current MAC address (is_current=TRUE in device_macs)
 	CurrentIP    string // current IP address (devices.ip_address)
 	Hostname     string // hostname (devices.hostname), may be empty
+
+	// ActiveFrom/ActiveTo bound the device's observed presence on the network
+	// (earliest first_seen_at .. latest last_seen_at across its device_macs rows).
+	// Used to reject merges between rows that were active concurrently — a single
+	// physical device cannot be present as two rows at the same time. Zero values
+	// mean "unknown" and disable the concurrency check for this candidate.
+	ActiveFrom time.Time
+	ActiveTo   time.Time
 }
 
 // MergeDecision contains the result of evaluating two devices for merging.
@@ -49,6 +66,17 @@ func ShouldMergeDevices(deviceA, deviceB MergeCandidate) MergeDecision {
 		kind := FingerprintsMatchKind(deviceA.Fingerprints, deviceB.Fingerprints)
 		if kind == MatchNone {
 			return MergeDecision{ShouldMerge: false}
+		}
+
+		// Concurrency guard: a fingerprint match only proves the two rows are the same
+		// device *class* (identical make/model/OS/browser/locale produce an identical
+		// hash). It does NOT prove they are the same physical unit. Two different
+		// same-model phones that happen to share a MAC would ExactMatch. The one thing
+		// a single physical device can never do is be present on the network as two
+		// rows at the same time — so if the rows' presence windows overlap, they are
+		// distinct devices and must not be merged, regardless of fingerprint.
+		if activeConcurrently(deviceA, deviceB) {
+			return MergeDecision{ShouldMerge: false, Reason: "distinct devices active concurrently"}
 		}
 
 		// CNA-CNA SmartMatch is OS-family-only — require same current MAC and IP
@@ -132,6 +160,37 @@ func FingerprintsMatchKind(fpsA, fpsB []StoredFingerprint) MatchKind {
 		}
 	}
 	return best
+}
+
+// activeConcurrently reports whether two devices' observed presence windows overlap
+// by more than ConcurrencyTolerance. Overlap means both rows were seen on the network
+// at the same time, which is impossible for a single physical device — so it is proof
+// they are distinct devices and must not be merged.
+//
+// If either window is unknown (zero ActiveFrom/ActiveTo — e.g. a device with no
+// device_macs rows), concurrency cannot be assessed and this returns false so the
+// fingerprint decision stands. Malformed windows (ActiveTo before ActiveFrom) are
+// treated as unknown.
+func activeConcurrently(a, b MergeCandidate) bool {
+	if a.ActiveFrom.IsZero() || a.ActiveTo.IsZero() || b.ActiveFrom.IsZero() || b.ActiveTo.IsZero() {
+		return false
+	}
+	if a.ActiveTo.Before(a.ActiveFrom) || b.ActiveTo.Before(b.ActiveFrom) {
+		return false
+	}
+
+	// Overlap = [max(starts), min(ends)]. Positive length beyond the tolerance
+	// means the windows genuinely coincide rather than merely handing off.
+	overlapStart := a.ActiveFrom
+	if b.ActiveFrom.After(overlapStart) {
+		overlapStart = b.ActiveFrom
+	}
+	overlapEnd := a.ActiveTo
+	if b.ActiveTo.Before(overlapEnd) {
+		overlapEnd = b.ActiveTo
+	}
+
+	return overlapEnd.Sub(overlapStart) > ConcurrencyTolerance
 }
 
 // CnaMACIPMatch returns true when two CNA-matched candidates share the same

@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"core/utils/encdisk"
 	"core/utils/env"
 	"core/utils/tags"
 	"database/sql"
@@ -19,44 +18,6 @@ import (
 func BuildFromLocal(w io.Writer, db *sql.DB, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
 	err := InstallPlugin(def.LocalPath, db, InstallOpts{Def: def, RemoveSrc: false})
 	if err != nil {
-		return sdkutils.PluginInfo{}, err
-	}
-
-	info, err := GetInfoFromDef(def)
-	if err != nil {
-		return sdkutils.PluginInfo{}, err
-	}
-
-	if err := WriteMetadata(def, info.Package); err != nil {
-		return sdkutils.PluginInfo{}, err
-	}
-
-	return info, nil
-}
-
-func BuildFromGit(w io.Writer, db *sql.DB, def sdkutils.PluginSrcDef) (sdkutils.PluginInfo, error) {
-	dev := sdkutils.Slugify(sdkutils.RandomStr(16), "_")
-	parentpath := RandomPluginPath()
-	diskfile := filepath.Join(parentpath, "plugin-clone", "disk", dev)
-	mountpath := filepath.Join(parentpath, "plugin-build", "mount", dev)
-	clonepath := filepath.Join(mountpath, "clone")
-	mnt := encdisk.NewEncrypedDisk(diskfile, mountpath, dev)
-	if err := mnt.Mount(); err != nil {
-		return sdkutils.PluginInfo{}, err
-	}
-
-	w.Write([]byte("Cloning plugin from git: " + def.GitURL))
-	repo := sdkutils.GitRepoSource{URL: def.GitURL, Ref: def.GitRef}
-
-	if err := sdkutils.GitClone(repo, clonepath); err != nil {
-		return sdkutils.PluginInfo{}, err
-	}
-
-	if err := InstallPlugin(clonepath, db, InstallOpts{Def: def}); err != nil {
-		return sdkutils.PluginInfo{}, err
-	}
-
-	if err := mnt.Unmount(); err != nil {
 		return sdkutils.PluginInfo{}, err
 	}
 

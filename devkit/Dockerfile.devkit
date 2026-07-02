@@ -74,6 +74,8 @@ RUN cd core && go mod download
 # host-side merge-devkit.sh can union the two platforms into one fat zip.
 ENV DEVKIT_NO_ZIP=1
 COPY --chown=ubuntu:ubuntu . .
+# make-devkit.sh clones the public Devkit theme plugin (flarewifi/com.flarego.devkit)
+# into data/plugins/system over anonymous HTTPS — no credentials needed.
 RUN ./devkit/make-devkit.sh
 
 # =============================================================================

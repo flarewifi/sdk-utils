@@ -51,6 +51,12 @@ var (
 	// time consumption for all running sessions and persists them to the
 	// database in a single transaction.
 	BatchSaveInterval = 30 * time.Second
+
+	// DeviceMergeInterval - how often to run the device-merge reconciliation job (fast in dev)
+	DeviceMergeInterval = 300 * time.Second
+
+	// DeviceMergeInitialDelay - delay before the first reconciliation pass after startup
+	DeviceMergeInitialDelay = 45 * time.Second
 )
 
 // Schedule times (not used in dev mode, but needed for compilation)

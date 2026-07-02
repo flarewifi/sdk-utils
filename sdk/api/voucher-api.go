@@ -15,12 +15,19 @@ type IVoucherBatch interface {
 	ID() int64
 	UUID() string
 	Amount() *float64
-	Metadata() string                                                  // JSON metadata string
-	ProviderPkg() string                                               // Plugin package that created this batch
-	Vouchers(page int, perPage int, search string) ([]IVoucher, error) // Search filters vouchers by code, provider package or device mac
+	Metadata() string    // JSON metadata string
+	ProviderPkg() string // Plugin package that created this batch
+	// VouchersCount returns how many vouchers the batch holds. In an
+	// EventVoucherBatchBeforeCreate hook the batch is a preview (not yet
+	// persisted), so this is the intended count before any DB write; for a
+	// persisted batch it counts the rows. This scalar has no plugin-queryable
+	// equivalent at before-create time, so it stays on the API.
 	VouchersCount() int64
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
+	// NOTE: To LIST the vouchers in a batch, query the core `vouchers` table
+	// directly (WHERE batch_uuid = UUID()) with your plugin's own sqlc queries.
+	// See the Core Database Tables guide.
 }
 
 // IVoucher represents a single voucher record.
@@ -85,39 +92,11 @@ type VoucherActivateResult struct {
 	Session IClientSession // The session created from the voucher
 }
 
-// ListVouchersParams holds parameters for listing vouchers with pagination.
-type ListVouchersParams struct {
-	Search      *string // optional search term to filter vouchers by code, provider package or device mac
-	IsActivated *bool   // optional filter to show only activated or unactivated vouchers
-	Page        int
-	PerPage     int
-	DateStart   *time.Time
-	DateEnd     *time.Time
-}
-
 // UpdateVoucherBatchParams holds parameters for updating a voucher batch.
 type UpdateVoucherBatchParams struct {
 	UUID     string   // batch UUID to update
 	Amount   *float64 // new amount (nil to clear)
 	Metadata string   // new metadata (empty string to clear)
-}
-
-// ListVoucherBatchesParams holds parameters for listing voucher batches with pagination.
-type ListVoucherBatchesParams struct {
-	Search  *string
-	Page    int
-	PerPage int
-}
-
-// ListVoucherBatchesResult holds the result of listing voucher batches.
-type ListVoucherBatchesResult struct {
-	Batches []IVoucherBatch
-	Count   int64
-}
-
-type ListVouchersResult struct {
-	Vouchers []IVoucher
-	Count    int64
 }
 
 // IVouchersApi manages voucher lifecycle including creation, activation, and deletion.
@@ -133,11 +112,10 @@ type IVouchersApi interface {
 	// FindByID finds a voucher by its database ID.
 	FindByID(ctx context.Context, id int64) (IVoucher, error)
 
-	// List returns a paginated list of vouchers for this plugin.
-	List(ctx context.Context, params ListVouchersParams) (ListVouchersResult, error)
-
-	// CountVouchers returns the total count of vouchers matching the filter criteria.
-	CountVouchers(ctx context.Context, params ListVouchersParams) (int64, error)
+	// NOTE: There is no voucher-list/count method on this API. To list, search,
+	// paginate, or count vouchers (including "available" filtering), query the core
+	// `vouchers` table directly with your plugin's own sqlc queries. See the Core
+	// Database Tables guide.
 
 	// Update changes a voucher's session type, time, data, and speed settings.
 	// Emits EventVoucherUpdated with the updated voucher.
@@ -157,12 +135,6 @@ type IVouchersApi interface {
 	// Emits EventVoucherDeleted for each deleted voucher.
 	DeleteActivated(ctx context.Context) error
 
-	// GetAvailable returns all unactivated vouchers for this plugin.
-	GetAvailable(ctx context.Context) ([]IVoucher, error)
-
-	// GetVouchersByBatchUUIDCount returns the count of vouchers with the given batch UUID.
-	GetVouchersByBatchUUIDCount(ctx context.Context, batchUUID string) (int64, error)
-
 	// FindBatchByUUID finds a voucher batch by its UUID.
 	FindBatchByUUID(ctx context.Context, batchUUID string) (IVoucherBatch, error)
 
@@ -172,11 +144,9 @@ type IVouchersApi interface {
 	// UpdateBatch updates a voucher batch's amount and metadata.
 	UpdateBatch(ctx context.Context, params UpdateVoucherBatchParams) (IVoucherBatch, error)
 
-	// ListBatches returns a paginated list of voucher batches.
-	ListBatches(ctx context.Context, params ListVoucherBatchesParams) (ListVoucherBatchesResult, error)
-
-	// CountBatches returns the total count of voucher batches matching the filter criteria.
-	CountBatches(ctx context.Context, params ListVoucherBatchesParams) (int64, error)
+	// NOTE: There is no batch-list/count method on this API. To list, search,
+	// paginate, or count voucher batches, query the core `voucher_batches` table
+	// directly with your plugin's own sqlc queries. See the Core Database Tables guide.
 
 	// DeleteBatch removes a voucher batch and all its vouchers by UUID.
 	// Emits EventVoucherBatchDeleted with the deleted batch.

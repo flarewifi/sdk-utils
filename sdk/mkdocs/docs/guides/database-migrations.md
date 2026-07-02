@@ -30,10 +30,13 @@ This comprehensive guide covers database migrations and query development for Fl
 ├── resources/
 │   ├── migrations/          # Database schema migrations
 │   └── queries/             # SQL queries for sqlc
-├── db/
-│   └── queries/             # Generated Go code from sqlc
-└── sqlc.yml                 # sqlc configuration (optional)
+└── db/
+    └── queries/             # Generated Go code from sqlc
 ```
+
+Plugins do **not** carry their own sqlc config file — generation always uses
+core's `sqlc.yml`, with the core schema merged in automatically (see
+[Code Generation Workflow](#code-generation-workflow)).
 
 ---
 
@@ -536,59 +539,33 @@ engine-specific cast operators.
 
 ## sqlc Configuration
 
-### Plugin sqlc Configuration
+Plugins have **no per-plugin sqlc config**. Every plugin generates against core's
+`sqlc.yml` as-is (the core schema is merged in for you), so there is nothing to
+configure — just write your migrations and queries.
 
-Plugins can define custom type overrides in an `sqlc.yml` in the plugin root. The
-most common need is forcing the Go type for specific columns — for example, making
-a nullable `SUM()` result a `sql.NullFloat64`:
+### Controlling generated Go types
 
-```yaml
-version: '2'
-sql:
-  - queries: [resources/queries]
-    schema: [resources/migrations]
-    gen:
-      go:
-        package: queries
-        out: db/queries
-        sql_package: database/sql
-        overrides:
-          # Override SUM result to handle NULL
-          - column: findsales.amount
-            go_type:
-              import: database/sql
-              type: NullFloat64
-```
+Because there are no plugin-level type overrides, shape the type in **SQL**
+instead — this is portable and needs no config:
 
-### Common Type Overrides
+- **Make an aggregate non-null** so it maps to a plain `int64`/`float64` rather
+  than a `sql.Null*`:
 
-```yaml
-overrides:
-  # Force integers to int64
-  - db_type: "integer"
-    go_type: "int64"
-  
-  # Force decimals to float64
-  - db_type: "decimal"
-    go_type: "float64"
-  
-  # Nullable integers
-  - db_type: "integer"
-    go_type:
-      import: "database/sql"
-      type: "NullInt64"
-    nullable: true
-  
-  # JSON/metadata columns as []byte
-  - column: "table_name.metadata"
-    go_type:
-      type: "[]byte"
-  
-  # Nullable timestamps
-  - column: "table_name.confirmed_at"
-    go_type:
-      type: "sql.NullTime"
-```
+    ```sql
+    -- name: TotalSales :one
+    SELECT COALESCE(SUM(amount), 0) AS total FROM sales;  -- -> float64, not NullFloat64
+    ```
+
+- **Cast explicitly** when you need a specific numeric type:
+
+    ```sql
+    SELECT CAST(SUM(amount) AS REAL) AS total FROM sales;
+    ```
+
+Nullable columns still map to `sql.NullInt64` / `sql.NullTime` / etc. based on the
+schema (a column without `NOT NULL`), so express nullability through the migration
+itself. If a genuine column-level `go_type` override is ever unavoidable, it must
+be added to **core's** `sqlc.yml` (a core change) — reach out before doing so.
 
 ---
 
@@ -611,12 +588,12 @@ overrides:
 ### What the Script Does
 
 1. Creates a temporary directory
-2. Copies core migrations (for foreign key references)
-3. Copies plugin migrations and queries
-4. Merges core and plugin sqlc configurations
+2. Copies core's `sqlc.yml` (the only config)
+3. Copies core migrations (for foreign key references)
+4. Copies plugin migrations and queries
 5. Runs `sqlc generate`
 6. Copies generated files to `{plugin}/db/queries/`
-7. Cleans up temporary directory
+7. Cleans up the temporary directory (even on failure)
 
 ### Generated Code Usage
 

@@ -21,7 +21,7 @@ PATH="$PATH:$HOME/go/bin"
     rm -rf **/*_templ.go && \
     sh -c "cd core && templ generate" && \
     echo "Generating sqlc queires..." && \
-    sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
+    sh -c "./scripts/sqlc-gen.sh ./core" && \
     cp ./core/internal/api/plugin-init_mono.default \
     ./core/internal/api/plugin-init_mono.go && \
     go run -tags="${GO_TAGS}" $SYNC_VERSION && \

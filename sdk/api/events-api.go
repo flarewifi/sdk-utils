@@ -17,11 +17,19 @@ import "context"
 // must not block the emitting operation — or that runs long — should spawn its own
 // goroutine: deciding sync vs async is the handler's responsibility, not the core's.
 //
-// Most events ignore the value a callback returns. A few let a callback cancel the
-// operation by returning an error — the operation checks the first non-nil error:
-//   - OnVoucherBatchEvent for EventVoucherBeforeCreate — an error cancels voucher creation.
-//   - OnVoucherEvent for EventVoucherBeforeCreate — an error cancels the current voucher (rolls back the batch transaction).
-//   - OnClientEvent for EventClientBeforeConnect — an error cancels the connection.
+// Most events ignore the value a callback returns. The "before" events, however, let a
+// callback CANCEL the pending operation by returning a non-nil error — the operation
+// checks the first non-nil error and aborts, propagating it to the caller. These
+// cancellable hooks are:
+//   - OnVoucherBatchEvent: EventVoucherBatchBeforeCreate, EventVoucherBatchBeforeDelete.
+//   - OnVoucherEvent: EventVoucherBeforeCreate (rolls back the batch), EventVoucherBeforeActivate.
+//   - OnClientEvent: EventClientBeforeConnect, EventClientBeforeCreate,
+//     EventClientBeforeUpdate, EventClientBeforeDisconnect.
+//   - OnClientBeforeMerge: cancels a device merge (EventClientBeforeMerge).
+//   - OnSessionEvent: EventSessionBeforeCreate, EventSessionBeforeConsume, EventSessionBeforeDelete.
+//   - OnSessionBatchEvent: EventSessionBatchBeforeDelete.
+//   - OnPurchaseEvent: EventPurchaseBeforeSuccess, EventPurchaseBeforeCancel (EventPurchaseBeforeFail
+//     is notify-only — a failure cannot be vetoed).
 //
 // Example:
 //
@@ -38,16 +46,26 @@ type IEventsApi interface {
 	// event occurs. The callback runs synchronously in the emitter's goroutine; its
 	// returned error is ignored by the emitter. Spawn a goroutine if it must not block.
 	//
-	// Available events: EventSessionCreated, EventSessionConnected,
-	// EventSessionDisconnected, EventSessionConsumed, EventSessionChanged,
+	// The "before" events are cancellable: for EventSessionBeforeCreate,
+	// EventSessionBeforeConsume, and EventSessionBeforeDelete, a callback that returns a
+	// non-nil error aborts the pending operation (create/consume/delete) and the error
+	// propagates to the caller. EventSessionBeforeCreate delivers an in-memory preview
+	// session (ID == 0).
+	//
+	// Available events: EventSessionBeforeCreate, EventSessionCreated,
+	// EventSessionConnected, EventSessionDisconnected, EventSessionBeforeConsume,
+	// EventSessionConsumed, EventSessionChanged, EventSessionBeforeDelete,
 	// EventSessionDeleted.
 	OnSessionEvent(event SessionEvent, callback func(ctx context.Context, data SessionEventData) error)
 
 	// OnSessionBatchEvent registers a callback that fires whenever a batch of
-	// sessions is updated at once. The callback runs synchronously in the emitter's
-	// goroutine; spawn a goroutine if it must not block.
+	// sessions is updated or about to be deleted at once. The callback runs synchronously
+	// in the emitter's goroutine; spawn a goroutine if it must not block.
 	//
-	// Available events: EventSessionBatchUpdated.
+	// EventSessionBatchBeforeDelete is cancellable: returning a non-nil error aborts the
+	// whole batch deletion (from DeleteSessions) before any session is removed.
+	//
+	// Available events: EventSessionBatchUpdated, EventSessionBatchBeforeDelete.
 	OnSessionBatchEvent(event SessionEvent, callback func(ctx context.Context, sessions []IClientSession) error)
 
 	// OnClientEvent registers a callback that fires whenever the given client
@@ -55,14 +73,26 @@ type IEventsApi interface {
 	// in registration order; spawn a goroutine if it must not block. For most client
 	// events the returned error is ignored.
 	//
-	// EventClientBeforeConnect is the exception: Connect() honors the returned error.
-	// If a callback returns an error, the connection is aborted and the error
-	// propagates back to the caller of Connect(). Use it to stop a connection.
+	// The "before" client events are cancellable: for EventClientBeforeConnect,
+	// EventClientBeforeCreate, EventClientBeforeUpdate, and EventClientBeforeDisconnect,
+	// a callback that returns a non-nil error aborts the pending operation and the error
+	// propagates back to the caller. They fire before any side effects, so cancelling
+	// requires no rollback. (Merges use OnClientBeforeMerge, not this method.)
 	//
-	// Available events: EventClientCreated, EventClientRegistered,
-	// EventClientUpdated, EventClientConnected, EventClientDisconnected,
+	// Available events: EventClientBeforeCreate, EventClientCreated,
+	// EventClientRegistered, EventClientBeforeUpdate, EventClientUpdated,
+	// EventClientConnected, EventClientBeforeDisconnect, EventClientDisconnected,
 	// EventClientActive, EventClientBeforeConnect.
 	OnClientEvent(event ClientEvent, callback func(ctx context.Context, clnt IClientDevice) error)
+
+	// OnClientBeforeMerge registers a callback that fires BEFORE two device records are
+	// merged, while both still exist. The callback runs synchronously in the emitter's
+	// goroutine. Returning a non-nil error CANCELS the merge before any data is
+	// transferred or deleted (from an explicit MergeClientDevices call the error
+	// propagates to the caller; from an implicit MAC-collision merge the merge is simply
+	// skipped). Use EventClientMergeData.Target for the survivor and
+	// EventClientMergeData.Source for the device about to be deleted — both are non-nil here.
+	OnClientBeforeMerge(callback func(ctx context.Context, data EventClientMergeData) error)
 
 	// OnClientMerge registers a callback that fires after two device records have
 	// been successfully merged. The callback runs synchronously in the emitter's
@@ -82,8 +112,12 @@ type IEventsApi interface {
 	// event occurs. The callback runs synchronously in the emitter's goroutine;
 	// spawn a goroutine if it must not block.
 	//
-	// Available events: EventPurchaseSuccess, EventPurchaseFailed,
-	// EventPurchaseCancelled.
+	// EventPurchaseBeforeRequest and EventPurchaseBeforeCancel are cancellable: a callback
+	// that returns a non-nil error aborts the request/cancel before any side effects and
+	// the error propagates to the caller.
+	//
+	// Available events: EventPurchaseBeforeRequest, EventPurchaseSuccess,
+	// EventPurchaseFailed, EventPurchaseBeforeCancel, EventPurchaseCancelled.
 	OnPurchaseEvent(event PurchaseEvent, callback func(ctx context.Context, data PurchaseEventData) error)
 
 	// OnVoucherEvent registers a callback that fires whenever the given
@@ -92,10 +126,11 @@ type IEventsApi interface {
 	//
 	// For EventVoucherBeforeCreate the voucher is an in-memory preview (ID == 0,
 	// Code and UUID are already set). Returning an error rolls back the whole
-	// batch transaction.
+	// batch transaction. EventVoucherBeforeActivate is also cancellable: returning an
+	// error aborts the activation before any session is created.
 	//
-	// Available events: EventVoucherBeforeCreate, EventVoucherActivated,
-	// EventVoucherUpdated, EventVoucherDeleted.
+	// Available events: EventVoucherBeforeCreate, EventVoucherBeforeActivate,
+	// EventVoucherActivated, EventVoucherUpdated, EventVoucherDeleted.
 	OnVoucherEvent(event VoucherEvent, callback func(ctx context.Context, v IVoucher) error)
 
 	// OnVoucherBatchEvent registers a callback that fires whenever the given
@@ -104,10 +139,11 @@ type IEventsApi interface {
 	//
 	// For EventVoucherBatchBeforeCreate the batch is an in-memory preview (ID == 0,
 	// Vouchers() returns nil). Returning an error cancels batch creation before
-	// any DB writes.
+	// any DB writes. EventVoucherBatchBeforeDelete is likewise cancellable: returning an
+	// error aborts the batch deletion before any row is removed.
 	//
-	// Available events: EventVoucherBatchBeforeCreate, EventVoucherGenerated,
-	// EventVoucherBatchDeleted.
+	// Available events: EventVoucherBatchBeforeCreate, EventVoucherBatchCreated,
+	// EventVoucherBatchBeforeDelete, EventVoucherBatchDeleted.
 	OnVoucherBatchEvent(event VoucherBatchEvent, callback func(ctx context.Context, batch IVoucherBatch) error)
 
 	// OnInternetEvent registers a callback that fires whenever the device's

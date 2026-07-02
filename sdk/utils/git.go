@@ -1,6 +1,7 @@
 package sdkutils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,7 +11,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
+
+// gitOpTimeout bounds a single clone+checkout so a hung or throttled remote can't
+// block an install goroutine (and the HTTP request waiting on it) indefinitely.
+// Generous because a large plugin repo over a slow on-device link is legitimate.
+const gitOpTimeout = 10 * time.Minute
 
 type GitRepoSource struct {
 	URL string
@@ -18,12 +25,15 @@ type GitRepoSource struct {
 }
 
 func getGitCachePath(repo GitRepoSource) string {
-	return filepath.Join(PathTmpDir, "git-cache", Slugify(repo.URL, "_"), repo.Ref)
+	// Slugify the credential-stripped URL so an embedded token never lands in a
+	// predictable on-disk cache path (Slugify preserves alphanumerics verbatim).
+	return filepath.Join(PathTmpDir, "git-cache", Slugify(stripGitCredentials(repo.URL), "_"), repo.Ref)
 }
 
 func GitIsCached(repo GitRepoSource) bool {
-	cachePath := getGitCachePath(repo)
-	return repo.Ref != "" && FsExists(cachePath)
+	// Only immutable refs (full commit SHAs) are cacheable. A branch or tag can
+	// move, so a cached copy would silently serve a stale tree on the next install.
+	return isImmutableGitRef(repo.Ref) && FsExists(getGitCachePath(repo))
 }
 
 func MakeGitCache(repo GitRepoSource, clonePath string) error {
@@ -39,38 +49,58 @@ func MakeGitCache(repo GitRepoSource, clonePath string) error {
 }
 
 func GitClone(repo GitRepoSource, clonePath string) error {
-	// Ensure the parent directory of clonePath exists
+	// Ensure the parent exists without disturbing sibling clones (this dir may be
+	// shared by concurrent installs); clear only our own target below.
 	parentDir := filepath.Dir(clonePath)
-	if err := FsEmptyDir(parentDir); err != nil {
+	if err := FsEnsureDir(parentDir); err != nil {
 		return err
 	}
 
+	// Defense in depth against argument injection: a URL or ref beginning with "-"
+	// would be parsed by git as an option. We also terminate options with "--".
+	if strings.HasPrefix(repo.URL, "-") {
+		return errors.New("invalid git URL")
+	}
+	if strings.HasPrefix(repo.Ref, "-") {
+		return errors.New("invalid git ref")
+	}
+
 	if GitIsCached(repo) {
-		cachePath := getGitCachePath(repo)
-		if err := FsCopyDir(cachePath, clonePath, nil); err != nil {
+		if err := FsEmptyDir(clonePath); err != nil {
 			return err
 		}
-	} else {
-		// Clone the repository using the "git clone" command with the provided URL
-		var stderr strings.Builder
-		cmd := exec.Command("git", "clone", repo.URL, clonePath)
-		cmd.Stderr = &stderr
+		return FsCopyDir(getGitCachePath(repo), clonePath, nil)
+	}
 
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("Error: %s\nStderr: %s", err.Error(), stderr.String())
+	// git clone needs a nonexistent (or empty) target.
+	if err := os.RemoveAll(clonePath); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), gitOpTimeout)
+	defer cancel()
+
+	// Clone the repository. Errors are scrubbed of any credentials embedded in the
+	// URL before they propagate (git echoes the remote URL in its stderr).
+	var stderr strings.Builder
+	cloneCmd := exec.CommandContext(ctx, "git", "clone", "--", repo.URL, clonePath)
+	cloneCmd.Stderr = &stderr
+	if err := cloneCmd.Run(); err != nil {
+		return fmt.Errorf("git clone failed: %s: %s", err.Error(), redactGitSecrets(stderr.String(), repo.URL))
+	}
+
+	// If a specific ref (branch, tag, commit) is provided, check it out.
+	if repo.Ref != "" {
+		var coErr strings.Builder
+		checkoutCmd := exec.CommandContext(ctx, "git", "-C", clonePath, "checkout", repo.Ref)
+		checkoutCmd.Stderr = &coErr
+		if err := checkoutCmd.Run(); err != nil {
+			return fmt.Errorf("git checkout %s failed: %s: %s", repo.Ref, err.Error(), redactGitSecrets(coErr.String(), repo.URL))
 		}
 
-		// If a specific ref (branch, tag, commit) is provided, checkout that ref
-		if repo.Ref != "" {
-			// Prepare the checkout command
-			checkoutCmd := exec.Command("git", "checkout", repo.Ref)
-			checkoutCmd.Stdout = os.Stdout
-			checkoutCmd.Stderr = os.Stderr
-			checkoutCmd.Dir = clonePath // Set the working directory for the command
-			if err := checkoutCmd.Run(); err != nil {
-				return err
-			}
-
+		// Cache only immutable refs — a moved branch/tag must be re-cloned, not
+		// served stale from the cache (see GitIsCached).
+		if isImmutableGitRef(repo.Ref) {
 			if err := MakeGitCache(repo, clonePath); err != nil {
 				return err
 			}
@@ -192,4 +222,46 @@ func ParseGitSource(sourceUrl string) (source GitSource, err error) {
 	}
 
 	return source, nil
+}
+
+// stripGitCredentials returns rawURL with any embedded user-info (a token or
+// user:password) removed. It falls back to the original string only when the URL
+// is unparseable — in which case a clone would fail on it anyway.
+func stripGitCredentials(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	u.User = nil
+	return u.String()
+}
+
+// redactGitSecrets scrubs any credentials that a git error message may echo: the
+// full credential-bearing URL is swapped for its stripped form and the bare
+// user-info token is masked. rawURL is the source URL the message may quote.
+func redactGitSecrets(msg, rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.User == nil {
+		return msg
+	}
+	msg = strings.ReplaceAll(msg, rawURL, stripGitCredentials(rawURL))
+	if ui := u.User.String(); ui != "" {
+		msg = strings.ReplaceAll(msg, ui, "***")
+	}
+	return msg
+}
+
+// isImmutableGitRef reports whether ref is a full Git object name (40 hex chars
+// for SHA-1, 64 for SHA-256). Such a ref is immutable and safe to cache. Branch
+// names, tags and abbreviated SHAs are treated as mutable and never cached.
+func isImmutableGitRef(ref string) bool {
+	if len(ref) != 40 && len(ref) != 64 {
+		return false
+	}
+	for _, c := range ref {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }

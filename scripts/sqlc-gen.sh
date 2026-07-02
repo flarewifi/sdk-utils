@@ -1,66 +1,69 @@
 #!/bin/sh
 set -eu
 
-# Usage: ./generate-sqlc.sh <plugin_directory>
-# Example: ./generate-sqlc.sh /home/user/myplugin
+# sqlc-gen.sh — generate sqlc query code for core or a single plugin.
+#
+# Usage: ./scripts/sqlc-gen.sh <source_dir>
+#
+#   <source_dir>   ./core  or  ./data/plugins/local/<pkg>
+#
+# sqlc runs in a throwaway temp dir assembled from:
+#   - core/sqlc.yml            the sqlc config (engine: sqlite)
+#   - core migrations          always included, so plugin queries can JOIN core tables
+#   - <source_dir> migrations  the source's own schema (nothing extra when it IS core)
+#   - <source_dir> queries     the queries to generate Go for
+# The generated Go is copied back to <source_dir>/db/queries.
+#
+# SQLite is the only engine (postgres was removed), so there is no driver argument.
+# Any extra arguments are ignored for backward compatibility with older callers.
 
-PLUGIN_DIR="${1:-}"
+SRC_DIR="${1:-}"
 
-if [ -z "$PLUGIN_DIR" ]; then
-    echo "Usage: $0 <plugin_directory>"
+if [ -z "$SRC_DIR" ]; then
+    echo "Usage: $0 <source_dir>" >&2
+    exit 1
+fi
+if [ ! -d "$SRC_DIR" ]; then
+    echo "Error: '$SRC_DIR' is not a directory." >&2
     exit 1
 fi
 
-if [ ! -d "$PLUGIN_DIR" ]; then
-    echo "Error: '$PLUGIN_DIR' is not a valid directory."
-    exit 1
-fi
-
-# Absolute paths
-PLUGIN_DIR="$(cd "$PLUGIN_DIR" && pwd)"
+SRC_DIR="$(cd "$SRC_DIR" && pwd)"
 CORE_DIR="$(cd core && pwd)"
-TMP_DIR="$(mktemp -d)"
-echo "Temporary working directory created at: $TMP_DIR"
+CORE_SQLC="$CORE_DIR/sqlc.yml"
 
-if [ ! -d "$PLUGIN_DIR/resources/queries" ]; then
-    echo "queries directory not found in plugin: $PLUGIN_DIR/resources/queries"
-    echo "skipping sqlc generation."
+if [ ! -f "$CORE_SQLC" ]; then
+    echo "Error: core sqlc config not found: $CORE_SQLC" >&2
+    exit 1
+fi
+
+if [ ! -d "$SRC_DIR/resources/queries" ]; then
+    echo "No queries in $SRC_DIR/resources/queries — skipping sqlc generation."
     exit 0
 fi
 
-# Copy core migrations and queries files to temp directory
-(
-    if [ $CORE_DIR = $PLUGIN_DIR ]; then
-        echo "Core and plugin directories are the same. Skipping copy of core files."
-    else
-        ./scripts/copy-sql.sh "core" "$TMP_DIR"
-        # Remove core queries
-        rm -rf "$TMP_DIR/resources/queries"
-    fi
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+echo "Working in temp dir: $TMP_DIR"
 
-    ./scripts/copy-sql.sh "$PLUGIN_DIR" "$TMP_DIR"
-)
+# 1. sqlc config.
+cp "$CORE_SQLC" "$TMP_DIR/sqlc.yml"
 
-# Run sqlc generate
-echo "Running sqlc generate in $TMP_DIR ..."
-(
-    cd "$TMP_DIR"
-    sqlc generate
-)
-echo "sqlc generate completed successfully."
-
-# Copy generated output back
-if [ -d "$TMP_DIR/db/queries" ]; then
-    rm -rf "$PLUGIN_DIR/db/queries"
-    mkdir -p "$PLUGIN_DIR/db/queries"
-    cp -r "$TMP_DIR/db/queries/." "$PLUGIN_DIR/db/queries/"
-    echo "Copied generated queries to $PLUGIN_DIR/db/queries/"
-else
-    echo "Warning: No generated output found in $TMP_DIR/db/queries"
+# 2. Schema: core migrations first, then the source's own (unioned in one dir).
+mkdir -p "$TMP_DIR/resources/migrations"
+cp -R "$CORE_DIR/resources/migrations/." "$TMP_DIR/resources/migrations/"
+if [ "$SRC_DIR" != "$CORE_DIR" ] && [ -d "$SRC_DIR/resources/migrations" ]; then
+    cp -R "$SRC_DIR/resources/migrations/." "$TMP_DIR/resources/migrations/"
 fi
 
-# Cleanup
-rm -rf "$TMP_DIR"
-echo "Temporary directory deleted: $TMP_DIR"
+# 3. Queries: only the source's own.
+cp -R "$SRC_DIR/resources/queries" "$TMP_DIR/resources/queries"
 
-echo "Done."
+# 4. Generate, then copy the output back into the source tree.
+echo "Running sqlc generate ..."
+( cd "$TMP_DIR" && sqlc generate )
+
+rm -rf "$SRC_DIR/db/queries"
+mkdir -p "$SRC_DIR/db/queries"
+cp -R "$TMP_DIR/db/queries/." "$SRC_DIR/db/queries/"
+echo "Generated queries → $SRC_DIR/db/queries"

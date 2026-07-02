@@ -75,6 +75,26 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 	sessionUUID := params.UUID
 	pkg := self.pluginApi.Info().Package
 
+	// Give subscribers a chance to veto creation before the INSERT. The session is an
+	// in-memory preview (ID == 0), so cancelling requires no rollback.
+	preview := self.pluginApi.SessionMgr.NewClientSession(sdkapi.NewClientSessionParams{
+		UUID:           sessionUUID,
+		ProviderPkg:    pkg,
+		DeviceID:       params.DevId,
+		Type:           params.Type,
+		TimeSecs:       params.TimeSecs,
+		DataMb:         params.DataMb,
+		TimeCons:       params.TimeCons,
+		DataCons:       params.DataCons,
+		ExpDays:        params.ExpDays,
+		DownMbits:      params.DownMbits,
+		UpMbits:        params.UpMbits,
+		UseGlobalSpeed: params.UseGlobalSpeed,
+	})
+	if err := self.pluginApi.EventsMgr.EmitSessionEvent(ctx, sdkapi.EventSessionBeforeCreate, sdkapi.SessionEventData{Session: preview}); err != nil {
+		return nil, err
+	}
+
 	// Create session in database
 	session, err := self.pluginApi.models.Session().Create(ctx, models.CreateSessionParams{
 		UUID:           sessionUUID,
@@ -171,117 +191,6 @@ func (self *SessionsMgrApi) NewClientDevice(params sdkapi.NewDeviceParams) sdkap
 	return self.pluginApi.SessionMgr.NewClientDevice(params)
 }
 
-// ListSessions returns a paginated list of sessions with optional search and filters.
-func (self *SessionsMgrApi) ListSessions(ctx context.Context, params sdkapi.ListSessionsParams) (sdkapi.ListSessionsResult, error) {
-	q := coreQueries.New(self.pluginApi.db.DB)
-	offset := int64(params.PerPage * (params.Page - 1))
-
-	// Prepare search parameter
-	var search interface{}
-	if params.Search != nil && *params.Search != "" {
-		search = *params.Search
-	}
-
-	// Prepare device ID parameter
-	var deviceID interface{}
-	if params.DeviceID != nil {
-		deviceID = *params.DeviceID
-	}
-
-	// Prepare availability parameter (nil = all)
-	availability := "all"
-	if params.Availability != nil {
-		availability = string(*params.Availability)
-	}
-
-	// Prepare session type parameter
-	var sessionType interface{}
-	if params.SessionType != nil {
-		sessionType = string(*params.SessionType)
-	}
-
-	// Prepare date parameters
-	var dateStart, dateEnd interface{}
-	if params.DateStart != nil {
-		dateStart = params.DateStart.Format("2006-01-02")
-	}
-	if params.DateEnd != nil {
-		dateEnd = params.DateEnd.Format("2006-01-02")
-	}
-
-	// Prepare time/data filter parameters
-	var timeSecsGt, timeSecsLt interface{}
-	var dataMbGt, dataMbLt interface{}
-	if params.TimeSecsGt != nil {
-		timeSecsGt = *params.TimeSecsGt
-	}
-	if params.TimeSecsLt != nil {
-		timeSecsLt = *params.TimeSecsLt
-	}
-	if params.DataMbGt != nil {
-		dataMbGt = *params.DataMbGt
-	}
-	if params.DataMbLt != nil {
-		dataMbLt = *params.DataMbLt
-	}
-
-	// payment type
-	paymentType := "all"
-	if params.PaymentType != nil {
-		paymentType = string(*params.PaymentType)
-	}
-
-	paginatedRows, err := q.GetSessionsPaginated(ctx, coreQueries.GetSessionsPaginatedParams{
-		Search:       search,
-		DeviceID:     deviceID,
-		Availability: availability,
-		SessionType:  sessionType,
-		DateStart:    dateStart,
-		DateEnd:      dateEnd,
-		TimeSecsGt:   timeSecsGt,
-		TimeSecsLt:   timeSecsLt,
-		DataMbGt:     dataMbGt,
-		DataMbLt:     dataMbLt,
-		RowLimit:     int64(params.PerPage),
-		RowOffset:    offset,
-		PaymentType:  paymentType,
-	})
-	if err != nil {
-		return sdkapi.ListSessionsResult{}, fmt.Errorf("unable to list sessions: %w", err)
-	}
-
-	filteredRows, err := q.GetSessionsFiltered(ctx, coreQueries.GetSessionsFilteredParams{
-		Search:       search,
-		DeviceID:     deviceID,
-		Availability: availability,
-		SessionType:  sessionType,
-		DateStart:    dateStart,
-		DateEnd:      dateEnd,
-		TimeSecsGt:   timeSecsGt,
-		TimeSecsLt:   timeSecsLt,
-		DataMbGt:     dataMbGt,
-		DataMbLt:     dataMbLt,
-		PaymentType:  paymentType,
-	})
-	if err != nil {
-		return sdkapi.ListSessionsResult{}, fmt.Errorf("unable to count sessions: %w", err)
-	}
-
-	return sdkapi.ListSessionsResult{
-		PaginatedSessions: self.wrapManySessions(paginatedRows),
-		FilteredSessions:  self.wrapManySessions(filteredRows),
-	}, nil
-}
-
-// wrapManySessions wraps multiple session rows into IClientSession objects.
-func (self *SessionsMgrApi) wrapManySessions(rows []coreQueries.Session) []sdkapi.IClientSession {
-	sessions := make([]sdkapi.IClientSession, len(rows))
-	for i, row := range rows {
-		sessions[i] = self.wrapSession(row)
-	}
-	return sessions
-}
-
 // wrapSession wraps a single session row into an IClientSession object.
 func (self *SessionsMgrApi) wrapSession(row coreQueries.Session) sdkapi.IClientSession {
 	var startedAt, resumedAt *time.Time
@@ -320,7 +229,8 @@ func (self *SessionsMgrApi) wrapSession(row coreQueries.Session) sdkapi.IClientS
 }
 
 // DeleteSession deletes a session by ID. If the session is currently running,
-// it disconnects the device first. Emits EventSessionDeleted after deletion.
+// it disconnects the device first. Emits EventSessionBeforeDelete first (a callback
+// error cancels the deletion) and EventSessionDeleted after deletion.
 func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) error {
 	// Find the session first to get its data (including UUID for cloud sync)
 	session, err := self.FindSessionByID(ctx, sessionID)
@@ -328,6 +238,52 @@ func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) 
 		return fmt.Errorf("session not found: %w", err)
 	}
 
+	// Give subscribers a chance to veto before any disconnect or deletion.
+	if err := self.pluginApi.EventsMgr.EmitSessionEvent(ctx, sdkapi.EventSessionBeforeDelete, sdkapi.SessionEventData{Session: session}); err != nil {
+		return err
+	}
+
+	return self.deleteSessionInternal(ctx, session)
+}
+
+// DeleteSessions deletes a batch of sessions by ID. It emits EventSessionBatchBeforeDelete
+// ONCE before any deletion — a callback error cancels the whole batch — then deletes each
+// session (emitting the per-session EventSessionDeleted). The single-session
+// EventSessionBeforeDelete is intentionally NOT fired per item; the batch hook is the
+// cancellation point for bulk deletes.
+func (self *SessionsMgrApi) DeleteSessions(ctx context.Context, sessionIDs []int64) error {
+	if len(sessionIDs) == 0 {
+		return nil
+	}
+
+	// Resolve all sessions up front so the batch preview and the delete loop see the
+	// same set; a missing session fails the whole batch before anything is removed.
+	sessions := make([]sdkapi.IClientSession, 0, len(sessionIDs))
+	for _, id := range sessionIDs {
+		session, err := self.FindSessionByID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("session %d not found: %w", id, err)
+		}
+		sessions = append(sessions, session)
+	}
+
+	// Give subscribers a chance to veto the whole batch before any deletion.
+	if err := self.pluginApi.EventsMgr.EmitSessionBatchEvent(ctx, sdkapi.EventSessionBatchBeforeDelete, sessions); err != nil {
+		return err
+	}
+
+	for _, session := range sessions {
+		if err := self.deleteSessionInternal(ctx, session); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteSessionInternal disconnects the owning device (if connected) and deletes the
+// session row, emitting EventSessionDeleted afterwards. It does NOT fire any "before"
+// event — callers decide whether to fire the single or batch pre-delete hook.
+func (self *SessionsMgrApi) deleteSessionInternal(ctx context.Context, session sdkapi.IClientSession) error {
 	// Get the device for the event
 	device, err := self.FindClientById(ctx, session.DeviceID())
 	if err != nil {
@@ -346,7 +302,7 @@ func (self *SessionsMgrApi) DeleteSession(ctx context.Context, sessionID int64) 
 	}
 
 	// Delete from local database
-	if err := self.pluginApi.models.Session().Delete(ctx, sessionID); err != nil {
+	if err := self.pluginApi.models.Session().Delete(ctx, session.ID()); err != nil {
 		return fmt.Errorf("failed to delete session: %w", err)
 	}
 

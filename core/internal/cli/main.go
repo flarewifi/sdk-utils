@@ -96,6 +96,33 @@ func CreatePlugin() {
 		pluginNameSample = "My Plugin"
 	)
 
+	// Flags let the command run non-interactively — the devkit "Create New Plugin"
+	// UI shells out with these instead of driving the stdin prompts below. When any
+	// of them is set we take the flag path; otherwise the interactive flow runs.
+	fs := flag.NewFlagSet("create-plugin", flag.ExitOnError)
+	pkgFlag := fs.String("pkg", "", "Plugin package name, e.g. "+domainSample)
+	nameFlag := fs.String("name", "", "Human-readable plugin name")
+	descFlag := fs.String("desc", "", "Plugin description")
+	_ = fs.Parse(os.Args[2:])
+
+	if *pkgFlag != "" || *nameFlag != "" || *descFlag != "" {
+		pluginPkg = strings.TrimSpace(*pkgFlag)
+		pluginName = strings.TrimSpace(*nameFlag)
+		pluginDesc = strings.TrimSpace(*descFlag)
+
+		if len(strings.Split(pluginPkg, ".")) < 3 {
+			fmt.Printf("Error: -pkg must have at least 3 segments, for example \"%s\"\n", domainSample)
+			os.Exit(1)
+		}
+		if pluginName == "" {
+			fmt.Println("Error: -name is required")
+			os.Exit(1)
+		}
+
+		tools.CreatePlugin(pluginPkg, pluginName, pluginDesc)
+		return
+	}
+
 	for len(strings.Split(pluginPkg, ".")) < 3 {
 		pluginPkg, err = tools.AskCmdInput(fmt.Sprintf("Enter the plugin package name, for example \"%s\" (without qoutes): ", domainSample))
 		if err != nil {
@@ -308,7 +335,7 @@ list of commands:
 
     server                              Start the flare server
 
-    create-plugin                       Create a new plugin
+    create-plugin [-pkg -name -desc]    Create a new plugin. With no flags it prompts interactively; pass -pkg, -name and -desc to run non-interactively.
 
     create-migration                    Create a new migration
 

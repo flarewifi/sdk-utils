@@ -231,6 +231,11 @@ func (self *Purchase) Confirm(ctx context.Context) error {
 }
 
 func (self *Purchase) Cancel(ctx context.Context) error {
+	// Give subscribers a chance to veto the cancellation before any side effects.
+	if err := self.emitPurchaseBeforeEvent(ctx, sdkapi.EventPurchaseBeforeCancel, ""); err != nil {
+		return err
+	}
+
 	err := self.purchase.Cancel(ctx)
 	if err != nil {
 		// Emit failed event on cancellation error
@@ -247,6 +252,23 @@ func (self *Purchase) Cancel(ctx context.Context) error {
 	// Emit cancelled event
 	self.emitPurchaseEvent(ctx, sdkapi.EventPurchaseCancelled, reason)
 	return nil
+}
+
+// emitPurchaseBeforeEvent emits a cancellable "before" purchase event synchronously and
+// returns the first callback error so the caller can abort. Unlike emitPurchaseEvent it
+// honors the passed ctx and propagates the error (a subscriber's veto).
+func (self *Purchase) emitPurchaseBeforeEvent(ctx context.Context, event sdkapi.PurchaseEvent, reason string) error {
+	device, err := self.api.SessionsMgr().FindClientById(ctx, self.deviceId)
+	if err != nil {
+		// No device to attach (e.g. admin purchase) — still emit so subscribers can veto.
+		device = nil
+	}
+
+	return self.api.EventsMgr.EmitPurchaseEvent(ctx, event, sdkapi.PurchaseEventData{
+		Purchase: self,
+		Device:   device,
+		Reason:   reason,
+	})
 }
 
 // emitPurchaseEvent emits a purchase event with the device information.

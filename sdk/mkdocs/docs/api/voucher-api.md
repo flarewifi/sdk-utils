@@ -14,7 +14,7 @@ vouchersApi := api.Vouchers()
 
 ### CreateVouchers
 
-Generates a batch of vouchers and returns them. Emits `EventVoucherGenerated` with the created voucher batch.
+Generates a batch of vouchers and returns them. Emits `EventVoucherBatchCreated` with the created voucher batch.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -78,71 +78,43 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### List
+### Listing & counting vouchers
 
-Returns a paginated list of vouchers for this plugin. Filters vouchers by code, provider package, or device MAC address.
+There is **no voucher list/count method** on `IVouchersApi`. To list, search, paginate,
+count, or filter vouchers — including "available" (`activated_at IS NULL`) filtering —
+query the core [`vouchers`](../guides/core-database.md#vouchers) table **directly with your
+plugin's own sqlc queries**. Your plugin's `sqlc` config already includes the core schema,
+so a query against `vouchers` type-checks and generates like any other. See the
+[Core Database Tables](../guides/core-database.md) guide for the full schema.
 
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    
-    // List all unactivated vouchers
-    isActivated := false
-    result, err := api.Vouchers().List(ctx, sdkapi.ListVouchersParams{
-        IsActivated: &isActivated,
-        Page:        1,
-        PerPage:     20,
-    })
-    if err != nil {
-        // handle error
-    }
-    
-    fmt.Printf("Found %d vouchers (total: %d)\n", len(result.Vouchers), result.Count)
-    for _, v := range result.Vouchers {
-        fmt.Printf("Voucher: %s - %s\n", v.Code(), v.Type())
-    }
-}
+```sql
+-- name: SearchVouchers :many
+SELECT v.* FROM vouchers v
+WHERE v.provider_pkg = @provider_pkg
+  AND (@search = '' OR v.code LIKE '%' || @search || '%')
+  AND (@only_available = 0 OR v.activated_at IS NULL)
+ORDER BY v.created_at DESC
+LIMIT @row_limit OFFSET @row_offset;
+
+-- name: CountVouchers :one
+SELECT count(*) FROM vouchers WHERE provider_pkg = @provider_pkg;
 ```
 
-**Example: Search vouchers by code or MAC address**
-
 ```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    searchTerm := "ABC123"
-    
-    result, err := api.Vouchers().List(ctx, sdkapi.ListVouchersParams{
-        Search:  &searchTerm,
-        Page:    1,
-        PerPage: 20,
-    })
-    if err != nil {
-        // handle error
-    }
-    
-    // Process matching vouchers...
-}
+db := queries.New(api.SqlDB())
+rows, err := db.SearchVouchers(ctx, queries.SearchVouchersParams{
+    ProviderPkg:   api.Info().Package, // scope to vouchers this plugin issued
+    Search:        "",
+    OnlyAvailable: 1,
+    RowLimit:      20,
+    RowOffset:     0,
+})
 ```
 
-### CountVouchers
-
-Returns the total count of vouchers matching the filter criteria.
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    
-    count, err := api.Vouchers().CountVouchers(ctx, sdkapi.ListVouchersParams{
-        Page:    1,
-        PerPage: 20,
-    })
-    if err != nil {
-        // handle error
-    }
-    
-    fmt.Printf("Total vouchers: %d\n", count)
-}
-```
+!!! tip "Scope to your plugin"
+    Vouchers carry a `provider_pkg` column. Filter on it (`WHERE provider_pkg = @provider_pkg`,
+    passing `api.Info().Package`) to keep a plugin's queries scoped to the vouchers it
+    issued — the removed SDK methods did this automatically.
 
 ### Update
 
@@ -174,7 +146,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 ### Activate
 
-Marks a voucher as used, creates a session based on voucher settings, and associates it with the provided device. Emits `EventVoucherActivated` with the voucher.
+Marks a voucher as used, creates a session based on voucher settings, and associates it with the provided device. First emits `EventVoucherBeforeActivate` — a subscriber returning an error cancels activation before any session is created — then emits `EventVoucherActivated` with the voucher after success.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -241,37 +213,13 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### GetAvailable
-
-Returns all unactivated vouchers for this plugin.
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    vouchers, err := api.Vouchers().GetAvailable(r.Context())
-    if err != nil {
-        // handle error
-    }
-    
-    fmt.Printf("Available vouchers: %d\n", len(vouchers))
-}
-```
-
-### GetVouchersByBatchUUIDCount
-
-Returns the count of vouchers with the given batch UUID.
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    batchUUID := "550e8400-e29b-41d4-a716-446655440000"
-    
-    count, err := api.Vouchers().GetVouchersByBatchUUIDCount(r.Context(), batchUUID)
-    if err != nil {
-        // handle error
-    }
-    
-    fmt.Printf("Vouchers in batch: %d\n", count)
-}
-```
+!!! note "Available vouchers & per-batch counts"
+    `GetAvailable` and `GetVouchersByBatchUUIDCount` have been removed. Query the core
+    `vouchers` table directly instead — filter `activated_at IS NULL` for available
+    vouchers, or `batch_uuid = @batch_uuid` to count/list a batch's vouchers (see
+    [Listing & counting vouchers](#listing-counting-vouchers) above). Inside an
+    `EventVoucherBatchBeforeCreate` hook the rows don't exist yet, so use the batch
+    object's [`VouchersCount()`](#ivoucherbatch) for the intended count.
 
 ### FindBatchByUUID
 
@@ -333,66 +281,30 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### ListBatches
+### Listing & counting batches
 
-Returns a paginated list of voucher batches.
+There is **no batch list/count method** on `IVouchersApi`. To list, search, paginate, or
+count voucher batches, query the core
+[`voucher_batches`](../guides/core-database.md#voucher_batches) table **directly with your
+plugin's own sqlc queries** (the core schema is already available to your plugin's sqlc):
 
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    
-    result, err := api.Vouchers().ListBatches(ctx, sdkapi.ListVoucherBatchesParams{
-        Page:    1,
-        PerPage: 10,
-    })
-    if err != nil {
-        // handle error
-    }
-    
-    fmt.Printf("Found %d batches (total: %d)\n", len(result.Batches), result.Count)
-}
+```sql
+-- name: SearchVoucherBatches :many
+SELECT * FROM voucher_batches
+WHERE provider_pkg = @provider_pkg
+ORDER BY created_at DESC
+LIMIT @row_limit OFFSET @row_offset;
+
+-- name: CountVoucherBatches :one
+SELECT count(*) FROM voucher_batches WHERE provider_pkg = @provider_pkg;
 ```
 
-**Example: Search batches**
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    searchTerm := "12345"
-    
-    result, err := api.Vouchers().ListBatches(ctx, sdkapi.ListVoucherBatchesParams{
-        Search:  &searchTerm,
-        Page:    1,
-        PerPage: 10,
-    })
-    if err != nil {
-        // handle error
-    }
-    
-    // Process matching batches...
-}
-```
-
-### CountBatches
-
-Returns the total count of voucher batches matching the filter criteria.
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    
-    count, err := api.Vouchers().CountBatches(ctx, sdkapi.ListVoucherBatchesParams{})
-    if err != nil {
-        // handle error
-    }
-    
-    fmt.Printf("Total batches: %d\n", count)
-}
-```
+Use [`FindBatchByUUID`](#findbatchbyuuid) / [`FindBatchByCode`](#findbatchbycode) when you
+need a single batch wrapped as an `IVoucherBatch`.
 
 ### DeleteBatch
 
-Removes a voucher batch and all its vouchers by UUID. Emits `EventVoucherBatchDeleted` with the deleted batch.
+Removes a voucher batch and all its vouchers by UUID. First emits `EventVoucherBatchBeforeDelete` — a subscriber returning an error cancels the deletion before any row is removed — then emits `EventVoucherBatchDeleted` with the deleted batch after success.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
@@ -434,7 +346,7 @@ api.Vouchers().OnVoucherEvent(sdkapi.EventVoucherDeleted, func(ctx context.Conte
 Registers a callback to be called when voucher batch events occur.
 
 ```go
-api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
+api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherBatchCreated, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
     api.Logger().Info("Generated batch %s with %d vouchers", batch.UUID(), batch.VouchersCount())
     return nil
 })
@@ -506,10 +418,14 @@ The `IVoucherBatch` interface represents a batch of vouchers with metadata.
 | `Amount()` | `*float64` | Optional amount associated with the batch (e.g., paid vouchers) |
 | `Metadata()` | `string` | JSON metadata string for custom data |
 | `ProviderPkg()` | `string` | Plugin package that created this batch |
-| `Vouchers()` | `([]IVoucher, error)` | Get paginated vouchers in the batch (with search support) |
-| `VouchersCount()` | `int64` | Total count of vouchers in the batch |
+| `VouchersCount()` | `int64` | Number of vouchers in the batch. On a persisted batch this counts the rows; inside an `EventVoucherBatchBeforeCreate` hook the batch is a preview and this is the *intended* count before any DB write |
 | `CreatedAt()` | `time.Time` | When the batch was created |
 | `UpdatedAt()` | `time.Time` | When the batch was last updated |
+
+!!! note "Listing a batch's vouchers"
+    `IVoucherBatch` no longer has a `Vouchers()` method. To list the vouchers in a batch,
+    query the core `vouchers` table with `WHERE batch_uuid = <UUID()>` via your plugin's
+    own sqlc query — see [Listing & counting vouchers](#listing-counting-vouchers).
 
 ### CreateVouchersParams
 
@@ -571,32 +487,6 @@ type VoucherActivateResult struct {
 }
 ```
 
-### ListVouchersParams
-
-Parameters for listing vouchers with pagination:
-
-```go
-type ListVouchersParams struct {
-    Search      *string    // Search by code, provider package, or device MAC
-    IsActivated *bool      // Filter by activation status (nil = all)
-    Page        int        // Page number (1-indexed)
-    PerPage     int        // Results per page
-    DateStart   *time.Time // Filter: vouchers created on or after this date
-    DateEnd     *time.Time // Filter: vouchers created on or before this date
-}
-```
-
-### ListVouchersResult
-
-Result of listing vouchers:
-
-```go
-type ListVouchersResult struct {
-    Vouchers []IVoucher // Vouchers for the current page
-    Count    int64      // Total count of matching vouchers
-}
-```
-
 ### UpdateVoucherBatchParams
 
 Parameters for updating a voucher batch:
@@ -609,29 +499,6 @@ type UpdateVoucherBatchParams struct {
 }
 ```
 
-### ListVoucherBatchesParams
-
-Parameters for listing voucher batches with pagination:
-
-```go
-type ListVoucherBatchesParams struct {
-    Search  *string // Optional search term
-    Page    int     // Page number (1-indexed)
-    PerPage int     // Results per page
-}
-```
-
-### ListVoucherBatchesResult
-
-Result of listing voucher batches:
-
-```go
-type ListVoucherBatchesResult struct {
-    Batches []IVoucherBatch // Batches for the current page
-    Count   int64           // Total count of matching batches
-}
-```
-
 ### VoucherEvent
 
 The `VoucherEvent` type represents voucher lifecycle events:
@@ -639,12 +506,21 @@ The `VoucherEvent` type represents voucher lifecycle events:
 ```go
 type VoucherEvent string
 
+// Single-voucher events (use with OnVoucherEvent)
 const (
-    EventVoucherGenerated    VoucherEvent = "voucher:generated"     // Batch creation event
-    EventVoucherActivated    VoucherEvent = "voucher:activated"     // When voucher is activated
-    EventVoucherUpdated      VoucherEvent = "voucher:updated"       // When voucher is modified
-    EventVoucherDeleted      VoucherEvent = "voucher:deleted"       // When voucher is removed
-    EventVoucherBatchDeleted VoucherEvent = "voucher:batch_deleted" // When batch is deleted
+    EventVoucherBeforeCreate   VoucherEvent = "voucher:before_create"   // Per-voucher pre-create (cancellable)
+    EventVoucherBeforeActivate VoucherEvent = "voucher:before_activate" // Pre-activate (cancellable)
+    EventVoucherActivated      VoucherEvent = "voucher:activated"       // When voucher is activated
+    EventVoucherUpdated        VoucherEvent = "voucher:updated"         // When voucher is modified
+    EventVoucherDeleted        VoucherEvent = "voucher:deleted"         // When voucher is removed
+)
+
+// Voucher-batch events (use with OnVoucherBatchEvent)
+const (
+    EventVoucherBatchBeforeCreate VoucherBatchEvent = "voucher:before_create"        // Batch pre-create (cancellable)
+    EventVoucherBatchCreated      VoucherBatchEvent = "voucher:batch_created"         // After successful batch creation (was EventVoucherGenerated)
+    EventVoucherBatchBeforeDelete VoucherBatchEvent = "voucher:batch_before_delete"  // Batch pre-delete (cancellable)
+    EventVoucherBatchDeleted      VoucherBatchEvent = "voucher:batch_deleted"         // When batch is deleted
 )
 ```
 
@@ -663,7 +539,7 @@ func Init(api sdkapi.IPluginApi) error {
         return nil
     })
 
-    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherGenerated, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
+    api.Vouchers().OnVoucherBatchEvent(sdkapi.EventVoucherBatchCreated, func(ctx context.Context, batch sdkapi.IVoucherBatch) error {
         api.Logger().Info("Generated batch %s with %d new vouchers", batch.UUID(), batch.VouchersCount())
         return nil
     })
