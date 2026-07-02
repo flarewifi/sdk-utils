@@ -1,12 +1,14 @@
 package accounts
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	sdkapi "sdk/api"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 	"github.com/goccy/go-json"
+	"golang.org/x/crypto/bcrypt"
 
 	"core/internal/modules/events"
 	sse "core/utils/sse"
@@ -18,9 +20,11 @@ var (
 )
 
 type Account struct {
-	Uname  string   `json:"username"`
-	Passwd string   `json:"password"`
-	Perms  []string `json:"permissions"`
+	Uname string `json:"username"`
+	// Deprecated: use PasswdHash instead. Retained for backward-compatible migration only.
+	Passwd     string   `json:"password,omitempty"`
+	PasswdHash string   `json:"password_hash"`
+	Perms      []string `json:"permissions"`
 }
 
 // return the file path of yaml file
@@ -35,7 +39,36 @@ func (acct *Account) Username() string {
 
 // Auth returns true if the password is correct
 func (acct *Account) Auth(pw string) bool {
-	return acct.Passwd == pw
+	if acct.PasswdHash != "" {
+		ok := bcrypt.CompareHashAndPassword([]byte(acct.PasswdHash), []byte(pw)) == nil
+		// Lazy cleanup: clear deprecated Passwd field if it is still persisted alongside PasswdHash.
+		if ok && acct.Passwd != "" {
+			acct.Passwd = ""
+			if err := acct.Save(); err != nil {
+				log.Printf("warn: failed to clear deprecated password field for %s: %v", acct.Uname, err)
+			}
+		}
+		return ok
+	}
+
+	if acct.Passwd != pw {
+		return false
+	}
+
+	hashed, err := hashPassword(pw)
+	if err != nil {
+		log.Printf("warn: failed to migrate password for %s to bcrypt: %v", acct.Uname, err)
+		return true
+	}
+	acct.PasswdHash = hashed
+	acct.Passwd = "" // clear deprecated field after migration
+	if err := acct.Save(); err != nil {
+		log.Printf("warn: failed to save migrated password for %s: %v", acct.Uname, err)
+		acct.PasswdHash = ""
+		acct.Passwd = pw // restore on failure so the in-memory state stays consistent
+		return false
+	}
+	return true
 }
 
 // Permissions returns the permissions of the account
@@ -80,14 +113,15 @@ func (acct *Account) Save() error {
 
 // Update updates the account with new username, password and permissions
 func (acct *Account) Update(uname string, pass string, perms []string) error {
-	_, err := Update(acct.Uname, uname, pass, perms)
+	updated, err := Update(acct.Uname, uname, pass, perms)
 	if err != nil {
 		return err
 	}
 
-	acct.Uname = uname
-	acct.Passwd = pass
-	acct.Perms = perms
+	acct.Uname = updated.Uname
+	acct.Passwd = ""
+	acct.PasswdHash = updated.PasswdHash
+	acct.Perms = updated.Perms
 	return nil
 }
 

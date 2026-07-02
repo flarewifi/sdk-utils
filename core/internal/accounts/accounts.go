@@ -11,6 +11,7 @@ import (
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 	"github.com/goccy/go-json"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -54,6 +55,17 @@ func EnsureAdminAcct() error {
 	f := FilepathForUser(AdminUsername)
 	if !sdkutils.FsExists(f) {
 		acct := DefaultAdminAcct()
+		if acct.PasswdHash == "" {
+			if acct.Passwd == "" {
+				return fmt.Errorf("default admin account has no password set")
+			}
+			hashedPasswd, err := hashPassword(acct.Passwd)
+			if err != nil {
+				return err
+			}
+			acct.PasswdHash = hashedPasswd
+		}
+		acct.Passwd = ""
 		content, err := json.Marshal(acct)
 		if err != nil {
 			return err
@@ -121,10 +133,14 @@ func Find(username string) (*Account, error) {
 }
 
 func Create(uname string, passwd string, perms []string) (*Account, error) {
+	hashedPasswd, err := hashPassword(passwd)
+	if err != nil {
+		return nil, err
+	}
 	acct := Account{
-		Uname:  uname,
-		Passwd: passwd,
-		Perms:  perms,
+		Uname:      uname,
+		PasswdHash: hashedPasswd,
+		Perms:      perms,
 	}
 
 	b, err := json.Marshal(&acct)
@@ -155,8 +171,23 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 		return nil, errors.New("Renaming the super admin account is not allowed.")
 	}
 
+	passHash := prevAcct.PasswdHash
 	if pass == "" {
-		pass = prevAcct.Passwd
+		if passHash == "" && prevAcct.Passwd != "" {
+			// Migrate deprecated plain-text Passwd to a bcrypt hash on update.
+			hashedPass, err := hashPassword(prevAcct.Passwd)
+			if err != nil {
+				return nil, err
+			}
+			passHash = hashedPass
+		}
+	} else {
+		hashedPass, err := hashPassword(pass)
+		if err != nil {
+			return nil, err
+		}
+		pass = ""
+		passHash = hashedPass
 	}
 
 	if len(perms) == 0 {
@@ -164,9 +195,9 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 	}
 
 	acct := Account{
-		Uname:  newName,
-		Passwd: pass,
-		Perms:  perms,
+		Uname:      newName,
+		PasswdHash: passHash,
+		Perms:      perms,
 	}
 
 	if acct.Uname == AdminUsername && !HasAllPerms(&acct, sdkapi.AcctPermMaster) {
@@ -268,3 +299,14 @@ func NewPerm(name string, description string) error {
 	perms.Store(name, description)
 	return nil
 }
+
+const bcryptCost = 8
+
+func hashPassword(plaintext string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcryptCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
+}
+

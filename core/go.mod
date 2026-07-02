@@ -29,6 +29,8 @@ require (
 	modernc.org/sqlite v1.28.0
 )
 
+require golang.org/x/crypto v0.23.0
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
