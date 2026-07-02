@@ -20,8 +20,9 @@ var (
 )
 
 type Account struct {
-	Uname      string   `json:"username"`
-	Passwd     string   `json:"password"`
+	Uname string `json:"username"`
+	// Deprecated: use PasswdHash instead. Retained for backward-compatible migration only.
+	Passwd     string   `json:"password,omitempty"`
 	PasswdHash string   `json:"password_hash"`
 	Perms      []string `json:"permissions"`
 }
@@ -39,7 +40,15 @@ func (acct *Account) Username() string {
 // Auth returns true if the password is correct
 func (acct *Account) Auth(pw string) bool {
 	if acct.PasswdHash != "" {
-		return bcrypt.CompareHashAndPassword([]byte(acct.PasswdHash), []byte(pw)) == nil
+		ok := bcrypt.CompareHashAndPassword([]byte(acct.PasswdHash), []byte(pw)) == nil
+		// Lazy cleanup: clear deprecated Passwd field if it is still persisted alongside PasswdHash.
+		if ok && acct.Passwd != "" {
+			acct.Passwd = ""
+			if err := acct.Save(); err != nil {
+				log.Printf("warn: failed to clear deprecated password field for %s: %v", acct.Uname, err)
+			}
+		}
+		return ok
 	}
 
 	if acct.Passwd != pw {
@@ -52,9 +61,11 @@ func (acct *Account) Auth(pw string) bool {
 		return true
 	}
 	acct.PasswdHash = hashed
+	acct.Passwd = "" // clear deprecated field after migration
 	if err := acct.Save(); err != nil {
 		log.Printf("warn: failed to save migrated password for %s: %v", acct.Uname, err)
 		acct.PasswdHash = ""
+		acct.Passwd = pw // restore on failure so the in-memory state stays consistent
 		return false
 	}
 	return true
@@ -108,7 +119,7 @@ func (acct *Account) Update(uname string, pass string, perms []string) error {
 	}
 
 	acct.Uname = updated.Uname
-	acct.Passwd = updated.Passwd
+	acct.Passwd = ""
 	acct.PasswdHash = updated.PasswdHash
 	acct.Perms = updated.Perms
 	return nil

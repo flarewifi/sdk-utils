@@ -240,7 +240,25 @@ These are the default permissions that you can assign to an user account. Althou
 
 ---
 
-## 4. Events {#events}
+## 4. Password Security {#password-security}
+
+All passwords are stored as **bcrypt hashes** — plain-text passwords are never written to disk for new or updated accounts.
+
+### Automatic migration of legacy plain-text passwords
+
+Older Flarewifi installations may have account files that contain a plain-text `password` field (written before bcrypt hashing was introduced). These are migrated transparently:
+
+- **On next successful login** — `Auth()` detects the plain-text `password` field, hashes it with bcrypt, persists the hash to `password_hash`, and clears the `password` field from the file.
+- **On next account update** — `Update()` detects the missing `password_hash` and hashes the legacy `password` value before saving, clearing the plain-text field.
+
+Once a `password_hash` is present on an account, the `password` field is considered **deprecated** and will be removed from the account file on the next successful login.
+
+!!! note
+    Plugin code should never read or write the `password` field directly. Always use `Auth()` to verify a password and `Update()` / `Create()` to set one.
+
+---
+
+## 5. Events {#events}
 
 Events are emitted to the user accounts via SSE (Server-Sent Events) in the browser.
 

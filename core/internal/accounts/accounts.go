@@ -173,8 +173,13 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 
 	passHash := prevAcct.PasswdHash
 	if pass == "" {
-		if passHash == "" {
-			pass = prevAcct.Passwd
+		if passHash == "" && prevAcct.Passwd != "" {
+			// Migrate deprecated plain-text Passwd to a bcrypt hash on update.
+			hashedPass, err := hashPassword(prevAcct.Passwd)
+			if err != nil {
+				return nil, err
+			}
+			passHash = hashedPass
 		}
 	} else {
 		hashedPass, err := hashPassword(pass)
@@ -191,7 +196,6 @@ func Update(prevName string, newName string, pass string, perms []string) (*Acco
 
 	acct := Account{
 		Uname:      newName,
-		Passwd:     pass,
 		PasswdHash: passHash,
 		Perms:      perms,
 	}
