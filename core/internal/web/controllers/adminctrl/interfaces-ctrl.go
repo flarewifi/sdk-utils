@@ -2,21 +2,25 @@ package adminctrl
 
 import (
 	"fmt"
+	"net"
 	"net/http"
-	"strconv"
+	"strings"
 
 	sdkapi "sdk/api"
 
 	"core/internal/api"
+	"core/internal/modules/uci"
 	"core/internal/network"
 	interfacesview "core/resources/views/admin/interfaces"
 	"core/utils/config"
+	cmd "core/utils/shell"
 )
 
-// InterfacesIndexCtrl renders the Interfaces page: one card per managed LAN,
-// where the admin picks the main interface (its IP hosts the portal / custom
+// InterfacesIndexCtrl renders the Interfaces page: one card per LAN candidate,
+// where the admin picks the portal interface (its IP hosts the portal / custom
 // domain), toggles the captive portal per interface, and — for captive
-// interfaces — configures the inline bandwidth form.
+// interfaces — configures the static IP. Bandwidth is set separately (in the
+// wifi-hotspot plugin's Bandwidth page).
 func InterfacesIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
@@ -27,10 +31,10 @@ func InterfacesIndexCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-// InterfacesSaveCtrl persists the main interface, per-interface captive/open
-// mode, and the inline bandwidth settings, then applies everything live:
-// bandwidth via Config().Bandwidth().Save (updates running sessions) and the
-// portal firewall + DNS via network.ApplyPortalConfig.
+// InterfacesSaveCtrl persists the portal interface, the per-interface captive
+// flag, and the static IP/netmask, then applies the config live (TC + portal
+// firewall + DNS) via network.ReconcileInterfaces. The static IP is only stored
+// here — it is pushed to the OS by InterfacesApplyCtrl.
 func InterfacesSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := g.CoreAPI.HttpAPI.Response()
@@ -52,71 +56,59 @@ func InterfacesSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Validate the main interface: it must be one of the managed LANs.
-		mainIf := r.PostFormValue("main_interface")
-		if !isKnownLan(lans, mainIf) {
-			redirectErr(g.CoreAPI.Translate("error", "Select a valid main interface"))
-			return
-		}
+		portalIf := r.PostFormValue("portal_interface")
 
-		// Start from the existing config so any future WAN entries / policy are
-		// preserved; we only rewrite the LAN roles here.
 		cfg, _ := config.ReadInterfacesConfig()
-		cfg.MainInterface = mainIf
+		// Rewrite the LAN map wholesale from the submitted form.
+		cfg.LanInterfaces = map[string]config.LanInterfaceCfg{}
 
-		// Collect the bandwidth saves and apply them only after all validation
-		// passes, so a bad value on the last interface doesn't leave a half-applied
-		// state.
-		type pendingBw struct {
-			ifname string
-			cfg    sdkapi.IBandwdCfg
-		}
-		var bwSaves []pendingBw
-
+		captiveCount := 0
 		for _, lan := range lans {
-			managed := r.PostFormValue("managed_"+lan.Name) != ""
-			// Captive requires managed — the redirect only applies to managed
-			// interfaces, so ignore a stray captive flag when management is off.
-			captive := managed && r.PostFormValue("captive_"+lan.Name) != ""
-			cfg.Interfaces[lan.Name] = config.InterfaceCfg{
-				Role:          config.RoleLan,
-				Managed:       managed,
-				CaptivePortal: captive,
-			}
+			enable := r.PostFormValue("enable_captive_portal_"+lan.Name) != ""
 
-			// Bandwidth settings are required for managed interfaces (they serve
-			// sessions); an unmanaged interface is left untouched, so we skip it.
-			if !managed {
-				continue
-			}
-
-			bw, ferr := parseBandwidthForm(r, lan.Name)
-			if ferr != "" {
-				redirectErr(g.CoreAPI.Translate("error", ferr))
+			ip := strings.TrimSpace(r.PostFormValue("ip_" + lan.Name))
+			mask := strings.TrimSpace(r.PostFormValue("netmask_" + lan.Name))
+			if verr := validateStaticAddr(ip, mask); verr != "" {
+				redirectErr(g.CoreAPI.Translate("error", verr))
 				return
 			}
-			bwSaves = append(bwSaves, pendingBw{ifname: lan.Name, cfg: bw})
+
+			cfg.LanInterfaces[lan.Name] = config.LanInterfaceCfg{
+				EnableCaptivePortal: enable,
+				IpAddress:           ip,
+				Netmask:             mask,
+			}
+
+			if enable {
+				captiveCount++
+			}
 		}
 
-		// Persist the interface roles first.
+		// The portal interface hosts the captive portal and is the shared DNAT +
+		// DNS target, so it must itself be a captive interface (registered and
+		// resolvable). When nothing is captive there is no portal to host.
+		if captiveCount > 0 {
+			if pic, ok := cfg.LanInterfaces[portalIf]; !ok || !pic.EnableCaptivePortal {
+				redirectErr(g.CoreAPI.Translate("error", "The portal interface must be one with the captive portal enabled"))
+				return
+			}
+			cfg.PortalInterface = portalIf
+		} else {
+			cfg.PortalInterface = ""
+		}
+
+		// Persist the interface config first.
 		if err := config.WriteInterfacesConfig(cfg); err != nil {
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			redirectErr(g.CoreAPI.Translate("error", "Unable to save interface settings"))
 			return
 		}
 
-		// Apply bandwidth (persists bandwidth.json + updates running sessions).
-		for _, s := range bwSaves {
-			if err := g.CoreAPI.Config().Bandwidth().Save(s.ifname, s.cfg); err != nil {
-				g.CoreAPI.LoggerAPI.Error(err.Error())
-				redirectErr(g.CoreAPI.Translate("error", "Unable to save bandwidth settings"))
-				return
-			}
-		}
-
-		// Apply the portal firewall + DNS live (captive vs open per interface, and
-		// the shared DNAT target = the main interface IP).
-		if err := network.ApplyPortalConfig(); err != nil {
+		// Apply live: set up / tear down TC per the captive toggle and push the
+		// portal firewall + DNS (captive vs free per interface, shared DNAT target =
+		// the portal interface IP). Reconcile makes a captive toggle take effect
+		// without a restart.
+		if err := network.ReconcileInterfaces(); err != nil {
 			g.CoreAPI.LoggerAPI.Error(err.Error())
 			redirectErr(g.CoreAPI.Translate("error", "Settings saved but could not be applied to the network"))
 			return
@@ -127,106 +119,137 @@ func InterfacesSaveCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
+// InterfacesApplyCtrl writes the stored static IP/netmask of each captive
+// interface to the OS (/etc/config/network via UCI), reloads netifd, then
+// re-applies the portal config so the new addresses take effect. This is the
+// deliberate, OS-mutating counterpart to Save (which only persists config).
+func InterfacesApplyCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res := g.CoreAPI.HttpAPI.Response()
+		indexURL := g.CoreAPI.HttpAPI.Helpers().UrlForRoute("admin:interfaces:index")
+
+		redirectErr := func(msg string) {
+			res.FlashMsg(w, r, msg, sdkapi.FlashMsgError)
+			http.Redirect(w, r, indexURL, http.StatusSeeOther)
+		}
+
+		cfg, _ := config.ReadInterfacesConfig()
+		uciNet := uci.NewUciNetworkApi()
+
+		applied := 0
+		for _, lan := range network.ListLanInfos() {
+			ic, ok := cfg.LanInterfaces[lan.Name]
+			// Only captive interfaces with an explicit static address are pushed.
+			if !ok || !ic.EnableCaptivePortal || ic.IpAddress == "" || ic.Netmask == "" {
+				continue
+			}
+			if err := uciNet.SetInterface(lan.Name, &sdkapi.INetIface{
+				Section: lan.Name,
+				Device:  lan.Device,
+				Proto:   "static",
+				IpAddr:  ic.IpAddress,
+				Netmask: ic.Netmask,
+			}); err != nil {
+				g.CoreAPI.LoggerAPI.Error(err.Error())
+				redirectErr(g.CoreAPI.Translate("error", "Unable to apply the IP address to an interface"))
+				return
+			}
+			applied++
+		}
+
+		if applied == 0 {
+			res.FlashMsg(w, r, g.CoreAPI.Translate("info", "No static IP addresses to apply"), sdkapi.FlashMsgSuccess)
+			http.Redirect(w, r, indexURL, http.StatusSeeOther)
+			return
+		}
+
+		if err := uci.UciTree.Commit(); err != nil {
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			redirectErr(g.CoreAPI.Translate("error", "Unable to commit network configuration"))
+			return
+		}
+
+		// Reload netifd so the new addresses take effect. The resulting ifup events
+		// drive the registry/CIDR refresh + TC reinit; ReconcileInterfaces re-points
+		// the DNAT/DNS at the (possibly changed) portal IP and syncs TC state as a
+		// belt-and-suspenders.
+		if err := cmd.Exec("/etc/init.d/network reload", nil); err != nil {
+			g.CoreAPI.LoggerAPI.Error(err.Error())
+			redirectErr(g.CoreAPI.Translate("error", "Applied settings but could not reload the network"))
+			return
+		}
+		_ = network.ReconcileInterfaces()
+
+		res.FlashMsg(w, r, g.CoreAPI.Translate("info", "Network settings applied"), sdkapi.FlashMsgSuccess)
+		http.Redirect(w, r, indexURL, http.StatusSeeOther)
+	}
+}
+
 // =============================================================================
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
-// buildInterfacesParams merges the live LAN list with interfaces.json + the
-// per-interface bandwidth config into the view params.
+// buildInterfacesParams merges the live LAN list with interfaces.json into the
+// view params. Bandwidth is configured separately (wifi-hotspot plugin).
 func buildInterfacesParams(g *api.CoreGlobals) interfacesview.AdminInterfacesIndexParams {
 	lans := network.ListLanInfos()
 	cfg, _ := config.ReadInterfacesConfig()
-	mainIf := network.MainInterface() // resolved (config or first LAN)
+	portalIf := network.MainInterface() // resolved (config or first captive LAN)
 
 	rows := make([]interfacesview.InterfaceRow, 0, len(lans))
 	for _, lan := range lans {
-		managed := cfg.IsManaged(lan.Name, lan.Device)
-		captive := cfg.IsCaptive(lan.Name, lan.Device)
-
-		// Bandwidth: existing config, or the "no cap" default (UseGlobal, 0/0) for
-		// a newly-managed interface with no bandwidth entry yet.
-		bw := interfacesview.BandwidthForm{UseGlobal: true}
-		if existing, ok := g.CoreAPI.Config().Bandwidth().Get(lan.Name); ok {
-			bw = interfacesview.BandwidthForm{
-				UseGlobal:  existing.UseGlobal,
-				GlobalDown: existing.GlobalDownMbits,
-				GlobalUp:   existing.GlobalUpMbits,
-				UserDown:   existing.UserDownMbits,
-				UserUp:     existing.UserUpMbits,
-			}
-		}
+		enable := cfg.IsCaptivePortalEnabled(lan.Name, lan.Device)
+		ic := cfg.LanInterfaces[lan.Name] // zero value if no explicit entry
 
 		rows = append(rows, interfacesview.InterfaceRow{
-			Name:      lan.Name,
-			Device:    lan.Device,
-			IPv4:      lan.IPv4,
-			CIDR:      lan.CIDR,
-			Up:        lan.Up,
-			IsMain:    lan.Name == mainIf,
-			Managed:   managed,
-			Captive:   captive,
-			XData:     fmt.Sprintf("{ managed: %t, captive: %t }", managed, captive),
-			Bandwidth: bw,
+			Name:                lan.Name,
+			Device:              lan.Device,
+			IPv4:                lan.IPv4,
+			CIDR:                lan.CIDR,
+			Up:                  lan.Up,
+			IsMain:              lan.Name == portalIf,
+			EnableCaptivePortal: enable,
+			IpAddress:           ic.IpAddress,
+			Netmask:             ic.Netmask,
+			XData:               fmt.Sprintf("{ enableCaptivePortal: %t }", enable),
 		})
 	}
 
 	return interfacesview.AdminInterfacesIndexParams{
-		Rows:      rows,
-		MainIP:    mainIP(lans, mainIf),
+		Rows:   rows,
+		MainIP: mainIP(lans, portalIf),
 	}
 }
 
-// parseBandwidthForm reads and validates the inline bandwidth fields for ifname.
-// Returns a non-empty error message string on the first invalid field.
-func parseBandwidthForm(r *http.Request, ifname string) (sdkapi.IBandwdCfg, string) {
-	useGlobal := r.PostFormValue("use_global_"+ifname) != ""
-
-	globalDown, err := parseMbits(r.PostFormValue("global_down_" + ifname))
-	if err != "" {
-		return sdkapi.IBandwdCfg{}, err
+// validateStaticAddr checks an optional static IP + netmask pair. Both empty is
+// fine (the interface keeps its current / DHCP address). Returns an error message
+// string on an invalid value.
+func validateStaticAddr(ip, mask string) string {
+	if ip == "" && mask == "" {
+		return ""
 	}
-	globalUp, err := parseMbits(r.PostFormValue("global_up_" + ifname))
-	if err != "" {
-		return sdkapi.IBandwdCfg{}, err
+	if ip == "" || mask == "" {
+		return "Provide both an IP address and a netmask, or leave both blank"
 	}
-	userDown, err := parseMbits(r.PostFormValue("user_down_" + ifname))
-	if err != "" {
-		return sdkapi.IBandwdCfg{}, err
+	if net.ParseIP(ip) == nil {
+		return "Enter a valid IP address"
 	}
-	userUp, err := parseMbits(r.PostFormValue("user_up_" + ifname))
-	if err != "" {
-		return sdkapi.IBandwdCfg{}, err
+	if !isValidIPv4Mask(mask) {
+		return "Enter a valid netmask (e.g. 255.255.255.0)"
 	}
-
-	return sdkapi.IBandwdCfg{
-		UseGlobal:       useGlobal,
-		GlobalDownMbits: globalDown,
-		GlobalUpMbits:   globalUp,
-		UserDownMbits:   userDown,
-		UserUpMbits:     userUp,
-	}, ""
+	return ""
 }
 
-// parseMbits parses a required, non-negative Mbps value. An empty string is 0
-// (unlimited / auto-detect). Returns an error message on an invalid value.
-func parseMbits(s string) (int, string) {
-	if s == "" {
-		return 0, ""
+// isValidIPv4Mask reports whether s is a valid, canonical (contiguous)
+// dotted-decimal IPv4 netmask such as 255.255.255.0.
+func isValidIPv4Mask(s string) bool {
+	v4 := net.ParseIP(s).To4()
+	if v4 == nil {
+		return false
 	}
-	n, convErr := strconv.Atoi(s)
-	if convErr != nil || n < 0 {
-		return 0, "Bandwidth values must be whole numbers of 0 or more"
-	}
-	return n, ""
-}
-
-func isKnownLan(lans []network.LanInfo, name string) bool {
-	for _, l := range lans {
-		if l.Name == name {
-			return true
-		}
-	}
-	return false
+	// Size() returns (0, 0) for a non-canonical (non-contiguous) mask.
+	_, bits := net.IPv4Mask(v4[0], v4[1], v4[2], v4[3]).Size()
+	return bits == 32
 }
 
 func mainIP(lans []network.LanInfo, mainIf string) string {

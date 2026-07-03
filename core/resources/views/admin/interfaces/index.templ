@@ -1,33 +1,23 @@
 package interfaces
 
 import (
-	"strconv"
 	"strings"
 
 	sdkapi "sdk/api"
 )
 
-// BandwidthForm holds the inline bandwidth values for a captive interface.
-type BandwidthForm struct {
-	UseGlobal  bool
-	GlobalDown int
-	GlobalUp   int
-	UserDown   int
-	UserUp     int
-}
-
 // InterfaceRow is one LAN interface's state on the Interfaces page.
 type InterfaceRow struct {
-	Name      string // UBUS interface name, e.g. "lan"
-	Device    string // L3 device, e.g. "br-lan"
-	IPv4      string // e.g. "10.0.0.1"
-	CIDR      string // subnet, e.g. "10.0.0.0/20"
-	Up        bool
-	IsMain    bool
-	Managed   bool
-	Captive   bool
-	XData     string // Alpine x-data seed, e.g. "{ managed: true, captive: true }"
-	Bandwidth BandwidthForm
+	Name                string // UBUS interface name, e.g. "lan"
+	Device              string // L3 device, e.g. "br-lan"
+	IPv4                string // e.g. "10.0.0.1"
+	CIDR                string // subnet, e.g. "10.0.0.0/20"
+	Up                  bool
+	IsMain              bool
+	EnableCaptivePortal bool
+	IpAddress           string // configured static IP (stored; applied via "Apply Changes")
+	Netmask             string // configured static netmask (dotted, e.g. 255.255.255.0)
+	XData               string // Alpine x-data seed, e.g. "{ enableCaptivePortal: true }"
 }
 
 type AdminInterfacesIndexParams struct {
@@ -86,7 +76,7 @@ templ AdminInterfacesIndex(api sdkapi.IPluginApi, params AdminInterfacesIndexPar
 		<div class="alert alert-info d-flex align-items-start gap-2" role="alert">
 			<i class="bi bi-info-circle-fill mt-1"></i>
 			<div>
-				<div>{ api.Translate("info", "The main interface's address hosts the captive portal and custom domain. Managed interfaces redirect their clients to that address, so clients on a different subnet can reach it. Unmanaged interfaces are left untouched.") }</div>
+				<div>{ api.Translate("info", "The portal interface's address hosts the captive portal and custom domain. Captive interfaces redirect their clients to that address (so clients on a different subnet can reach it), get traffic shaping, and can reach each other. Interfaces without the captive portal are left completely untouched.") }</div>
 				if params.MainIP != "" {
 					<div class="mt-1">
 						{ api.Translate("label", "Current portal address") }: <strong>{ params.MainIP }</strong>
@@ -103,7 +93,7 @@ templ AdminInterfacesIndex(api sdkapi.IPluginApi, params AdminInterfacesIndexPar
 			</div>
 		} else {
 			<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:interfaces:save")) }>
-				@mainInterfaceSelect(api, params.Rows)
+				@portalInterfaceSelect(api, params.Rows)
 				<div class="accordion mb-3" id="interfacesAccordion">
 					for _, row := range params.Rows {
 						@interfaceItem(api, row)
@@ -114,24 +104,34 @@ templ AdminInterfacesIndex(api sdkapi.IPluginApi, params AdminInterfacesIndexPar
 					{ api.Translate("label", "Save Settings") }
 				</button>
 			</form>
+			<form method="POST" action={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:interfaces:apply")) } class="mt-3">
+				<div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
+					<i class="bi bi-exclamation-triangle-fill mt-1"></i>
+					<div>{ api.Translate("warning", "Save stores your settings. Apply Changes writes the configured IP addresses to the machine's network and reloads it — this can briefly interrupt connectivity.") }</div>
+				</div>
+				<button type="submit" class="btn btn-outline-secondary rounded-3 d-flex align-items-center gap-2 fw-semibold">
+					<i class="bi bi-hdd-network"></i>
+					{ api.Translate("label", "Apply Changes") }
+				</button>
+			</form>
 		}
 	</div>
 }
 
-templ mainInterfaceSelect(api sdkapi.IPluginApi, rows []InterfaceRow) {
+templ portalInterfaceSelect(api sdkapi.IPluginApi, rows []InterfaceRow) {
 	<div class="card shadow-sm border border-light-subtle mb-3">
 		<div class="card-body p-4">
-			<label for="main_interface" class="form-label fw-semibold d-flex align-items-center gap-2">
+			<label for="portal_interface" class="form-label fw-semibold d-flex align-items-center gap-2">
 				<i class="bi bi-star"></i>
-				{ api.Translate("label", "Main interface (portal address)") }
+				{ api.Translate("label", "Portal interface (portal address)") }
 			</label>
-			<select name="main_interface" id="main_interface" class="form-select" required>
+			<select name="portal_interface" id="portal_interface" class="form-select" required>
 				for _, row := range rows {
 					<option value={ row.Name } if row.IsMain { selected }>{ mainOptionLabel(row) }</option>
 				}
 			</select>
 			<small class="text-secondary d-block mt-2">
-				{ api.Translate("info", "This interface's address hosts the captive portal and custom domain. Managed interfaces redirect their clients to it.") }
+				{ api.Translate("info", "This interface's address hosts the captive portal and custom domain. Every captive interface redirects its clients to it. It must be an interface with the captive portal enabled.") }
 			</small>
 		</div>
 	</div>
@@ -187,71 +187,39 @@ templ interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) {
 					class="form-check-input"
 					type="checkbox"
 					role="switch"
-					name={ "managed_" + row.Name }
-					id={ "managed_" + row.Name }
-					x-model="managed"
-					if row.Managed {
+					name={ "enable_captive_portal_" + row.Name }
+					id={ "enable_captive_portal_" + row.Name }
+					x-model="enableCaptivePortal"
+					if row.EnableCaptivePortal {
 						checked
 					}
 				/>
-				<label class="form-check-label" for={ "managed_" + row.Name }>
-					{ api.Translate("label", "Manage") }
+				<label class="form-check-label" for={ "enable_captive_portal_" + row.Name }>
+					{ api.Translate("label", "Enable captive portal") }
 					<small class="text-secondary d-block">
-						{ api.Translate("info", "When off, this interface is left untouched: no captive portal and no custom firewall rules, its traffic flows normally.") }
+						{ api.Translate("info", "When on, this interface gets the captive portal, traffic shaping, and can reach other captive interfaces. When off, it is left completely untouched and free to be configured any way.") }
 					</small>
 				</label>
 			</div>
 
-			<div x-show="managed" x-cloak class="border-top border-light-subtle pt-3">
-				<div class="form-check form-switch mb-3">
-					<input
-						class="form-check-input"
-						type="checkbox"
-						role="switch"
-						name={ "captive_" + row.Name }
-						id={ "captive_" + row.Name }
-						x-model="captive"
-						if row.Captive {
-							checked
-						}
-					/>
-					<label class="form-check-label" for={ "captive_" + row.Name }>
-						{ api.Translate("label", "Captive portal") }
-						<small class="text-secondary d-block">
-							{ api.Translate("info", "Redirect this interface's clients to the portal. When off, the interface is still managed (a session is required) but clients are not auto-redirected.") }
-						</small>
-					</label>
-				</div>
-
+			<div x-show="enableCaptivePortal" x-cloak class="border-top border-light-subtle pt-3">
 				<div class="d-flex align-items-center gap-2 mb-3">
-					<i class="bi bi-speedometer2"></i>
-					<span class="fw-semibold">{ api.Translate("label", "Bandwidth") }</span>
+					<i class="bi bi-hdd-network"></i>
+					<span class="fw-semibold">{ api.Translate("label", "Static IP address") }</span>
 				</div>
 
-				<div class="form-check form-switch mb-3">
-					<input
-						class="form-check-input"
-						type="checkbox"
-						role="switch"
-						name={ "use_global_" + row.Name }
-						id={ "use_global_" + row.Name }
-						if row.Bandwidth.UseGlobal {
-							checked
-						}
-					/>
-					<label class="form-check-label" for={ "use_global_" + row.Name }>
-						{ api.Translate("label", "Use global bandwidth (no per-user cap)") }
-					</label>
+				<div class="row g-3 mb-2">
+					<div class="col-12 col-md-6">
+						<label class="form-label" for={ "ip_" + row.Name }>{ api.Translate("label", "IP address") }</label>
+						<input type="text" class="form-control" id={ "ip_" + row.Name } name={ "ip_" + row.Name } value={ row.IpAddress } placeholder="10.0.0.1"/>
+					</div>
+					<div class="col-12 col-md-6">
+						<label class="form-label" for={ "netmask_" + row.Name }>{ api.Translate("label", "Netmask") }</label>
+						<input type="text" class="form-control" id={ "netmask_" + row.Name } name={ "netmask_" + row.Name } value={ row.Netmask } placeholder="255.255.255.0"/>
+					</div>
 				</div>
-
-				<div class="row g-3">
-					@mbitsField(api, api.Translate("label", "Total download (Mbps)"), "global_down_"+row.Name, row.Bandwidth.GlobalDown)
-					@mbitsField(api, api.Translate("label", "Total upload (Mbps)"), "global_up_"+row.Name, row.Bandwidth.GlobalUp)
-					@mbitsField(api, api.Translate("label", "Per-user download (Mbps)"), "user_down_"+row.Name, row.Bandwidth.UserDown)
-					@mbitsField(api, api.Translate("label", "Per-user upload (Mbps)"), "user_up_"+row.Name, row.Bandwidth.UserUp)
-				</div>
-				<small class="text-secondary d-block mt-2">
-					{ api.Translate("info", "Use 0 for no limit (auto-detected link speed).") }
+				<small class="text-secondary d-block">
+					{ api.Translate("info", "Leave both blank to keep the current address. Saved changes take effect only after you click Apply Changes.") }
 				</small>
 			</div>
 		</div>
@@ -259,17 +227,3 @@ templ interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) {
 	</div>
 }
 
-templ mbitsField(api sdkapi.IPluginApi, label string, fieldName string, value int) {
-	<div class="col-12 col-md-6">
-		<label class="form-label" for={ fieldName }>{ label }</label>
-		<input
-			type="number"
-			min="0"
-			step="1"
-			class="form-control"
-			id={ fieldName }
-			name={ fieldName }
-			value={ strconv.Itoa(value) }
-		/>
-	</div>
-}

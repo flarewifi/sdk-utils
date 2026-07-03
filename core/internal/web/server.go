@@ -52,6 +52,11 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 
 	navs.SetAdminNavs(g)
 
+	// gorilla/mux runs Use() middlewares ONLY on matched routes — the
+	// NotFoundHandler below executes with NO middleware chain, so it must wrap
+	// its own scheme/host normalization. This is the ONE place in the app that
+	// still applies the funnel middlewares manually; every matched route gets
+	// them globally via ForceHTTPS above.
 	redirectToLanIpMw := middlewares.RedirectToLanIP(g.CoreAPI)
 	redirectToPortalMw := middlewares.RedirectToPortalDomain()
 

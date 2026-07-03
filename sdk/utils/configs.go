@@ -26,10 +26,7 @@ type AppConfig struct {
 	// Shared captive-portal hostname served locally with a valid, cloud-issued
 	// certificate (split-horizon DNS, RFC 8910 advertisement, TLS SAN).
 	//
-	// NOTE: currently IGNORED — the captive-portal hostname is derived from the
-	// build environment instead (env.PortalDomain: "" in dev/devkit,
-	// captive.nexifi.ph on staging, captive.flarewifi.com on prod). This field is
-	// retained for when per-machine custom domains are reintroduced.
+	// NOTE: currently IGNORED
 	CustomDomain string `json:"custom_domain"`
 }
 

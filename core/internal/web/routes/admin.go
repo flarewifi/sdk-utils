@@ -82,6 +82,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Group("/interfaces", func(subrouter sdkapi.IHttpRouterInstance) {
 			subrouter.Get("/index", adminctrl.InterfacesIndexCtrl(g)).Name("admin:interfaces:index")
 			subrouter.Post("/save", adminctrl.InterfacesSaveCtrl(g)).Name("admin:interfaces:save")
+			subrouter.Post("/apply", adminctrl.InterfacesApplyCtrl(g)).Name("admin:interfaces:apply")
 		})
 	})
 

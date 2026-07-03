@@ -17,10 +17,10 @@ type PaymentModel struct {
 
 // CreatePaymentParams holds parameters for creating a new payment
 type CreatePaymentParams struct {
-	PurchaseID        int64
-	Amount            float64
-	PaymentOptionUUID string
-	Provider          string
+	PurchaseID    int64
+	Amount        float64
+	Provider      string
+	PaymentMethod string
 }
 
 // UpdatePaymentParams holds parameters for updating a payment
@@ -38,11 +38,11 @@ func (self *PaymentModel) Create(ctx context.Context, params CreatePaymentParams
 	paymentUUID := sdkutils.NewUUID()
 
 	pId, err := self.db.Queries.CreatePayment(ctx, queries.CreatePaymentParams{
-		Uuid:              paymentUUID,
-		PurchaseID:        params.PurchaseID,
-		Amount:            params.Amount,
-		PaymentOptionUuid: params.PaymentOptionUUID,
-		Provider:          params.Provider,
+		Uuid:          paymentUUID,
+		PurchaseID:    params.PurchaseID,
+		Amount:        params.Amount,
+		Provider:      params.Provider,
+		PaymentMethod: params.PaymentMethod,
 	})
 	if err != nil {
 		log.Println("error creating payment:", err)
@@ -60,8 +60,8 @@ func (self *PaymentModel) Create(ctx context.Context, params CreatePaymentParams
 	payment.uuid = p.Uuid
 	payment.purchaseId = p.PurchaseID
 	payment.amount = p.Amount
-	payment.paymentOptionUUID = p.PaymentOptionUuid
 	payment.provider = p.Provider
+	payment.paymentMethod = p.PaymentMethod
 	payment.createdAt = p.CreatedAt
 
 	return payment, nil
@@ -79,8 +79,8 @@ func (self *PaymentModel) Find(ctx context.Context, id int64) (*Payment, error) 
 	payment.uuid = p.Uuid
 	payment.purchaseId = p.PurchaseID
 	payment.amount = p.Amount
-	payment.paymentOptionUUID = p.PaymentOptionUuid
 	payment.provider = p.Provider
+	payment.paymentMethod = p.PaymentMethod
 	payment.createdAt = p.CreatedAt
 
 	return payment, nil
@@ -101,8 +101,8 @@ func (self *PaymentModel) FindAllByPurchase(ctx context.Context, purId int64) ([
 		nP.uuid = p.Uuid
 		nP.purchaseId = p.PurchaseID
 		nP.amount = p.Amount
-		nP.paymentOptionUUID = p.PaymentOptionUuid
 		nP.provider = p.Provider
+		nP.paymentMethod = p.PaymentMethod
 		nP.createdAt = p.CreatedAt
 		payments = append(payments, nP)
 	}

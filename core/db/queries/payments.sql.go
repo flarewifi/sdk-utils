@@ -10,17 +10,17 @@ import (
 )
 
 const createPayment = `-- name: CreatePayment :one
-INSERT INTO payments (uuid, purchase_id, amount, payment_option_uuid, provider)
+INSERT INTO payments (uuid, purchase_id, amount, provider, payment_method)
 VALUES
   (?1, ?2, ?3, ?4, ?5) RETURNING id
 `
 
 type CreatePaymentParams struct {
-	Uuid              string
-	PurchaseID        int64
-	Amount            float64
-	PaymentOptionUuid string
-	Provider          string
+	Uuid          string
+	PurchaseID    int64
+	Amount        float64
+	Provider      string
+	PaymentMethod string
 }
 
 func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (int64, error) {
@@ -28,8 +28,8 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (i
 		arg.Uuid,
 		arg.PurchaseID,
 		arg.Amount,
-		arg.PaymentOptionUuid,
 		arg.Provider,
+		arg.PaymentMethod,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -37,7 +37,7 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (i
 }
 
 const findAllPaymentsByPurchaseId = `-- name: FindAllPaymentsByPurchaseId :many
-SELECT id, uuid, purchase_id, amount, payment_option_uuid, created_at, provider
+SELECT id, uuid, purchase_id, amount, created_at, provider, payment_method
 FROM
   payments
 WHERE
@@ -58,64 +58,9 @@ func (q *Queries) FindAllPaymentsByPurchaseId(ctx context.Context, purchaseID in
 			&i.Uuid,
 			&i.PurchaseID,
 			&i.Amount,
-			&i.PaymentOptionUuid,
 			&i.CreatedAt,
 			&i.Provider,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const findCompletedPurchasesByPaymentOptionUUID = `-- name: FindCompletedPurchasesByPaymentOptionUUID :many
-SELECT
-  purchases.id, purchases.uuid, purchases.device_id, purchases.sku, purchases.name, purchases.description, purchases.price, purchases.any_price, purchases.callback_plugin, purchases.callback_route, purchases.webhook_route, purchases.metadata, purchases.processing, purchases.payment_url, purchases.payment_note, purchases.confirmed_at, purchases.cancelled_at, purchases.cancelled_reason, purchases.created_at
-FROM
-  purchases
-INNER JOIN
-  payments ON payments.purchase_id = purchases.id
-WHERE
-  payments.payment_option_uuid = ?1
-  AND purchases.confirmed_at IS NOT NULL
-`
-
-func (q *Queries) FindCompletedPurchasesByPaymentOptionUUID(ctx context.Context, paymentOptionUuid string) ([]Purchase, error) {
-	rows, err := q.db.QueryContext(ctx, findCompletedPurchasesByPaymentOptionUUID, paymentOptionUuid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Purchase
-	for rows.Next() {
-		var i Purchase
-		if err := rows.Scan(
-			&i.ID,
-			&i.Uuid,
-			&i.DeviceID,
-			&i.Sku,
-			&i.Name,
-			&i.Description,
-			&i.Price,
-			&i.AnyPrice,
-			&i.CallbackPlugin,
-			&i.CallbackRoute,
-			&i.WebhookRoute,
-			&i.Metadata,
-			&i.Processing,
-			&i.PaymentUrl,
-			&i.PaymentNote,
-			&i.ConfirmedAt,
-			&i.CancelledAt,
-			&i.CancelledReason,
-			&i.CreatedAt,
+			&i.PaymentMethod,
 		); err != nil {
 			return nil, err
 		}
@@ -131,7 +76,7 @@ func (q *Queries) FindCompletedPurchasesByPaymentOptionUUID(ctx context.Context,
 }
 
 const findPayment = `-- name: FindPayment :one
-SELECT id, uuid, purchase_id, amount, payment_option_uuid, created_at, provider
+SELECT id, uuid, purchase_id, amount, created_at, provider, payment_method
 FROM
   payments
 WHERE
@@ -148,65 +93,11 @@ func (q *Queries) FindPayment(ctx context.Context, id int64) (Payment, error) {
 		&i.Uuid,
 		&i.PurchaseID,
 		&i.Amount,
-		&i.PaymentOptionUuid,
 		&i.CreatedAt,
 		&i.Provider,
+		&i.PaymentMethod,
 	)
 	return i, err
-}
-
-const findPurchasesByPaymentOptionUUID = `-- name: FindPurchasesByPaymentOptionUUID :many
-SELECT
-  purchases.id, purchases.uuid, purchases.device_id, purchases.sku, purchases.name, purchases.description, purchases.price, purchases.any_price, purchases.callback_plugin, purchases.callback_route, purchases.webhook_route, purchases.metadata, purchases.processing, purchases.payment_url, purchases.payment_note, purchases.confirmed_at, purchases.cancelled_at, purchases.cancelled_reason, purchases.created_at
-FROM
-  purchases
-INNER JOIN
-  payments ON payments.purchase_id = purchases.id
-WHERE
-  payments.payment_option_uuid = ?1
-`
-
-func (q *Queries) FindPurchasesByPaymentOptionUUID(ctx context.Context, paymentOptionUuid string) ([]Purchase, error) {
-	rows, err := q.db.QueryContext(ctx, findPurchasesByPaymentOptionUUID, paymentOptionUuid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Purchase
-	for rows.Next() {
-		var i Purchase
-		if err := rows.Scan(
-			&i.ID,
-			&i.Uuid,
-			&i.DeviceID,
-			&i.Sku,
-			&i.Name,
-			&i.Description,
-			&i.Price,
-			&i.AnyPrice,
-			&i.CallbackPlugin,
-			&i.CallbackRoute,
-			&i.WebhookRoute,
-			&i.Metadata,
-			&i.Processing,
-			&i.PaymentUrl,
-			&i.PaymentNote,
-			&i.ConfirmedAt,
-			&i.CancelledAt,
-			&i.CancelledReason,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const updatePayment = `-- name: UpdatePayment :exec

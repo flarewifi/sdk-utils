@@ -58,18 +58,11 @@ func ForceHTTPS() func(http.Handler) http.Handler {
 				return
 			}
 
-			// No portal domain (dev/devkit) => self-signed cert, no cloud-issued
-			// host to funnel to. Don't force any scheme; serve as-is.
-			if !config.HasCustomDomain() {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			isHTTPS := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
-
-			// Admin/device-local pages: always HTTPS on the request's own host.
+			// Admin/device-local pages: never gated, never funneled. With a portal
+			// domain they are forced onto HTTPS on the request's own host; without
+			// one (dev/devkit, self-signed cert) they are served as-is.
 			if isDeviceLocalPath(r.URL.Path) {
-				if isHTTPS {
+				if !config.HasCustomDomain() || IsHTTPS(r) {
 					next.ServeHTTP(w, r)
 					return
 				}
@@ -77,29 +70,24 @@ func ForceHTTPS() func(http.Handler) http.Handler {
 				return
 			}
 
-			// A request arriving on an UNMANAGED interface (an unmanaged LAN, or a
-			// non-LAN interface such as tailscale0 / a VPN) is not captive-portal
-			// traffic: send it to the admin UI on its own host over HTTPS rather
-			// than funneling it to the portal domain. This runs after the
-			// device-local / asset / health-check guards above, so /admin itself is
-			// already excluded and there is no redirect loop. isManagedRequest is
-			// conservative: only a source IP inside a MANAGED LAN subnet is treated
-			// as portal traffic, so a UBUS/lookup miss falls through to /admin, never
-			// the portal.
-			if !isManagedRequest(r) {
-				http.Redirect(w, r, httpsURL(hostWithoutPort(r.Host), "/admin"), http.StatusFound)
-				return
-			}
-
-			// Captive portal pages: funnel to the portal domain over the portal
-			// scheme (HTTPS on staging/prod). Already there => serve.
-			domain := portalDomain()
-			if domain != "" && strings.EqualFold(hostWithoutPort(r.Host), domain) && isHTTPS == (portalScheme() == "https") {
+			// No portal domain (dev/devkit) => self-signed cert, no cloud-issued
+			// host to funnel to, so there is nothing to funnel toward OR away from:
+			// serve as-is. In dev everything stays reachable by raw IP/HTTP, the
+			// legacy flow local tests rely on.
+			if !config.HasCustomDomain() {
 				next.ServeHTTP(w, r)
 				return
 			}
-			// 302 is the redirect most universally followed by OS captive-detection agents.
-			http.Redirect(w, r, portalURL(domain, r.URL.RequestURI()), http.StatusFound)
+
+			// Everything else is captive-portal traffic: apply the shared funnel
+			// decision (unmanaged source → /admin, a client already on the portal →
+			// served, everyone else → funneled to the portal domain). This is the
+			// SAME routePortalTraffic the NotFoundHandler's RedirectToPortalDomain
+			// calls, so the two funnel points can never diverge.
+			if routePortalTraffic(w, r) {
+				return
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }
@@ -126,38 +114,6 @@ func isSubresourceRequest(r *http.Request) bool {
 		return true
 	}
 	return false
-}
-
-// portalDomain returns this build's captive-portal hostname, or "" when there is
-// none. It is derived purely from the build environment (empty in dev/devkit,
-// captive.nexifi.ph on staging, captive.flarewifi.com on prod) — application.json's
-// custom_domain is intentionally ignored for now. See env.PortalDomain.
-func portalDomain() string {
-	return env.PortalDomain()
-}
-
-// portalScheme is the scheme captive-portal pages are served over: plain HTTP in
-// local dev (no valid cert for the dev portal host) and HTTPS everywhere else (the
-// cloud-issued cert). Admin pages are always HTTPS regardless of this.
-func portalScheme() string {
-	if env.GO_ENV == env.ENV_DEV {
-		return "http"
-	}
-	return "https"
-}
-
-// portalURL builds the captive-portal URL on the given host using portalScheme and
-// the matching listener port (omitting the port when it is the scheme default).
-func portalURL(host, uri string) string {
-	scheme := portalScheme()
-	port := env.HTTPS_PORT
-	if scheme == "http" {
-		port = env.HTTP_PORT
-	}
-	if (scheme == "https" && port == 443) || (scheme == "http" && port == 80) {
-		return fmt.Sprintf("%s://%s%s", scheme, host, uri)
-	}
-	return fmt.Sprintf("%s://%s:%d%s", scheme, host, port, uri)
 }
 
 // isDeviceLocalPath reports whether a path must stay on the device's own host over

@@ -136,7 +136,8 @@ func Init(g *api.CoreGlobals) {
 		g.BootProgress.Advance(g.CoreAPI.Translate("info", "Finalizing startup"))
 		InitAssets(g)
 		InitAccounts()
-		if err := InitNetwork(); err != nil {
+		if err := InitNetwork(g.CoreAPI.Logger()); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("boot: network init failed: %v", err))
 		} else {
 			api.RunNetworkReadyCallbacks(g.CoreAPI.Logger())
 		}

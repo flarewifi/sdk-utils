@@ -66,6 +66,17 @@ const (
 	// the portal. Always a subset of managedIfacesSet (see IsCaptive).
 	captiveIfacesSet string = "captive_ifaces"
 
+	// portalIpsV4Set/portalIpsV6Set hold the portal-serving addresses from
+	// interfaces.json: the gateway IP of every captive-portal-enabled LAN plus the
+	// main portal interface's IP (see SetPortalIPs). Traffic from a captive
+	// interface destined to any of these bypasses BOTH the prerouting port-80 DNAT
+	// (so http://<captive-gateway-ip> is served as addressed, never rewritten to
+	// the main IP) and the forward chain's session gate (so an unauthenticated
+	// client on one captive subnet can always reach the portal hosted on
+	// another's address).
+	portalIpsV4Set string = "portal_ips_v4"
+	portalIpsV6Set string = "portal_ips_v6"
+
 	// whitelistReconcileInterval is how often the background reconciler re-syncs
 	// each whitelisted MAC's current IP (from the ARP/neighbor table) into the
 	// return-traffic sets. This is the session-independent safety net that
@@ -158,6 +169,11 @@ func Setup() (err error) {
 	// Captive-interface set: the subset of managed interfaces whose port-80
 	// traffic is DNAT'd to the portal (see SetCaptivePortalTarget).
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ifname; }\n", tableFamily, internetTable, captiveIfacesSet))
+	// Portal-IP sets: the portal-serving addresses from interfaces.json (see
+	// SetPortalIPs). Referenced by the portal bypass rules in the forward and
+	// prerouting chains below; membership is filled by ApplyPortalConfig.
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv4_addr; }\n", tableFamily, internetTable, portalIpsV4Set))
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv6_addr; }\n", tableFamily, internetTable, portalIpsV6Set))
 
 	// Create postrouting chain for anti-tethering (TTL set)
 	// Sets outgoing TTL to 1 so tethered devices cannot forward packets (TTL drops to 0)
@@ -177,6 +193,16 @@ func Setup() (err error) {
 	// Rule order (first terminal verdict wins):
 	//   0. Hard block: source MAC / dest client IP in blocked sets — DROP. These
 	//      come FIRST so an absolute block beats the session and whitelist accepts.
+	//   0a. Portal bypass: ingress captive AND destination in the portal-IP sets —
+	//      ACCEPT. A client on any captive subnet must always be able to reach the
+	//      portal-serving interface IPs (interfaces.json), session or not — the
+	//      portal IS how it gets a session. Placed after the hard-block drops so
+	//      a blocked device still can't reach anything.
+	//   0b. Inter-captive routing: ingress AND egress both managed (captive) —
+	//      ACCEPT. This is LAN-to-LAN traffic between the app's own subnets, so
+	//      captive interfaces can reach each other without a session. Internet
+	//      egress leaves via the unmanaged WAN, so it does NOT match and still
+	//      falls through to the verdict maps below (stays session-gated).
 	//   1. Upload: source MAC verdict map — accept if MAC is registered.
 	//   2. Download (IPv4): destination IP verdict map — accept + count.
 	//   3. Download (IPv6): destination IP6 verdict map — accept + count.
@@ -184,6 +210,13 @@ func Setup() (err error) {
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedMacSet))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedIpsV4Set))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedIpsV6Set))
+	// Portal bypass: forwarded traffic from a captive interface to any
+	// portal-serving IP is accepted unconditionally (no session needed). In the
+	// common case this traffic is locally delivered (INPUT) and never forwarded,
+	// but any topology that DOES forward it must not have the portal blackholed
+	// by the policy drop below.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s ip daddr @%s counter accept\n", tableFamily, internetTable, forwardChain, captiveIfacesSet, portalIpsV4Set))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s ip6 daddr @%s counter accept\n", tableFamily, internetTable, forwardChain, captiveIfacesSet, portalIpsV6Set))
 	// Transparency passthrough: accept any forwarded packet that touches NO
 	// managed interface (neither ingress nor egress), so unmanaged interfaces flow
 	// straight through to the system's own firewall — our policy-drop chain stays
@@ -191,6 +224,11 @@ func Setup() (err error) {
 	// still wins everywhere) but BEFORE the session verdict maps (so unmanaged
 	// traffic never needs a session).
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname != @%s oifname != @%s counter accept\n", tableFamily, internetTable, forwardChain, managedIfacesSet, managedIfacesSet))
+	// Inter-captive routing: both ingress and egress are managed (captive)
+	// interfaces — accept so the app's own LAN subnets can reach each other
+	// without a session. Internet egress (managed → unmanaged WAN) does NOT match
+	// this and falls through to the session verdict maps below, staying gated.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s oifname @%s counter accept\n", tableFamily, internetTable, forwardChain, managedIfacesSet, managedIfacesSet))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, connMacMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIpMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIp6Map))
@@ -230,8 +268,23 @@ func Setup() (err error) {
 	// per-interface), so it is set up once here instead of per-interface. It is
 	// appended AFTER the whitelist jump and BEFORE the DNAT rule (which
 	// SetCaptivePortalTarget appends later), giving the correct precedence:
-	// whitelist → authenticated → DNAT everyone else.
+	// whitelist → authenticated → portal-IP bypass → DNAT everyone else.
 	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s ether saddr @%s counter accept", tableFamily, internetTable, preroutingChain, connMacSet), nil)
+	if err != nil {
+		return err
+	}
+
+	// Portal-IP bypass: traffic from a captive interface already destined to a
+	// portal-serving IP (interfaces.json) is accepted here, BEFORE the DNAT rule
+	// SetCaptivePortalTarget appends later, so it is never rewritten to the main
+	// portal IP. Without this, a client sent to its own gateway's portal (e.g.
+	// http://20.0.0.1 by RedirectToLanIP) would have the destination silently
+	// swapped to the main IP while its Host header still names its own gateway.
+	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s iifname @%s ip daddr @%s counter accept", tableFamily, internetTable, preroutingChain, captiveIfacesSet, portalIpsV4Set), nil)
+	if err != nil {
+		return err
+	}
+	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s iifname @%s ip6 daddr @%s counter accept", tableFamily, internetTable, preroutingChain, captiveIfacesSet, portalIpsV6Set), nil)
 	if err != nil {
 		return err
 	}
@@ -281,6 +334,41 @@ func setMembership(set, dev string, member bool) {
 	} else {
 		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ \"%s\" }' 2>/dev/null || true", tableFamily, internetTable, set, dev), nil)
 	}
+}
+
+// SetPortalIPs reconciles the portal_ips_v4/v6 sets with the portal-serving
+// addresses resolved from interfaces.json: the gateway IP of every
+// captive-portal-enabled LAN plus the main portal interface's IP. Traffic from
+// captive interfaces to these addresses bypasses the port-80 DNAT and the
+// forward-chain session gate (rules installed once in Setup), so a client on
+// one captive subnet can always reach the portal hosted on another's address.
+// The sets are flushed and repopulated, so it is idempotent and safe to call on
+// every ApplyPortalConfig. Unparseable entries are skipped; each IP lands in
+// the set matching its family, so callers pass one mixed list.
+func SetPortalIPs(ips []string) error {
+	contextInfo := fmt.Sprintf("PortalIPs=%v", ips)
+
+	_, err := nftQue.ExecWithTimeout(
+		10*time.Second,
+		"Set Portal IPs",
+		contextInfo,
+		func() (any, error) {
+			cmd.Exec(fmt.Sprintf("nft flush set %s %s %s 2>/dev/null || true", tableFamily, internetTable, portalIpsV4Set), nil)
+			cmd.Exec(fmt.Sprintf("nft flush set %s %s %s 2>/dev/null || true", tableFamily, internetTable, portalIpsV6Set), nil)
+			for _, ip := range ips {
+				if net.ParseIP(ip) == nil {
+					continue
+				}
+				set := portalIpsV4Set
+				if isIPv6(ip) {
+					set = portalIpsV6Set
+				}
+				cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, set, ip), nil)
+			}
+			return nil, nil
+		},
+	)
+	return err
 }
 
 // SetCaptivePortalTarget installs the single port-80 DNAT rule shared by every

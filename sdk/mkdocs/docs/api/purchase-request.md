@@ -232,8 +232,8 @@ Creates a payment record for the purchase request.
 ctx := r.Context()
 
 params := sdkapi.CreatePaymentParams{
-    Amount:       29.99,
-    ProviderUUID: "a1b2c3d4e5f6g7h8", // UUID from PaymentOption
+    Amount:        29.99,
+    PaymentMethod: "Credit Card", // optional, label shown in the sales inventory
 }
 
 err := purchaseRequest.CreatePayment(ctx, params)
@@ -242,21 +242,22 @@ if err != nil {
 }
 ```
 
-### State
+### GetPaymentData
 
-Returns the current state of the purchase, including payment totals.
+Returns the total accumulated payment and the first payment's provider/method.
 
 ```go
 ctx := r.Context()
 
-state, err := purchaseRequest.State(ctx)
+payment, err := purchaseRequest.GetPaymentData(ctx)
 if err != nil {
     // handle error
 }
 
-fmt.Printf("Purchase ID: %d\n", state.PurchaseID)
-fmt.Printf("Total Payment: $%.2f\n", state.TotalPayment)
-fmt.Printf("Payment Provider: %s\n", state.PaymentProvider)
+fmt.Printf("Purchase ID: %d\n", payment.PurchaseID)
+fmt.Printf("Total Payment: $%.2f\n", payment.TotalPayment)
+fmt.Printf("Payment Provider: %s\n", payment.PaymentProvider)
+fmt.Printf("Payment Method: %s\n", payment.PaymentMethod)
 ```
 
 ### Execute
@@ -361,15 +362,23 @@ type PurchaseRequest struct {
 
 ### PurchasePaymentData
 
-The `PurchasePaymentData` struct represents the current state of a purchase, returned by `State()`:
+The `PurchasePaymentData` struct is returned by `GetPaymentData()`:
 
 ```go
 type PurchasePaymentData struct {
     PurchaseID      int64   `json:"purchase_id"`      // Database ID of the purchase
     TotalPayment    float64 `json:"total_payment"`    // Total amount paid
-    PaymentProvider string  `json:"payment_provider"` // Name of the payment provider used
+    PaymentProvider string  `json:"payment_provider"` // Calling plugin's package name
+    PaymentMethod   string  `json:"payment_method"`   // Method label; see below
 }
 ```
+
+`PaymentMethod` is the method label passed to `CreatePayment` (e.g. "Coins",
+"Credit Card") if one was given. If it was left blank, it falls back to the
+`PaymentProvider` plugin's `plugin.json` `"name"` field (e.g. "Wired
+Coinslot"), or to the raw `PaymentProvider` package string if that plugin
+isn't currently installed. It is only blank when `PaymentProvider` itself is
+blank (no payment recorded yet).
 
 ### CreatePaymentParams
 
@@ -377,10 +386,13 @@ The `CreatePaymentParams` struct is used when creating a payment:
 
 ```go
 type CreatePaymentParams struct {
-    Amount       float64 // Payment amount
-    ProviderUUID string  // UUID of the payment option (from PaymentOption.UUID)
+    Amount        float64 // Payment amount
+    PaymentMethod string  // Optional method label (e.g. "Coins", "Credit Card")
 }
 ```
+
+The payment's `provider` (which plugin processed it) is derived automatically
+from the calling plugin's package name — it is not part of `CreatePaymentParams`.
 
 ### ExecuteParams
 
@@ -437,13 +449,11 @@ func handleCreditCardPayment(w http.ResponseWriter, r *http.Request) {
 
     ctx := r.Context()
 
-    // Create payment record with the payment option UUID
-    // The UUID comes from the PaymentOption returned by your payment provider
-    providerUUID := "a1b2c3d4e5f6g7h8" // From PaymentOption.UUID
-    
+    // Create payment record. Provider is derived automatically from this
+    // plugin's package name; PaymentMethod is an optional display label.
     params := sdkapi.CreatePaymentParams{
-        Amount:       purchaseReq.Price(),
-        ProviderUUID: providerUUID,
+        Amount:        purchaseReq.Price(),
+        PaymentMethod: "Credit Card",
     }
 
     err = purchaseReq.CreatePayment(ctx, params)

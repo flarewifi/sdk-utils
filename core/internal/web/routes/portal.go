@@ -15,16 +15,14 @@ func PortalRoutes(g *api.CoreGlobals) {
 	rootR := router.RootRouter
 	portalR := g.CoreAPI.HttpAPI.Router().HttpRouter(nil)
 
-	// Funnel all portal traffic to the shared portal hostname over HTTPS so it is
-	// served with the valid cloud-issued cert. Replaces the legacy redirect-to-LAN-IP
-	// + HTTPS->HTTP downgrade, which kept the portal on plain HTTP.
-	redirectToPortalMw := middlewares.RedirectToPortalDomain()
+	// Scheme/host/destination normalization — HTTPS, the portal-domain funnel,
+	// and the unmanaged→/admin gate — is handled ONCE, globally, by
+	// middlewares.ForceHTTPS on RootRouter, which runs for every route matched
+	// here. Portal routes therefore carry NO per-route funnel wrappers (the 404
+	// fallback in server.go is the one place that still wraps manually, because
+	// mux Use middlewares never run on NotFoundHandler).
 	pendingPurchaseMw := middlewares.PendingPurchase(g.CoreAPI, g.Models)
 	ensureDeviceMw := middlewares.EnsureDeviceRegistered(g.CoreAPI)
-	// Only traffic from a managed LAN interface proceeds to the portal / register
-	// flow; anything else (unmanaged LAN, or a non-LAN interface such as
-	// tailscale0 / a VPN) is sent to /admin instead (see RedirectUnmanagedToAdmin).
-	unmanagedToAdminMw := middlewares.RedirectUnmanagedToAdmin()
 
 	portalSseCtrl := controllers.PortalSseHandler(g)
 	portalRootCtrl := controllers.PortalRootCtrl(g)
@@ -35,9 +33,9 @@ func PortalRoutes(g *api.CoreGlobals) {
 	portalIndexPageCtrl := controllers.PortalIndexPage(g)
 
 	// Root route renders a simple HTML page with inline JavaScript that advances
-	// the portal flow. Wrapped so entry on localhost/LAN-IP/HTTP is redirected to
-	// the portal hostname over HTTPS first.
-	rootR.Handle("/", unmanagedToAdminMw(redirectToPortalMw(http.HandlerFunc(portalRootCtrl)))).Methods("GET").Name("portal:root")
+	// the portal flow. ForceHTTPS has already normalized entry on
+	// localhost/LAN-IP/HTTP onto the portal hostname over HTTPS.
+	rootR.Handle("/", http.HandlerFunc(portalRootCtrl)).Methods("GET").Name("portal:root")
 
 	// RFC 8908 Captive Portal API (advertised via RFC 8910 DHCP option 114).
 	// Registered on the root router so the OS reaches it at the advertised portal
@@ -45,18 +43,15 @@ func PortalRoutes(g *api.CoreGlobals) {
 	rootR.HandleFunc("/api/captive", captiveApiCtrl).Methods("GET").Name("portal:captive-api")
 
 	portalR.Group("/", func(regR sdkapi.IHttpRouterInstance) {
-		regR.Use(unmanagedToAdminMw)
-		regR.Use(redirectToPortalMw)
-
 		// /register/redirect
 		regR.Get("/register/redirect", portalRedirectCtrl).
 			Name("portal:redirector")
 
-		// /register - applies HTTPRedirect middleware
+		// /register
 		regR.Get("/register", portalRegisterCtrl).
 			Name("portal:register")
 
-		// /register/ajax - applies HTTPRedirect middleware
+		// /register/ajax
 		regR.Post("/register/ajax", portalRegisterAjaxCtrl).
 			Name("portal:register:ajax")
 	})
@@ -64,7 +59,6 @@ func PortalRoutes(g *api.CoreGlobals) {
 	// Core fallback theme HTMX endpoints — used by the built-in portal theme
 	// (index.templ / status_nav.templ) when the configured theme plugin is absent.
 	portalR.Group("/portal", func(subrouter sdkapi.IHttpRouterInstance) {
-		subrouter.Use(redirectToPortalMw)
 		subrouter.Use(ensureDeviceMw)
 		subrouter.Get("/status-nav", controllers.PortalStatusNavCtrl(g)).Name("portal:status-nav")
 		subrouter.Get("/sessions/summary", controllers.PortalSessionSummaryCtrl(g)).Name("portal:sessions:summary")
@@ -72,17 +66,16 @@ func PortalRoutes(g *api.CoreGlobals) {
 	})
 
 	portalR.Group("/portal", func(subrouter sdkapi.IHttpRouterInstance) {
-		subrouter.Use(redirectToPortalMw)
 		subrouter.Use(ensureDeviceMw)
 
-		// /portal/index - applies plugin middlewares, HTTPRedirect, PortalDeviceCheck and PendingPurchase middlewares
+		// /portal/index — wraps the page in PendingPurchase plus every
+		// plugin-registered portal middleware (UseForPortal), outermost first.
 		subrouter.Get("/index", func(w http.ResponseWriter, r *http.Request) {
 			// Start with the base handler
 			handler := http.Handler(http.HandlerFunc(portalIndexPageCtrl))
 
 			// Apply core middlewares (inner to outer)
 			handler = pendingPurchaseMw(handler)
-			handler = redirectToPortalMw(handler)
 
 			// Collect portal middlewares from ALL plugins (not just core)
 			var portalMws []func(http.Handler) http.Handler

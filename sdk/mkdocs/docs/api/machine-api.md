@@ -39,6 +39,37 @@ if api.Machine().IsOnline() {
 
 > **Prefer events over polling.** If you want to *react* to the machine coming online or going offline, subscribe with [`api.Events().OnInternetEvent(...)`](./events-api.md#oninternetevent) instead of repeatedly calling `IsOnline()`. Use `IsOnline()` for a one-off check at the moment you need it (e.g. just before attempting a network call).
 
+### SystemStats
+
+Returns a point-in-time snapshot of the machine's CPU, memory, disk, and temperature usage.
+
+```go
+type SystemStats struct {
+    CpuPercent float64 // average CPU utilization across all cores, 0-100
+    MemTotal   uint64  // bytes
+    MemUsed    uint64  // bytes
+    DiskTotal  uint64  // bytes
+    DiskUsed   uint64  // bytes
+
+    // TemperatureCelsius is nil when the machine exposes no readable thermal
+    // sensor (common on many OpenWRT devices) rather than a misleading zero.
+    TemperatureCelsius *float64
+}
+```
+
+```go
+stats := api.Machine().SystemStats()
+
+fmt.Printf("CPU: %.1f%%, Mem: %d/%d bytes, Disk: %d/%d bytes\n",
+    stats.CpuPercent, stats.MemUsed, stats.MemTotal, stats.DiskUsed, stats.DiskTotal)
+
+if stats.TemperatureCelsius != nil {
+    fmt.Printf("Temp: %.1f°C\n", *stats.TemperatureCelsius)
+}
+```
+
+> Sampling CPU usage briefly blocks (~100ms) to measure utilization over that window. Avoid calling this in a tight loop or on a hot request path — prefer a periodic background check.
+
 ## Usage Examples
 
 ### Machine Identification

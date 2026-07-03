@@ -23,6 +23,7 @@ const defaultSpeed int = DefaultLinkSpeed // fallback speed in Mbps when link sp
 type lanEntry struct {
 	name       string
 	lan        *NetworkLan
+	device     string     // cached L3 device, e.g. "br-lan" — may be "" if never resolved
 	cidr       *net.IPNet // pre-parsed IPv4 CIDR — may be nil if no IPv4 address
 	cidr6      *net.IPNet // pre-parsed IPv6 CIDR — may be nil if no IPv6 address
 	ipv4Addr   string     // e.g. "192.168.1.1"
@@ -51,32 +52,38 @@ var netQueue = jobque.NewJobQueue[any]()
 // INTERNAL HELPERS
 // =============================================================================
 
-// addLan fetches the LAN's IPv4 (and optionally IPv6) address, parses its
-// CIDR once, and stores the pre-built entry in the registry.
-// Called once per LAN at startup.
+// addLan builds a registry entry for the LAN (caching its parsed CIDR) and stores
+// it. IPv4 is optional at registration time: every LAN candidate is registered so
+// it can be identified and toggled captive live, and a down / not-yet-configured
+// interface may have no address yet — listenLanEvents fills the CIDR on the next
+// ifup. Idempotent: re-registering an existing LAN replaces its entry in place.
 func addLan(lan *NetworkLan) error {
 	iface := lan.GetInterface()
 
-	ipv4, err := iface.IpV4Addr()
-	if err != nil {
-		return fmt.Errorf("failed to get IPv4 for LAN '%s': %w", lan.Name(), err)
-	}
-
-	cidrStr := fmt.Sprintf("%s/%d", ipv4.Addr, ipv4.Netmask)
-	_, cidr, err := net.ParseCIDR(cidrStr)
-	if err != nil {
-		return fmt.Errorf("invalid CIDR '%s' for LAN '%s': %w", cidrStr, lan.Name(), err)
-	}
-
 	entry := &lanEntry{
-		name:       lan.Name(),
-		lan:        lan,
-		cidr:       cidr,
-		ipv4Addr:   ipv4.Addr,
-		cidrString: cidrStr,
+		name: lan.Name(),
+		lan:  lan,
 	}
 
-	// IPv6 is optional — log a warning but don't fail if absent
+	// Cache the L3 device (e.g. "br-lan"). The out-of-the-box captive default in
+	// config.IsCaptivePortalEnabled is keyed on the DEVICE, not the interface
+	// name, and per-request consumers (IsClientIPManaged → portal-vs-admin) must
+	// not pay a UBUS lookup — so the device is resolved here and refreshed by
+	// updateLanCidr.
+	if info, err := iface.getInfo(); err == nil {
+		entry.device = info.Device
+	}
+
+	if ipv4, err := iface.IpV4Addr(); err == nil {
+		cidrStr := fmt.Sprintf("%s/%d", ipv4.Addr, ipv4.Netmask)
+		if _, cidr, err := net.ParseCIDR(cidrStr); err == nil {
+			entry.cidr = cidr
+			entry.ipv4Addr = ipv4.Addr
+			entry.cidrString = cidrStr
+		}
+	}
+
+	// IPv6 is optional — don't fail if absent
 	if ipv6, err := iface.IpV6Addr(); err == nil {
 		cidr6Str := fmt.Sprintf("%s/%d", ipv6.Addr, ipv6.PrefixLen)
 		if _, cidr6, err := net.ParseCIDR(cidr6Str); err == nil {
@@ -88,28 +95,37 @@ func addLan(lan *NetworkLan) error {
 	registry.mu.Lock()
 	defer registry.mu.Unlock()
 
+	if _, exists := registry.byName[lan.Name()]; exists {
+		for i, e := range registry.byIp {
+			if e.name == lan.Name() {
+				registry.byIp[i] = entry
+				break
+			}
+		}
+	} else {
+		registry.byIp = append(registry.byIp, entry)
+		registry.count++
+	}
 	registry.byName[lan.Name()] = entry
-	registry.byIp = append(registry.byIp, entry)
-	registry.count++
 
 	return nil
 }
 
 // updateLanCidr rebuilds the cached IPv4 (and optionally IPv6) CIDR for a
-// LAN whose IP may have changed (e.g. after an interface reinit).
-// Called from listenLanEvents on IfEventUp.
-func updateLanCidr(lanName string, lan *NetworkLan) error {
-	iface := lan.GetInterface()
-
-	ipv4, err := iface.IpV4Addr()
+// LAN whose IP may have changed (e.g. after an interface reinit or an admin
+// "Apply Changes"). Reports whether the cached IPv4 CIDR actually changed so
+// callers can skip a portal reconcile when nothing moved. Called from
+// listenLanEvents on IfEventUp and from ApplyPortalConfig.
+//
+// The cache MUST track the live address: FindByIp — and therefore
+// IsClientIPManaged, which gates the portal-vs-admin funnel — matches clients
+// against these CIDRs. A stale/missing entry misclassifies every client on the
+// interface as unmanaged and bounces them to /admin instead of the portal.
+func updateLanCidr(lanName string, lan *NetworkLan) (changed bool, err error) {
+	// One UBUS read covers everything the registry caches: device, IPv4, IPv6.
+	info, err := lan.GetInterface().getInfo()
 	if err != nil {
-		return fmt.Errorf("failed to get IPv4 for LAN '%s': %w", lanName, err)
-	}
-
-	cidrStr := fmt.Sprintf("%s/%d", ipv4.Addr, ipv4.Netmask)
-	_, cidr, err := net.ParseCIDR(cidrStr)
-	if err != nil {
-		return fmt.Errorf("invalid CIDR '%s' for LAN '%s': %w", cidrStr, lanName, err)
+		return false, fmt.Errorf("failed to get interface info for LAN '%s': %w", lanName, err)
 	}
 
 	registry.mu.Lock()
@@ -117,23 +133,60 @@ func updateLanCidr(lanName string, lan *NetworkLan) error {
 
 	entry, ok := registry.byName[lanName]
 	if !ok {
-		return fmt.Errorf("LAN '%s' not found in registry", lanName)
+		return false, fmt.Errorf("LAN '%s' not found in registry", lanName)
 	}
 
+	// Refresh the cached L3 device first — even when the interface has no IP yet,
+	// the device drives the captive default (device == br-lan) that
+	// IsClientIPManaged relies on.
+	if info.Device != "" && entry.device != info.Device {
+		entry.device = info.Device
+		changed = true
+	}
+
+	if len(info.IpV4Addresses) == 0 {
+		return changed, fmt.Errorf("failed to get IPv4 for LAN '%s': no IPv4 addresses found", lanName)
+	}
+	ipv4 := info.IpV4Addresses[0]
+
+	cidrStr := fmt.Sprintf("%s/%d", ipv4.Addr, ipv4.Netmask)
+	_, cidr, perr := net.ParseCIDR(cidrStr)
+	if perr != nil {
+		return changed, fmt.Errorf("invalid CIDR '%s' for LAN '%s': %w", cidrStr, lanName, perr)
+	}
+
+	if entry.cidrString != cidrStr || entry.ipv4Addr != ipv4.Addr {
+		changed = true
+	}
 	entry.cidr = cidr
 	entry.ipv4Addr = ipv4.Addr
 	entry.cidrString = cidrStr
 
 	// Update IPv6 CIDR if available (non-fatal if absent)
-	if ipv6, err := iface.IpV6Addr(); err == nil {
+	if ipv6, err := info.IpV6Addr(); err == nil {
+		if entry.ipv6Addr != ipv6.Addr {
+			changed = true
+		}
 		cidr6Str := fmt.Sprintf("%s/%d", ipv6.Addr, ipv6.PrefixLen)
-		if _, cidr6, err := net.ParseCIDR(cidr6Str); err == nil {
+		if _, cidr6, perr := net.ParseCIDR(cidr6Str); perr == nil {
 			entry.cidr6 = cidr6
 			entry.ipv6Addr = ipv6.Addr
 		}
 	}
 
-	return nil
+	return changed, nil
+}
+
+// lanDevice returns the cached L3 device (e.g. "br-lan") for a registered LAN,
+// or "" when the LAN is unknown or its device was never resolved. Reads only
+// the registry — no UBUS call — so it is safe on the per-request path.
+func lanDevice(lanName string) string {
+	registry.mu.RLock()
+	defer registry.mu.RUnlock()
+	if entry, ok := registry.byName[lanName]; ok {
+		return entry.device
+	}
+	return ""
 }
 
 // =============================================================================
@@ -151,14 +204,17 @@ func listenLanEvents(lan *NetworkLan) {
 			if evt.Event == ubus.IfEventUp && !lan.Up() {
 				time.Sleep(1000 * time.Millisecond) // add delay to wait for complete network bootup
 
-				// Reinitialize TC (handles IP changes and ensures proper setup)
-				err := lan.ReinitializeTc()
-				if err != nil {
-					return nil, err
+				// Reinitialize TC only for captive interfaces. The flag is re-read
+				// live so a toggle since boot is honored: a now-free interface must
+				// NOT be re-shaped on ifup, and a now-captive one gets set up.
+				if lanIsCaptive(lan.Name()) {
+					if err := lan.ReinitializeTc(); err != nil {
+						return nil, err
+					}
 				}
 
 				// Rebuild CIDR cache — IP may have changed after reinit
-				if err := updateLanCidr(lan.Name(), lan); err != nil {
+				if _, err := updateLanCidr(lan.Name(), lan); err != nil {
 					return nil, err
 				}
 
@@ -167,9 +223,23 @@ func listenLanEvents(lan *NetworkLan) {
 				// Re-apply portal config: this interface's IP (and possibly the
 				// main LAN's IP) may have changed, so refresh the captive DNAT
 				// target + split-horizon DNS. Best-effort — a failure here must not
-				// undo the successful reinit above.
-				if err := ApplyPortalConfig(); err != nil {
-					return nil, err
+				// undo the successful reinit above, so we deliberately ignore it
+				// rather than fail the job (the TC reinit + CIDR cache are already
+				// committed, and a portal reconcile retries on the next IP event).
+				_ = ApplyPortalConfig()
+			} else if evt.Event == ubus.IfEventUp {
+				// ifup while already marked up: netifd re-announces an interface
+				// without a preceding down when only its address changed (Apply
+				// Changes → netifd reload), and a LAN that was registered IP-less at
+				// boot starts as up (NewNetworkLan defaults up=true) so its first
+				// ifup lands here too. The full reinit above is skipped, but the
+				// CIDR cache MUST still track the new address — otherwise FindByIp
+				// misclassifies every client on this LAN as unmanaged and the
+				// portal funnel bounces them to /admin. Best-effort; only reconcile
+				// the portal (DNAT target, portal IPs, split-horizon DNS) when the
+				// address actually changed.
+				if changed, err := updateLanCidr(lan.Name(), lan); err == nil && changed {
+					_ = ApplyPortalConfig()
 				}
 			}
 
@@ -179,33 +249,52 @@ func listenLanEvents(lan *NetworkLan) {
 	}
 }
 
+// SetupLanInterfaces registers every LAN candidate and starts one persistent
+// event listener per LAN, but sets up traffic shaping (tc) ONLY for the captive
+// interfaces. The captive set — driven by interfaces.json's EnableCaptivePortal
+// flag (with the primary LAN captive by default) — is the single authority for
+// what actually gets shaped + firewalled; a free interface is registered only so
+// it can be identified and toggled captive live, and is otherwise left untouched
+// (no tc, no custom nftables rules). Registering all candidates up front keeps
+// the listener/registry set static so a later captive toggle only flips tc, with
+// no goroutine or listener churn (see ReconcileInterfaces).
 func SetupLanInterfaces() (err error) {
 	ifaces, err := ubus.GetInterfaceNames()
 	if err != nil {
 		return err
 	}
 
-	cfg, err := config.ReadBandwidthConfig()
+	cfg, err := config.ReadInterfacesConfig()
 	if err != nil {
 		return err
 	}
 
-	lanCount := 0
 	for _, ifname := range ifaces {
-		_, ok := cfg.Lans[ifname]
-		if ok {
-			lan := NewNetworkLan(ifname)
+		if isNonLanInterface(ifname) {
+			continue // WAN / loopback are never LAN candidates
+		}
 
-			err = lan.SetupTrafficControl()
-			if err != nil {
+		// Resolve the L3 device so the primary-LAN default (br-lan) can be honored
+		// for an interface with no explicit config entry.
+		iface, ierr := ubus.GetNetworkInterface(ifname)
+		if ierr != nil || iface == nil {
+			continue
+		}
+
+		lan := NewNetworkLan(ifname)
+
+		// Shape only captive interfaces; free ones are registered for identification
+		// + live toggling but left otherwise untouched.
+		if cfg.IsCaptivePortalEnabled(ifname, iface.Device) {
+			if err = lan.SetupTrafficControl(); err != nil {
 				return err
 			}
-			go listenLanEvents(lan)
+		}
 
-			if err = addLan(lan); err != nil {
-				return err
-			}
-			lanCount++
+		go listenLanEvents(lan)
+
+		if err = addLan(lan); err != nil {
+			return err
 		}
 	}
 

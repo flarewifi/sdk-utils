@@ -256,7 +256,10 @@ func (self *PluginsMgr) InstallPlugin(def sdkutils.PluginSrcDef) (sdkplugin.IPlu
 	// The install runs in the background so the caller can stream Progress() while
 	// it proceeds; finish() records the result and closes the handle exactly once.
 	go func() {
-		h.finish(self.runInstall(def, h.emit))
+		var requiresReboot bool
+		err := self.runInstall(def, h.emit, &requiresReboot)
+		h.requiresReboot = requiresReboot
+		h.finish(err)
 	}()
 	return h, nil
 }
@@ -307,8 +310,10 @@ func (self *PluginsMgr) checkPluginBlocked(info sdkutils.PluginInfo) (err error)
 // through emit (never nil here — the InstallPlugin handle supplies it). The
 // percentages are coarse, monotonic checkpoints: the cloud build only reports
 // queued/processing/done, so the build phase ramp inside fetchPrebuiltPluginURL is
-// an estimate.
-func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitter) error {
+// an estimate. requiresReboot is set to true when the caller must reboot the
+// machine before the install/update takes effect (see the store-plugin
+// already-loaded check below); it is never read by this method, only written.
+func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitter, requiresReboot *bool) error {
 	var info sdkutils.PluginInfo
 	var err error
 
@@ -384,6 +389,21 @@ func (self *PluginsMgr) runInstall(def sdkutils.PluginSrcDef, emit progressEmitt
 	if def.Src == sdkutils.PluginSrcStore {
 		if recompiled := self.reconcileLocalPluginsWithLock(pinned); recompiled {
 			self.rebootToApplyRecompiledPlugins(info.Package)
+			return nil
+		}
+
+		// An already-loaded standalone store plugin's old .so is mapped into this
+		// process; Go's plugin.Open cannot hot-reload it (same constraint as
+		// installStoreMember's register=false path for meta members). The files
+		// overwritten above only take effect on the next reboot, so skip live
+		// re-registration here — retrying it would get Go's cached (stale) plugin
+		// AND double-track the package in self.plugins, since the old entry is
+		// still there. Report the reboot requirement to the caller instead of
+		// rebooting automatically: unlike a meta-member update or a local-plugin
+		// recompile conflict, this is a single plugin the admin explicitly chose to
+		// update, so the store UI asks before rebooting rather than doing it silently.
+		if _, alreadyLoaded := self.FindByPkg(info.Package); alreadyLoaded {
+			*requiresReboot = true
 			return nil
 		}
 	}

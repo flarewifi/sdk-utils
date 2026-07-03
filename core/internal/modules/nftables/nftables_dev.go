@@ -68,6 +68,22 @@ func SetInterfaceMode(dev string, managed bool, captive bool) error {
 	return err
 }
 
+// SetPortalIPs reconciles the portal-serving IP bypass sets (see the !dev
+// build). Dev mock: no-op (no real nftables sets to update).
+func SetPortalIPs(ips []string) error {
+	contextInfo := fmt.Sprintf("PortalIPs=%v", ips)
+
+	_, err := nftQue.ExecWithTimeout(
+		4*time.Second,
+		"Set Portal IPs",
+		contextInfo,
+		func() (any, error) {
+			return nil, nil
+		},
+	)
+	return err
+}
+
 // SetCaptivePortalTarget installs the shared port-80 DNAT to the main portal IP.
 // Dev mock: no-op (no real nftables rules to update).
 func SetCaptivePortalTarget(routerIp4 string, routerIp6 string) (err error) {

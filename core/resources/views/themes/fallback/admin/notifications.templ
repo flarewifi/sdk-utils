@@ -3,6 +3,7 @@ package admin
 import (
 	"fmt"
 	sdkapi "sdk/api"
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
@@ -45,7 +46,7 @@ templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 					hx-on::after-request="window.dispatchEvent(new Event('show-notif-modal'))"
 				>
 					<div class="fw-notif-subject">{ notif.Subject }</div>
-					<small class="fw-notif-time">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+					<small class="fw-notif-time">{ sdkutils.UtcToLocalTime(notif.CreatedAt).Format("Jan 2, 2006 3:04PM") }</small>
 				</a>
 				<button
 					class="fw-notif-clear"
@@ -85,7 +86,7 @@ templ ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) 
 			<div id="notifModalContent">
 				<div class="fw-modal-content-box">{ notif.Content }</div>
 			</div>
-			<small class="fw-notif-time">{ notif.CreatedAt.Format("Jan 2, 2006 3:04PM") }</small>
+			<small class="fw-notif-time">{ sdkutils.UtcToLocalTime(notif.CreatedAt).Format("Jan 2, 2006 3:04PM") }</small>
 		</div>
 		<div class="fw-modal-footer">
 			<button type="button" class="fw-btn-secondary" @click="modalOpen = false">

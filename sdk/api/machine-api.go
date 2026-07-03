@@ -1,8 +1,25 @@
 package sdkapi
 
+// SystemStats holds a point-in-time snapshot of the machine's system resources.
+type SystemStats struct {
+	CpuPercent float64 // average CPU utilization across all cores, 0-100
+	MemTotal   uint64  // bytes
+	MemUsed    uint64  // bytes
+	DiskTotal  uint64  // bytes
+	DiskUsed   uint64  // bytes
+
+	// TemperatureCelsius is nil when the machine exposes no readable thermal
+	// sensor (common on many OpenWRT devices) rather than a misleading zero.
+	TemperatureCelsius *float64
+}
+
 // IMachineApi provides machine-related information.
 type IMachineApi interface {
 	GetID() string
+
+	// SystemStats returns a snapshot of the machine's current CPU, memory, disk,
+	// and temperature usage.
+	SystemStats() SystemStats
 
 	// ProductVersion returns the machine's per-B2B-partner product version — the
 	// operator-set release version this build was stamped with (core/product.json),

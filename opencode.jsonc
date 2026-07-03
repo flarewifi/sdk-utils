@@ -16,6 +16,11 @@
       "type": "local",
       "command": ["npx", "@idletoaster/ssh-mcp-server@latest"],
       "enabled": true
+    },
+    "translations": {
+      "type": "local",
+      "command": [".tmp/translations-mcp", "-root", "/Users/adonesp/Projects/flare-server/core/flarewifi"],
+      "enabled": true
     }
   }
 }

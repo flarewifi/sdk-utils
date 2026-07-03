@@ -27,6 +27,11 @@ type pluginInstall struct {
 	progress chan sdkplugin.PluginInstallProgress
 	done     chan struct{}
 	err      error
+
+	// requiresReboot is set at most once, by the install goroutine, before it
+	// calls finish (which closes done). Safe to read after Done() unblocks
+	// without a mutex: the close of done is a happens-before edge.
+	requiresReboot bool
 }
 
 func newPluginInstall(pkg string) *pluginInstall {
@@ -44,6 +49,10 @@ func (p *pluginInstall) Progress() <-chan sdkplugin.PluginInstallProgress {
 func (p *pluginInstall) Done() error {
 	<-p.done
 	return p.err
+}
+
+func (p *pluginInstall) RequiresReboot() bool {
+	return p.requiresReboot
 }
 
 // emit delivers an intermediate progress event without ever blocking the install
