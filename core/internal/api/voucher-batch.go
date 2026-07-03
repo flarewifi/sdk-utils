@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	coreQueries "core/db/queries"
@@ -31,13 +32,9 @@ func (b *voucherBatchImpl) Metadata() string {
 func (b *voucherBatchImpl) ProviderPkg() string {
 	return b.row.ProviderPkg
 }
-func (b *voucherBatchImpl) Vouchers(page int, perPage int, search string) ([]sdkapi.IVoucher, error) {
-	ctx := context.Background()
-	return b.vouchersApi.GetVouchersByBatchUUID(ctx, b.row.Uuid, page, perPage)
-}
 func (b *voucherBatchImpl) VouchersCount() int64 {
-	ctx := context.Background()
-	count, _ := b.vouchersApi.GetVouchersByBatchUUIDCount(ctx, b.row.Uuid)
+	q := coreQueries.New(b.vouchersApi.pluginApi.db.DB)
+	count, _ := q.GetVouchersByBatchUUIDCount(context.Background(), sql.NullString{String: b.row.Uuid, Valid: true})
 	return count
 }
 func (b *voucherBatchImpl) CreatedAt() time.Time {
@@ -55,12 +52,4 @@ func (b *voucherBatchImpl) UpdatedAt() time.Time {
 
 func (self *VouchersApi) wrapBatch(row coreQueries.VoucherBatch) sdkapi.IVoucherBatch {
 	return &voucherBatchImpl{row: row, vouchersApi: self}
-}
-
-func (self *VouchersApi) wrapManyBatches(rows []coreQueries.VoucherBatch) []sdkapi.IVoucherBatch {
-	result := make([]sdkapi.IVoucherBatch, len(rows))
-	for i, row := range rows {
-		result[i] = self.wrapBatch(row)
-	}
-	return result
 }

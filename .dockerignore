@@ -11,12 +11,11 @@ output
 node_modules
 **/node_modules
 data
-# Re-include the committed Devkit theme system plugin so the devkit builder's
-# `COPY . .` carries it (sysplugin-prepare statically links it into core/plugin.so).
-# Everything else under data/ stays excluded. The Developer plugin is intentionally
-# NOT re-included: it is local-dev-only and excluded from the devkit distribution
-# (make-devkit.sh also stashes it out of the build).
-!data/plugins/system/com.flarego.devkit
+# NOTE: the Devkit theme system plugin is NO LONGER committed, so nothing under
+# data/ is re-included here. The devkit builder clones it fresh from GitHub
+# (make-devkit.sh -> clone-devkit-plugin) into data/plugins/system inside the
+# throwaway builder layer, keeping the build hermetic — it never inherits a stray
+# host copy from the build context.
 plugins
 bin
 *.so

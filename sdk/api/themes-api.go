@@ -74,7 +74,11 @@ type AdminThemeOpts struct {
 }
 
 type LoginPageData struct {
-	LoginError error
+	// ForgotPasswordUrl links the theme's login page to the CORE-owned
+	// forgot-password (OTP) flow. Populate it with
+	// UrlForPkgRoute("com.flarego.core", "auth:send-otp"); empty hides the link.
+	ForgotPasswordUrl string
+	LoginError        error
 }
 
 type PortalThemeOpts struct {

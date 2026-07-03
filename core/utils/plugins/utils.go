@@ -166,6 +166,97 @@ func SystemPluginSrcDefs() []sdkutils.PluginSrcDef {
 	return list
 }
 
+// ReconcileLocalDevelPluginsConfig makes data/config/plugins.json reflect the
+// plugins physically present under data/plugins/local and data/plugins/devel —
+// the authoritative location for local- and devel-sourced plugin sources. It
+// returns the packages it added and removed (nil,nil when nothing changed).
+//
+//   - Add: a plugin directory found under local/ (always) or devel/ (dev/devkit
+//     only, mirroring DevelPluginSrcDefs) that has no plugins.json entry is
+//     registered as a Src=local, Standalone record — the same shape an operator
+//     used to add by hand. Registration is keyed by the plugin's package id, so a
+//     plugin already recorded under any source (e.g. a store entry with local
+//     source present) is left as-is and never duplicated.
+//   - Remove: an existing Src=local entry whose LocalPath points under local/ or
+//     devel/ but whose directory no longer exists is dropped. The directory is
+//     authoritative, so a removed source means a removed plugin.
+//
+// Only Src=local entries under those two dirs are ever touched. Store/git entries
+// (empty LocalPath), system entries (LocalPath under the system dir), and meta
+// records structurally cannot match either rule, so they are always preserved.
+//
+// Removal keys off real directory existence (FsExists), NOT the scan, so it is
+// safe in every environment: a deployed device that does not scan the devel dir
+// still won't strip an entry merely because it went unscanned.
+func ReconcileLocalDevelPluginsConfig() (added, removed []string, err error) {
+	cfg, err := config.ReadPluginsConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	changed := false
+
+	// Prune stale local/devel entries whose source dir is gone.
+	localPrefix := sdkutils.StripRootPath(sdkutils.PathPluginLocalDir) + "/"
+	develPrefix := sdkutils.StripRootPath(sdkutils.PathPluginDevelDir) + "/"
+	retained := make([]sdkutils.PluginMetadata, 0, len(cfg.Metadata))
+	for _, m := range cfg.Metadata {
+		if m.Def.Src == sdkutils.PluginSrcLocal {
+			lp := m.Def.LocalPath
+			underLocalDevel := strings.HasPrefix(lp, localPrefix) || strings.HasPrefix(lp, develPrefix)
+			if underLocalDevel && !sdkutils.FsExists(filepath.Join(sdkutils.PathAppDir, lp)) {
+				removed = append(removed, m.Package)
+				changed = true
+				continue
+			}
+		}
+		retained = append(retained, m)
+	}
+	cfg.Metadata = retained
+
+	// Register plugin dirs present on disk but missing from the config.
+	dirs := SearchPluginDirs(sdkutils.PathPluginLocalDir)
+	if env.IsDevEnv() {
+		dirs = append(dirs, SearchPluginDirs(sdkutils.PathPluginDevelDir)...)
+	}
+	for _, dir := range dirs {
+		info, infoErr := sdkutils.GetPluginInfoFromPath(dir)
+		if infoErr != nil {
+			continue
+		}
+		if metadataHasPkg(cfg.Metadata, info.Package) {
+			continue
+		}
+		cfg.Metadata = append(cfg.Metadata, sdkutils.PluginMetadata{
+			Package: info.Package,
+			Def: sdkutils.PluginSrcDef{
+				Src:       sdkutils.PluginSrcLocal,
+				LocalPath: sdkutils.StripRootPath(dir),
+			},
+			Standalone: true,
+		})
+		added = append(added, info.Package)
+		changed = true
+	}
+
+	if !changed {
+		return nil, nil, nil
+	}
+	if err := config.WritePluginsConfig(cfg); err != nil {
+		return nil, nil, err
+	}
+	return added, removed, nil
+}
+
+func metadataHasPkg(list []sdkutils.PluginMetadata, pkg string) bool {
+	for _, m := range list {
+		if m.Package == pkg {
+			return true
+		}
+	}
+	return false
+}
+
 func InstalledPluginsDef() []sdkutils.PluginSrcDef {
 	list := []sdkutils.PluginSrcDef{}
 	paths := InstalledPluginDirs()

@@ -1,8 +1,0 @@
-{
-  "theme.css": [
-    "./portal/css/devkit.css"
-  ],
-  "theme.js": [
-    "./portal/js/devkit.js"
-  ]
-}

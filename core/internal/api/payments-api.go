@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"core/db/models"
+	"core/db/queries"
 	"core/internal/web/helpers"
 	"core/internal/web/middlewares"
 	sdkapi "sdk/api"
@@ -43,6 +45,13 @@ func (self *PaymentsApi) Checkout(w http.ResponseWriter, r *http.Request, p sdka
 		}
 
 		deviceID := clnt.ID()
+
+		// Give subscribers a chance to veto before the purchase request is created.
+		if err := self.emitPurchaseBeforeRequest(ctx, &deviceID, p.Sku, p.Name, p.Description, p.Price, p.AnyPrice, p.Metadata); err != nil {
+			self.ErrorPage(w, err)
+			return
+		}
+
 		_, err = self.api.models.Purchase().Create(
 			ctx,
 			models.CreatePurchaseParams{
@@ -175,6 +184,11 @@ func (self *PaymentsApi) HandlePurchaseExecute(handler sdkapi.PurchaseExecuteHan
 func (self *PaymentsApi) CreatePurchase(ctx context.Context, params sdkapi.CreatePurchaseParams) (sdkapi.IPurchaseRequest, error) {
 	mdls := self.api.models
 
+	// Give subscribers a chance to veto before the purchase request is created.
+	if err := self.emitPurchaseBeforeRequest(ctx, params.DeviceID, params.Sku, params.Name, params.Description, params.Price, false, params.Metadata); err != nil {
+		return nil, err
+	}
+
 	p, err := mdls.Purchase().Create(ctx, models.CreatePurchaseParams{
 		DeviceID:       params.DeviceID,
 		SKU:            params.Sku,
@@ -200,4 +214,60 @@ func (self *PaymentsApi) CreatePurchase(ctx context.Context, params sdkapi.Creat
 
 	purchase := NewPurchase(self.api, ctx, deviceID, p)
 	return purchase, nil
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+// emitPurchaseBeforeRequest builds an in-memory preview purchase (ID == 0) from the
+// pending request's fields and fires EventPurchaseBeforeRequest. A non-nil error from any
+// subscriber cancels the request before the row is created, so no rollback is needed.
+// The preview carries the same getters (SKU/name/price/metadata) as a real request so
+// subscribers can make an admission decision; the owning device is resolved when known.
+func (self *PaymentsApi) emitPurchaseBeforeRequest(ctx context.Context, deviceID *int64, sku, name, description string, price float64, anyPrice bool, metadata map[string]string) error {
+	metaJSON := ""
+	if len(metadata) > 0 {
+		if b, err := json.Marshal(metadata); err == nil {
+			metaJSON = string(b)
+		}
+	}
+
+	var devNull sql.NullInt64
+	if deviceID != nil {
+		devNull = sql.NullInt64{Int64: *deviceID, Valid: true}
+	}
+
+	previewModel, err := models.NewPurchase(self.api.db, self.api.models, &queries.Purchase{
+		DeviceID:       devNull,
+		Sku:            sku,
+		Name:           name,
+		Description:    description,
+		Price:          price,
+		AnyPrice:       anyPrice,
+		CallbackPlugin: self.api.Info().Package,
+		Metadata:       metaJSON,
+	})
+	if err != nil {
+		return err
+	}
+
+	dev := int64(0)
+	if deviceID != nil {
+		dev = *deviceID
+	}
+	preview := NewPurchase(self.api, ctx, dev, previewModel)
+
+	// Resolve the owning device if we have one; best-effort (nil for admin purchases).
+	var device sdkapi.IClientDevice
+	if deviceID != nil {
+		if d, derr := self.api.SessionsMgr().FindClientById(ctx, *deviceID); derr == nil {
+			device = d
+		}
+	}
+
+	return self.api.EventsMgr.EmitPurchaseEvent(ctx, sdkapi.EventPurchaseBeforeRequest, sdkapi.PurchaseEventData{
+		Purchase: preview,
+		Device:   device,
+	})
 }

@@ -247,16 +247,6 @@ func DownloadStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// Staging paused: re-pinning a meta bundle would uninstall a member. Render the
-		// abort/continue dialog in place of the progress bar; the poll keeps it live.
-		if updates.AwaitingMetaRemovalConfirm() {
-			page := updatesview.MetaMemberRemovalPartial(api, updates.RemovedMetaMembers())
-			if err := page.Render(r.Context(), w); err != nil {
-				api.LoggerAPI.Error(err.Error())
-			}
-			return
-		}
-
 		// Plugin-only upgrade that applied live (a meta-bundle bump) — nothing to
 		// reboot for. Flash success and return to the updates page.
 		if updates.PluginUpdateApplied() {
@@ -317,10 +307,7 @@ func DownloadDoneCtrl(g *api.CoreGlobals) http.HandlerFunc {
 // there is no redirect here that could re-trigger the download.
 func DownloadContinueCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Resolve whichever gate is armed — build-failure or meta-member-removal. The
-		// inactive one's Resolve is a no-op, so calling both is safe.
 		updates.ResolvePluginFailureDecision(true)
-		updates.ResolveMetaRemovalDecision(true)
 		w.WriteHeader(http.StatusOK)
 	}
 }
@@ -333,9 +320,7 @@ func DownloadCancelCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
-		// Resolve whichever gate is armed (the inactive one's Resolve is a no-op).
 		updates.ResolvePluginFailureDecision(false)
-		updates.ResolveMetaRemovalDecision(false)
 		// Wait for the staging goroutine to finish unwinding (clear the in-flight flag
 		// and discard the staged set) before redirecting. Otherwise the index page sees
 		// IsDownloading()==true and bounces back to the progress page — the "stuck in

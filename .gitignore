@@ -12,12 +12,11 @@
 /data/plugins/local/*
 /data/plugins/devel/*
 /data/plugins/system/*
-# The Devkit theme system plugin lives here permanently so it is statically
-# linked into local dev and devkit builds straight from source — no devkit
-# rebuild needed to iterate. Keep it tracked despite the blanket system/ ignore
-# above; its own .gitignore still excludes generated artifacts (system/,
-# main_mono.go, db/, dist).
-!/data/plugins/system/com.flarego.devkit
+# The Devkit theme system plugin is NO LONGER committed here. It is cloned from
+# its own GitHub repo (flarewifi/com.farego.devkit) into
+# data/plugins/system/com.flarego.devkit at devkit-build time (see
+# core/utils/clone-plugins.go, invoked first by devkit/make-devkit.sh), so it
+# stays covered by the blanket system/* ignore above — never tracked here.
 /data/storage
 /data/system
 /data/db

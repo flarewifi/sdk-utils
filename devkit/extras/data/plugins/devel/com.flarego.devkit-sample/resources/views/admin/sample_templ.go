@@ -38,7 +38,7 @@ func SampleAdminPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Hello from the Devkit sample plugin"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `utils/devkit/extras/data/plugins/devel/com.flarego.devkit-sample/resources/views/admin/sample.templ`, Line: 10, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `devkit/extras/data/plugins/devel/com.flarego.devkit-sample/resources/views/admin/sample.templ`, Line: 10, Col: 94}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -51,7 +51,7 @@ func SampleAdminPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "This page renders inside the Devkit Theme. Copy this plugin as a starting point for your own."))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `utils/devkit/extras/data/plugins/devel/com.flarego.devkit-sample/resources/views/admin/sample.templ`, Line: 11, Col: 142}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `devkit/extras/data/plugins/devel/com.flarego.devkit-sample/resources/views/admin/sample.templ`, Line: 11, Col: 142}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {

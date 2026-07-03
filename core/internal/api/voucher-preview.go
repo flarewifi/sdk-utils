@@ -8,22 +8,19 @@ import (
 
 // previewVoucherBatch is an in-memory IVoucherBatch built from CreateVouchersParams
 // before any DB writes. It is passed to EventVoucherBeforeCreate batch callbacks.
-// ID() == 0 and Vouchers() returns nil since the batch is not yet persisted.
+// ID() == 0 since the batch is not yet persisted.
 type previewVoucherBatch struct {
 	params      sdkapi.CreateVouchersParams
 	providerPkg string
 	now         time.Time
 }
 
-func (b *previewVoucherBatch) ID() int64          { return 0 }
-func (b *previewVoucherBatch) UUID() string        { return b.params.BatchUUID }
-func (b *previewVoucherBatch) Amount() *float64    { return b.params.Amount }
-func (b *previewVoucherBatch) Metadata() string    { return "" }
-func (b *previewVoucherBatch) ProviderPkg() string { return b.providerPkg }
-func (b *previewVoucherBatch) Vouchers(_ int, _ int, _ string) ([]sdkapi.IVoucher, error) {
-	return nil, nil
-}
-func (b *previewVoucherBatch) VouchersCount() int64 { return int64(b.params.Count) }
+func (b *previewVoucherBatch) ID() int64            { return 0 }
+func (b *previewVoucherBatch) UUID() string         { return b.params.BatchUUID }
+func (b *previewVoucherBatch) Amount() *float64     { return b.params.Amount }
+func (b *previewVoucherBatch) Metadata() string     { return "" }
+func (b *previewVoucherBatch) ProviderPkg() string  { return b.providerPkg }
+func (b *previewVoucherBatch) VouchersCount() int64  { return int64(b.params.Count) }
 func (b *previewVoucherBatch) CreatedAt() time.Time  { return b.now }
 func (b *previewVoucherBatch) UpdatedAt() time.Time  { return b.now }
 

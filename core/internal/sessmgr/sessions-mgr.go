@@ -111,6 +111,12 @@ func (self *SessionsMgr) EmitClientEvent(ctx context.Context, event sdkapi.Clien
 	return self.eventsMgr.EmitClientEvent(ctx, event, clnt)
 }
 
+// EmitClientBeforeMerge dispatches a pre-merge event synchronously and returns the first
+// callback error. A non-nil error means a subscriber vetoed the merge.
+func (self *SessionsMgr) EmitClientBeforeMerge(ctx context.Context, data sdkapi.EventClientMergeData) error {
+	return self.eventsMgr.EmitClientBeforeMerge(ctx, data)
+}
+
 // EmitClientMerge dispatches a client-merge event synchronously and returns the first
 // callback error.
 func (self *SessionsMgr) EmitClientMerge(ctx context.Context, data sdkapi.EventClientMergeData) error {
@@ -132,6 +138,17 @@ func (self *SessionsMgr) MergeClientDevices(ctx context.Context, targetID, sourc
 	sourceClnt, err := self.FindDeviceByID(ctx, sourceID)
 	if err != nil {
 		return fmt.Errorf("source device %d not found: %w", sourceID, err)
+	}
+
+	// Give subscribers a chance to veto the merge before any side effects. Both devices
+	// still exist here, so cancelling requires no rollback.
+	if err := self.eventsMgr.EmitClientBeforeMerge(ctx, sdkapi.EventClientMergeData{
+		Target:           targetClnt,
+		Source:           sourceClnt,
+		SourceDeviceID:   sourceID,
+		SourceDeviceUUID: sourceClnt.UUID(),
+	}); err != nil {
+		return fmt.Errorf("device merge cancelled: %w", err)
 	}
 
 	if _, hasSession := self.GetRunningSession(sourceClnt); hasSession {
@@ -314,6 +331,13 @@ func (self *SessionsMgr) Connect(_ context.Context, clnt sdkapi.IClientDevice, n
 // Note: ctx is accepted for API compatibility but ignored internally to avoid
 // complexity from context cancellation mid-operation.
 func (self *SessionsMgr) Disconnect(_ context.Context, clnt sdkapi.IClientDevice, notify string) error {
+	// Give subscribers a chance to veto the disconnect before any teardown. Fires only
+	// for explicit disconnects; automatic session teardown uses disconnectInternal.
+	// Use a fresh context so a request cancellation cannot skip the veto check.
+	if err := self.EmitClientEvent(context.Background(), sdkapi.EventClientBeforeDisconnect, clnt); err != nil {
+		return err
+	}
+
 	// Session events (EventSessionDisconnected) are emitted by StopWithReason() inside endSession().
 	err := self.endSession(clnt)
 	if err != nil {

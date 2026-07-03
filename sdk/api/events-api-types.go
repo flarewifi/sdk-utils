@@ -43,6 +43,29 @@ const (
 	EventSessionChanged      SessionEvent = "session:changed"
 	EventSessionDeleted      SessionEvent = "session:deleted"
 	EventSessionBatchUpdated SessionEvent = "session:batch-updated"
+
+	// EventSessionBeforeCreate is emitted before a session row is inserted, from
+	// CreateSession(). The session is an in-memory preview (ID == 0). Returning an error
+	// from any callback cancels creation before the INSERT, so no rollback is needed.
+	EventSessionBeforeCreate SessionEvent = "session:before_create"
+
+	// EventSessionBeforeConsume is emitted before a running session is finalized as
+	// consumed (time/data exhausted), from RunningSession.StopWithReason. It fires before
+	// the session is persisted and the terminal EventSessionConsumed is emitted, while the
+	// session is still running and its timer intact. Returning an error from any callback
+	// vetoes consumption: the session is left running so a plugin can, for example, top it
+	// up. A vetoing plugin is responsible for extending time/data and re-arming enforcement.
+	EventSessionBeforeConsume SessionEvent = "session:before_consume"
+
+	// EventSessionBeforeDelete is emitted before a single session is deleted, from
+	// DeleteSession(). Returning an error from any callback cancels the deletion before
+	// the device is disconnected or the row removed.
+	EventSessionBeforeDelete SessionEvent = "session:before_delete"
+
+	// EventSessionBatchBeforeDelete is emitted once before a batch of sessions is deleted,
+	// from DeleteSessions(). Subscribe via OnSessionBatchEvent. Returning an error from any
+	// callback cancels the whole batch deletion before any session is removed.
+	EventSessionBatchBeforeDelete SessionEvent = "session:batch_before_delete"
 )
 
 // Client events.
@@ -71,9 +94,35 @@ const (
 	// must be fast and must not block indefinitely.
 	EventClientBeforeConnect ClientEvent = "client:before_connect"
 
+	// EventClientBeforeCreate is emitted before a brand-new device record is inserted,
+	// from the client register. The device is an in-memory preview (ID == 0). Returning
+	// an error from any callback cancels registration before the INSERT, so no rollback
+	// is needed. Use it for admission control (e.g. block-list, capacity limits).
+	EventClientBeforeCreate ClientEvent = "client:before_create"
+
+	// EventClientBeforeUpdate is emitted before a device's network details are written,
+	// from UpdateDevice(). The device still carries its pre-update values. Returning an
+	// error from any callback cancels the update before any DB write or reconnect.
+	EventClientBeforeUpdate ClientEvent = "client:before_update"
+
+	// EventClientBeforeDisconnect is emitted before a device is disconnected from the
+	// internet, from SessionsMgr.Disconnect(). It fires before any teardown (firewall,
+	// TC, session stop). Returning an error from any callback cancels the disconnect,
+	// so no rollback is needed, and the error propagates back to the caller.
+	EventClientBeforeDisconnect ClientEvent = "client:before_disconnect"
+
+	// EventClientBeforeMerge is emitted before two device records are merged, while both
+	// still exist. Subscribe via OnClientBeforeMerge (merges do not use the ClientEvent
+	// map). The event carries both devices via EventClientMergeData.Target (the survivor)
+	// and EventClientMergeData.Source (the device about to be deleted). Returning an error
+	// cancels the merge before any data is transferred or deleted. Compare with the
+	// post-merge EventClientMerge, where Source is already gone.
+	EventClientBeforeMerge ClientEvent = "client:before_merge"
+
 	// EventClientMerge is emitted after two device records are successfully merged.
-	// The source device (identified by Source) is deleted; the target device
-	// (available as Target) is the one that was kept and received all transferred data.
+	// The source device (identified by SourceDeviceID/SourceDeviceUUID) is deleted; the
+	// target device (available as Target) is the one that was kept and received all
+	// transferred data. Subscribe via OnClientMerge.
 	EventClientMerge ClientEvent = "client:merged"
 )
 
@@ -83,6 +132,12 @@ const (
 	// INSERT, inside the batch transaction. The voucher is an in-memory preview
 	// (ID == 0). Returning an error rolls back the entire batch transaction.
 	EventVoucherBeforeCreate VoucherEvent = "voucher:before_create"
+
+	// EventVoucherBeforeActivate is emitted before a voucher is activated (used to start a
+	// session), from Activate(). It fires before the session is created and the voucher is
+	// marked activated. Returning an error from any callback cancels activation before any
+	// side effects, so no rollback is needed.
+	EventVoucherBeforeActivate VoucherEvent = "voucher:before_activate"
 
 	// EventVoucherActivated is emitted when a voucher is used to start a session.
 	EventVoucherActivated VoucherEvent = "voucher:activated"
@@ -101,8 +156,15 @@ const (
 	// Returning an error cancels creation with no rollback needed.
 	EventVoucherBatchBeforeCreate VoucherBatchEvent = "voucher:before_create"
 
-	// EventVoucherGenerated is emitted after a batch of vouchers is successfully created.
-	EventVoucherGenerated VoucherBatchEvent = "voucher:generated"
+	// EventVoucherBatchCreated is emitted after a batch of vouchers is successfully
+	// created. (Renamed from EventVoucherGenerated to match the created/updated/deleted
+	// naming used elsewhere.)
+	EventVoucherBatchCreated VoucherBatchEvent = "voucher:batch_created"
+
+	// EventVoucherBatchBeforeDelete is emitted before a voucher batch is deleted, from
+	// DeleteBatch(). Returning an error from any callback cancels the deletion before any
+	// row is removed.
+	EventVoucherBatchBeforeDelete VoucherBatchEvent = "voucher:batch_before_delete"
 
 	// EventVoucherBatchDeleted is emitted when a voucher batch is deleted.
 	EventVoucherBatchDeleted VoucherBatchEvent = "voucher:batch_deleted"
@@ -110,6 +172,17 @@ const (
 
 // Purchase events.
 const (
+	// EventPurchaseBeforeRequest is emitted before a purchase request is created, from
+	// CreatePayment(). It fires before the purchase record and payment are set up. Returning
+	// an error from any callback cancels the request before any side effects, and the error
+	// propagates to the caller. Use it for eligibility, quota, or block-list checks.
+	EventPurchaseBeforeRequest PurchaseEvent = "purchase:before_request"
+
+	// EventPurchaseBeforeCancel is emitted before a purchase is cancelled, from Cancel().
+	// Returning an error from any callback cancels the cancellation before any side effects,
+	// and the error propagates to the caller.
+	EventPurchaseBeforeCancel PurchaseEvent = "purchase:before_cancelled"
+
 	// EventPurchaseSuccess is emitted when a purchase is successfully confirmed.
 	EventPurchaseSuccess PurchaseEvent = "purchase:success"
 
@@ -164,15 +237,21 @@ type SessionEventData struct {
 
 // EventClientMergeData carries the context of a device-merge event.
 type EventClientMergeData struct {
-	// Target is the device that was kept after the merge. All sessions, purchases,
-	// and fingerprints from the source device have been transferred to it.
+	// Target is the surviving device. For EventClientMerge (after) it has already
+	// received all sessions, purchases, and fingerprints from the source device; for
+	// EventClientBeforeMerge (before) the transfer has not happened yet.
 	Target IClientDevice
 
-	// SourceDeviceID is the database ID of the device that was deleted during the merge.
-	// The source device no longer exists in the database when callbacks are invoked.
+	// Source is the device that is about to be deleted. It is populated ONLY for the
+	// pre-merge EventClientBeforeMerge event, where the device still exists. For the
+	// post-merge EventClientMerge event it is nil (the row is already gone) — use
+	// SourceDeviceID/SourceDeviceUUID there instead.
+	Source IClientDevice
+
+	// SourceDeviceID is the database ID of the device that was (or will be) deleted.
 	SourceDeviceID int64
 
-	// SourceDeviceUUID is the local UUID of the device that was deleted during the merge.
+	// SourceDeviceUUID is the local UUID of the device that was (or will be) deleted.
 	// Captured before deletion so plugins can notify external systems (e.g. cloud sync).
 	SourceDeviceUUID string
 }

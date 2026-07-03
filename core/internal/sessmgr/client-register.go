@@ -63,11 +63,26 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 	if clnt.MacAddr() != newMac {
 		existingDevID, err := reg.mdls.DeviceMac().FindDeviceByAnyMac(ctx, newMac)
 		if err == nil && existingDevID > 0 && existingDevID != clnt.ID() {
-			if reg.fingerprintsExactMatch(ctx, clnt.ID(), existingDevID) {
-				// Cookie + MAC + ExactMatch fingerprint — three independent signals
-				// confirm this is the same physical device. Safe to merge.
-				existingDev, findErr := reg.mdls.Device().Find(ctx, existingDevID)
-				if findErr == nil {
+			existingDev, findErr := reg.mdls.Device().Find(ctx, existingDevID)
+			// Concurrency guard: an ExactMatch only proves same device *class* (two
+			// identical same-model phones hash the same). If the MAC's current owner is
+			// actively connected right now while our cookie-authenticated device is also
+			// registering, they are two distinct devices online at the same time — never
+			// merge. Fall through to freeing the MAC instead.
+			if findErr == nil && !reg.deviceHasActiveSession(existingDevID) && reg.fingerprintsExactMatch(ctx, clnt.ID(), existingDevID) {
+				// Cookie + MAC + ExactMatch fingerprint + not concurrently active —
+				// four independent signals confirm this is the same physical device.
+				// A subscriber may still veto the implicit merge; if so, fall back to
+				// freeing the MAC so the update can proceed without merging.
+				beforeErr := reg.sessionsMgr.EmitClientBeforeMerge(ctx, sdkapi.EventClientMergeData{
+					Target:           clnt,
+					Source:           reg.wrapDevice(existingDev),
+					SourceDeviceID:   existingDev.ID(),
+					SourceDeviceUUID: existingDev.UUID(),
+				})
+				if beforeErr != nil {
+					reg.mdls.DeviceMac().UnsetCurrentMac(ctx, existingDevID, newMac)
+				} else {
 					reg.mdls.Device().MergeDevices(ctx, clnt.ID(), existingDevID)
 					reg.sessionsMgr.EmitClientMerge(ctx, sdkapi.EventClientMergeData{
 						Target:           clnt,
@@ -82,6 +97,11 @@ func (reg *ClientRegister) UpdateDevice(ctx context.Context, clnt sdkapi.IClient
 				reg.mdls.DeviceMac().UnsetCurrentMac(ctx, existingDevID, newMac)
 			}
 		}
+	}
+
+	// Give subscribers a chance to veto the update before any disconnect or DB write.
+	if err := reg.sessionsMgr.EmitClientEvent(ctx, sdkapi.EventClientBeforeUpdate, clnt); err != nil {
+		return err
 	}
 
 	// Check if device has a running session
@@ -374,6 +394,19 @@ STEP_3_CREATE_NEW:
 
 	// No match by cookie or MAC - create new device
 	if errors.Is(err, sql.ErrNoRows) || dev == nil {
+		// Give subscribers a chance to veto registration before the INSERT. The device
+		// is an in-memory preview (ID == 0); cancelling requires no rollback.
+		preview := reg.sessionsMgr.NewClientDevice(sdkapi.NewDeviceParams{
+			MacAddress:  params.MacAddr,
+			Ipv4Address: params.Ipv4Addr,
+			Ipv6Address: params.Ipv6Addr,
+			Hostname:    params.Hostname,
+			Status:      sdkapi.DeviceStatusDisconnected,
+		})
+		if err := reg.sessionsMgr.EmitClientEvent(ctx, sdkapi.EventClientBeforeCreate, preview); err != nil {
+			return nil, false, err
+		}
+
 		dev, err = reg.mdls.Device().Create(ctx, models.CreateDeviceParams{
 			MacAddress:  params.MacAddr,
 			Ipv4Address: params.Ipv4Addr,

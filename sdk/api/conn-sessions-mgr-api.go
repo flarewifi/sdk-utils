@@ -78,48 +78,6 @@ type NewDeviceParams struct {
 	UpdatedAt   time.Time
 }
 
-// SessionFilterAvailability represents the availability filter for listing sessions.
-type SessionFilterAvailability string
-
-const (
-	// SessionFilterAvailable returns sessions with remaining time/data that are not expired
-	SessionFilterAvailable SessionFilterAvailability = "available"
-	// SessionFilterConsumed returns sessions that are fully consumed (time/data exhausted)
-	SessionFilterConsumed SessionFilterAvailability = "consumed"
-	// SessionFilterExpired returns sessions that have passed their expiration date
-	SessionFilterExpired SessionFilterAvailability = "expired"
-)
-
-type SessionPaymentType string
-
-const (
-	SessionVoucherPaymentType SessionPaymentType = "voucher"
-	SessionCoinPaymentType    SessionPaymentType = "coin"
-)
-
-// ListSessionsParams holds parameters for listing sessions with pagination.
-type ListSessionsParams struct {
-	Search       *string                    // optional search by session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code
-	DeviceID     *int64                     // optional filter: sessions for a specific device ID
-	Availability *SessionFilterAvailability // optional filter: "available", "consumed", or "expired"
-	SessionType  *SessionType               // optional filter by session type: "time", "data", or "time-or-data"
-	DateStart    *time.Time                 // optional filter: sessions created on or after this date (start of day)
-	DateEnd      *time.Time                 // optional filter: sessions created on or before this date (end of day)
-	TimeSecsGt   *int                       // optional filter: sessions with time_secs greater than this value
-	TimeSecsLt   *int                       // optional filter: sessions with time_secs less than this value
-	DataMbGt     *float64                   // optional filter: sessions with data_mbytes greater than this value
-	DataMbLt     *float64                   // optional filter: sessions with data_mbytes less than this value
-	Page         int
-	PerPage      int
-	PaymentType  *SessionPaymentType
-}
-
-// ListSessionsResult holds the result of listing sessions.
-type ListSessionsResult struct {
-	PaginatedSessions []IClientSession
-	FilteredSessions  []IClientSession
-}
-
 // ISessionsMgrApi is used to manage client devices.
 type ISessionsMgrApi interface {
 
@@ -184,19 +142,21 @@ type ISessionsMgrApi interface {
 	// contains all device fields from the database row.
 	NewClientDevice(params NewDeviceParams) IClientDevice
 
-	// ListSessions returns a paginated list of sessions with optional search and filters.
-	// Search matches against session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code.
-	// DeviceID filter returns only sessions for a specific device.
-	// Availability filter: "all" (default), "available", "consumed", or "expired".
-	// SessionType filter: "time", "data", or "time-or-data" (empty string means all types).
-	// DateStart/DateEnd filter by session creation date (inclusive range).
-	// TimeSecsGt/TimeSecsLt filter by allocated time in seconds.
-	// DataMbGt/DataMbLt filter by allocated data in megabytes.
-	ListSessions(ctx context.Context, params ListSessionsParams) (ListSessionsResult, error)
+	// NOTE: There is no session-list method on this API. To list/search/paginate
+	// sessions, query the core `sessions` table directly with your plugin's own
+	// sqlc queries (see the Core Database Tables guide), then wrap each row with
+	// NewClientSession to get live RemainingTime()/RemainingData() calculations.
 
 	// DeleteSession deletes a session by ID. If the session is currently running,
-	// it disconnects the device first. Emits EventSessionDeleted after deletion.
+	// it disconnects the device first. Emits EventSessionBeforeDelete first (a callback
+	// error cancels the deletion) and EventSessionDeleted after deletion.
 	DeleteSession(ctx context.Context, sessionID int64) error
+
+	// DeleteSessions deletes a batch of sessions by ID. It emits EventSessionBatchBeforeDelete
+	// once before any deletion (subscribe via OnSessionBatchEvent; a callback error cancels
+	// the whole batch), then deletes each session, emitting the per-session EventSessionDeleted.
+	// The single-session EventSessionBeforeDelete is not fired per item.
+	DeleteSessions(ctx context.Context, sessionIDs []int64) error
 
 	// ListRunningSessions returns all currently active (running) sessions.
 	// These are sessions that are actively connected and consuming time/data.

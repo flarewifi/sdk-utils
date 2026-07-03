@@ -651,7 +651,7 @@ func UninstallPlugin(pkg string, sqldb *sql.DB) error {
 	// Only run down-migrations if the plugin has a migrations directory.
 	migDir := filepath.Join(installPath, "resources/migrations")
 	if sdkutils.FsExists(migDir) {
-		if err := migrate.MigrateDown(installPath, sqldb); err != nil {
+		if err := migrate.MigrateDown(sqldb, installPath); err != nil {
 			return err
 		}
 	}

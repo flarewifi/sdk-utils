@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" role="img" aria-label="Devkit Admin">
-  <rect width="600" height="400" fill="#0d6efd"/>
-  <rect x="0" y="0" width="600" height="64" fill="#0b5ed7"/>
-  <text x="32" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="22" fill="#ffffff" font-weight="bold">Flarewifi Devkit</text>
-  <text x="300" y="220" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="40" fill="#ffffff" font-weight="bold">Devkit Admin</text>
-  <text x="300" y="260" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#dbe9ff">Bootstrap top-nav theme</text>
-</svg>

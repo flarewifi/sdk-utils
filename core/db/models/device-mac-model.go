@@ -26,6 +26,17 @@ func (self *DeviceMacModel) RecordMacAddress(ctx context.Context, deviceID int64
 		return err
 	}
 
+	// Enforce the "one current owner per MAC" invariant (idx_device_macs_unique_current_mac,
+	// a partial UNIQUE index on mac_address WHERE is_current = TRUE) at the lowest level.
+	// Before claiming this MAC as current for deviceID, free it from any OTHER device that
+	// still holds it as current. Upstream collision guards (client-register.UpdateDevice)
+	// try to do this too, but they can miss the case (e.g. FindDeviceByAnyMac tie-breaks to
+	// the device itself when last_seen_at ties) — without this the SetAsCurrent below would
+	// hit "UNIQUE constraint failed: device_macs.mac_address".
+	if err := self.clearCurrentOnOtherDevices(ctx, deviceID, macAddress); err != nil {
+		return err
+	}
+
 	if existing != nil {
 		// MAC exists - update last_seen and set as current
 		log.Printf("[ClientDeviceMac] MAC %s already exists for device %d, updating", macAddress, deviceID)
@@ -138,6 +149,17 @@ func (self *DeviceMacModel) UnsetCurrentMac(ctx context.Context, deviceID int64,
 	_, err := self.db.DB.ExecContext(ctx,
 		"UPDATE device_macs SET is_current = FALSE WHERE device_id = ? AND mac_address = ? AND is_current = TRUE",
 		deviceID, macAddress)
+	return err
+}
+
+// clearCurrentOnOtherDevices unmarks a MAC as current on every device except the given one.
+// This upholds the partial unique index idx_device_macs_unique_current_mac (only one device
+// may hold a given mac_address with is_current = TRUE) so a device can safely claim a MAC
+// that physically moved to it from another device.
+func (self *DeviceMacModel) clearCurrentOnOtherDevices(ctx context.Context, deviceID int64, macAddress string) error {
+	_, err := self.db.DB.ExecContext(ctx,
+		"UPDATE device_macs SET is_current = FALSE WHERE mac_address = ? AND device_id != ? AND is_current = TRUE",
+		macAddress, deviceID)
 	return err
 }
 

@@ -49,6 +49,11 @@ func Init(g *api.CoreGlobals) {
 	// vouchers and notifies admin about vouchers that expired before use)
 	StartVoucherCleanupScheduler(g.Database, g.Models, g.CoreAPI)
 
+	// Start device-merge reconciliation job (periodically merges duplicate device
+	// rows left behind by MAC randomization + lost cookies, when fingerprints
+	// confirm they are the same physical device)
+	StartDeviceMergeScheduler(g.Database, g.Models, g.ClientMgr, g.CoreAPI)
+
 	// Start batch save loop for running sessions (flushes to DB periodically)
 	StartBatchSaveLoop(g.ClientMgr)
 

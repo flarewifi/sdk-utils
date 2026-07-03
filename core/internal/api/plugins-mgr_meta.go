@@ -1,37 +1,12 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 
 	"core/utils/config"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
-
-// MetaMemberRemoval describes one member plugin that re-pinning a meta bundle to
-// its latest release would UNINSTALL from this machine: the member was dropped from
-// the bundle's new member set and, after the re-pin, is owned by no remaining bundle
-// and not installed standalone. Surfaced to the admin in the software-update
-// confirmation dialog before the removal is applied.
-type MetaMemberRemoval struct {
-	MetaPackage string // bundle the member was dropped from
-	MetaName    string // bundle display name
-	Member      string // member package to be uninstalled
-}
-
-// ErrMetaMemberRemovalCancelled is returned by RepinMetaRecordsToLatest when the
-// admin declines the member-removal confirmation. Nothing is applied. The update
-// flow maps it to its own cancellation so the whole staged update is discarded.
-var ErrMetaMemberRemovalCancelled = errors.New("meta member removal cancelled by admin")
-
-// ErrMetaMemberNotStandalone is returned by the install/update entry points when a
-// plugin that is currently a member of an installed meta bundle (and was NOT also
-// installed standalone) is targeted on its own. Such a member is pinned by its
-// bundle, so it must be installed/updated through the bundle — never individually.
-// Callers can detect it with errors.Is to show a "manage through its bundle"
-// message instead of a generic failure.
-var ErrMetaMemberNotStandalone = errors.New("plugin is a meta-bundle member and can only be updated through its bundle")
 
 // Meta-plugin bundle handling. A meta plugin is a named bundle of other plugins;
 // it has no plugin.so of its own. Its bundle -> members mapping lives in
@@ -103,6 +78,9 @@ func (self *PluginsMgr) MetaPlugins() ([]sdkutils.MetaPlugin, error) {
 // owned by no meta, is standalone. When the plugins config cannot be read it
 // returns ([]string{}, true) — the safe default (no owners, treated standalone),
 // so a transient read failure never hides a plugin or implies meta ownership.
+//
+// This is an informational SDK query (IPluginsMgrApi). It no longer gates updates:
+// every member updates to its own latest independently regardless of membership.
 func (self *PluginsMgr) MetaMembership(pkg string) (owners []string, standalone bool) {
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
@@ -110,17 +88,6 @@ func (self *PluginsMgr) MetaMembership(pkg string) (owners []string, standalone 
 	}
 	owners = metaOwnersOf(cfg, pkg)
 	return owners, isStandalone(cfg, pkg) || len(owners) == 0
-}
-
-// IsManagedMetaMember reports whether pkg is currently owned by an installed meta
-// bundle and was NOT also installed standalone — i.e. a member managed entirely
-// through its bundle. Such a member is pinned by the bundle's release and must not
-// be installed or updated individually; the install/update entry points reject it
-// with ErrMetaMemberNotStandalone. A plugin owned by no bundle, or one the user
-// also installed on its own, is NOT managed (returns false) and updates normally.
-func (self *PluginsMgr) IsManagedMetaMember(pkg string) bool {
-	_, standalone := self.MetaMembership(pkg)
-	return !standalone
 }
 
 // isMetaPlugin reports whether pkg is an installed meta bundle (has a record in

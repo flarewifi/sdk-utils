@@ -284,6 +284,22 @@ func (self *RunningSession) StopWithReason(reason StopReason) error {
 		return nil
 	}
 
+	// EventSessionBeforeConsume lets a subscriber veto consumption while the session is
+	// still running and its timer intact — e.g. to top it up. A non-nil callback error
+	// aborts the stop: we release the single-execution guard so the session keeps running.
+	// The vetoing plugin is responsible for extending the session and re-arming enforcement.
+	if reason == StopReasonConsumed {
+		self.mu.Lock()
+		curr := self.session
+		self.mu.Unlock()
+		if curr != nil {
+			if err := self.emitter.EmitSessionEvent(context.Background(), sdkapi.EventSessionBeforeConsume, sdkapi.SessionEventData{Session: curr}); err != nil {
+				self.stopped.Store(false)
+				return err
+			}
+		}
+	}
+
 	self.mu.Lock()
 	session := self.session
 	doneCh := self.doneCh

@@ -65,6 +65,17 @@ var (
 	// time consumption for all running sessions and persists them to the
 	// database in a single transaction.
 	BatchSaveInterval = 1 * time.Minute
+
+	// DeviceMergeInterval - how often the device-merge reconciliation job scans
+	// shared MACs and merges rows that fingerprints confirm are the same physical
+	// device. This only cleans up duplicates left by MAC randomization + lost
+	// cookies, so a few hours between passes is plenty; the inline merge in
+	// ClientRegister.UpdateDevice already handles the common cookie+MAC+fingerprint case.
+	DeviceMergeInterval = 6 * time.Hour
+
+	// DeviceMergeInitialDelay - delay before the first reconciliation pass, so devices
+	// have a chance to register and accumulate fingerprints after a reboot.
+	DeviceMergeInitialDelay = 5 * time.Minute
 )
 
 // Production schedule times (hour, minute)

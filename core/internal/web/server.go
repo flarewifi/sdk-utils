@@ -46,6 +46,7 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 	routes.GlobalAssets(g)
 	routes.PortalRoutes(g)
 	routes.AdminRoutes(g)
+	routes.ForgotPasswordRoutes(g)
 	routes.PaymentRoutes(g)
 	routes.WifiEventRoutes(g)
 

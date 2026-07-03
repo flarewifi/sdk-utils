@@ -33,15 +33,16 @@ const callbackTimeout = 2 * time.Minute
 type EventsManager struct {
 	mu sync.RWMutex
 
-	sessionCallbacks      map[sdkapi.SessionEvent][]func(context.Context, sdkapi.SessionEventData) error
-	sessionBatchCallbacks map[sdkapi.SessionEvent][]func(context.Context, []sdkapi.IClientSession) error
-	clientCallbacks       map[sdkapi.ClientEvent][]func(context.Context, sdkapi.IClientDevice) error
-	clientMergeCallbacks  []func(context.Context, sdkapi.EventClientMergeData) error
-	purchaseCallbacks     map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error
-	voucherCallbacks      map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error
-	voucherBatchCallbacks map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error
-	internetCallbacks     map[sdkapi.InternetEvent][]func(context.Context) error
-	bootCallbacks         map[sdkapi.BootEvent][]func(context.Context) error
+	sessionCallbacks           map[sdkapi.SessionEvent][]func(context.Context, sdkapi.SessionEventData) error
+	sessionBatchCallbacks      map[sdkapi.SessionEvent][]func(context.Context, []sdkapi.IClientSession) error
+	clientCallbacks            map[sdkapi.ClientEvent][]func(context.Context, sdkapi.IClientDevice) error
+	clientBeforeMergeCallbacks []func(context.Context, sdkapi.EventClientMergeData) error
+	clientMergeCallbacks       []func(context.Context, sdkapi.EventClientMergeData) error
+	purchaseCallbacks          map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error
+	voucherCallbacks           map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error
+	voucherBatchCallbacks      map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error
+	internetCallbacks          map[sdkapi.InternetEvent][]func(context.Context) error
+	bootCallbacks              map[sdkapi.BootEvent][]func(context.Context) error
 }
 
 // NewEventsManager constructs an EventsManager ready for use.
@@ -102,6 +103,14 @@ func (em *EventsManager) OnVoucherBatchEvent(event sdkapi.VoucherBatchEvent, cb 
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.voucherBatchCallbacks[event] = append(em.voucherBatchCallbacks[event], cb)
+}
+
+// OnClientBeforeMerge registers a callback that fires before two device records are
+// merged, while both still exist. A returned error cancels the merge.
+func (em *EventsManager) OnClientBeforeMerge(cb func(context.Context, sdkapi.EventClientMergeData) error) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	em.clientBeforeMergeCallbacks = append(em.clientBeforeMergeCallbacks, cb)
 }
 
 // OnClientMerge registers a callback that fires after two device records have been
@@ -179,6 +188,15 @@ func (em *EventsManager) EmitVoucherBatchEvent(ctx context.Context, event sdkapi
 	cbs := append([]func(context.Context, sdkapi.IVoucherBatch) error(nil), em.voucherBatchCallbacks[event]...)
 	em.mu.RUnlock()
 	return dispatch(ctx, cbs, batch)
+}
+
+// EmitClientBeforeMerge dispatches a pre-merge event to all registered callbacks
+// synchronously. Both devices still exist; a returned error cancels the merge.
+func (em *EventsManager) EmitClientBeforeMerge(ctx context.Context, data sdkapi.EventClientMergeData) error {
+	em.mu.RLock()
+	cbs := append([]func(context.Context, sdkapi.EventClientMergeData) error(nil), em.clientBeforeMergeCallbacks...)
+	em.mu.RUnlock()
+	return dispatch(ctx, cbs, data)
 }
 
 // EmitClientMerge dispatches a client-merge event to all registered callbacks synchronously.

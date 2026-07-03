@@ -21,7 +21,11 @@ func CreatePlugin(pack string, name string, desc string) {
 	}
 
 	goVersion := sdkutils.GO_SHORT_VERSION
-	pluginDir := filepath.Join(sdkutils.PathPluginLocalDir, pack)
+	// Scaffold under data/plugins/devel/ — the home for editable, in-tree sources
+	// that are rebuilt and loaded at boot (see plugins.DevelPluginSrcDefs). A newly
+	// created plugin is one the developer will edit, so it belongs in devel rather
+	// than data/plugins/local/ (which holds built-once uploads/clones).
+	pluginDir := filepath.Join(sdkutils.PathPluginDevelDir, pack)
 	if sdkutils.FsExists(pluginDir) {
 		fmt.Printf("Plugin already exists at %s\n", pluginDir)
 		os.Exit(1)

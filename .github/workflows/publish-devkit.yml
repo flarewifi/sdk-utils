@@ -28,6 +28,8 @@ jobs:
       # Single-platform buildx with type=local writes the tree to the dest ROOT
       # (not a linux_<arch>/ subdir); the merge job re-creates that layout.
       - name: Build devkit tree
+        # The build clones the public Devkit theme plugin
+        # (flarewifi/com.farego.devkit) over anonymous HTTPS — no token needed.
         run: |
           docker buildx build \
             --platform linux/${{ matrix.arch }} \

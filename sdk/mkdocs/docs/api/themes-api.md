@@ -222,9 +222,27 @@ Data passed to the login page factory:
 
 ```go
 type LoginPageData struct {
-    LoginError error  // Error from failed login attempt, nil if no error
+    // ForgotPasswordUrl links the login page to the CORE-owned forgot-password
+    // (OTP) flow. Empty string hides the link.
+    ForgotPasswordUrl string
+    LoginError        error  // Error from failed login attempt, nil if no error
 }
 ```
+
+**Forgot password.** The password-recovery (OTP) flow is owned by the **core**, not
+by themes — a theme only needs to render a link to it. Resolve the core page's URL
+with the cross-package route helper and put it in `ForgotPasswordUrl`:
+
+```go
+data.ForgotPasswordUrl = api.Http().Helpers().UrlForPkgRoute(
+    "com.flarego.core", "auth:send-otp",
+)
+```
+
+`UrlForRoute` only resolves routes registered by the *calling* plugin, so a theme
+must use `UrlForPkgRoute("com.flarego.core", …)` to reach a core route. Render the
+link only when the field is non-empty (see the login template below). Do **not**
+reimplement the OTP send/verify/reset pages in your theme.
 
 ### FlashMsg
 
@@ -473,6 +491,9 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
             // Get CSRF token for the login form
             csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)
 
+            // Link the login page to the core-owned forgot-password (OTP) flow.
+            data.ForgotPasswordUrl = api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "auth:send-otp")
+
             page := auth.LoginPage(api, csrfHtml, data)
             return sdkapi.ViewPage{
                 Assets: sdkapi.ViewAssets{
@@ -558,6 +579,12 @@ templ LoginPage(api sdkapi.IPluginApi, csrfHtml string, data sdkapi.LoginPageDat
                 { api.Translate("label", "Login") }
             </button>
         </form>
+
+        if data.ForgotPasswordUrl != "" {
+            <a href={ templ.SafeURL(data.ForgotPasswordUrl) }>
+                { api.Translate("label", "Forgot Password?") }
+            </a>
+        }
     </div>
 }
 ```

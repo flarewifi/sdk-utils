@@ -7,11 +7,13 @@ DB_DRIVER="sqlite"
 # builds inside the devkit runtime.
 GO_TAGS="dev devkit $DB_DRIVER"
 
-# The Devkit theme system plugin lives permanently under data/plugins/system
-# (committed). sysplugin-prepare statically links every plugin found there into
-# the devkit's flare CLI / core — straight from source, with no staging. The same
-# on-disk location is what a plain local-dev `start-dev.sh` run links too, which is
-# the point: iterate the plugin without rebuilding the devkit.
+# The Devkit theme system plugin is NOT committed in this repo. It is cloned from
+# its own GitHub repo into data/plugins/system/com.flarego.devkit by the
+# clone-devkit-plugin step below (core/utils/clone-plugins.go), BEFORE any step
+# that scans data/plugins/system. sysplugin-prepare then statically links every
+# plugin found there into the devkit's flare CLI / core — straight from source,
+# with no staging. (For a plain local-dev `start-dev.sh` run you clone the plugin
+# into that same location yourself to link it and iterate without a devkit rebuild.)
 #
 # Local-dev-only plugins that must NOT ship in the devkit live under
 # data/plugins/devel instead. Devel plugins are compiled at runtime by the flare
@@ -68,11 +70,13 @@ link_system_plugin_modules() {
 revert_system_plugin_modules
 
 cp go.work.default go.work && \
+    echo "Cloning Devkit theme system plugin from GitHub into data/plugins/system..." && \
+    go run --tags="$GO_TAGS" ./core/cmd/clone-devkit-plugin/main.go && \
     echo "Generating templ files..." && \
     rm -rf **/*_templ.go && \
     sh -c "cd core && templ generate" && \
     echo "Generating sqlc queires..." && \
-    sh -c "./scripts/sqlc-gen.sh ./core $DB_DRIVER" && \
+    sh -c "./scripts/sqlc-gen.sh ./core" && \
     echo "Preparing system plugins (statically links the Devkit theme into core/plugin.so)..." && \
     go run --tags="$GO_TAGS" ./core/cmd/sysplugin-prepare/main.go && \
     echo "Linking system plugin modules into core/go.mod (require)..." && \

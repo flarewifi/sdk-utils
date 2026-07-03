@@ -28,6 +28,20 @@ const loaderEmitsPluginProgress = true
 
 func InitPlugins(g *api.CoreGlobals) error {
 	db := g.CoreAPI.SqlDB()
+
+	// Make plugins.json reflect what is physically under data/plugins/{local,devel} —
+	// the authoritative location for local/devel plugin sources — before anything
+	// reads the config this boot. A developer can drop a plugin into
+	// data/plugins/devel/ (or delete one) and have it registered/unregistered on the
+	// next boot without hand-editing plugins.json. Best-effort: a reconcile failure is
+	// logged but never aborts boot, since the compile/load phases scan the dirs
+	// directly and don't depend on this.
+	if added, removed, err := plugins.ReconcileLocalDevelPluginsConfig(); err != nil {
+		g.CoreAPI.Logger().Error("boot: reconcile plugins.json failed: " + err.Error())
+	} else if len(added) > 0 || len(removed) > 0 {
+		g.CoreAPI.Logger().Info(fmt.Sprintf("boot: plugins.json reconciled (added %v, removed %v)", added, removed))
+	}
+
 	localPlugins := plugins.LocalPluginSrcDefs()
 	systemPlugins := plugins.SystemPluginSrcDefs()
 	develPlugins := plugins.DevelPluginSrcDefs()

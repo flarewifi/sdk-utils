@@ -68,7 +68,7 @@ func (self *VouchersApi) providerPkg() string {
 	return self.pluginApi.Info().Package
 }
 
-// CreateVouchers creates a batch of vouchers and emits EventVoucherGenerated.
+// CreateVouchers creates a batch of vouchers and emits EventVoucherBatchCreated.
 // Before any DB writes it fires EventVoucherBeforeCreate as a batch event (once)
 // and then as a per-voucher event for each voucher inside the transaction.
 // Either callback may return an error to cancel creation.
@@ -182,38 +182,11 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 	if len(created) > 0 {
 		batch, err := self.FindBatchByUUID(ctx, batchUUID)
 		if err == nil {
-			self.eventsMgr.EmitVoucherBatchEvent(ctx, sdkapi.EventVoucherGenerated, batch)
+			self.eventsMgr.EmitVoucherBatchEvent(ctx, sdkapi.EventVoucherBatchCreated, batch)
 		}
 	}
 
 	return created, nil
-}
-
-// GetVouchersByBatchUUID returns vouchers with the given batch UUID with pagination.
-func (self *VouchersApi) GetVouchersByBatchUUID(ctx context.Context, batchUUID string, page int, perPage int) ([]sdkapi.IVoucher, error) {
-	q := coreQueries.New(self.pluginApi.db.DB)
-	offset := int64(perPage * (page - 1))
-	batchUuidParam := sql.NullString{String: batchUUID, Valid: true}
-	rows, err := q.GetVouchersByBatchUUID(ctx, coreQueries.GetVouchersByBatchUUIDParams{
-		BatchUuid: batchUuidParam,
-		RowLimit:  int64(perPage),
-		RowOffset: offset,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("unable to get vouchers by batch: %w", err)
-	}
-	return self.wrapManyWithRelations(ctx, rows), nil
-}
-
-// GetVouchersByBatchUUIDCount returns the count of vouchers with the given batch UUID.
-func (self *VouchersApi) GetVouchersByBatchUUIDCount(ctx context.Context, batchUUID string) (int64, error) {
-	q := coreQueries.New(self.pluginApi.db.DB)
-	batchUuidParam := sql.NullString{String: batchUUID, Valid: true}
-	count, err := q.GetVouchersByBatchUUIDCount(ctx, batchUuidParam)
-	if err != nil {
-		return 0, fmt.Errorf("unable to count vouchers by batch: %w", err)
-	}
-	return count, nil
 }
 
 // FindByCode finds an available voucher by code (global search across all providers).
@@ -235,89 +208,6 @@ func (self *VouchersApi) FindByID(ctx context.Context, id int64) (sdkapi.IVouche
 		return nil, fmt.Errorf("voucher not found: %w", err)
 	}
 	return self.wrapWithRelations(ctx, row), nil
-}
-
-// List returns a paginated list of vouchers for this plugin.
-func (self *VouchersApi) List(ctx context.Context, params sdkapi.ListVouchersParams) (sdkapi.ListVouchersResult, error) {
-	q := coreQueries.New(self.pluginApi.db.DB)
-	offset := int64(params.PerPage * (params.Page - 1))
-
-	// Use filtered query if any filters are provided
-	if params.Search != nil || params.IsActivated != nil || params.DateStart != nil || params.DateEnd != nil {
-		// Prepare search parameter
-		var search interface{}
-		if params.Search != nil && *params.Search != "" {
-			search = *params.Search
-		}
-
-		fmt.Println(params.DateStart)
-		fmt.Println(params.DateEnd)
-
-		// Prepare isActivated parameter (convert *bool to int 0/1 or nil)
-		var isActivated interface{}
-		var dateStart interface{}
-		var dateEnd interface{}
-
-		if params.IsActivated != nil {
-			if *params.IsActivated {
-				isActivated = 1
-			} else {
-				isActivated = 0
-			}
-		}
-
-		if params.DateStart != nil && params.DateEnd != nil {
-			dateStart = *params.DateStart
-			dateEnd = *params.DateEnd
-		}
-
-		rows, err := q.GetVouchersFiltered(ctx, coreQueries.GetVouchersFilteredParams{
-			ProviderPkg: self.providerPkg(),
-			Search:      search,
-			IsActivated: isActivated,
-			RowLimit:    int64(params.PerPage),
-			RowOffset:   offset,
-			DateStart:   dateStart,
-			DateEnd:     dateEnd,
-		})
-		if err != nil {
-			return sdkapi.ListVouchersResult{}, fmt.Errorf("unable to list vouchers: %w", err)
-		}
-
-		count, err := q.GetVouchersFilteredCount(ctx, coreQueries.GetVouchersFilteredCountParams{
-			ProviderPkg: self.providerPkg(),
-			Search:      search,
-			IsActivated: isActivated,
-		})
-		if err != nil {
-			return sdkapi.ListVouchersResult{}, fmt.Errorf("unable to count vouchers: %w", err)
-		}
-
-		return sdkapi.ListVouchersResult{
-			Vouchers: self.wrapManyWithRelations(ctx, rows),
-			Count:    count,
-		}, nil
-	}
-
-	// Use unfiltered query for backward compatibility
-	rows, err := q.GetAllVouchers(ctx, coreQueries.GetAllVouchersParams{
-		ProviderPkg: self.providerPkg(),
-		RowLimit:    int64(params.PerPage),
-		RowOffset:   offset,
-	})
-	if err != nil {
-		return sdkapi.ListVouchersResult{}, fmt.Errorf("unable to list vouchers: %w", err)
-	}
-
-	count, err := q.GetAllVouchersCount(ctx, self.providerPkg())
-	if err != nil {
-		return sdkapi.ListVouchersResult{}, fmt.Errorf("unable to count vouchers: %w", err)
-	}
-
-	return sdkapi.ListVouchersResult{
-		Vouchers: self.wrapManyWithRelations(ctx, rows),
-		Count:    count,
-	}, nil
 }
 
 // Count returns the total number of vouchers for this plugin.
@@ -384,6 +274,11 @@ func (self *VouchersApi) Activate(ctx context.Context, params sdkapi.ActivateVou
 	// Reject expired vouchers
 	if exp := voucher.ExpiresAt(); exp != nil && exp.Before(time.Now().UTC()) {
 		return sdkapi.VoucherActivateResult{}, fmt.Errorf("voucher has expired")
+	}
+
+	// Give subscribers a chance to veto activation before any session is created.
+	if err := self.eventsMgr.EmitVoucherEvent(ctx, sdkapi.EventVoucherBeforeActivate, voucher); err != nil {
+		return sdkapi.VoucherActivateResult{}, err
 	}
 
 	// Determine bandwidth settings
@@ -502,16 +397,6 @@ func (self *VouchersApi) DeleteActivated(ctx context.Context) error {
 	return nil
 }
 
-// GetAvailable returns all unactivated vouchers for this plugin.
-func (self *VouchersApi) GetAvailable(ctx context.Context) ([]sdkapi.IVoucher, error) {
-	q := coreQueries.New(self.pluginApi.db.DB)
-	rows, err := q.GetAvailableVouchers(ctx, self.providerPkg())
-	if err != nil {
-		return nil, fmt.Errorf("unable to get available vouchers: %w", err)
-	}
-	return self.wrapManyWithRelations(ctx, rows), nil
-}
-
 // getActivated returns all activated vouchers (internal use for DeleteActivated).
 func (self *VouchersApi) getActivated(ctx context.Context) ([]sdkapi.IVoucher, error) {
 	q := coreQueries.New(self.pluginApi.db.DB)
@@ -568,82 +453,6 @@ func (self *VouchersApi) UpdateBatch(ctx context.Context, params sdkapi.UpdateVo
 	return self.FindBatchByUUID(ctx, params.UUID)
 }
 
-// ListBatches returns a paginated list of voucher batches.
-func (self *VouchersApi) ListBatches(ctx context.Context, params sdkapi.ListVoucherBatchesParams) (sdkapi.ListVoucherBatchesResult, error) {
-	q := coreQueries.New(self.pluginApi.db.DB)
-	offset := int64(params.PerPage * (params.Page - 1))
-
-	rows, err := q.GetAllVoucherBatches(ctx, coreQueries.GetAllVoucherBatchesParams{
-		RowLimit:  int64(params.PerPage),
-		RowOffset: offset,
-	})
-	if err != nil {
-		return sdkapi.ListVoucherBatchesResult{}, fmt.Errorf("unable to list voucher batches: %w", err)
-	}
-
-	count, err := q.GetAllVoucherBatchesCount(ctx)
-	if err != nil {
-		return sdkapi.ListVoucherBatchesResult{}, fmt.Errorf("unable to count voucher batches: %w", err)
-	}
-
-	return sdkapi.ListVoucherBatchesResult{
-		Batches: self.wrapManyBatches(rows),
-		Count:   count,
-	}, nil
-}
-
-// CountVouchers returns the total count of vouchers matching the filter criteria.
-func (self *VouchersApi) CountVouchers(ctx context.Context, params sdkapi.ListVouchersParams) (int64, error) {
-	q := coreQueries.New(self.pluginApi.db.DB)
-
-	// Use filtered count if any filters are provided
-	if params.Search != nil || params.IsActivated != nil {
-		// Prepare search parameter
-		var search interface{}
-		if params.Search != nil && *params.Search != "" {
-			search = *params.Search
-		}
-
-		// Prepare isActivated parameter (convert *bool to int 0/1 or nil)
-		var isActivated interface{}
-		if params.IsActivated != nil {
-			if *params.IsActivated {
-				isActivated = 1
-			} else {
-				isActivated = 0
-			}
-		}
-
-		count, err := q.GetVouchersFilteredCount(ctx, coreQueries.GetVouchersFilteredCountParams{
-			ProviderPkg: self.providerPkg(),
-			Search:      search,
-			IsActivated: isActivated,
-		})
-		if err != nil {
-			return 0, fmt.Errorf("unable to count vouchers: %w", err)
-		}
-		return count, nil
-	}
-
-	// Use unfiltered count for backward compatibility
-	count, err := q.GetAllVouchersCount(ctx, self.providerPkg())
-	if err != nil {
-		return 0, fmt.Errorf("unable to count vouchers: %w", err)
-	}
-	return count, nil
-}
-
-// CountBatches returns the total count of voucher batches matching the filter criteria.
-func (self *VouchersApi) CountBatches(ctx context.Context, params sdkapi.ListVoucherBatchesParams) (int64, error) {
-	q := coreQueries.New(self.pluginApi.db.DB)
-
-	count, err := q.GetAllVoucherBatchesCount(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("unable to count voucher batches: %w", err)
-	}
-	return count, nil
-}
-
 // DeleteBatch removes a voucher batch and all its vouchers by UUID.
 // Emits EventVoucherBatchDeleted with the deleted batch.
 func (self *VouchersApi) DeleteBatch(ctx context.Context, batchUUID string) error {
@@ -653,6 +462,11 @@ func (self *VouchersApi) DeleteBatch(ctx context.Context, batchUUID string) erro
 	batch, err := self.FindBatchByUUID(ctx, batchUUID)
 	if err != nil {
 		return fmt.Errorf("unable to find voucher batch: %w", err)
+	}
+
+	// Give subscribers a chance to veto the batch deletion before any row is removed.
+	if err := self.eventsMgr.EmitVoucherBatchEvent(ctx, sdkapi.EventVoucherBatchBeforeDelete, batch); err != nil {
+		return err
 	}
 
 	// Delete all vouchers in the batch first

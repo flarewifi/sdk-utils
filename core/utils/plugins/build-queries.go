@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"core/db"
 	cmd "core/utils/shell"
 	"fmt"
 
@@ -9,7 +8,7 @@ import (
 )
 
 func BuildQueries(pluginSrc string) error {
-	err := cmd.Exec(fmt.Sprintf("./scripts/sqlc-gen.sh %s %s", pluginSrc, db.Driver), &cmd.ExecOpts{
+	err := cmd.Exec(fmt.Sprintf("./scripts/sqlc-gen.sh %s", pluginSrc), &cmd.ExecOpts{
 		Dir: sdkutils.PathAppDir,
 	})
 	return err

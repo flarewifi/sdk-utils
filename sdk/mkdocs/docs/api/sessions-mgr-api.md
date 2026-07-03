@@ -105,6 +105,8 @@ func (w http.ResponseWriter, r *http.Request) {
 
 This method will disconnect the client device from the internet. It will also pause the current running [IClientSession](./client-session.md) of the client device. It takes a [context](https://gobyexample.com/context), a [IClientDevice](./client-device.md) and a notification `string` as parameters.
 
+Before any teardown, it emits [`EventClientBeforeDisconnect`](./events-api.md#onclientevent): if a subscriber returns an error the disconnect is cancelled and the error is returned here. (This fires for explicit `Disconnect()` calls only — automatic session teardown does not.)
+
 ```go
 func (w http.ResponseWriter, r *http.Request) {
     clnt, _ := api.Http().GetClientDevice(r)
@@ -139,6 +141,8 @@ The `CreateSessionParams` struct contains:
 - `UseGlobalSpeed bool` - whether to use the global download and upload speed limit
 - `TimeCons int` - (optional) initial time consumption in seconds
 - `DataCons float64` - (optional) initial data consumption in megabytes
+
+Before the INSERT it emits [`EventSessionBeforeCreate`](./events-api.md#onsessionevent) with an in-memory preview session (`ID == 0`); a subscriber returning an error cancels creation and it is returned here. After success it emits `EventSessionCreated`.
 
 Below is an example of how to use the `CreateSession` method:
 
@@ -384,7 +388,7 @@ if ok {
 
 Merges the source device into the target device. All sessions, purchases, and fingerprints are transferred from source to target. The source device is deleted after the merge.
 
-Active sessions on either device are disconnected before the merge. If the target device had an active session it is reconnected afterward. The `OnClientMerge` event (`EventClientMergeData`) is emitted after a successful merge so plugins can notify external systems.
+Active sessions on either device are disconnected before the merge. If the target device had an active session it is reconnected afterward. Before any data is transferred it emits [`EventClientBeforeMerge`](./events-api.md#onclientbeforemerge) (via `OnClientBeforeMerge`) with **both** devices — a subscriber returning an error cancels the merge and it is returned here. After a successful merge it emits `OnClientMerge` (`EventClientMergeData`) so plugins can notify external systems.
 
 ```go
 func handleMergeDevices(w http.ResponseWriter, r *http.Request) {
@@ -403,114 +407,105 @@ The merge event carries an `EventClientMergeData` struct:
 
 ```go
 type EventClientMergeData struct {
-    Target           IClientDevice // The device that was kept after the merge
+    Target           IClientDevice // The surviving device (before and after the merge)
+    Source           IClientDevice // The device about to be deleted — set only for the
+                                   // pre-merge EventClientBeforeMerge; nil for EventClientMerge
     SourceDeviceID   int64         // DB ID of the deleted source device
     SourceDeviceUUID string        // UUID of the deleted source device (captured before deletion)
 }
 ```
 
-### ListSessions
+### DeleteSession
 
-Returns a paginated list of sessions with optional search and filters. This is useful for building admin interfaces that display and filter sessions.
-
-The `ListSessionsParams` struct contains:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `Search` | `*string` | Search by session UUID, device UUID/MAC/hostname/IP, provider package, or voucher code |
-| `DeviceID` | `*int64` | Filter sessions for a specific device |
-| `Availability` | `*SessionFilterAvailability` | Filter by availability: `"available"`, `"consumed"`, or `"expired"` (nil = all) |
-| `SessionType` | `*SessionType` | Filter by session type: `"time"`, `"data"`, or `"time-or-data"` (nil = all) |
-| `DateStart` | `*time.Time` | Sessions created on or after this date |
-| `DateEnd` | `*time.Time` | Sessions created on or before this date |
-| `PaymentType` | `*SessionPaymentType` | Filter by payment type: `SessionVoucherPaymentType` or `SessionCoinPaymentType` (nil = all) |
-| `TimeSecsGt` | `*int` | Sessions with time_secs greater than this value |
-| `TimeSecsLt` | `*int` | Sessions with time_secs less than this value |
-| `DataMbGt` | `*float64` | Sessions with data_mbytes greater than this value |
-| `DataMbLt` | `*float64` | Sessions with data_mbytes less than this value |
-| `Page` | `int` | Page number (1-indexed) |
-| `PerPage` | `int` | Number of sessions per page |
-
-The `SessionFilterAvailability` constants:
-
-- `SessionFilterAvailable` - Sessions with remaining time/data that are not expired
-- `SessionFilterConsumed` - Sessions that are fully consumed (time/data exhausted)
-- `SessionFilterExpired` - Sessions that have passed their expiration date
-
-The `ListSessionsResult` struct contains:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `PaginatedSessions` | `[]IClientSession` | Sessions for the current page |
-| `FilteredSessions` | `[]IClientSession` | All sessions matching the filter (unpaginated, for totals) |
+Deletes a single session by ID. If the session is currently running, the owning device is disconnected first. Before any disconnect or deletion it emits [`EventSessionBeforeDelete`](./events-api.md#onsessionevent); a subscriber returning an error cancels the deletion and it is returned here. After deletion it emits `EventSessionDeleted`.
 
 ```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
+err := api.SessionsMgr().DeleteSession(r.Context(), sessionID)
+```
 
-    // List all available sessions, page 1
-    result, err := api.SessionsMgr().ListSessions(ctx, sdkapi.ListSessionsParams{
-        Availability: &sdkapi.SessionFilterAvailable,
-        Page:         1,
-        PerPage:      20,
+### DeleteSessions
+
+Deletes a batch of sessions by ID. It emits [`EventSessionBatchBeforeDelete`](./events-api.md#onsessionbatchevent) **once** before any deletion — a subscriber returning an error cancels the whole batch — then deletes each session, emitting the per-session `EventSessionDeleted`. The single-session `EventSessionBeforeDelete` is **not** fired per item; the batch hook is the cancellation point for bulk deletes. All sessions are resolved up front, so a missing ID fails the batch before anything is removed.
+
+```go
+err := api.SessionsMgr().DeleteSessions(r.Context(), []int64{101, 102, 103})
+```
+
+### Listing sessions
+
+There is **no `ListSessions` method** on `ISessionsMgrApi`. To list, search, paginate,
+or filter sessions, query the core [`sessions`](../guides/core-database.md#sessions)
+table **directly with your plugin's own sqlc queries**, then wrap each row with
+[`NewClientSession`](#newclientsession) so `RemainingTime()` / `RemainingData()` and the
+computed `Data()` flags (`IsAvailable`, `IsConsumed`, `IsExpired`) still reflect live
+consumption.
+
+!!! info "Why query core tables directly?"
+    The SDK deliberately keeps its surface small. Listing and filtering are inherently
+    app-specific (which columns, which joins, which filters), so they belong in each
+    plugin's own SQL rather than a one-size-fits-all API method. Your plugin's `sqlc`
+    config already includes the core schema (`../../../../core/resources/migrations`), so
+    a query against `sessions` type-checks and generates like any other. See the
+    [Core Database Tables](../guides/core-database.md) guide for the full schema.
+
+**1. Add a query** in your plugin's `resources/queries/sessions.sql`:
+
+```sql
+-- name: SearchSessions :many
+SELECT s.* FROM sessions s
+JOIN devices d ON s.device_id = d.id
+LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
+WHERE (@search = '' OR dm.mac_address LIKE '%' || @search || '%'
+                   OR d.ipv4_addr   LIKE '%' || @search || '%')
+  AND (@device_id = 0 OR s.device_id = @device_id)
+ORDER BY s.created_at DESC
+LIMIT @row_limit OFFSET @row_offset;
+```
+
+**2. Run it and wrap the rows** with `NewClientSession`:
+
+```go
+func listSessions(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    db := queries.New(api.SqlDB())
+
+    rows, err := db.SearchSessions(ctx, queries.SearchSessionsParams{
+        Search:    "",
+        DeviceID:  0,
+        RowLimit:  20,
+        RowOffset: 0,
     })
     if err != nil {
         // handle error
     }
 
-    fmt.Printf("Found %d sessions (total: %d)\n", len(result.PaginatedSessions), len(result.FilteredSessions))
-    for _, session := range result.PaginatedSessions {
-        fmt.Printf("Session %d: %s, remaining time: %d secs\n",
-            session.ID(), session.Type(), session.RemainingTime())
+    for _, row := range rows {
+        var expDays *int
+        if row.ExpDays.Valid {
+            e := int(row.ExpDays.Int64)
+            expDays = &e
+        }
+        session := api.SessionsMgr().NewClientSession(sdkapi.NewClientSessionParams{
+            ID:        row.ID,
+            UUID:      row.Uuid,
+            DeviceID:  row.DeviceID,
+            Type:      sdkapi.SessionType(row.SessionType),
+            TimeSecs:  int(row.TimeSecs),
+            DataMb:    row.DataMbytes,
+            TimeCons:  int(row.ConsumptionSecs),
+            DataCons:  row.ConsumptionMb,
+            ExpDays:   expDays,
+            CreatedAt: row.CreatedAt,
+        })
+        // session.RemainingTime(), session.Data().IsAvailable, etc.
+        _ = session
     }
 }
 ```
 
-**Example: List sessions for a specific device with date filtering**
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    deviceID := int64(123)
-    
-    // Filter sessions created in the last 7 days
-    now := time.Now()
-    weekAgo := now.AddDate(0, 0, -7)
-    
-    result, err := api.SessionsMgr().ListSessions(ctx, sdkapi.ListSessionsParams{
-        DeviceID:  &deviceID,
-        DateStart: &weekAgo,
-        DateEnd:   &now,
-        Page:      1,
-        PerPage:   50,
-    })
-    if err != nil {
-        // handle error
-    }
-    
-    // Process sessions...
-}
-```
-
-**Example: Search sessions by MAC address**
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    searchTerm := "AA:BB:CC"
-    
-    result, err := api.SessionsMgr().ListSessions(ctx, sdkapi.ListSessionsParams{
-        Search:  &searchTerm,
-        Page:    1,
-        PerPage: 20,
-    })
-    if err != nil {
-        // handle error
-    }
-    
-    // Process matching sessions...
-}
-```
+For **currently running** sessions (live, in-memory), use
+[`ListRunningSessions`](#listrunningsessions) instead — those are runtime state, not a
+table query.
 
 ## Updating Sessions
 
