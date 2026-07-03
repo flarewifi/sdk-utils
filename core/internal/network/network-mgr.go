@@ -163,6 +163,14 @@ func listenLanEvents(lan *NetworkLan) {
 				}
 
 				lan.SetStatus(true)
+
+				// Re-apply portal config: this interface's IP (and possibly the
+				// main LAN's IP) may have changed, so refresh the captive DNAT
+				// target + split-horizon DNS. Best-effort — a failure here must not
+				// undo the successful reinit above.
+				if err := ApplyPortalConfig(); err != nil {
+					return nil, err
+				}
 			}
 
 			return nil, nil

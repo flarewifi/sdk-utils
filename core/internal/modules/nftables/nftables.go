@@ -3,6 +3,8 @@
 package nftables
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -15,6 +17,17 @@ import (
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
+
+// nftRuleList parses the relevant subset of "nft -j -a list chain" output so we
+// can find rule handles to delete (used by deleteCaptiveDnatRules).
+type nftRuleList struct {
+	Nftables []struct {
+		Rule *struct {
+			Handle int           `json:"handle"`
+			Expr   []interface{} `json:"expr"`
+		} `json:"rule,omitempty"`
+	} `json:"nftables"`
+}
 
 const (
 	internetTable    string = "internet" // Our custom table
@@ -38,6 +51,20 @@ const (
 	blockedMacSet   string = "blocked_macs"
 	blockedIpsV4Set string = "blocked_client_ips_v4"
 	blockedIpsV6Set string = "blocked_client_ips_v6"
+
+	// managedIfacesSet (type ifname) holds the interfaces the app manages.
+	// Membership is toggled by SetInterfaceMode as the admin flips an interface
+	// between managed and unmanaged on the Interfaces page — no rule surgery
+	// needed, so changes apply instantly. Session enforcement and anti-tether are
+	// scoped to this set; traffic that touches NO managed interface is passed
+	// straight through (see Setup), so unmanaged interfaces are left untouched.
+	managedIfacesSet string = "managed_ifaces"
+
+	// captiveIfacesSet (type ifname) is the subset of managed interfaces that also
+	// run the captive-portal redirect. It drives the port-80 DNAT rule ONLY, so an
+	// interface can be managed (session-gated) without auto-redirecting clients to
+	// the portal. Always a subset of managedIfacesSet (see IsCaptive).
+	captiveIfacesSet string = "captive_ifaces"
 
 	// whitelistReconcileInterval is how often the background reconciler re-syncs
 	// each whitelisted MAC's current IP (from the ARP/neighbor table) into the
@@ -123,9 +150,24 @@ func Setup() (err error) {
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv4_addr; }\n", tableFamily, internetTable, blockedIpsV4Set))
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv6_addr; }\n", tableFamily, internetTable, blockedIpsV6Set))
 
+	// Managed-interface set (see SetInterfaceMode). Declared here so the
+	// transparency-passthrough forward rule and the anti-tether postrouting rules
+	// below can reference it; membership starts empty and is filled by
+	// ApplyPortalConfig.
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ifname; }\n", tableFamily, internetTable, managedIfacesSet))
+	// Captive-interface set: the subset of managed interfaces whose port-80
+	// traffic is DNAT'd to the portal (see SetCaptivePortalTarget).
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ifname; }\n", tableFamily, internetTable, captiveIfacesSet))
+
 	// Create postrouting chain for anti-tethering (TTL set)
 	// Sets outgoing TTL to 1 so tethered devices cannot forward packets (TTL drops to 0)
 	batch.WriteString(fmt.Sprintf("add chain %s %s %s { type filter hook postrouting priority 0; policy accept; }\n", tableFamily, internetTable, postroutingChain))
+
+	// Anti-tethering applies ONLY to managed interfaces: set TTL/hoplimit=1 on
+	// packets egressing through any interface in managed_ifaces. Unmanaged
+	// interfaces are intentionally excluded so they route normally.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s oifname @%s ip ttl set 1\n", tableFamily, internetTable, postroutingChain, managedIfacesSet))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s oifname @%s ip6 hoplimit set 1\n", tableFamily, internetTable, postroutingChain, managedIfacesSet))
 
 	// Add rules to our custom forward chain.
 	//
@@ -142,6 +184,13 @@ func Setup() (err error) {
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedMacSet))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedIpsV4Set))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedIpsV6Set))
+	// Transparency passthrough: accept any forwarded packet that touches NO
+	// managed interface (neither ingress nor egress), so unmanaged interfaces flow
+	// straight through to the system's own firewall — our policy-drop chain stays
+	// invisible to them. Placed AFTER the hard-block drops (so an explicit block
+	// still wins everywhere) but BEFORE the session verdict maps (so unmanaged
+	// traffic never needs a session).
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname != @%s oifname != @%s counter accept\n", tableFamily, internetTable, forwardChain, managedIfacesSet, managedIfacesSet))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, connMacMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIpMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIp6Map))
@@ -176,6 +225,17 @@ func Setup() (err error) {
 		return err
 	}
 
+	// Authenticated-device bypass: a device with an active session (in
+	// connected_macs_set) skips the captive-portal DNAT. This is global (not
+	// per-interface), so it is set up once here instead of per-interface. It is
+	// appended AFTER the whitelist jump and BEFORE the DNAT rule (which
+	// SetCaptivePortalTarget appends later), giving the correct precedence:
+	// whitelist → authenticated → DNAT everyone else.
+	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s ether saddr @%s counter accept", tableFamily, internetTable, preroutingChain, connMacSet), nil)
+	if err != nil {
+		return err
+	}
+
 	// Start the background reconciler that keeps whitelisted MACs' return-traffic
 	// IPs current, independent of session events.
 	startWhitelistReconciler()
@@ -183,14 +243,57 @@ func Setup() (err error) {
 	return nil
 }
 
-// SetupCaptivePortal installs prerouting DNAT rules for a LAN interface.
-// routerIp4 is the LAN-facing IPv4 address; routerIp6 is the LAN-facing IPv6
-// address (may be empty if the interface has no global IPv6 address yet).
-// Link-local IPv6 addresses must NOT be passed as routerIp6 — they require
-// interface-scoped routing that nftables DNAT does not support directly.
-func SetupCaptivePortal(dev string, routerIp4 string, routerIp6 string) (err error) {
-	// Guard: reject link-local IPv6 addresses — DNAT to link-local requires
-	// an interface scope that nftables cannot represent in the rule syntax.
+// SetInterfaceMode reconciles a LAN device's membership in the managed_ifaces
+// and captive_ifaces sets:
+//   - managed → session firewall + anti-tethering apply (managed_ifaces).
+//   - captive → the port-80 portal redirect also applies (captive_ifaces).
+//     Only meaningful together with managed; captive is always a subset.
+//   - neither → the interface is untouched (the transparency passthrough accepts
+//     its traffic and no custom rule references it).
+// Membership changes take effect on the next packet, so an admin toggling on the
+// Interfaces page applies instantly with no rule surgery. Best-effort idempotent.
+func SetInterfaceMode(dev string, managed bool, captive bool) error {
+	if dev == "" {
+		return fmt.Errorf("interface device is required")
+	}
+
+	contextInfo := fmt.Sprintf("Device=%s, Managed=%t, Captive=%t", dev, managed, captive)
+
+	_, err := nftQue.ExecWithTimeout(
+		10*time.Second,
+		"Set Interface Managed Mode",
+		contextInfo,
+		func() (any, error) {
+			setMembership(managedIfacesSet, dev, managed)
+			setMembership(captiveIfacesSet, dev, captive)
+			return nil, nil
+		},
+	)
+	return err
+}
+
+// setMembership adds or removes an interface device from an nftables ifname set.
+// The ifname is quoted — device names can contain dots (e.g. "br-lan.22").
+// Best-effort: a missing element on delete (or a duplicate on add) is not fatal.
+func setMembership(set, dev string, member bool) {
+	if member {
+		cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ \"%s\" }' 2>/dev/null || true", tableFamily, internetTable, set, dev), nil)
+	} else {
+		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ \"%s\" }' 2>/dev/null || true", tableFamily, internetTable, set, dev), nil)
+	}
+}
+
+// SetCaptivePortalTarget installs the single port-80 DNAT rule shared by every
+// captive interface (matched by the captive_ifaces set), redirecting to the MAIN
+// interface's IP. Because all captive interfaces DNAT to the same target, one
+// rule covers them all — clients on a secondary subnet (e.g. 20.0.0.0/20) are
+// redirected to the main portal IP (e.g. 10.0.0.1), which is a local router
+// address and so is delivered via the INPUT hook (bypassing the forward-chain
+// drop). It is re-runnable: the previous DNAT rule(s) are removed first, so
+// calling it again after the main interface's IP changes just swaps the target.
+// routerIp4 == "" removes the DNAT entirely (no captive redirect). Link-local
+// IPv6 is rejected (nftables DNAT cannot target a link-local scope).
+func SetCaptivePortalTarget(routerIp4 string, routerIp6 string) (err error) {
 	if routerIp6 != "" {
 		parsed := net.ParseIP(routerIp6)
 		if parsed == nil || parsed.IsLinkLocalUnicast() {
@@ -198,49 +301,79 @@ func SetupCaptivePortal(dev string, routerIp4 string, routerIp6 string) (err err
 		}
 	}
 
-	contextInfo := fmt.Sprintf("Device=%s, RouterIPv4=%s, RouterIPv6=%s", dev, routerIp4, routerIp6)
+	contextInfo := fmt.Sprintf("RouterIPv4=%s, RouterIPv6=%s", routerIp4, routerIp6)
 
 	_, err = nftQue.ExecWithTimeout(
 		30*time.Second,
-		"Setup Captive Portal",
+		"Set Captive Portal Target",
 		contextInfo,
 		func() (any, error) {
-			// Build nft batch script for atomic execution
+			// Remove any existing captive DNAT rule(s) first so the target can be
+			// swapped when the main interface (or its IP) changes.
+			deleteCaptiveDnatRules()
+
 			var batch strings.Builder
 
-			// Allow already authenticated devices to bypass captive portal
-			batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, connMacSet))
-
-			// Redirect plain HTTP (port 80) to the captive portal (IPv4).
+			// Redirect plain HTTP (port 80) to the main portal IP (IPv4).
 			// Port 443 is intentionally NOT intercepted: MITM'ing TLS breaks the
 			// browser. Modern OSes are instead pointed at the portal via the RFC
 			// 8910 advertisement (DHCP option 114); port 80 stays as the legacy
 			// detection fallback for clients that still probe over HTTP.
 			if routerIp4 != "" {
-				batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80 } counter dnat ip to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp4))
+				batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s tcp dport { 80 } counter dnat ip to %s\n", tableFamily, internetTable, preroutingChain, captiveIfacesSet, routerIp4))
 			}
-
-			// Redirect plain HTTP (port 80) to the captive portal (IPv6).
 			if routerIp6 != "" {
-				batch.WriteString(fmt.Sprintf("add rule %s %s %s iif %s tcp dport { 80 } counter dnat ip6 to %s\n", tableFamily, internetTable, preroutingChain, dev, routerIp6))
+				batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s tcp dport { 80 } counter dnat ip6 to %s\n", tableFamily, internetTable, preroutingChain, captiveIfacesSet, routerIp6))
 			}
 
-			// Anti-tethering: set TTL=1 on IPv4 packets going out through this LAN device
-			if routerIp4 != "" {
-				batch.WriteString(fmt.Sprintf("add rule %s %s %s oifname %s ip ttl set 1\n", tableFamily, internetTable, postroutingChain, dev))
+			if batch.Len() == 0 {
+				return nil, nil
 			}
 
-			// Anti-tethering: set hop limit=1 on IPv6 packets going out through this LAN device
-			if routerIp6 != "" {
-				batch.WriteString(fmt.Sprintf("add rule %s %s %s oifname %s ip6 hoplimit set 1\n", tableFamily, internetTable, postroutingChain, dev))
-			}
-
-			// Execute batch command using nft -f - with heredoc for atomic execution
 			nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
 			return nil, cmd.Exec(nftCmd, nil)
 		},
 	)
 	return err
+}
+
+// deleteCaptiveDnatRules removes the captive-portal DNAT rule(s) from the
+// prerouting chain by handle. The prerouting base chain only ever carries the
+// whitelist jump, the authenticated-device bypass, and these DNAT rules, so any
+// rule containing a dnat verdict is one of ours. Best-effort.
+func deleteCaptiveDnatRules() {
+	var out bytes.Buffer
+	if err := cmd.ExecOutput(fmt.Sprintf("nft -j -a list chain %s %s %s", tableFamily, internetTable, preroutingChain), &out); err != nil {
+		return
+	}
+
+	var result nftRuleList
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		return
+	}
+
+	for _, entry := range result.Nftables {
+		if entry.Rule == nil {
+			continue
+		}
+		if ruleContainsDnat(entry.Rule.Expr) {
+			cmd.Exec(fmt.Sprintf("nft delete rule %s %s %s handle %d 2>/dev/null || true", tableFamily, internetTable, preroutingChain, entry.Rule.Handle), nil)
+		}
+	}
+}
+
+// ruleContainsDnat reports whether a rule's expressions include a dnat verdict.
+func ruleContainsDnat(exprs []interface{}) bool {
+	for _, expr := range exprs {
+		exprMap, ok := expr.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if _, ok := exprMap["dnat"]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func Connect(ip string, mac string) error {

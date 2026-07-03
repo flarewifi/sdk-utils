@@ -1,6 +1,6 @@
 {
   "username": "admin",
-  "password": "admin",
+  "password_hash": "$2a$08$evXSPPFGcicrKpUYB8xATOGYcGbTJLisElyF6.3Y7wFHCDFJICS5C",
   "permissions": [
     "master"
   ]

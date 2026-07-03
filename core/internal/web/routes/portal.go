@@ -21,6 +21,10 @@ func PortalRoutes(g *api.CoreGlobals) {
 	redirectToPortalMw := middlewares.RedirectToPortalDomain()
 	pendingPurchaseMw := middlewares.PendingPurchase(g.CoreAPI, g.Models)
 	ensureDeviceMw := middlewares.EnsureDeviceRegistered(g.CoreAPI)
+	// Only traffic from a managed LAN interface proceeds to the portal / register
+	// flow; anything else (unmanaged LAN, or a non-LAN interface such as
+	// tailscale0 / a VPN) is sent to /admin instead (see RedirectUnmanagedToAdmin).
+	unmanagedToAdminMw := middlewares.RedirectUnmanagedToAdmin()
 
 	portalSseCtrl := controllers.PortalSseHandler(g)
 	portalRootCtrl := controllers.PortalRootCtrl(g)
@@ -33,7 +37,7 @@ func PortalRoutes(g *api.CoreGlobals) {
 	// Root route renders a simple HTML page with inline JavaScript that advances
 	// the portal flow. Wrapped so entry on localhost/LAN-IP/HTTP is redirected to
 	// the portal hostname over HTTPS first.
-	rootR.Handle("/", redirectToPortalMw(http.HandlerFunc(portalRootCtrl))).Methods("GET").Name("portal:root")
+	rootR.Handle("/", unmanagedToAdminMw(redirectToPortalMw(http.HandlerFunc(portalRootCtrl)))).Methods("GET").Name("portal:root")
 
 	// RFC 8908 Captive Portal API (advertised via RFC 8910 DHCP option 114).
 	// Registered on the root router so the OS reaches it at the advertised portal
@@ -41,6 +45,7 @@ func PortalRoutes(g *api.CoreGlobals) {
 	rootR.HandleFunc("/api/captive", captiveApiCtrl).Methods("GET").Name("portal:captive-api")
 
 	portalR.Group("/", func(regR sdkapi.IHttpRouterInstance) {
+		regR.Use(unmanagedToAdminMw)
 		regR.Use(redirectToPortalMw)
 
 		// /register/redirect

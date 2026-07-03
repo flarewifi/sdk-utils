@@ -77,6 +77,20 @@ func ForceHTTPS() func(http.Handler) http.Handler {
 				return
 			}
 
+			// A request arriving on an UNMANAGED interface (an unmanaged LAN, or a
+			// non-LAN interface such as tailscale0 / a VPN) is not captive-portal
+			// traffic: send it to the admin UI on its own host over HTTPS rather
+			// than funneling it to the portal domain. This runs after the
+			// device-local / asset / health-check guards above, so /admin itself is
+			// already excluded and there is no redirect loop. isManagedRequest is
+			// conservative: only a source IP inside a MANAGED LAN subnet is treated
+			// as portal traffic, so a UBUS/lookup miss falls through to /admin, never
+			// the portal.
+			if !isManagedRequest(r) {
+				http.Redirect(w, r, httpsURL(hostWithoutPort(r.Host), "/admin"), http.StatusFound)
+				return
+			}
+
 			// Captive portal pages: funnel to the portal domain over the portal
 			// scheme (HTTPS on staging/prod). Already there => serve.
 			domain := portalDomain()
