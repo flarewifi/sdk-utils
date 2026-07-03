@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"core/internal/api"
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v3"
@@ -66,15 +65,6 @@ var (
 	confirmFailed   []PluginBuildFailure // plugins that failed to build (shown in the dialog)
 	confirmCh       chan bool            // true = continue, false = cancel; buffered(1)
 
-	// Meta-member-removal confirmation gate. A parallel gate to the build-failure one
-	// above: when re-pinning a meta bundle during an update would UNINSTALL a member
-	// (dropped from the bundle's new release and now orphaned), staging PAUSES here so
-	// the admin can abort or continue. The two gates never arm simultaneously (the
-	// re-pin runs after the build-failure gate has resolved).
-	awaitingRemovalConfirm atomic.Bool
-	removalConfirmMu       sync.Mutex
-	removedMembers         []api.MetaMemberRemoval // members to be uninstalled (shown in the dialog)
-	removalConfirmCh       chan bool               // true = continue, false = abort; buffered(1)
 )
 
 // UpdatePhase identifies which stage of an in-flight upgrade is running, so the
@@ -499,56 +489,3 @@ func ResolvePluginFailureDecision(proceed bool) {
 	}
 }
 
-// AwaitingMetaRemovalConfirm reports whether staging is paused waiting for the admin
-// to resolve the meta-member-removal dialog (continue or abort). The download-status
-// page uses it to render the dialog instead of the progress bar.
-func AwaitingMetaRemovalConfirm() bool {
-	return awaitingRemovalConfirm.Load()
-}
-
-// RemovedMetaMembers returns the members that re-pinning would uninstall, for display
-// in the confirmation dialog. Returns a copy so callers can't mutate the gate state.
-func RemovedMetaMembers() []api.MetaMemberRemoval {
-	removalConfirmMu.Lock()
-	defer removalConfirmMu.Unlock()
-	return append([]api.MetaMemberRemoval(nil), removedMembers...)
-}
-
-// waitForMetaRemovalDecision pauses the staging goroutine until the admin resolves
-// the dialog, returning true to continue (apply the re-pin and remove the members)
-// or false to abort the whole update. Mirrors waitForPluginFailureDecision. Called
-// only from the staging goroutine, and only when removals is non-empty.
-func waitForMetaRemovalDecision(removals []api.MetaMemberRemoval) bool {
-	removalConfirmMu.Lock()
-	removedMembers = append([]api.MetaMemberRemoval(nil), removals...)
-	removalConfirmCh = make(chan bool, 1)
-	ch := removalConfirmCh
-	removalConfirmMu.Unlock()
-
-	awaitingRemovalConfirm.Store(true)
-	proceed := <-ch
-	awaitingRemovalConfirm.Store(false)
-
-	removalConfirmMu.Lock()
-	removedMembers = nil
-	removalConfirmCh = nil
-	removalConfirmMu.Unlock()
-	return proceed
-}
-
-// ResolveMetaRemovalDecision delivers the admin's choice to the paused staging
-// goroutine: proceed=true continues, proceed=false aborts the whole update. Safe to
-// call when nothing is waiting (no-op) and against a double click (buffered(1),
-// non-blocking send), so the shared continue/cancel routes can resolve both gates.
-func ResolveMetaRemovalDecision(proceed bool) {
-	removalConfirmMu.Lock()
-	ch := removalConfirmCh
-	removalConfirmMu.Unlock()
-	if ch == nil {
-		return
-	}
-	select {
-	case ch <- proceed:
-	default:
-	}
-}

@@ -4,7 +4,6 @@ import (
 	"sdk/api"
 	"fmt"
 
-	coreapi "core/internal/api"
 	"core/internal/modules/updates"
 )
 
@@ -132,56 +131,6 @@ templ PluginBuildFailedPartial(api sdkapi.IPluginApi, failed []updates.PluginBui
 				>
 					<i class="bi bi-x-circle me-2"></i>
 					{ api.Translate("label", "Cancel update") }
-				</button>
-			</div>
-		</div>
-	</div>
-}
-
-// MetaMemberRemovalPartial is rendered into the polling #page when staging paused
-// because re-pinning a meta bundle to its latest release would UNINSTALL a member
-// (dropped from the bundle's new release and now owned by no remaining bundle). It
-// lets the admin continue (apply the re-pin and remove the listed members) or abort
-// the whole software update. Mirrors PluginBuildFailedPartial and reuses the same
-// continue/cancel routes (which resolve whichever gate is armed).
-templ MetaMemberRemovalPartial(api sdkapi.IPluginApi, removals []coreapi.MetaMemberRemoval) {
-	<div class="card shadow-sm border-warning">
-		<div class="card-body">
-			<h4 class="card-title mb-3">
-				<i class="bi bi-exclamation-triangle me-2 text-warning"></i>
-				{ api.Translate("label", "This update removes plugins") }
-			</h4>
-			<p class="mb-2">{ api.Translate("info", "Continuing this update will uninstall these plugins, which are no longer part of their bundle") }:</p>
-			<ul class="mb-3">
-				for _, rm := range removals {
-					<li>
-						<code>{ rm.Member }</code>
-						<div class="text-body-secondary small">{ api.Translate("info", "removed from") } <code>{ rm.MetaName }</code></div>
-					</li>
-				}
-			</ul>
-			<p class="mb-4">{ api.Translate("info", "You can continue the update and uninstall them on the next reboot, or abort the entire software update and keep them") }.</p>
-			<div class="d-flex flex-wrap gap-2">
-				<button
-					type="button"
-					class="btn btn-primary"
-					hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:download-continue") }
-					hx-swap="none"
-					hx-disabled-elt="this"
-					hx-confirm={ api.Translate("label", "Continue and uninstall these plugins") }
-				>
-					<i class="bi bi-arrow-right-circle me-2"></i>
-					{ api.Translate("label", "Continue and remove them") }
-				</button>
-				<button
-					type="button"
-					class="btn btn-outline-danger"
-					hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:download-cancel") }
-					hx-swap="none"
-					hx-confirm={ api.Translate("label", "Abort the entire software update") }
-				>
-					<i class="bi bi-x-circle me-2"></i>
-					{ api.Translate("label", "Abort update") }
 				</button>
 			</div>
 		</div>

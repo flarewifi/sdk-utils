@@ -185,15 +185,10 @@ func stagePluginsUpdate(g *api.CoreGlobals) error {
 	stagedCount := 0
 	failedPlugins := []PluginBuildFailure{}
 	for i, pkg := range pluginPkgs {
-		// A bundled meta member is pinned by its bundle, not updated on its own — it
-		// moves only via the RepinMetaRecordsToLatest pass below. Skip it here so it
-		// isn't bumped to its own latest (and so the StagePluginUpdate guard doesn't
-		// mis-report it as a build failure). There is no core change in a plugin-only
-		// update, so the member keeps its working .so until its bundle re-pins.
-		if g.PluginMgr.IsManagedMetaMember(pkg) {
-			downloadPercent.Store(int32((i + 1) * 99 / len(pluginPkgs)))
-			continue
-		}
+		// Every store plugin — meta-bundle members included — updates to its own
+		// latest here; there is no bundle version pin. A member no longer covered by
+		// its bundle is already disabled (skipped by storePluginPackages), so this
+		// only stages members the machine is still entitled to.
 		if err := g.PluginMgr.StagePluginUpdate(pkg, "", ""); err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: store plugin %q failed to build: %v", pkg, err))
 			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Reason: buildFailureReason(err)})
@@ -210,17 +205,11 @@ func stagePluginsUpdate(g *api.CoreGlobals) error {
 		return err
 	}
 
-	// Re-pin meta-bundle records to their latest version so a bundle stops showing
-	// "update available" once its members are refreshed (or, for local-member
-	// bundles, applies the version bump outright). Best-effort: a lookup failure
-	// must not abort an otherwise-staged update.
-	if err := g.PluginMgr.RepinMetaRecordsToLatest(metaRemovalConfirmCallback(g)); err != nil {
-		// The admin declined the member-removal dialog → discard the whole staged set,
-		// exactly like cancelling at the build-failure gate. Any other error is
-		// best-effort and must not abort an otherwise-staged update.
-		if errors.Is(err, api.ErrMetaMemberRemovalCancelled) {
-			return ErrUpdateCancelled
-		}
+	// Refresh meta-bundle records to their current membership. Best-effort: a lookup
+	// failure must not abort an otherwise-staged update. Dropped members are not
+	// uninstalled here — a member that lost bundle coverage is disabled at the next
+	// boot by ValidateStorePlugins if it is no longer paid for.
+	if err := g.PluginMgr.RepinMetaRecordsToLatest(); err != nil {
 		g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("repin meta records: %v", err))
 	}
 
@@ -405,17 +394,12 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		}
 	}
 
-	// Re-pin meta-bundle records to their latest version (only now that we're
+	// Refresh meta-bundle records to their current membership (only now that we're
 	// committing). Members are ordinary store plugins already staged above; this only
-	// advances the bundle metadata so a bundle stops showing "update available" after
-	// its members are refreshed. Best-effort: a lookup failure must not abort the update.
-	if err := g.PluginMgr.RepinMetaRecordsToLatest(metaRemovalConfirmCallback(g)); err != nil {
-		// The admin declined the member-removal dialog → discard the whole staged set,
-		// exactly like cancelling at the build-failure gate. Any other error is
-		// best-effort and must not abort an otherwise-staged update.
-		if errors.Is(err, api.ErrMetaMemberRemovalCancelled) {
-			return ErrUpdateCancelled
-		}
+	// advances the bundle metadata. Best-effort: a lookup failure must not abort the
+	// update. Dropped members are not uninstalled — boot ValidateStorePlugins disables
+	// any that are no longer paid for.
+	if err := g.PluginMgr.RepinMetaRecordsToLatest(); err != nil {
 		g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("repin meta records: %v", err))
 	}
 
@@ -719,18 +703,6 @@ func confirmOrCancelOnFailures(g *api.CoreGlobals, failed []PluginBuildFailure) 
 		notifyPluginUpdateSkipped(g, f.Package)
 	}
 	return nil
-}
-
-// metaRemovalConfirmCallback builds the confirm callback handed to
-// RepinMetaRecordsToLatest. When re-pinning a meta bundle would UNINSTALL a member,
-// it PAUSES staging and renders the abort/continue dialog (via the removal gate);
-// returning true continues (apply the re-pin + removals), false aborts. A run with
-// no removals never reaches here — RepinMetaRecordsToLatest only invokes the
-// callback when the planned-removal set is non-empty.
-func metaRemovalConfirmCallback(g *api.CoreGlobals) func([]api.MetaMemberRemoval) bool {
-	return func(removals []api.MetaMemberRemoval) bool {
-		return waitForMetaRemovalDecision(removals)
-	}
 }
 
 // buildFailureReason extracts a clean, user-facing reason from a staging error: the

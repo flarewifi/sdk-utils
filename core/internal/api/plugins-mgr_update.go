@@ -53,16 +53,9 @@ func (e *PluginBuildError) Error() string { return e.Reason }
 // version may be empty to stage the latest release; it is resolved to a concrete
 // semver before requesting the build. Meta bundles are not supported (no zip).
 func (self *PluginsMgr) StagePluginUpdate(pkg, version, coreVersion string) error {
-	// A bundled meta member (not also installed standalone) is pinned by its bundle,
-	// so it must never be updated to its OWN latest individually — its version moves
-	// only when the bundle is re-pinned. Reject such an à-la-carte plugin-only update.
-	//
-	// The bulk core update (coreVersion != "") is exempt: a new core is ABI-locked
-	// against the old member .so, so every member MUST be rebuilt against the target
-	// core regardless of bundle pinning, or it would fail to load after the update.
-	if coreVersion == "" && self.IsManagedMetaMember(pkg) {
-		return fmt.Errorf("StagePluginUpdate: %w: %q", ErrMetaMemberNotStandalone, pkg)
-	}
+	// Every plugin — including a meta-bundle member — updates to its own latest
+	// independently; there is no bundle version pin. Payment is enforced by the
+	// cloud (fetchStoreRelease's RequiresPayment gate below), not a membership check.
 
 	// RequestPluginBuild needs a concrete semver, so resolve "latest" first.
 	if version == "" {
