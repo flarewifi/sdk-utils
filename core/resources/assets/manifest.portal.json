@@ -16,6 +16,9 @@
   "portal-error.js": [
     "./portal/js/portal-error.js"
   ],
+  "forgot-password.js": [
+    "./auth/forgot-password.js"
+  ],
   "global.css": [
     "./portal/css/globals.css"
   ],
@@ -27,6 +30,9 @@
   ],
   "portal-error.css": [
     "./portal/css/portal-error.css"
+  ],
+  "forgot-password.css": [
+    "./auth/forgot-password.css"
   ],
   "payment-options.css": [
     "./portal/payments/payment-options.css"

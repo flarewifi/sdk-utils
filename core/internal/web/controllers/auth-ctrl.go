@@ -45,7 +45,8 @@ func AdminLoginCtrl(g *api.CoreGlobals) http.Handler {
 		}
 
 		data := sdkapi.LoginPageData{
-			LoginError: loginErr,
+			LoginError:        loginErr,
+			ForgotPasswordUrl: g.CoreAPI.HttpAPI.Helpers().UrlForRoute("auth:send-otp"),
 		}
 
 		page := t.PortalTheme.LoginPageFactory(w, r, data)

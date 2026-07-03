@@ -24,6 +24,11 @@ templ LoginPage(api sdkapi.IPluginApi, csrfHTML string, data sdkapi.LoginPageDat
 				</div>
 				<button type="submit" class="fw-btn-submit">{ api.Translate("label", "Sign In") }</button>
 			</form>
+			if data.ForgotPasswordUrl != "" {
+				<div class="fw-login-foot">
+					<a href={ templ.SafeURL(data.ForgotPasswordUrl) } class="fw-forgot-link">{ api.Translate("label", "Forgot Password?") }</a>
+				</div>
+			}
 		</div>
 	</div>
 }

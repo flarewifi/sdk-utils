@@ -214,6 +214,8 @@ func SetPortalTheme(api sdkapi.IPluginApi) {
         },
         LoginPageFactory: func(w http.ResponseWriter, r *http.Request, data sdkapi.LoginPageData) sdkapi.ViewPage {
             csrfHtml := api.Http().Helpers().CsrfHtmlTag(r)
+            // Link the login page to the core-owned forgot-password (OTP) flow.
+            data.ForgotPasswordUrl = api.Http().Helpers().UrlForPkgRoute("com.flarego.core", "auth:send-otp")
             page := auth.LoginPage(api, csrfHtml, data)
             return sdkapi.ViewPage{
                 Assets: sdkapi.ViewAssets{
@@ -406,8 +408,15 @@ templ LoginPage(api sdkapi.IPluginApi, csrfHtml string, data sdkapi.LoginPageDat
 		</div>
 		<button type="submit">Login</button>
 	</form>
+	if data.ForgotPasswordUrl != "" {
+		<a href={ templ.SafeURL(data.ForgotPasswordUrl) }>Forgot Password?</a>
+	}
 }
 ```
+
+The forgot-password (OTP) flow itself lives in the **core** — a theme only links to
+it. Resolve the URL with `UrlForPkgRoute("com.flarego.core", "auth:send-otp")` (as in
+the `LoginPageFactory` above) and never reimplement the OTP pages in your theme.
 
 Example `resources/views/admin/layout.templ` (see the [rendering views guide](../../guides/rendering-views.md) for templ syntax details):
 

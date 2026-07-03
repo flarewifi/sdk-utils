@@ -2,38 +2,39 @@
 
 window.$flare = window.$flare || {};
 
-var toastr = require('../../lib/vendor/toastr.js');
-toastr.options = {
-  "closeButton": false,
-  "debug": false,
-  "newestOnTop": false,
-  "progressBar": false,
-  "positionClass": "toast-bottom-right",
-  "preventDuplicates": true,
-  "showDuration": 300,
-  "hideDuration": 1000,
-  "timeOut": 5000,
-  "extendedTimeOut": 1000,
-  "showEasing": "swing",
-  "hideEasing": "linear",
-  "showMethod": "fadeIn",
-  "hideMethod": "fadeOut"
-};
+// Use the same notification library as the admin surface (awesome-notifications)
+// so portal/login toasts look and behave identically. The public
+// window.$flare.notify API is unchanged, so callers and the server-driven
+// #flash-message flash contract keep working as-is.
+import AwesomeNotifications from '../../lib/vendor/awesome-notifications-v3.1.3.js';
 
-window.toastr = toastr;
+var notifier = new AwesomeNotifications({
+  icons: {
+    enabled: false
+  },
+  durations: {
+    global: 3000
+  }
+});
 
 window.$flare.notify = {
-  info: function(message) {
-    toastr.info(message, "Info");
+  info: function (message) {
+    notifier.info(message);
   },
-  success: function(message) {
-    toastr.success(message, "Success");
+  warn: function (message) {
+    notifier.warning(message);
   },
   warning: function (message) {
-    toastr.warning(message, "Warning");
+    notifier.warning(message);
   },
-  error: function(message) {
-    toastr.error(message, "Error");
+  success: function (message) {
+    notifier.success(message);
+  },
+  error: function (message) {
+    notifier.alert(message);
+  },
+  failed: function (message) {
+    notifier.alert(message);
   }
 };
 
