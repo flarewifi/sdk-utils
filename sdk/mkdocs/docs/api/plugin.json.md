@@ -25,11 +25,13 @@ them on the next reconnect (and leaving it unchanged does not).
 ### system_packages
 *(optional)*
 
-List of system packages required by the plugin. These are installed via `opkg`
-(the install runs `opkg update` then `opkg install` for any not already present).
+List of system packages required by the plugin. These are installed via the
+machine's package manager — `opkg`, or `apk` on newer OpenWRT — detected
+automatically (the install updates the package index, then installs any package
+not already present).
 
-Because `opkg` needs the package feed, system packages are installed **when the
-machine has internet** — not blindly during the offline part of boot:
+Because the package manager needs its feed, system packages are installed **when
+the machine has internet** — not blindly during the offline part of boot:
 
 - **Runtime install** (from the dashboard): installed inline, since the install
   itself proves the machine is online.
@@ -97,9 +99,18 @@ retried on the next reconnect instead.
 pip3 install --no-cache-dir SomeLibrary
 ```
 
-Both `preinstall` and `postinstall` run through the shell with the plugin's
-source directory as the working directory, and inherit the server's
-stdout/stderr. A non-zero exit fails the install.
+Both `preinstall` and `postinstall` run through the shell and inherit the
+server's stdout/stderr. A non-zero exit fails the install.
+
+The working directory is the plugin's **source** tree on a dashboard install but
+the plugin's **install** directory on a baked-in plugin's boot-time run — so
+reference sibling files relative to the script itself
+(`"$(dirname "$0")/helper.sh"`), and keep any helper the script reads under a
+**shipped** path such as `scripts/` (a plugin's `app/` Go source is not copied
+into the install directory). See the
+[Plugin Scripts guide](../guides/plugin-scripts.md) for the full set of
+gotchas — shipping, idempotency (scripts may re-run on reconnect/upgrade), and
+invoking a shipped script from Go at runtime.
 
 #### The `GO_ENV` environment variable
 

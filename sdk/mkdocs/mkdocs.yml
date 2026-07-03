@@ -44,6 +44,7 @@ nav:
       - "Translations": guides/translations.md
       - "Core Database Tables": guides/core-database.md
       - "Database Migrations": guides/database-migrations.md
+      - "Plugin Scripts": guides/plugin-scripts.md
       - "Error Handling": guides/error-handling.md
       - "Handling Events": guides/handling-events.md
       - "Debugging": guides/debugging.md

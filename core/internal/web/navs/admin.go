@@ -186,8 +186,28 @@ func SetAdminNavs(g *api.CoreGlobals) {
 			},
 		}
 
+		networkNavs := []sdkapi.AdminNavItemOpt{
+			{
+				Category:  sdkapi.NavCategoryNetwork,
+				Label:     g.CoreAPI.Translate("label", "Interfaces"),
+				RouteName: "admin:interfaces:index",
+				Keywords: []string{
+					g.CoreAPI.Translate("label", "Interfaces"),
+					g.CoreAPI.Translate("label", "LAN"),
+					g.CoreAPI.Translate("label", "Main Interface"),
+					g.CoreAPI.Translate("label", "Captive Portal"),
+					g.CoreAPI.Translate("label", "Subnet"),
+					g.CoreAPI.Translate("label", "network"),
+					g.CoreAPI.Translate("label", "bandwidth"),
+				},
+				Order: 1000,
+				Icon:  "<i class='bi bi-hdd-network'></i>",
+			},
+		}
+
 		adminNavs := append(quickAccessNavs, systemNavs...)
 		adminNavs = append(adminNavs, themesNavs...)
+		adminNavs = append(adminNavs, networkNavs...)
 		return adminNavs
 	})
 }

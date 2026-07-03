@@ -52,15 +52,30 @@ func Setup() (err error) {
 	return nil
 }
 
-// SetupCaptivePortal installs prerouting DNAT rules for a LAN interface.
-// routerIp4 is the LAN-facing IPv4 address; routerIp6 is the LAN-facing IPv6
-// address (may be empty if the interface has no IPv6 address yet).
-func SetupCaptivePortal(dev string, routerIp4 string, routerIp6 string) (err error) {
-	contextInfo := fmt.Sprintf("Device=%s, RouterIPv4=%s, RouterIPv6=%s", dev, routerIp4, routerIp6)
+// SetInterfaceMode toggles whether a device is managed / captive.
+// Dev mock: no-op (no real nftables sets to update).
+func SetInterfaceMode(dev string, managed bool, captive bool) error {
+	contextInfo := fmt.Sprintf("Device=%s, Managed=%t, Captive=%t", dev, managed, captive)
+
+	_, err := nftQue.ExecWithTimeout(
+		4*time.Second,
+		"Set Interface Managed Mode",
+		contextInfo,
+		func() (any, error) {
+			return nil, nil
+		},
+	)
+	return err
+}
+
+// SetCaptivePortalTarget installs the shared port-80 DNAT to the main portal IP.
+// Dev mock: no-op (no real nftables rules to update).
+func SetCaptivePortalTarget(routerIp4 string, routerIp6 string) (err error) {
+	contextInfo := fmt.Sprintf("RouterIPv4=%s, RouterIPv6=%s", routerIp4, routerIp6)
 
 	_, err = nftQue.ExecWithTimeout(
 		4*time.Second,
-		"Setup Captive Portal",
+		"Set Captive Portal Target",
 		contextInfo,
 		func() (any, error) {
 			return nil, nil

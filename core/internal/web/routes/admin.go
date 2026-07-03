@@ -78,6 +78,13 @@ func AdminRoutes(g *api.CoreGlobals) {
 		subrouter.Post("/clear-all", adminctrl.ClearAllNotificationsCtrl(g)).Name("admin:notifications:clear-all")
 	})
 
+	adminR.Group("/network", func(subrouter sdkapi.IHttpRouterInstance) {
+		subrouter.Group("/interfaces", func(subrouter sdkapi.IHttpRouterInstance) {
+			subrouter.Get("/index", adminctrl.InterfacesIndexCtrl(g)).Name("admin:interfaces:index")
+			subrouter.Post("/save", adminctrl.InterfacesSaveCtrl(g)).Name("admin:interfaces:save")
+		})
+	})
+
 	adminR.Group("/themes", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/admin", adminctrl.AdminThemesPage(g)).Name("admin:themes:admin")
 		subrouter.Get("/portal", adminctrl.PortalThemesPage(g)).Name("admin:themes:portal")
