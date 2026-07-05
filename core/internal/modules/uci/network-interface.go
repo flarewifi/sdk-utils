@@ -2,6 +2,7 @@ package uci
 
 import (
 	"errors"
+	"net"
 
 	sdkapi "sdk/api"
 )
@@ -26,17 +27,25 @@ func (self *UciNetworkApi) GetInterface(section string) (iface *sdkapi.INetIface
 
 	if ifdata.Proto == "static" {
 		addrs, ok := UciTree.Get("network", section, "ipaddr")
-		if ok && len(addrs) > 0 {
-			ifdata.IpAddr = addrs[0]
-		} else {
+		if !ok || len(addrs) == 0 {
 			return nil, errors.New("Can't get ipaddr value of " + section)
 		}
 
-		netmasks, ok := UciTree.Get("network", section, "netmask")
-		if ok && len(netmasks) > 0 {
-			ifdata.Netmask = netmasks[0]
+		// Modern UCI configs embed the prefix length directly in ipaddr (e.g.
+		// `list ipaddr '10.0.0.1/20'`) and omit a separate "netmask" option
+		// entirely; older configs keep ipaddr and netmask as separate options.
+		if ip, ipnet, cidrErr := net.ParseCIDR(addrs[0]); cidrErr == nil {
+			ifdata.IpAddr = ip.String()
+			ifdata.Netmask = net.IP(ipnet.Mask).String()
 		} else {
-			return nil, errors.New("Can't get netmask value of " + section)
+			ifdata.IpAddr = addrs[0]
+
+			netmasks, ok := UciTree.Get("network", section, "netmask")
+			if ok && len(netmasks) > 0 {
+				ifdata.Netmask = netmasks[0]
+			} else {
+				return nil, errors.New("Can't get netmask value of " + section)
+			}
 		}
 
 		gateways, ok := UciTree.Get("network", section, "gateway")
@@ -58,11 +67,11 @@ func (self *UciNetworkApi) GetInterfaces() (ifaces []*sdkapi.INetIface, err erro
 	secs, _ := UciTree.GetSections("network", "interface")
 
 	for _, s := range secs {
-		iface, err := self.GetInterface(s)
-		if err != nil {
-			return nil, err
+		// Skip a single malformed/partial section instead of discarding every
+		// other interface that parsed fine.
+		if iface, ferr := self.GetInterface(s); ferr == nil {
+			ifaces = append(ifaces, iface)
 		}
-		ifaces = append(ifaces, iface)
 	}
 
 	return ifaces, nil

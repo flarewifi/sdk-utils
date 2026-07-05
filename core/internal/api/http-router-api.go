@@ -9,8 +9,6 @@ import (
 	"core/internal/web/middlewares"
 	"core/internal/web/router"
 	sdkapi "sdk/api"
-
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -98,11 +96,11 @@ func (self *HttpRouterApi) HttpRouter(opts *sdkapi.HttpRouterOpts) sdkapi.IHttpR
 	return self.httpRouter
 }
 
-func (self *HttpRouterApi) Use(middleware ...func(http.Handler) http.Handler) {
-	for _, mw := range middleware {
-		router.RootRouter.Use(mux.MiddlewareFunc(mw))
-	}
-}
+// NOTE: there is deliberately NO Use() on this type. A middleware "for the
+// plugin's router" must be registered on a scoped IHttpRouterInstance
+// (HttpRouter/AdminRouter → Group/Use); the removed method mounted the
+// middleware on the GLOBAL RootRouter, silently wrapping every route of every
+// plugin. Portal-page middlewares go through UseForPortal.
 
 func (self *HttpRouterApi) MuxRouteName(name sdkapi.PluginRouteName) sdkapi.MuxRouteName {
 	muxname := fmt.Sprintf("%s#%s", self.api.info.Package, string(name))

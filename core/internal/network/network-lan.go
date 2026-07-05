@@ -12,6 +12,12 @@ import (
 
 var (
 	networkQue = jobque.NewJobQueue[any]()
+
+	// errTcNotEnabled guards the per-client TC methods on a LAN that is registered
+	// (for client identification) but not captive, so it has no TC managers. The
+	// session flow only ever targets captive LANs, so this is defensive — it turns
+	// a would-be nil dereference into a clean error.
+	errTcNotEnabled = errors.New("traffic control is not enabled on this interface")
 )
 
 type NetworkLan struct {
@@ -39,8 +45,41 @@ func (self *NetworkLan) Name() string {
 func (self *NetworkLan) Bandwidth() (download tc.Mbit, upload tc.Mbit) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
+	if self.tcClassMgr == nil {
+		return 0, 0
+	}
 	d, u := self.tcClassMgr.Bandwidth()
 	return d.ToMbit(), u.ToMbit()
+}
+
+// HasTrafficControl reports whether TC is set up on this LAN (i.e. it is a
+// captive interface). Used by the reconcile to decide setup vs teardown.
+func (self *NetworkLan) HasTrafficControl() bool {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	return self.tcClassMgr != nil
+}
+
+// TeardownTrafficControl removes all TC qdiscs/classes/filters for this LAN and
+// drops the managers, returning the interface to an unshaped state. Best-effort;
+// used when an interface is switched from captive to free.
+func (self *NetworkLan) TeardownTrafficControl() {
+	networkQue.Exec("TeardownTrafficControl", func() (any, error) {
+		self.mu.Lock()
+		classMgr := self.tcClassMgr
+		filterMgr := self.tcFilterMgr
+		self.tcClassMgr = nil
+		self.tcFilterMgr = nil
+		self.mu.Unlock()
+
+		if filterMgr != nil {
+			filterMgr.CleanUp()
+		}
+		if classMgr != nil {
+			classMgr.CleanUp()
+		}
+		return nil, nil
+	})
 }
 
 func (self *NetworkLan) ResetTc() (err error) {
@@ -91,10 +130,10 @@ func (self *NetworkLan) ReinitializeTc() (err error) {
 			return nil, err
 		}
 
-		lanCfg, ok := cfg.Lans[self.name]
-		if !ok {
-			return nil, errors.New(self.name + " network config not found")
-		}
+		// No bandwidth.json entry → default to global bandwidth (LanCfg), and the
+		// 0 global speed drives auto-detect below, so a captive interface still
+		// shapes even without an explicit cap.
+		lanCfg := cfg.LanCfg(self.name)
 
 		dev := i.Device
 
@@ -185,7 +224,11 @@ func (self *NetworkLan) SetupTrafficControl() (err error) {
 			return nil, err
 		}
 
-		if c, ok := cfg.Lans[self.name]; ok {
+		// A captive interface may have no bandwidth.json entry yet; LanCfg then
+		// defaults to global bandwidth, and its 0 global speed drives the
+		// auto-detect link-speed path below instead of failing setup.
+		c := cfg.LanCfg(self.name)
+		{
 			dev := i.Device
 
 			// Auto-detect link speed when configured speed is 0
@@ -239,10 +282,7 @@ func (self *NetworkLan) SetupTrafficControl() (err error) {
 			// ApplyPortalConfig once all LANs are set up (see portal-config.go),
 			// so traffic control here stays concerned only with bandwidth.
 			return nil, nil
-
 		}
-
-		return nil, errors.New(self.name + "network config not found or traffic shaping not enabled")
 	})
 
 	return err
@@ -271,6 +311,10 @@ func (self *NetworkLan) CreateClass(classid uint, downMbit int, upMbit int) erro
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 
+		if self.tcClassMgr == nil {
+			return nil, errTcNotEnabled
+		}
+
 		downKbit := tc.Kbit(downMbit * 1000)
 		upKbit := tc.Kbit(upMbit * 1000)
 
@@ -284,6 +328,10 @@ func (self *NetworkLan) ChangeClass(classid uint, downMbit int, upMbit int) erro
 		self.mu.RLock()
 		defer self.mu.RUnlock()
 
+		if self.tcClassMgr == nil {
+			return nil, errTcNotEnabled
+		}
+
 		downKbit := tc.Kbit(downMbit * 1000)
 		upKbit := tc.Kbit(upMbit * 1000)
 
@@ -296,6 +344,9 @@ func (self *NetworkLan) DelClass(classid uint) error {
 	_, err := networkQue.Exec("DelClass", func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
+		if self.tcClassMgr == nil {
+			return nil, errTcNotEnabled
+		}
 		return nil, self.tcClassMgr.DeleteClass(tc.TcClassId(classid))
 	})
 	return err
@@ -305,6 +356,9 @@ func (self *NetworkLan) CreateFilter(ip string, classid uint) error {
 	_, err := networkQue.Exec("CreateFilter", func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
+		if self.tcFilterMgr == nil {
+			return nil, errTcNotEnabled
+		}
 		return nil, self.tcFilterMgr.CreateFilter(ip, tc.TcClassId(classid))
 	})
 	return err
@@ -314,6 +368,9 @@ func (self *NetworkLan) DelFilter(ip string, classid uint) error {
 	_, err := networkQue.Exec("DelFilter", func() (interface{}, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
+		if self.tcFilterMgr == nil {
+			return nil, errTcNotEnabled
+		}
 		return nil, self.tcFilterMgr.DeleteFilter(ip)
 	})
 	return err
@@ -323,6 +380,10 @@ func (self *NetworkLan) UpdateBandwidth(downMbits int, upMbits int) error {
 	_, err := networkQue.Exec("UpdateBandwidth", func() (any, error) {
 		self.mu.RLock()
 		defer self.mu.RUnlock()
+
+		if self.tcClassMgr == nil {
+			return nil, errTcNotEnabled
+		}
 
 		downKbit := tc.Mbit(downMbits).ToKbit()
 		upKbit := tc.Mbit(upMbits).ToKbit()

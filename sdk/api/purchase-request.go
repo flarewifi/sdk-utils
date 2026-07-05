@@ -16,6 +16,12 @@ type PurchasePaymentData struct {
 	PurchaseID      int64   `json:"purchase_id"`
 	TotalPayment    float64 `json:"total_payment"`
 	PaymentProvider string  `json:"payment_provider"`
+
+	// PaymentMethod is the payment's own payment_method (e.g. "Coins"/"Bills") if it set
+	// one; otherwise it falls back to the plugin.json "name" of the plugin identified by
+	// PaymentProvider (or the raw PaymentProvider package if that plugin isn't installed).
+	// Always a human-readable display value — never blank when PaymentProvider is set.
+	PaymentMethod string `json:"payment_method"`
 }
 
 // ExecuteParams holds parameters for executing a purchase.
@@ -48,8 +54,8 @@ type PurchaseRequest struct {
 
 // CreatePaymentParams holds parameters for creating a payment for a purchase.
 type CreatePaymentParams struct {
-	Amount       float64
-	ProviderUUID string
+	Amount        float64
+	PaymentMethod string
 }
 
 // CreatePurchaseParams holds parameters for creating a purchase programmatically.
@@ -133,9 +139,8 @@ type IPurchaseRequest interface {
 	// Create a payment for the purchase.
 	CreatePayment(ctx context.Context, params CreatePaymentParams) error
 
-	// Returns the state of the purchase.
-	// The state includes the total accumulated payment for the purchase and other important details.
-	State(ctx context.Context) (PurchasePaymentData, error)
+	// Returns the total accumulated payment and the first payment's provider/method.
+	GetPaymentData(ctx context.Context) (PurchasePaymentData, error)
 
 	// Executes the purchase, invoking the callback plugin's registered
 	// PurchaseExecuteHandler (see IPaymentsApi.HandlePurchaseExecute) in-process.

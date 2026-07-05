@@ -61,7 +61,6 @@ export default tool({
       
       // Get current working directory (should be project root)
       const cwd = process.cwd()
-      const fullPath = path.join(cwd, filePath)
 
       // Validate that this is a translation file
       if (!filePath.includes('/translations/')) {
@@ -70,98 +69,122 @@ export default tool({
 Provided path: ${filePath}`
       }
 
-      // Extract language from path and validate it matches the language parameter
-      const langMatch = filePath.match(/\/translations\/([a-z]{2,3})\//)
-      if (!langMatch) {
-        return `❌ ERROR: Could not extract language code from file path.
+      // Parse filePath: {componentPath}/resources/translations/{lang}/{msgtype}/{key}
+      const translationMatch = filePath.match(/^(.+?)\/resources\/translations\/([a-z]{2,3})\/([a-z]+)\/(.+)$/)
+      if (!translationMatch) {
+        return `❌ ERROR: Invalid translation file path format.
 
-File path must contain /translations/{language}/ pattern.
-Provided path: ${filePath}
-Expected language: ${language}`
+Expected: {component}/resources/translations/{lang}/{type}/{key}
+Example: core/resources/translations/es/label/Welcome
+Provided: ${filePath}`
       }
-      
-      const pathLanguage = langMatch[1]
-      if (pathLanguage !== language) {
+
+      const compPath = translationMatch[1]
+      const lang = translationMatch[2]
+      const msgtype = translationMatch[3]
+      const key = translationMatch[4]
+
+      // Validate language matches parameter
+      if (lang !== language) {
         return `❌ ERROR: Language mismatch!
 
 Language parameter: ${language}
-Language in file path: ${pathLanguage}
+Language in file path: ${lang}
 
-The language parameter must match the language in the file path.
-Either change the language parameter to "${pathLanguage}" or update the file path to use /translations/${language}/`
+The language parameter must match the language in the file path.`
       }
 
-      // Check if file exists
-      const fileExists = fs.existsSync(fullPath)
-      
-      if (!fileExists && !createMissing) {
-        return `❌ ERROR: File does not exist: ${filePath}
+      const jsonPath = path.join(cwd, `${compPath}/resources/translations/${lang}.json`)
+      const jsonDir = path.dirname(jsonPath)
 
-Use createMissing: true to create it.`
-      }
-
-      // Create directory if it doesn't exist
-      const dir = path.dirname(fullPath)
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true })
-      }
-
-      // Read current content if file exists
-      let oldContent = ""
-      if (fileExists) {
-        oldContent = fs.readFileSync(fullPath, "utf-8")
-      }
-      
       // Validate content encoding (check for common issues)
       if (content.includes('\0')) {
         return `❌ ERROR: Content contains null bytes (invalid UTF-8)
 
 Translation content must be valid UTF-8 text.`
       }
-      
+
       // Warn about potential issues
       const warnings: string[] = []
-      
       if (content.length === 0) {
         warnings.push("⚠️  WARNING: Empty translation content")
       }
-      
       if (content !== content.trim()) {
         warnings.push("⚠️  WARNING: Translation has leading/trailing whitespace (will be preserved)")
       }
-      
       if (content.includes('  ')) {
         warnings.push("⚠️  WARNING: Translation contains double spaces")
       }
-      
-      // Check for snake_case in content
       if (content.match(/\w+_\w+/)) {
         warnings.push("⚠️  WARNING: Translation contains underscores (snake_case) - acceptable in content, but not in keys")
       }
-      
-      // Write new content
+
+      // Read existing catalog or create empty structure
+      let catalog: Record<string, Record<string, string>> = {
+        error: {}, info: {}, label: {}, success: {}, type: {}, warning: {},
+      }
+      const catalogExists = fs.existsSync(jsonPath)
+
+      if (catalogExists) {
+        try {
+          const existing = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'))
+          catalog = { ...catalog, ...existing }
+        } catch (e: any) {
+          return `❌ ERROR: Could not parse existing catalog ${lang}.json: ${e.message}`
+        }
+      }
+
+      if (!catalogExists && !createMissing) {
+        return `❌ ERROR: Translation catalog does not exist: ${compPath}/resources/translations/${lang}.json
+
+Use createMissing: true to create it.`
+      }
+
+      // Ensure msgtype section exists
+      if (!catalog[msgtype]) {
+        catalog[msgtype] = {}
+      }
+
+      // Read old value if it exists
+      const oldContent = catalog[msgtype][key] || ""
+
+      // Set the translation
+      catalog[msgtype][key] = content
+
+      // Write catalog back
       try {
-        fs.writeFileSync(fullPath, content, "utf-8")
+        if (!fs.existsSync(jsonDir)) {
+          fs.mkdirSync(jsonDir, { recursive: true })
+        }
+
+        // Sort keys for deterministic output
+        const sorted: Record<string, Record<string, string>> = {}
+        for (const [section, entries] of Object.entries(catalog)) {
+          sorted[section] = {}
+          for (const k of Object.keys(entries).sort()) {
+            sorted[section][k] = entries[k]
+          }
+        }
+
+        fs.writeFileSync(jsonPath, JSON.stringify(sorted, null, 2) + '\n', 'utf-8')
       } catch (writeError: any) {
-        return `❌ ERROR: Failed to write file: ${filePath}
+        return `❌ ERROR: Failed to write ${compPath}/resources/translations/${lang}.json
 
 ${writeError.message}
 
 Possible causes:
 - Insufficient permissions
 - Disk full
-- File locked by another process
-
-💡 TIP: Check file permissions and disk space`
+- File locked by another process`
       }
 
-      const action = fileExists ? "Updated" : "Created"
-      let output = `✅ ${action} ${language.toUpperCase()} translation: ${filePath}
+      const action = catalogExists ? "Updated" : "Created"
+      let output = `✅ ${action} ${language.toUpperCase()} translation: ${compPath}/resources/translations/${lang}.json [${msgtype}.${key}]
 
-Old content:
-${oldContent || "(new file)"}
+Old value:
+${oldContent || "(none)"}
 
-New content:
+New value:
 ${content}
 `
       

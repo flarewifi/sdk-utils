@@ -10,15 +10,15 @@ import (
 )
 
 type Payment struct {
-	db                *db.Database
-	models            *Models
-	id                int64
-	uuid              string
-	purchaseId        int64
-	amount            float64
-	paymentOptionUUID string
-	provider          string
-	createdAt         time.Time
+	db            *db.Database
+	models        *Models
+	id            int64
+	uuid          string
+	purchaseId    int64
+	amount        float64
+	provider      string
+	paymentMethod string
+	createdAt     time.Time
 }
 
 func NewPayment(dtb *db.Database, mdls *Models) *Payment {
@@ -44,12 +44,12 @@ func (self *Payment) Amount() float64 {
 	return self.amount
 }
 
-func (self *Payment) PaymentOptionUUID() string {
-	return self.paymentOptionUUID
-}
-
 func (self *Payment) Provider() string {
 	return self.provider
+}
+
+func (self *Payment) PaymentMethod() string {
+	return self.paymentMethod
 }
 
 func (self *Payment) CreatedAt() time.Time {

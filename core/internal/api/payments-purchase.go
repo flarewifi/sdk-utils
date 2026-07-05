@@ -117,15 +117,34 @@ func (self *Purchase) CreatePayment(ctx context.Context, params sdkapi.CreatePay
 	// Derive provider from the calling plugin's package name
 	provider := self.api.info.Package
 	_, err := mdls.Payment().Create(ctx, models.CreatePaymentParams{
-		PurchaseID:        self.purchase.ID(),
-		Amount:            params.Amount,
-		PaymentOptionUUID: params.ProviderUUID,
-		Provider:          provider,
+		PurchaseID:    self.purchase.ID(),
+		Amount:        params.Amount,
+		Provider:      provider,
+		PaymentMethod: params.PaymentMethod,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Surface the payment method on the purchase's own metadata so consumers
+	// (e.g. cloud-sync's transaction sync) that only read Metadata() — not
+	// State(), which hits the payments table — still see it.
+	if params.PaymentMethod != "" {
+		existing := self.purchase.Metadata()
+		merged := make(map[string]string, len(existing)+1)
+		for k, v := range existing {
+			merged[k] = v
+		}
+		merged["payment_method"] = params.PaymentMethod
+		if err := self.purchase.UpdateMetadata(ctx, merged); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (self *Purchase) State(ctx context.Context) (sdkapi.PurchasePaymentData, error) {
+func (self *Purchase) GetPaymentData(ctx context.Context) (sdkapi.PurchasePaymentData, error) {
 	state := sdkapi.PurchasePaymentData{}
 
 	total, err := self.purchase.TotalPayment(ctx)
@@ -133,19 +152,33 @@ func (self *Purchase) State(ctx context.Context) (sdkapi.PurchasePaymentData, er
 		return state, err
 	}
 
-	// Get first payment's provider (if any)
+	// Get first payment's provider/method (if any)
 	payments, err := self.purchase.Payments(ctx)
 	if err != nil {
 		return state, err
 	}
-	var paymentProvider string
+	var paymentProvider, paymentMethod string
 	if len(payments) > 0 {
 		paymentProvider = payments[0].Provider()
+		paymentMethod = payments[0].PaymentMethod()
+	}
+
+	// Fall back to the owning plugin's plugin.json "name" when the payment didn't set
+	// its own payment_method (e.g. a coinslot alias), so callers get a human-readable
+	// value instead of an empty string; fall back further to the raw provider package
+	// if that plugin isn't currently installed/loaded.
+	if paymentMethod == "" && paymentProvider != "" {
+		if plugin, ok := self.api.PluginsMgr().FindByPkg(paymentProvider); ok {
+			paymentMethod = plugin.Info().Name
+		} else {
+			paymentMethod = paymentProvider
+		}
 	}
 
 	state.PurchaseID = self.purchase.ID()
 	state.TotalPayment = total
 	state.PaymentProvider = paymentProvider
+	state.PaymentMethod = paymentMethod
 
 	return state, nil
 }

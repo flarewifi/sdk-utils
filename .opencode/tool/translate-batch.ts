@@ -112,21 +112,27 @@ ${validationErrors.map(err => `  ❌ ${err}`).join('\n')}
 💡 TIP: Different AI agents can work on different languages in parallel.`
     }
 
+    // Track which catalogs we've modified to avoid redundant reads/writes
+    const catalogCache: Record<string, { catalog: Record<string, Record<string, string>>, componentPath: string }> = {}
+
     // Process updates and track results
     for (let i = 0; i < updates.length; i++) {
       const update = updates[i]
 
       try {
-        const fullPath = path.join(cwd, update.filePath)
-
-        // Check if file exists
-        const fileExists = fs.existsSync(fullPath)
-
-        if (!fileExists && !createMissing) {
-          results.push(`❌ SKIPPED: ${update.filePath} - File does not exist (use createMissing: true)`)
+        // Parse filePath: {componentPath}/resources/translations/{lang}/{msgtype}/{key}
+        const translationMatch = update.filePath.match(/^(.+?)\/resources\/translations\/([a-z]{2,3})\/([a-z]+)\/(.+)$/)
+        if (!translationMatch) {
+          results.push(`❌ ERROR: ${update.filePath} - Invalid translation file path format. Expected: {component}/resources/translations/{lang}/{type}/{key}`)
           errorCount++
           continue
         }
+
+        const compPath = translationMatch[1]
+        const lang = translationMatch[2]
+        const msgtype = translationMatch[3]
+        const key = translationMatch[4]
+        const jsonPath = path.join(cwd, `${compPath}/resources/translations/${lang}.json`)
 
         // Validate content
         if (update.content.includes('\0')) {
@@ -135,49 +141,65 @@ ${validationErrors.map(err => `  ❌ ${err}`).join('\n')}
           continue
         }
 
-        // Create directory if needed
-        const dir = path.dirname(fullPath)
-        if (!fs.existsSync(dir)) {
-          try {
-            fs.mkdirSync(dir, { recursive: true })
-          } catch (mkdirError: any) {
-            results.push(`❌ ERROR: ${update.filePath} - Failed to create directory: ${mkdirError.message}`)
-            errorCount++
-            continue
+        // Get or create catalog entry in cache
+        if (!catalogCache[jsonPath]) {
+          let catalog: Record<string, Record<string, string>> = {
+            error: {},
+            info: {},
+            label: {},
+            success: {},
+            type: {},
+            warning: {},
           }
-        }
 
-        // Write content with retry logic
-        let retries = 3
-        let written = false
-        let lastError: any = null
-
-        while (retries > 0 && !written) {
-          try {
-            fs.writeFileSync(fullPath, update.content, "utf-8")
-            written = true
-          } catch (writeError: any) {
-            lastError = writeError
-            retries--
-            if (retries > 0) {
-              // Wait a bit before retrying (file might be locked)
-              await new Promise(resolve => setTimeout(resolve, 100))
+          if (fs.existsSync(jsonPath)) {
+            try {
+              const existing = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'))
+              catalog = { ...catalog, ...existing }
+            } catch (e: any) {
+              results.push(`⚠️  WARNING: ${update.filePath} - Could not parse existing catalog ${lang}.json, starting fresh: ${e.message}`)
             }
           }
+
+          catalogCache[jsonPath] = { catalog, componentPath: compPath }
         }
 
-        if (!written) {
-          results.push(`❌ ERROR: ${update.filePath} - Failed after 3 retries: ${lastError?.message || 'Unknown error'}`)
-          errorCount++
-          continue
+        // Ensure msgtype section exists
+        if (!catalogCache[jsonPath].catalog[msgtype]) {
+          catalogCache[jsonPath].catalog[msgtype] = {}
         }
 
-        const action = fileExists ? "✅ UPDATED" : "✅ CREATED"
-        results.push(`${action}: ${update.filePath}`)
+        // Set the translation
+        catalogCache[jsonPath].catalog[msgtype][key] = update.content
+
+        results.push(`✅ ${fs.existsSync(jsonPath) ? 'UPDATED' : 'CREATED'}: ${compPath}/resources/translations/${lang}.json [${msgtype}.${key}]`)
         successCount++
       } catch (error: any) {
         results.push(`❌ ERROR: ${update.filePath} - ${error.message || error}`)
         errorCount++
+      }
+    }
+
+    // Write all modified catalogs to disk
+    for (const [jsonPath, { catalog }] of Object.entries(catalogCache)) {
+      try {
+        const jsonDir = path.dirname(jsonPath)
+        if (!fs.existsSync(jsonDir)) {
+          fs.mkdirSync(jsonDir, { recursive: true })
+        }
+
+        // Sort keys within each section for deterministic output
+        const sorted: Record<string, Record<string, string>> = {}
+        for (const [section, entries] of Object.entries(catalog)) {
+          sorted[section] = {}
+          for (const k of Object.keys(entries).sort()) {
+            sorted[section][k] = entries[k]
+          }
+        }
+
+        fs.writeFileSync(jsonPath, JSON.stringify(sorted, null, 2) + '\n', 'utf-8')
+      } catch (writeError: any) {
+        results.push(`❌ ERROR: Failed to write ${jsonPath} - ${writeError.message}`)
       }
     }
 

@@ -71,13 +71,13 @@ type Notification struct {
 }
 
 type Payment struct {
-	ID                int64
-	Uuid              string
-	PurchaseID        int64
-	Amount            float64
-	PaymentOptionUuid string
-	CreatedAt         time.Time
-	Provider          string
+	ID            int64
+	Uuid          string
+	PurchaseID    int64
+	Amount        float64
+	CreatedAt     time.Time
+	Provider      string
+	PaymentMethod string
 }
 
 type Purchase struct {

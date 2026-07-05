@@ -646,12 +646,7 @@ func (self *RunningSession) ApplyBandwidthUpdate(params ApplyBandwidthUpdatePara
 		net := self.network.Load()
 
 		// Calculate effective bandwidth - use global LAN bandwidth if UseGlobal is set
-		downMbits := params.DownMbits
-		upMbits := params.UpMbits
-		if params.UseGlobal {
-			d, u := net.lan.Bandwidth()
-			downMbits, upMbits = int(d), int(u)
-		}
+		downMbits, upMbits := resolveBandwidth(net, params.DownMbits, params.UpMbits, params.UseGlobal)
 
 		// Update TC class if it exists
 		if self.tcClassId != nil {
@@ -756,7 +751,14 @@ func (self *RunningSession) initTc(s sdkapi.IClientSession) error {
 	// Get session data in a single atomic snapshot
 	data := s.Data()
 
-	err := net.lan.CreateClass(classid.Uint(), data.DownMbits, data.UpMbits)
+	// Resolve global-speed sessions to the LAN bandwidth before programming the
+	// class. A UseGlobalSpeed session may carry zero per-session Mbits (which
+	// ValidateSessionBandwidth explicitly permits); passing that raw would make
+	// TcClass.Sanitize clamp the ceil to the 1kbit floor and throttle the client
+	// to ~nothing until a later updateTc. Mirrors updateTc/ApplyBandwidthUpdate.
+	downMbits, upMbits := resolveBandwidth(net, data.DownMbits, data.UpMbits, data.UseGlobalSpeed)
+
+	err := net.lan.CreateClass(classid.Uint(), downMbits, upMbits)
 	if err != nil {
 		return err
 	}
@@ -797,13 +799,7 @@ func (self *RunningSession) updateTc(s sdkapi.IClientSession) error {
 	// Get session data in a single atomic snapshot
 	data := s.Data()
 
-	downMbits := data.DownMbits
-	upMbits := data.UpMbits
-
-	if data.UseGlobalSpeed {
-		d, u := net.lan.Bandwidth()
-		downMbits, upMbits = int(d), int(u)
-	}
+	downMbits, upMbits := resolveBandwidth(net, data.DownMbits, data.UpMbits, data.UseGlobalSpeed)
 
 	return net.lan.ChangeClass(self.tcClassId.Uint(), downMbits, upMbits)
 }
@@ -877,4 +873,17 @@ func (self *RunningSession) resetTimer(remainingSecs int) {
 
 	// Start new timer
 	self.startTimer(remainingSecs)
+}
+
+// resolveBandwidth returns the effective download/upload Mbits to program into a
+// client's TC class. When useGlobal is set the per-session values are ignored and
+// the LAN's global bandwidth is used instead — matching ValidateSessionBandwidth,
+// which permits zero per-session speeds for global-speed sessions. Centralizing
+// this keeps initTc, updateTc, and ApplyBandwidthUpdate from drifting apart.
+func resolveBandwidth(net *networkState, downMbits, upMbits int, useGlobal bool) (int, int) {
+	if useGlobal {
+		d, u := net.lan.Bandwidth()
+		return int(d), int(u)
+	}
+	return downMbits, upMbits
 }

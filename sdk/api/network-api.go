@@ -30,6 +30,11 @@ type INetworkApi interface {
 	// Returns an error if no WAN interface is found.
 	GetWanInterface() (INetworkInterface, error)
 
+	// Reports whether the given interface has the captive portal enabled (and so
+	// gets traffic shaping + the session firewall). Interfaces without it are left
+	// free, so per-interface work like bandwidth should be scoped to captive ones.
+	IsCaptivePortalEnabled(ifname string) bool
+
 	// Returns the network traffic API.
 	Traffic() ITrafficApi
 

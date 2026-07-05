@@ -4,6 +4,9 @@ import (
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/modules/netmon"
 	"core/utils/product"
+	"core/utils/sysinfo"
+
+	sdkapi "sdk/api"
 )
 
 type MachineApi struct {
@@ -31,4 +34,39 @@ func (m *MachineApi) IsOnline() bool {
 // version when unstamped). See IMachineApi.ProductVersion.
 func (m *MachineApi) ProductVersion() string {
 	return product.Version()
+}
+
+// SystemStats returns a snapshot of the machine's current CPU, memory, disk,
+// and temperature usage. See IMachineApi.SystemStats.
+func (m *MachineApi) SystemStats() sdkapi.SystemStats {
+	stats := sdkapi.SystemStats{}
+
+	info, err := sysinfo.GetSystemInfo()
+	if err != nil || info == nil {
+		return stats
+	}
+
+	if len(info.CPUPercent) > 0 {
+		var sum float64
+		for _, p := range info.CPUPercent {
+			sum += p
+		}
+		stats.CpuPercent = sum / float64(len(info.CPUPercent))
+	}
+
+	stats.MemTotal = info.MemTotal
+	stats.MemUsed = info.MemUsed
+	stats.DiskTotal = info.DiskTotal
+	stats.DiskUsed = info.DiskUsed
+
+	if len(info.CPUTemperature) > 0 {
+		var sum float64
+		for _, t := range info.CPUTemperature {
+			sum += t
+		}
+		avg := sum / float64(len(info.CPUTemperature))
+		stats.TemperatureCelsius = &avg
+	}
+
+	return stats
 }

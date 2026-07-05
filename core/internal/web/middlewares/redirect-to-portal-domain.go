@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"net/http"
-	"strings"
 )
 
 // RedirectToPortalDomain funnels portal traffic to the shared captive-portal
@@ -10,9 +9,15 @@ import (
 // staging/prod. Clients resolve that hostname to this router via split-horizon
 // DNS. See portalScheme.
 //
-// It is a pass-through when the request is already on that hostname over the
-// portal scheme, or when this build has no portal domain (dev/devkit), preserving
-// the legacy IP/HTTP flow.
+// It exists only to back the NotFoundHandler in server.go: gorilla/mux runs
+// Use() middlewares on matched routes ONLY, so a 404 executes with no middleware
+// chain and must funnel itself. Matched routes get the identical decision from
+// ForceHTTPS. Both delegate to routePortalTraffic (portal-funnel.go), the single
+// source of truth for the funnel — so an unmanaged source (tailscale0/VPN) is
+// bounced to /admin here too, never to the portal.
+//
+// It is a pass-through when the request is a sub-resource, or when this build has
+// no portal domain (dev/devkit), preserving the legacy IP/HTTP flow.
 func RedirectToPortalDomain() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -24,22 +29,16 @@ func RedirectToPortalDomain() func(http.Handler) http.Handler {
 				return
 			}
 
-			domain := portalDomain()
-			if domain == "" {
+			// No portal domain (dev/devkit) => nothing to funnel to; serve as-is.
+			if portalDomain() == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			host := hostWithoutPort(r.Host)
-			isHTTPS := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
-
-			// Already on the portal hostname over the portal scheme — serve normally.
-			if strings.EqualFold(host, domain) && isHTTPS == (portalScheme() == "https") {
-				next.ServeHTTP(w, r)
+			if routePortalTraffic(w, r) {
 				return
 			}
-
-			http.Redirect(w, r, portalURL(domain, r.URL.RequestURI()), http.StatusSeeOther)
+			next.ServeHTTP(w, r)
 		})
 	}
 }

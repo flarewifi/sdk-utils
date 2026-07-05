@@ -85,6 +85,17 @@ type IPluginInstall interface {
 	// Done blocks until the install finishes and returns the final error (nil on
 	// success). It is safe to call without consuming Progress.
 	Done() error
+
+	// RequiresReboot reports whether this install/update only takes effect
+	// after the machine reboots. Meaningful only once Done() has returned nil:
+	// false for a fresh install (registered live, no reboot needed) or a
+	// meta-bundle update (which reboots itself internally when needed); true
+	// when this call updated an ALREADY-LOADED standalone store plugin, whose
+	// overwritten .so was staged to disk but cannot be hot-reloaded into the
+	// running process (Go's plugin.Open cannot reload a .so already mapped
+	// into this process). Always false while the install is still in progress
+	// or if it failed.
+	RequiresReboot() bool
 }
 
 // PluginPurchaseInfo describes whether this machine may install a plugin and

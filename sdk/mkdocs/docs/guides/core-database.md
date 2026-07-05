@@ -256,8 +256,8 @@ multiple payments.
 | `uuid` | VARCHAR(36) | Stable payment id (unique when non-empty). |
 | `purchase_id` | INTEGER → `purchases.id` | Settled purchase (cascade delete). |
 | `amount` | DECIMAL | Amount paid. |
-| `payment_option_uuid` | VARCHAR(255) | The chosen payment option. |
-| `provider` | VARCHAR | Payment gateway/provider that processed it. |
+| `provider` | VARCHAR | Plugin package that processed it. |
+| `payment_method` | VARCHAR(255) | Method label within the provider (e.g. "Coins", a coinslot's alias). |
 | `created_at` | TIMESTAMP | When recorded. |
 
 ---

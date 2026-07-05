@@ -24,7 +24,17 @@ func (c *BandwdCfgApi) Get(ifname string) (sdkapi.IBandwdCfg, bool) {
 
 	bcfg, ok := cfg.Lans[ifname]
 	if !ok {
-		return sdkapi.IBandwdCfg{}, false
+		// No explicit entry → default to global bandwidth (not the zero value,
+		// which would read as per-user with a 0 cap). ok stays false so callers can
+		// still tell an interface has no saved config.
+		def := config.DefaultIfCfg()
+		return sdkapi.IBandwdCfg{
+			UseGlobal:       def.UseGlobal,
+			GlobalDownMbits: def.GlobalDownMbits,
+			GlobalUpMbits:   def.GlobalUpMbits,
+			UserDownMbits:   def.UserDownMbits,
+			UserUpMbits:     def.UserUpMbits,
+		}, false
 	}
 
 	return sdkapi.IBandwdCfg{
