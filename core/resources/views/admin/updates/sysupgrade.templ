@@ -134,6 +134,46 @@ templ SysupgradeSuccessPage(api sdkapi.IPluginApi, csrfHTML string) {
 }
 
 templ SysupgradeProgressPage(api sdkapi.IPluginApi) {
+	<div id="page" hx-post={ api.Http().Router().UrlForRoute("admin:updates:sysupgrade-status") } hx-trigger="every 2s">
+		@SysupgradeProgressPartial(api, nil)
+	</div>
+}
+
+// SysupgradeProgressPartial renders the live sysupgrade state polled by the progress
+// page. A non-nil err always means the flash failed — a successful sysupgrade reboots
+// the device before this is ever polled again.
+templ SysupgradeProgressPartial(api sdkapi.IPluginApi, err error) {
+	if err != nil {
+		<div class="card shadow-sm border-danger">
+			<div class="card-body text-center py-5">
+				<div class="mb-4">
+					<i class="bi bi-x-circle-fill text-danger" style="font-size: 4rem;"></i>
+				</div>
+
+				<h3 class="mb-4 text-danger">
+					{ api.Translate("label", "Firmware Upgrade Failed") }
+				</h3>
+
+				<div class="alert alert-danger d-inline-block text-start" role="alert">
+					<i class="bi bi-exclamation-triangle me-2"></i>
+					{ err.Error() }
+				</div>
+
+				<div class="mt-4">
+					<a href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:sysupgrade-success")) } class="btn btn-warning me-2">
+						<i class="bi bi-arrow-repeat me-2"></i>
+						{ api.Translate("label", "Try Again") }
+					</a>
+					<a href={ templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:updates:index")) } class="btn btn-outline-secondary">
+						<i class="bi bi-arrow-left me-2"></i>
+						{ api.Translate("label", "Back to Updates") }
+					</a>
+				</div>
+			</div>
+		</div>
+		{{ return }}
+	}
+
 	<div class="card shadow-sm">
 		<div class="card-body text-center py-5">
 			<div class="mb-4">
@@ -141,17 +181,17 @@ templ SysupgradeProgressPage(api sdkapi.IPluginApi) {
 					<span class="visually-hidden">{ api.Translate("label", "Loading") }...</span>
 				</div>
 			</div>
-			
+
 			<h3 class="mb-4">
 				<i class="bi bi-lightning-charge-fill text-warning me-2"></i>
 				{ api.Translate("label", "Firmware Upgrade in Progress") }
 			</h3>
-			
+
 			<div class="alert alert-warning d-inline-block text-start" role="alert">
 				<i class="bi bi-exclamation-triangle me-2"></i>
 				<strong>{ api.Translate("label", "Warning") }:</strong> { api.Translate("info", "Firmware upgrade in progress. Do not power off the device") }.
 			</div>
-			
+
 			<div class="mt-4">
 				<p class="text-body-secondary">
 					{ api.Translate("info", "The device will be flashed with new firmware and will reboot. Do not power off the device during this process") }.
@@ -160,7 +200,7 @@ templ SysupgradeProgressPage(api sdkapi.IPluginApi) {
 					{ api.Translate("info", "Please wait a few minutes before reconnecting") }.
 				</p>
 			</div>
-			
+
 			<div class="mt-4">
 				<div class="progress" style="height: 30px;">
 					<div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 100%">

@@ -1,6 +1,7 @@
 package adminctrl
 
 import (
+	"bytes"
 	"core/internal/api"
 	"core/internal/modules/updates"
 	updatesview "core/resources/views/admin/updates"
@@ -346,60 +347,93 @@ func SysupgradeUploadCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
 
-		// maxMemory only sets the in-RAM threshold; larger parts spill to disk. Keep it
-		// modest so a 300 MB release isn't buffered in memory.
-		if err := r.ParseMultipartForm(32 << 20); err != nil {
+		// Stream the multipart body part-by-part instead of ParseMultipartForm/FormFile,
+		// which reads the WHOLE body up front (in memory up to its maxMemory threshold,
+		// spilling only the excess to a temp file) before this handler ever runs. This
+		// way the "sysupgrade_file" part is copied straight to its final destination —
+		// the full upload never sits in RAM or an intermediate temp file.
+		mr, err := r.MultipartReader()
+		if err != nil {
 			errMsg := api.Translate("error", "Failed to parse upload form")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
 
-		file, header, err := r.FormFile("sysupgrade_file")
-		if err != nil {
+		var part *multipart.Part
+		for {
+			p, perr := mr.NextPart()
+			if perr == io.EOF {
+				break
+			}
+			if perr != nil {
+				errMsg := api.Translate("error", "Failed to parse upload form")
+				res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+				res.Redirect(w, r, "admin:updates:index")
+				return
+			}
+			if p.FormName() == "sysupgrade_file" {
+				part = p
+				break
+			}
+			p.Close()
+		}
+
+		if part == nil {
 			errMsg := api.Translate("error", "No file uploaded")
 			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 			res.Redirect(w, r, "admin:updates:index")
 			return
 		}
-		defer file.Close()
+		defer part.Close()
+
+		filename := part.FileName()
 
 		// Not gzip → a raw firmware image; run the existing sysupgrade flow directly off
-		// the upload stream (no temp file, no extra copy).
-		isGzip, _ := updates.IsGzip(file)
+		// the upload stream (no temp file, no extra copy). The multipart part is
+		// forward-only (no Seek), so the gzip magic-byte peek can't rewind like IsGzip
+		// does for a seekable reader — instead, the peeked bytes are re-prepended with
+		// io.MultiReader so nothing is lost.
+		magic := make([]byte, 2)
+		n, _ := io.ReadFull(part, magic)
+		isGzip := n == 2 && magic[0] == 0x1f && magic[1] == 0x8b
+		prefixed := io.NopCloser(io.MultiReader(bytes.NewReader(magic[:n]), part))
+
 		if !isGzip {
-			handleSysupgradeUpload(g, w, r, file, header.Filename, header.Size)
+			// The size cap is enforced DURING the copy (see SaveSysupgradeFile), since a
+			// streamed upload's size isn't known until it's fully read.
+			src := http.MaxBytesReader(w, prefixed, updates.MaxSysupgradeFileSize)
+			handleSysupgradeUpload(g, w, r, src, filename)
 			return
 		}
 
-		handleSoftwareReleaseUpload(g, w, r, file, header)
+		src := http.MaxBytesReader(w, prefixed, updates.MaxSoftwareReleaseFileSize)
+		handleSoftwareReleaseUpload(g, w, r, src, filename)
 	}
 }
 
-// handleSysupgradeUpload validates and saves a raw firmware image read from src, then
-// runs the shared finalize (sysupgrade -T compatibility test + completion marker).
-// src must be positioned at the start of the upload.
-func handleSysupgradeUpload(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, src io.Reader, filename string, size int64) {
+// handleSysupgradeUpload validates and saves a raw firmware image streamed from src,
+// then runs the shared finalize (sysupgrade -T compatibility test + completion
+// marker). src must be positioned at the start of the upload.
+func handleSysupgradeUpload(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, src io.Reader, filename string) {
 	api := g.CoreAPI
 	res := api.HttpAPI.Response()
 
-	if err := updates.ValidateSysupgradeFile(filename, size); err != nil {
-		var errMsg string
-		switch err {
-		case updates.ErrInvalidFileExtension:
-			errMsg = api.Translate("error", "Invalid file type. Upload a .bin or .img firmware image, or a software release archive") + "."
-		case updates.ErrFileTooLarge:
-			errMsg = api.Translate("error", "File size exceeds maximum allowed limit") + "."
-		default:
-			errMsg = api.Translate("error", "File validation failed")
-		}
+	if err := updates.ValidateSysupgradeExtension(filename); err != nil {
+		errMsg := api.Translate("error", "Invalid file type. Upload a .bin or .img firmware image, or a software release archive") + "."
 		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 		res.Redirect(w, r, "admin:updates:index")
 		return
 	}
 
 	if err := updates.SaveSysupgradeFile(src, filename); err != nil {
-		errMsg := api.Translate("error", "Failed to save firmware file")
+		var errMsg string
+		switch err {
+		case updates.ErrFileTooLarge:
+			errMsg = api.Translate("error", "File size exceeds maximum allowed limit") + "."
+		default:
+			errMsg = api.Translate("error", "Failed to save firmware file")
+		}
 		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 		res.Redirect(w, r, "admin:updates:index")
 		return
@@ -430,20 +464,21 @@ func handleSysupgradeUpload(g *api.CoreGlobals, w http.ResponseWriter, r *http.R
 // stages it for apply-on-reboot. A gzip upload that is NOT a recognized release falls
 // back to the firmware path — some firmware images are gzip-compressed, so a missed
 // guess should still be validated by sysupgrade -T rather than rejected outright.
-func handleSoftwareReleaseUpload(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, file multipart.File, header *multipart.FileHeader) {
+// src's size is capped by the caller (http.MaxBytesReader at MaxSoftwareReleaseFileSize)
+// since a streamed upload's size isn't known upfront.
+func handleSoftwareReleaseUpload(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, src io.Reader, filename string) {
 	api := g.CoreAPI
 	res := api.HttpAPI.Response()
 
-	if header.Size > updates.MaxSoftwareReleaseFileSize {
-		errMsg := api.Translate("error", "File size exceeds maximum allowed limit") + "."
-		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
-		res.Redirect(w, r, "admin:updates:index")
-		return
-	}
-
-	tmpPath, err := updates.SaveUploadToTemp(file)
+	tmpPath, err := updates.SaveUploadToTemp(src)
 	if err != nil {
-		errMsg := api.Translate("error", "Failed to save uploaded file")
+		var errMsg string
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			errMsg = api.Translate("error", "File size exceeds maximum allowed limit") + "."
+		} else {
+			errMsg = api.Translate("error", "Failed to save uploaded file")
+		}
 		res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
 		res.Redirect(w, r, "admin:updates:index")
 		return
@@ -453,7 +488,22 @@ func handleSoftwareReleaseUpload(g *api.CoreGlobals, w http.ResponseWriter, r *h
 	info, err := updates.InspectRelease(tmpPath)
 	if err != nil || !info.IsRelease {
 		// gzip but not a recognized release — maybe a gzip-compressed firmware image.
-		// Reopen the spooled file and let the firmware path validate it.
+		// It was spooled under the (larger) release cap, so re-check its actual on-disk
+		// size against the firmware cap before treating it as one.
+		st, serr := os.Stat(tmpPath)
+		if serr != nil {
+			errMsg := api.Translate("error", "Failed to read uploaded file")
+			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin:updates:index")
+			return
+		}
+		if st.Size() > updates.MaxSysupgradeFileSize {
+			errMsg := api.Translate("error", "File size exceeds maximum allowed limit") + "."
+			res.FlashMsg(w, r, errMsg, sdkapi.FlashMsgError)
+			res.Redirect(w, r, "admin:updates:index")
+			return
+		}
+
 		f, oerr := os.Open(tmpPath)
 		if oerr != nil {
 			errMsg := api.Translate("error", "Failed to read uploaded file")
@@ -462,7 +512,7 @@ func handleSoftwareReleaseUpload(g *api.CoreGlobals, w http.ResponseWriter, r *h
 			return
 		}
 		defer f.Close()
-		handleSysupgradeUpload(g, w, r, f, header.Filename, header.Size)
+		handleSysupgradeUpload(g, w, r, f, filename)
 		return
 	}
 
@@ -522,6 +572,20 @@ func SysupgradeProgressPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
 		})
+	}
+}
+
+// SysupgradeStatusPartialCtrl reports the live state of an in-flight sysupgrade so the
+// progress page's poll can flip from the spinner to a failure state. There is no
+// "done" branch: a successful sysupgrade reboots the device before this is ever
+// polled again, so the only outcomes worth rendering are "still running" or "failed".
+func SysupgradeStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		api := g.CoreAPI
+		page := updatesview.SysupgradeProgressPartial(api, SysupgradeError())
+		if renderErr := page.Render(r.Context(), w); renderErr != nil {
+			api.LoggerAPI.Error(renderErr.Error())
+		}
 	}
 }
 
