@@ -683,7 +683,7 @@ templ PortalLayout(data PortalLayoutData) {
                     @data.Components.PageContent()
                 </main>
                 <footer class="text-center py-4">
-                    <p>Powered by Flarewifi</p>
+                    <p>A product of <a href="https://flarego.ph" target="_blank">Flarego</a></p>
                 </footer>
             </div>
             @data.Components.Scripts()

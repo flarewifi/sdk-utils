@@ -45,12 +45,12 @@ type AdminNavItemOpt struct {
 	ExtraAttrs  map[string]any // HTML attributes for the menu item element (e.g., {"class": "custom-class", "data-id": "123"})
 	Keywords    []string       // Used for admin nav search indexing
 	Order       int            // Sort order within category (lower numbers appear first, default: 5000)
-	Icon        string
+	Icon        string         // <svg> or <img> tag HTML string for the icon
 }
 
 type PortalNavItemOpt struct {
 	Label       string
-	IconFile    string
+	Icon        string // <svg> or <img> tag HTML string for the icon
 	RouteName   string
 	RouteParams map[string]string
 	ExtraAttrs  map[string]any // HTML attributes for the menu item element (e.g., {"class": "custom-class", "target": "_blank"})
@@ -76,7 +76,7 @@ type AdminNavItem struct {
 type PortalNavItem struct {
 	ID         string
 	Label      string
-	IconUrl    string
+	Icon       string // <svg> or <img> tag HTML string for the icon (passed from PortalNavItemOpt.Icon)
 	RouteUrl   string
 	ExtraAttrs map[string]any // HTML attributes for the menu item element (passed from PortalNavItemOpt)
 }

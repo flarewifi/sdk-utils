@@ -130,11 +130,6 @@ func (self *HttpNavsApi) GetPortalItems(r *http.Request) []sdkapi.PortalNavItem 
 				routePairs = append(routePairs, k, v)
 			}
 
-			iconURL := ""
-			if item.IconFile != "" {
-				iconURL = p.Http().Helpers().PublicPath(item.IconFile)
-			}
-
 			url := ""
 			if item.RouteName != "" {
 				url = p.Http().Helpers().UrlForRoute(item.RouteName, routePairs...)
@@ -142,7 +137,7 @@ func (self *HttpNavsApi) GetPortalItems(r *http.Request) []sdkapi.PortalNavItem 
 
 			items = append(items, sdkapi.PortalNavItem{
 				Label:      item.Label,
-				IconUrl:    iconURL,
+				Icon:       item.Icon, // Pass through as-is, same as GetAdminNavs does for AdminNavItemOpt.Icon
 				RouteUrl:   url,
 				ExtraAttrs: item.ExtraAttrs, // Pass through HTML attributes for theme plugins
 			})
