@@ -4,6 +4,7 @@ import (
 	"fmt"
 	sdkapi "sdk/api"
 	sdkutils "github.com/flarewifi/sdk-utils"
+	"strings"
 )
 
 templ NotificationForm(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
@@ -46,6 +47,9 @@ templ NotificationsList(api sdkapi.IPluginApi, notifs []sdkapi.Notification) {
 					hx-on::after-request="window.dispatchEvent(new Event('show-notif-modal'))"
 				>
 					<div class="fw-notif-subject">{ notif.Subject }</div>
+					if notif.Content != "" {
+						<div class="fw-notif-content">{ truncateNotifContent(notif.Content, 220) }</div>
+					}
 					<small class="fw-notif-time">{ sdkutils.UtcToLocalTime(notif.CreatedAt).Format("Jan 2, 2006 3:04PM") }</small>
 				</a>
 				<button
@@ -94,4 +98,17 @@ templ ShowNotificationContent(api sdkapi.IPluginApi, notif sdkapi.Notification) 
 			</button>
 		</div>
 	</div>
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+func truncateNotifContent(s string, max int) string {
+	s = strings.TrimSpace(s)
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return strings.TrimSpace(string(runes[:max])) + "…"
 }
