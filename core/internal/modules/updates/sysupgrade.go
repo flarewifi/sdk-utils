@@ -3,6 +3,7 @@ package updates
 import (
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -40,17 +41,27 @@ func GetSysupgradePath() string {
 	return filepath.Join(getSysupgradeDir(), SysupgradeFilename)
 }
 
-// ValidateSysupgradeFile validates the uploaded sysupgrade file
-// Returns nil if valid, error otherwise
-func ValidateSysupgradeFile(filename string, fileSize int64) error {
-	// Check file extension
+// ValidateSysupgradeExtension checks the uploaded sysupgrade file has an allowed
+// extension. Split out from size validation because a streamed upload's size isn't
+// known upfront — see SaveSysupgradeFile, which enforces the size cap while copying.
+func ValidateSysupgradeExtension(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
-	validExt := slices.Contains(allowedExtensions, ext)
-	if !validExt {
+	if !slices.Contains(allowedExtensions, ext) {
 		return ErrInvalidFileExtension
 	}
+	return nil
+}
 
-	// Check file size
+// ValidateSysupgradeFile validates the uploaded sysupgrade file's extension and size.
+// Use this when the size is already known upfront (e.g. a file already fully on disk);
+// for a streamed upload whose size isn't known until the copy finishes, use
+// ValidateSysupgradeExtension and let SaveSysupgradeFile enforce the size cap.
+// Returns nil if valid, error otherwise
+func ValidateSysupgradeFile(filename string, fileSize int64) error {
+	if err := ValidateSysupgradeExtension(filename); err != nil {
+		return err
+	}
+
 	if fileSize > MaxSysupgradeFileSize {
 		return ErrFileTooLarge
 	}
@@ -58,7 +69,10 @@ func ValidateSysupgradeFile(filename string, fileSize int64) error {
 	return nil
 }
 
-// SaveSysupgradeFile saves the uploaded sysupgrade file to data/storage/system/sysupgrade.bin.
+// SaveSysupgradeFile streams src to data/storage/system/sysupgrade.bin. src may be
+// wrapped in http.MaxBytesReader by the caller when its size isn't known upfront (a
+// streamed upload) — a tripped size cap is reported as ErrFileTooLarge rather than the
+// generic ErrSaveFile so the caller can show an accurate message.
 // After calling this, call FinalizeSysupgrade() to validate and create the completion marker.
 func SaveSysupgradeFile(src io.Reader, filename string) error {
 	// Ensure all required directories exist
@@ -78,6 +92,10 @@ func SaveSysupgradeFile(src io.Reader, filename string) error {
 	// Copy the file contents
 	if _, err := io.Copy(destFile, src); err != nil {
 		os.Remove(sysupgradePath)
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			return ErrFileTooLarge
+		}
 		return ErrSaveFile
 	}
 

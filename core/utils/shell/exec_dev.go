@@ -44,6 +44,10 @@ var (
 	// FakeSysupgradeValidationSuccess controls whether sysupgrade -T returns success or failure in dev mode
 	// Set to false to test firmware validation failure scenarios
 	FakeSysupgradeValidationSuccess = true
+
+	// FakeSysupgradeExecSuccess controls whether the actual sysupgrade (flash+reboot)
+	// command succeeds in dev mode. Set to false to test the flash-failure UI.
+	FakeSysupgradeExecSuccess = true
 )
 
 func Exec(command string, opts *ExecOpts) error {
@@ -59,7 +63,10 @@ func Exec(command string, opts *ExecOpts) error {
 	// Handle other sysupgrade commands (actual upgrade) - ignore in dev mode
 	if strings.HasPrefix(command, "sysupgrade") {
 		time.Sleep(5 * time.Second)
-		return nil
+		if FakeSysupgradeExecSuccess {
+			return nil
+		}
+		return errors.New("sysupgrade: flash failed: short write to mtd device")
 	}
 
 	// don't execute some commands in dev mode
