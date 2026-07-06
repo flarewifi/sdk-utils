@@ -76,8 +76,10 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 				data-confirm={ api.Translate("warning", "Are you sure you want to cancel this purchase") }
 				class="cancel-form"
 			>
-			<!-- portal-btn portal-btn-default: theme button; .btn .btn-default as Bootstrap fallback -->
-			<button type="submit" class="btn-cancel-purchase btn btn-default" onclick="this.disabled=true; this.form.submit();">
+			<!-- Default Bootstrap .btn-secondary — real Bootstrap 5 class, so this
+					 renders correctly in any theme (or none), unlike the old btn-default
+					 (a Bootstrap 3 class with no styling in Bootstrap 5). -->
+			<button type="submit" class="btn btn-secondary btn-lg" onclick="this.disabled=true; this.form.submit();">
 					{ api.Translate("label", "Cancel Purchase") }
 				</button>
 			</form>
@@ -86,8 +88,8 @@ templ PaymentOptions(api sdkapi.IPluginApi, purchase sdkapi.IPurchaseRequest, op
 	<!-- Footer -->
 	<!-- footer: theme footer; Bootstrap .text-center as fallback -->
 	<div class="footer text-center w-full">
-		<span>{ api.Translate("label", "Powered by") }</span>
-		<a target="_blank" href="https://flarewifi.com"><strong>Flarewifi</strong></a>
+		<span>{ api.Translate("label", "A product of") }</span>
+		<a target="_blank" href="https://flarego.ph"><strong>Flarego</strong></a>
 	</div>
 }
 
@@ -100,22 +102,12 @@ templ PaymentOptionCard(api sdkapi.IPluginApi, opts []PaymentOption) {
 		hx-swap="outerHTML"
 	>
 		<h3 class="payment-options-title">{ api.Translate("label", "Choose Payment Options") }</h3>
-		<div class="payment-options-grid">
+		<!-- Default Bootstrap stacked full-width buttons (d-grid gap-2); no bespoke card styling -->
+		<div class="d-grid gap-2">
 			for _, opt := range opts {
-			<!-- card-primary: theme glass card; .panel .panel-default as Bootstrap fallback -->
-			<a href={ templ.SafeURL(opt.URL) } class="payment-option-card card card-primary panel panel-default" aria-label={ "Select " + opt.Label }>
-					<div class="payment-card-inner panel-body">
-						<div class="payment-icon">
-							<span class="glyphicon glyphicon-credit-card"></span>
-						</div>
-						<span class="payment-name">{ opt.Label }</span>
-						<div class="payment-arrow">
-							<span class="glyphicon glyphicon-chevron-right"></span>
-						</div>
-						<div class="payment-loading-spinner">
-							<div class="spinner-icon"></div>
-						</div>
-					</div>
+				<a href={ templ.SafeURL(opt.URL) } class="payment-option-card btn btn-primary btn-lg d-flex align-items-center justify-content-center gap-2" aria-label={ "Select " + opt.Label }>
+					{ opt.Label }
+					<span class="spinner-border spinner-border-sm payment-loading-spinner" role="status" aria-hidden="true"></span>
 				</a>
 			}
 		</div>

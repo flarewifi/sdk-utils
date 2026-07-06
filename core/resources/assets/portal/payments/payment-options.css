@@ -19,14 +19,15 @@ body::before {
 }
 
 :root {
-  --text-black: rgba(0,0,0,0.75);
-  --text-black-6: rgba(0,0,0,0.6);
   --text-white: white;
   --text-muted: rgba(255, 255, 255, 0.7);
 }
 
 .payment-checkout-container {
   min-height: 100vh;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -149,110 +150,24 @@ body::before {
   text-align: center;
 }
 
-/* Grid of payment method cards — single column, stretches full width */
-.payment-checkout-container .payment-options-grid {
-  display: flex;
-  flex-direction: column;
-}
-
-.payment-checkout-container .payment-option-card {
-  display: block;
-  text-decoration: none;
-  color: var(--text-black);
-  padding: 10px !important;
-  border-radius: 15px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-
-}
-
-.payment-checkout-container .payment-option-card:hover {
-  opacity: 0.85;
-  text-decoration: none;
-}
-#payment-options-page .payment-option-card:hover,
-#payment-options-page .payment-option-card:hover .payment-arrow,
-#payment-options-page .payment-option-card:hover .payment-icon {
-  color: var(--text-black-6);
-}
-
-.payment-checkout-container .payment-card-inner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-}
-
-.payment-checkout-container .payment-icon {
-  font-size: 20px;
-  color: var(--text-black-6);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-
-/* Payment method name — grows to fill available space */
-.payment-checkout-container .payment-name {
-  flex: 1;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
-
-/* Chevron arrow on the right */
-.payment-checkout-container .payment-arrow {
-    font-size: 13px;
-    color: var(--text-black-6);
-    flex-shrink: 0;
-}
-
-/* Loading spinner — hidden by default; shown when card is clicked */
-.payment-checkout-container .payment-loading-spinner {
-  display: none;
-  flex-shrink: 0;
-}
-.payment-checkout-container .payment-option-card.loading {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-.payment-checkout-container .payment-option-card.loading .payment-arrow {
+/* Payment option buttons use default Bootstrap .btn styling (see payment-options.templ);
+   only the click-to-loading behavior below is custom, since Bootstrap doesn't toggle it. */
+.payment-checkout-container .payment-option-card .payment-loading-spinner {
   display: none;
 }
-
 .payment-checkout-container .payment-option-card.loading .payment-loading-spinner {
-  display: table-cell;
-}
-
-/* Spinner arc — reuses the global @keyframes spin */
-.payment-checkout-container .spinner-icon {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(0, 0, 0, 0.4);
-  border-top-color: var(--text-black);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  display: inline-block;
 }
 
 .payment-checkout-container .cancel-purchase-section {
   display: flex;
   justify-content: center;
+  margin-top: 20px;
 }
 
 .payment-checkout-container .cancel-form {
   width: 100%;
   text-align: center;
-}
-
-/* Cancel button — full width, inherits btn-default styling */
-.payment-checkout-container .btn-cancel-purchase {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  padding: 12px 30px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 250px) {
@@ -265,8 +180,5 @@ body::before {
   .payment-checkout-container .summary-product-total {
     justify-content: center;
     margin-top: 10px !important;
-  }
-  .payment-checkout-container .payment-name {
-    font-size: 12px !important;
   }
 }

@@ -54,7 +54,7 @@ navsAPI.PortalNavsFactory(func(r *http.Request) []PortalNavItemOpt {
     return []sdkapi.PortalNavItemOpt{
         {
             Label:     "Welcome",                       // Menu display text
-            IconFile: "some-image.jpg",                 // File in the resources/images folder
+            Icon:      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none"><path d="..." fill="currentColor"/></svg>`, // Icon HTML tag
             RouteName: "portal:welcome",                // Link to the route
             RouteParams: map[string]string{
                 "name": "John",
@@ -63,6 +63,8 @@ navsAPI.PortalNavsFactory(func(r *http.Request) []PortalNavItemOpt {
     }
 })
 ```
+
+**Tip:** Use `fill="currentColor"` (for inline `<svg>`) so the icon automatically matches whatever text color the active theme applies to the button — themes only need to style colors, not know about individual plugin icons. An `<img src="...">` tag also works but won't recolor per-theme.
 
 ### GetAdminNavs
 
@@ -219,7 +221,7 @@ The `PortalNavItemOpt` is a Go struct that represents a portal navigation menu i
 ```go
 type PortalNavItemOpt struct {
 	Label       string
-	IconFile    string
+	Icon        string
 	RouteName   string
 	RouteParams map[string]string
 	ExtraAttrs  map[string]any // HTML attributes for the menu item element
@@ -230,7 +232,7 @@ type PortalNavItemOpt struct {
 ### Fields
 
 - **Label** - The display text for the menu item
-- **IconFile** - Path to the icon file (relative to `resources/assets/images/`)
+- **Icon** - An HTML tag string for the menu item icon: an inline `<svg>` (e.g. `` `<svg>...</svg>` ``) or an `<img src="...">` tag
 - **RouteName** - The named route this menu item links to
 - **RouteParams** - Optional route parameters as key-value pairs
 - **ExtraAttrs** - Optional HTML attributes for the menu item element
@@ -245,7 +247,7 @@ navsAPI.PortalNavsFactory(func(r *http.Request) []PortalNavItemOpt {
     return []sdkapi.PortalNavItemOpt{
         {
             Label:     "WiFi Access",
-            IconFile:  "wifi-icon.png",
+            Icon:      `<img src="` + api.Http().Helpers().PublicPath("images/wifi-icon.png") + `" alt="">`,
             RouteName: "portal:wifi",
             ExtraAttrs: map[string]any{
                 "class":    "featured-item",
@@ -309,7 +311,7 @@ The `PortalNavItem` is a Go struct that represents an individual portal menu ite
 type PortalNavItem struct {
 	ID         string
 	Label      string
-	IconUrl    string
+	Icon       string
 	RouteUrl   string
 	ExtraAttrs map[string]any // HTML attributes (passed from PortalNavItemOpt)
 }
@@ -319,7 +321,7 @@ type PortalNavItem struct {
 
 - **ID** - Unique identifier for the menu item
 - **Label** - The display text for the menu item
-- **IconUrl** - The full URL to the icon image
+- **Icon** - An HTML tag string for the menu item icon (passed through from `PortalNavItemOpt.Icon`); themes render it as raw HTML (e.g. `templ.Raw(nav.Icon)`)
 - **RouteUrl** - The full URL for the menu item (generated from RouteName)
 - **ExtraAttrs** - HTML attributes passed from `PortalNavItemOpt.ExtraAttrs`
   - Theme plugins use these to render custom attributes on menu elements

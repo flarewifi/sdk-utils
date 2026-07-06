@@ -101,16 +101,15 @@ To add a portal menu item that links to `portal:welcome` route, we will use the 
 // rest of the init function code...
 
 navsAPI := api.Http().Navs()
-navsAPI.PortalNavsFactory(func(r *http.Request) []PortalNavItemOpt {
-    return []sdkapi.AdminNavItemOpt{
+navsAPI.PortalNavsFactory(func(r *http.Request) []sdkapi.PortalNavItemOpt {
+    return []sdkapi.PortalNavItemOpt{
         {
             Label:     "Welcome",                   // Menu display text
             RouteName: "portal:welcome",             // Link to the route
-            IconFile: api.Http().Helpers().ResourcePath("assets/images/some-image.jpg"),
+            Icon:      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none"><path d="..." fill="currentColor"/></svg>`,
             RouteParams: map[string]string{
                 "name": "John",
             },
-        },
         },
     }
 })
