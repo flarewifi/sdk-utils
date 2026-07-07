@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -45,12 +46,33 @@ const (
 	whitelistForward    string = "whitelist_forward"
 	whitelistPrerouting string = "whitelist_prerouting"
 
+	// pluginXxxChain are generic, PPPoE/plugin-agnostic attachment points core
+	// creates and wires into its own base chains exactly once, in Setup(). A
+	// plugin registers its own chain into one of these via
+	// AddForwardChainBeforeInternet/AddForwardChainAfterInternet/
+	// AddPreRoutingChainBeforeInternet/AddPreRoutingChainAfterInternet — see
+	// registerPluginChain. This keeps core's own base-chain rule positions fixed
+	// and lets any number of plugins add fully custom nftables logic (their own
+	// sets, DNAT, terminal accept/drop) without ever touching forward/prerouting
+	// directly, which nftables' single-terminal-verdict-per-hook semantics make
+	// otherwise unsafe for an independent plugin-owned base chain.
+	pluginForwardBeforeChain    string = "plugin_forward_before"
+	pluginForwardAfterChain     string = "plugin_forward_after"
+	pluginPreroutingBeforeChain string = "plugin_prerouting_before"
+	pluginPreroutingAfterChain  string = "plugin_prerouting_after"
+
 	// Hard-block sets: an absolute deny that sits ABOVE the session and whitelist
 	// accepts in the forward chain, so a blocked device loses internet regardless
 	// of whether it has an active session or is whitelisted.
 	blockedMacSet   string = "blocked_macs"
 	blockedIpsV4Set string = "blocked_client_ips_v4"
 	blockedIpsV6Set string = "blocked_client_ips_v6"
+
+	// blockForwardChain holds the hard-block drop rules and is wired into
+	// pluginForwardBeforeChain via registerCoreChain — the same generic
+	// attachment point AddForwardChainBeforeInternet gives plugins — instead of
+	// being jumped to directly from forward. See registerCoreChain.
+	blockForwardChain string = "block_forward"
 
 	// managedIfacesSet (type ifname) holds the interfaces the app manages.
 	// Membership is toggled by SetInterfaceMode as the admin flips an interface
@@ -125,18 +147,76 @@ var (
 	whitelistReconcilerOnce sync.Once
 )
 
+// Cleanup resets ONLY the rule-bearing chains core itself populates in Setup
+// (forward, prerouting, postrouting, whitelist_forward, whitelist_prerouting,
+// block_forward) by flushing their rules, so Setup can safely re-add them
+// without duplication on a re-run. It deliberately does NOT delete the table,
+// nor any plugin-owned chain or set — the generic plugin_forward_before/after
+// and plugin_prerouting_before/after attachment chains (see the pluginXxxChain
+// consts), any chain a plugin registered into them via
+// AddForwardChainBeforeInternet & co, and the existing dst_grp_*/svc_port_*
+// chains all survive untouched. Every other core map/set (verdict maps,
+// hard-block/managed/captive/portal-ip sets, whitelist sets) is re-declared
+// with an idempotent "add" in Setup's batch, which is a no-op if it already
+// exists — so their live elements (connected devices, whitelist/block
+// entries) also survive a re-run. A previous version of this function did
+// "nft delete table" (wiping everything), which would have destroyed every
+// plugin's firewall state on any future re-run of Setup — a plugin only gets
+// one shot at wiring in via api.Network().OnReady(), so it would never notice
+// and never re-register.
 func Cleanup() {
 	cmds := []string{
-		// Delete our custom table (this removes all chains, maps, sets, and rules within it)
-		fmt.Sprintf("nft delete table %s %s 2>/dev/null || true", tableFamily, internetTable),
+		fmt.Sprintf("nft add table %s %s 2>/dev/null || true", tableFamily, internetTable),
+		fmt.Sprintf("nft flush chain %s %s %s 2>/dev/null || true", tableFamily, internetTable, forwardChain),
+		fmt.Sprintf("nft flush chain %s %s %s 2>/dev/null || true", tableFamily, internetTable, preroutingChain),
+		fmt.Sprintf("nft flush chain %s %s %s 2>/dev/null || true", tableFamily, internetTable, postroutingChain),
+		fmt.Sprintf("nft flush chain %s %s %s 2>/dev/null || true", tableFamily, internetTable, whitelistForward),
+		fmt.Sprintf("nft flush chain %s %s %s 2>/dev/null || true", tableFamily, internetTable, whitelistPrerouting),
+		fmt.Sprintf("nft flush chain %s %s %s 2>/dev/null || true", tableFamily, internetTable, blockForwardChain),
 	}
 	cmd.ExecAll(cmds)
 }
 
+// setupMu/setupSucceeded guard Setup against ever doing real work more than
+// once. Cleanup only flushes the rule-bearing chains Setup itself owns — it
+// has no knowledge of the dst_grp_*/svc_port_* jump rules CreateDstIpGroup/
+// CreateServicePort (core/internal/api/firewall-api.go) install directly into
+// forward/prerouting, so a second real run would silently sever those
+// plugins' access with nothing to re-link them (they only register once, in
+// their own Init()). There is exactly one caller today (boot/init-network.go),
+// but this guard turns that into a hard guarantee instead of an assumption. A
+// failed first attempt is NOT latched as succeeded, so a retry after a
+// genuine failure still runs Cleanup + rebuild for real.
+var (
+	setupMu        sync.Mutex
+	setupSucceeded bool
+)
+
 func Setup() (err error) {
+	setupMu.Lock()
+	defer setupMu.Unlock()
+	if setupSucceeded {
+		return nil
+	}
+	if err = doSetup(); err == nil {
+		setupSucceeded = true
+	}
+	return err
+}
+
+func doSetup() (err error) {
 	Cleanup()
 
-	// Build nft batch script for atomic execution
+	// Build nft batch script for atomic execution. Every rule Setup owns is
+	// written into this ONE batch and applied with a single "nft -f -"
+	// transaction — including the whitelist/plugin jump rules that used to be
+	// appended afterward via 8 separate sequential cmd.Exec calls. nft applies a
+	// batch's statements strictly in listed order and rolls the WHOLE batch back
+	// on any single failure, so forward/prerouting can no longer end up
+	// half-wired (e.g. hard-block rules present but the whitelist/plugin jumps
+	// missing) if one nft command in the sequence fails partway through — which
+	// used to matter more now that Setup() only ever does real work once per
+	// process (see setupSucceeded above): a partial failure had no way to retry.
 	var batch strings.Builder
 
 	// Create our custom internet table
@@ -155,11 +235,22 @@ func Setup() (err error) {
 	batch.WriteString(fmt.Sprintf("add map %s %s %s { type ether_addr : verdict ; counter; }\n", tableFamily, internetTable, connMacMap))
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ether_addr; }\n", tableFamily, internetTable, connMacSet))
 
-	// Hard-block sets (absolute deny — see BlockMAC). Declared here so the drop
-	// rules below, which sit at the very top of the forward chain, can reference them.
+	// Hard-block sets (absolute deny — see BlockMAC) and the chain that holds
+	// their drop rules. block_forward is NOT jumped to directly from forward —
+	// it is wired into plugin_forward_before below (see registerCoreChain,
+	// called after the atomic batch), the same generic attachment point
+	// AddForwardChainBeforeInternet gives plugins. Because that wiring happens
+	// before any plugin's OnReady can run, block_forward is always the first
+	// entry in plugin_forward_before, so the hard block evaluates before even a
+	// plugin's own before-chain — closing the gap where a plugin's own terminal
+	// verdict could otherwise preempt it.
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ether_addr; }\n", tableFamily, internetTable, blockedMacSet))
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv4_addr; }\n", tableFamily, internetTable, blockedIpsV4Set))
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv6_addr; }\n", tableFamily, internetTable, blockedIpsV6Set))
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, blockForwardChain))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter drop\n", tableFamily, internetTable, blockForwardChain, blockedMacSet))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr @%s counter drop\n", tableFamily, internetTable, blockForwardChain, blockedIpsV4Set))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr @%s counter drop\n", tableFamily, internetTable, blockForwardChain, blockedIpsV6Set))
 
 	// Managed-interface set (see SetInterfaceMode). Declared here so the
 	// transparency-passthrough forward rule and the anti-tether postrouting rules
@@ -174,6 +265,33 @@ func Setup() (err error) {
 	// prerouting chains below; membership is filled by ApplyPortalConfig.
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv4_addr; }\n", tableFamily, internetTable, portalIpsV4Set))
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv6_addr; }\n", tableFamily, internetTable, portalIpsV6Set))
+
+	// Generic plugin chain-attachment points (see pluginXxxChain consts above).
+	// Declared empty here; plugins add their own chains/rules and a jump into
+	// one of these via registerPluginChain, after Setup() has wired the jumps
+	// below into forward/prerouting.
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, pluginForwardBeforeChain))
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, pluginForwardAfterChain))
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, pluginPreroutingBeforeChain))
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, pluginPreroutingAfterChain))
+
+	// Whitelist sets and chains (used by AllowMAC/DisallowMAC). Like
+	// block_forward above, whitelist_forward/whitelist_prerouting are NOT
+	// jumped to directly from forward/prerouting — they are wired into
+	// plugin_forward_after and plugin_prerouting_before below (see
+	// registerCoreChain, called after the atomic batch), the same generic
+	// attachment points AddForwardChainAfterInternet/AddPreRoutingChainBeforeInternet
+	// give plugins. Core's MAC allow-list is just the first (reserved) chain
+	// registered into each.
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ether_addr; }\n", tableFamily, internetTable, whitelistMacSet))
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv4_addr; flags timeout; }\n", tableFamily, internetTable, whitelistIpsV4Set))
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv6_addr; flags timeout; }\n", tableFamily, internetTable, whitelistIpsV6Set))
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, whitelistForward))
+	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, whitelistPrerouting))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistMacSet))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistIpsV4Set))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistIpsV6Set))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, whitelistPrerouting, whitelistMacSet))
 
 	// Create postrouting chain for anti-tethering (TTL set)
 	// Sets outgoing TTL to 1 so tethered devices cannot forward packets (TTL drops to 0)
@@ -191,25 +309,31 @@ func Setup() (err error) {
 	// This avoids per-packet conntrack overhead that causes latency for gaming.
 	//
 	// Rule order (first terminal verdict wins):
-	//   0. Hard block: source MAC / dest client IP in blocked sets — DROP. These
-	//      come FIRST so an absolute block beats the session and whitelist accepts.
-	//   0a. Portal bypass: ingress captive AND destination in the portal-IP sets —
+	//   0. Plugin forward-before jump — plugin_forward_before's first entry is
+	//      ALWAYS block_forward (the hard block, registered by registerCoreChain
+	//      before any plugin's OnReady can run — see doSetup below), so the hard
+	//      block evaluates before even a plugin's own before-chain. Any
+	//      plugin-supplied before-chain registered after it can still issue its
+	//      own terminal verdict here, ahead of everything below.
+	//   1. Portal bypass: ingress captive AND destination in the portal-IP sets —
 	//      ACCEPT. A client on any captive subnet must always be able to reach the
 	//      portal-serving interface IPs (interfaces.json), session or not — the
-	//      portal IS how it gets a session. Placed after the hard-block drops so
+	//      portal IS how it gets a session. Placed after the hard-block chain so
 	//      a blocked device still can't reach anything.
-	//   0b. Inter-captive routing: ingress AND egress both managed (captive) —
+	//   1a. Inter-captive routing: ingress AND egress both managed (captive) —
 	//      ACCEPT. This is LAN-to-LAN traffic between the app's own subnets, so
 	//      captive interfaces can reach each other without a session. Internet
 	//      egress leaves via the unmanaged WAN, so it does NOT match and still
 	//      falls through to the verdict maps below (stays session-gated).
-	//   1. Upload: source MAC verdict map — accept if MAC is registered.
-	//   2. Download (IPv4): destination IP verdict map — accept + count.
-	//   3. Download (IPv6): destination IP6 verdict map — accept + count.
-	//   4. (implicit) chain policy drop — everything else is blocked.
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedMacSet))
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedIpsV4Set))
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr @%s counter drop\n", tableFamily, internetTable, forwardChain, blockedIpsV6Set))
+	//   2. Upload: source MAC verdict map — accept if MAC is registered.
+	//   3. Download (IPv4): destination IP verdict map — accept + count.
+	//   4. Download (IPv6): destination IP6 verdict map — accept + count.
+	//   5. Plugin forward-after jump — plugin_forward_after's first entry is
+	//      ALWAYS whitelist_forward (whitelisted MAC/IP — accept), registered the
+	//      same way as block_forward above; any plugin's own after-chain runs
+	//      after it, but still before the chain's own drop policy.
+	//   6. (implicit) chain policy drop — everything else is blocked.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s counter jump %s\n", tableFamily, internetTable, forwardChain, pluginForwardBeforeChain))
 	// Portal bypass: forwarded traffic from a captive interface to any
 	// portal-serving IP is accepted unconditionally (no session needed). In the
 	// common case this traffic is locally delivered (INPUT) and never forwarded,
@@ -232,60 +356,66 @@ func Setup() (err error) {
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, connMacMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIpMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIp6Map))
-	// Service port jumps will be appended after this rule for unauthenticated clients.
+	// Service port jumps are appended after this rule for unauthenticated
+	// clients (see CreateServicePort in core/internal/api/firewall-api.go).
+	// Plugin forward-after jump: the LAST rule Setup adds to forward, so it only
+	// sees traffic core's own rules didn't already accept/drop. Its first entry
+	// is always whitelist_forward (see registerCoreChain below).
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s counter jump %s\n", tableFamily, internetTable, forwardChain, pluginForwardAfterChain))
 
-	// Whitelist sets and chains (used by the whitelist plugin for MAC-based bypass)
-	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ether_addr; }\n", tableFamily, internetTable, whitelistMacSet))
-	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv4_addr; flags timeout; }\n", tableFamily, internetTable, whitelistIpsV4Set))
-	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv6_addr; flags timeout; }\n", tableFamily, internetTable, whitelistIpsV6Set))
-	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, whitelistForward))
-	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, whitelistPrerouting))
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistMacSet))
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistIpsV4Set))
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr @%s counter accept\n", tableFamily, internetTable, whitelistForward, whitelistIpsV6Set))
-	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, whitelistPrerouting, whitelistMacSet))
+	// Add rules to our custom prerouting chain, in final order:
+	//   1. Plugin prerouting-before jump — topmost. Its first entry is ALWAYS
+	//      whitelist_prerouting (whitelisted MAC — accept), registered by
+	//      registerCoreChain before any plugin's OnReady can run (see doSetup
+	//      below); any plugin's own before-chain runs after it, but still ahead
+	//      of everything below.
+	//   2. Authenticated-device bypass — a device with an active session
+	//      (connected_macs_set) skips the captive-portal DNAT. This is global
+	//      (not per-interface), so it is set up once here instead of
+	//      per-interface. It comes after the plugin/whitelist jump and before the
+	//      DNAT rule (which SetCaptivePortalTarget appends later, outside Setup),
+	//      giving the correct precedence: whitelist → authenticated →
+	//      portal-IP bypass → DNAT everyone else.
+	//   3. Portal-IP bypass — traffic from a captive interface already destined
+	//      to a portal-serving IP (interfaces.json) is accepted here, before the
+	//      DNAT rule SetCaptivePortalTarget appends later, so it is never
+	//      rewritten to the main portal IP. Without this, a client sent to its
+	//      own gateway's portal (e.g. http://20.0.0.1 by RedirectToLanIP) would
+	//      have the destination silently swapped to the main IP while its Host
+	//      header still names its own gateway.
+	//   4. Plugin prerouting-after jump — the last prerouting rule Setup adds.
+	//      Note SetCaptivePortalTarget's captive DNAT rule is added later,
+	//      outside Setup, and lands after this — an accepted scope boundary.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s counter jump %s\n", tableFamily, internetTable, preroutingChain, pluginPreroutingBeforeChain))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, connMacSet))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s ip daddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, captiveIfacesSet, portalIpsV4Set))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s ip6 daddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, captiveIfacesSet, portalIpsV6Set))
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s counter jump %s\n", tableFamily, internetTable, preroutingChain, pluginPreroutingAfterChain))
 
-	// Execute batch command using nft -f - with heredoc for atomic execution
+	// Execute the entire ruleset as one atomic transaction: either all of it
+	// applies, or (on any single failure) none of it does — nft rolls the whole
+	// batch back rather than leaving forward/prerouting half-wired.
 	nftCmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
-	err = cmd.Exec(nftCmd, nil)
-	if err != nil {
+	if err = cmd.Exec(nftCmd, nil); err != nil {
 		return err
 	}
 
-	// Jump rules added after batch — append whitelist_forward (after verdict maps),
-	// insert whitelist_prerouting (before captive portal DNAT).
-	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s counter jump %s", tableFamily, internetTable, forwardChain, whitelistForward), nil)
-	if err != nil {
+	// Wire core's own hard-block and whitelist chains into their generic
+	// attachment points using registerCoreChain — the exact same primitive
+	// AddForwardChainBeforeInternet/AfterInternet and
+	// AddPreRoutingChainBeforeInternet expose to plugins. This runs after the
+	// atomic batch above (so plugin_forward_before/after and
+	// plugin_prerouting_before already exist to jump into) and before
+	// RunNetworkReadyCallbacks can fire any plugin's OnReady, guaranteeing these
+	// three are always the first entry registered in their respective generic
+	// chain.
+	if err = registerCoreChain(blockForwardChain, pluginForwardBeforeChain); err != nil {
 		return err
 	}
-	err = cmd.Exec(fmt.Sprintf("nft insert rule %s %s %s counter jump %s", tableFamily, internetTable, preroutingChain, whitelistPrerouting), nil)
-	if err != nil {
+	if err = registerCoreChain(whitelistForward, pluginForwardAfterChain); err != nil {
 		return err
 	}
-
-	// Authenticated-device bypass: a device with an active session (in
-	// connected_macs_set) skips the captive-portal DNAT. This is global (not
-	// per-interface), so it is set up once here instead of per-interface. It is
-	// appended AFTER the whitelist jump and BEFORE the DNAT rule (which
-	// SetCaptivePortalTarget appends later), giving the correct precedence:
-	// whitelist → authenticated → portal-IP bypass → DNAT everyone else.
-	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s ether saddr @%s counter accept", tableFamily, internetTable, preroutingChain, connMacSet), nil)
-	if err != nil {
-		return err
-	}
-
-	// Portal-IP bypass: traffic from a captive interface already destined to a
-	// portal-serving IP (interfaces.json) is accepted here, BEFORE the DNAT rule
-	// SetCaptivePortalTarget appends later, so it is never rewritten to the main
-	// portal IP. Without this, a client sent to its own gateway's portal (e.g.
-	// http://20.0.0.1 by RedirectToLanIP) would have the destination silently
-	// swapped to the main IP while its Host header still names its own gateway.
-	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s iifname @%s ip daddr @%s counter accept", tableFamily, internetTable, preroutingChain, captiveIfacesSet, portalIpsV4Set), nil)
-	if err != nil {
-		return err
-	}
-	err = cmd.Exec(fmt.Sprintf("nft add rule %s %s %s iifname @%s ip6 daddr @%s counter accept", tableFamily, internetTable, preroutingChain, captiveIfacesSet, portalIpsV6Set), nil)
-	if err != nil {
+	if err = registerCoreChain(whitelistPrerouting, pluginPreroutingBeforeChain); err != nil {
 		return err
 	}
 
@@ -464,6 +594,166 @@ func ruleContainsDnat(exprs []interface{}) bool {
 	return false
 }
 
+// =============================================================================
+// GENERIC PLUGIN CHAIN ATTACHMENT POINTS
+//
+// AddForwardChainBeforeInternet/AddForwardChainAfterInternet/
+// AddPreRoutingChainBeforeInternet/AddPreRoutingChainAfterInternet let a plugin
+// register its own fully-custom chain (own sets, DNAT, terminal accept/drop)
+// without touching forward/prerouting directly — see pluginXxxChain consts and
+// their wiring in Setup().
+// =============================================================================
+
+// AddPreRoutingChainBeforeInternet creates chainName (if missing) and wires a
+// jump to it from plugin_prerouting_before — the topmost rule in prerouting.
+func AddPreRoutingChainBeforeInternet(chainName string) error {
+	return registerPluginChain(chainName, pluginPreroutingBeforeChain)
+}
+
+// AddPreRoutingChainAfterInternet creates chainName (if missing) and wires a
+// jump to it from plugin_prerouting_after — the last rule Setup adds to
+// prerouting (a later captive-portal DNAT can still land after this).
+func AddPreRoutingChainAfterInternet(chainName string) error {
+	return registerPluginChain(chainName, pluginPreroutingAfterChain)
+}
+
+// AddForwardChainBeforeInternet creates chainName (if missing) and wires a
+// jump to it from plugin_forward_before — the topmost rule in forward, ahead
+// of even the hard-block drops.
+func AddForwardChainBeforeInternet(chainName string) error {
+	return registerPluginChain(chainName, pluginForwardBeforeChain)
+}
+
+// AddForwardChainAfterInternet creates chainName (if missing) and wires a jump
+// to it from plugin_forward_after — after the built-in hard-block/whitelist/
+// session rules but before the chain's own drop policy.
+func AddForwardChainAfterInternet(chainName string) error {
+	return registerPluginChain(chainName, pluginForwardAfterChain)
+}
+
+// pluginChainNameRe restricts plugin-supplied chain names to safe nft
+// identifier characters. registerPluginChain interpolates chainName directly
+// into shell-executed nft commands (core/utils/shell runs every command
+// through `sh -c`), so this is the only thing standing between a caller
+// string and a shell/nft-syntax injection — unlike CreateDstIpGroup/
+// CreateServicePort, which slugify their name before use, a plugin's own code
+// depends on the literal chainName it passed in to add rules directly into
+// that chain later, so silently rewriting it here isn't an option.
+var pluginChainNameRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// reservedChainNames are chain names Setup owns. Registering a plugin chain
+// under (or a jump target as) one of these would either be rejected by nft
+// (jump into a base chain is invalid) or silently cross-wire the four generic
+// attachment points into each other.
+var reservedChainNames = map[string]bool{
+	forwardChain:                true,
+	preroutingChain:             true,
+	postroutingChain:            true,
+	whitelistForward:            true,
+	whitelistPrerouting:         true,
+	blockForwardChain:           true,
+	pluginForwardBeforeChain:    true,
+	pluginForwardAfterChain:     true,
+	pluginPreroutingBeforeChain: true,
+	pluginPreroutingAfterChain:  true,
+}
+
+// registerPluginChain validates a plugin-supplied chain name and, if it clears
+// both checks, wires it into genericChain via attachChainJump. This is the
+// entry point AddForwardChainBeforeInternet & co. use for arbitrary plugin
+// input; see registerCoreChain for the equivalent used by core's own reserved
+// chains (block_forward, whitelist_forward, whitelist_prerouting), which skip
+// these checks since chainName there is always one of our own constants.
+func registerPluginChain(chainName, genericChain string) error {
+	if !pluginChainNameRe.MatchString(chainName) {
+		return fmt.Errorf("invalid chain name %q: must match %s", chainName, pluginChainNameRe.String())
+	}
+	if reservedChainNames[chainName] {
+		return fmt.Errorf("chain name %q is reserved for core use", chainName)
+	}
+	return attachChainJump(chainName, genericChain)
+}
+
+// registerCoreChain wires one of core's own reserved chains into a generic
+// attachment point, using the exact same attachChainJump primitive
+// registerPluginChain uses for plugins. Core's hard-block/whitelist logic is
+// not a special case implemented separately — it is simply the first
+// registrant in plugin_forward_before/after and plugin_prerouting_before (see
+// doSetup, which always calls this before RunNetworkReadyCallbacks can fire any
+// plugin's OnReady, guaranteeing these three chains are always the first entry
+// in their respective generic chain).
+func registerCoreChain(chainName, genericChain string) error {
+	return attachChainJump(chainName, genericChain)
+}
+
+// attachChainJump creates chainName in the shared table (best-effort idempotent
+// add, matching setMembership's convention) and, if not already present, adds a
+// jump into genericChain. Serialized through nftQue like every other firewall
+// mutation in this package.
+func attachChainJump(chainName, genericChain string) error {
+	contextInfo := fmt.Sprintf("ChainName=%s, GenericChain=%s", chainName, genericChain)
+
+	_, err := nftQue.ExecWithTimeout(
+		10*time.Second,
+		"Register Chain",
+		contextInfo,
+		func() (any, error) {
+			if err := cmd.Exec(fmt.Sprintf("nft add chain %s %s %s 2>/dev/null || true", tableFamily, internetTable, chainName), nil); err != nil {
+				return nil, err
+			}
+			if chainHasJumpTo(genericChain, chainName) {
+				return nil, nil
+			}
+			return nil, cmd.Exec(fmt.Sprintf("nft add rule %s %s %s counter jump %s", tableFamily, internetTable, genericChain, chainName), nil)
+		},
+	)
+	return err
+}
+
+// chainHasJumpTo reports whether mainChain already contains a jump rule to
+// targetChain, by listing mainChain as JSON and inspecting each rule's
+// expressions for a jump verdict naming targetChain.
+func chainHasJumpTo(mainChain, targetChain string) bool {
+	var out bytes.Buffer
+	if err := cmd.ExecOutput(fmt.Sprintf("nft -j -a list chain %s %s %s", tableFamily, internetTable, mainChain), &out); err != nil {
+		return false
+	}
+
+	var result nftRuleList
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		return false
+	}
+
+	for _, entry := range result.Nftables {
+		if entry.Rule == nil {
+			continue
+		}
+		if ruleContainsJumpTo(entry.Rule.Expr, targetChain) {
+			return true
+		}
+	}
+	return false
+}
+
+// ruleContainsJumpTo reports whether a rule's expressions contain a jump
+// verdict to targetChain.
+func ruleContainsJumpTo(exprs []interface{}, targetChain string) bool {
+	for _, expr := range exprs {
+		exprMap, ok := expr.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		jumpExpr, ok := exprMap["jump"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if target, ok := jumpExpr["target"].(string); ok && target == targetChain {
+			return true
+		}
+	}
+	return false
+}
+
 func Connect(ip string, mac string) error {
 	contextInfo := fmt.Sprintf("IP=%s, MAC=%s", ip, mac)
 
@@ -615,9 +905,13 @@ func doConnect(ip string, mac string) error {
 	// so return traffic works, and prune only a stale same-family IP from a prior
 	// address. This is add-only — it never revokes access (that is DisallowMAC's job)
 	// — so it stays independent of session lifecycle while still converging on the
-	// device's current IP across a change.
+	// device's current IP across a change. Best-effort: Connect's primary job
+	// (session admission) already succeeded above, so a whitelist-sync failure
+	// here is logged, not surfaced as a Connect failure.
 	if whitelisted {
-		syncWhitelistIPForMac(normalizedMAC, ip)
+		if err := syncWhitelistIPForMac(normalizedMAC, ip); err != nil {
+			fmt.Printf("Warning: failed to sync whitelist IP for MAC %s: %v\n", normalizedMAC, err)
+		}
 	}
 
 	return nil
@@ -697,9 +991,14 @@ func doAllowMAC(mac string) error {
 		return fmt.Errorf("invalid MAC address: %v", err)
 	}
 
-	// Upload: accept client -> internet by source MAC.
-	if err := cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, whitelistMacSet, normalizedMAC), nil); err != nil {
-		return err
+	// Upload: accept client -> internet by source MAC. No "2>/dev/null || true"
+	// here (unlike most best-effort calls in this file) — this IS the grant
+	// AllowMAC promises, so a failure (e.g. called before Setup() has created
+	// whitelist_macs) must propagate instead of being swallowed while
+	// whitelistedMacs/IsWhitelisted still report a grant that was never actually
+	// applied in the kernel.
+	if err := cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }'", tableFamily, internetTable, whitelistMacSet, normalizedMAC), nil); err != nil {
+		return fmt.Errorf("add whitelist MAC element: %w", err)
 	}
 
 	// Mark whitelisted BEFORE registering IPs so a concurrent Connect also syncs.
@@ -720,7 +1019,9 @@ func doAllowMAC(mac string) error {
 	// portal until it expires. Register the IP first, then flush, so the flow's
 	// next packet re-evaluates against the now-permissive ruleset.
 	for _, ip := range resolveMacIPs(normalizedMAC) {
-		syncWhitelistIPForMac(normalizedMAC, ip)
+		if err := syncWhitelistIPForMac(normalizedMAC, ip); err != nil {
+			return fmt.Errorf("sync whitelist IP %s: %w", ip, err)
+		}
 		flushConntrackForIP(ip)
 	}
 
@@ -758,10 +1059,13 @@ func doBlockMAC(mac string) error {
 	}
 
 	// Upload: drop client -> internet by source MAC. This element feeds the drop
-	// rule at the top of the forward chain, so it beats both the session accept
-	// (connected_macs_map) and the whitelist accept (whitelist_macs).
-	if err := cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, blockedMacSet, normalizedMAC), nil); err != nil {
-		return err
+	// rule inside block_forward, so it beats both the session accept
+	// (connected_macs_map) and the whitelist accept (whitelist_macs). No
+	// "2>/dev/null || true" here — this IS the block BlockMAC promises, so a
+	// failure must propagate instead of leaving blockedMacs/callers believing a
+	// device is blocked when it was never actually denied in the kernel.
+	if err := cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }'", tableFamily, internetTable, blockedMacSet, normalizedMAC), nil); err != nil {
+		return fmt.Errorf("add blocked MAC element: %w", err)
 	}
 
 	nftMu.Lock()
@@ -774,7 +1078,9 @@ func doBlockMAC(mac string) error {
 	// blocked client can't send, so it can't use the internet even if its IP later
 	// changes); these IP drops + the flush just make the cutoff instant.
 	for _, ip := range resolveMacIPs(normalizedMAC) {
-		addBlockedIPForMac(normalizedMAC, ip)
+		if err := addBlockedIPForMac(normalizedMAC, ip); err != nil {
+			return fmt.Errorf("add blocked IP %s: %w", ip, err)
+		}
 		flushConntrackForIP(ip)
 	}
 
@@ -970,7 +1276,11 @@ func reconcileWhitelistIPs() {
 
 	for _, mac := range macs {
 		for _, ip := range resolveMacIPsFrom(mac, arpByMac) {
-			syncWhitelistIPForMac(mac, ip)
+			// Best-effort: this is a periodic background pass, not a
+			// caller-facing operation — log and keep reconciling the rest.
+			if err := syncWhitelistIPForMac(mac, ip); err != nil {
+				fmt.Printf("Warning: failed to reconcile whitelist IP for MAC %s: %v\n", mac, err)
+			}
 		}
 	}
 }
@@ -981,9 +1291,9 @@ func reconcileWhitelistIPs() {
 // access: it never removes a different-family IP (dual-stack stays intact) and is
 // the ONLY converging path — session disconnect deliberately does not prune — so
 // a whitelisted device keeps internet across session teardown and IP changes.
-func syncWhitelistIPForMac(normalizedMAC, ip string) {
+func syncWhitelistIPForMac(normalizedMAC, ip string) error {
 	if ip == "" {
-		return
+		return nil
 	}
 	newIsV6 := isIPv6(ip)
 
@@ -999,7 +1309,7 @@ func syncWhitelistIPForMac(normalizedMAC, ip string) {
 	for _, old := range stale {
 		removeWhitelistIPForMac(normalizedMAC, old)
 	}
-	addWhitelistIPForMac(normalizedMAC, ip)
+	return addWhitelistIPForMac(normalizedMAC, ip)
 }
 
 // whitelistSetForIP returns the whitelist client-IP set matching the IP's family.
@@ -1012,12 +1322,17 @@ func whitelistSetForIP(ip string) string {
 
 // addWhitelistIPForMac registers a client IP for return traffic and records it
 // under the MAC so DisallowMAC/Disconnect can remove exactly what was added.
-// Idempotent at both the nftables and tracking-map level.
-func addWhitelistIPForMac(normalizedMAC, ip string) {
+// Idempotent at both the nftables and tracking-map level. No "|| true" on the
+// nft call — this is the actual grant, so a failure (e.g. the whitelist IP sets
+// don't exist yet) must propagate instead of the tracking map silently
+// recording an IP that was never actually added to the kernel set.
+func addWhitelistIPForMac(normalizedMAC, ip string) error {
 	if ip == "" {
-		return
+		return nil
 	}
-	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, whitelistSetForIP(ip), ip), nil)
+	if err := cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }'", tableFamily, internetTable, whitelistSetForIP(ip), ip), nil); err != nil {
+		return fmt.Errorf("add whitelist IP element: %w", err)
+	}
 
 	nftMu.Lock()
 	if whitelistMacIps[normalizedMAC] == nil {
@@ -1025,6 +1340,7 @@ func addWhitelistIPForMac(normalizedMAC, ip string) {
 	}
 	whitelistMacIps[normalizedMAC][ip] = true
 	nftMu.Unlock()
+	return nil
 }
 
 // removeWhitelistIPForMac removes a single client IP's return-traffic entry and
@@ -1069,12 +1385,17 @@ func blockedSetForIP(ip string) string {
 }
 
 // addBlockedIPForMac drops a client IP's return traffic and records it under the
-// MAC so UnblockMAC can remove exactly what was added. Idempotent.
-func addBlockedIPForMac(normalizedMAC, ip string) {
+// MAC so UnblockMAC can remove exactly what was added. Idempotent. No "|| true"
+// on the nft call — this is the actual deny, so a failure must propagate
+// instead of the tracking map silently recording an IP that was never actually
+// dropped in the kernel.
+func addBlockedIPForMac(normalizedMAC, ip string) error {
 	if ip == "" {
-		return
+		return nil
 	}
-	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, blockedSetForIP(ip), ip), nil)
+	if err := cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }'", tableFamily, internetTable, blockedSetForIP(ip), ip), nil); err != nil {
+		return fmt.Errorf("add blocked IP element: %w", err)
+	}
 
 	nftMu.Lock()
 	if blockedMacIps[normalizedMAC] == nil {
@@ -1082,6 +1403,7 @@ func addBlockedIPForMac(normalizedMAC, ip string) {
 	}
 	blockedMacIps[normalizedMAC][ip] = true
 	nftMu.Unlock()
+	return nil
 }
 
 // removeBlockedIP removes a client IP from whichever blocked client-IP set it

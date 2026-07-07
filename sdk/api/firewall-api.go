@@ -81,4 +81,36 @@ type IFirewallAPI interface {
 	// device would otherwise have (session and/or whitelist). It grants nothing on
 	// its own.
 	UnblockMAC(mac string) error
+
+	// AddPreRoutingChainBeforeInternet creates chainName (if it doesn't already
+	// exist) in the shared firewall table and wires a jump to it from the very
+	// top of the prerouting chain — before the whitelist/session bypass and the
+	// captive-portal DNAT. The caller owns every rule inside chainName (added via
+	// its own nft calls); this only creates the chain and registers the jump.
+	// MUST be called from an api.Network().OnReady() callback, not from Init() —
+	// the shared table doesn't exist until nftables setup has completed.
+	// Idempotent.
+	AddPreRoutingChainBeforeInternet(chainName string) error
+
+	// AddPreRoutingChainAfterInternet is the same as
+	// AddPreRoutingChainBeforeInternet but wires the jump at the end of the
+	// prerouting rules the core sets up — a captive-portal DNAT rule added later
+	// (WiFi hotspot) can still land after this jump. Idempotent; same OnReady
+	// timing requirement.
+	AddPreRoutingChainAfterInternet(chainName string) error
+
+	// AddForwardChainBeforeInternet creates chainName (if it doesn't already
+	// exist) and wires a jump to it from the very top of the forward chain —
+	// before even the hard-block rules. A terminal verdict inside chainName
+	// short-circuits the built-in forward logic for matching packets; anything
+	// chainName doesn't resolve falls through to the built-in rules as normal.
+	// Idempotent; same OnReady timing requirement as
+	// AddPreRoutingChainBeforeInternet.
+	AddForwardChainBeforeInternet(chainName string) error
+
+	// AddForwardChainAfterInternet is the same as AddForwardChainBeforeInternet
+	// but wires the jump at the end of the forward chain — after the built-in
+	// hard-block/whitelist/session rules but before the chain's own drop policy.
+	// Idempotent; same OnReady timing requirement.
+	AddForwardChainAfterInternet(chainName string) error
 }

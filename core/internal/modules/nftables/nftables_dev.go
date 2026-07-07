@@ -5,6 +5,7 @@ package nftables
 import (
 	"fmt"
 	"net"
+	"regexp"
 	"sync"
 	"time"
 
@@ -321,6 +322,48 @@ func UnblockMAC(mac string) error {
 				return nil, fmt.Errorf("invalid MAC address: %v", err)
 			}
 			delete(blockedTable, normalizedMAC)
+			return nil, nil
+		},
+	)
+	return err
+}
+
+// AddPreRoutingChainBeforeInternet/AddPreRoutingChainAfterInternet/
+// AddForwardChainBeforeInternet/AddForwardChainAfterInternet: dev mocks, no
+// real nftables chains/jumps to wire — always succeed.
+func AddPreRoutingChainBeforeInternet(chainName string) error {
+	return registerPluginChainMock(chainName)
+}
+
+func AddPreRoutingChainAfterInternet(chainName string) error {
+	return registerPluginChainMock(chainName)
+}
+
+func AddForwardChainBeforeInternet(chainName string) error {
+	return registerPluginChainMock(chainName)
+}
+
+func AddForwardChainAfterInternet(chainName string) error {
+	return registerPluginChainMock(chainName)
+}
+
+// pluginChainNameRe mirrors the real build's validation (nftables.go) so an
+// invalid chain name is rejected the same way in dev as it would be in
+// production, instead of silently "succeeding" against no real nftables.
+var pluginChainNameRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+func registerPluginChainMock(chainName string) error {
+	if !pluginChainNameRe.MatchString(chainName) {
+		return fmt.Errorf("invalid chain name %q: must match %s", chainName, pluginChainNameRe.String())
+	}
+
+	contextInfo := fmt.Sprintf("ChainName=%s", chainName)
+
+	_, err := nftQue.ExecWithTimeout(
+		4*time.Second,
+		"Register Plugin Chain",
+		contextInfo,
+		func() (any, error) {
 			return nil, nil
 		},
 	)

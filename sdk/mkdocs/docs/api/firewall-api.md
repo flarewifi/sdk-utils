@@ -9,8 +9,22 @@ It groups into three capabilities, smallest scope first:
 - **Destination IP Groups** — allow a set of clients to reach a *specific set of destination IPs* (e.g. a payment provider or a portal host), and nothing else. Create the group once, then add/remove clients (optionally with an auto-expiry timeout). Best for scoped, pre-auth access to known services. See [Destination IP Groups](#destination-ip-groups).
 - **Service Ports** — allow clients to reach a *protocol + port* (e.g. UDP/123 NTP, TCP+UDP/53 DNS), optionally restricted to given destination IPs. Best for the handful of services a device needs *before* it authenticates. See [Service Port Management](#service-port-management).
 - **MAC Access Control** — grant or deny a device *full* internet by MAC: `AllowMAC`/`DisallowMAC` whitelist a device past the portal, while `BlockMAC`/`UnblockMAC` are an absolute deny that overrides even an active paid session. See [MAC Access Control](#mac-access-control).
+- **Custom Chain Attachment Points** — when none of the above fit, get a stable, named place in the shared table to `jump` into your own fully custom chain (own sets, own DNAT, own terminal verdicts) without touching core's `forward`/`prerouting` chains directly. See [Custom Chain Attachment Points](#custom-chain-attachment-points).
 
-Rules created through this API live in nftables only and are **wiped on reboot** (and on firewall reset) — the plugin owns persistence and must re-apply what it granted on startup (e.g. in `Init()` / `OnReady`).
+Rules created through this API live in nftables only and are **wiped on reboot** (and on firewall reset) — the plugin owns persistence and must re-apply what it granted on startup (see the `OnReady` requirement immediately below).
+
+!!! danger "Call every method here from `OnReady`, not `Init()`"
+    Every method in this API — `CreateDstIpGroup`, `CreateServicePort`, `AllowMAC`/`BlockMAC`,
+    and the custom chain attachment points — needs the shared `inet internet` table (and, for
+    MAC access control, its `whitelist_macs`/`blocked_macs` sets) to already exist. That table
+    is created by `nftables.Setup()`, which runs **after** every plugin's `Init()` during boot.
+    Re-apply persisted grants from `api.Network().OnReady(func() { ... })` instead — the same
+    pattern already used by the whitelist/tailscale/coinslot plugins.
+
+    Every method here returns an error if called this early (the underlying set/chain
+    doesn't exist yet), so a plugin that checks its return value will notice — but nothing
+    else warns you at compile time, and it is easy to miss if the error is only logged
+    (see the `AllowMAC`/`BlockMAC` notes below on what an early call does and does not do).
 
 !!! danger "Do not manage WiFi sessions with this API"
     `IFirewallAPI` works at the packet level — it opens and closes raw network access. It does **not** create, track, time, account for, pause/resume, or expire client **sessions**. For anything session-related use [`ISessionsMgrApi`](./sessions-mgr-api.md) (via `api.SessionsMgr()`), which owns the session lifecycle (time/data limits, vouchers, pause/resume, expiry) **and drives the firewall for you**. Reaching for `AllowMAC`/`BlockMAC` to grant timed internet bypasses session accounting and desyncs the portal — use `IFirewallAPI` only for access *outside* a session (scoped service access, pre-auth ports, whitelist bypass, hard blocks).
@@ -102,6 +116,9 @@ if err != nil {
 **Notes:**
 - Group names are slugified (e.g., "my-api-service" becomes "my_api_service" in nftables)
 - Returns error if group with same name already exists
+- Safe to call again after a process restart (e.g. from `OnReady` on every boot) —
+  automatically flushes and rebuilds this group's own kernel-side chains and sets
+  first, so rules never duplicate across restarts
 - Creates nftables sets and chains for the group atomically
 - IPv4 and IPv6 addresses are automatically separated
 
@@ -323,6 +340,9 @@ if err != nil {
 **Notes:**
 - Service port names are slugified (e.g., "my-service" becomes "my_service" in nftables)
 - Returns error if service port with same name already exists
+- Safe to call again after a process restart (e.g. from `OnReady` on every boot) —
+  automatically flushes and rebuilds this service port's own kernel-side chains and
+  sets first, so rules never duplicate across restarts
 - Creates nftables sets and chains atomically
 - IPv4 and IPv6 addresses are automatically separated
 - Once created, any number of clients can be added/removed efficiently
@@ -539,7 +559,7 @@ independent pairs:
 - **Whitelist (allow / revoke):** `AllowMAC` ↔ `DisallowMAC` — bypass the captive portal so a device gets internet without a session.
 - **Hard block (deny / undo):** `BlockMAC` ↔ `UnblockMAC` — an absolute deny that overrides everything, including an active session or a whitelist entry.
 
-The pairs are independent: `DisallowMAC` only undoes an `AllowMAC` grant (a device that still has an active session keeps internet), while `BlockMAC` drops traffic *before* the session and whitelist accepts are evaluated, so it wins regardless of state. **Lift a block with `UnblockMAC`, not `DisallowMAC`** (and vice-versa). All four are ephemeral — they exist only until reboot, so persist state and re-apply it on startup.
+The pairs are independent: `DisallowMAC` only undoes an `AllowMAC` grant (a device that still has an active session keeps internet), while `BlockMAC` drops traffic *before* the session and whitelist accepts are evaluated, so it wins regardless of state. **Lift a block with `UnblockMAC`, not `DisallowMAC`** (and vice-versa). All four are ephemeral — they exist only until reboot, so persist state and re-apply it from `OnReady` on startup (see the danger box at the top of this page — calling `AllowMAC`/`BlockMAC` from `Init()` returns an error, since the sets they mutate don't exist until `nftables.Setup()` has run).
 
 ### AllowMAC
 
@@ -549,7 +569,9 @@ Opens the firewall for a MAC address, bypassing the captive portal. Grants worki
 - `mac` (string) - MAC address to allow (any common format, will be normalized)
 
 **Returns:**
-- `error` - Error if MAC format is invalid
+- `error` - Error if MAC format is invalid, or if the whitelist could not be updated in
+  nftables (including if called before `nftables.Setup()` has run — see the `OnReady`
+  danger box at the top of this page)
 
 ```go
 // Allow a device to bypass the captive portal
@@ -591,13 +613,15 @@ if err != nil {
 
 ### BlockMAC
 
-Absolutely denies internet access to a MAC, **regardless of whether the device has an active session or is whitelisted**. The deny is evaluated at the top of the forward chain, above every accept rule, so it always wins. In-flight connections are cut immediately (conntrack is flushed). Reverse with `UnblockMAC`.
+Absolutely denies internet access to a MAC, **regardless of whether the device has an active session or is whitelisted**. The deny is registered in `block_forward` — the chain wired into `plugin_forward_before`, the very first attachment point in `forward` — so it is evaluated above every accept rule and always wins. In-flight connections are cut immediately (conntrack is flushed). Reverse with `UnblockMAC`.
 
 **Parameters:**
 - `mac` (string) - MAC address to block (any common format, will be normalized)
 
 **Returns:**
-- `error` - Error if MAC format is invalid
+- `error` - Error if MAC format is invalid, or if the block could not be applied in
+  nftables (including if called before `nftables.Setup()` has run — see the `OnReady`
+  danger box at the top of this page)
 
 ```go
 // Hard-block a device even if it has a paid session or is whitelisted
@@ -636,6 +660,136 @@ if err != nil {
 - Idempotent — calling for a non-blocked MAC is safe (no error)
 - Removes the upload deny and the download IP denies added at block time
 - Grants nothing by itself — the device regains access only via its session/whitelist
+
+## Custom Chain Attachment Points
+
+Destination IP groups, service ports, and MAC access control cover the common cases.
+When a plugin needs a **fully custom** nftables rule — its own sets, its own DNAT, its
+own terminal accept/drop logic — that a fixed group/port/MAC primitive can't express,
+these four methods give it a stable, named attachment point in the shared `inet
+internet` table without letting it touch core's own `forward`/`prerouting` chains
+directly.
+
+Each method creates a regular chain (if it doesn't already exist) owned entirely by the
+caller, and wires a `jump` into one of four **generic** chains core itself creates and
+positions once in `Setup()`: `plugin_prerouting_before`, `plugin_prerouting_after`,
+`plugin_forward_before`, `plugin_forward_after`. The caller is responsible for every
+rule inside its own chain (added via its own direct `nft` calls) — these methods only
+create the chain and register the jump into the right generic chain.
+
+!!! danger "Must be called from `OnReady`, not `Init()`"
+    The shared table — and these four generic chains — don't exist until
+    `nftables.Setup()` has completed, which happens after `Init()` normally runs. Call
+    these methods from `api.Network().OnReady(func() { ... })` instead, the same pattern
+    already used by the whitelist/tailscale/coinslot plugins.
+
+**Where each attachment point lands relative to core's own rules:**
+
+| Method | Generic chain | Position |
+|--------|--------------|----------|
+| `AddForwardChainBeforeInternet` | `plugin_forward_before` | Very top of `forward` — before even the hard-block (`BlockMAC`) rules. A terminal verdict here short-circuits core's forward logic entirely for matching packets. |
+| `AddForwardChainAfterInternet` | `plugin_forward_after` | End of `forward` — after hard-block/whitelist/session verdict-map rules, but before the chain's own `drop` policy. |
+| `AddPreRoutingChainBeforeInternet` | `plugin_prerouting_before` | Very top of `prerouting` — before the whitelist/session bypass and the captive-portal DNAT. |
+| `AddPreRoutingChainAfterInternet` | `plugin_prerouting_after` | End of the rules `Setup()` builds for `prerouting`. **Note:** a WiFi captive-portal DNAT rule added later via `SetCaptivePortalTarget` lands *after* this jump too — "after" on prerouting is not the last word if a captive DNAT is also active. Use "Before" if your rule must run ahead of the captive redirect. |
+
+A non-terminal jump (your chain's rules don't match) falls through and core's own rules
+still apply as normal — nftables `jump` semantics only consume the packet if your chain
+reaches a terminal verdict (`accept`/`drop`).
+
+### AddForwardChainBeforeInternet
+
+Creates (if needed) a chain named `chainName` in the shared `inet internet` table and
+registers a jump to it from `plugin_forward_before`, which runs before every built-in
+`forward` rule — including the hard-block checks.
+
+**Parameters:**
+- `chainName` (string) - Name of the plugin-owned chain to create and jump to
+
+**Returns:**
+- `error` - Error if the chain/jump could not be created
+
+```go
+func Init(api sdkapi.IPluginApi) error {
+    api.Network().OnReady(func() {
+        if err := api.Firewall().AddForwardChainBeforeInternet("pppoe_forward"); err != nil {
+            api.Logger().Error("firewall: wire forward chain: " + err.Error())
+        }
+    })
+    return nil
+}
+```
+
+**Notes:**
+- Idempotent — safe to call repeatedly with the same `chainName`
+- The caller owns every rule inside `chainName`; this method does not add any rules to it
+- Use this over `AddForwardChainAfterInternet` when core's own `forward` rules would
+  otherwise accept/pass the traffic before your chain ever runs (e.g. an existing
+  transparency-passthrough rule for the same interface)
+
+### AddForwardChainAfterInternet
+
+Same as `AddForwardChainBeforeInternet`, but registers into `plugin_forward_after`,
+which runs after all of core's built-in `forward` rules (hard-block, session,
+whitelist) and just before the chain's default `drop` policy.
+
+**Parameters:**
+- `chainName` (string) - Name of the plugin-owned chain to create and jump to
+
+**Returns:**
+- `error` - Error if the chain/jump could not be created
+
+```go
+api.Firewall().AddForwardChainAfterInternet("my_fallback_forward")
+```
+
+**Notes:**
+- Idempotent — safe to call repeatedly with the same `chainName`
+- Only reached for traffic core's own rules didn't already accept/drop
+- Good fit for a "default deny with a few extra exceptions" pattern layered on top of
+  core's existing session/whitelist logic
+
+### AddPreRoutingChainBeforeInternet
+
+Creates (if needed) a chain named `chainName` and registers a jump to it from
+`plugin_prerouting_before`, which `Setup()` positions as the absolute topmost rule in
+`prerouting` — before the whitelist/session bypass and before the captive-portal DNAT.
+
+**Parameters:**
+- `chainName` (string) - Name of the plugin-owned chain to create and jump to
+
+**Returns:**
+- `error` - Error if the chain/jump could not be created
+
+```go
+api.Firewall().AddPreRoutingChainBeforeInternet("pppoe_prerouting")
+```
+
+**Notes:**
+- Idempotent — safe to call repeatedly with the same `chainName`
+- Use this when your chain needs to intercept traffic (e.g. its own DNAT) before core's
+  captive-portal redirect can apply
+
+### AddPreRoutingChainAfterInternet
+
+Same as `AddPreRoutingChainBeforeInternet`, but registers into
+`plugin_prerouting_after`, which `Setup()` appends after its own built-in `prerouting`
+rules.
+
+**Parameters:**
+- `chainName` (string) - Name of the plugin-owned chain to create and jump to
+
+**Returns:**
+- `error` - Error if the chain/jump could not be created
+
+```go
+api.Firewall().AddPreRoutingChainAfterInternet("my_late_prerouting")
+```
+
+**Notes:**
+- Idempotent — safe to call repeatedly with the same `chainName`
+- A captive-portal DNAT rule added later via `SetCaptivePortalTarget` (WiFi hotspot)
+  still lands after this jump — don't rely on "after" meaning "last" if that DNAT is
+  active
 
 ## Common Use Cases
 

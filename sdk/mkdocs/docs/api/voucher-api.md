@@ -82,10 +82,10 @@ func (w http.ResponseWriter, r *http.Request) {
 
 There is **no voucher list/count method** on `IVouchersApi`. To list, search, paginate,
 count, or filter vouchers — including "available" (`activated_at IS NULL`) filtering —
-query the core [`vouchers`](../guides/core-database.md#vouchers) table **directly with your
+query the core [`vouchers`](../guides/database-schema.md#vouchers) table **directly with your
 plugin's own sqlc queries**. Your plugin's `sqlc` config already includes the core schema,
 so a query against `vouchers` type-checks and generates like any other. See the
-[Core Database Tables](../guides/core-database.md) guide for the full schema.
+[Core Database Tables](../guides/database-schema.md) guide for the full schema.
 
 ```sql
 -- name: SearchVouchers :many
@@ -285,7 +285,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 There is **no batch list/count method** on `IVouchersApi`. To list, search, paginate, or
 count voucher batches, query the core
-[`voucher_batches`](../guides/core-database.md#voucher_batches) table **directly with your
+[`voucher_batches`](../guides/database-schema.md#voucher_batches) table **directly with your
 plugin's own sqlc queries** (the core schema is already available to your plugin's sqlc):
 
 ```sql

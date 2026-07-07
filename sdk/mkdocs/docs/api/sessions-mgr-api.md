@@ -434,7 +434,7 @@ err := api.SessionsMgr().DeleteSessions(r.Context(), []int64{101, 102, 103})
 ### Listing sessions
 
 There is **no `ListSessions` method** on `ISessionsMgrApi`. To list, search, paginate,
-or filter sessions, query the core [`sessions`](../guides/core-database.md#sessions)
+or filter sessions, query the core [`sessions`](../guides/database-schema.md#sessions)
 table **directly with your plugin's own sqlc queries**, then wrap each row with
 [`NewClientSession`](#newclientsession) so `RemainingTime()` / `RemainingData()` and the
 computed `Data()` flags (`IsAvailable`, `IsConsumed`, `IsExpired`) still reflect live
@@ -446,7 +446,7 @@ consumption.
     plugin's own SQL rather than a one-size-fits-all API method. Your plugin's `sqlc`
     config already includes the core schema (`../../../../core/resources/migrations`), so
     a query against `sessions` type-checks and generates like any other. See the
-    [Core Database Tables](../guides/core-database.md) guide for the full schema.
+    [Core Database Tables](../guides/database-schema.md) guide for the full schema.
 
 **1. Add a query** in your plugin's `resources/queries/sessions.sql`:
 
