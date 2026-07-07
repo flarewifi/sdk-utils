@@ -2,35 +2,29 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"core/db"
 	"core/db/models"
+
+	sdkapi "sdk/api"
 )
 
-func StartFingerprintCleanupScheduler(database *db.Database, mdls *models.Models) {
-	go func() {
-		if FingerprintCleanupInterval > 0 {
-			for {
-				time.Sleep(FingerprintCleanupInterval)
-				performFingerprintCleanup(database, mdls)
-			}
-		}
+// StartFingerprintCleanupScheduler wires up the fingerprint cleanup job. In
+// production it runs daily at 3:00 AM (FingerprintCleanupInterval == 0); in
+// dev it runs on a fast fixed interval instead.
+func StartFingerprintCleanupScheduler(scheduler sdkapi.ISchedulerApi, database *db.Database, mdls *models.Models) error {
+	fn := func(ctx context.Context) {
+		performFingerprintCleanup(database, mdls)
+	}
 
-		for {
-			now := time.Now()
-			next := time.Date(now.Year(), now.Month(), now.Day(),
-				FingerprintCleanupHour, FingerprintCleanupMinute, 0, 0, now.Location())
-			if now.After(next) {
-				next = next.Add(24 * time.Hour)
-			}
+	if FingerprintCleanupInterval > 0 {
+		return scheduler.Every("fingerprint-cleanup", FingerprintCleanupInterval, fn)
+	}
 
-			waitDuration := next.Sub(now)
-
-			time.Sleep(waitDuration)
-			performFingerprintCleanup(database, mdls)
-		}
-	}()
+	cron := fmt.Sprintf("%d %d * * *", FingerprintCleanupMinute, FingerprintCleanupHour)
+	return scheduler.Cron("fingerprint-cleanup", cron, fn)
 }
 
 func performFingerprintCleanup(database *db.Database, mdls *models.Models) {

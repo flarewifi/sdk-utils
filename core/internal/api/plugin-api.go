@@ -8,6 +8,7 @@ import (
 	"core/db"
 	"core/db/models"
 	"core/internal/events"
+	"core/internal/modules/scheduler"
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/sessmgr"
@@ -25,6 +26,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pm
 		ClientRegister: pmgr.clntReg,
 		SessionMgr:     pmgr.clntMgr,
 		EventsMgr:      pmgr.eventsMgr,
+		SchedulerMgr:   pmgr.schedulerMgr,
 	}
 
 	pluginApi.info = info
@@ -50,6 +52,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pm
 	NewVouchersApi(pluginApi)
 	NewWifiApi(pluginApi, wifiMgr)
 	pluginApi.StorageAPI = NewStorageApi(pluginApi).(*StorageApi)
+	NewSchedulerApi(pluginApi)
 
 	return pluginApi
 }
@@ -84,6 +87,8 @@ type PluginApi struct {
 	WifiAPI          *WifiApi
 	StorageAPI       *StorageApi
 	EventsMgr        *events.EventsManager
+	SchedulerMgr     *scheduler.Manager
+	SchedulerAPI     *SchedulerApi
 
 	// initFn is the plugin's entry point — func Init(api sdkapi.IPluginApi) error.
 	// Loading the plugin (plugin.Open in non-mono, the generated mono loader
@@ -258,6 +263,10 @@ func (self *PluginApi) Storage() sdkapi.IStorageApi {
 
 func (self *PluginApi) Events() sdkapi.IEventsApi {
 	return self.EventsMgr
+}
+
+func (self *PluginApi) Scheduler() sdkapi.ISchedulerApi {
+	return self.SchedulerAPI
 }
 
 func (self *PluginApi) LoadAssetsManifest() {

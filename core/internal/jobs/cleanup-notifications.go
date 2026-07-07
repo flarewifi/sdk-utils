@@ -17,29 +17,17 @@ import (
 // StartNotificationCleanupScheduler starts a daily job that ages out long-read
 // notifications and caps the unread pile-up so the table can't grow without bound.
 // Runs at 2:00 AM in production.
-func StartNotificationCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) {
-	go func() {
-		if NotificationCleanupInterval > 0 {
-			for {
-				time.Sleep(NotificationCleanupInterval)
-				performNotificationCleanup(database, mdls, coreAPI)
-			}
-		} else {
-			for {
-				now := time.Now()
-				next := time.Date(now.Year(), now.Month(), now.Day(),
-					NotificationCleanupHour, NotificationCleanupMinute, 0, 0, now.Location())
-				if now.After(next) {
-					next = next.Add(24 * time.Hour)
-				}
+func StartNotificationCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) error {
+	fn := func(ctx context.Context) {
+		performNotificationCleanup(database, mdls, coreAPI)
+	}
 
-				waitDuration := next.Sub(now)
+	if NotificationCleanupInterval > 0 {
+		return coreAPI.Scheduler().Every("notification-cleanup", NotificationCleanupInterval, fn)
+	}
 
-				time.Sleep(waitDuration)
-				performNotificationCleanup(database, mdls, coreAPI)
-			}
-		}
-	}()
+	cron := fmt.Sprintf("%d %d * * *", NotificationCleanupMinute, NotificationCleanupHour)
+	return coreAPI.Scheduler().Cron("notification-cleanup", cron, fn)
 }
 
 // =============================================================================

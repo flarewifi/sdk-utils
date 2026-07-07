@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v3"
@@ -8,23 +9,38 @@ import (
 	"time"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
+	sdkapi "sdk/api"
 )
 
 // StartBlockedPluginsScheduler polls the cloud denylist once a day and reconciles
 // the on-disk "blocked" markers so the boot loader skips offending plugins. The
 // initial fetch runs shortly after boot so a freshly-flagged plugin is caught on
 // the next reboot without waiting a full day.
-func StartBlockedPluginsScheduler() {
-	go func() {
-		time.Sleep(BlockedPluginsInitialDelay)
+//
+// reconcileBlockedPlugins recovers its own panics (see below) specifically so
+// the ticker loop survives a bad tick and keeps retrying daily; that resilience
+// would be lost by registering it via Every/Cron instead, since the scheduler
+// Manager stops a periodic task for good after one panic.
+func StartBlockedPluginsScheduler(scheduler sdkapi.ISchedulerApi) error {
+	return scheduler.Go("blocked-plugins", func(ctx context.Context) {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(BlockedPluginsInitialDelay):
+		}
 		reconcileBlockedPlugins()
 
 		ticker := time.NewTicker(BlockedPluginsInterval)
 		defer ticker.Stop()
-		for range ticker.C {
-			reconcileBlockedPlugins()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				reconcileBlockedPlugins()
+			}
 		}
-	}()
+	})
 }
 
 func reconcileBlockedPlugins() {

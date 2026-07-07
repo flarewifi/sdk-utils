@@ -2,6 +2,7 @@ package boot
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 
 func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	web.SetupBootRoutes(g)
-	server := web.StartServer(router.BootingRouter, false)
+	server := web.StartServer(router.BootingRouter)
 
 	// Serve the booting page over HTTPS too, not just HTTP, so clients that reach
 	// the machine over TLS during boot (e.g. https:// captive-portal probes, or a
@@ -34,7 +35,9 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	server.Shutdown(ctx)
+	if err := server.Shutdown(ctx); err != nil {
+		g.CoreAPI.Logger().Error(fmt.Sprintf("boot: failed to shut down booting server: %v", err))
+	}
 
 	// Stop the booting HTTPS listener before restarting it on RootRouter below.
 	// StartHTTPSServer is a no-op while the server is already running and the live
@@ -58,5 +61,10 @@ func InitHttpServer(g *api.CoreGlobals, bootCh chan struct{}) {
 	os.WriteFile(sdkutils.PathServerUp, []byte(startedAt), sdkutils.PermFile)
 
 	web.StartHTTPSServer(router.RootRouter)
-	web.StartServer(router.RootRouter, true)
+
+	// StartServer no longer blocks (see core/internal/web/start.go): it starts
+	// ListenAndServe on a goroutine and returns immediately. Store the handle
+	// so a later graceful shutdown (core/main.go's signal handler) can call
+	// Shutdown(ctx) on it — mirroring how the booting server above is stopped.
+	g.AppServer = web.StartServer(router.RootRouter)
 }

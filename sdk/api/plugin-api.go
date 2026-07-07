@@ -98,4 +98,8 @@ type IPluginApi interface {
 	// Prefer this over the individual On* methods on ISessionsMgrApi, IVouchersApi,
 	// and IPaymentsApi, which are deprecated.
 	Events() IEventsApi
+
+	// Scheduler returns an instance of the scheduler API, for running
+	// long-running or periodic background work that stops cleanly on shutdown.
+	Scheduler() ISchedulerApi
 }

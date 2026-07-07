@@ -61,10 +61,6 @@ func (self *NetworkApi) GetDevice(name string) (sdkapi.INetworkDevice, error) {
 	return cnet.NewNetworkDevice(dev), nil
 }
 
-func (self *NetworkApi) IsCaptivePortalEnabled(ifname string) bool {
-	return cnet.IsCaptivePortalEnabled(ifname)
-}
-
 func (self *NetworkApi) GetInterface(name string) (sdkapi.INetworkInterface, error) {
 	_, err := ubus.GetNetworkInterface(name)
 	if err != nil {

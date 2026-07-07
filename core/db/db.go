@@ -24,7 +24,7 @@ func (db *Database) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, 
 }
 
 func (db *Database) Close() error {
-	return db.Close()
+	return db.DB.Close()
 }
 
 // ReopenConnection safely replaces the database connection

@@ -82,6 +82,7 @@ nav:
       - "IPaymentsApi": api/payments-api.md
       - "IPluginsMgrApi": api/plugins-mgr-api.md
       - "IPurchaseRequest": api/purchase-request.md
+      - "ISchedulerApi": api/scheduler-api.md
       - "ISessionsMgrApi": api/sessions-mgr-api.md
       - "IStorageApi": api/storage-api.md
       - "IThemesApi": api/themes-api.md

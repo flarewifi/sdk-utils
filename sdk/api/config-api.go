@@ -15,6 +15,9 @@ type IConfigApi interface {
 	// Get the bandwidth configuration api of a network interface.
 	Bandwidth() IBandwidthCfgApi
 
+	// Get the network interface configuration api.
+	Interface() IInterfaceCfgApi
+
 	// Get the plugin config api
 	Plugin() IPluginCfgApi
 }

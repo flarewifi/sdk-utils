@@ -1,25 +1,37 @@
 package jobs
 
 import (
+	"context"
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/internal/web/httpsserver"
 	"core/utils/config"
 	"time"
+
+	sdkapi "sdk/api"
 )
 
-func StartPortalCertScheduler() {
-	go func() {
-		time.Sleep(PortalCertInitialDelay)
+func StartPortalCertScheduler(scheduler sdkapi.ISchedulerApi) error {
+	return scheduler.Go("portal-cert", func(ctx context.Context) {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(PortalCertInitialDelay):
+		}
 		performPortalCertFetch()
 
 		ticker := time.NewTicker(PortalCertInterval)
 		defer ticker.Stop()
-		for range ticker.C {
-			performPortalCertFetch()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				performPortalCertFetch()
+			}
 		}
-	}()
+	})
 }
 
 func performPortalCertFetch() {

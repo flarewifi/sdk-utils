@@ -12,29 +12,17 @@ import (
 
 // StartDeviceLogCleanupScheduler wires up the device log cleanup job.
 // In production LogCleanupInterval is 1h (interval-based); in dev it runs every 500s.
-func StartDeviceLogCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) {
-	go func() {
-		if LogCleanupInterval > 0 {
-			for {
-				time.Sleep(LogCleanupInterval)
-				performDeviceLogCleanup(database, mdls, coreAPI)
-			}
-		} else {
-			for {
-				now := time.Now()
-				next := time.Date(now.Year(), now.Month(), now.Day(),
-					LogCleanupHour, LogCleanupMinute, 0, 0, now.Location())
-				if now.After(next) {
-					next = next.Add(24 * time.Hour)
-				}
+func StartDeviceLogCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) error {
+	fn := func(ctx context.Context) {
+		performDeviceLogCleanup(database, mdls, coreAPI)
+	}
 
-				waitDuration := next.Sub(now)
+	if LogCleanupInterval > 0 {
+		return coreAPI.Scheduler().Every("device-log-cleanup", LogCleanupInterval, fn)
+	}
 
-				time.Sleep(waitDuration)
-				performDeviceLogCleanup(database, mdls, coreAPI)
-			}
-		}
-	}()
+	cron := fmt.Sprintf("%d %d * * *", LogCleanupMinute, LogCleanupHour)
+	return coreAPI.Scheduler().Cron("device-log-cleanup", cron, fn)
 }
 
 // =============================================================================

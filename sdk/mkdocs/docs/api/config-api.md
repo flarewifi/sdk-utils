@@ -101,7 +101,66 @@ if err != nil {
 }
 ```
 
-## 3. Plugin {#plugin}
+## 3. Interface {#interface}
+
+The interface configuration API is used to read and set which network interfaces have the captive portal enabled, the main "portal interface" (the one whose address hosts the captive portal and custom domain), and each interface's desired static IP. It replaces the older `api.Network().IsCaptivePortalEnabled(ifname)` method, which has been removed — use `Get()` and check `LanInterfaces[ifname].EnableCaptivePortal` instead.
+
+`InterfaceCfg` has the following fields:
+
+PortalInterface
+: The name of the interface designated as the main captive-portal interface. If set, it must reference a captive-enabled entry in `LanInterfaces`.
+
+LanInterfaces
+: A `map[string]LanInterfaceCfg` keyed by interface name.
+
+`LanInterfaceCfg` has the following fields:
+
+EnableCaptivePortal
+: Whether this interface gets the captive portal, traffic shaping, and the session firewall. This is the **effective** state, not just what's explicitly saved — an interface with no saved entry still resolves to `true` if it's the primary LAN bridge, so a fresh, never-configured machine works out of the box.
+
+IpAddress
+: The desired static IP for the interface. Only takes effect once applied to the machine's network config.
+
+Netmask
+: The desired static netmask for the interface.
+
+### Get
+
+To read the current interface configuration, use the `IInterfaceCfgApi.Get` method.
+
+```go
+ifaceCfgAPI := api.Config().Interface()
+cfg, err := ifaceCfgAPI.Get()
+if err != nil {
+    // handle error
+}
+
+if cfg.LanInterfaces["lan"].EnableCaptivePortal {
+    fmt.Println("lan has the captive portal enabled")
+}
+```
+
+### Save
+
+To modify the interface configuration, use the `IInterfaceCfgApi.Save` method. This validates that `PortalInterface` (if set) references a captive-enabled interface, persists the change, and applies it to the running system (nftables, DNS, traffic control) — this can briefly interrupt connectivity.
+
+```go
+cfg, err := ifaceCfgAPI.Get()
+if err != nil {
+    // handle error
+}
+
+lan := cfg.LanInterfaces["lan"]
+lan.EnableCaptivePortal = true
+cfg.LanInterfaces["lan"] = lan
+cfg.PortalInterface = "lan"
+
+if err := ifaceCfgAPI.Save(cfg); err != nil {
+    // handle error, e.g. "portal interface must have captive portal enabled"
+}
+```
+
+## 4. Plugin {#plugin}
 
 The plugin configuration API is used to store custom configuration specific to the plugin you are developing. Using this API ensures that your plugin configuration can be migrated properly to a new system in case you want to flash new firmware or migrate to a new hardware.
 
@@ -193,7 +252,7 @@ if err := cfgAPI.Delete("some_key"); err != nil {
 
 This method removes the specified path from the plugin's configuration directory. It works for both individual files and directories with nested contents.
 
-## 4. Plugins Config {#plugins-config}
+## 5. Plugins Config {#plugins-config}
 
 The `config-plugins.go` helpers provide low-level access to `data/config/plugins.json`, which stores metadata about installed plugins and meta-plugin bundle records. These are package-level functions, not methods on `IConfigApi`.
 

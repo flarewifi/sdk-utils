@@ -190,6 +190,15 @@ resource := api.Resource("/my-resource.txt")
 fmt.Println(resource) // "/path/to/com.mydomain.myplugin/resources/my-resource.txt"
 ```
 
+### Scheduler
+
+It returns the [ISchedulerApi](./scheduler-api.md) object which is used to run long-running or periodic background work that stops cleanly on shutdown.
+
+```go
+scheduler := api.Scheduler()
+fmt.Println(scheduler) // ISchedulerApi
+```
+
 ### SessionsMgr
 
 It returns the [ISessionsMgrApi](./sessions-mgr-api.md) object which is used to manage user sessions.

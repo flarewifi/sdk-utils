@@ -16,29 +16,17 @@ import (
 // StartSessionCleanupScheduler starts the nightly session cleanup job (23:30 in production).
 // It deletes consumed/expired sessions and notifies the admin about sessions
 // that were created over 90 days ago but never started (unredeemed vouchers).
-func StartSessionCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) {
-	go func() {
-		if SessionCleanupInterval > 0 {
-			for {
-				time.Sleep(SessionCleanupInterval)
-				performSessionCleanup(database, mdls, coreAPI)
-			}
-		} else {
-			for {
-				now := time.Now()
-				next := time.Date(now.Year(), now.Month(), now.Day(),
-					SessionCleanupHour, SessionCleanupMinute, 0, 0, now.Location())
-				if now.After(next) {
-					next = next.Add(24 * time.Hour)
-				}
+func StartSessionCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) error {
+	fn := func(ctx context.Context) {
+		performSessionCleanup(database, mdls, coreAPI)
+	}
 
-				waitDuration := next.Sub(now)
+	if SessionCleanupInterval > 0 {
+		return coreAPI.Scheduler().Every("session-cleanup", SessionCleanupInterval, fn)
+	}
 
-				time.Sleep(waitDuration)
-				performSessionCleanup(database, mdls, coreAPI)
-			}
-		}
-	}()
+	cron := fmt.Sprintf("%d %d * * *", SessionCleanupMinute, SessionCleanupHour)
+	return coreAPI.Scheduler().Cron("session-cleanup", cron, fn)
 }
 
 // =============================================================================

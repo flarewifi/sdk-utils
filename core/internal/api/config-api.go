@@ -22,6 +22,10 @@ func (self *ConfigApi) Bandwidth() sdkapi.IBandwidthCfgApi {
 	return NewBandwdCfgApi(self.api.SessionMgr)
 }
 
+func (self *ConfigApi) Interface() sdkapi.IInterfaceCfgApi {
+	return NewInterfaceCfgApi()
+}
+
 func (self *ConfigApi) Plugin() sdkapi.IPluginCfgApi {
 	return config.NewPluginCfgApi(self.api.info.Package)
 }

@@ -1,27 +1,20 @@
 package updates
 
 import (
+	"context"
 	"time"
 
 	cmd "core/utils/shell"
+
+	sdkapi "sdk/api"
 )
 
-// StartScheduledUpdateChecker starts a background goroutine that checks for
-// software updates at 2AM local router time daily
-func StartScheduledUpdateChecker() {
-	go func() {
-		for {
-			// Calculate duration until next 2AM
-			now := time.Now()
-			next2AM := time.Date(now.Year(), now.Month(), now.Day(), 2, 0, 0, 0, now.Location())
-			if now.After(next2AM) {
-				next2AM = next2AM.Add(24 * time.Hour)
-			}
-
-			time.Sleep(next2AM.Sub(now))
-			performScheduledUpdateCheck()
-		}
-	}()
+// StartScheduledUpdateChecker checks for software updates at 2AM local router
+// time daily.
+func StartScheduledUpdateChecker(scheduler sdkapi.ISchedulerApi) error {
+	return scheduler.Cron("scheduled-update-check", "0 2 * * *", func(ctx context.Context) {
+		performScheduledUpdateCheck()
+	})
 }
 
 func performScheduledUpdateCheck() {
