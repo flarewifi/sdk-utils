@@ -125,6 +125,11 @@ func (self *FirewallApi) doCreateDstIpGroup(slugName string, ips sdkutils.Separa
 	}
 	self.firewallMutex.RUnlock()
 
+	// Flush any leftover kernel state from a prior process run for this slug
+	// (nftables persists across a Go-process restart; only createdGroups
+	// above resets) so the atomic batch below can't duplicate rule bodies.
+	self.flushDstIpGroupResources(slugName)
+
 	// Define nftables resource names
 	setV4 := fmt.Sprintf("dst_grp_%s_v4", slugName)
 	setV6 := fmt.Sprintf("dst_grp_%s_v6", slugName)
@@ -653,27 +658,25 @@ func (self *FirewallApi) doDeleteDstIpGroup(slugName string) error {
 	self.deleteJumpRule("prerouting", chainPrerouting)
 	self.deleteJumpRule("forward", chainForward)
 
-	// Build batch script to delete chains and sets
-	var batch strings.Builder
-
-	// Flush and delete chains
-	batch.WriteString(fmt.Sprintf("flush chain inet internet %s 2>/dev/null || true\n", chainPrerouting))
-	batch.WriteString(fmt.Sprintf("delete chain inet internet %s 2>/dev/null || true\n", chainPrerouting))
-	batch.WriteString(fmt.Sprintf("flush chain inet internet %s 2>/dev/null || true\n", chainForward))
-	batch.WriteString(fmt.Sprintf("delete chain inet internet %s 2>/dev/null || true\n", chainForward))
-
-	// Delete sets
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setV4))
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setV6))
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setMacs))
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setClientIpsV4))
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setClientIpsV6))
-
-	// Execute batch command
-	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
-	if err := shell.Exec(cmd, nil); err != nil {
-		return fmt.Errorf("failed to delete destination IP group infrastructure: %v", err)
+	// Flush and delete chains and sets. Each command runs as its own standalone
+	// shell invocation (not a single "nft -f -" batch) so the "2>/dev/null ||
+	// true" tolerance actually works: that syntax is shell logic, not valid nft
+	// script grammar, so nft's own file parser would reject a heredoc containing
+	// it (a previous version of this function fed exactly that broken heredoc to
+	// "nft -f -", which nft would refuse to parse, always returning an error).
+	// Matches nftables.Cleanup()'s and flushDstIpGroupResources' convention.
+	cmds := []string{
+		fmt.Sprintf("nft flush chain inet internet %s 2>/dev/null || true", chainPrerouting),
+		fmt.Sprintf("nft delete chain inet internet %s 2>/dev/null || true", chainPrerouting),
+		fmt.Sprintf("nft flush chain inet internet %s 2>/dev/null || true", chainForward),
+		fmt.Sprintf("nft delete chain inet internet %s 2>/dev/null || true", chainForward),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setV4),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setV6),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setMacs),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setClientIpsV4),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setClientIpsV6),
 	}
+	shell.ExecAll(cmds)
 
 	// Remove from tracking maps
 	self.firewallMutex.Lock()
@@ -787,6 +790,11 @@ func (self *FirewallApi) doCreateServicePort(slugName string, protocols []string
 	}
 	self.firewallMutex.RUnlock()
 
+	// Flush any leftover kernel state from a prior process run for this slug
+	// (nftables persists across a Go-process restart; only createdServicePorts
+	// above resets) so the atomic batch below can't duplicate rule bodies.
+	self.flushServicePortResources(slugName)
+
 	// Define nftables resource names
 	setMacs := fmt.Sprintf("svc_port_%s_macs", slugName)
 	setClientIpsV4 := fmt.Sprintf("svc_port_%s_client_ips_v4", slugName)
@@ -853,19 +861,18 @@ func (self *FirewallApi) doCreateServicePort(slugName string, protocols []string
 		batch.WriteString(fmt.Sprintf("add element inet internet %s { %s }\n", setDstV6, ipList))
 	}
 
+	// Append jump rule to end of forward chain (after authenticated users are
+	// handled) in the SAME atomic transaction as the sets/chain above — so a
+	// failure here (e.g. "forward" doesn't exist yet, such as when this runs
+	// before nftables.Setup()) rolls back the whole batch instead of leaving
+	// orphaned sets/chain behind, matching doCreateDstIpGroup's pattern.
+	// Service port jumps allow unauthenticated clients limited access to specific services.
+	batch.WriteString(fmt.Sprintf("add rule inet internet forward counter jump %s\n", chainForward))
+
 	// Execute batch command using nft -f - with heredoc for safe shell escaping
 	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
 	if err := shell.Exec(cmd, nil); err != nil {
 		return fmt.Errorf("failed to create service port: %v", err)
-	}
-
-	// Append jump rule to end of forward chain (after authenticated users are handled)
-	// Service port jumps allow unauthenticated clients limited access to specific services
-	jumpCmd := fmt.Sprintf("nft add rule inet internet forward counter jump %s", chainForward)
-	if err := shell.Exec(jumpCmd, nil); err != nil {
-		// Cleanup: delete the chain we just created
-		shell.Exec(fmt.Sprintf("nft delete chain inet internet %s 2>/dev/null || true", chainForward), nil)
-		return fmt.Errorf("failed to append jump rule: %v", err)
 	}
 
 	// Store service port definition (only after nftables success)
@@ -948,25 +955,24 @@ func (self *FirewallApi) doDeleteServicePort(slugName string) error {
 	// Delete jump rule from forward chain
 	self.deleteJumpRule("forward", chainForward)
 
-	// Build batch script to delete chain and sets
-	var batch strings.Builder
-
-	// Flush and delete forward chain
-	batch.WriteString(fmt.Sprintf("flush chain inet internet %s 2>/dev/null || true\n", chainForward))
-	batch.WriteString(fmt.Sprintf("delete chain inet internet %s 2>/dev/null || true\n", chainForward))
-
-	// Delete sets
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setMacs))
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setClientIpsV4))
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setClientIpsV6))
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setDstV4))
-	batch.WriteString(fmt.Sprintf("delete set inet internet %s 2>/dev/null || true\n", setDstV6))
-
-	// Execute batch command
-	cmd := fmt.Sprintf("nft -f - <<'EOF'\n%sEOF", batch.String())
-	if err := shell.Exec(cmd, nil); err != nil {
-		return fmt.Errorf("failed to delete service port infrastructure: %v", err)
+	// Flush and delete the chain and sets. Each command runs as its own
+	// standalone shell invocation (not a single "nft -f -" batch) so the
+	// "2>/dev/null || true" tolerance actually works: that syntax is shell
+	// logic, not valid nft script grammar, so nft's own file parser would
+	// reject a heredoc containing it (a previous version of this function fed
+	// exactly that broken heredoc to "nft -f -", which nft would refuse to
+	// parse, always returning an error). Matches nftables.Cleanup()'s and
+	// flushServicePortResources' convention.
+	cmds := []string{
+		fmt.Sprintf("nft flush chain inet internet %s 2>/dev/null || true", chainForward),
+		fmt.Sprintf("nft delete chain inet internet %s 2>/dev/null || true", chainForward),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setMacs),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setClientIpsV4),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setClientIpsV6),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setDstV4),
+		fmt.Sprintf("nft delete set inet internet %s 2>/dev/null || true", setDstV6),
 	}
+	shell.ExecAll(cmds)
 
 	// Remove from tracking maps
 	self.firewallMutex.Lock()
@@ -1159,6 +1165,75 @@ func (self *FirewallApi) doRemoveClientFromServicePort(clnt sdkapi.DstIpGroupCli
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
+// flushDstIpGroupResources best-effort flushes any leftover kernel state from
+// a prior process run for the given destination IP group slug, before
+// doCreateDstIpGroup rebuilds it fresh. Necessary because nftables state
+// lives in the kernel, independent of this Go process: a process restart
+// wipes createdGroups (so this slug's guard is false again) but NOT the
+// kernel's chains/sets from before the restart. Without this, re-running
+// doCreateDstIpGroup's "chain dst_grp_<slug>_forward { <rules> }" block would
+// APPEND a duplicate copy of each rule to the already-existing chain (rules
+// are an ordered list, not a set — redeclaring a chain via this block form is
+// not idempotent for its rule bodies, unlike sets). Each command is
+// individually best-effort (2>/dev/null || true) since a genuinely first-ever
+// create for this slug has nothing to flush yet — this must run as separate
+// shell.ExecAll commands, NOT folded into the atomic "nft -f -" creation
+// batch, because "flush chain X" on a chain that doesn't exist yet errors,
+// and nft -f - batches abort entirely on any single statement error; only a
+// real shell interpreting a standalone command can apply "|| true" tolerance
+// (mirrors nftables.Cleanup()'s pre-doSetup() flush step).
+func (self *FirewallApi) flushDstIpGroupResources(slugName string) {
+	chainPrerouting := fmt.Sprintf("dst_grp_%s_prerouting", slugName)
+	chainForward := fmt.Sprintf("dst_grp_%s_forward", slugName)
+	setV4 := fmt.Sprintf("dst_grp_%s_v4", slugName)
+	setV6 := fmt.Sprintf("dst_grp_%s_v6", slugName)
+	setMacs := fmt.Sprintf("dst_grp_%s_macs", slugName)
+	setClientIpsV4 := fmt.Sprintf("dst_grp_%s_client_ips_v4", slugName)
+	setClientIpsV6 := fmt.Sprintf("dst_grp_%s_client_ips_v6", slugName)
+
+	cmds := []string{
+		fmt.Sprintf("nft flush chain inet internet %s 2>/dev/null || true", chainPrerouting),
+		fmt.Sprintf("nft flush chain inet internet %s 2>/dev/null || true", chainForward),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setV4),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setV6),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setMacs),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setClientIpsV4),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setClientIpsV6),
+	}
+	shell.ExecAll(cmds)
+}
+
+// flushServicePortResources best-effort flushes any leftover kernel state
+// from a prior process run for the given service port slug, before
+// doCreateServicePort rebuilds it fresh. See flushDstIpGroupResources for the
+// full rationale (identical: process restart wipes createdServicePorts but
+// not the kernel's svc_port_<slug>_forward chain, whose rule bodies would
+// otherwise duplicate on every restart). Flushing svc_port_<slug>_dst_v4/_v6
+// is attempted unconditionally even though they're only created when dstIPs
+// was non-empty on a prior run — flushing a set that doesn't exist is a
+// harmless no-op via "|| true". Known accepted limitation: if hasDstIPs
+// differs between the pre-restart and post-restart calls, these two sets are
+// flushed (emptied) but never deleted, so they can persist as harmless
+// orphaned empty sets — out of scope to fully reconcile here.
+func (self *FirewallApi) flushServicePortResources(slugName string) {
+	chainForward := fmt.Sprintf("svc_port_%s_forward", slugName)
+	setMacs := fmt.Sprintf("svc_port_%s_macs", slugName)
+	setClientIpsV4 := fmt.Sprintf("svc_port_%s_client_ips_v4", slugName)
+	setClientIpsV6 := fmt.Sprintf("svc_port_%s_client_ips_v6", slugName)
+	setDstV4 := fmt.Sprintf("svc_port_%s_dst_v4", slugName)
+	setDstV6 := fmt.Sprintf("svc_port_%s_dst_v6", slugName)
+
+	cmds := []string{
+		fmt.Sprintf("nft flush chain inet internet %s 2>/dev/null || true", chainForward),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setMacs),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setClientIpsV4),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setClientIpsV6),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setDstV4),
+		fmt.Sprintf("nft flush set inet internet %s 2>/dev/null || true", setDstV6),
+	}
+	shell.ExecAll(cmds)
+}
+
 // validateServicePortParams validates protocols and port parameters
 func (self *FirewallApi) validateServicePortParams(protocols []string, port int) error {
 	if len(protocols) == 0 {
@@ -1303,6 +1378,22 @@ func (self *FirewallApi) BlockMAC(mac string) error {
 
 func (self *FirewallApi) UnblockMAC(mac string) error {
 	return nftables.UnblockMAC(mac)
+}
+
+func (self *FirewallApi) AddPreRoutingChainBeforeInternet(chainName string) error {
+	return nftables.AddPreRoutingChainBeforeInternet(chainName)
+}
+
+func (self *FirewallApi) AddPreRoutingChainAfterInternet(chainName string) error {
+	return nftables.AddPreRoutingChainAfterInternet(chainName)
+}
+
+func (self *FirewallApi) AddForwardChainBeforeInternet(chainName string) error {
+	return nftables.AddForwardChainBeforeInternet(chainName)
+}
+
+func (self *FirewallApi) AddForwardChainAfterInternet(chainName string) error {
+	return nftables.AddForwardChainAfterInternet(chainName)
 }
 
 var _ sdkapi.IFirewallAPI = (*FirewallApi)(nil)

@@ -1,12 +1,14 @@
 package api
 
 import (
+	"net/http"
 	"sync/atomic"
 
 	"core/db"
 	"core/db/models"
 	"core/internal/events"
 	"core/internal/modules/bootprogress"
+	"core/internal/modules/scheduler"
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/sessmgr"
@@ -31,7 +33,13 @@ type CoreGlobals struct {
 	PluginMgr      *PluginsMgr
 	PaymentsMgr    *PaymentsMgr
 	EventsMgr      *events.EventsManager
+	SchedulerMgr   *scheduler.Manager
 	BootProgress   *bootprogress.Tracker
+
+	// AppServer is the final (post-boot) HTTP server handle, set once boot
+	// completes (core/internal/boot/init-http.go). nil until then. A graceful
+	// shutdown calls AppServer.Shutdown(ctx) on it; see core/main.go.
+	AppServer *http.Server
 }
 
 func NewGlobals() *CoreGlobals {
@@ -51,6 +59,7 @@ func NewGlobals() *CoreGlobals {
 	trfcMgr := network.NewTrafficMgr()
 	wifiMgr := ubus.NewWifiMgr()
 	pmtMgr := NewPaymentMgr()
+	schedulerMgr := scheduler.NewManager()
 
 	clntReg.SetSessionsMgr(sessionMgr)
 	trfcMgr.Start()
@@ -60,11 +69,16 @@ func NewGlobals() *CoreGlobals {
 
 	sessionMgr.ListenTraffic(trfcMgr)
 
-	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, sessionMgr, trfcMgr, eventsMgr)
+	plgnMgr := NewPluginMgr(db, mdls, pmtMgr, clntReg, sessionMgr, trfcMgr, eventsMgr, schedulerMgr)
 	coreApi := NewPluginApi(sdkutils.PathCoreDir, info, assets, plgnMgr, trfcMgr, wifiMgr)
 	plgnMgr.InitCoreApi(coreApi)
 	plgnMgr.SetDeps(assets, wifiMgr)
 	sessionMgr.SetCoreAPI(coreApi)
+
+	// schedulerMgr is constructed before coreApi exists (it's threaded through
+	// NewPluginMgr so every plugin's PluginApi can reach it), so its logger can
+	// only be wired up now that coreApi's own LoggerAPI is available.
+	schedulerMgr.SetLogger(coreApi.Logger())
 
 	g := &CoreGlobals{
 		GlobalAssets:   assets,
@@ -79,6 +93,7 @@ func NewGlobals() *CoreGlobals {
 		PluginMgr:      plgnMgr,
 		PaymentsMgr:    pmtMgr,
 		EventsMgr:      eventsMgr,
+		SchedulerMgr:   schedulerMgr,
 		BootProgress:   bootprogress.New(),
 	}
 

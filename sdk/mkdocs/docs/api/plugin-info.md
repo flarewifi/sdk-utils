@@ -33,6 +33,18 @@ are installed but before the plugin files are copied into place. See
 Optional path to a shell script run after the plugin is installed. See
 [plugin.json](./plugin.json.md#postinstall).
 
+## PreUninstall
+
+Optional path to a shell script run when the plugin is removed, before its
+down-migrations and metadata are removed. See
+[plugin.json](./plugin.json.md#preuninstall).
+
+## PostUninstall
+
+Optional path to a shell script run when the plugin is removed, immediately
+before its install directory is deleted. See
+[plugin.json](./plugin.json.md#postuninstall).
+
 ## SDK
 
 This is the minimum SDK version that the plugin supports.

@@ -42,11 +42,12 @@ nav:
       - "Saving Data": guides/saving-data.md
       - "Storing Files": guides/storing-files.md
       - "Translations": guides/translations.md
-      - "Core Database Tables": guides/core-database.md
+      - "Database Schema": guides/database-schema.md
       - "Database Migrations": guides/database-migrations.md
       - "Plugin Scripts": guides/plugin-scripts.md
       - "Error Handling": guides/error-handling.md
       - "Handling Events": guides/handling-events.md
+      - "Firewall Manipulation": guides/firewall-manipulation.md
       - "Debugging": guides/debugging.md
       - "FAQ": guides/faq.md
   - Examples:
@@ -82,6 +83,7 @@ nav:
       - "IPaymentsApi": api/payments-api.md
       - "IPluginsMgrApi": api/plugins-mgr-api.md
       - "IPurchaseRequest": api/purchase-request.md
+      - "ISchedulerApi": api/scheduler-api.md
       - "ISessionsMgrApi": api/sessions-mgr-api.md
       - "IStorageApi": api/storage-api.md
       - "IThemesApi": api/themes-api.md

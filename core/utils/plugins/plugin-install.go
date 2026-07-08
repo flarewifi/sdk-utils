@@ -394,6 +394,45 @@ func RunInstallScript(pluginDir string, info sdkutils.PluginInfo, scriptRel, pha
 	return nil
 }
 
+// RunUninstallScript executes an optional plugin lifecycle script
+// (preuninstall/postuninstall) declared in plugin.json. Unlike
+// RunInstallScript, it records no version-pinned marker: an uninstall script
+// runs exactly once, synchronously, from UninstallPlugin — there is no later
+// boot for a marker to guard against re-running, since the plugin is being
+// removed. A failure is returned to the caller (unlike the install path's
+// boot-time runInstallScriptOnce, which only logs) so an uninstall that can't
+// clean up its OS-level side effects doesn't silently proceed and orphan
+// them.
+func RunUninstallScript(pluginDir string, scriptRel, phase string) error {
+	if scriptRel == "" {
+		return nil
+	}
+
+	scriptPath := filepath.Join(pluginDir, scriptRel)
+	if !sdkutils.FsExists(scriptPath) {
+		return fmt.Errorf("%s script not found: %s", phase, scriptRel)
+	}
+	absScript, err := filepath.Abs(scriptPath)
+	if err != nil {
+		absScript = scriptPath
+	}
+	absDir, err := filepath.Abs(pluginDir)
+	if err != nil {
+		absDir = pluginDir
+	}
+
+	fmt.Printf("[plugin-install] running %s script: %s\n", phase, scriptRel)
+	if err := cmd.Exec("sh \""+absScript+"\"", &cmd.ExecOpts{
+		Dir:    absDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Env:    append(os.Environ(), "GO_ENV="+env.GoEnvString()),
+	}); err != nil {
+		return fmt.Errorf("%s script failed: %w", phase, err)
+	}
+	return nil
+}
+
 // ScriptMarkerPath returns the persistent marker file that records the plugin
 // version for which a given install-script phase (preinstall/postinstall) last
 // completed. It lives under data/storage (not the plugin install dir) so it
@@ -637,6 +676,18 @@ func IsUpdateSkipped(pkg string) bool {
 }
 
 func UninstallPlugin(pkg string, sqldb *sql.DB) error {
+	installPath := GetInstallPath(pkg)
+
+	// PreUninstall runs FIRST, before any teardown, while the plugin is still
+	// fully intact — for undoing OS-level side effects made outside
+	// installPath (see the PluginInfo field doc). A missing plugin.json (info
+	// unreadable) just skips it; that's not fatal to removal itself.
+	if info, infoErr := sdkutils.GetPluginInfoFromPath(installPath); infoErr == nil {
+		if err := RunUninstallScript(installPath, info.PreUninstall, "preuninstall"); err != nil {
+			return err
+		}
+	}
+
 	meta, err := ReadMetadata(pkg)
 	metaFound := err == nil
 
@@ -646,12 +697,19 @@ func UninstallPlugin(pkg string, sqldb *sql.DB) error {
 		}
 	}
 
-	installPath := GetInstallPath(pkg)
-
 	// Only run down-migrations if the plugin has a migrations directory.
 	migDir := filepath.Join(installPath, "resources/migrations")
 	if sdkutils.FsExists(migDir) {
 		if err := migrate.MigrateDown(sqldb, installPath); err != nil {
+			return err
+		}
+	}
+
+	// PostUninstall runs LAST, immediately before installPath is physically
+	// removed below — logical teardown (metadata, DB) is done, but the script
+	// file itself (under installPath) still exists to run.
+	if info, infoErr := sdkutils.GetPluginInfoFromPath(installPath); infoErr == nil {
+		if err := RunUninstallScript(installPath, info.PostUninstall, "postuninstall"); err != nil {
 			return err
 		}
 	}

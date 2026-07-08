@@ -181,7 +181,7 @@ func AdminInterfacesIndex(api sdkapi.IPluginApi, params AdminInterfacesIndexPara
 				return templ_7745c5c3_Err
 			}
 		} else {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form method=\"POST\" action=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form method=\"POST\" id=\"interfaces-save-form\" action=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -208,55 +208,55 @@ func AdminInterfacesIndex(api sdkapi.IPluginApi, params AdminInterfacesIndexPara
 					return templ_7745c5c3_Err
 				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div><button type=\"submit\" class=\"btn btn-primary rounded-3 d-flex align-items-center gap-2 fw-semibold mt-2\"><i class=\"bi bi-check-circle\"></i> ")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></form><form method=\"POST\" id=\"interfaces-apply-form\" action=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Save Settings"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 104, Col: 46}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			var templ_7745c5c3_Var8 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:interfaces:apply"))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var8)))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></form><form method=\"POST\" action=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></form><div class=\"alert alert-warning d-flex align-items-start gap-2\" role=\"alert\"><i class=\"bi bi-exclamation-triangle-fill mt-1\"></i><div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var9 templ.SafeURL = templ.SafeURL(api.Http().Helpers().UrlForRoute("admin:interfaces:apply"))
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var9)))
+			var templ_7745c5c3_Var9 string
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("warning", "Save stores your settings. Apply Changes writes the configured IP addresses to the machine's network and reloads it — this can briefly interrupt connectivity."))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 107, Col: 199}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"mt-3\"><div class=\"alert alert-warning d-flex align-items-start gap-2\" role=\"alert\"><i class=\"bi bi-exclamation-triangle-fill mt-1\"></i><div>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div><div class=\"d-flex align-items-center gap-2 mt-2\"><button type=\"submit\" form=\"interfaces-save-form\" class=\"btn btn-primary rounded-3 d-flex align-items-center gap-2 fw-semibold\"><i class=\"bi bi-check-circle\"></i> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("warning", "Save stores your settings. Apply Changes writes the configured IP addresses to the machine's network and reloads it — this can briefly interrupt connectivity."))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Save Settings"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 110, Col: 200}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 112, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div><button type=\"submit\" class=\"btn btn-outline-secondary rounded-3 d-flex align-items-center gap-2 fw-semibold\"><i class=\"bi bi-hdd-network\"></i> ")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button> <button type=\"submit\" form=\"interfaces-apply-form\" class=\"btn btn-outline-secondary rounded-3 d-flex align-items-center gap-2 fw-semibold\"><i class=\"bi bi-hdd-network\"></i> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Apply Changes"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 114, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 116, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></form>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -297,7 +297,7 @@ func portalInterfaceSelect(api sdkapi.IPluginApi, rows []InterfaceRow) templ.Com
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Portal interface (portal address)"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 126, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 128, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -315,7 +315,7 @@ func portalInterfaceSelect(api sdkapi.IPluginApi, rows []InterfaceRow) templ.Com
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(row.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 130, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 132, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -338,7 +338,7 @@ func portalInterfaceSelect(api sdkapi.IPluginApi, rows []InterfaceRow) templ.Com
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(mainOptionLabel(row))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 130, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 132, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -356,7 +356,7 @@ func portalInterfaceSelect(api sdkapi.IPluginApi, rows []InterfaceRow) templ.Com
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "This interface's address hosts the captive portal and custom domain. Every captive interface redirects its clients to it. It must be an interface with the captive portal enabled."))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 134, Col: 209}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 136, Col: 209}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -398,7 +398,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(row.XData)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 141, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 143, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -411,7 +411,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(headingID(row))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 142, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 144, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -446,7 +446,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs("#" + collapseID(row))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 147, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 149, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -459,7 +459,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(ariaExpanded(row))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 148, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 150, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -472,7 +472,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(collapseID(row))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 149, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 151, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -485,7 +485,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 155, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 157, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -498,7 +498,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(row.Device)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 157, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 159, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -516,7 +516,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(row.IPv4)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 159, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 161, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -535,7 +535,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(row.CIDR)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 162, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 164, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -554,7 +554,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Main"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 170, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 172, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -573,7 +573,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Up"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 174, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 176, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -591,7 +591,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Down"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 176, Col: 116}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 178, Col: 116}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -618,7 +618,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(collapseID(row))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 183, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 185, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -644,7 +644,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(headingID(row))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 183, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 185, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
@@ -657,7 +657,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs("enable_captive_portal_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 190, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 192, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -670,7 +670,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs("enable_captive_portal_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 191, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 193, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
@@ -693,7 +693,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs("enable_captive_portal_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 197, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 199, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -706,7 +706,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Enable captive portal"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 198, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 200, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -719,7 +719,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "When on, this interface gets the captive portal, traffic shaping, and can reach other captive interfaces. When off, it is left completely untouched and free to be configured any way."))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 200, Col: 215}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 202, Col: 215}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -732,7 +732,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Static IP address"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 208, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 210, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
@@ -745,7 +745,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var42 string
 		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs("ip_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 213, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 215, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 		if templ_7745c5c3_Err != nil {
@@ -758,7 +758,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "IP address"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 213, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 215, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -771,7 +771,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs("ip_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 214, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 216, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
@@ -784,7 +784,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs("ip_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 214, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 216, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
@@ -797,7 +797,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(row.IpAddress)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 214, Col: 117}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 216, Col: 117}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 		if templ_7745c5c3_Err != nil {
@@ -810,7 +810,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs("netmask_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 217, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 219, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
@@ -823,7 +823,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Netmask"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 217, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 219, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
@@ -836,7 +836,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var49 string
 		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs("netmask_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 218, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 220, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 		if templ_7745c5c3_Err != nil {
@@ -849,7 +849,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var50 string
 		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs("netmask_" + row.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 218, Col: 103}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 220, Col: 103}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 		if templ_7745c5c3_Err != nil {
@@ -862,7 +862,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var51 string
 		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(row.Netmask)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 218, Col: 125}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 220, Col: 125}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 		if templ_7745c5c3_Err != nil {
@@ -875,7 +875,7 @@ func interfaceItem(api sdkapi.IPluginApi, row InterfaceRow) templ.Component {
 		var templ_7745c5c3_Var52 string
 		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Leave both blank to keep the current address. Saved changes take effect only after you click Apply Changes."))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 222, Col: 139}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/interfaces/index.templ`, Line: 224, Col: 139}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 		if templ_7745c5c3_Err != nil {

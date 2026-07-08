@@ -142,6 +142,56 @@ fmt.Printf("Upload rate: %.1f KB/s\n", float64(txRate)/1024)
 
 **Note:** Returns 0 on the first call since there's no previous reading to compare against.
 
+### IsBridge
+
+Returns `true` if the network device is a bridge interface.
+
+```go
+if device.IsBridge() {
+    fmt.Printf("Bridge members: %v\n", device.BridgeMembers())
+}
+```
+
+### IsVlan
+
+Returns `true` if the network device is a VLAN interface.
+
+```go
+if device.IsVlan() {
+    fmt.Println("This is a VLAN interface")
+}
+```
+
+### IsIfb
+
+Returns `true` if the network device is an IFB (Intermediate Functional Block) interface. IFB devices are shadow interfaces used internally for traffic shaping and are identified by a `-ifb` name suffix (e.g. `eth0-ifb`).
+
+```go
+if device.IsIfb() {
+    fmt.Println("This is an internal traffic-shaping device")
+}
+```
+
+### IsEthernet
+
+Returns `true` if the network device is an Ethernet interface.
+
+```go
+if device.IsEthernet() {
+    fmt.Printf("Speed: %d Mbps, Duplex: %s\n", device.SpeedMbps(), device.Duplex())
+}
+```
+
+### IsWireless
+
+Returns `true` if the network device is a wireless (WLAN) interface.
+
+```go
+if device.IsWireless() {
+    fmt.Println("This is a wireless interface")
+}
+```
+
 ## Usage Example
 
 ```go

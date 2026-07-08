@@ -1,4 +1,4 @@
-# Core Database Tables
+# Core Database Schema
 
 This page documents the **core system** database schema — the tables owned by the
 Flarewifi core.
@@ -215,11 +215,11 @@ Used for bulk management and reporting.
 
 ### `purchases`
 
-An **in-app purchase order** — a checkout the device initiates (e.g. a plugin
-purchase). A purchase is settled by one or more [`payments`](#payments).
+A **purchase order** created by plugins that implement the purchases API.
+A purchase is settled by one or more [`payments`](#payments).
 Confirmation/cancellation are tracked via timestamps.
 
-**Used by:** [IPurchaseRequest](../api/purchase-request.md) · [IPaymentsApi](../api/payments-api.md) · [IInAppPurchasesApi](../api/inapp-purchases-api.md) · [Accept Payments](../tutorials/accepting-payments.md)
+**Used by:** [IPurchaseRequest](../api/purchase-request.md) · [IPaymentsApi](../api/payments-api.md) · [Accept Payments](../tutorials/accepting-payments.md)
 
 | Column | Type | Description |
 |--------|------|-------------|

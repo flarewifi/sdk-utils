@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"core/internal/api"
@@ -11,6 +13,7 @@ import (
 	"core/internal/modules/activation"
 	"core/internal/modules/netmon"
 	coretheme "core/internal/theme"
+	"core/internal/web"
 	"core/utils/env"
 	"core/utils/tags"
 
@@ -27,8 +30,23 @@ const (
 	provisionProbeInterval = 3 * time.Second
 )
 
+// shutdownTimeout bounds the whole graceful-shutdown sequence (scheduler
+// tasks + HTTP servers) on SIGTERM/SIGINT, so a stuck plugin task can't hang
+// process exit indefinitely.
+const shutdownTimeout = 10 * time.Second
+
+// Init runs the boot sequence and starts the HTTP(S) servers, then blocks
+// until a SIGTERM/SIGINT is received, at which point it gracefully cancels
+// every registered scheduler task and stops the HTTP(S) servers before
+// returning. It does not return before then — every entrypoint that calls
+// Init (core/main.go, core/main_mono.go, core/internal/cli/server/server_dev.go)
+// relies on this to keep the process alive, since InitHttpServer's listeners
+// run on their own goroutines and no longer block by themselves.
 func Init(g *api.CoreGlobals) {
 	bootCh := make(chan struct{})
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 
 	InitDirs()
 
@@ -52,8 +70,7 @@ func Init(g *api.CoreGlobals) {
 		// notifies + recovers from backup and keeps going.
 		if err := InitPlugins(g); err != nil {
 			msg := fmt.Sprintf("Boot aborted: plugin load failed: %v", err)
-			if logErr := g.CoreAPI.Logger().Error(msg); logErr != nil {
-			}
+			g.CoreAPI.Logger().Error(msg)
 			// Only a local dev build aborts the boot here. Every deployed device
 			// (staging, sandbox, production) keeps booting: a non-zero exit would make
 			// start.sh treat boot as a crash and roll the whole staged update back,
@@ -70,8 +87,7 @@ func Init(g *api.CoreGlobals) {
 		// their Init run later, after the online monitor provisions them.
 		if err := InitLoadedPlugins(g); err != nil {
 			msg := fmt.Sprintf("Boot aborted: plugin initialization failed: %v", err)
-			if logErr := g.CoreAPI.Logger().Error(msg); logErr != nil {
-			}
+			g.CoreAPI.Logger().Error(msg)
 			// Deployed devices (staging, sandbox, production) keep booting; only dev
 			// aborts. Same rationale as the InitPlugins gate above — see env.IsDevEnv.
 			if env.IsDevEnv() {
@@ -144,7 +160,7 @@ func Init(g *api.CoreGlobals) {
 
 		// Initialize sessions manager
 		if err := g.ClientMgr.Init(ctx); err != nil {
-		} else {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("boot: sessions manager init failed: %v", err))
 		}
 
 		// Start jobs
@@ -162,4 +178,19 @@ func Init(g *api.CoreGlobals) {
 	}()
 
 	InitHttpServer(g, bootCh)
+
+	<-sigCh
+
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := g.SchedulerMgr.Shutdown(ctx); err != nil {
+		g.CoreAPI.Logger().Error(fmt.Sprintf("shutdown: %v", err))
+	}
+	web.StopHTTPSServer()
+	if g.AppServer != nil {
+		if err := g.AppServer.Shutdown(ctx); err != nil {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("shutdown: app server: %v", err))
+		}
+	}
 }

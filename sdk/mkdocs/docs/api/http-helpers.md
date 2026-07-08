@@ -23,7 +23,7 @@ url := api.Http().Helpers().AdminAssetPath("css/style.css")
 Returns the URI path of a manifest index filename in [portal manifest](./assets-manifest.md#portal-manifest).
 
 ```go
-url := api.Http().Helpers().AdminAssetPath("css/style.css")
+url := api.Http().Helpers().PortalAssetPath("css/style.css")
 ```
 
 ### PublicPath

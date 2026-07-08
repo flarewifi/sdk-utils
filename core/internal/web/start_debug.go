@@ -3,16 +3,21 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 
+	"core/internal/modules/logger"
 	"core/utils/env"
 
 	"github.com/gorilla/mux"
 )
 
-func StartServer(r *mux.Router, forever bool) *http.Server {
+// StartServer starts the HTTP server on a background goroutine and returns
+// its *http.Server handle immediately, so the caller can later call
+// Shutdown(ctx) on it for a graceful stop.
+func StartServer(r *mux.Router) *http.Server {
 
 	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
@@ -29,13 +34,12 @@ func StartServer(r *mux.Router, forever bool) *http.Server {
 		Addr:    port,
 	}
 
-	if !forever {
-		go func() {
-			srv.ListenAndServe()
-		}()
-	} else {
-		srv.ListenAndServe()
-	}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			file, line := logger.GetCallerFileLine(0)
+			logger.Emit(2, file, line, fmt.Sprintf("http server on %s stopped: %v", port, err))
+		}
+	}()
 
 	return srv
 }

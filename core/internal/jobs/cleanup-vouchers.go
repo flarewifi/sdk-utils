@@ -19,29 +19,17 @@ import (
 //  2. Notifies the admin about vouchers that expired before ever being used.
 //
 // Runs at 2:15 AM in production.
-func StartVoucherCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) {
-	go func() {
-		if VoucherCleanupInterval > 0 {
-			for {
-				time.Sleep(VoucherCleanupInterval)
-				performVoucherCleanup(database, mdls, coreAPI)
-			}
-		} else {
-			for {
-				now := time.Now()
-				next := time.Date(now.Year(), now.Month(), now.Day(),
-					VoucherCleanupHour, VoucherCleanupMinute, 0, 0, now.Location())
-				if now.After(next) {
-					next = next.Add(24 * time.Hour)
-				}
+func StartVoucherCleanupScheduler(database *db.Database, mdls *models.Models, coreAPI *api.PluginApi) error {
+	fn := func(ctx context.Context) {
+		performVoucherCleanup(database, mdls, coreAPI)
+	}
 
-				waitDuration := next.Sub(now)
+	if VoucherCleanupInterval > 0 {
+		return coreAPI.Scheduler().Every("voucher-cleanup", VoucherCleanupInterval, fn)
+	}
 
-				time.Sleep(waitDuration)
-				performVoucherCleanup(database, mdls, coreAPI)
-			}
-		}
-	}()
+	cron := fmt.Sprintf("%d %d * * *", VoucherCleanupMinute, VoucherCleanupHour)
+	return coreAPI.Scheduler().Cron("voucher-cleanup", cron, fn)
 }
 
 // =============================================================================

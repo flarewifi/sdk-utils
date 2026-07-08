@@ -22,7 +22,10 @@ func (c *AppCfgApi) Get() (sdkapi.AppConfig, error) {
 		Currency:          cfg.Currency,
 		Secret:            cfg.Secret,
 		Channel:           cfg.Channel,
+		LogsRetentionDays: cfg.LogsRetentionDays,
+		EnableLogging:     cfg.EnableLogging,
 		PluginMaxFileSize: cfg.PluginMaxFileSize,
+		CustomDomain:      cfg.CustomDomain,
 	}, nil
 }
 
@@ -32,7 +35,10 @@ func (c *AppCfgApi) Save(cfg sdkapi.AppConfig) error {
 		Currency:          cfg.Currency,
 		Secret:            cfg.Secret,
 		Channel:           cfg.Channel,
+		LogsRetentionDays: cfg.LogsRetentionDays,
+		EnableLogging:     cfg.EnableLogging,
 		PluginMaxFileSize: cfg.PluginMaxFileSize,
+		CustomDomain:      cfg.CustomDomain,
 	}
 
 	return config.WriteApplicationConfig(data)

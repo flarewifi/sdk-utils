@@ -31,18 +31,27 @@ const deviceMergeMaxPassesPerMac = 20
 // with a brand-new MAC and no cookie becomes a NEW device row. This job is the
 // offline safety net: it periodically scans MACs shared across multiple device rows
 // and merges the rows that fingerprints confirm are the same physical device.
-func StartDeviceMergeScheduler(database *db.Database, mdls *models.Models, clientMgr *sessmgr.SessionsMgr, coreAPI *api.PluginApi) {
-	go func() {
-		time.Sleep(DeviceMergeInitialDelay)
+func StartDeviceMergeScheduler(database *db.Database, mdls *models.Models, clientMgr *sessmgr.SessionsMgr, coreAPI *api.PluginApi) error {
+	return coreAPI.Scheduler().Go("device-merge", func(ctx context.Context) {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(DeviceMergeInitialDelay):
+		}
 		performDeviceMerge(database, mdls, clientMgr, coreAPI)
 
 		ticker := time.NewTicker(DeviceMergeInterval)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			performDeviceMerge(database, mdls, clientMgr, coreAPI)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				performDeviceMerge(database, mdls, clientMgr, coreAPI)
+			}
 		}
-	}()
+	})
 }
 
 // =============================================================================

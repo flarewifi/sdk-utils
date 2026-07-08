@@ -17,6 +17,7 @@ import (
 	"core/internal/events"
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/modules/pluginreport"
+	"core/internal/modules/scheduler"
 	"core/internal/modules/ubus"
 	"core/internal/network"
 	"core/internal/plugindeps"
@@ -56,16 +57,17 @@ var ErrPluginDisabled = errors.New("plugin disabled")
 // wrapped message carries the operator-supplied reason when one was given.
 var ErrPluginBlocked = errors.New("plugin blocked")
 
-func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr, eventsMgr *events.EventsManager) *PluginsMgr {
+func NewPluginMgr(d *db.Database, m *models.Models, paymgr *PaymentsMgr, clntReg *sessmgr.ClientRegister, clntMgr *sessmgr.SessionsMgr, trfkMgr *network.TrafficMgr, eventsMgr *events.EventsManager, schedulerMgr *scheduler.Manager) *PluginsMgr {
 	pmgr := &PluginsMgr{
-		db:        d,
-		models:    m,
-		paymgr:    paymgr,
-		clntReg:   clntReg,
-		clntMgr:   clntMgr,
-		trfkMgr:   trfkMgr,
-		eventsMgr: eventsMgr,
-		plugins:   []*PluginApi{},
+		db:           d,
+		models:       m,
+		paymgr:       paymgr,
+		clntReg:      clntReg,
+		clntMgr:      clntMgr,
+		trfkMgr:      trfkMgr,
+		eventsMgr:    eventsMgr,
+		schedulerMgr: schedulerMgr,
+		plugins:      []*PluginApi{},
 	}
 	return pmgr
 }
@@ -79,6 +81,7 @@ type PluginsMgr struct {
 	clntMgr      *sessmgr.SessionsMgr
 	trfkMgr      *network.TrafficMgr
 	eventsMgr    *events.EventsManager
+	schedulerMgr *scheduler.Manager
 	plugins      []*PluginApi
 	globalAssets *GlobalAssets
 	wifiMgr      *ubus.WifiMgr

@@ -21,6 +21,26 @@ type PluginInfo struct {
 	// `command -v opkg || exit 0`) so they no-op safely outside the machine.
 	PreInstall  string `json:"preinstall"`
 	PostInstall string `json:"postinstall"`
+
+	// PreUninstall and PostUninstall are optional shell scripts run when the
+	// plugin is removed (core/utils/plugins.UninstallPlugin), for undoing
+	// install-time OS-level changes a plugin made OUTSIDE its own install
+	// directory (e.g. a system service file, a firewall include, a crontab
+	// entry) — installPath's own removal (os.RemoveAll) already cleans up
+	// everything inside the plugin's directory, so these are only needed for
+	// side effects elsewhere on the filesystem. Paths are relative to the
+	// plugin root, same as PreInstall/PostInstall. Both run while the plugin's
+	// install directory still exists (that's where the script file itself
+	// lives) — PreUninstall first, before the plugin's DB down-migrations and
+	// metadata are removed; PostUninstall last, after those but immediately
+	// before the install directory itself is deleted. Scripts must guard their
+	// own environment and tolerate re-running (e.g. a plugin marked for
+	// removal but never actually unloaded before a crash) — there is no
+	// version-pinned marker for uninstall scripts the way there is for
+	// install scripts, since tracking "did this already run" for a plugin
+	// that's gone has no boot to check it against.
+	PreUninstall  string `json:"preuninstall"`
+	PostUninstall string `json:"postuninstall"`
 }
 
 func GetPluginInfoFromPath(src string) (PluginInfo, error) {
