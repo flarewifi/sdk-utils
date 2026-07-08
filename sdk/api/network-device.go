@@ -41,7 +41,7 @@ type INetworkDevice interface {
 	// Returns the duplex mode of the network device ("full", "half", or "unknown").
 	Duplex() string
 
-	// Returns the names of bridge member ports.
+	// Returns the names of bridge member ports, if device is bridge interface.
 	BridgeMembers() []string
 
 	// Returns the current receive bytes of the network device.
@@ -59,4 +59,20 @@ type INetworkDevice interface {
 	// Calculated from the difference in TxBytes since last call.
 	// Returns 0 on the first call (no previous reading available).
 	TxRate() uint64
+
+	// Returns true if the network device is a bridge interface.
+	IsBridge() bool
+
+	// Returns true if the network device is a VLAN interface.
+	IsVlan() bool
+
+	// Returns true if the network device is an IFB (Intermediate Functional Block) interface,
+	// identified by the "-ifb" name suffix used for traffic-shaping shadow devices.
+	IsIfb() bool
+
+	// Returns true if the network device is an Ethernet interface.
+	IsEthernet() bool
+
+	// Returns true if the network device is a wireless (WLAN) interface.
+	IsWireless() bool
 }

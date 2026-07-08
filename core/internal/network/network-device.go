@@ -1,6 +1,7 @@
 package network
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -131,6 +132,26 @@ func (self *NetworkDevice) TxRate() uint64 {
 	cached.txBytes = txBytes
 
 	return cached.txRate
+}
+
+func (self *NetworkDevice) IsBridge() bool {
+	return self.Type() == sdkapi.NetDevBridge
+}
+
+func (self *NetworkDevice) IsVlan() bool {
+	return self.Type() == sdkapi.NetDevVLAN
+}
+
+func (self *NetworkDevice) IsIfb() bool {
+	return strings.HasSuffix(self.Name(), "-ifb")
+}
+
+func (self *NetworkDevice) IsEthernet() bool {
+	return self.Type() == sdkapi.NetDevEther
+}
+
+func (self *NetworkDevice) IsWireless() bool {
+	return self.Type() == sdkapi.NetDevWLAN
 }
 
 func NewNetworkDevice(d *ubus.NetworkDevice) sdkapi.INetworkDevice {

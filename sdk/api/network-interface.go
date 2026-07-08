@@ -8,7 +8,7 @@ package sdkapi
 
 import "net"
 
-// INetworkInterface represents a network interface in the system.
+// INetworkInterface represents a network interface in the system (/etc/config/network).
 type INetworkInterface interface {
 
 	// Returns the name of the interface.
