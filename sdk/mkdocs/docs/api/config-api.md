@@ -27,6 +27,21 @@ Lang
 Secret
 : The secret key used to sign the JWT tokens and other encryptions.
 
+Channel
+: The application release channel: `development`, `beta`, or `stable`. The default is `stable`.
+
+LogsRetentionDays
+: The number of days to retain logs in the database. The default is `3`.
+
+EnableLogging
+: Whether to enable logging to the database. The default is `false`.
+
+PluginMaxFileSize
+: The maximum file size for plugin storage in bytes. The default is `10485760` (10 MB).
+
+CustomDomain
+: The shared captive-portal hostname served locally with a valid, cloud-issued certificate. Currently ignored.
+
 ### Get
 
 To get the application configuration, use the `IAppCfgApi.Get` method.
@@ -79,10 +94,13 @@ To get the bandwidth configuration of a network interface, use the `IBandwidthCf
 bwdAPI := api.Config().Bandwidth()
 cfg, ok := bwdAPI.Get("eth0")
 if !ok {
-    // handle not found
+    // handle not found (no saved config for this interface)
+    // Defaults to global bandwidth settings are returned
 }
 fmt.Println(cfg) // Bandwidth config
 ```
+
+When no saved configuration exists for the requested interface, `Get` returns the global default bandwidth settings with `ok` set to `false`. Callers should check `ok` to distinguish between an explicit (but possibly zero-valued) saved config and a fallback default.
 
 ### Save
 

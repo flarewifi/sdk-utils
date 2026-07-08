@@ -61,10 +61,6 @@ func (self *HttpHelpers) PublicPath(p string) string {
 	return path.Join("/assets/plugin", self.api.info.Package, self.api.info.Version, "resources/assets/public", p)
 }
 
-func (self *HttpHelpers) PluginMgr() sdkapi.IPluginsMgrApi {
-	return self.api.PluginsMgr()
-}
-
 func (self *HttpHelpers) AdsView() (html template.HTML) {
 	return ""
 }
