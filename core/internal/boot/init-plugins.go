@@ -98,11 +98,17 @@ func InitPlugins(g *api.CoreGlobals) error {
 		return err
 	}
 
-	// Process pending removals before loading plugins
+	// Process pending removals before loading plugins. A failure (e.g. a
+	// preuninstall/postuninstall script erroring) is logged but never aborts
+	// boot — the "uninstall" marker file survives inside the plugin's install
+	// dir either way (UninstallPlugin only removes installPath on full
+	// success), so a failed removal is simply retried on the next boot rather
+	// than silently abandoned or allowed to block every other plugin loading.
 	for _, dir := range plugins.InstalledPluginDirs() {
 		pkg := filepath.Base(dir)
 		if plugins.IsToBeRemoved(pkg) {
 			if err := plugins.UninstallPlugin(pkg, db); err != nil {
+				g.CoreAPI.Logger().Error(fmt.Sprintf("boot: uninstall plugin %q failed: %v", pkg, err))
 			}
 		}
 	}

@@ -124,6 +124,49 @@ machine setup would otherwise fail the boot-time install):
 [ "${GO_ENV:-production}" = "production" ] || exit 0
 ```
 
+### preuninstall
+
+*(optional)* Path (relative to the plugin root) to a shell script run when the
+plugin is removed, **before** its DB down-migrations run and its metadata
+record is deleted — i.e. while the plugin is still fully intact.
+
+### postuninstall
+
+*(optional)* Path (relative to the plugin root) to a shell script run when the
+plugin is removed, **after** its DB down-migrations and metadata removal but
+**immediately before its install directory is deleted** — the last moment the
+script file itself still exists on disk to be run.
+
+Use `preinstall`/`postinstall` to prepare things `Init` depends on; use
+`preuninstall`/`postuninstall` for the mirror image — undoing whatever a
+plugin changed **outside its own install directory** (a system service file
+under `/etc/init.d`, a firewall include, a crontab entry, files moved to fixed
+system paths by `postinstall`). Nothing needs to clean up files *inside* the
+install directory — removing it is the last step of uninstall regardless.
+
+Uninstall scripts differ from `preinstall`/`postinstall` in three ways:
+
+- They are **not gated on internet connectivity** — uninstall is a purely
+  local operation (delete DB rows/files, run a script), so it runs at the next
+  boot regardless of network state.
+- They are **not "once per version"** — there is no version-pinned marker the
+  way install phases have one (tracking "did this already run" for a plugin
+  that no longer exists has no boot to check it against). A script must
+  tolerate being invoked and, on failure, potentially retried on a later boot
+  (the plugin stays marked for removal until `UninstallPlugin` fully
+  succeeds).
+- Uninstalling is **always** deferred to the next boot — clicking "uninstall"
+  in the dashboard only marks the plugin for removal; unlike `preinstall`/
+  `postinstall`, there is no dashboard-triggered inline run, so the working
+  directory is always the plugin's **install** directory, never a source tree.
+
+```sh
+#!/bin/sh
+[ "${GO_ENV:-production}" = "production" ] || exit 0
+# Undo something this plugin set up outside its own install directory.
+rm -f /etc/some-external-config.conf
+```
+
 ### sdk
 
 *(optional)* The minimum sdk version that the plugin supports. The supported SDK versions are available in [flarehotspot/devkit](https://github.com/flarewifi/devkit/releases) repository.

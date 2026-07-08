@@ -1,14 +1,15 @@
 # Plugin Scripts
 
-Plugins can ship small shell scripts that run around installation to prepare the
-machine — installing system packages, configuring the firewall, and so on. This
-guide covers the concepts: **where scripts must live**, **when they run**, **how
-to write them safely**, and **how a running plugin can invoke one at runtime**.
+Plugins can ship small shell scripts that run around installation (and removal)
+to prepare or clean up the machine — installing system packages, configuring the
+firewall, and so on. This guide covers the concepts: **where scripts must
+live**, **when they run**, **how to write them safely**, and **how a running
+plugin can invoke one at runtime**.
 
 For the `plugin.json` field reference and exact lifecycle ordering, see
 [`plugin.json`](../api/plugin.json.md).
 
-## The two hooks
+## The install hooks
 
 A plugin declares its scripts and system packages in `plugin.json`
 (`system_packages`, `preinstall`, `postinstall`):
@@ -20,6 +21,17 @@ A plugin declares its scripts and system packages in `plugin.json`
 - **`postinstall`** — runs after `Init` (skipped if `Init` fails).
 
 All three are gated on internet connectivity and run **once per plugin version**.
+
+## The uninstall hooks
+
+A plugin can also declare `preuninstall`/`postuninstall`, run when it's
+removed — the mirror image of the install hooks, for undoing whatever a
+plugin changed **outside its own install directory** (that directory is
+deleted as the last step of removal regardless, so nothing inside it needs
+manual cleanup). Unlike the install hooks, these are **not** gated on
+internet connectivity and **not** version-tracked — see the
+[`plugin.json` reference](../api/plugin.json.md#preuninstall) for the exact
+differences.
 
 ## Where scripts must live
 
