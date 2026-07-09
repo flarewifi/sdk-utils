@@ -75,27 +75,35 @@ func (self *VouchersApi) providerPkg() string {
 func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.CreateVouchersParams) ([]sdkapi.IVoucher, error) {
 	db := self.pluginApi.db
 
-	if len(params.Codes) > 0 && len(params.Codes) != params.Count {
-		return nil, fmt.Errorf("len(Codes) (%d) must equal Count (%d) when Codes is provided", len(params.Codes), params.Count)
-	}
-	seenCodes := make(map[string]bool, len(params.Codes))
-	for _, code := range params.Codes {
-		if code == "" || len(code) > 10 {
-			return nil, fmt.Errorf("invalid code %q: must be 1-10 characters", code)
-		}
-		if seenCodes[code] {
-			return nil, fmt.Errorf("duplicate code %q in Codes", code)
-		}
-		seenCodes[code] = true
+	if len(params.Entries) == 0 {
+		return nil, fmt.Errorf("at least one voucher entry is required")
 	}
 
-	// Apply default bandwidth if not specified.
-	if params.DownSpeedMbps == 0 {
-		params.DownSpeedMbps = 10
+	// Copy so defaulting below never mutates the caller's slice, and validate
+	// each entry's optional Code up front.
+	entries := make([]sdkapi.VoucherEntry, len(params.Entries))
+	copy(entries, params.Entries)
+	seenCodes := make(map[string]bool, len(entries))
+	for i := range entries {
+		if entries[i].Code != "" {
+			if len(entries[i].Code) > 10 {
+				return nil, fmt.Errorf("invalid code %q: must be 1-10 characters", entries[i].Code)
+			}
+			if seenCodes[entries[i].Code] {
+				return nil, fmt.Errorf("duplicate code %q in Entries", entries[i].Code)
+			}
+			seenCodes[entries[i].Code] = true
+		}
+
+		// Apply default bandwidth if not specified.
+		if entries[i].DownSpeedMbps == 0 {
+			entries[i].DownSpeedMbps = 10
+		}
+		if entries[i].UpSpeedMbps == 0 {
+			entries[i].UpSpeedMbps = 10
+		}
 	}
-	if params.UpSpeedMbps == 0 {
-		params.UpSpeedMbps = 10
-	}
+	params.Entries = entries
 
 	// Guarantee BatchUUID is set before the before-create event so batch-level
 	// callbacks (e.g. reseller credit checks) can reference the final UUID.
@@ -111,8 +119,6 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 		return nil, err
 	}
 
-	downSpeedMbps := params.DownSpeedMbps
-	upSpeedMbps := params.UpSpeedMbps
 	batchUUID := params.BatchUUID
 
 	// Pre-generate each voucher's code/UUID and fire its EventVoucherBeforeCreate
@@ -125,20 +131,22 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 	// query is safe, and a veto needs no rollback since nothing has been
 	// written yet.
 	type pendingVoucher struct {
-		code string
-		uuid string
+		entry sdkapi.VoucherEntry
+		code  string
+		uuid  string
 	}
-	pending := make([]pendingVoucher, params.Count)
-	for i := 0; i < params.Count; i++ {
-		code := generateVoucherCode()
-		if len(params.Codes) > 0 {
-			code = params.Codes[i]
+	pending := make([]pendingVoucher, len(entries))
+	for i, entry := range entries {
+		code := entry.Code
+		if code == "" {
+			code = generateVoucherCode()
 		}
 		uuid := generateVoucherUUID()
-		pending[i] = pendingVoucher{code: code, uuid: uuid}
+		pending[i] = pendingVoucher{entry: entry, code: code, uuid: uuid}
 
 		previewV := &previewVoucher{
-			params:      params,
+			entry:       entry,
+			batchUUID:   batchUUID,
 			code:        code,
 			uuid:        uuid,
 			providerPkg: self.providerPkg(),
@@ -170,32 +178,29 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 			return fmt.Errorf("unable to create voucher batch: %w", err)
 		}
 
-		for i := 0; i < params.Count; i++ {
-			code := pending[i].code
-			uuid := pending[i].uuid
-
+		for _, p := range pending {
 			expiresAt := sql.NullTime{}
-			if params.ExpiresAt != nil {
-				expiresAt = sql.NullTime{Time: *params.ExpiresAt, Valid: true}
+			if p.entry.ExpiresAt != nil {
+				expiresAt = sql.NullTime{Time: *p.entry.ExpiresAt, Valid: true}
 			}
 			sessionExpDays := sql.NullInt64{}
-			if params.SessionExpDays != nil {
-				sessionExpDays = sql.NullInt64{Int64: int64(*params.SessionExpDays), Valid: true}
+			if p.entry.SessionExpDays != nil {
+				sessionExpDays = sql.NullInt64{Int64: int64(*p.entry.SessionExpDays), Valid: true}
 			}
 			useGlobal := int64(0)
-			if params.UseGlobal {
+			if p.entry.UseGlobal {
 				useGlobal = 1
 			}
 			batchUUIDParam := sql.NullString{String: batchUUID, Valid: true}
 			row, err := q.CreateVoucher(ctx, coreQueries.CreateVoucherParams{
-				Uuid:           uuid,
-				Code:           code,
+				Uuid:           p.uuid,
+				Code:           p.code,
 				ProviderPkg:    self.providerPkg(),
-				SessionType:    string(params.Type),
-				TimeSecs:       params.TimeSecs,
-				DataMb:         params.DataMb,
-				DownSpeedMbps:  downSpeedMbps,
-				UpSpeedMbps:    upSpeedMbps,
+				SessionType:    string(p.entry.Type),
+				TimeSecs:       p.entry.TimeSecs,
+				DataMb:         p.entry.DataMb,
+				DownSpeedMbps:  p.entry.DownSpeedMbps,
+				UpSpeedMbps:    p.entry.UpSpeedMbps,
 				SessionExpDays: sessionExpDays,
 				UseGlobal:      useGlobal,
 				ExpiresAt:      expiresAt,

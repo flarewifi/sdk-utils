@@ -14,24 +14,29 @@ vouchersApi := api.Vouchers()
 
 ### CreateVouchers
 
-Generates a batch of vouchers and returns them. Emits `EventVoucherBatchCreated` with the created voucher batch.
+Generates a batch of vouchers, one per entry in `params.Entries`, and returns them. Emits `EventVoucherBatchCreated` with the created voucher batch. Each entry carries its own type/time/data/speed/expiry/code — a single call can generate a batch of mixed voucher specs, not just a uniform one.
 
 ```go
 func (w http.ResponseWriter, r *http.Request) {
     expDays := 30 // Session expires 30 days after activation
-    
-    params := sdkapi.CreateVouchersParams{
-        Count:          10,
-        Type:           sdkapi.SessionTypeTimeOrData,
-        TimeSecs:       3600,     // 1 hour
-        DataMb:         100,      // 100 MB
-        DownSpeedMbps:  10,       // 10 Mbps download
-        UpSpeedMbps:    5,        // 5 Mbps upload
-        SessionExpDays: &expDays, // nil means session never expires
-        UseGlobal:      false,    // Use per-user bandwidth
+
+    // Ten identical vouchers.
+    entries := make([]sdkapi.VoucherEntry, 10)
+    for i := range entries {
+        entries[i] = sdkapi.VoucherEntry{
+            Type:           sdkapi.SessionTypeTimeOrData,
+            TimeSecs:       3600,     // 1 hour
+            DataMb:         100,      // 100 MB
+            DownSpeedMbps:  10,       // 10 Mbps download
+            UpSpeedMbps:    5,        // 5 Mbps upload
+            SessionExpDays: &expDays, // nil means session never expires
+            UseGlobal:      false,    // Use per-user bandwidth
+        }
     }
-    
-    vouchers, err := api.Vouchers().CreateVouchers(r.Context(), params)
+
+    vouchers, err := api.Vouchers().CreateVouchers(r.Context(), sdkapi.CreateVouchersParams{
+        Entries: entries,
+    })
     if err != nil {
         // handle error
     }
@@ -41,6 +46,9 @@ func (w http.ResponseWriter, r *http.Request) {
     }
 }
 ```
+
+!!! tip "Mixed batches"
+    Since each `VoucherEntry` is independent, a single `CreateVouchers` call can create vouchers with different plans (e.g. a "1-hour" and a "1-day" voucher) in the same batch, sharing one `BatchUUID`/`Amount`. Set `Code` on an entry to use a specific code instead of auto-generating one; codes must be 1-10 characters and unique within `Entries`.
 
 ### FindByCode
 
@@ -427,13 +435,12 @@ The `IVoucherBatch` interface represents a batch of vouchers with metadata.
     query the core `vouchers` table with `WHERE batch_uuid = <UUID()>` via your plugin's
     own sqlc query — see [Listing & counting vouchers](#listing-counting-vouchers).
 
-### CreateVouchersParams
+### VoucherEntry
 
-Parameters for creating a batch of vouchers:
+Per-voucher fields — one `VoucherEntry` produces one voucher:
 
 ```go
-type CreateVouchersParams struct {
-    Count          int        // Number of vouchers to create
+type VoucherEntry struct {
     Type           SessionType // "time", "data", or "time-or-data"
     TimeSecs       int64      // Session duration in seconds
     DataMb         int64      // Data allowance in megabytes
@@ -442,8 +449,19 @@ type CreateVouchersParams struct {
     SessionExpDays *int       // Days until session expires (nil = never)
     UseGlobal      bool       // Use global bandwidth (default: false)
     ExpiresAt      *time.Time // When voucher itself expires (nil = never)
-    BatchUUID      string     // Optional - if empty, a UUID will be generated
-    Amount         *float64   // Optional amount for the voucher batch
+    Code           string     // Optional - if empty, a code is auto-generated
+}
+```
+
+### CreateVouchersParams
+
+Parameters for creating a batch of vouchers:
+
+```go
+type CreateVouchersParams struct {
+    Entries   []VoucherEntry // One entry per voucher to create
+    BatchUUID string         // Optional - if empty, a UUID will be generated
+    Amount    *float64       // Optional amount for the voucher batch
 }
 ```
 
@@ -554,15 +572,21 @@ func Init(api sdkapi.IPluginApi) error {
 func handleCreateVouchers(w http.ResponseWriter, r *http.Request) {
     amount := 100.00
     expDays := 7
-    
+
+    entries := make([]sdkapi.VoucherEntry, 5)
+    for i := range entries {
+        entries[i] = sdkapi.VoucherEntry{
+            Type:           sdkapi.SessionTypeTime,
+            TimeSecs:       3600, // 1 hour each
+            DownSpeedMbps:  10,
+            UpSpeedMbps:    5,
+            SessionExpDays: &expDays,
+        }
+    }
+
     params := sdkapi.CreateVouchersParams{
-        Count:          5,
-        Type:           sdkapi.SessionTypeTime,
-        TimeSecs:       3600, // 1 hour each
-        DownSpeedMbps:  10,
-        UpSpeedMbps:    5,
-        SessionExpDays: &expDays,
-        Amount:         &amount,
+        Entries: entries,
+        Amount:  &amount,
     }
     
     vouchers, err := api.Vouchers().CreateVouchers(r.Context(), params)
