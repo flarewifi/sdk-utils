@@ -68,8 +68,13 @@ type VoucherEntry struct {
 
 // CreateVouchersParams holds parameters for creating a batch of vouchers.
 type CreateVouchersParams struct {
-	Entries   []VoucherEntry
-	BatchUUID string   // optional - if empty, a UUID will be generated
+	Entries []VoucherEntry
+	// BatchUUID is optional - if empty, a new UUID is generated for a fresh
+	// batch. If set to a batch UUID that already exists, the new vouchers are
+	// appended to that existing batch instead of erroring; this lets multiple
+	// CreateVouchers calls (e.g. chunked imports) grow one batch over time
+	// instead of each spawning its own.
+	BatchUUID string
 	Amount    *float64 // optional amount for the voucher batch
 }
 
@@ -160,5 +165,4 @@ type IVouchersApi interface {
 	// DeleteBatch removes a voucher batch and all its vouchers by UUID.
 	// Emits EventVoucherBatchDeleted with the deleted batch.
 	DeleteBatch(ctx context.Context, batchUUID string) error
-
 }

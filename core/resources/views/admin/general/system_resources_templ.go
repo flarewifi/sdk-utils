@@ -48,7 +48,7 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-trigger=\"every 5s\" hx-swap=\"outerHTML\"><div class=\"card-header border-bottom border-light-subtle p-4 bg-transparent\"><div class=\"d-flex align-items-center gap-3\"><div class=\"icon-container green\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-cpu-icon lucide-cpu\"><path d=\"M12 20v2\"></path><path d=\"M12 2v2\"></path><path d=\"M17 20v2\"></path><path d=\"M17 2v2\"></path><path d=\"M2 12h2\"></path><path d=\"M2 17h2\"></path><path d=\"M2 7h2\"></path><path d=\"M20 12h2\"></path><path d=\"M20 17h2\"></path><path d=\"M20 7h2\"></path><path d=\"M7 20v2\"></path><path d=\"M7 2v2\"></path><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"></rect><rect x=\"8\" y=\"8\" width=\"8\" height=\"8\" rx=\"1\"></rect></svg></div><div><h5 class=\"fw-semibold\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-trigger=\"every 5s\" hx-swap=\"outerHTML\"><div class=\"card-header border-bottom border-light-subtle p-3 bg-transparent\"><div class=\"d-flex align-items-center gap-3\"><div class=\"icon-container green\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-cpu-icon lucide-cpu\"><path d=\"M12 20v2\"></path><path d=\"M12 2v2\"></path><path d=\"M17 20v2\"></path><path d=\"M17 2v2\"></path><path d=\"M2 12h2\"></path><path d=\"M2 17h2\"></path><path d=\"M2 7h2\"></path><path d=\"M20 12h2\"></path><path d=\"M20 17h2\"></path><path d=\"M20 7h2\"></path><path d=\"M7 20v2\"></path><path d=\"M7 2v2\"></path><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"></rect><rect x=\"8\" y=\"8\" width=\"8\" height=\"8\" rx=\"1\"></rect></svg></div><div><h5 class=\"fw-semibold\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -61,14 +61,14 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h5></div></div></div><div class=\"card-body p-4\"><div class=\"row g-3\"><div class=\"col-12 col-sm-6 col-lg-3\"><div class=\"card border\"><div class=\"card-body p-4\"><div class=\"d-flex align-items-center mb-3 gap-2\"><div class=\"icon-container blue\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#155dfc\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-cpu-icon lucide-cpu\"><path d=\"M12 20v2\"></path><path d=\"M12 2v2\"></path><path d=\"M17 20v2\"></path><path d=\"M17 2v2\"></path><path d=\"M2 12h2\"></path><path d=\"M2 17h2\"></path><path d=\"M2 7h2\"></path><path d=\"M20 12h2\"></path><path d=\"M20 17h2\"></path><path d=\"M20 7h2\"></path><path d=\"M7 20v2\"></path><path d=\"M7 2v2\"></path><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"></rect><rect x=\"8\" y=\"8\" width=\"8\" height=\"8\" rx=\"1\"></rect></svg></div><h6 class=\"fw-semibold\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</h5></div></div></div><div class=\"card-body p-3\"><div class=\"row g-3\"><div class=\"col-12 col-sm-6 col-lg-3\"><div class=\"card border h-100\"><div class=\"card-body p-3\"><div class=\"d-flex align-items-center mb-2 gap-2\"><div class=\"icon-container blue\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-cpu-icon lucide-cpu\"><path d=\"M12 20v2\"></path><path d=\"M12 2v2\"></path><path d=\"M17 20v2\"></path><path d=\"M17 2v2\"></path><path d=\"M2 12h2\"></path><path d=\"M2 17h2\"></path><path d=\"M2 7h2\"></path><path d=\"M20 12h2\"></path><path d=\"M20 17h2\"></path><path d=\"M20 7h2\"></path><path d=\"M7 20v2\"></path><path d=\"M7 2v2\"></path><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"></rect><rect x=\"8\" y=\"8\" width=\"8\" height=\"8\" rx=\"1\"></rect></svg></div><h6 class=\"fw-semibold mb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "CPU"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 33, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 33, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -160,14 +160,14 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div></div><div class=\"col-12 col-sm-6 col-lg-3\"><div class=\"card border\"><div class=\"card-body p-4\"><div class=\"d-flex align-items-center mb-3 gap-2\"><div class=\"icon-container purple\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#9810fa\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-memory-stick-icon lucide-memory-stick\"><path d=\"M12 12v-2\"></path><path d=\"M12 18v-2\"></path><path d=\"M16 12v-2\"></path><path d=\"M16 18v-2\"></path><path d=\"M2 11h1.5\"></path><path d=\"M20 18v-2\"></path><path d=\"M20.5 11H22\"></path><path d=\"M4 18v-2\"></path><path d=\"M8 12v-2\"></path><path d=\"M8 18v-2\"></path><rect x=\"2\" y=\"6\" width=\"20\" height=\"10\" rx=\"2\"></rect></svg></div><h6 class=\"fw-semibold\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div></div><div class=\"col-12 col-sm-6 col-lg-3\"><div class=\"card border h-100\"><div class=\"card-body p-3\"><div class=\"d-flex align-items-center mb-2 gap-2\"><div class=\"icon-container blue\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-memory-stick-icon lucide-memory-stick\"><path d=\"M12 12v-2\"></path><path d=\"M12 18v-2\"></path><path d=\"M16 12v-2\"></path><path d=\"M16 18v-2\"></path><path d=\"M2 11h1.5\"></path><path d=\"M20 18v-2\"></path><path d=\"M20.5 11H22\"></path><path d=\"M4 18v-2\"></path><path d=\"M8 12v-2\"></path><path d=\"M8 18v-2\"></path><rect x=\"2\" y=\"6\" width=\"20\" height=\"10\" rx=\"2\"></rect></svg></div><h6 class=\"fw-semibold mb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "RAM"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 58, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 58, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -259,14 +259,14 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div></div><div class=\"col-12 col-sm-6 col-lg-3\"><div class=\"card border\"><div class=\"card-body p-4\"><div class=\"d-flex align-items-center mb-3 gap-2\"><div class=\"icon-container green\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#00a63e\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-hard-drive-icon lucide-hard-drive\"><path d=\"M10 16h.01\"></path><path d=\"M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"></path><path d=\"M21.946 12.013H2.054\"></path><path d=\"M6 16h.01\"></path></svg></div><h6 class=\"fw-semibold\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div></div><div class=\"col-12 col-sm-6 col-lg-3\"><div class=\"card border h-100\"><div class=\"card-body p-3\"><div class=\"d-flex align-items-center mb-2 gap-2\"><div class=\"icon-container blue\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-hard-drive-icon lucide-hard-drive\"><path d=\"M10 16h.01\"></path><path d=\"M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"></path><path d=\"M21.946 12.013H2.054\"></path><path d=\"M6 16h.01\"></path></svg></div><h6 class=\"fw-semibold mb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Disk"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 83, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 83, Col: 92}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -363,14 +363,14 @@ func SystemResources(api sdkapi.IPluginApi, info *sysinfo.SystemInfo) templ.Comp
 			return templ_7745c5c3_Err
 		}
 		if info.NetInterface != "" {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"col-12 col-sm-6 col-lg-3\"><div class=\"card border\"><div class=\"card-body p-4\"><div class=\"d-flex align-items-center mb-3 gap-2\"><div class=\"icon-container orange\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#ff6b35\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-network-icon lucide-network\"><rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"></rect><rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"></rect><rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"></rect><path d=\"M12 8v4\"></path><path d=\"M12 12h3\"></path><path d=\"M12 12H9\"></path></svg></div><h6 class=\"fw-semibold\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"col-12 col-sm-6 col-lg-3\"><div class=\"card border h-100\"><div class=\"card-body p-3\"><div class=\"d-flex align-items-center mb-2 gap-2\"><div class=\"icon-container blue\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-network-icon lucide-network\"><rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"></rect><rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"></rect><rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"></rect><path d=\"M12 8v4\"></path><path d=\"M12 12h3\"></path><path d=\"M12 12H9\"></path></svg></div><h6 class=\"fw-semibold mb-0\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Network"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 109, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/general/system_resources.templ`, Line: 109, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {

@@ -133,15 +133,33 @@ templ SysupgradeSuccessPage(api sdkapi.IPluginApi, csrfHTML string) {
 	</div>
 }
 
+// SysupgradeProgressPage wraps the polled progress partial (below) with the same
+// reboot-wait.js marker used by RebootingPartial (see reboot.templ) — on #page
+// itself, which htmx never replaces (only its innerHTML, every 2s), so the poll
+// loop reboot-wait.js starts here is never restarted or duplicated. A successful
+// sysupgrade has no "done" response (see SysupgradeStatusPartialCtrl) — the device
+// reboots before this page is ever polled again — so this is the only thing that
+// gets the admin off this page once the device comes back up.
 templ SysupgradeProgressPage(api sdkapi.IPluginApi) {
-	<div id="page" hx-post={ api.Http().Router().UrlForRoute("admin:updates:sysupgrade-status") } hx-trigger="every 2s">
+	<div
+		id="page"
+		hx-post={ api.Http().Router().UrlForRoute("admin:updates:sysupgrade-status") }
+		hx-trigger="every 2s"
+		data-reboot-status-url={ api.Http().Helpers().UrlForRoute("admin:power:reboot-status") }
+		data-reboot-redirect-url={ api.Http().Helpers().UrlForRoute("admin:dashboard") }
+	>
 		@SysupgradeProgressPartial(api, nil)
 	</div>
 }
 
 // SysupgradeProgressPartial renders the live sysupgrade state polled by the progress
 // page. A non-nil err always means the flash failed — a successful sysupgrade reboots
-// the device before this is ever polled again.
+// the device before this is ever polled again. The in-progress card's content never
+// actually changes between polls (no percent/byte counters here, unlike the download
+// page), so it carries hx-preserve to keep the same DOM node across the 2s poll
+// instead of being torn down and rebuilt every cycle — otherwise the spinner and
+// icons visibly flicker each poll (same root cause as the update-download page's
+// Cancel button, see download-updates.templ).
 templ SysupgradeProgressPartial(api sdkapi.IPluginApi, err error) {
 	if err != nil {
 		<div class="card shadow-sm border-danger">
@@ -174,7 +192,7 @@ templ SysupgradeProgressPartial(api sdkapi.IPluginApi, err error) {
 		{{ return }}
 	}
 
-	<div class="card shadow-sm">
+	<div id="sysupgrade-in-progress-card" hx-preserve="true" class="card shadow-sm">
 		<div class="card-body text-center py-5">
 			<div class="mb-4">
 				<div class="spinner-border text-warning" style="width: 4rem; height: 4rem;" role="status">

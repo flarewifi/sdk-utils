@@ -75,6 +75,9 @@ func StageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) {
 	downloadError.Store(nil)
 	pluginUpdateApplied.Store(false)
 	awaitingConfirm.Store(false)
+	cancelRequested.Store(false)
+	lastStagedPlugins.Store([]StagedComponent{})
+	lastSkippedPlugins.Store([]PluginBuildFailure{})
 	// A core update begins by downloading the core tarball; stageSystemUpdate flips
 	// to PhaseCompiling once it starts staging plugins.
 	setPhase(PhaseDownloading)
@@ -125,6 +128,9 @@ func StagePluginsUpdate(g *api.CoreGlobals) {
 	downloadError.Store(nil)
 	pluginUpdateApplied.Store(false)
 	awaitingConfirm.Store(false)
+	cancelRequested.Store(false)
+	lastStagedPlugins.Store([]StagedComponent{})
+	lastSkippedPlugins.Store([]PluginBuildFailure{})
 	// A plugin-only update downloads no core tarball — the whole run is staging
 	// plugins (cloud builds + on-device recompiles), so report compiling throughout.
 	setPhase(PhaseCompiling)
@@ -185,6 +191,12 @@ func stagePluginsUpdate(g *api.CoreGlobals) error {
 	stagedCount := 0
 	failedPlugins := []PluginBuildFailure{}
 	for i, pkg := range pluginPkgs {
+		// Checked between plugins, not mid-build: a build already in flight always
+		// finishes, so this can only ever skip work that hasn't started yet.
+		if cancelRequested.Load() {
+			return ErrUpdateCancelled
+		}
+
 		// Every store plugin — meta-bundle members included — updates to its own
 		// latest here; there is no bundle version pin. A member no longer covered by
 		// its bundle is already disabled (skipped by storePluginPackages), so this
@@ -194,6 +206,7 @@ func stagePluginsUpdate(g *api.CoreGlobals) error {
 			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Reason: buildFailureReason(err)})
 		} else {
 			stagedCount++
+			recordStagedPlugin(StagedComponent{Package: pkg, Name: storePluginDisplayName(g, pkg)})
 		}
 		downloadPercent.Store(int32((i + 1) * 99 / len(pluginPkgs)))
 	}
@@ -319,9 +332,18 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	// above) is fatal.
 	failedPlugins := []PluginBuildFailure{}
 	for i, pkg := range pluginPkgs {
+		// Checked between plugins, not mid-build (see stagePluginsUpdate). Cancelling
+		// here discards the already-staged core too — the caller empties the whole
+		// staging root on ErrUpdateCancelled — since nothing has committed yet.
+		if cancelRequested.Load() {
+			return ErrUpdateCancelled
+		}
+
 		if err := g.PluginMgr.StagePluginUpdate(pkg, "", targetCore); err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: store plugin %q failed to build: %v", pkg, err))
 			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Reason: buildFailureReason(err)})
+		} else {
+			recordStagedPlugin(StagedComponent{Package: pkg, Name: storePluginDisplayName(g, pkg)})
 		}
 		// Advance the bar across the store-plugin band.
 		pct := coreDownloadEndPct + (i+1)*(storePluginsEndPct-coreDownloadEndPct)/len(pluginPkgs)
@@ -348,13 +370,20 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	// cloud-built store plugins beside it. Empty/unreachable => nil => unpinned.
 	pinnedDeps := plugindeps.Fetch(targetCore)
 	for i, srcDir := range localTargets {
+		// Checked between plugins, not mid-build (see the store-plugin loop above).
+		if cancelRequested.Load() {
+			return ErrUpdateCancelled
+		}
+
 		// Name the plugin currently compiling so the software-update logs trace
 		// on-device recompile progress (store plugins are built in the cloud; these
 		// local ones are the only ones that actually compile here). Fall back to the
 		// source dir name if plugin.json can't be read.
 		pluginName := filepath.Base(srcDir)
+		pluginDisplayName := pluginName
 		if info, err := sdkutils.GetPluginInfoFromPath(srcDir); err == nil {
 			pluginName = info.Package
+			pluginDisplayName = info.Name
 		}
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("Compiling plugin %s (%d/%d)", pluginName, i+1, len(localTargets)))
 
@@ -365,6 +394,8 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		if err := plugins.StageLocalPluginRebuild(srcDir, coreDest, pinnedDeps); err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: local plugin %q failed to build: %v", pluginName, err))
 			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pluginName, Reason: buildFailureReason(err)})
+		} else {
+			recordStagedPlugin(StagedComponent{Package: pluginName, Name: pluginDisplayName})
 		}
 		pct := storePluginsEndPct + (i+1)*(99-storePluginsEndPct)/len(localTargets)
 		downloadPercent.Store(int32(pct))
@@ -582,6 +613,10 @@ func downloadAndExtractCore(update *SoftwareReleaseUpdate, dest string) error {
 	buf := make([]byte, 32*1024)
 
 	for {
+		if cancelRequested.Load() {
+			return ErrUpdateCancelled
+		}
+
 		n, rerr := resp.Body.Read(buf)
 		if n > 0 {
 			if _, werr := writer.Write(buf[:n]); werr != nil {
@@ -699,10 +734,25 @@ func confirmOrCancelOnFailures(g *api.CoreGlobals, failed []PluginBuildFailure) 
 		return ErrUpdateCancelled
 	}
 
+	// Persist the final skipped set for the download-done page's summary — the
+	// dialog's own copy (confirmFailed) is cleared by waitForPluginFailureDecision
+	// once the admin's choice is read, so this is the only record left afterward.
+	lastSkippedPlugins.Store(append([]PluginBuildFailure(nil), failed...))
+
 	for _, f := range failed {
 		notifyPluginUpdateSkipped(g, f.Package)
 	}
 	return nil
+}
+
+// storePluginDisplayName resolves a store plugin's human-readable name for the
+// download-done summary, falling back to the package id if it isn't currently
+// loaded (e.g. a first-time install staged alongside a core update).
+func storePluginDisplayName(g *api.CoreGlobals, pkg string) string {
+	if p, ok := g.PluginMgr.FindByPkg(pkg); ok {
+		return p.Info().Name
+	}
+	return pkg
 }
 
 // buildFailureReason extracts a clean, user-facing reason from a staging error: the

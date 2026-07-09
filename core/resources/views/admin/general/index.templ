@@ -22,7 +22,7 @@ templ AdminGeneralSettingsIndex(api sdkapi.IPluginApi, params AdminGeneralSettin
             <h3>{ api.Translate("label", "General Settings") }</h3>
         </div>
 
-        <div class="w-full">
+        <div class="d-flex flex-column gap-3">
             @SystemInformation(api,params)
             @ApplicationSettings(api,params)
             @SystemResources(api,params.SystemInfo)

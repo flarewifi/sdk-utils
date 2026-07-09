@@ -42,6 +42,9 @@ func RebootPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		page := powerview.RebootPage(g.CoreAPI)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
+			Assets: sdkapi.ViewAssets{
+				JsFile: "reboot-wait.js",
+			},
 		})
 	}
 }
@@ -95,12 +98,21 @@ func RebootCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			cmd.Exec("reboot", nil)
 		}()
 
-		w.Header().Set("Content-Type", "text/html")
-		msg := api.Translate("info", "System is rebooting. Please wait a few minutes before reconnecting")
-		w.Write([]byte(fmt.Sprintf(`<div id="notification-area" class="alert alert-info mb-4">
-	<i class="bi bi-info-circle me-2"></i>
-	%s
-</div>`, msg)))
+		page := powerview.RebootingPartial(api)
+		if err := page.Render(r.Context(), w); err != nil {
+			api.LoggerAPI.Error(err.Error())
+		}
+	}
+}
+
+// RebootStatusCtrl is a minimal liveness probe: the post-reboot loading page
+// (RebootingPartial + reboot-wait.js) polls it to detect when the app server has
+// come back up after a reboot. Deliberately does no work beyond confirming the HTTP
+// server is accepting requests again — the poller only cares that fetch() resolved
+// at all (any status code), not the response body or auth state.
+func RebootStatusCtrl(g *api.CoreGlobals) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

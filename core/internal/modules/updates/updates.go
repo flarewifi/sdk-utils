@@ -65,6 +65,22 @@ var (
 	confirmFailed   []PluginBuildFailure // plugins that failed to build (shown in the dialog)
 	confirmCh       chan bool            // true = continue, false = cancel; buffered(1)
 
+	// cancelRequested signals an admin-initiated cancel of an in-flight
+	// download/stage. It is checked at safe checkpoints only — between downloaded
+	// chunks and between individual plugin builds — never mid-flash, so it can only
+	// ever abort work that is still fully reversible (see ErrUpdateCancelled).
+	// Reset at the start of every new download/stage.
+	cancelRequested atomic.Bool
+
+	// lastStagedPlugins and lastSkippedPlugins record what the most recently
+	// completed stage actually did, for the download-done page's "what changed"
+	// summary. Both hold a []T behind atomic.Value (never mutated in place — always
+	// swapped for a new slice) since staging is strictly single-goroutine (the
+	// downloading flag rules out a concurrent stage), so no locking is needed.
+	// Reset at the start of every new download/stage; mono never populates either
+	// (it has no per-plugin staging step — system-update.go is !mono only).
+	lastStagedPlugins  atomic.Value
+	lastSkippedPlugins atomic.Value
 )
 
 // UpdatePhase identifies which stage of an in-flight upgrade is running, so the
@@ -207,6 +223,9 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 	downloadedBytes.Store(0)
 	totalSizeBytes.Store(0)
 	downloadError.Store(nil) // Clear any previous download error
+	cancelRequested.Store(false)
+	lastStagedPlugins.Store([]StagedComponent{})
+	lastSkippedPlugins.Store([]PluginBuildFailure{})
 	setPhase(PhaseDownloading)
 
 	go func() {
@@ -236,7 +255,13 @@ func DownloadSoftwareUpdate(params DownloadParams) {
 
 		for result := range ch {
 			if result.Error != nil {
-				downloadError.Store(&result.Error)
+				// A clean, admin-initiated cancel is not an error — quiet exit so the
+				// download page redirects to the updates index (the cancel endpoint
+				// does the redirect) instead of showing a scary download error. Mirrors
+				// the plugin-build-failure gate's ErrUpdateCancelled handling.
+				if !errors.Is(result.Error, ErrUpdateCancelled) {
+					downloadError.Store(&result.Error)
+				}
 				return
 			}
 
@@ -299,6 +324,12 @@ func downloadFile(params DownloadParams) (resultCh chan DownloadResult) {
 		buf := make([]byte, 32*1024)
 
 		for {
+			if cancelRequested.Load() {
+				os.Remove(params.OutputPath)
+				resultCh <- DownloadResult{Error: ErrUpdateCancelled}
+				return
+			}
+
 			n, err := resp.Body.Read(buf)
 			if n > 0 {
 				_, writeErr := writer.Write(buf[:n])
@@ -374,6 +405,18 @@ func IsDownloading() bool {
 	return downloading.Load()
 }
 
+// RequestCancelDownload asks an in-flight download/stage to stop at its next safe
+// checkpoint (see cancelRequested). A no-op if nothing is currently downloading —
+// cancelRequested is cleared at the start of every new run regardless, so a stale
+// request can never bleed into a later one. Callers should follow up with
+// WaitForStagingToStop so the goroutine has actually unwound (flag cleared, partial
+// state discarded) before redirecting.
+func RequestCancelDownload() {
+	if downloading.Load() {
+		cancelRequested.Store(true)
+	}
+}
+
 // PluginUpdateApplied reports whether the last plugin-only upgrade finished by
 // applying its change live (a meta-bundle version bump) with nothing staged for
 // reboot. The download flow uses this to show a success state instead of a reboot
@@ -421,6 +464,40 @@ func AwaitingPluginConfirm() bool {
 type PluginBuildFailure struct {
 	Package string
 	Reason  string
+}
+
+// StagedComponent is one plugin (store or local) that the most recently completed
+// stage actually rebuilt and staged for the next reboot. Used by the download-done
+// page's "updated components" summary — see LastStagedPlugins.
+type StagedComponent struct {
+	Package string
+	Name    string
+}
+
+// recordStagedPlugin appends a successfully staged plugin to the run's summary.
+// Called only from the staging goroutine (system-update.go), which is always
+// single-flight, so a plain load-copy-store is race-free without extra locking.
+func recordStagedPlugin(c StagedComponent) {
+	cur, _ := lastStagedPlugins.Load().([]StagedComponent)
+	lastStagedPlugins.Store(append(append([]StagedComponent(nil), cur...), c))
+}
+
+// LastStagedPlugins returns the plugins the most recently completed stage actually
+// rebuilt and staged for reboot (package + display name). Empty if none were staged,
+// staging is still in progress, or on mono (no per-plugin staging step). Reset at
+// the start of every new download/stage.
+func LastStagedPlugins() []StagedComponent {
+	v, _ := lastStagedPlugins.Load().([]StagedComponent)
+	return v
+}
+
+// LastSkippedPlugins returns the plugins the most recently completed stage skipped
+// because their build failed and the admin chose to continue past the confirmation
+// gate (see confirmOrCancelOnFailures). Empty if none were skipped, or on mono.
+// Reset at the start of every new download/stage.
+func LastSkippedPlugins() []PluginBuildFailure {
+	v, _ := lastSkippedPlugins.Load().([]PluginBuildFailure)
+	return v
 }
 
 // FailedPluginBuilds returns the plugins that failed to build (package + reason),

@@ -179,6 +179,27 @@ body {
     list-style: none;
     padding: 0;
     margin: 0;
+    height: 45vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--term-green-dim) transparent;
+}
+
+#boot-steps::-webkit-scrollbar {
+    width: 8px;
+}
+
+#boot-steps::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#boot-steps::-webkit-scrollbar-thumb {
+    background: var(--term-green-dim);
+    border-radius: 4px;
+}
+
+#boot-steps::-webkit-scrollbar-thumb:hover {
+    background: var(--term-green);
 }
 
 .boot-step {

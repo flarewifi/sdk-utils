@@ -2,6 +2,25 @@ package powerview
 
 import sdkapi "sdk/api"
 
+// RebootingPartial is the response RebootCtrl returns for a normal (non-sysupgrade)
+// reboot. It replaces the "Reboot Now" button on both the dedicated Reboot page and
+// the software-update download-done page (see reboot.templ's button and
+// download-updates.templ). The data-reboot-* attributes are read by reboot-wait.js,
+// which polls admin:power:reboot-status until the app server answers again (the
+// device has finished rebooting) and then redirects to the dashboard — this partial
+// itself renders once and does no polling on its own.
+templ RebootingPartial(api sdkapi.IPluginApi) {
+	<div
+		id="notification-area"
+		class="alert alert-info mb-4 d-flex align-items-center gap-2"
+		data-reboot-status-url={ api.Http().Helpers().UrlForRoute("admin:power:reboot-status") }
+		data-reboot-redirect-url={ api.Http().Helpers().UrlForRoute("admin:dashboard") }
+	>
+		<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+		<span>{ api.Translate("info", "System is rebooting. Please wait a few minutes before reconnecting") }.</span>
+	</div>
+}
+
 templ RebootPage(api sdkapi.IPluginApi) {
 	<div id="reboot-page">
 		<div class="d-flex align-items-center justify-content-between mb-4">

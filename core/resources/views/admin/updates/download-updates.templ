@@ -9,11 +9,11 @@ import (
 
 templ DownloadUpdatePage(api sdkapi.IPluginApi, evt string, percent int, compiling bool, err error) {
     <div id="page" hx-post={ api.Http().Router().UrlForRoute("admin:updates:download-status") } hx-trigger="every 1s">
-		@DownloadStatusPartial(api, percent, "0 B", "0 B", compiling, err)
+		@DownloadStatusPartial(api, percent, compiling, err)
 	</div>
 }
 
-templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize string, totalSize string, compiling bool, err error) {
+templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, compiling bool, err error) {
 	if err != nil {
 		<div class="alert alert-danger alert-dismissible fade show" role="alert">
 			<i class="bi bi-exclamation-triangle me-2"></i>
@@ -22,7 +22,7 @@ templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize s
 		{{ return }}
 	}
 
-	<div class="card shadow-sm" x-data={ fmt.Sprintf("{percent: %d, downloadedSize: '%s', totalSize: '%s'}", percent, downloadedSize, totalSize) }>
+	<div class="card shadow-sm" x-data={ fmt.Sprintf("{percent: %d}", percent) }>
 		<div class="card-body">
 			if compiling {
 				<h4 class="card-title mb-4">
@@ -47,27 +47,15 @@ templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize s
 				</div>
 
 				<div class="progress" style="height: 30px">
-					if compiling {
-						<div
-							class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-							role="progressbar"
-							:style="`width: ${percent}%`"
-							:aria-valuenow="percent"
-							aria-valuemin="0"
-							aria-valuemax="100"
-							x-text="`${percent}%`">
-						</div>
-					} else {
-						<div
-							class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-							role="progressbar"
-							:style="`width: ${percent}%`"
-							:aria-valuenow="percent"
-							aria-valuemin="0"
-							aria-valuemax="100"
-							x-text="`${downloadedSize}/${totalSize}`">
-						</div>
-					}
+					<div
+						class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+						role="progressbar"
+						:style="`width: ${percent}%`"
+						:aria-valuenow="percent"
+						aria-valuemin="0"
+						aria-valuemax="100"
+						x-text="`${percent}%`">
+					</div>
 				</div>
 			</div>
 
@@ -82,6 +70,22 @@ templ DownloadStatusPartial(api sdkapi.IPluginApi, percent int, downloadedSize s
 					{ api.Translate("info", "Please wait while the update is being downloaded. Do not close this page or turn off the device") }.
 				</div>
 			}
+
+			<div class="mt-3 text-end">
+				<button
+					id="cancel-update-btn"
+					hx-preserve="true"
+					type="button"
+					class="btn btn-outline-danger btn-sm"
+					hx-post={ api.Http().Helpers().UrlForRoute("admin:updates:download-cancel") }
+					hx-swap="none"
+					hx-disabled-elt="this"
+					hx-confirm={ api.Translate("label", "Cancel the software update") }
+				>
+					<i class="bi bi-x-circle me-2"></i>
+					{ api.Translate("label", "Cancel update") }
+				</button>
+			</div>
 		</div>
 	</div>
 }
@@ -137,7 +141,7 @@ templ PluginBuildFailedPartial(api sdkapi.IPluginApi, failed []updates.PluginBui
 	</div>
 }
 
-templ DownloadDonePage(api sdkapi.IPluginApi) {
+templ DownloadDonePage(api sdkapi.IPluginApi, coreUpdated bool, fromVersion string, toVersion string, staged []updates.StagedComponent, skipped []updates.PluginBuildFailure) {
 	<div class="card shadow-sm">
 		<div class="card-body">
 			<div id="notification-area">
@@ -145,8 +149,34 @@ templ DownloadDonePage(api sdkapi.IPluginApi) {
 					<i class="bi bi-check-circle me-2"></i>
 					{ api.Translate("success", "Software updates downloaded successfully. Reboot to apply") }.
 				</div>
-				
-				<button 
+
+				if coreUpdated || len(staged) > 0 || len(skipped) > 0 {
+					<div class="mb-4">
+						<h6 class="text-body-secondary mb-2">{ api.Translate("label", "Updated components") }</h6>
+						<ul class="list-group list-group-flush">
+							if coreUpdated {
+								<li class="list-group-item d-flex justify-content-between align-items-center px-0">
+									<span><i class="bi bi-cpu me-2"></i>{ api.Translate("label", "System core") }</span>
+									<span class="text-body-secondary small">{ fromVersion } → { toVersion }</span>
+								</li>
+							}
+							for _, p := range staged {
+								<li class="list-group-item d-flex justify-content-between align-items-center px-0">
+									<span><i class="bi bi-puzzle me-2"></i>{ p.Name }</span>
+									<span class="badge bg-success-subtle text-success-emphasis">{ api.Translate("label", "Updated") }</span>
+								</li>
+							}
+							for _, s := range skipped {
+								<li class="list-group-item d-flex justify-content-between align-items-center px-0">
+									<span><i class="bi bi-exclamation-triangle me-2 text-warning"></i>{ s.Package }</span>
+									<span class="badge bg-warning-subtle text-warning-emphasis" title={ s.Reason }>{ api.Translate("label", "Skipped") }</span>
+								</li>
+							}
+						</ul>
+					</div>
+				}
+
+				<button
 					type="button"
 					class="btn btn-primary" 
 				hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") } 

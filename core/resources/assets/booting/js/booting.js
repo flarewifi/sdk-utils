@@ -70,6 +70,7 @@ window.addEventListener('load', function () {
       html += '<li class="' + cls + '">' + label + '</li>';
     }
     list.innerHTML = html;
+    list.scrollTop = list.scrollHeight;
   }
 
   function pollProgress() {

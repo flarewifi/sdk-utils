@@ -45,7 +45,6 @@ templ AdminThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentAdminPkg 
 			<form method="POST" action={ templ.SafeURL(saveUrl) }>
 				<input type="hidden" name="portal_theme" value={ currentPortalPkg }/>
 				<input type="hidden" name="admin_theme" class="fw-theme-input" value={ currentAdminPkg }/>
-				@stickySave(api)
 			</form>
 		}
 	</div>
@@ -81,7 +80,6 @@ templ PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPk
 			<form method="POST" action={ templ.SafeURL(saveUrl) }>
 				<input type="hidden" name="admin_theme" value={ currentAdminPkg }/>
 				<input type="hidden" name="portal_theme" class="fw-theme-input" value={ currentPortalPkg }/>
-				@stickySave(api)
 			</form>
 		}
 	</div>
@@ -122,15 +120,6 @@ templ themeCard(card ThemeCard) {
 	</div>
 }
 
-templ stickySave(api sdkapi.IPluginApi) {
-	<div class="fw-sticky-save" style="display: none;">
-		<button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 shadow-lg">
-			<i class="bi bi-check-lg"></i>
-			{ api.Translate("label", "Switch Theme") }
-		</button>
-	</div>
-}
-
 templ themePickerStyles() {
 	<style>
 		.fw-theme-card { cursor: pointer; transition: box-shadow .15s ease, border-color .15s ease; border: 2px solid transparent; }
@@ -144,14 +133,14 @@ templ themePickerStyles() {
 		.fw-theme-check { position: absolute; top: .5rem; right: .5rem; width: 1.75rem; height: 1.75rem; border-radius: 50%; background-color: var(--bs-primary); color: #fff; display: none; align-items: center; justify-content: center; }
 		.fw-theme-card-selected .fw-theme-check { display: flex; }
 		.fw-badge-current { position: absolute; top: .5rem; left: .5rem; background-color: var(--bs-success); }
-		.fw-sticky-save { position: sticky; bottom: 1.5rem; display: flex; justify-content: flex-start; margin-top: 1rem; z-index: 5; }
 	</style>
 }
 
 templ themePickerScript() {
 	<script>
-		// ES5-only: toggle selection, update the hidden input, and reveal the
-		// sticky "Switch Theme" bar only when the choice differs from current.
+		// ES5-only: selecting a card updates the hidden input and immediately
+		// submits the form, so the theme switches without a separate save step.
+		// A click on the already-current theme is a no-op (nothing changed).
 		function fwSelectTheme(el) {
 			var root = el;
 			while (root && root.className.indexOf('fw-theme-select') === -1) {
@@ -159,6 +148,7 @@ templ themePickerScript() {
 			}
 			if (!root) { return; }
 			var pkg = el.getAttribute('data-pkg');
+			if (pkg === root.getAttribute('data-current')) { return; }
 			var cards = root.getElementsByClassName('fw-theme-card');
 			for (var i = 0; i < cards.length; i++) {
 				cards[i].className = cards[i].className.replace(' fw-theme-card-selected', '').replace('fw-theme-card-selected', '');
@@ -166,10 +156,8 @@ templ themePickerScript() {
 			el.className = el.className + ' fw-theme-card-selected';
 			var inputs = root.getElementsByClassName('fw-theme-input');
 			if (inputs.length > 0) { inputs[0].value = pkg; }
-			var bars = root.getElementsByClassName('fw-sticky-save');
-			if (bars.length > 0) {
-				bars[0].style.display = (pkg !== root.getAttribute('data-current')) ? 'flex' : 'none';
-			}
+			var forms = root.getElementsByTagName('form');
+			if (forms.length > 0) { forms[0].submit(); }
 		}
 	</script>
 }

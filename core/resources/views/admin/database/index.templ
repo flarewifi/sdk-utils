@@ -11,7 +11,7 @@ type AdminDatabaseSettingsIndexParams struct {
 }
 
 templ AdminDatabaseSettingsIndex(api sdkapi.IPluginApi, params AdminDatabaseSettingsIndexParams) {
-	<div id="database-settings-page" class="container-fluid min-vh-100">
+	<div id="database-settings-page">
 		<div class="d-flex align-items-center justify-content-between mb-4">
 			<div class="d-flex align-items-baseline gap-3">
 				<h1 class="h2 mb-0">{ api.Translate("label", "Database Settings") }</h1>

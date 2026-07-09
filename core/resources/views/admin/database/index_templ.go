@@ -39,7 +39,7 @@ func AdminDatabaseSettingsIndex(api sdkapi.IPluginApi, params AdminDatabaseSetti
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"database-settings-page\" class=\"container-fluid min-vh-100\"><div class=\"d-flex align-items-center justify-content-between mb-4\"><div class=\"d-flex align-items-baseline gap-3\"><h1 class=\"h2 mb-0\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"database-settings-page\"><div class=\"d-flex align-items-center justify-content-between mb-4\"><div class=\"d-flex align-items-baseline gap-3\"><h1 class=\"h2 mb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

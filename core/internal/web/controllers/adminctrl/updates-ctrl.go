@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/a-h/templ"
 )
 
@@ -39,27 +40,6 @@ func outdatedPlugins(list []updates.PluginUpdate) []updates.PluginUpdate {
 		}
 	}
 	return out
-}
-
-// formatBytes converts bytes to human-readable format (B, KB, MB, GB)
-func formatBytes(bytes int64) string {
-	const (
-		KB = 1024
-		MB = 1024 * KB
-		GB = 1024 * MB
-	)
-
-	if bytes < KB {
-		return fmt.Sprintf("%d B", bytes)
-	} else if bytes < MB {
-		return fmt.Sprintf("%d KB", bytes/KB)
-	} else if bytes < 100*MB {
-		return fmt.Sprintf("%.1f MB", float64(bytes)/float64(MB))
-	} else if bytes < GB {
-		return fmt.Sprintf("%d MB", bytes/MB)
-	} else {
-		return fmt.Sprintf("%.1f GB", float64(bytes)/float64(GB))
-	}
 }
 
 func CheckUpdatesPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
@@ -259,14 +239,9 @@ func DownloadStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 		percent := updates.DownloadPercent()
 		err := updates.DownloadError()
-		downloaded := updates.DownloadedBytes()
-		totalSize := updates.TotalSizeBytes()
-
-		downloadedStr := formatBytes(downloaded)
-		totalSizeStr := formatBytes(totalSize)
 
 		compiling := updates.CurrentPhase() == updates.PhaseCompiling
-		page := updatesview.DownloadStatusPartial(api, int(percent), downloadedStr, totalSizeStr, compiling, err)
+		page := updatesview.DownloadStatusPartial(api, int(percent), compiling, err)
 		if err := page.Render(r.Context(), w); err != nil {
 			api.LoggerAPI.Error(err.Error())
 		}
@@ -293,10 +268,27 @@ func DownloadDoneCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
-		// For regular updates, show the download done page
-		page := updatesview.DownloadDonePage(api)
+		// For regular updates, show the download done page with a summary of what
+		// this run actually changed: the core version delta (if any — newUpdate still
+		// holds the check result that kicked off this download, see
+		// DownloadUpdatePageCtrl) plus the plugins staged/skipped during it.
+		v := newUpdate.Load()
+		update, _ := v.(*updates.SoftwareReleaseUpdate)
+		coreUpdated := update != nil && update.HasUpdate
+		fromVersion, toVersion := "", ""
+		if coreUpdated {
+			fromVersion = api.Machine().ProductVersion()
+			if update.Version != nil {
+				toVersion = update.Version.String()
+			}
+		}
+
+		page := updatesview.DownloadDonePage(api, coreUpdated, fromVersion, toVersion, updates.LastStagedPlugins(), updates.LastSkippedPlugins())
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
+			Assets: sdkapi.ViewAssets{
+				JsFile: "reboot-wait.js",
+			},
 		})
 	}
 }
@@ -313,15 +305,22 @@ func DownloadContinueCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	}
 }
 
-// DownloadCancelCtrl resolves the plugin-build-failure dialog with "cancel": the
-// staging goroutine discards the whole staged set and exits quietly (no update is
-// applied, not even the core). It redirects back to the updates page with an info
-// flash so the polling page stops and the admin lands somewhere sensible.
+// DownloadCancelCtrl cancels an in-flight software update from either of the two
+// places the admin can trigger it from on the download page: the ordinary
+// download/compiling progress view, or the plugin-build-failure confirmation
+// dialog. The staging goroutine discards whatever it staged and exits quietly (no
+// update is applied, not even the core). It redirects back to the updates page with
+// an info flash so the polling page stops and the admin lands somewhere sensible.
 func DownloadCancelCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
 		res := api.HttpAPI.Response()
+		// Only one of these two is ever actually relevant at a time (the gate pauses
+		// the goroutine, so it can't also be mid-download) — calling both unconditionally
+		// keeps this one handler correct for either pause point without the caller
+		// needing to know which one is active. Both are no-ops when not applicable.
 		updates.ResolvePluginFailureDecision(false)
+		updates.RequestCancelDownload()
 		// Wait for the staging goroutine to finish unwinding (clear the in-flight flag
 		// and discard the staged set) before redirecting. Otherwise the index page sees
 		// IsDownloading()==true and bounces back to the progress page — the "stuck in
@@ -533,6 +532,22 @@ func handleSoftwareReleaseUpload(g *api.CoreGlobals, w http.ResponseWriter, r *h
 		return
 	}
 
+	// A manually uploaded release always carries a core payload (checked above via
+	// HasPendingCoreUpdate in StageLocalSoftwareRelease), but this path never goes
+	// through QuerySoftwareUpdatesCtrl, which is the only other place that populates
+	// newUpdate. Store it here too so DownloadDoneCtrl's existing coreUpdated/
+	// fromVersion/toVersion logic (shared with the online check-and-download flow)
+	// lists "System core" for this path as well, instead of silently omitting it.
+	targetVersion := info.ProductVersion
+	if targetVersion == "" {
+		// Non-mono core builds are cache-shared across product versions and may ship
+		// without a stamped product.json (see stampStagedProductVersion) — fall back
+		// to the core ABI version, mirroring product.Version()'s own fallback.
+		targetVersion = info.CoreVersion
+	}
+	parsedVersion, _ := semver.NewVersion(targetVersion)
+	newUpdate.Store(&updates.SoftwareReleaseUpdate{HasUpdate: true, Version: parsedVersion})
+
 	successMsg := api.Translate("success", "Software release uploaded and staged. Reboot to apply the update")
 	res.FlashMsg(w, r, successMsg, sdkapi.FlashMsgSuccess)
 	res.Redirect(w, r, "admin:updates:download-done")
@@ -571,6 +586,9 @@ func SysupgradeProgressPageCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		page := updatesview.SysupgradeProgressPage(api)
 		res.AdminView(w, r, sdkapi.ViewPage{
 			PageContent: page,
+			Assets: sdkapi.ViewAssets{
+				JsFile: "reboot-wait.js",
+			},
 		})
 	}
 }
