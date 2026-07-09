@@ -12,6 +12,7 @@ import (
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/sessmgr"
 	"core/internal/web/helpers"
+	"core/internal/web/middlewares"
 	portalview "core/resources/views/portal"
 	"core/utils/hostfinder"
 	sse "core/utils/sse"
@@ -68,6 +69,17 @@ func PortalRedirectCtrl(g *api.CoreGlobals) http.HandlerFunc {
 
 func PortalRegisterCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Device registration is a captive-portal-only action: clients on
+		// non-captive networks (a captive-disabled LAN, VPN, PPPoE) must not
+		// create device records, even though they can reach this route now that
+		// the portal funnel no longer redirects them away.
+		if !middlewares.IsManagedClient(r) {
+			userMsg := g.CoreAPI.Translate("error", "Device registration is not available on this network")
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterCtrl: Rejected registration from unmanaged client - RemoteAddr: %s", r.RemoteAddr))
+			g.CoreAPI.HttpAPI.Response().Error(w, r, errors.New(userMsg), http.StatusForbidden)
+			return
+		}
+
 		clntMgr := g.CoreAPI.ClientRegister
 
 		// Get device ID from JWT cookie (if exists)
@@ -172,6 +184,22 @@ func PortalRegisterAjaxCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		g.CoreAPI.LoggerAPI.Info(fmt.Sprintf("PortalRegisterAjax: Request received - RemoteAddr: %s", r.RemoteAddr))
 		clntMgr := g.CoreAPI.ClientRegister
 		ctx := r.Context()
+
+		// Device registration is a captive-portal-only action: clients on
+		// non-captive networks (a captive-disabled LAN, VPN, PPPoE) must not
+		// create device records, even though they can reach this route now that
+		// the portal funnel no longer redirects them away.
+		if !middlewares.IsManagedClient(r) {
+			errMsg := g.CoreAPI.Translate("error", "Device registration is not available on this network")
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("PortalRegisterAjax: Rejected registration from unmanaged client - RemoteAddr: %s", r.RemoteAddr))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]any{
+				"success": false,
+				"error":   errMsg,
+			})
+			return
+		}
 
 		// Parse JSON request body
 		var reqBody PortalRegisterAjaxRequest

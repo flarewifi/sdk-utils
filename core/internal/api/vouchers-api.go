@@ -75,6 +75,20 @@ func (self *VouchersApi) providerPkg() string {
 func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.CreateVouchersParams) ([]sdkapi.IVoucher, error) {
 	db := self.pluginApi.db
 
+	if len(params.Codes) > 0 && len(params.Codes) != params.Count {
+		return nil, fmt.Errorf("len(Codes) (%d) must equal Count (%d) when Codes is provided", len(params.Codes), params.Count)
+	}
+	seenCodes := make(map[string]bool, len(params.Codes))
+	for _, code := range params.Codes {
+		if code == "" || len(code) > 10 {
+			return nil, fmt.Errorf("invalid code %q: must be 1-10 characters", code)
+		}
+		if seenCodes[code] {
+			return nil, fmt.Errorf("duplicate code %q in Codes", code)
+		}
+		seenCodes[code] = true
+	}
+
 	// Apply default bandwidth if not specified.
 	if params.DownSpeedMbps == 0 {
 		params.DownSpeedMbps = 10
@@ -124,6 +138,9 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 
 		for i := 0; i < params.Count; i++ {
 			code := generateVoucherCode()
+			if len(params.Codes) > 0 {
+				code = params.Codes[i]
+			}
 			uuid := generateVoucherUUID()
 
 			// Per-voucher before-create event: code and UUID are already set so

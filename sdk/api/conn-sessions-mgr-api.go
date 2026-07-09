@@ -82,18 +82,30 @@ type NewDeviceParams struct {
 type ISessionsMgrApi interface {
 
 	// Finds a client device by its ID.
+	//
+	// Deprecated: use ClientsMgr().FindClientById() instead. This method is kept here
+	// for backward compatibility and delegates to the same underlying implementation.
 	FindClientById(ctx context.Context, devId int64) (IClientDevice, error)
 
 	// Finds a client by MAC address
+	//
+	// Deprecated: use ClientsMgr().FindClientByMac() instead. This method is kept here
+	// for backward compatibility and delegates to the same underlying implementation.
 	FindClientByMac(ctx context.Context, mac string) (IClientDevice, error)
 
 	// FindClientByIp finds a client device by its IP address.
 	// This is useful for scenarios where you have an IP address (e.g., from an HTTP request)
 	// and need to find the associated device.
+	//
+	// Deprecated: use ClientsMgr().FindClientByIp() instead. This method is kept here
+	// for backward compatibility and delegates to the same underlying implementation.
 	FindClientByIp(ctx context.Context, ip string) (IClientDevice, error)
 
 	// FindDeviceByUUID finds a client device by its globally unique identifier.
 	// This is useful for referencing devices by their UUID rather than local database ID.
+	//
+	// Deprecated: use ClientsMgr().FindClientByUUID() instead. This method is kept here
+	// for backward compatibility and delegates to the same underlying implementation.
 	FindDeviceByUUID(ctx context.Context, uuid string) (IClientDevice, error)
 
 	// FindSessionByUUID finds a session by its globally unique identifier.
@@ -140,6 +152,9 @@ type ISessionsMgrApi interface {
 	// additional database queries. This is useful when you already have device data from queries
 	// and want to use SDK methods like Update(), Emit(), and Subscribe(). The params parameter
 	// contains all device fields from the database row.
+	//
+	// Deprecated: use ClientsMgr().NewClientDevice() instead. This method is kept here
+	// for backward compatibility and delegates to the same underlying implementation.
 	NewClientDevice(params NewDeviceParams) IClientDevice
 
 	// NOTE: There is no session-list method on this API. To list/search/paginate
@@ -183,5 +198,8 @@ type ISessionsMgrApi interface {
 	//
 	// Returns an error if the DB merge fails. Session disconnect/reconnect failures
 	// are logged but do not abort the merge.
+	//
+	// Deprecated: use ClientsMgr().MergeClientDevices() instead. This method is kept here
+	// for backward compatibility and delegates to the same underlying implementation.
 	MergeClientDevices(ctx context.Context, targetID, sourceID int64) error
 }

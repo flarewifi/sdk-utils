@@ -4,69 +4,10 @@ The `ISessionsMgrApi` contains methods to manage the client device [sessions](./
 
 ## ISessionsMgrApi Methods
 
-### FindClientById
+### FindClientById, FindClientByMac, FindClientByIp, FindDeviceByUUID
 
-Finds a client device by its database ID. It takes a [context](https://gobyexample.com/context) and the device ID as parameters.
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    devId := int64(123)
-    clnt, err := api.SessionsMgr().FindClientById(r.Context(), devId)
-    if err != nil {
-        // handle error
-    }
-}
-```
-
-### FindClientByMac
-
-Finds a client device by its MAC address. This is useful when you have a MAC address from network operations (e.g., ARP, DHCP) and need to find the associated device.
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    mac := "AA:BB:CC:DD:EE:FF"
-    clnt, err := api.SessionsMgr().FindClientByMac(r.Context(), mac)
-    if err != nil {
-        // handle error - device not found
-    }
-    // Use the device...
-}
-```
-
-### FindClientByIp
-
-Finds a client device by its IP address. This is useful when you have an IP address (e.g., from an HTTP request or network discovery) and need to find the associated device.
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    ip := "10.0.0.25" // can be an IPv4 or IPv6 address
-    clnt, err := api.SessionsMgr().FindClientByIp(r.Context(), ip)
-    if err != nil {
-        // handle error - device not found
-    }
-    
-    // Access device information
-    mac := clnt.MacAddr()
-    hostname := clnt.Hostname()
-    fmt.Printf("Device MAC %s (hostname: %s) IPv4=%s IPv6=%s\n",
-        mac, hostname, clnt.Ipv4Addr(), clnt.Ipv6Addr())
-}
-```
-
-### FindDeviceByUUID
-
-Finds a client device by its globally unique identifier (UUID). This is useful when you need to reference devices by their UUID rather than local database ID.
-
-```go
-func (w http.ResponseWriter, r *http.Request) {
-    uuid := "550e8400-e29b-41d4-a716-446655440000"
-    clnt, err := api.SessionsMgr().FindDeviceByUUID(r.Context(), uuid)
-    if err != nil {
-        // handle error - device not found
-    }
-    // Use the device...
-}
-```
+!!! warning "Deprecated"
+    These four device-lookup methods have moved to [`IClientsMgrApi`](./clients-mgr-api.md) — use `api.ClientsMgr().FindClientById()`, `FindClientByMac()`, `FindClientByIp()`, and `FindClientByUUID()` (renamed from `FindDeviceByUUID`) instead. The versions on `ISessionsMgrApi` are kept only for backward compatibility and delegate to the same underlying implementation.
 
 ### FindSessionByUUID
 
@@ -82,7 +23,7 @@ func (w http.ResponseWriter, r *http.Request) {
     
     // Get the device that owns this session
     deviceID := session.DeviceID()
-    device, _ := api.SessionsMgr().FindClientById(r.Context(), deviceID)
+    device, _ := api.ClientsMgr().FindClientById(r.Context(), deviceID)
     
     // Terminate the session by disconnecting the device
     api.SessionsMgr().Disconnect(r.Context(), device, "Session terminated by cloud")
@@ -217,7 +158,7 @@ func (w http.ResponseWriter, r *http.Request) {
     
     for _, session := range sessions {
         // Get the device for each session
-        device, err := api.SessionsMgr().FindClientById(ctx, session.DeviceID())
+        device, err := api.ClientsMgr().FindClientById(ctx, session.DeviceID())
         if err != nil {
             continue
         }
@@ -322,56 +263,8 @@ func wrapSessionData(data SessionData) sdkapi.IClientSession {
 
 ### NewClientDevice
 
-Wraps device data into an [IClientDevice](./client-device.md) object without performing additional database queries. This is useful when you already have device data from queries (e.g., batch operations) and want to use SDK methods like `Update()`, `Emit()`, and `Subscribe()`.
-
-The `NewDeviceParams` struct contains all device fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `ID` | `int64` | Device database ID |
-| `UUID` | `string` | Device unique identifier |
-| `MacAddress` | `string` | Device MAC address |
-| `Ipv4Address` | `string` | Device IPv4 address (empty string if device has no IPv4) |
-| `Ipv6Address` | `string` | Device IPv6 address (empty string if device has no IPv6) |
-| `Hostname` | `string` | Device hostname |
-| `Status` | `DeviceStatus` | Device status: `DeviceStatusConnected`, `DeviceStatusDisconnected`, or `DeviceStatusBlocked` |
-| `CreatedAt` | `time.Time` | When the device was created |
-| `UpdatedAt` | `time.Time` | When the device was last updated |
-
-```go
-// Example: Wrap device data for use with SDK methods
-func wrapDeviceData(data DeviceRow) sdkapi.IClientDevice {
-    return api.SessionsMgr().NewClientDevice(sdkapi.NewDeviceParams{
-        ID:          data.ID,
-        UUID:        data.UUID,
-        MacAddress:  data.Mac,
-        Ipv4Address: data.Ipv4,  // empty string if device has no IPv4
-        Ipv6Address: data.Ipv6,  // empty string if device has no IPv6
-        Hostname:    data.Hostname,
-        Status:      sdkapi.DeviceStatus(data.Status),
-        CreatedAt:   data.CreatedAt,
-        UpdatedAt:   data.UpdatedAt,
-    })
-}
-
-// Example: Create device from external data and emit event
-func processDeviceData(deviceData ExternalDeviceData) {
-    device := api.SessionsMgr().NewClientDevice(sdkapi.NewDeviceParams{
-        ID:          deviceData.ID,
-        UUID:        deviceData.UUID,
-        MacAddress:  deviceData.Mac,
-        Ipv4Address: deviceData.Ipv4,
-        Ipv6Address: deviceData.Ipv6,
-        Hostname:    deviceData.Hostname,
-        Status:      sdkapi.DeviceStatusConnected,
-        CreatedAt:   deviceData.CreatedAt,
-        UpdatedAt:   time.Now(),
-    })
-    
-    // Use SDK methods on the wrapped device
-    device.Emit("device:processed", []byte(`{"status": "ok"}`))
-}
-```
+!!! warning "Deprecated"
+    This method has moved to [`IClientsMgrApi`](./clients-mgr-api.md) — use [`api.ClientsMgr().NewClientDevice()`](./clients-mgr-api.md#newclientdevice) instead. The version on `ISessionsMgrApi` is kept only for backward compatibility and delegates to the same underlying implementation.
 
 ### FindRunningSessionByUUID
 
@@ -386,34 +279,8 @@ if ok {
 
 ### MergeClientDevices
 
-Merges the source device into the target device. All sessions, purchases, and fingerprints are transferred from source to target. The source device is deleted after the merge.
-
-Active sessions on either device are disconnected before the merge. If the target device had an active session it is reconnected afterward. Before any data is transferred it emits [`EventClientBeforeMerge`](./events-api.md#onclientbeforemerge) (via `OnClientBeforeMerge`) with **both** devices — a subscriber returning an error cancels the merge and it is returned here. After a successful merge it emits `OnClientMerge` (`EventClientMergeData`) so plugins can notify external systems.
-
-```go
-func handleMergeDevices(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    targetID := int64(10)
-    sourceID := int64(20)
-
-    err := api.SessionsMgr().MergeClientDevices(ctx, targetID, sourceID)
-    if err != nil {
-        // handle error - source device is deleted on success
-    }
-}
-```
-
-The merge event carries an `EventClientMergeData` struct:
-
-```go
-type EventClientMergeData struct {
-    Target           IClientDevice // The surviving device (before and after the merge)
-    Source           IClientDevice // The device about to be deleted — set only for the
-                                   // pre-merge EventClientBeforeMerge; nil for EventClientMerge
-    SourceDeviceID   int64         // DB ID of the deleted source device
-    SourceDeviceUUID string        // UUID of the deleted source device (captured before deletion)
-}
-```
+!!! warning "Deprecated"
+    This method has moved to [`IClientsMgrApi`](./clients-mgr-api.md) — use [`api.ClientsMgr().MergeClientDevices()`](./clients-mgr-api.md#mergeclientdevices) instead. The version on `ISessionsMgrApi` is kept only for backward compatibility and delegates to the same underlying implementation.
 
 ### DeleteSession
 

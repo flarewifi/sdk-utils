@@ -62,6 +62,7 @@ nav:
       - "IAdsApi": api/ads-api.md
       - "IClientDevice": "api/client-device.md"
       - "IClientSession": "api/client-session.md"
+      - "IClientsMgrApi": api/clients-mgr-api.md
       - "IConfigApi": api/config-api.md
       - "IEventsApi": api/events-api.md
       - "IFirewallAPI": api/firewall-api.md

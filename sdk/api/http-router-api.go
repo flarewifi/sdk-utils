@@ -36,6 +36,19 @@ type IHttpRouterApi interface {
 	// This middlewares are used to wrap the captive portal index page handler.
 	UseForPortal(middlewares ...func(http.Handler) http.Handler)
 
+	// ClaimPortalTraffic registers claim middlewares run by the core web stack
+	// on every top-level page navigation, BEFORE any HTTPS forcing or captive
+	// funnel routing (sub-resources such as assets and XHR are never claimed).
+	// A claim middleware inspects the request — typically the client IP from
+	// r.RemoteAddr — and either writes the response itself, taking full
+	// ownership of the navigation for any path and Host, or calls next to
+	// leave the request to the normal funnel/portal flow. Use it to serve
+	// pages to clients that cannot complete device registration (e.g. routed
+	// PPPoE subscribers with no MAC/ARP visibility). Register once in Init();
+	// claims run on every page navigation, so the pass-through decision must
+	// be fast (in-memory lookups).
+	ClaimPortalTraffic(claims ...func(next http.Handler) http.Handler)
+
 	// Returns the url for the given route name.
 	// If the route was registered on a static router, the static URL is returned automatically.
 	UrlForRoute(name PluginRouteName, pairs ...string) (url string)

@@ -71,7 +71,9 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 		}
 
 		// Portal 404s — including OS captive-detection probes that hit arbitrary
-		// URLs — are funneled to the portal hostname over HTTPS, not the bare LAN IP.
+		// URLs — are funneled to the portal hostname over HTTPS, not the bare LAN
+		// IP. Unmanaged sources (non-captive LANs, PPPoE, VPN) fall through the
+		// funnel to the inner 302 → / instead.
 		h := redirectToPortalMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", http.StatusFound)
 		}))

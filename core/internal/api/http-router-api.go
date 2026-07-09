@@ -147,6 +147,14 @@ func (self *HttpRouterApi) UseForPortal(middlewares ...func(http.Handler) http.H
 	self.portalMiddlewares = append(self.portalMiddlewares, middlewares...)
 }
 
+// ClaimPortalTraffic registers portal-traffic claim middlewares with the
+// shared funnel registry (see middlewares.RegisterPortalClaim) — both funnel
+// entry points (ForceHTTPS and the NotFoundHandler's RedirectToPortalDomain)
+// run them before making any routing decision.
+func (self *HttpRouterApi) ClaimPortalTraffic(claims ...func(next http.Handler) http.Handler) {
+	middlewares.RegisterPortalClaim(claims...)
+}
+
 func (self *HttpRouterApi) GetPortalMiddlewares() []func(http.Handler) http.Handler {
 	return self.portalMiddlewares
 }
