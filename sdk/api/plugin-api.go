@@ -66,7 +66,11 @@ type IPluginApi interface {
 	// then it will return the absolute path to the file "[plugin_root_dir]/resources/some-file.txt" under the plugin's root directory.
 	Resource(f string) (path string)
 
-	// Returns an instance of the client manager.
+	// Returns an instance of the clients manager, used to register a client
+	// device the caller already knows the exact MAC/IP/hostname for.
+	ClientsMgr() IClientsMgrApi
+
+	// Returns an instance of the sessions manager.
 	SessionsMgr() ISessionsMgrApi
 
 	// Returns an instance of the themes API.

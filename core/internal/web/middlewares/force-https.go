@@ -40,27 +40,14 @@ var httpsExemptPaths = map[string]bool{
 // traffic lands on the portal domain rather than the probe's own host.
 func ForceHTTPS() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Sub-resource requests (assets, EventSource/XHR, favicon, images) are
-			// scheme-agnostic: serve them on the scheme they were requested so they
-			// MATCH the embedding page. The admin/portal scheme split applies to
-			// top-level page navigations only — cross-scheme-redirecting a sub-resource
-			// of an admin (HTTPS) page to the portal scheme (HTTP) trips the browser's
-			// mixed-content blocker (and a redirect/retry loop). See isSubresourceRequest.
-			if isSubresourceRequest(r) {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			// Internal health checks are allowed to stay on plain HTTP.
-			if httpsExemptPaths[r.URL.Path] {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			// Admin/device-local pages: never gated, never funneled. With a portal
-			// domain they are forced onto HTTPS on the request's own host; without
-			// one (dev/devkit, self-signed cert) they are served as-is.
+		// The scheme-force + funnel decision, wrapped by plugin portal-traffic
+		// claims below so a claim can take ownership of a navigation before any
+		// of it runs.
+		tail := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Admin pages (/admin*, /login): never funneled, for every client —
+			// managed or not. With a portal domain they are forced onto HTTPS on
+			// the request's own host; without one (dev/devkit, self-signed cert)
+			// they are served as-is.
 			if isDeviceLocalPath(r.URL.Path) {
 				if !config.HasCustomDomain() || IsHTTPS(r) {
 					next.ServeHTTP(w, r)
@@ -79,15 +66,43 @@ func ForceHTTPS() func(http.Handler) http.Handler {
 				return
 			}
 
-			// Everything else is captive-portal traffic: apply the shared funnel
-			// decision (unmanaged source → /admin, a client already on the portal →
-			// served, everyone else → funneled to the portal domain). This is the
+			// Everything else gets the shared funnel decision (unmanaged source or
+			// non-GET → served as-is, a client already on the portal → served,
+			// managed GET navigations → funneled to the portal domain). This is the
 			// SAME routePortalTraffic the NotFoundHandler's RedirectToPortalDomain
 			// calls, so the two funnel points can never diverge.
 			if routePortalTraffic(w, r) {
 				return
 			}
 			next.ServeHTTP(w, r)
+		})
+
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Sub-resource requests (assets, EventSource/XHR, favicon, images) are
+			// scheme-agnostic: serve them on the scheme they were requested so they
+			// MATCH the embedding page. The admin/portal scheme split applies to
+			// top-level page navigations only — cross-scheme-redirecting a sub-resource
+			// of an admin (HTTPS) page to the portal scheme (HTTP) trips the browser's
+			// mixed-content blocker (and a redirect/retry loop). See isSubresourceRequest.
+			if isSubresourceRequest(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Internal health checks are allowed to stay on plain HTTP.
+			if httpsExemptPaths[r.URL.Path] {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Plugin portal-traffic claims (ClaimPortalTraffic) wrap the whole
+			// scheme-force + funnel decision: a claim middleware can take full
+			// ownership of any page navigation (typically by client IP), admin-
+			// looking paths included, or fall through to it. NOT gated on
+			// HasCustomDomain, so claims behave identically on dev and prod.
+			// Sub-resources never reach the claims (bailed out above), so a
+			// claimed page's core-served CSS/JS still load normally.
+			applyPortalClaims(tail).ServeHTTP(w, r)
 		})
 	}
 }
@@ -116,18 +131,21 @@ func isSubresourceRequest(r *http.Request) bool {
 	return false
 }
 
-// isDeviceLocalPath reports whether a path must stay on the device's own host over
-// HTTPS rather than being funneled to the portal domain (which is plain HTTP in dev):
-// the admin UI, admin login, and the activation page. This keeps admin reachable by IP
-// only and never downgraded to HTTP.
+// isDeviceLocalPath reports whether a path must stay on the machine's own host
+// over HTTPS rather than being funneled to the portal domain: the admin UI and
+// the admin login page ONLY. This keeps admin reachable by IP and never
+// downgraded to HTTP — for every client, managed or not (it is also what keeps
+// routed clients like PPPoE subscribers out of /admin: :443 is closed to them).
 //
-// The login is matched by suffix because its render path (/login) and its form-POST
-// handler live on different prefixes — the handler is a generic plugin route
-// (/p/<pkg>/<ver>/login), NOT an /admin route — yet both must stay on HTTPS.
+// The login form-POST handler (/p/<pkg>/<ver>/login, a generic plugin route) is
+// deliberately NOT matched here anymore: it is protected by routePortalTraffic's
+// GET-only guard instead (a funneled POST would replay as GET → 405), and it
+// arrives over HTTPS anyway because the login page it is submitted from is.
+// Activation pages are likewise no longer pinned to the machine host — a managed
+// client's GET is funneled to the portal domain (same server via split-horizon
+// DNS, valid cert), and activation POSTs pass through untouched.
 func isDeviceLocalPath(path string) bool {
-	return strings.HasPrefix(path, "/admin") ||
-		strings.HasSuffix(path, "/login") ||
-		strings.HasPrefix(path, "/activation")
+	return path == "/login" || strings.HasPrefix(path, "/admin")
 }
 
 // IsHTTPS reports whether the request arrived over TLS (directly or via a

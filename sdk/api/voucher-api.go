@@ -64,6 +64,7 @@ type CreateVouchersParams struct {
 	ExpiresAt      *time.Time // nil means voucher never expires
 	BatchUUID      string     // optional - if empty, a UUID will be generated
 	Amount         *float64   // optional amount for the voucher batch
+	Codes          []string   // optional - if set, must have exactly Count entries, used verbatim instead of auto-generating
 }
 
 // UpdateVoucherParams holds parameters for updating a voucher.

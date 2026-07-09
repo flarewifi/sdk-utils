@@ -144,6 +144,48 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 }
 ```
 
+### ClaimPortalTraffic {#claim-portal-traffic}
+
+This method registers *claim middlewares* that the core web stack runs on **every top-level page navigation**, before any HTTPS forcing or captive-portal funnel routing. A claim uses the standard middleware signature `func(next http.Handler) http.Handler`: it inspects the request — typically the client IP from `r.RemoteAddr` — and either writes the response itself, taking **full ownership** of the navigation for any path and Host, or calls `next` to leave the request to the normal funnel/portal flow.
+
+Use this for clients that cannot go through the normal captive-portal device registration at all — for example routed PPPoE subscribers, whose IPs are not on the machine's L2 segment, so they have no ARP/MAC visibility and can never register a client device. `UseForPortal` cannot reach such clients (it wraps only `/portal/index`, behind the device-registration gate); `ClaimPortalTraffic` runs before everything.
+
+**Important Notes:**
+
+- Register claims once, during plugin initialization (in the `Init()` function).
+- Claims run on every page navigation, so the pass-through decision must be **fast** — decide from in-memory state (a cached IP set/map), not per-request database or network lookups. Do the heavier data loading only after deciding the request is yours.
+- Sub-resource requests (assets, XHR/EventSource, favicons) are **never** claimed — a claimed page can reference core-served CSS/JS by absolute path and they load normally.
+- A claimed request bypasses HTTPS forcing, the captive funnel, and device registration entirely; your middleware owns the response.
+- When several plugins register claims, they nest in registration order (first registered runs outermost); a claim that does not call `next` ends the chain.
+- Claims behave identically on dev and production builds, so the flow is fully testable in the dev container.
+
+**Example - Redirecting suspended subscribers to a plugin page:**
+
+```go
+func Init(api sdkapi.IPluginApi) error {
+    api.Http().Router().ClaimPortalTraffic(func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            ip, _, err := net.SplitHostPort(r.RemoteAddr)
+            if err != nil {
+                ip = r.RemoteAddr
+            }
+
+            // Fast in-memory lookup — populated elsewhere by the plugin
+            client, suspended := lookupSuspendedIP(ip)
+            if !suspended {
+                next.ServeHTTP(w, r) // not ours — normal portal/funnel flow continues
+                return
+            }
+
+            page := views.SuspendedPage(Api, client)
+            Api.Http().Response().PortalView(w, r, sdkapi.ViewPage{PageContent: page})
+        })
+    })
+
+    return nil
+}
+```
+
 ### UrlForRoute
 
 This method generates the URL for a route by name. It automatically resolves the correct URL whether the route was registered on a versioned or static router — no separate method needed for static routes.

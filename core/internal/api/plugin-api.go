@@ -45,6 +45,7 @@ func NewPluginApi(dir string, info sdkutils.PluginInfo, assets *GlobalAssets, pm
 	NewUciApi(pluginApi)
 	NewLoggerApi(pluginApi)
 	NewSessionsMgrApi(pluginApi)
+	NewClientsMgrApi(pluginApi)
 	NewMachineApi(pluginApi)
 	NewFirewallApi(pluginApi)
 	pluginApi.UIApi = NewUIApi(pluginApi)
@@ -75,6 +76,7 @@ type PluginApi struct {
 	ClientRegister   *sessmgr.ClientRegister
 	SessionMgr       *sessmgr.SessionsMgr
 	SessionsMgrAPI   *SessionsMgrApi
+	ClientsMgrAPI    *ClientsMgrApi
 	UciAPI           *UciApi
 	Utl              *PluginUtils
 	LoggerAPI        *LoggerApi
@@ -208,6 +210,10 @@ func (self *PluginApi) Network() sdkapi.INetworkApi {
 
 func (self *PluginApi) SessionsMgr() sdkapi.ISessionsMgrApi {
 	return self.SessionsMgrAPI
+}
+
+func (self *PluginApi) ClientsMgr() sdkapi.IClientsMgrApi {
+	return self.ClientsMgrAPI
 }
 
 func (self *PluginApi) Uci() sdkapi.IUciApi {
