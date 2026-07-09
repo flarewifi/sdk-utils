@@ -51,9 +51,10 @@ type IVoucher interface {
 	CreatedAt() time.Time
 }
 
-// CreateVouchersParams holds parameters for creating a batch of vouchers.
-type CreateVouchersParams struct {
-	Count          int
+// VoucherEntry holds the per-voucher fields for CreateVouchers, so each
+// voucher in a batch can carry its own type/time/data/speed/expiry/code
+// instead of every voucher in the call sharing one spec.
+type VoucherEntry struct {
 	Type           SessionType
 	TimeSecs       int64
 	DataMb         int64
@@ -62,9 +63,14 @@ type CreateVouchersParams struct {
 	SessionExpDays *int       // nil means session never expires
 	UseGlobal      bool       // true = use global bandwidth, false = use per-user bandwidth (default: false)
 	ExpiresAt      *time.Time // nil means voucher never expires
-	BatchUUID      string     // optional - if empty, a UUID will be generated
-	Amount         *float64   // optional amount for the voucher batch
-	Codes          []string   // optional - if set, must have exactly Count entries, used verbatim instead of auto-generating
+	Code           string     // optional - if empty, a code is auto-generated
+}
+
+// CreateVouchersParams holds parameters for creating a batch of vouchers.
+type CreateVouchersParams struct {
+	Entries   []VoucherEntry
+	BatchUUID string   // optional - if empty, a UUID will be generated
+	Amount    *float64 // optional amount for the voucher batch
 }
 
 // UpdateVoucherParams holds parameters for updating a voucher.
@@ -103,8 +109,10 @@ type UpdateVoucherBatchParams struct {
 // IVouchersApi manages voucher lifecycle including creation, activation, and deletion.
 // Each plugin gets its own scoped instance — vouchers are filtered by the plugin's package name.
 type IVouchersApi interface {
-	// CreateVouchers creates a batch of vouchers and returns them.
-	// Emits EventVoucherGenerated with the created voucher batch.
+	// CreateVouchers creates a batch of vouchers, one per entry in params.Entries,
+	// and returns them. Each entry carries its own type/time/data/speed/expiry/code,
+	// so a single call can generate a batch of mixed voucher specs. Emits
+	// EventVoucherBatchCreated with the created voucher batch.
 	CreateVouchers(ctx context.Context, params CreateVouchersParams) ([]IVoucher, error)
 
 	// FindByCode finds an available (unactivated) voucher by its code.

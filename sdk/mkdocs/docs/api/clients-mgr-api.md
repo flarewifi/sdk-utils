@@ -151,6 +151,39 @@ func importClient(api sdkapi.IPluginApi, mac, ipv4, hostname string) error {
 }
 ```
 
+### BatchRegisterClient
+
+Persists a batch of device previews — each built via [`NewClientDevice`](#newclientdevice) — as real device records in a single transaction. It emits [`EventClientBatchBeforeCreate`](./events-api.md#onclientbatchevent) **once**, then the same `EventClientBeforeCreate` `RegisterClient` emits for each device — both fire **before the transaction opens**, so a subscriber returning an error cancels the whole batch with no rollback needed (nothing has been written yet). Only once every device has passed does it open the transaction and insert; on success it emits `EventClientCreated` and `EventClientRegistered` for each device, then `EventClientBatchCreated` once with the full list of created devices.
+
+> **Why the per-device check fires before opening the transaction:** this app runs SQLite through a single shared connection (`db.SetMaxOpenConns(1)`). If `EventClientBeforeCreate` fired from inside the transaction instead, a subscriber's own DB call from that callback would block forever waiting for a connection — the only one in the pool is checked out by the very transaction that call is blocking. Firing before the transaction opens means a subscriber's query is always safe.
+
+If any device's MAC address is already registered, the whole batch is rolled back and `sdkapi.ErrClientAlreadyRegistered` is returned wrapped with the offending MAC address — check with `errors.Is` the same way as `RegisterClient`.
+
+```go
+func importClients(api sdkapi.IPluginApi, imports []importedClient) error {
+    previews := make([]sdkapi.IClientDevice, len(imports))
+    for i, imp := range imports {
+        previews[i] = api.ClientsMgr().NewClientDevice(sdkapi.NewDeviceParams{
+            MacAddress:  imp.Mac,
+            Ipv4Address: imp.Ipv4,
+            Hostname:    imp.Hostname,
+            Status:      sdkapi.DeviceStatusDisconnected,
+        })
+    }
+
+    if err := api.ClientsMgr().BatchRegisterClient(previews); err != nil {
+        if errors.Is(err, sdkapi.ErrClientAlreadyRegistered) {
+            // At least one MAC in the batch is already a known device — the
+            // whole batch was rolled back. Split it up or dedupe before retrying.
+            return nil
+        }
+        return err // a real failure — log/report it, don't swallow it
+    }
+
+    return nil
+}
+```
+
 ### MergeClientDevices
 
 Merges the source device into the target device. All sessions, purchases, and fingerprints are transferred from source to target. The source device is deleted after the merge.

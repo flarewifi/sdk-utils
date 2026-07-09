@@ -407,7 +407,7 @@ STEP_3_CREATE_NEW:
 			return nil, false, err
 		}
 
-		dev, err = reg.mdls.Device().Create(ctx, models.CreateDeviceParams{
+		dev, err = reg.mdls.Device().Create(ctx, nil, models.CreateDeviceParams{
 			MacAddress:  params.MacAddr,
 			Ipv4Address: params.Ipv4Addr,
 			Ipv6Address: params.Ipv6Addr,

@@ -47,7 +47,19 @@ type IClientsMgrApi interface {
 	// captive-portal registration flow emits. Returns
 	// ErrClientAlreadyRegistered if a device with dev's MAC address is
 	// already registered.
-	RegisterClient(IClientDevice) error
+	RegisterClient(clnt IClientDevice) error
+
+	// BatchRegisterClient persists a batch of devices (each built via
+	// NewClientDevice) as real device records in a single transaction. It emits
+	// EventClientBatchBeforeCreate ONCE, then the same EventClientBeforeCreate
+	// RegisterClient emits for each device — both fire before any DB writes, so a
+	// callback error cancels the whole batch with no rollback needed. Only once
+	// every device has passed does the transaction open and insert; on success it
+	// emits EventClientCreated and EventClientRegistered for each device, then
+	// EventClientBatchCreated once with the full list. Returns
+	// ErrClientAlreadyRegistered (wrapped with the offending MAC address) and rolls
+	// back the whole batch if any device's MAC address is already registered.
+	BatchRegisterClient(clnts []IClientDevice) error
 
 	// MergeClientDevices merges the source device into the target device.
 	// All sessions, purchases, and fingerprints are transferred from

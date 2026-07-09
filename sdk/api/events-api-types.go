@@ -12,6 +12,9 @@ type SessionEvent string
 // ClientEvent represents the type of a client device event.
 type ClientEvent string
 
+// ClientBatchEvent represents the type of a client-device-batch lifecycle event.
+type ClientBatchEvent string
+
 // PortalEvent represents the type of a portal event.
 type PortalEvent string
 
@@ -66,6 +69,18 @@ const (
 	// from DeleteSessions(). Subscribe via OnSessionBatchEvent. Returning an error from any
 	// callback cancels the whole batch deletion before any session is removed.
 	EventSessionBatchBeforeDelete SessionEvent = "session:batch_before_delete"
+
+	// EventSessionBatchBeforeCreate is emitted once before any DB writes for a batch
+	// of sessions, from CreateSessions(). The sessions are in-memory previews (ID ==
+	// 0). Returning an error from any callback cancels the whole batch before any
+	// row is inserted, so no rollback is needed. The single-session
+	// EventSessionBeforeCreate is not fired per item.
+	EventSessionBatchBeforeCreate SessionEvent = "session:batch_before_create"
+
+	// EventSessionBatchCreated is emitted after a batch of sessions is successfully
+	// created, from CreateSessions(). The per-session EventSessionCreated is also
+	// fired for each session in the batch.
+	EventSessionBatchCreated SessionEvent = "session:batch_created"
 )
 
 // Client events.
@@ -126,11 +141,30 @@ const (
 	EventClientMerge ClientEvent = "client:merged"
 )
 
+// Client-batch events (used with OnClientBatchEvent).
+const (
+	// EventClientBatchBeforeCreate fires synchronously once before any DB writes for
+	// a batch of client devices, from BatchRegisterClient(). The devices are the
+	// in-memory previews passed in (ID == 0). Returning an error from any callback
+	// cancels the whole batch before any row is inserted, so no rollback is needed.
+	EventClientBatchBeforeCreate ClientBatchEvent = "client:batch_before_create"
+
+	// EventClientBatchCreated is emitted after a batch of client devices is
+	// successfully registered, from BatchRegisterClient(). The per-device
+	// EventClientCreated and EventClientRegistered are also fired for each device
+	// in the batch.
+	EventClientBatchCreated ClientBatchEvent = "client:batch_created"
+)
+
 // Single-voucher events (used with OnVoucherEvent).
 const (
-	// EventVoucherBeforeCreate fires synchronously for each voucher before its
-	// INSERT, inside the batch transaction. The voucher is an in-memory preview
-	// (ID == 0). Returning an error rolls back the entire batch transaction.
+	// EventVoucherBeforeCreate fires synchronously for each voucher, once for
+	// every voucher in the batch, BEFORE the creation transaction opens (so a
+	// subscriber's own DB call is never made while this call holds the write
+	// transaction — this app runs SQLite through a single shared connection,
+	// see db.SetMaxOpenConns(1), so that would block forever). The voucher is
+	// an in-memory preview (ID == 0). Returning an error cancels the whole
+	// batch before any row is inserted, so no rollback is needed.
 	EventVoucherBeforeCreate VoucherEvent = "voucher:before_create"
 
 	// EventVoucherBeforeActivate is emitted before a voucher is activated (used to start a

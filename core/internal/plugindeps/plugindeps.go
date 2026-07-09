@@ -53,6 +53,10 @@ func Fetch(coreVersion string) []plugins.LockedGoModule {
 			GoModHash: m.GetGoModHash(),
 		})
 	}
-	fmt.Printf("[plugindeps] pinned %d module(s) from the core dependency lock (core_version=%q)\n", len(locked), coreVersion)
+	versionLabel := coreVersion
+	if versionLabel == "" {
+		versionLabel = "machine's registered version"
+	}
+	fmt.Printf("[plugindeps] pinned %d module(s) from the core dependency lock (core_version=%s)\n", len(locked), versionLabel)
 	return locked
 }

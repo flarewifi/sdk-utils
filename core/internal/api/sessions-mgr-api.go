@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -10,6 +11,8 @@ import (
 	coreQueries "core/db/queries"
 	"core/internal/sessmgr"
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 func NewSessionsMgrApi(pluginApi *PluginApi) *SessionsMgrApi {
@@ -77,26 +80,101 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 
 	// Give subscribers a chance to veto creation before the INSERT. The session is an
 	// in-memory preview (ID == 0), so cancelling requires no rollback.
-	preview := self.pluginApi.SessionMgr.NewClientSession(sdkapi.NewClientSessionParams{
-		UUID:           sessionUUID,
-		ProviderPkg:    pkg,
-		DeviceID:       params.DevId,
-		Type:           params.Type,
-		TimeSecs:       params.TimeSecs,
-		DataMb:         params.DataMb,
-		TimeCons:       params.TimeCons,
-		DataCons:       params.DataCons,
-		ExpDays:        params.ExpDays,
-		DownMbits:      params.DownMbits,
-		UpMbits:        params.UpMbits,
-		UseGlobalSpeed: params.UseGlobalSpeed,
-	})
+	preview := self.pluginApi.SessionMgr.NewClientSession(newClientSessionPreviewParams(pkg, params))
 	if err := self.pluginApi.EventsMgr.EmitSessionEvent(ctx, sdkapi.EventSessionBeforeCreate, sdkapi.SessionEventData{Session: preview}); err != nil {
 		return nil, err
 	}
 
-	// Create session in database
-	session, err := self.pluginApi.models.Session().Create(ctx, models.CreateSessionParams{
+	cs, err := self.insertSession(ctx, nil, sessionUUID, pkg, params)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := self.persistSessionConsumption(ctx, cs, params); err != nil {
+		return nil, err
+	}
+
+	// Emit EventSessionCreated - notify plugins that session was created
+	self.pluginApi.EventsMgr.EmitSessionEvent(ctx, sdkapi.EventSessionCreated, sdkapi.SessionEventData{Session: cs})
+
+	return cs, nil
+}
+
+// CreateSessions creates a batch of sessions. It emits EventSessionBatchBeforeCreate
+// ONCE before any DB writes — a callback error cancels the whole batch, so no
+// rollback is needed — then inserts every session inside a single database
+// transaction (same as DeviceModel.Create/BatchRegisterClient), so a failure
+// partway through automatically rolls back every insert made so far; no manual
+// cleanup is needed. Only once the transaction commits does it persist any
+// per-session consumption values, emit the per-session EventSessionCreated for
+// each session, and finally emit EventSessionBatchCreated once with the full
+// list — this ordering guarantees no subscriber ever observes a "created"
+// session that a later failure in the same batch then rolls back.
+func (self *SessionsMgrApi) CreateSessions(ctx context.Context, paramsList []sdkapi.CreateSessionParams) ([]sdkapi.IClientSession, error) {
+	if len(paramsList) == 0 {
+		return nil, nil
+	}
+
+	pkg := self.pluginApi.Info().Package
+	previews := make([]sdkapi.IClientSession, 0, len(paramsList))
+	for _, params := range paramsList {
+		if params.UUID == "" {
+			return nil, errors.New("session UUID is required")
+		}
+		previews = append(previews, self.pluginApi.SessionMgr.NewClientSession(newClientSessionPreviewParams(pkg, params)))
+	}
+
+	// Batch-level before-create event: fires once before any DB writes. An error
+	// here cancels the whole batch with no rollback needed.
+	if err := self.pluginApi.EventsMgr.EmitSessionBatchEvent(ctx, sdkapi.EventSessionBatchBeforeCreate, previews); err != nil {
+		return nil, err
+	}
+
+	created := make([]sdkapi.IClientSession, 0, len(paramsList))
+	err := sdkutils.RunInTx(self.pluginApi.db.DB, ctx, func(tx *sql.Tx) error {
+		for _, params := range paramsList {
+			cs, err := self.insertSession(ctx, tx, params.UUID, pkg, params)
+			if err != nil {
+				return err
+			}
+			created = append(created, cs)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Persist any caller-supplied consumption values now that every insert has
+	// committed. This runs outside the transaction — it goes through the
+	// session's own save path on the pooled connection, not tx, so doing it
+	// while tx was still open would contend for SQLite's single write lock.
+	// A failure here can no longer be rolled back by the transaction (it already
+	// committed), so compensate by deleting every session created in this batch
+	// and returning an error — this keeps the batch all-or-nothing and guarantees
+	// EventSessionCreated/EventSessionBatchCreated are only ever emitted once
+	// every session in the batch (row + consumption) is fully persisted.
+	for i, cs := range created {
+		if err := self.persistSessionConsumption(ctx, cs, paramsList[i]); err != nil {
+			self.rollbackCreatedSessions(ctx, created)
+			return nil, fmt.Errorf("persist consumption for session %s: %w", cs.UUID(), err)
+		}
+	}
+
+	for _, cs := range created {
+		self.pluginApi.EventsMgr.EmitSessionEvent(ctx, sdkapi.EventSessionCreated, sdkapi.SessionEventData{Session: cs})
+	}
+	self.pluginApi.EventsMgr.EmitSessionBatchEvent(ctx, sdkapi.EventSessionBatchCreated, created)
+
+	return created, nil
+}
+
+// insertSession inserts a single session row (optionally within tx — see
+// SessionModel.Create) and wraps it into an IClientSession. It does NOT persist
+// consumption values or emit EventSessionCreated — callers handle both once they
+// know the row (or, for a batch, the whole transaction) has committed.
+func (self *SessionsMgrApi) insertSession(ctx context.Context, tx *sql.Tx, sessionUUID, pkg string, params sdkapi.CreateSessionParams) (sdkapi.IClientSession, error) {
+	session, err := self.pluginApi.models.Session().Create(ctx, tx, models.CreateSessionParams{
 		UUID:           sessionUUID,
 		PluginPkg:      pkg,
 		DeviceID:       params.DevId,
@@ -133,8 +211,48 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 		UpdatedAt:      session.UpdatedAt(),
 	})
 
-	// Set consumption values if provided (for cloud sync)
-	// Use PersistToDB to avoid triggering EventSessionChanged during creation
+	return cs, nil
+}
+
+// rollbackCreatedSessions deletes sessions from a CreateSessions batch whose
+// transaction already committed but a later, non-transactional step (e.g.
+// persisting consumption values) then failed. Best-effort: there is no
+// surrounding transaction left to roll back into, so a delete failure is
+// logged rather than returned — the original error is what the caller needs
+// to see, and it already takes precedence.
+func (self *SessionsMgrApi) rollbackCreatedSessions(ctx context.Context, created []sdkapi.IClientSession) {
+	for _, cs := range created {
+		if err := self.pluginApi.models.Session().Delete(ctx, cs.ID()); err != nil {
+			self.pluginApi.Logger().Error(fmt.Sprintf("rollback session %s after batch create failure: %v", cs.UUID(), err))
+		}
+	}
+}
+
+// newClientSessionPreviewParams maps caller-supplied CreateSessionParams into
+// an in-memory NewClientSessionParams preview (ID left at 0) for the
+// before-create events — shared by the single and batch creation paths so
+// the two previews can never drift.
+func newClientSessionPreviewParams(pkg string, params sdkapi.CreateSessionParams) sdkapi.NewClientSessionParams {
+	return sdkapi.NewClientSessionParams{
+		UUID:           params.UUID,
+		ProviderPkg:    pkg,
+		DeviceID:       params.DevId,
+		Type:           params.Type,
+		TimeSecs:       params.TimeSecs,
+		DataMb:         params.DataMb,
+		TimeCons:       params.TimeCons,
+		DataCons:       params.DataCons,
+		ExpDays:        params.ExpDays,
+		DownMbits:      params.DownMbits,
+		UpMbits:        params.UpMbits,
+		UseGlobalSpeed: params.UseGlobalSpeed,
+	}
+}
+
+// persistSessionConsumption sets and saves the caller-supplied initial
+// consumption values (for cloud-sync imports), if any were provided. Uses
+// PersistToDB to avoid triggering EventSessionChanged during creation.
+func (self *SessionsMgrApi) persistSessionConsumption(ctx context.Context, cs sdkapi.IClientSession, params sdkapi.CreateSessionParams) error {
 	if params.TimeCons > 0 || params.DataCons > 0 {
 		cs.SetData(sdkapi.SessionUpdateData{
 			TimeCons: &params.TimeCons,
@@ -142,21 +260,18 @@ func (self *SessionsMgrApi) CreateSession(ctx context.Context, params sdkapi.Cre
 		})
 		// Type assert to access internal PersistToDB method
 		if internal, ok := cs.(*sessmgr.ClientSession); ok {
-			if err = internal.PersistToDB(ctx); err != nil {
-				return nil, err
+			if err := internal.PersistToDB(ctx); err != nil {
+				return err
 			}
 		} else {
 			// Fallback - should never happen in practice
-			if err = cs.Save(ctx, nil); err != nil {
-				return nil, err
+			if err := cs.Save(ctx, nil); err != nil {
+				return err
 			}
 		}
 	}
 
-	// Emit EventSessionCreated - notify plugins that session was created
-	self.pluginApi.EventsMgr.EmitSessionEvent(ctx, sdkapi.EventSessionCreated, sdkapi.SessionEventData{Session: cs})
-
-	return cs, nil
+	return nil
 }
 
 // RunningSession returns the current running session of a client device.

@@ -36,6 +36,7 @@ type EventsManager struct {
 	sessionCallbacks           map[sdkapi.SessionEvent][]func(context.Context, sdkapi.SessionEventData) error
 	sessionBatchCallbacks      map[sdkapi.SessionEvent][]func(context.Context, []sdkapi.IClientSession) error
 	clientCallbacks            map[sdkapi.ClientEvent][]func(context.Context, sdkapi.IClientDevice) error
+	clientBatchCallbacks       map[sdkapi.ClientBatchEvent][]func(context.Context, []sdkapi.IClientDevice) error
 	clientBeforeMergeCallbacks []func(context.Context, sdkapi.EventClientMergeData) error
 	clientMergeCallbacks       []func(context.Context, sdkapi.EventClientMergeData) error
 	purchaseCallbacks          map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error
@@ -51,6 +52,7 @@ func NewEventsManager() *EventsManager {
 		sessionCallbacks:      make(map[sdkapi.SessionEvent][]func(context.Context, sdkapi.SessionEventData) error),
 		sessionBatchCallbacks: make(map[sdkapi.SessionEvent][]func(context.Context, []sdkapi.IClientSession) error),
 		clientCallbacks:       make(map[sdkapi.ClientEvent][]func(context.Context, sdkapi.IClientDevice) error),
+		clientBatchCallbacks:  make(map[sdkapi.ClientBatchEvent][]func(context.Context, []sdkapi.IClientDevice) error),
 		purchaseCallbacks:     make(map[sdkapi.PurchaseEvent][]func(context.Context, sdkapi.PurchaseEventData) error),
 		voucherCallbacks:      make(map[sdkapi.VoucherEvent][]func(context.Context, sdkapi.IVoucher) error),
 		voucherBatchCallbacks: make(map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error),
@@ -82,6 +84,13 @@ func (em *EventsManager) OnClientEvent(event sdkapi.ClientEvent, cb func(context
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.clientCallbacks[event] = append(em.clientCallbacks[event], cb)
+}
+
+// OnClientBatchEvent registers a callback that fires whenever a batch client event occurs.
+func (em *EventsManager) OnClientBatchEvent(event sdkapi.ClientBatchEvent, cb func(context.Context, []sdkapi.IClientDevice) error) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	em.clientBatchCallbacks[event] = append(em.clientBatchCallbacks[event], cb)
 }
 
 // OnPurchaseEvent registers a callback that fires whenever the given purchase event occurs.
@@ -164,6 +173,16 @@ func (em *EventsManager) EmitClientEvent(ctx context.Context, event sdkapi.Clien
 	cbs := append([]func(context.Context, sdkapi.IClientDevice) error(nil), em.clientCallbacks[event]...)
 	em.mu.RUnlock()
 	return dispatch(ctx, cbs, clnt)
+}
+
+// EmitClientBatchEvent dispatches a batch client event to all registered callbacks
+// synchronously. A returned error lets callers that can cancel the operation (e.g.
+// EventClientBatchBeforeCreate from ClientsMgrApi.BatchRegisterClient) abort it.
+func (em *EventsManager) EmitClientBatchEvent(ctx context.Context, event sdkapi.ClientBatchEvent, clients []sdkapi.IClientDevice) error {
+	em.mu.RLock()
+	cbs := append([]func(context.Context, []sdkapi.IClientDevice) error(nil), em.clientBatchCallbacks[event]...)
+	em.mu.RUnlock()
+	return dispatch(ctx, cbs, clients)
 }
 
 // EmitPurchaseEvent dispatches a purchase event to all registered callbacks synchronously.
