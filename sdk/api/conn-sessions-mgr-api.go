@@ -127,6 +127,14 @@ type ISessionsMgrApi interface {
 	// Create a session for the client device
 	CreateSession(ctx context.Context, params CreateSessionParams) (IClientSession, error)
 
+	// CreateSessions creates a batch of sessions in one call. It emits
+	// EventSessionBatchBeforeCreate ONCE before any DB writes — a callback error
+	// cancels the whole batch — then creates each session (emitting the per-session
+	// EventSessionCreated), and finally emits EventSessionBatchCreated once with the
+	// full list. The single-session EventSessionBeforeCreate is not fired per item;
+	// the batch hook is the cancellation point for bulk creates.
+	CreateSessions(ctx context.Context, paramsList []CreateSessionParams) ([]IClientSession, error)
+
 	// Get the current running session of a client device.
 	RunningSession(clnt IClientDevice) (cs IClientSession, ok bool)
 

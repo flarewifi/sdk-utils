@@ -6,7 +6,9 @@
 
 package sdkapi
 
-import "context"
+import (
+	"context"
+)
 
 // IEventsApi is the unified event subscription API for plugins.
 //
@@ -17,17 +19,28 @@ import "context"
 // must not block the emitting operation — or that runs long — should spawn its own
 // goroutine: deciding sync vs async is the handler's responsibility, not the core's.
 //
+// NO DATABASE TRANSACTION IS EVER HELD OPEN WHILE CALLBACKS RUN. Every core operation
+// that emits an event either hasn't opened a *sql.Tx yet (for "before" events — the
+// payload is an in-memory preview) or has already committed one (for "after"/"created"/
+// "updated"/"deleted" events) before dispatching. This app runs SQLite through a single
+// shared connection (db.SetMaxOpenConns(1)): if a callback issued its own DB call while
+// the emitting operation's transaction still held that one connection, it would deadlock
+// forever — the only connection is checked out by the very goroutine now blocked waiting
+// for it. Guaranteeing no transaction is open during dispatch means a callback is always
+// free to issue its own queries or transactions via the plugin's DB API.
+//
 // Most events ignore the value a callback returns. The "before" events, however, let a
 // callback CANCEL the pending operation by returning a non-nil error — the operation
 // checks the first non-nil error and aborts, propagating it to the caller. These
 // cancellable hooks are:
 //   - OnVoucherBatchEvent: EventVoucherBatchBeforeCreate, EventVoucherBatchBeforeDelete.
-//   - OnVoucherEvent: EventVoucherBeforeCreate (rolls back the batch), EventVoucherBeforeActivate.
+//   - OnVoucherEvent: EventVoucherBeforeCreate (cancels the batch before any DB writes), EventVoucherBeforeActivate.
 //   - OnClientEvent: EventClientBeforeConnect, EventClientBeforeCreate,
 //     EventClientBeforeUpdate, EventClientBeforeDisconnect.
 //   - OnClientBeforeMerge: cancels a device merge (EventClientBeforeMerge).
 //   - OnSessionEvent: EventSessionBeforeCreate, EventSessionBeforeConsume, EventSessionBeforeDelete.
-//   - OnSessionBatchEvent: EventSessionBatchBeforeDelete.
+//   - OnSessionBatchEvent: EventSessionBatchBeforeDelete, EventSessionBatchBeforeCreate.
+//   - OnClientBatchEvent: EventClientBatchBeforeCreate.
 //   - OnPurchaseEvent: EventPurchaseBeforeSuccess, EventPurchaseBeforeCancel (EventPurchaseBeforeFail
 //     is notify-only — a failure cannot be vetoed).
 //
@@ -64,8 +77,12 @@ type IEventsApi interface {
 	//
 	// EventSessionBatchBeforeDelete is cancellable: returning a non-nil error aborts the
 	// whole batch deletion (from DeleteSessions) before any session is removed.
+	// EventSessionBatchBeforeCreate is likewise cancellable: returning a non-nil error
+	// aborts the whole batch creation (from CreateSessions) before any row is inserted.
+	// For EventSessionBatchBeforeCreate the sessions are in-memory previews (ID == 0).
 	//
-	// Available events: EventSessionBatchUpdated, EventSessionBatchBeforeDelete.
+	// Available events: EventSessionBatchUpdated, EventSessionBatchBeforeDelete,
+	// EventSessionBatchBeforeCreate, EventSessionBatchCreated.
 	OnSessionBatchEvent(event SessionEvent, callback func(ctx context.Context, sessions []IClientSession) error)
 
 	// OnClientEvent registers a callback that fires whenever the given client
@@ -84,6 +101,20 @@ type IEventsApi interface {
 	// EventClientConnected, EventClientBeforeDisconnect, EventClientDisconnected,
 	// EventClientActive, EventClientBeforeConnect.
 	OnClientEvent(event ClientEvent, callback func(ctx context.Context, clnt IClientDevice) error)
+
+	// OnClientBatchEvent registers a callback that fires whenever a batch of client
+	// devices is registered at once, from BatchRegisterClient(). The callback runs
+	// synchronously in the emitter's goroutine; spawn a goroutine if it must not block.
+	//
+	// EventClientBatchBeforeCreate is cancellable: returning a non-nil error aborts
+	// the whole batch registration before any row is inserted. The devices passed to
+	// that event are in-memory previews (ID == 0) — the same objects the caller built
+	// via NewClientDevice. EventClientBatchCreated fires once after the whole batch is
+	// successfully committed; the per-device EventClientCreated and
+	// EventClientRegistered (via OnClientEvent) also fire for each device in the batch.
+	//
+	// Available events: EventClientBatchBeforeCreate, EventClientBatchCreated.
+	OnClientBatchEvent(event ClientBatchEvent, callback func(ctx context.Context, clients []IClientDevice) error)
 
 	// OnClientBeforeMerge registers a callback that fires BEFORE two device records are
 	// merged, while both still exist. The callback runs synchronously in the emitter's
@@ -125,9 +156,11 @@ type IEventsApi interface {
 	// goroutine; spawn a goroutine if it must not block.
 	//
 	// For EventVoucherBeforeCreate the voucher is an in-memory preview (ID == 0,
-	// Code and UUID are already set). Returning an error rolls back the whole
-	// batch transaction. EventVoucherBeforeActivate is also cancellable: returning an
-	// error aborts the activation before any session is created.
+	// Code and UUID are already set). It fires once per voucher BEFORE the
+	// creation transaction opens, so returning an error cancels the whole batch
+	// before any row is inserted — no rollback is needed. EventVoucherBeforeActivate
+	// is also cancellable: returning an error aborts the activation before any
+	// session is created.
 	//
 	// Available events: EventVoucherBeforeCreate, EventVoucherBeforeActivate,
 	// EventVoucherActivated, EventVoucherUpdated, EventVoucherDeleted.

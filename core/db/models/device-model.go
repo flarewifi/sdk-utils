@@ -56,7 +56,23 @@ func validateDeviceFields(uuid, ipv4, ipv6, mac string) error {
 	return nil
 }
 
-func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) (*Device, error) {
+// queries returns a tx-scoped query handle when tx is non-nil, otherwise the
+// model's own pooled connection.
+func (self *DeviceModel) queries(tx *sql.Tx) *queries.Queries {
+	if tx != nil {
+		return queries.New(tx)
+	}
+	return &self.db.Queries
+}
+
+// Create inserts a new device and its initial MAC record. When tx is
+// non-nil, the duplicate-MAC check, insert, and read-back all run against
+// that transaction instead of the model's pooled connection — pass the same
+// tx a caller is using for other writes (e.g. a batch of device
+// registrations) so the whole group commits or rolls back atomically, same
+// as SessionModel.Create. Pass nil to let Create self-manage its own
+// transaction, as a standalone call would.
+func (self *DeviceModel) Create(ctx context.Context, tx *sql.Tx, params CreateDeviceParams) (*Device, error) {
 	uid := sdkutils.NewUUID()
 
 	// Validate required fields
@@ -64,9 +80,11 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 		return nil, err
 	}
 
+	q := self.queries(tx)
+
 	// CRITICAL: Check if this MAC is already marked as current for another device
 	// This prevents creating duplicate devices for the same MAC address
-	existingDeviceID, err := self.models.DeviceMac().FindDeviceByMac(ctx, params.MacAddress)
+	existingDeviceID, err := q.FindDeviceByMacAddress(ctx, params.MacAddress)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("failed to check existing device by MAC %s: %w", params.MacAddress, err)
 	}
@@ -76,12 +94,7 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 
 	cookieToken := sdkutils.NewUUID()
 
-	// Wrap device + MAC creation in a single transaction.
-	// If any step fails, the entire operation is rolled back automatically.
-	var dev *Device
-	txErr := sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
-		q := queries.New(tx)
-
+	create := func(q *queries.Queries) (*Device, error) {
 		dId, err := q.CreateDevice(ctx, queries.CreateDeviceParams{
 			Ipv4Addr:    params.Ipv4Address,
 			Ipv6Addr:    params.Ipv6Address,
@@ -90,15 +103,15 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 			CookieToken: cookieToken,
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		d, err := q.FindDevice(ctx, dId)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		dev = &Device{
+		dev := &Device{
 			db:          self.db,
 			models:      self.models,
 			id:          d.ID,
@@ -113,15 +126,34 @@ func (self *DeviceModel) Create(ctx context.Context, params CreateDeviceParams) 
 			status:      sdkapi.DeviceStatus(d.Status),
 		}
 
-		_, err = q.CreateDeviceMac(ctx, queries.CreateDeviceMacParams{
+		if _, err := q.CreateDeviceMac(ctx, queries.CreateDeviceMacParams{
 			DeviceID:   dId,
 			MacAddress: params.MacAddress,
 			IsCurrent:  true,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to record MAC address for new device: %w", err)
+		}); err != nil {
+			return nil, fmt.Errorf("failed to record MAC address for new device: %w", err)
 		}
 
+		return dev, nil
+	}
+
+	// Caller already has a transaction open (e.g. a batch create) — run
+	// against it directly. Do NOT open a nested RunInTx: this app runs
+	// SQLite through a single shared connection, so a second BeginTx while
+	// the caller's tx already holds it would deadlock.
+	if tx != nil {
+		return create(q)
+	}
+
+	// Wrap device + MAC creation in a single transaction.
+	// If any step fails, the entire operation is rolled back automatically.
+	var dev *Device
+	txErr := sdkutils.RunInTx(self.db.DB, ctx, func(tx *sql.Tx) error {
+		d, err := create(queries.New(tx))
+		if err != nil {
+			return err
+		}
+		dev = d
 		return nil
 	})
 	if txErr != nil {

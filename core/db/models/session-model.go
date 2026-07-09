@@ -55,7 +55,13 @@ func NewSessionModel(dtb *db.Database, mdls *Models) *SessionModel {
 	return &SessionModel{dtb, mdls}
 }
 
-func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams) (*Session, error) {
+// Create inserts a new session row. When tx is non-nil, the insert (and the
+// read-back that builds the returned Session) run against that transaction
+// instead of the model's pooled connection — pass the same tx a caller is
+// using for other writes (e.g. a batch of session creates) so the whole group
+// commits or rolls back atomically, same as DeviceModel.Create. Pass nil to
+// use the model's own connection, as a standalone call would.
+func (self *SessionModel) Create(ctx context.Context, tx *sql.Tx, params CreateSessionParams) (*Session, error) {
 	// Validate UUID
 	if params.UUID == "" {
 		return nil, errors.New("session UUID cannot be empty")
@@ -71,7 +77,9 @@ func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams
 		expDays = sql.NullInt64{Int64: int64(*params.ExpDays), Valid: true}
 	}
 
-	sId, err := self.db.Queries.CreateSession(ctx, queries.CreateSessionParams{
+	q := self.queries(tx)
+
+	sId, err := q.CreateSession(ctx, queries.CreateSessionParams{
 		DeviceID:    params.DeviceID,
 		Uuid:        params.UUID,
 		ProviderPkg: params.PluginPkg,
@@ -87,7 +95,14 @@ func (self *SessionModel) Create(ctx context.Context, params CreateSessionParams
 		return nil, err
 	}
 
-	return self.Find(ctx, sId)
+	// Read back through the same handle (q), not self.Find — a read against
+	// the pooled connection while tx is still open would not see this
+	// uncommitted insert.
+	sRow, err := q.FindSession(ctx, sId)
+	if err != nil {
+		return nil, err
+	}
+	return NewSession(self.db, self.models, &sRow), nil
 }
 
 func (self *SessionModel) Find(ctx context.Context, id int64) (*Session, error) {
@@ -225,4 +240,17 @@ func (self *SessionModel) Delete(ctx context.Context, id int64) error {
 		return err
 	}
 	return nil
+}
+
+// =============================================================================
+// HELPER FUNCTIONS (internal)
+// =============================================================================
+
+// queries returns a tx-scoped query handle when tx is non-nil, otherwise the
+// model's own pooled connection.
+func (self *SessionModel) queries(tx *sql.Tx) *queries.Queries {
+	if tx != nil {
+		return queries.New(tx)
+	}
+	return &self.db.Queries
 }

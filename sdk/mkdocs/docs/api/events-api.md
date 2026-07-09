@@ -9,11 +9,12 @@ Most events ignore the value a callback returns. The **"before" events**, howeve
 | Method | Cancellable events |
 |--------|--------------------|
 | `OnClientEvent` | `EventClientBeforeConnect`, `EventClientBeforeCreate`, `EventClientBeforeUpdate`, `EventClientBeforeDisconnect` |
+| `OnClientBatchEvent` | `EventClientBatchBeforeCreate` |
 | `OnClientBeforeMerge` | `EventClientBeforeMerge` |
 | `OnSessionEvent` | `EventSessionBeforeCreate`, `EventSessionBeforeConsume`, `EventSessionBeforeDelete` |
-| `OnSessionBatchEvent` | `EventSessionBatchBeforeDelete` |
+| `OnSessionBatchEvent` | `EventSessionBatchBeforeDelete`, `EventSessionBatchBeforeCreate` |
 | `OnPurchaseEvent` | `EventPurchaseBeforeRequest`, `EventPurchaseBeforeCancel` |
-| `OnVoucherEvent` | `EventVoucherBeforeCreate` (rolls back the batch transaction), `EventVoucherBeforeActivate` |
+| `OnVoucherEvent` | `EventVoucherBeforeCreate` (cancels the batch before any DB writes), `EventVoucherBeforeActivate` |
 | `OnVoucherBatchEvent` | `EventVoucherBatchBeforeCreate`, `EventVoucherBatchBeforeDelete` |
 
 Every "before" event that carries a not-yet-persisted record (create/request) delivers an **in-memory preview** (`ID == 0`), so cancelling never needs a rollback.
@@ -64,6 +65,8 @@ The batch save system coalesces individual periodic session saves into a single 
 |-------|----------|-------------|
 | `"session:batch-updated"` | `sdkapi.EventSessionBatchUpdated` | A batch of periodic consumption saves was persisted |
 | `"session:batch_before_delete"` | `sdkapi.EventSessionBatchBeforeDelete` | **Can cancel the batch delete** — fires once in `DeleteSessions()` before any session is removed; returning an error aborts the whole batch |
+| `"session:batch_before_create"` | `sdkapi.EventSessionBatchBeforeCreate` | **Can cancel the batch create** — fires once in `CreateSessions()` before any row is inserted, with in-memory preview sessions (`ID == 0`); returning an error aborts the whole batch |
+| `"session:batch_created"` | `sdkapi.EventSessionBatchCreated` | Fires once after a batch of sessions is successfully created, with the full list of created sessions |
 
 ```go
 api.Events().OnSessionBatchEvent(sdkapi.EventSessionBatchUpdated, func(ctx context.Context, sessions []sdkapi.IClientSession) error {
@@ -72,7 +75,7 @@ api.Events().OnSessionBatchEvent(sdkapi.EventSessionBatchUpdated, func(ctx conte
 })
 ```
 
-`EventSessionBatchUpdated` fires for periodic consumption saves only — not for session start, stop, or user-initiated changes. `EventSessionBatchBeforeDelete` fires from the bulk [`DeleteSessions()`](./sessions-mgr-api.md) path and is the single cancellation point for bulk deletes (the per-session `EventSessionBeforeDelete` is not fired per item in that path).
+`EventSessionBatchUpdated` fires for periodic consumption saves only — not for session start, stop, or user-initiated changes. `EventSessionBatchBeforeDelete` fires from the bulk [`DeleteSessions()`](./sessions-mgr-api.md) path and is the single cancellation point for bulk deletes (the per-session `EventSessionBeforeDelete` is not fired per item in that path). Likewise, `EventSessionBatchBeforeCreate`/`EventSessionBatchCreated` fire from the bulk [`CreateSessions()`](./sessions-mgr-api.md#createsessions) path — the per-session `EventSessionBeforeCreate` is not fired per item there, but the per-session `EventSessionCreated` (via `OnSessionEvent`) still fires once for each session, after the whole batch has been inserted successfully.
 
 ### OnClientEvent
 
@@ -159,6 +162,26 @@ api.Events().OnClientMerge(func(ctx context.Context, data sdkapi.EventClientMerg
 })
 ```
 
+### OnClientBatchEvent
+
+Registers a callback that fires whenever a batch of client devices is registered at once, from [`BatchRegisterClient()`](./clients-mgr-api.md#batchregisterclient). The callback runs synchronously in the emitter's goroutine and receives a slice of all devices in the batch; spawn a goroutine if it must not block.
+
+**Available events:**
+
+| Event | Constant | Description |
+|-------|----------|-------------|
+| `"client:batch_before_create"` | `sdkapi.EventClientBatchBeforeCreate` | **Can cancel the batch** — fires once before any DB writes, with the in-memory device previews passed to `BatchRegisterClient()` (`ID == 0`). Returning an error cancels the whole batch. |
+| `"client:batch_created"` | `sdkapi.EventClientBatchCreated` | Fires once after the whole batch is successfully committed, with the full list of created devices |
+
+```go
+api.Events().OnClientBatchEvent(sdkapi.EventClientBatchCreated, func(ctx context.Context, clients []sdkapi.IClientDevice) error {
+    api.Logger().Info(fmt.Sprintf("Registered %d devices", len(clients)))
+    return nil
+})
+```
+
+The per-device `EventClientBeforeCreate` (via `OnClientEvent`) also still fires once for each device — but, notably, **before** the creation transaction opens, not inside it. This app runs SQLite through a single shared connection (`db.SetMaxOpenConns(1)`), so a subscriber's own DB call made while a transaction is open would block forever waiting for a connection only that same (blocked) call could free. Firing all per-device checks first means a subscriber's query is always safe, and a veto there needs no rollback — nothing has been written yet. Only once every device has passed does the batch open its transaction and insert. The per-device `EventClientCreated`/`EventClientRegistered` fire once for each device, after the whole batch has committed successfully.
+
 ### OnPurchaseEvent
 
 Registers a callback that fires whenever the given purchase event occurs. The callback runs synchronously in the emitter's goroutine; spawn a goroutine if it must not block. The **"before" events** (`EventPurchaseBeforeRequest`, `EventPurchaseBeforeCancel`) can cancel the operation by returning an error.
@@ -198,7 +221,7 @@ Registers a callback that fires whenever a single-voucher lifecycle event occurs
 
 | Event | Constant | Description |
 |-------|----------|-------------|
-| `"voucher:before_create"` | `sdkapi.EventVoucherBeforeCreate` | **Can cancel creation** — fires for each voucher before its INSERT, inside the batch transaction. The voucher is an in-memory preview (`ID == 0`). Returning an error rolls back the whole transaction. |
+| `"voucher:before_create"` | `sdkapi.EventVoucherBeforeCreate` | **Can cancel creation** — fires once for each voucher, BEFORE the creation transaction opens. The voucher is an in-memory preview (`ID == 0`). Returning an error cancels the whole batch before any row is inserted — no rollback needed. |
 | `"voucher:before_activate"` | `sdkapi.EventVoucherBeforeActivate` | **Can cancel activation** — fires before a voucher is activated (before any session is created); returning an error aborts it |
 | `"voucher:activated"` | `sdkapi.EventVoucherActivated` | Voucher used to start a session |
 | `"voucher:updated"` | `sdkapi.EventVoucherUpdated` | Voucher validity updated |
@@ -213,7 +236,9 @@ api.Events().OnVoucherEvent(sdkapi.EventVoucherActivated, func(ctx context.Conte
 
 #### EventVoucherBeforeCreate (per-voucher, can cancel)
 
-Fires inside the batch transaction for each individual voucher before its INSERT. The voucher object is an in-memory preview — `ID()` is 0, `Session()` and `Device()` are nil, but `Code()`, `UUID()`, `BatchUUID()`, and all param-derived fields (`Type()`, `TimeSecs()`, `DataMb()`, etc.) are set. Returning an error rolls back the entire batch.
+Fires once for each individual voucher in the batch, **before** the creation transaction opens — not inside it. The voucher object is an in-memory preview — `ID()` is 0, `Session()` and `Device()` are nil, but `Code()`, `UUID()`, `BatchUUID()`, and all param-derived fields (`Type()`, `TimeSecs()`, `DataMb()`, etc.) are set. Returning an error cancels the whole batch before any row is inserted — no rollback needed, since nothing has been written yet.
+
+> **Why before, not inside, the transaction:** this app runs SQLite through a single shared connection (`db.SetMaxOpenConns(1)`). If this event fired from inside the creation transaction, a subscriber making its own DB call from this callback would block forever waiting for a connection — the only one in the pool is checked out by the very transaction this call is blocking. Firing before the transaction opens means a subscriber's query here is always safe.
 
 ```go
 api.Events().OnVoucherEvent(sdkapi.EventVoucherBeforeCreate, func(ctx context.Context, v sdkapi.IVoucher) error {
@@ -377,6 +402,8 @@ type PurchaseEventData struct {
 | `sdkapi.EventSessionDeleted` | `"session:deleted"` |
 | `sdkapi.EventSessionBatchUpdated` | `"session:batch-updated"` |
 | `sdkapi.EventSessionBatchBeforeDelete` | `"session:batch_before_delete"` |
+| `sdkapi.EventSessionBatchBeforeCreate` | `"session:batch_before_create"` |
+| `sdkapi.EventSessionBatchCreated` | `"session:batch_created"` |
 
 ### ClientEvent Constants
 
@@ -395,6 +422,13 @@ type PurchaseEventData struct {
 | `sdkapi.EventClientBeforeMerge` | `"client:before_merge"` |
 | `sdkapi.EventClientMerge` | `"client:merged"` |
 
+### ClientBatchEvent Constants (batch-level — use with `OnClientBatchEvent`)
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| `sdkapi.EventClientBatchBeforeCreate` | `"client:batch_before_create"` | Batch pre-create — returning an error cancels the whole batch before any row is inserted |
+| `sdkapi.EventClientBatchCreated` | `"client:batch_created"` | Fires after a batch of devices is successfully registered |
+
 ### PurchaseEvent Constants
 
 | Constant | Value |
@@ -409,7 +443,7 @@ type PurchaseEventData struct {
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `sdkapi.EventVoucherBeforeCreate` | `"voucher:before_create"` | Per-voucher pre-create — returning an error rolls back the batch transaction |
+| `sdkapi.EventVoucherBeforeCreate` | `"voucher:before_create"` | Per-voucher pre-create, fires before the transaction opens — returning an error cancels the whole batch before any row is inserted |
 | `sdkapi.EventVoucherBeforeActivate` | `"voucher:before_activate"` | Pre-activate — returning an error cancels activation |
 | `sdkapi.EventVoucherActivated` | `"voucher:activated"` | |
 | `sdkapi.EventVoucherUpdated` | `"voucher:updated"` | |

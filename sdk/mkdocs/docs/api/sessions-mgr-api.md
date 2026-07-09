@@ -110,6 +110,31 @@ func (w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### CreateSessions
+
+Creates a batch of sessions in one call, taking a `context.Context` and a slice of `CreateSessionParams` (same struct as [`CreateSession`](#createsession)). Returns the created [IClientSession](./client-session.md) slice in the same order as the input.
+
+It emits [`EventSessionBatchBeforeCreate`](./events-api.md#onsessionbatchevent) **once** before any DB writes — a subscriber returning an error cancels the whole batch, so no rollback is needed. The single-session `EventSessionBeforeCreate` is **not** fired per item; the batch hook is the cancellation point for bulk creates. Every session in the batch is then inserted inside a single database transaction, so a failure partway through (e.g. a DB error) automatically rolls back every insert made so far — a failed batch never leaves partial rows behind. Only once the transaction commits does it persist any per-session consumption values, emit the per-session `EventSessionCreated` for each session, and finally emit `EventSessionBatchCreated` once with the full list — so no subscriber ever observes a "created" session that a later failure in the same batch then rolls back.
+
+```go
+func importSessions(api sdkapi.IPluginApi, devID int64, imports []importedSession) error {
+    paramsList := make([]sdkapi.CreateSessionParams, len(imports))
+    for i, imp := range imports {
+        paramsList[i] = sdkapi.CreateSessionParams{
+            UUID:      sdkutils.NewUUID(),
+            DevId:     devID,
+            Type:      sdkapi.SessionTypeTime,
+            TimeSecs:  imp.TimeSecs,
+            DownMbits: 5,
+            UpMbits:   3,
+        }
+    }
+
+    sessions, err := api.SessionsMgr().CreateSessions(context.Background(), paramsList)
+    return err
+}
+```
+
 ### RunningSession
 
 Returns the current running [IClientSession](./client-session.md) of the [IClientDevice](./client-device.md).

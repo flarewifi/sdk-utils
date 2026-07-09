@@ -115,8 +115,42 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 	upSpeedMbps := params.UpSpeedMbps
 	batchUUID := params.BatchUUID
 
-	// Wrap batch + voucher creation in a single transaction for atomicity.
-	// A per-voucher before-create error rolls back all inserts made so far.
+	// Pre-generate each voucher's code/UUID and fire its EventVoucherBeforeCreate
+	// here, BEFORE the transaction opens — not inside the RunInTx below like the
+	// per-voucher insert loop used to. This app runs SQLite through a single
+	// shared connection (db.SetMaxOpenConns(1)): if a subscriber's callback made
+	// its own DB call while our transaction held that one connection, it would
+	// block forever waiting for a connection only our own (blocked) goroutine
+	// could free. Firing here, with no transaction open, means a subscriber's
+	// query is safe, and a veto needs no rollback since nothing has been
+	// written yet.
+	type pendingVoucher struct {
+		code string
+		uuid string
+	}
+	pending := make([]pendingVoucher, params.Count)
+	for i := 0; i < params.Count; i++ {
+		code := generateVoucherCode()
+		if len(params.Codes) > 0 {
+			code = params.Codes[i]
+		}
+		uuid := generateVoucherUUID()
+		pending[i] = pendingVoucher{code: code, uuid: uuid}
+
+		previewV := &previewVoucher{
+			params:      params,
+			code:        code,
+			uuid:        uuid,
+			providerPkg: self.providerPkg(),
+			now:         now,
+		}
+		if err := self.eventsMgr.EmitVoucherEvent(ctx, sdkapi.EventVoucherBeforeCreate, previewV); err != nil {
+			return nil, err
+		}
+	}
+
+	// Wrap batch + voucher creation in a single transaction for atomicity. No
+	// events are emitted inside — see the pre-pass above.
 	var created []sdkapi.IVoucher
 	err := sdkutils.RunInTx(db.DB, ctx, func(tx *sql.Tx) error {
 		q := coreQueries.New(tx)
@@ -137,24 +171,8 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 		}
 
 		for i := 0; i < params.Count; i++ {
-			code := generateVoucherCode()
-			if len(params.Codes) > 0 {
-				code = params.Codes[i]
-			}
-			uuid := generateVoucherUUID()
-
-			// Per-voucher before-create event: code and UUID are already set so
-			// callbacks can inspect them. An error rolls back the whole transaction.
-			previewV := &previewVoucher{
-				params:      params,
-				code:        code,
-				uuid:        uuid,
-				providerPkg: self.providerPkg(),
-				now:         now,
-			}
-			if err := self.eventsMgr.EmitVoucherEvent(ctx, sdkapi.EventVoucherBeforeCreate, previewV); err != nil {
-				return err
-			}
+			code := pending[i].code
+			uuid := pending[i].uuid
 
 			expiresAt := sql.NullTime{}
 			if params.ExpiresAt != nil {

@@ -89,6 +89,7 @@ if err := RecordUsage(); err != nil {
 - Convert database timestamps from UTC to local time when displayed to UI using `sdkutil.UtcToLocalTime(t)`
 - Put temporary compiled/binary artifacts in `.tmp/` so they are not tracked by git
 - Execute shell commands through the `core/utils/shell` util (`shell.Exec` / `ExecOutput` / `ExecAll` / `ExecWithContext`), never `os/exec` directly — it has a `dev` build-tag variant (`exec_dev.go`) so commands are mocked/guarded in the dev container, and it centralizes error/output handling. For best-effort calls that may fail (e.g. a missing tool), append `2>/dev/null || true` to the command string (see `nftables.go`).
+- Use `api.Logger()` (`.Info()` / `.Debug()` / `.Error()`) for all debugging/diagnostic output in core and plugin code — never `fmt.Println`/`log.Println`/raw stdout prints. `api.Logger()` writes to stdout (captured by `docker logs` in dev and syslog/logread on a real device), the rotating `app.log` file the admin log viewer reads, and live SSE subscribers, all from one call (`core/internal/modules/logger.Emit`) — ad hoc prints bypass the file/SSE sinks and the admin viewer's package/level filtering entirely. Prefer `.Debug()` for step-by-step breadcrumbs (e.g. "about to run X", "X succeeded") so a hang or failure mid-sequence shows exactly which step was reached, not just a final wrapped error.
 
 ## Go File Organization
 
