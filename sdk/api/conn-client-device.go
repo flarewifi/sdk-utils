@@ -49,7 +49,9 @@ type DeviceData struct {
 	IsConnected bool // True if device has an active internet session
 }
 
-// IClientDevice represents a client device connected to the network.
+// IClientDevice represents a client device — a phone, tablet, laptop/PC, or other
+// end-user host — connected to the machine's network. This is NOT the machine
+// (the OpenWRT router/hotspot box) itself; see IMachineApi for that.
 type IClientDevice interface {
 
 	// Returns the database ID of the client device.

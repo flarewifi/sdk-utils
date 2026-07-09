@@ -1,6 +1,7 @@
 # IClientDevice
 
-The `IClientDevice` represents a client device/host connected in your network and is possibly accessing the captive portal using a browser.
+The `IClientDevice` represents a **client device** — a phone, tablet, laptop/PC, or other end-user host — connecting through the machine's network, possibly accessing the captive portal using a browser. It is **not** the machine itself (the OpenWRT router/hotspot box running this app); see [IMachineApi](./machine-api.md) for machine-level operations.
+
 It can be retrieved using the [Http.GetClientDevice](./http-api.md#getclientdevice) method in your [handler](./http-router-api.md#handler-function).
 
 ```go title="main.go"
