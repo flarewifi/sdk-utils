@@ -13,6 +13,9 @@
   "check-updates.js": [
     "./admin/js/check-updates.js"
   ],
+  "reboot-wait.js": [
+    "./admin/js/reboot-wait.js"
+  ],
   "theme-fallback.js": [
     "./themes/fallback/admin.js"
   ],

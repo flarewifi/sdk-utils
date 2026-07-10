@@ -465,6 +465,9 @@ type CreateVouchersParams struct {
 }
 ```
 
+!!! tip "Appending to an existing batch"
+    If `BatchUUID` names a batch that already exists, the new vouchers are appended to it instead of erroring — useful when importing/generating vouchers in chunks and you want them all grouped under one batch rather than one batch per call. Leave `BatchUUID` empty (the common case) to always start a fresh batch.
+
 ### UpdateVoucherParams
 
 Parameters for updating a voucher:

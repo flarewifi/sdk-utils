@@ -325,6 +325,14 @@ Types: `label`, `error`, `success`, `info`, `warning` | Max 120 chars, natural l
 - **⚠️ Alpine.js v3.15.1 runs on BOTH admin and portal — core loads/auto-starts it.** Both asset bundles target **ES2017** (the app supports modern browsers only), so the full Alpine v3 API works on both surfaces (`@click.outside`, `Alpine.store`/`$store`, `Alpine.data`, `x-effect`, adding reactive props after init, etc.). **Never vendor your own Alpine** in a plugin/theme — it double-loads against core's. Use the global `window.Alpine` / `x-*` attributes. (The old portal Alpine v2 / ES5 / IE11 constraints no longer apply.)
 - `package.json`/`package-lock.json` are gone from core and plugins (vestigial). Full plugin-author guide: `sdk/mkdocs/docs/api/assets-manifest.md` → "Vendoring frontend libraries (no npm)" / "Bootstrap is a core global" / "Alpine.js: v3 on both surfaces".
 
+### Admin content-area padding
+
+- **Every admin theme's layout wraps `data.Components.PageContent()` in a content-area element that supplies uniform padding on all 4 sides (24px, or the theme's equivalent) — individual page `.templ` files must NOT add their own outer padding/margin** (no `p-4`/`px-4`/`container` wrapper etc. around the page root). This keeps spacing consistent across every admin page without each page author reinventing it.
+- That content-area element must use Bootstrap's **`container-fluid`** class (full-bleed), not `container` (which centers content with a max-width) — `container`'s own default gutter is horizontal-only and mismatched with vertical padding, and its centering breaks the full-width layout the sidenav/topbar chrome expects.
+- Component-internal padding (e.g. `p-4` inside a bordered `tab-content` box, or a card body) is fine — the rule only applies to the page's **outer** wrapper.
+- If a page's content looks cramped against the sidebar/topbar, the fix belongs in the active theme's content-area CSS rule, not in the page template.
+- Applies to all four admin themes: `com.flarego.adopisoft-theme` (`.admin-content` in `admin.css`), `com.flarego.devkit` (`main.container-fluid` in `devkit.css`), `com.flarego.flarewifi-theme` (`.layout main` in `layout.css`, already uniform via `padding: 1.5rem`), and the core fallback theme (`.fw-main` in `core/resources/assets/themes/fallback/admin.css`, already uniform via `padding: 20px`).
+
 ## Plugin Development
 
 **Entry:** `func Init(api sdkapi.IPluginApi) error` in `main.go`  

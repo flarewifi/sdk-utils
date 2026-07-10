@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math/big"
 	"slices"
@@ -71,7 +72,9 @@ func (self *VouchersApi) providerPkg() string {
 // CreateVouchers creates a batch of vouchers and emits EventVoucherBatchCreated.
 // Before any DB writes it fires EventVoucherBeforeCreate as a batch event (once)
 // and then as a per-voucher event for each voucher inside the transaction.
-// Either callback may return an error to cancel creation.
+// Either callback may return an error to cancel creation. If params.BatchUUID
+// names an existing batch, the vouchers are appended to it instead of trying
+// (and failing) to insert a duplicate batch row — see CreateVouchersParams.
 func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.CreateVouchersParams) ([]sdkapi.IVoucher, error) {
 	db := self.pluginApi.db
 
@@ -163,19 +166,28 @@ func (self *VouchersApi) CreateVouchers(ctx context.Context, params sdkapi.Creat
 	err := sdkutils.RunInTx(db.DB, ctx, func(tx *sql.Tx) error {
 		q := coreQueries.New(tx)
 
-		// Create voucher batch record.
-		amount := sql.NullFloat64{}
-		if params.Amount != nil {
-			amount = sql.NullFloat64{Float64: *params.Amount, Valid: true}
-		}
-		_, err := q.CreateVoucherBatch(ctx, coreQueries.CreateVoucherBatchParams{
-			Uuid:        batchUUID,
-			Amount:      amount,
-			Metadata:    sql.NullString{},
-			ProviderPkg: self.providerPkg(),
-		})
-		if err != nil {
-			return fmt.Errorf("unable to create voucher batch: %w", err)
+		// A caller-supplied BatchUUID may already exist (e.g. a plugin appending
+		// more vouchers to a batch it created in an earlier call) — reuse it
+		// instead of inserting a duplicate, since uuid is UNIQUE and a blind
+		// insert would fail the whole call. An auto-generated BatchUUID (the
+		// params.BatchUUID == "" branch above) can never collide, so this only
+		// ever takes the reuse path when the caller explicitly asked for it.
+		if _, err := q.FindVoucherBatchByUUID(ctx, batchUUID); err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("unable to check existing voucher batch: %w", err)
+			}
+			amount := sql.NullFloat64{}
+			if params.Amount != nil {
+				amount = sql.NullFloat64{Float64: *params.Amount, Valid: true}
+			}
+			if _, err := q.CreateVoucherBatch(ctx, coreQueries.CreateVoucherBatchParams{
+				Uuid:        batchUUID,
+				Amount:      amount,
+				Metadata:    sql.NullString{},
+				ProviderPkg: self.providerPkg(),
+			}); err != nil {
+				return fmt.Errorf("unable to create voucher batch: %w", err)
+			}
 		}
 
 		for _, p := range pending {

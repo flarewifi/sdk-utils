@@ -2,6 +2,32 @@ package powerview
 
 import sdkapi "sdk/api"
 
+// RebootingPartial is the response RebootCtrl returns for a normal (non-sysupgrade)
+// reboot. It replaces the warning alert (#notification-area) on the dedicated Reboot
+// page — the only place a normal reboot is triggered from; the software-update
+// download-done page (download-updates.templ) just links here instead of posting the
+// reboot action itself, so the confirm prompt and result always render in one place.
+// The data-reboot-* attributes are read by reboot-wait.js, which polls
+// admin:power:reboot-status until the app server answers again (the device has
+// finished rebooting) and then redirects to the dashboard — this partial itself
+// renders once and does no polling on its own.
+templ RebootingPartial(api sdkapi.IPluginApi) {
+	<div
+		id="notification-area"
+		class="alert alert-info mb-4 d-flex align-items-center gap-2"
+		data-reboot-status-url={ api.Http().Helpers().UrlForRoute("admin:power:reboot-status") }
+		data-reboot-redirect-url={ api.Http().Helpers().UrlForRoute("admin:dashboard") }
+	>
+		<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+		<span>{ api.Translate("info", "System is rebooting. Please wait a few minutes before reconnecting") }.</span>
+	</div>
+}
+
+// RebootPage prompts to confirm and reboot as soon as it loads (hx-trigger="load,
+// click" on #reboot-btn) — anywhere in the admin that wants a reboot navigates here
+// rather than triggering the reboot action itself, so the confirm dialog fires
+// immediately instead of requiring an extra manual click. Cancelling the browser
+// confirm() just aborts that request; the button stays enabled for a manual retry.
 templ RebootPage(api sdkapi.IPluginApi) {
 	<div id="reboot-page">
 		<div class="d-flex align-items-center justify-content-between mb-4">
@@ -11,20 +37,21 @@ templ RebootPage(api sdkapi.IPluginApi) {
 		</div>
 		<div class="card border mb-4 shadow-sm rounded-3 mt-3">
 			<div class="card-body p-4">
-				<div class="alert alert-warning mb-4">
+				<div id="notification-area" class="alert alert-warning mb-4">
 					<i class="bi bi-exclamation-triangle me-2"></i>
 					<strong>{ api.Translate("label", "Warning") }:</strong> { api.Translate("warning", "This will reboot the system. All active sessions will be terminated") }.
 				</div>
 				<p class="mb-4">
 					{ api.Translate("info", "Click the button below to reboot the system. The system will be unavailable for a few minutes during the reboot process") }.
 				</p>
-				<div id="reboot-response"></div>
 				<button
 					id="reboot-btn"
 					type="button"
 					class="btn btn-warning px-3 py-2 fs-6 rounded-3"
 					hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") }
-					hx-target="#reboot-response"
+					hx-trigger="load, click"
+					hx-target="#notification-area"
+					hx-swap="outerHTML"
 					hx-confirm={ api.Translate("label", "Are you sure you want to reboot the system? This will disconnect all users") + "." }
 					hx-on::after-request="this.disabled = true"
 					data-loading-disable

@@ -31,7 +31,7 @@ func AdminErrorPage(api sdkapi.IPluginApi, errorMsg string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"container mt-5\"><div class=\"row justify-content-center\"><div class=\"col-md-8 col-lg-6\"><div class=\"card border-danger\" role=\"alert\"><div class=\"card-header bg-danger text-white\"><h4 class=\"mb-0\"><i class=\"bi bi-exclamation-triangle-fill me-2\" aria-hidden=\"true\"></i> ")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"container\"><div class=\"row justify-content-center\"><div class=\"col-md-8 col-lg-6\"><div class=\"card border-danger\" role=\"alert\"><div class=\"card-header bg-danger text-white\"><h4 class=\"mb-0\"><i class=\"bi bi-exclamation-triangle-fill me-2\" aria-hidden=\"true\"></i> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

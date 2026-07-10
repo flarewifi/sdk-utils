@@ -165,15 +165,7 @@ func AdminThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentAdminPkg s
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = stickySave(api).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</form>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -223,7 +215,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(currentPortalPkg)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 60, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 59, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -236,7 +228,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Captive Portal Theme"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 65, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 64, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -249,7 +241,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Select a theme for the captive portal login page"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 66, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 65, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -267,7 +259,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("error", "No portal theme is installed. Install a portal theme plugin to choose one here."))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 71, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 70, Col: 111}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -312,7 +304,7 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(currentAdminPkg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 82, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 81, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -325,21 +317,13 @@ func PortalThemesPage(api sdkapi.IPluginApi, cards []ThemeCard, currentPortalPkg
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(currentPortalPkg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 83, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 82, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = stickySave(api).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</form>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -405,7 +389,7 @@ func themeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(card.Package)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 97, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 95, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -423,7 +407,7 @@ func themeCard(card ThemeCard) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(card.PreviewURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 102, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 100, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -436,7 +420,7 @@ func themeCard(card ThemeCard) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(card.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 102, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 100, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -454,7 +438,7 @@ func themeCard(card ThemeCard) templ.Component {
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(card.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 106, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 104, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
@@ -482,7 +466,7 @@ func themeCard(card ThemeCard) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(card.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 117, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 115, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -500,7 +484,7 @@ func themeCard(card ThemeCard) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(card.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 119, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 117, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
@@ -512,48 +496,6 @@ func themeCard(card ThemeCard) templ.Component {
 			}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		return templ_7745c5c3_Err
-	})
-}
-
-func stickySave(api sdkapi.IPluginApi) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
-		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var26 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var26 == nil {
-			templ_7745c5c3_Var26 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"fw-sticky-save\" style=\"display: none;\"><button type=\"submit\" class=\"btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 shadow-lg\"><i class=\"bi bi-check-lg\"></i> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Switch Theme"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/themes/themes-index.templ`, Line: 129, Col: 43}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -577,12 +519,12 @@ func themePickerStyles() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var28 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var28 == nil {
-			templ_7745c5c3_Var28 = templ.NopComponent
+		templ_7745c5c3_Var26 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var26 == nil {
+			templ_7745c5c3_Var26 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<style>\n\t\t.fw-theme-card { cursor: pointer; transition: box-shadow .15s ease, border-color .15s ease; border: 2px solid transparent; }\n\t\t.fw-theme-card:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }\n\t\t.fw-theme-card-selected { border-color: var(--bs-primary); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }\n\t\t.fw-theme-preview { aspect-ratio: 16 / 10; background-color: var(--bs-secondary-bg); overflow: hidden; }\n\t\t.fw-theme-preview-img { width: 100%; height: 100%; object-fit: cover; display: block; }\n\t\t.fw-theme-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; color: var(--bs-secondary-color); }\n\t\t.fw-theme-placeholder i { font-size: 2rem; }\n\t\t.fw-theme-placeholder-name { font-size: .85rem; font-weight: 500; }\n\t\t.fw-theme-check { position: absolute; top: .5rem; right: .5rem; width: 1.75rem; height: 1.75rem; border-radius: 50%; background-color: var(--bs-primary); color: #fff; display: none; align-items: center; justify-content: center; }\n\t\t.fw-theme-card-selected .fw-theme-check { display: flex; }\n\t\t.fw-badge-current { position: absolute; top: .5rem; left: .5rem; background-color: var(--bs-success); }\n\t\t.fw-sticky-save { position: sticky; bottom: 1.5rem; display: flex; justify-content: flex-start; margin-top: 1rem; z-index: 5; }\n\t</style>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<style>\n\t\t.fw-theme-card { cursor: pointer; transition: box-shadow .15s ease, border-color .15s ease; border: 2px solid transparent; }\n\t\t.fw-theme-card:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }\n\t\t.fw-theme-card-selected { border-color: var(--bs-primary); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }\n\t\t.fw-theme-preview { aspect-ratio: 16 / 10; background-color: var(--bs-secondary-bg); overflow: hidden; }\n\t\t.fw-theme-preview-img { width: 100%; height: 100%; object-fit: cover; display: block; }\n\t\t.fw-theme-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; color: var(--bs-secondary-color); }\n\t\t.fw-theme-placeholder i { font-size: 2rem; }\n\t\t.fw-theme-placeholder-name { font-size: .85rem; font-weight: 500; }\n\t\t.fw-theme-check { position: absolute; top: .5rem; right: .5rem; width: 1.75rem; height: 1.75rem; border-radius: 50%; background-color: var(--bs-primary); color: #fff; display: none; align-items: center; justify-content: center; }\n\t\t.fw-theme-card-selected .fw-theme-check { display: flex; }\n\t\t.fw-badge-current { position: absolute; top: .5rem; left: .5rem; background-color: var(--bs-success); }\n\t</style>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -606,12 +548,12 @@ func themePickerScript() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var29 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var29 == nil {
-			templ_7745c5c3_Var29 = templ.NopComponent
+		templ_7745c5c3_Var27 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var27 == nil {
+			templ_7745c5c3_Var27 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script>\n\t\t// ES5-only: toggle selection, update the hidden input, and reveal the\n\t\t// sticky \"Switch Theme\" bar only when the choice differs from current.\n\t\tfunction fwSelectTheme(el) {\n\t\t\tvar root = el;\n\t\t\twhile (root && root.className.indexOf('fw-theme-select') === -1) {\n\t\t\t\troot = root.parentNode;\n\t\t\t}\n\t\t\tif (!root) { return; }\n\t\t\tvar pkg = el.getAttribute('data-pkg');\n\t\t\tvar cards = root.getElementsByClassName('fw-theme-card');\n\t\t\tfor (var i = 0; i < cards.length; i++) {\n\t\t\t\tcards[i].className = cards[i].className.replace(' fw-theme-card-selected', '').replace('fw-theme-card-selected', '');\n\t\t\t}\n\t\t\tel.className = el.className + ' fw-theme-card-selected';\n\t\t\tvar inputs = root.getElementsByClassName('fw-theme-input');\n\t\t\tif (inputs.length > 0) { inputs[0].value = pkg; }\n\t\t\tvar bars = root.getElementsByClassName('fw-sticky-save');\n\t\t\tif (bars.length > 0) {\n\t\t\t\tbars[0].style.display = (pkg !== root.getAttribute('data-current')) ? 'flex' : 'none';\n\t\t\t}\n\t\t}\n\t</script>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<script>\n\t\t// ES5-only: selecting a card updates the hidden input and immediately\n\t\t// submits the form, so the theme switches without a separate save step.\n\t\t// A click on the already-current theme is a no-op (nothing changed).\n\t\tfunction fwSelectTheme(el) {\n\t\t\tvar root = el;\n\t\t\twhile (root && root.className.indexOf('fw-theme-select') === -1) {\n\t\t\t\troot = root.parentNode;\n\t\t\t}\n\t\t\tif (!root) { return; }\n\t\t\tvar pkg = el.getAttribute('data-pkg');\n\t\t\tif (pkg === root.getAttribute('data-current')) { return; }\n\t\t\tvar cards = root.getElementsByClassName('fw-theme-card');\n\t\t\tfor (var i = 0; i < cards.length; i++) {\n\t\t\t\tcards[i].className = cards[i].className.replace(' fw-theme-card-selected', '').replace('fw-theme-card-selected', '');\n\t\t\t}\n\t\t\tel.className = el.className + ' fw-theme-card-selected';\n\t\t\tvar inputs = root.getElementsByClassName('fw-theme-input');\n\t\t\tif (inputs.length > 0) { inputs[0].value = pkg; }\n\t\t\tvar forms = root.getElementsByTagName('form');\n\t\t\tif (forms.length > 0) { forms[0].submit(); }\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

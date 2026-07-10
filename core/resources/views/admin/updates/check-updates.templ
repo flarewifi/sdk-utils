@@ -16,7 +16,7 @@ type SoftwareUpdate struct {
 templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysupgradeReady bool, uploadUrl string, csrfHTML string, maxSizeMB int, allowedExts []string, currentVersion string) {
 	<div>
 		<h3 class="card-title mb-4">{ api.Translate("label", "Software Updates") }</h3>
-		<ul class="nav nav-tabs mb-4" role="tablist">
+		<ul class="nav nav-tabs" role="tablist">
 			<li class="nav-item" role="presentation">
 				<button class="nav-link active" id="tab-softwares-btn" data-bs-toggle="tab" data-bs-target="#tab-softwares" type="button" role="tab" aria-controls="tab-softwares" aria-selected="true">{ api.Translate("label", "Softwares") }</button>
 			</li>
@@ -24,11 +24,9 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 				<button class="nav-link" id="tab-firmware-btn" data-bs-toggle="tab" data-bs-target="#tab-firmware" type="button" role="tab" aria-controls="tab-firmware" aria-selected="false">{ api.Translate("label", "Firmware") }</button>
 			</li>
 		</ul>
-		<div class="tab-content">
+		<div class="tab-content border border-top-0 border-light-subtle p-4">
 			<div class="tab-pane fade show active" id="tab-softwares" role="tabpanel" aria-labelledby="tab-softwares-btn">
-				<div class="card shadow-sm border border-light-subtle">
-					<div class="card-body p-4">
-						<div class="d-flex align-items-center justify-content-between mb-4">
+					<div class="d-flex align-items-center justify-content-between mb-4">
 						<div>
 							<h4 class="fw-bold">System Software</h4>
 							<p>Current Version: <span id="current-version">{ currentVersion }</span></p>
@@ -89,9 +87,36 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 					</form>
 					<div id="update-status-message"></div>
 					<div id="update-info"></div>
-					@PluginUpdatesSection(api)
+					<div class="row g-2 mb-4">
+						<div class="col-md-4">
+							<div class="d-flex align-items-start gap-2 p-3 rounded border border-success-subtle bg-success-subtle bg-opacity-10 h-100">
+								<i class="bi bi-shield-check text-success fs-5"></i>
+								<div>
+									<div class="fw-semibold text-success">{ api.Translate("label", "Stable") }</div>
+									<div class="small text-body-secondary">{ api.Translate("info", "Fully vetted releases only. No pre-release builds and no major-version jumps") }.</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-4">
+							<div class="d-flex align-items-start gap-2 p-3 rounded border border-info-subtle bg-info-subtle bg-opacity-10 h-100">
+								<i class="bi bi-flask text-info fs-5"></i>
+								<div>
+									<div class="fw-semibold text-info">{ api.Translate("label", "Beta") }</div>
+									<div class="small text-body-secondary">{ api.Translate("info", "Pre-release builds for opt-in testers. Requires tester access on your account, otherwise falls back to Stable") }.</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-4">
+							<div class="d-flex align-items-start gap-2 p-3 rounded border border-warning-subtle bg-warning-subtle bg-opacity-10 h-100">
+								<i class="bi bi-lightning-charge-fill text-warning fs-5"></i>
+								<div>
+									<div class="fw-semibold text-warning">{ api.Translate("label", "Development") }</div>
+									<div class="small text-body-secondary">{ api.Translate("info", "Cutting-edge builds, including major-version upgrades. Requires tester access on your account, otherwise falls back to Stable") }.</div>
+								</div>
+							</div>
+						</div>
 					</div>
-				</div>
+					@PluginUpdatesSection(api)
 			</div>
 			<div class="tab-pane fade" id="tab-firmware" role="tabpanel" aria-labelledby="tab-firmware-btn">
 			<!-- Manual Sysupgrade Section -->
@@ -100,12 +125,12 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 				#firmware-upload-form.htmx-request #firmware-upload-loading { display: block !important; }
 				#firmware-upload-loading { display: none; }
 			</style>
-			<div class="card shadow-sm border border-light-subtle" id="firmware-upload-card">
-				<div class="card-header border-bottom border-light-subtle p-4 bg-transparent">
+			<div id="firmware-upload-card">
+				<div class="mb-4">
 					<h4 class="fw-semibold">{ api.Translate("label", "Manual Update Upload") }</h4>
 					<p>{ api.Translate("info", "Install a firmware image or a software release from a file for advanced users") }.</p>
 				</div>
-				<div class="card-body p-4">
+				<div>
 					<!-- Upload Form -->
 					<form
 						id="firmware-upload-form"
@@ -166,7 +191,7 @@ templ SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysu
 								<line x1="12" x2="12" y1="8" y2="12"></line>
 								<line x1="12" x2="12.01" y1="16" y2="16"></line>
 							</svg>
-							<p>{ api.Translate("info", "Only upload files from trusted sources. An invalid firmware image or software release may damage your device") }.</p>
+							<p class="mb-0">{ api.Translate("info", "Only upload files from trusted sources. An invalid firmware image or software release may damage your device") }.</p>
 						</div>
 					</form>
 				</div>
@@ -199,7 +224,7 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, hasPl
 		{{ return }}
 	}
 	<div id="update-available" hx-swap-oob="true">
-		<div class="d-flex align-items-center rounded-pill bg-warning bg-opacity-25 px-3 py-1 border border-warning gap-2 text-warning">
+		<div class="d-flex align-items-center rounded-pill bg-success bg-opacity-25 px-3 py-1 border border-success gap-2 text-success">
 			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert-icon lucide-circle-alert">
 				<circle cx="12" cy="12" r="10"></circle>
 				<line x1="12" x2="12" y1="8" y2="12"></line>
@@ -209,7 +234,7 @@ templ CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, hasPl
 		</div>
 	</div>
 	<div id="update-info" hx-swap-oob="true">
-		<div class="card border-success mt-4">
+		<div class="card border-success mt-4 mb-4">
 			<div class="card-body">
 				if update.HasUpdate {
 					<div class="mb-3">

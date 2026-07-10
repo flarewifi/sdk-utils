@@ -108,6 +108,7 @@ func AdminRoutes(g *api.CoreGlobals) {
 	adminR.Group("/power", func(subrouter sdkapi.IHttpRouterInstance) {
 		subrouter.Get("/reboot", adminctrl.RebootPageCtrl(g)).Name("admin:power:reboot")
 		subrouter.Post("/reboot", adminctrl.RebootCtrl(g)).Name("admin:power:reboot-action")
+		subrouter.Get("/reboot-status", adminctrl.RebootStatusCtrl(g)).Name("admin:power:reboot-status")
 		subrouter.Get("/shutdown", adminctrl.ShutdownPageCtrl(g)).Name("admin:power:shutdown")
 		subrouter.Post("/shutdown", adminctrl.ShutdownCtrl(g)).Name("admin:power:shutdown-action")
 	})

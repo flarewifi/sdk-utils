@@ -1,0 +1,12 @@
+/* Label column for label/value settings rows (e.g. System Information).
+   Sized to content on narrow screens so the value has room to sit beside it
+   without wrapping; fixed width from md+ so values line up in a column. */
+.settings-row-label {
+    flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+    .settings-row-label {
+        width: 210px;
+    }
+}
