@@ -534,10 +534,14 @@ func waitForPluginFailureDecision(failed []PluginBuildFailure) bool {
 
 // WaitForStagingToStop blocks until no staging/download is in flight (downloading
 // flag cleared) or the timeout elapses. A caller that just cancelled uses it so the
-// staging goroutine has finished its teardown — flag cleared, staged set discarded —
-// BEFORE redirecting. Without this the updates index would see IsDownloading()==true
-// and bounce the admin straight back to the progress page (which, for a core update,
-// would even auto-restart staging) — the "stuck in Compiling Plugins" symptom.
+// staging goroutine has a chance to finish its teardown — flag cleared, staged set
+// discarded — BEFORE redirecting. The timeout is NOT a guarantee: cancellation is
+// cooperative (checked only between plugin builds, see cancelRequested), so an
+// on-device local-plugin recompile already in flight can legitimately outlast it.
+// Callers MUST check IsDownloading() after this returns rather than assume success —
+// redirecting to the updates index while it is still true bounces the admin straight
+// back to the progress page (which, for a core update, would even auto-restart
+// staging) — the "stuck in Compiling Plugins" symptom.
 func WaitForStagingToStop(timeout time.Duration) {
 	deadline := time.Now().Add(timeout)
 	for downloading.Load() {

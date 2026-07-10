@@ -50,24 +50,37 @@ func StageLocalPluginRebuild(srcDir, coreStageDir string, pinned []LockedGoModul
 	workdir := filepath.Join(sdkutils.PathTmpDir, "stage-rebuild", info.Package)
 	defer os.RemoveAll(workdir)
 
-	// Compile plugin.so against the STAGED core (opts.AppDir), not the live one,
-	// pinned to the target core version's dependency lock for ABI parity.
-	if err := BuildPluginSo(srcDir, workdir, BuildOpts{
+	// Pin dependencies on a DISPOSABLE copy of the plugin source, never on srcDir
+	// itself. PatchPluginDeps rewrites go.mod/go.sum in place (see build-plugins.go's
+	// BuildPlugin, which does the same for the live core), and here the pin target is
+	// the STAGED (not-yet-applied) core's lock — a DIFFERENT version than the one the
+	// machine is still actually running. If this update is later cancelled or fails
+	// before reboot, srcDir must be left exactly as it was: still buildable against
+	// the current live core, not silently re-pinned to a core that never shipped.
+	pinnedSrcDir := filepath.Join(workdir, "src")
+	if err := sdkutils.FsCopyDir(srcDir, pinnedSrcDir, nil); err != nil {
+		return fmt.Errorf("copy plugin source for pinned rebuild: %w", err)
+	}
+	if err := PatchPluginDeps(pinnedSrcDir, pinned); err != nil {
+		return fmt.Errorf("pin plugin deps to staged core lock: %w", err)
+	}
+
+	// Compile plugin.so against the STAGED core (opts.AppDir), not the live one, from
+	// the pinned copy so the .so resolves the same module versions+hashes as the
+	// staged core and the cloud-built store plugins beside it.
+	buildWorkdir := filepath.Join(workdir, "build")
+	if err := BuildPluginSo(pinnedSrcDir, buildWorkdir, BuildOpts{
 		SkipTemplates: true,
 		SkipQueries:   true,
 		AppDir:        coreStageDir,
-		PinnedDeps:    pinned,
 	}); err != nil {
 		return fmt.Errorf("build plugin.so against staged core: %w", err)
 	}
 
-	builtSo := filepath.Join(srcDir, "plugin.so")
+	builtSo := filepath.Join(pinnedSrcDir, "plugin.so")
 	if !sdkutils.FsExists(builtSo) {
 		return fmt.Errorf("build produced no plugin.so")
 	}
-	// BuildPluginSo writes plugin.so into the source dir; drop it after staging so
-	// the persisted source tree stays clean.
-	defer os.Remove(builtSo)
 
 	// Assemble the staged install tree: current install + freshly built plugin.so.
 	staged := GetPendingUpdatePath(info.Package)

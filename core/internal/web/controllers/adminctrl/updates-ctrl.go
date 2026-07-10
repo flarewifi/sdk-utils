@@ -237,6 +237,20 @@ func DownloadStatusPartialCtrl(g *api.CoreGlobals) http.HandlerFunc {
 			return
 		}
 
+		// Staging stopped without landing in any of the states above — the only way
+		// that happens is a cancelled run unwinding quietly (see ErrUpdateCancelled in
+		// system-update.go: no error stored, no staged-complete marker). This page polls
+		// unconditionally every 1s (htmx hx-trigger on download-updates.templ) with no
+		// other way to detect "downloading stopped"; without this check a cancel that
+		// only finishes after DownloadCancelCtrl's wait times out would poll this same
+		// static partial forever. Send the admin back rather than leaving them stuck.
+		if !updates.IsDownloading() {
+			res := api.HttpAPI.Response()
+			res.FlashMsg(w, r, api.Translate("info", "Software update cancelled"), sdkapi.FlashMsgInfo)
+			res.Redirect(w, r, "admin:updates:index")
+			return
+		}
+
 		percent := updates.DownloadPercent()
 		err := updates.DownloadError()
 
@@ -309,8 +323,10 @@ func DownloadContinueCtrl(g *api.CoreGlobals) http.HandlerFunc {
 // places the admin can trigger it from on the download page: the ordinary
 // download/compiling progress view, or the plugin-build-failure confirmation
 // dialog. The staging goroutine discards whatever it staged and exits quietly (no
-// update is applied, not even the core). It redirects back to the updates page with
-// an info flash so the polling page stops and the admin lands somewhere sensible.
+// update is applied, not even the core). If staging is still unwinding a build that
+// was already in flight when cancel was requested, this redirects to the progress
+// page instead of claiming success — see the IsDownloading branch below and
+// DownloadStatusPartialCtrl's matching check.
 func DownloadCancelCtrl(g *api.CoreGlobals) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		api := g.CoreAPI
@@ -321,12 +337,27 @@ func DownloadCancelCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		// needing to know which one is active. Both are no-ops when not applicable.
 		updates.ResolvePluginFailureDecision(false)
 		updates.RequestCancelDownload()
-		// Wait for the staging goroutine to finish unwinding (clear the in-flight flag
-		// and discard the staged set) before redirecting. Otherwise the index page sees
-		// IsDownloading()==true and bounces back to the progress page — the "stuck in
-		// Compiling Plugins" symptom. Cleanup is fast (discard the staged dir); the cap
-		// just bounds a pathological case.
+		// Cancellation is cooperative: it is only checked BETWEEN plugin builds, never
+		// mid-build (see cancelRequested in updates.go), so a local plugin's on-device
+		// `go build -buildmode=plugin` already in flight always finishes first. On real
+		// OpenWRT hardware that routinely takes longer than this wait. Give it a chance
+		// to land quickly, but do NOT assume it did.
 		updates.WaitForStagingToStop(10 * time.Second)
+
+		if updates.IsDownloading() {
+			// Still unwinding. Claiming "cancelled" here and redirecting to the index
+			// would immediately bounce back to this same progress page anyway (see
+			// CheckUpdatesPageCtrl's IsDownloading redirect) — the "stuck in Compiling
+			// Plugins" symptom that has led admins to power-cycle the device thinking
+			// cancel failed, killing an in-flight on-device plugin recompile outright
+			// and corrupting it for the NEXT update attempt. Tell the truth instead:
+			// go to the progress page, which keeps polling (DownloadStatusPartialCtrl
+			// now detects the moment staging actually stops and redirects itself).
+			res.FlashMsg(w, r, api.Translate("info", "Cancelling the update — finishing the current step, this may take a moment"), sdkapi.FlashMsgInfo)
+			res.Redirect(w, r, "admin:updates:download")
+			return
+		}
+
 		res.FlashMsg(w, r, api.Translate("info", "Software update cancelled"), sdkapi.FlashMsgInfo)
 		res.Redirect(w, r, "admin:updates:index")
 	}
