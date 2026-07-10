@@ -254,14 +254,14 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysup
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</span></button></form><div class=\"row g-2 mb-4\"><div class=\"col-md-4\"><div class=\"d-flex align-items-start gap-2 p-3 rounded border border-success-subtle bg-success-subtle bg-opacity-10 h-100\"><i class=\"bi bi-shield-check text-success fs-5\"></i><div><div class=\"fw-semibold text-success\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("...</span></button></form><div id=\"update-status-message\"></div><div id=\"update-info\"></div><div class=\"row g-2 mb-4\"><div class=\"col-md-4\"><div class=\"d-flex align-items-start gap-2 p-3 rounded border border-success-subtle bg-success-subtle bg-opacity-10 h-100\"><i class=\"bi bi-shield-check text-success fs-5\"></i><div><div class=\"fw-semibold text-success\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Stable"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 93, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 95, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -274,7 +274,7 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysup
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Fully vetted releases only. No pre-release builds and no major-version jumps"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 94, Col: 151}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 96, Col: 151}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -287,7 +287,7 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysup
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Beta"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 102, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 104, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -300,7 +300,7 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysup
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Pre-release builds for opt-in testers. Requires tester access on your account, otherwise falls back to Stable"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 103, Col: 184}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 105, Col: 184}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -313,7 +313,7 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysup
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Development"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 111, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 113, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -326,13 +326,13 @@ func SoftwareUpdatesPage(api sdkapi.IPluginApi, channel string, err error, sysup
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Cutting-edge builds, including major-version upgrades. Requires tester access on your account, otherwise falls back to Stable"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 112, Col: 200}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/updates/check-updates.templ`, Line: 114, Col: 200}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(".</div></div></div></div></div><div id=\"update-status-message\"></div><div id=\"update-info\"></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(".</div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -612,7 +612,7 @@ func CheckForUpdatesPartial(api sdkapi.IPluginApi, update SoftwareUpdate, hasPlu
 			}
 			return
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"update-available\" hx-swap-oob=\"true\"><div class=\"d-flex align-items-center rounded-pill bg-warning bg-opacity-25 px-3 py-1 border border-warning gap-2 text-warning\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-circle-alert-icon lucide-circle-alert\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\"></line> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\"></line></svg> Update Available</div></div><div id=\"update-info\" hx-swap-oob=\"true\"><div class=\"card border-success mt-4\"><div class=\"card-body\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"update-available\" hx-swap-oob=\"true\"><div class=\"d-flex align-items-center rounded-pill bg-success bg-opacity-25 px-3 py-1 border border-success gap-2 text-success\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-circle-alert-icon lucide-circle-alert\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\"></line> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\"></line></svg> Update Available</div></div><div id=\"update-info\" hx-swap-oob=\"true\"><div class=\"card border-success mt-4\"><div class=\"card-body\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
