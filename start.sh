@@ -110,6 +110,13 @@ apply_pkg() {
             done
             rm -rf "$staged/data"
         fi
+        # defaults/ ships the release's fallback config templates (application.json,
+        # plugins.json, etc. -- see TidyConfigFiles in go/builder/tasks/utils.go). Unlike
+        # the rest of the core overlay, this must be a full REPLACE, not an additive
+        # merge: a stale template from a previous release/device_config must not survive
+        # just because the new release doesn't happen to ship a same-named file.
+        rm -rf "$APP_DIR/defaults" || return 1
+
         # Overlay the remaining core entries onto the app dir. plugins/installed/ is
         # intentionally overlaid (ABI-matched plugins ship with the core); data/ is now
         # gone from the staged set, so the persistent symlink is left untouched.
@@ -202,6 +209,17 @@ start() {
     # not roll back and do not restart, so a normal stop/reboot stays stopped.
     if [ -e "$STOP_MARKER" ] || [ "$EXIT_CODE" -eq 0 ] || [ "$EXIT_CODE" -eq 143 ]; then
         echo "flare server exited (code $EXIT_CODE); intentional or clean shutdown, not restarting."
+        # A clean exit (as opposed to the crash branch below) is the confirmation
+        # that whatever update apply_updates staged this boot session is good --
+        # nothing else in the codebase ever clears $BACKUP_DIR on success (it was
+        # only ever removed on the CRASH path below, or on a failed apply). Left
+        # uncleared, a stale backup from an already-confirmed-good update sits
+        # there indefinitely; if flare later crashes for a reason UNRELATED to
+        # that update (possibly boots/reboots later), the crash branch's
+        # restore_all still finds it and silently reverts core/product.json (and
+        # the rest of core/) back to the pre-update version -- which looks exactly
+        # like the update "didn't take" even though it applied correctly.
+        rm -rf "$BACKUP_DIR"
         exit 0
     fi
 
@@ -214,6 +232,23 @@ start() {
 }
 
 if [ -e "$STAGED_COMPLETE_MARKER" ]; then
+    # Adopt the STAGED core's start.sh BEFORE backup_pkg/apply_pkg/restore_all ever
+    # run, so a fix to THIS apply/rollback logic takes effect for the very update
+    # that ships it, instead of staying governed by the OLD (possibly buggy)
+    # start.sh until the update after next. A plugin-only update has no staged
+    # com.flarego.core, so staged_start_sh naturally doesn't exist and this is
+    # skipped. FLARE_STARTSH_ADOPTED (exported before the re-exec) guards against
+    # re-adopting forever once this boot has already done so.
+    staged_start_sh="$SOFTWARE_UPDATE_DIR/$CORE_PKG/start.sh"
+    if [ -e "$staged_start_sh" ] && [ -z "$FLARE_STARTSH_ADOPTED" ]; then
+        echo "Adopting staged start.sh before applying update..."
+        if cp -a "$staged_start_sh" "$APP_DIR/start.sh"; then
+            export FLARE_STARTSH_ADOPTED=1
+            exec "$APP_DIR/start.sh"
+        fi
+        echo "WARNING: failed to adopt staged start.sh; continuing with the current one"
+    fi
+
     # Apply the staged set, then exec the (possibly just-updated) start.sh fresh.
     # apply_updates clears the staged set + marker on success, so the re-exec'd
     # start.sh boots normally instead of re-applying. $BACKUP_DIR is intentionally
@@ -223,7 +258,15 @@ if [ -e "$STAGED_COMPLETE_MARKER" ]; then
     else
         echo "Failed to apply staged updates!"
         restore_all
-        rm -rf "$BACKUP_DIR" "$SOFTWARE_UPDATE_DIR"/*
+        # $STAGED_COMPLETE_MARKER is a dotfile (.staged_complete) directly under
+        # $SOFTWARE_UPDATE_DIR -- the "/*" glob does NOT match it, so it must be
+        # named explicitly here too (the success path above already does this).
+        # Omitting it left the marker behind after a failed apply: the payload dirs
+        # are gone (wiped by the glob) but the marker survives, so the NEXT boot
+        # re-enters this branch, finds nothing to apply/back up, trivially
+        # "succeeds", and silently discards the staged core update instead of
+        # retrying it or surfacing the original failure.
+        rm -rf "$BACKUP_DIR" "$SOFTWARE_UPDATE_DIR"/* "$STAGED_COMPLETE_MARKER"
         exec "$APP_DIR/start.sh"
     fi
 else

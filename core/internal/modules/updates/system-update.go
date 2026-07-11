@@ -265,17 +265,38 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		return errors.New("staged core payload is missing bin/flare (corrupt download)")
 	}
 
-	// Stamp the target PRODUCT version into the staged core's core/product.json so the
-	// device reports it after the update (start.sh's blanket overlay then copies it to
-	// app/core/product.json). A non-mono update ships only the compiled core_arch_bin,
-	// which is CACHE-SHARED across every product-version release built on the same core
-	// version + platform — so the cloud cannot bake a single product version into it.
-	// The server instead tells us the exact product version in this update response
-	// (update.Version == FetchLatest's productVersionString), which is the authoritative
-	// value to stamp. Without this an old device (no product.json) updating to a new
-	// release would keep falling back to its core version. See product.Version().
-	if err := stampStagedProductVersion(coreDest, update); err != nil {
-		return fmt.Errorf("stamp staged product version: %w", err)
+	// core/product.json ships INSIDE the downloaded tarball already, fully and
+	// correctly stamped by the cloud build (go/builder's writeProductVersion) with
+	// both this exact release's product version and its encrypted brand_id/
+	// device_config -- CloneAndParseRelease refuses to build a release without it, so
+	// there is nothing left for the device to stamp client-side. (The non-mono
+	// download used to be a product-agnostic, cache-shared core_arch_bin with no
+	// per-release product.json of its own -- devices downloading that artifact never
+	// received a product.json at all, so core/product.json's version stayed stuck at
+	// whatever it was before the FIRST non-mono update, forever. The server now
+	// resolves the update to the full per-partner release tarball instead (same
+	// upload category mono devices fetch) -- see FindLatestNonMonoSoftwareRelease.
+	// See product.Version()/product.BrandId().)
+	//
+	// The full release tarball also carries plugins/installed/<pkg> -- this
+	// release's CURATED plugin set (whatever the superuser picked), not what THIS
+	// device is actually entitled to. Entitlement stays governed exclusively by the
+	// per-device loop below (storePluginPackages/StagePluginUpdate) for Src=store
+	// and by the on-device recompile loop for Src=local, so a store/local package's
+	// bundled copy must never reach the device's app dir that way: boot's plugin
+	// loader only checks structural validity + disabled/blocked markers, not
+	// plugins.json membership, so dropping an unentitled .so onto disk would load a
+	// plugin the device never purchased. A Src=system (or Src=git) package, though,
+	// is NEVER staged by either of those loops -- "system plugins ship inside the
+	// core" (see plugins.InstalledLocalPluginSrcDirs) -- so this bundled copy is
+	// its ONLY source. Blanket-deleting the whole directory used to also wipe those,
+	// which silently broke anything referencing them by on-disk presence (e.g.
+	// config/themes.json's isThemeValid, which just stats plugins/installed/<pkg>)
+	// even though the device was already registered to use them. filterStagedPluginInstallDir
+	// keeps exactly the entries that are both registered on this device AND not
+	// otherwise staged separately below, instead of removing the directory outright.
+	if err := filterStagedPluginInstallDir(coreDest); err != nil {
+		return fmt.Errorf("filter release-curated plugins/installed in staged core: %w", err)
 	}
 
 	// The release tarball bundles plugin SOURCES under data/plugins/{local,devel} so the
@@ -443,6 +464,64 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	return nil
 }
 
+// filterStagedPluginInstallDir prunes coreDest/plugins/installed down to the packages
+// this device may safely receive from the release's CURATED bundle (see
+// stageSystemUpdate), instead of removing the whole directory:
+//
+//   - Not registered in this device's own data/config/plugins.json → dropped. The
+//     release's bundle is the superuser's pick for the release as a whole, not this
+//     specific device's entitlement; boot's plugin loader loads whatever is
+//     structurally present here regardless of plugins.json membership, so an
+//     unregistered package must never reach disk this way.
+//   - Registered with Src=store or Src=local → dropped. Both are staged separately
+//     below (storePluginPackages/StagePluginUpdate for store, the on-device recompile
+//     loop for local) as their OWN top-level package under the staging root, applied
+//     by start.sh as its own overlay onto the identical destination
+//     ($APP_DIR/plugins/installed/<pkg>). start.sh applies staged packages by
+//     globbing the staging root in unspecified order, so leaving the same package in
+//     both places would make the final on-disk content depend on shell glob order —
+//     the per-device rebuild must be the only copy.
+//   - Registered with any other Src (system, git) → kept. Neither is staged anywhere
+//     else ("system plugins ship inside the core", never rebuilt on-device or by the
+//     store loop — see plugins.InstalledLocalPluginSrcDirs), so the release's bundled
+//     copy is their only source. It is guaranteed ABI-matched to the staged core: both
+//     shipped in the same release tarball, built together by the cloud for the same
+//     core version.
+func filterStagedPluginInstallDir(coreDest string) error {
+	installDir := filepath.Join(coreDest, "plugins", "installed")
+	entries, err := os.ReadDir(installDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read staged plugins/installed: %w", err)
+	}
+
+	cfg, err := config.ReadPluginsConfig()
+	if err != nil {
+		return err
+	}
+	registeredSrc := make(map[string]string, len(cfg.Metadata))
+	for _, meta := range cfg.Metadata {
+		registeredSrc[meta.Package] = meta.Def.Src
+	}
+
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		pkg := e.Name()
+		src, registered := registeredSrc[pkg]
+		if !registered || src == sdkutils.PluginSrcStore || src == sdkutils.PluginSrcLocal {
+			if err := os.RemoveAll(filepath.Join(installDir, pkg)); err != nil {
+				return fmt.Errorf("remove unentitled/duplicate staged plugin %q: %w", pkg, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 // pruneNonLocalPluginSources removes bundled plugin source trees from the staged core
 // payload (coreDest/data/plugins/{local,devel}/<pkg>) for every package that is NOT
 // registered as Src=local in the device's live data/config/plugins.json. The non-mono
@@ -550,22 +629,6 @@ func convertDevelPluginsToLocal() error {
 	}
 
 	return nil
-}
-
-// stampStagedProductVersion writes the target product version into the staged core's
-// core/product.json ({"version": "..."}), the file product.Version() reads. The
-// non-mono core update is the shared, product-agnostic core_arch_bin, so the cloud
-// never embeds product.json in it; the device stamps the product version the server
-// reported for this update (update.Version) so the apply overlay carries it onto the
-// device. The shape mirrors core/utils/product.productInfo. A nil/empty version is a
-// hard error: a release that reached staging always carries a parsed product version.
-func stampStagedProductVersion(coreDest string, update *SoftwareReleaseUpdate) error {
-	if update == nil || update.Version == nil {
-		return errors.New("missing product version for staged core")
-	}
-
-	productPath := filepath.Join(coreDest, "core", "product.json")
-	return sdkutils.JsonWrite(productPath, map[string]string{"version": update.Version.String()})
 }
 
 // downloadAndExtractCore streams the self-contained core tarball to a temp file

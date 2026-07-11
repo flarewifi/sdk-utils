@@ -571,9 +571,9 @@ func handleSoftwareReleaseUpload(g *api.CoreGlobals, w http.ResponseWriter, r *h
 	// lists "System core" for this path as well, instead of silently omitting it.
 	targetVersion := info.ProductVersion
 	if targetVersion == "" {
-		// Non-mono core builds are cache-shared across product versions and may ship
-		// without a stamped product.json (see stampStagedProductVersion) — fall back
-		// to the core ABI version, mirroring product.Version()'s own fallback.
+		// A manually uploaded release predating the mandatory core/product.json stamp
+		// (writeProductVersion) may ship without one — fall back to the core ABI
+		// version, mirroring product.Version()'s own fallback.
 		targetVersion = info.CoreVersion
 	}
 	parsedVersion, _ := semver.NewVersion(targetVersion)

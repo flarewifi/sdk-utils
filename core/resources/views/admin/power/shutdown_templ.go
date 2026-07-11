@@ -10,6 +10,13 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import sdkapi "sdk/api"
 
+// ShutdownPage prompts to confirm and shut down as soon as it loads (hx-trigger="load
+// delay:500ms, click" on #shutdown-btn) — anywhere in the admin that wants a shutdown
+// navigates here rather than triggering the shutdown action itself, so the confirm
+// dialog fires automatically instead of requiring an extra manual click. The
+// delay:500ms gives the page a moment to finish rendering before the native
+// confirm() dialog steals focus. Cancelling the browser confirm() just aborts that
+// request; the button stays enabled for a manual retry.
 func ShutdownPage(api sdkapi.IPluginApi) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -38,7 +45,7 @@ func ShutdownPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Shutdown Device"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 9, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 16, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -51,7 +58,7 @@ func ShutdownPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Warning"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 16, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 23, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -64,7 +71,7 @@ func ShutdownPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("warning", "This will shut down the system. All active sessions will be terminated"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 16, Col: 161}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 23, Col: 161}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -77,7 +84,7 @@ func ShutdownPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "The system will be completely powered off and will require manual intervention to restart"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 19, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 26, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -90,20 +97,20 @@ func ShutdownPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin:power:shutdown-action"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 25, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 32, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-target=\"#shutdown-alert\" hx-swap=\"outerHTML\" hx-confirm=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-trigger=\"load delay:500ms, click\" hx-target=\"#shutdown-alert\" hx-swap=\"outerHTML\" hx-confirm=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Are you sure you want to shut down the system? This will disconnect all users and power off the device") + ".")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 28, Col: 152}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 36, Col: 152}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -116,7 +123,7 @@ func ShutdownPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Shutdown Device"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 33, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/shutdown.templ`, Line: 41, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {

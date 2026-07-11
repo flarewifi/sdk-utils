@@ -100,14 +100,6 @@ func StartOnlineMonitor(g *api.CoreGlobals) {
 		return nil
 	})
 
-	// Tell the admin (admin notifications only — never the captive portal) when the
-	// machine loses internet, so they know network setup may be needed. Spawned so a
-	// slow notification write can't stall the monitor's polling loop.
-	g.EventsMgr.OnInternetEvent(sdkapi.EventInternetDown, func(ctx context.Context) error {
-		go notifyOffline(g)
-		return nil
-	})
-
 	// Defer the monitor's polling loop until boot completes (EventBoot). During boot
 	// the WAN link is still coming up (DHCP/PPPoE/default route), so probing then can
 	// emit a spurious EventInternetDown — a false "No internet connection" admin
@@ -466,22 +458,3 @@ func notifyPluginUnavailable(g *api.CoreGlobals, pkg string) {
 	}
 }
 
-// notifyOffline raises an admin notification that the machine has no internet, so
-// the operator knows network setup may be required. Admin-only — never surfaced on
-// the captive portal. Fires on every internet-down transition (netmon collapses
-// flaps into a single event), including the first probe at boot if it boots offline.
-func notifyOffline(g *api.CoreGlobals) {
-	if err := g.CoreAPI.Logger().Info("online monitor: machine is offline"); err != nil {
-	}
-
-	subject := g.CoreAPI.Translate("warning", "Internet Monitor: Connection went down.")
-	content := g.CoreAPI.Translate("warning", "The machine has no internet connection. Some features that depend on the cloud are unavailable until connectivity is restored")
-
-	if err := g.CoreAPI.Notification().AddNotification(context.Background(), sdkapi.AddNotificationParams{
-		Subject: subject,
-		Content: content,
-		Type:    sdkapi.NotificationTypeWarn,
-	}); err != nil {
-		g.CoreAPI.Logger().Error(fmt.Sprintf("failed to notify admin that the machine is offline: %v", err))
-	}
-}

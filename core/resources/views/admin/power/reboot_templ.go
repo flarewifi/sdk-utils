@@ -87,11 +87,13 @@ func RebootingPartial(api sdkapi.IPluginApi) templ.Component {
 	})
 }
 
-// RebootPage prompts to confirm and reboot as soon as it loads (hx-trigger="load,
-// click" on #reboot-btn) — anywhere in the admin that wants a reboot navigates here
-// rather than triggering the reboot action itself, so the confirm dialog fires
-// immediately instead of requiring an extra manual click. Cancelling the browser
-// confirm() just aborts that request; the button stays enabled for a manual retry.
+// RebootPage prompts to confirm and reboot as soon as it loads (hx-trigger="load
+// delay:500ms, click" on #reboot-btn) — anywhere in the admin that wants a reboot
+// navigates here rather than triggering the reboot action itself, so the confirm
+// dialog fires automatically instead of requiring an extra manual click. The
+// delay:500ms gives the page a moment to finish rendering before the native
+// confirm() dialog steals focus. Cancelling the browser confirm() just aborts that
+// request; the button stays enabled for a manual retry.
 func RebootPage(api sdkapi.IPluginApi) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -120,7 +122,7 @@ func RebootPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Reboot Device"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 35, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 37, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -133,7 +135,7 @@ func RebootPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Warning"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 42, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 44, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -146,7 +148,7 @@ func RebootPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("warning", "This will reboot the system. All active sessions will be terminated"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 42, Col: 158}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 44, Col: 158}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -159,7 +161,7 @@ func RebootPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("info", "Click the button below to reboot the system. The system will be unavailable for a few minutes during the reboot process"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 45, Col: 151}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 47, Col: 151}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -172,20 +174,20 @@ func RebootPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(api.Http().Helpers().UrlForRoute("admin:power:reboot-action"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 51, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 53, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-trigger=\"load, click\" hx-target=\"#notification-area\" hx-swap=\"outerHTML\" hx-confirm=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-trigger=\"load delay:500ms, click\" hx-target=\"#notification-area\" hx-swap=\"outerHTML\" hx-confirm=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Are you sure you want to reboot the system? This will disconnect all users") + ".")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 55, Col: 124}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 57, Col: 124}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -198,7 +200,7 @@ func RebootPage(api sdkapi.IPluginApi) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(api.Translate("label", "Reboot Device"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 60, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `resources/views/admin/power/reboot.templ`, Line: 62, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {

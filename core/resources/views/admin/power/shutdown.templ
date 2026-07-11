@@ -2,6 +2,13 @@ package powerview
 
 import sdkapi "sdk/api"
 
+// ShutdownPage prompts to confirm and shut down as soon as it loads (hx-trigger="load
+// delay:500ms, click" on #shutdown-btn) — anywhere in the admin that wants a shutdown
+// navigates here rather than triggering the shutdown action itself, so the confirm
+// dialog fires automatically instead of requiring an extra manual click. The
+// delay:500ms gives the page a moment to finish rendering before the native
+// confirm() dialog steals focus. Cancelling the browser confirm() just aborts that
+// request; the button stays enabled for a manual retry.
 templ ShutdownPage(api sdkapi.IPluginApi) {
 	<div id="shutdown-page">
 		<div class="d-flex align-items-center justify-content-between mb-4">
@@ -23,6 +30,7 @@ templ ShutdownPage(api sdkapi.IPluginApi) {
 					type="button"
 					class="btn btn-danger px-3 py-2 fs-6 rounded-3"
 					hx-post={ api.Http().Helpers().UrlForRoute("admin:power:shutdown-action") }
+					hx-trigger="load delay:500ms, click"
 					hx-target="#shutdown-alert"
 					hx-swap="outerHTML"
 					hx-confirm={ api.Translate("label", "Are you sure you want to shut down the system? This will disconnect all users and power off the device") + "." }
