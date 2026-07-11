@@ -23,11 +23,13 @@ templ RebootingPartial(api sdkapi.IPluginApi) {
 	</div>
 }
 
-// RebootPage prompts to confirm and reboot as soon as it loads (hx-trigger="load,
-// click" on #reboot-btn) — anywhere in the admin that wants a reboot navigates here
-// rather than triggering the reboot action itself, so the confirm dialog fires
-// immediately instead of requiring an extra manual click. Cancelling the browser
-// confirm() just aborts that request; the button stays enabled for a manual retry.
+// RebootPage prompts to confirm and reboot as soon as it loads (hx-trigger="load
+// delay:500ms, click" on #reboot-btn) — anywhere in the admin that wants a reboot
+// navigates here rather than triggering the reboot action itself, so the confirm
+// dialog fires automatically instead of requiring an extra manual click. The
+// delay:500ms gives the page a moment to finish rendering before the native
+// confirm() dialog steals focus. Cancelling the browser confirm() just aborts that
+// request; the button stays enabled for a manual retry.
 templ RebootPage(api sdkapi.IPluginApi) {
 	<div id="reboot-page">
 		<div class="d-flex align-items-center justify-content-between mb-4">
@@ -49,7 +51,7 @@ templ RebootPage(api sdkapi.IPluginApi) {
 					type="button"
 					class="btn btn-warning px-3 py-2 fs-6 rounded-3"
 					hx-post={ api.Http().Helpers().UrlForRoute("admin:power:reboot-action") }
-					hx-trigger="load, click"
+					hx-trigger="load delay:500ms, click"
 					hx-target="#notification-area"
 					hx-swap="outerHTML"
 					hx-confirm={ api.Translate("label", "Are you sure you want to reboot the system? This will disconnect all users") + "." }
