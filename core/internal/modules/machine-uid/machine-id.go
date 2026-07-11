@@ -10,20 +10,22 @@ import (
 	"strings"
 	"sync"
 
+	"core/utils/product"
+
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
 const (
 	machineIDCacheFile = "/etc/.mid"
-	osReleaseFile      = "/etc/os_release.json"
 
 	// readableAlphabet excludes ambiguous chars: 0/O, 1/I/l
 	readableAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 )
 
-// onboardNICOnlyDevices maps SBC device models (matched against DeviceModel in
-// /etc/os_release.json) to the single onboard NIC whose MAC is stable. These
-// boards reach their extra ethernet ports through hot-pluggable USB dongles
+// onboardNICOnlyDevices maps SBC device models (matched against the decrypted
+// device_model in core/product.json — see readDeviceModel) to the single onboard
+// NIC whose MAC is stable. These boards reach their extra ethernet ports through
+// hot-pluggable USB dongles
 // (e.g. orangepi-one/-pc run the LAN bridge on a USB eth1, while the onboard
 // Allwinner EMAC stays eth0), so hashing every MAC would make the machine ID
 // flip whenever a dongle is swapped or re-enumerated. For these boards the ID is
@@ -191,15 +193,12 @@ func readInterfaceMAC(iface string) string {
 	return mac
 }
 
-// readDeviceModel returns the board's DeviceModel from /etc/os_release.json
-// (e.g. "orangepi-one"). Returns "" when the file is missing or unreadable, in
-// which case the caller falls back to the legacy all-MACs strategy.
+// readDeviceModel returns the board's device_model (e.g. "orangepi-one"), decrypted
+// from core/product.json (see the product package's doc comment — no longer
+// os_release.json). Returns "" when unreadable/undecryptable, in which case the
+// caller falls back to the legacy all-MACs strategy.
 func readDeviceModel() string {
-	release, err := sdkutils.ReadOsRelease(osReleaseFile)
-	if err != nil {
-		return ""
-	}
-	return release.DeviceModel
+	return product.DeviceModel()
 }
 
 // readCPUSerial reads the serial number from /proc/cpuinfo (common on ARM devices)

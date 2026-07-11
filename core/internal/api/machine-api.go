@@ -36,6 +36,12 @@ func (m *MachineApi) ProductVersion() string {
 	return product.Version()
 }
 
+// DeviceModel returns the machine's board/device model, decrypted from
+// core/product.json. See IMachineApi.DeviceModel.
+func (m *MachineApi) DeviceModel() string {
+	return product.DeviceModel()
+}
+
 // SystemStats returns a snapshot of the machine's current CPU, memory, disk,
 // and temperature usage. See IMachineApi.SystemStats.
 func (m *MachineApi) SystemStats() sdkapi.SystemStats {
