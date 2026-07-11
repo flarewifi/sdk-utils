@@ -30,10 +30,9 @@ type IMachineApi interface {
 	ProductVersion() string
 
 	// DeviceModel returns the machine's board/device model (e.g. "z-router-2660"),
-	// decrypted from core/product.json — the same restamped-per-release source
-	// ProductVersion reads, not the frozen /etc/os_release.json. Returns "" if
-	// unreadable/undecryptable (e.g. local dev, where product.json carries no
-	// stamped device identity).
+	// read from the frozen /etc/os_release.json — stamped once at OS-image
+	// build/flash time and never rewritten by an OTA, unlike ProductVersion's
+	// core/product.json. Returns "" if unreadable (e.g. local dev).
 	DeviceModel() string
 
 	// IsOnline reports whether the machine currently has internet access, as

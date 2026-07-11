@@ -88,10 +88,11 @@ func buildMachineInfo(machineID string) (*rpc_flarewifi_v3.MachineInfo, error) {
 	}
 
 	return &rpc_flarewifi_v3.MachineInfo{
-		// DeviceModel/DeviceConfig/BrandId are sourced from the restamped, encrypted
-		// core/product.json (via the product package), NOT os_release.json — see
+		// DeviceModel is read from the frozen os_release.json (stable for the
+		// device's physical lifetime); DeviceConfig/BrandId are sourced from the
+		// restamped, encrypted core/product.json (via the product package) — see
 		// that package's doc comment.
-		DeviceModel:  product.DeviceModel(),
+		DeviceModel:  release.DeviceModel,
 		DeviceConfig: product.DeviceConfig(),
 		MachineId:    machineID,
 		// CoreVersion is the ABI identity (core/plugin.json); ProductVersion is the
@@ -315,7 +316,7 @@ func checkActivationOnline() (ok bool, err error) {
 	_, machineID := machineuid.GetMachineUID()
 	params := rpc_flarewifi_v3.MachineActivationRequest{
 		MachineInfo: &rpc_flarewifi_v3.MachineInfo{
-			DeviceModel:    product.DeviceModel(),
+			DeviceModel:    release.DeviceModel,
 			DeviceConfig:   product.DeviceConfig(),
 			MachineId:      machineID,
 			CoreVersion:    info.Version,

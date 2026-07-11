@@ -5,8 +5,24 @@ import (
 	"core/internal/modules/netmon"
 	"core/utils/product"
 	"core/utils/sysinfo"
+	"sync"
 
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarewifi/sdk-utils"
+)
+
+// osReleaseFile mirrors the same literal path independently defined in the
+// activation/updates modules (no shared paths package exists for this).
+const osReleaseFile = "/etc/os_release.json"
+
+// deviceModelOnce/cachedDeviceModel cache os_release.json's device_model for the
+// process lifetime — it's written once at OS-image build/flash time and never
+// rewritten by an OTA (see sdkutils.OsRelease's doc comment), so re-reading the
+// file on every call would be wasted I/O for a value that can't change.
+var (
+	deviceModelOnce   sync.Once
+	cachedDeviceModel string
 )
 
 type MachineApi struct {
@@ -36,10 +52,17 @@ func (m *MachineApi) ProductVersion() string {
 	return product.Version()
 }
 
-// DeviceModel returns the machine's board/device model, decrypted from
-// core/product.json. See IMachineApi.DeviceModel.
+// DeviceModel returns the machine's board/device model, read from the frozen
+// /etc/os_release.json. See IMachineApi.DeviceModel.
 func (m *MachineApi) DeviceModel() string {
-	return product.DeviceModel()
+	deviceModelOnce.Do(func() {
+		release, err := sdkutils.ReadOsRelease(osReleaseFile)
+		if err != nil {
+			return
+		}
+		cachedDeviceModel = release.DeviceModel
+	})
+	return cachedDeviceModel
 }
 
 // SystemStats returns a snapshot of the machine's current CPU, memory, disk,

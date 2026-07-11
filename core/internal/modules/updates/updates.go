@@ -147,11 +147,12 @@ func CheckSoftwareReleaseUpdate() (*SoftwareReleaseUpdate, error) {
 	srv, ctx := rpc.GetTwirpServiceAndCtx()
 	params := rpc_flarewifi_v3.FetchLatestSoftwareReleaseRequest{
 		MachineId: machineID,
-		// DeviceModel/DeviceConfig/BrandId are sourced from the restamped, encrypted
-		// core/product.json (via the product package), NOT os_release.json — they
-		// must track the machine's CURRENTLY installed release since they now drive
+		// DeviceModel is read from the frozen os_release.json (stable for the
+		// device's physical lifetime). DeviceConfig/BrandId are sourced from the
+		// restamped, encrypted core/product.json (via the product package) — they
+		// must track the machine's CURRENTLY installed release since they drive
 		// real update-eligibility/product-transfer matching.
-		DeviceModel:  product.DeviceModel(),
+		DeviceModel:  release.DeviceModel,
 		DeviceConfig: product.DeviceConfig(),
 		// CoreVersion is the ABI identity (core/plugin.json). ProductVersion is the
 		// per-partner release lineage the server compares for update-eligibility;

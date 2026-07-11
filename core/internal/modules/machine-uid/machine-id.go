@@ -10,10 +10,12 @@ import (
 	"strings"
 	"sync"
 
-	"core/utils/product"
-
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
+
+// osReleaseFile mirrors the same literal path independently defined in the
+// activation/updates/machine-api modules (no shared paths package exists).
+const osReleaseFile = "/etc/os_release.json"
 
 const (
 	machineIDCacheFile = "/etc/.mid"
@@ -40,6 +42,9 @@ var onboardNICOnlyDevices = map[string]string{
 var (
 	mu         sync.Mutex
 	machineUID string
+
+	deviceModelOnce   sync.Once
+	cachedDeviceModel string
 )
 
 // readCachedMachineID reads the cached machine ID from /etc/.mid
@@ -193,12 +198,20 @@ func readInterfaceMAC(iface string) string {
 	return mac
 }
 
-// readDeviceModel returns the board's device_model (e.g. "orangepi-one"), decrypted
-// from core/product.json (see the product package's doc comment — no longer
-// os_release.json). Returns "" when unreadable/undecryptable, in which case the
-// caller falls back to the legacy all-MACs strategy.
+// readDeviceModel returns the board's device_model (e.g. "orangepi-one"), read
+// from the frozen /etc/os_release.json — stable for the device's physical
+// lifetime, unlike core/product.json's restamped-per-release fields. Returns ""
+// when unreadable, in which case the caller falls back to the legacy all-MACs
+// strategy.
 func readDeviceModel() string {
-	return product.DeviceModel()
+	deviceModelOnce.Do(func() {
+		release, err := sdkutils.ReadOsRelease(osReleaseFile)
+		if err != nil {
+			return
+		}
+		cachedDeviceModel = release.DeviceModel
+	})
+	return cachedDeviceModel
 }
 
 // readCPUSerial reads the serial number from /proc/cpuinfo (common on ARM devices)

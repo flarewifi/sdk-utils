@@ -1,5 +1,5 @@
 // Package product exposes the machine's per-B2B-partner product version and
-// its brand_id/device_model/device_config update-identity fields.
+// its brand_id/device_config update-identity fields.
 //
 // The cloud software-release build stamps the operator-set product version into
 // core/product.json (a file distinct from core/plugin.json). The machine reports
@@ -7,12 +7,13 @@
 // own release lineage — independent of the core version (plugin.json "version"),
 // which stays the ABI identity used for plugin .so compatibility.
 //
-// brand_id/device_model/device_config are stamped into the SAME file, AES-GCM
-// encrypted (keyed on the shared RPC_TOKEN secret), instead of the frozen
-// os_release.json — see go/builder's writeProductVersion. They're restamped on
-// every release build, so (unlike os_release.json) they track the machine's
-// CURRENTLY installed release, which is required now that they drive real
-// update-eligibility/product-transfer matching.
+// brand_id/device_config are stamped into the SAME file, AES-GCM encrypted
+// (keyed on the shared RPC_TOKEN secret) — see go/builder's writeProductVersion.
+// They're restamped on every release build, so (unlike os_release.json) they
+// track the machine's CURRENTLY installed release, which real update-eligibility/
+// product-transfer matching needs. device_model stays in os_release.json instead
+// (see that package) since it must remain stable for the device's physical
+// lifetime, not track its currently installed release.
 //
 // This is a leaf package (no core/internal imports) so both the machine API
 // (IMachineApi.ProductVersion/.DeviceModel) and the updates module can read it
@@ -34,18 +35,6 @@ import (
 // productFile is the stamped file name in the core directory, beside plugin.json.
 const productFile = "product.json"
 
-type productInfo struct {
-	Version string `json:"version"`
-	Data    string `json:"data"`
-}
-
-// encryptedFields is productInfo.Data, decrypted and unmarshaled.
-type encryptedFields struct {
-	BrandId      string `json:"brand_id"`
-	DeviceModel  string `json:"device_model"`
-	DeviceConfig string `json:"device_config"`
-}
-
 // readInfo/decryptedFields are cached process-lifetime: core/product.json is
 // stamped once per build and never rewritten at runtime (an OTA update replaces
 // it on disk but only takes effect after a reboot, which restarts the process),
@@ -53,11 +42,11 @@ type encryptedFields struct {
 // wasted CPU for a value that can't change.
 var (
 	infoOnce   sync.Once
-	cachedInfo productInfo
+	cachedInfo sdkutils.ProductInfo
 	cachedOK   bool
 
 	fieldsOnce   sync.Once
-	cachedFields encryptedFields
+	cachedFields sdkutils.ProductFields
 )
 
 // Version returns the machine's product version. It prefers core/product.json
@@ -85,21 +74,15 @@ func BrandId() string {
 	return decryptedFields().BrandId
 }
 
-// DeviceModel returns the machine's currently-installed release's device_model,
-// decrypted from core/product.json. See BrandId for the no-fallback rationale.
-func DeviceModel() string {
-	return decryptedFields().DeviceModel
-}
-
 // DeviceConfig returns the machine's currently-installed release's device_config,
 // decrypted from core/product.json. See BrandId for the no-fallback rationale.
 func DeviceConfig() string {
 	return decryptedFields().DeviceConfig
 }
 
-func readInfo() (productInfo, bool) {
+func readInfo() (sdkutils.ProductInfo, bool) {
 	infoOnce.Do(func() {
-		var info productInfo
+		var info sdkutils.ProductInfo
 		if err := sdkutils.JsonRead(filepath.Join(sdkutils.PathCoreDir, productFile), &info); err == nil {
 			cachedInfo = info
 			cachedOK = true
@@ -108,7 +91,7 @@ func readInfo() (productInfo, bool) {
 	return cachedInfo, cachedOK
 }
 
-func decryptedFields() encryptedFields {
+func decryptedFields() sdkutils.ProductFields {
 	fieldsOnce.Do(func() {
 		info, ok := readInfo()
 		if !ok || info.Data == "" {
@@ -120,7 +103,7 @@ func decryptedFields() encryptedFields {
 			return
 		}
 
-		var fields encryptedFields
+		var fields sdkutils.ProductFields
 		if err := json.Unmarshal([]byte(plaintext), &fields); err != nil {
 			return
 		}
