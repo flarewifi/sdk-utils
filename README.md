@@ -1,6 +1,6 @@
-# Flare Hotspot
+# Flarewifi
 
-Flare Hotpost core repository.
+Flarewifi core repository.
 
 # System Requirements
 - Make

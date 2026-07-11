@@ -70,5 +70,5 @@ rm -rf $APP_DIR/data
 ln -sf $DATA_DIR $APP_DIR/data
 
 echo
-echo "Starting Flare Hotspot Mono Dev Environment..."
+echo "Starting Flarewifi Mono Dev Environment..."
 sh -c "cd $APP_DIR && ./start.sh"

@@ -24,7 +24,7 @@ type PortalLayoutData struct {
 }
 
 templ PortalHead(api sdkapi.IPluginApi, data PortalLayoutData) {
-	<title>{ api.Translate("label", "Flare Hotspot") }</title>
+	<title>{ api.Translate("label", "Flarewifi") }</title>
 	<meta name="pageuuid" content={ data.PageUUID }/>
 	if data.Assets.GlobalCssHref != "" {
 		<link rel="stylesheet" href={ data.Assets.GlobalCssHref }/>
