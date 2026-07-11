@@ -269,13 +269,26 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 	// correctly stamped by the cloud build (go/builder's writeProductVersion) with
 	// both this exact release's product version and its encrypted brand_id/
 	// device_config -- CloneAndParseRelease refuses to build a release without it, so
-	// there is nothing left for the device to stamp client-side. (This used to
-	// client-side-stamp just the version, back when the non-mono download was a
-	// product-agnostic, cache-shared core_arch_bin with no per-release product.json of
-	// its own -- that override was overwriting the extracted file with a version-only
-	// object, silently dropping brand_id/device_config and breaking activation/
-	// product-transfer matching on every non-mono update. See product.Version()/
-	// product.BrandId().)
+	// there is nothing left for the device to stamp client-side. (The non-mono
+	// download used to be a product-agnostic, cache-shared core_arch_bin with no
+	// per-release product.json of its own -- devices downloading that artifact never
+	// received a product.json at all, so core/product.json's version stayed stuck at
+	// whatever it was before the FIRST non-mono update, forever. The server now
+	// resolves the update to the full per-partner release tarball instead (same
+	// upload category mono devices fetch) -- see FindLatestNonMonoSoftwareRelease.
+	// See product.Version()/product.BrandId().)
+	//
+	// The full release tarball also carries plugins/installed/<pkg> -- this
+	// release's CURATED plugin set (whatever the superuser picked), not what THIS
+	// device is actually entitled to. Entitlement stays governed exclusively by the
+	// per-device loop below (storePluginPackages/StagePluginUpdate), so the release's
+	// bundled plugins/installed/ must never reach the device's app dir: dropping it
+	// onto disk would make boot's plugin loader (which only checks structural
+	// validity + disabled/blocked markers, not plugins.json membership) load a
+	// plugin the device never purchased.
+	if err := pruneStagedPluginInstallDir(coreDest); err != nil {
+		return fmt.Errorf("prune release-curated plugins/installed from staged core: %w", err)
+	}
 
 	// The release tarball bundles plugin SOURCES under data/plugins/{local,devel} so the
 	// device can recompile local plugins against the new core (start.sh relocates these
@@ -439,6 +452,22 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		return fmt.Errorf("write staged-complete marker: %w", err)
 	}
 
+	return nil
+}
+
+// pruneStagedPluginInstallDir removes coreDest/plugins/installed entirely — the full
+// release tarball's CURATED plugin set (see stageSystemUpdate) — so start.sh's blanket
+// core-package overlay (cp -a onto $APP_DIR) can never install a plugin this specific
+// device isn't entitled to. Per-device plugin entitlement is decided exclusively by the
+// storePluginPackages/StagePluginUpdate loop later in stageSystemUpdate, which stages
+// each entitled plugin as its OWN package under the staging root, applied by start.sh
+// as a separate overlay onto plugins/installed/<pkg> — unaffected by this prune, since
+// it targets the core package's copy of plugins/installed, not the per-plugin one.
+func pruneStagedPluginInstallDir(coreDest string) error {
+	installDir := filepath.Join(coreDest, "plugins", "installed")
+	if err := os.RemoveAll(installDir); err != nil {
+		return fmt.Errorf("remove staged plugins/installed: %w", err)
+	}
 	return nil
 }
 

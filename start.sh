@@ -225,6 +225,23 @@ start() {
 }
 
 if [ -e "$STAGED_COMPLETE_MARKER" ]; then
+    # Adopt the STAGED core's start.sh BEFORE backup_pkg/apply_pkg/restore_all ever
+    # run, so a fix to THIS apply/rollback logic takes effect for the very update
+    # that ships it, instead of staying governed by the OLD (possibly buggy)
+    # start.sh until the update after next. A plugin-only update has no staged
+    # com.flarego.core, so staged_start_sh naturally doesn't exist and this is
+    # skipped. FLARE_STARTSH_ADOPTED (exported before the re-exec) guards against
+    # re-adopting forever once this boot has already done so.
+    staged_start_sh="$SOFTWARE_UPDATE_DIR/$CORE_PKG/start.sh"
+    if [ -e "$staged_start_sh" ] && [ -z "$FLARE_STARTSH_ADOPTED" ]; then
+        echo "Adopting staged start.sh before applying update..."
+        if cp -a "$staged_start_sh" "$APP_DIR/start.sh"; then
+            export FLARE_STARTSH_ADOPTED=1
+            exec "$APP_DIR/start.sh"
+        fi
+        echo "WARNING: failed to adopt staged start.sh; continuing with the current one"
+    fi
+
     # Apply the staged set, then exec the (possibly just-updated) start.sh fresh.
     # apply_updates clears the staged set + marker on success, so the re-exec'd
     # start.sh boots normally instead of re-applying. $BACKUP_DIR is intentionally
