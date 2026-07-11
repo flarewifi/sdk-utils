@@ -110,6 +110,13 @@ apply_pkg() {
             done
             rm -rf "$staged/data"
         fi
+        # defaults/ ships the release's fallback config templates (application.json,
+        # plugins.json, etc. -- see TidyConfigFiles in go/builder/tasks/utils.go). Unlike
+        # the rest of the core overlay, this must be a full REPLACE, not an additive
+        # merge: a stale template from a previous release/device_config must not survive
+        # just because the new release doesn't happen to ship a same-named file.
+        rm -rf "$APP_DIR/defaults" || return 1
+
         # Overlay the remaining core entries onto the app dir. plugins/installed/ is
         # intentionally overlaid (ABI-matched plugins ship with the core); data/ is now
         # gone from the staged set, so the persistent symlink is left untouched.
