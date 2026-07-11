@@ -17,7 +17,7 @@ func Init(g *api.CoreGlobals) {
 	// own networking — only the core's call-home is muted.
 	if !tags.IsDevkit() {
 		// Start scheduled update checker (runs at 2AM daily)
-		logJobErr(g, updates.StartScheduledUpdateChecker(scheduler))
+		logJobErr(g, updates.StartScheduledUpdateChecker(g, scheduler))
 
 		// Start machine ping scheduler (pings every hour for online status)
 		logJobErr(g, StartMachinePingScheduler(scheduler))
