@@ -16,6 +16,12 @@
 
 - ⚠️ Spell the product name **"Flarewifi"** (capital F, rest lowercase) — **never "FlareWiFi"**, "FlareWifi", or "flarewifi" (except in code identifiers/paths). Apply this in all docs (`sdk/mkdocs`), comments, and user-facing text/translations.
 
+## Plugin README files
+
+- ⚠️ Each plugin's `README.md` (`data/plugins/{local,devel}/{plugin}/README.md`) is **marketing copy for the plugin marketplace/store listing** — written for **plugin buyers** (machine operators deciding whether to install it), not for developers. It is NOT technical documentation.
+- Keep it short (roughly 15-25 lines), lead with the business benefit, and list features as plain-language bullets. Do not describe internal architecture, SDK/API calls, database/table details, file paths, config field tables, or step-by-step "how it works" internals — that belongs in code comments or a separate developer doc, not the README.
+- Follow the same "Flarewifi" spelling and machine/device terminology conventions above in README copy.
+
 ## ⚠️ CRITICAL: Core vs Plugin Development
 
 **DEFAULT: Plugin Development** (unless user explicitly requests core modification)

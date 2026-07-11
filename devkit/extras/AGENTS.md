@@ -68,6 +68,10 @@ resources/
 
 - The `package` in `plugin.json` and the `module` in `go.mod` **must equal the
   directory name** (e.g. `com.flarego.devkit-sample`).
+- If you add a `README.md`, write it as the plugin's **store listing
+  description** — short, plain-language marketing copy for the operator
+  deciding whether to buy/install it, not technical documentation. No API
+  references, database/config internals, or "How It Works" walkthroughs.
 - New plugins are picked up on startup; `flare fix-workspace` (run automatically)
   adds them to `go.work`. If a brand-new plugin isn't seen, restart the `app`
   service.

@@ -37,6 +37,15 @@ rebuilt automatically on change.
 
 To start only a subset, name the services — e.g. `docker compose up app docs`.
 
+## Your plugin's README
+
+If you add a `README.md` under your plugin's own folder, keep in mind it becomes
+the plugin's **store listing description** when published — the copy an operator
+reads while deciding whether to buy/install it, not technical documentation for
+other developers. Keep it short and plain-language: what the plugin does for
+their hotspot business, not how it's built. Leave API details, database/config
+internals, and setup walkthroughs out of it.
+
 ## Layout
 
 | Path | What it is |
