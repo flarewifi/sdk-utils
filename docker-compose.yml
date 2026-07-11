@@ -9,6 +9,9 @@ services:
       - ./data/config:/opt/flarewifi/data/config
       - ./data/db:/opt/flarewifi/data/db
       - ./data/plugins:/opt/flarewifi/data/plugins
+      # Mounted from devkit/extras so a core/SDK-breaking change shows up in the
+      # normal dev rebuild, not just when someone runs `make devkit`.
+      - ./devkit/extras/data/plugins/devel/com.flarego.devkit-sample:/opt/flarewifi/data/plugins/devel/com.flarego.devkit-sample
       - flare_storage:/opt/flarewifi/data/storage
       - ./data/openwrt-files/etc/config:/etc/config
       - ./data/openwrt-files/etc/openwrt_release:/etc/openwrt_release
