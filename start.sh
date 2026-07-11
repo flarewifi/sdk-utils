@@ -202,6 +202,17 @@ start() {
     # not roll back and do not restart, so a normal stop/reboot stays stopped.
     if [ -e "$STOP_MARKER" ] || [ "$EXIT_CODE" -eq 0 ] || [ "$EXIT_CODE" -eq 143 ]; then
         echo "flare server exited (code $EXIT_CODE); intentional or clean shutdown, not restarting."
+        # A clean exit (as opposed to the crash branch below) is the confirmation
+        # that whatever update apply_updates staged this boot session is good --
+        # nothing else in the codebase ever clears $BACKUP_DIR on success (it was
+        # only ever removed on the CRASH path below, or on a failed apply). Left
+        # uncleared, a stale backup from an already-confirmed-good update sits
+        # there indefinitely; if flare later crashes for a reason UNRELATED to
+        # that update (possibly boots/reboots later), the crash branch's
+        # restore_all still finds it and silently reverts core/product.json (and
+        # the rest of core/) back to the pre-update version -- which looks exactly
+        # like the update "didn't take" even though it applied correctly.
+        rm -rf "$BACKUP_DIR"
         exit 0
     fi
 
@@ -223,7 +234,15 @@ if [ -e "$STAGED_COMPLETE_MARKER" ]; then
     else
         echo "Failed to apply staged updates!"
         restore_all
-        rm -rf "$BACKUP_DIR" "$SOFTWARE_UPDATE_DIR"/*
+        # $STAGED_COMPLETE_MARKER is a dotfile (.staged_complete) directly under
+        # $SOFTWARE_UPDATE_DIR -- the "/*" glob does NOT match it, so it must be
+        # named explicitly here too (the success path above already does this).
+        # Omitting it left the marker behind after a failed apply: the payload dirs
+        # are gone (wiped by the glob) but the marker survives, so the NEXT boot
+        # re-enters this branch, finds nothing to apply/back up, trivially
+        # "succeeds", and silently discards the staged core update instead of
+        # retrying it or surfacing the original failure.
+        rm -rf "$BACKUP_DIR" "$SOFTWARE_UPDATE_DIR"/* "$STAGED_COMPLETE_MARKER"
         exec "$APP_DIR/start.sh"
     fi
 else
