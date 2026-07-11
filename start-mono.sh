@@ -97,7 +97,7 @@ start() {
     export FLARE_BOOT_ATTEMPT
 
     cd $APP_DIR || exit 1
-    echo "Starting Flare Hotspot from $APP_DIR (boot attempt $FLARE_BOOT_ATTEMPT/$MAX_BOOT_ATTEMPTS)"
+    echo "Starting Flarewifi from $APP_DIR (boot attempt $FLARE_BOOT_ATTEMPT/$MAX_BOOT_ATTEMPTS)"
     link_data || exit 1
     mkdir -p $APP_TMP
 
