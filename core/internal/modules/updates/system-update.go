@@ -265,18 +265,17 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		return errors.New("staged core payload is missing bin/flare (corrupt download)")
 	}
 
-	// Stamp the target PRODUCT version into the staged core's core/product.json so the
-	// device reports it after the update (start.sh's blanket overlay then copies it to
-	// app/core/product.json). A non-mono update ships only the compiled core_arch_bin,
-	// which is CACHE-SHARED across every product-version release built on the same core
-	// version + platform — so the cloud cannot bake a single product version into it.
-	// The server instead tells us the exact product version in this update response
-	// (update.Version == FetchLatest's productVersionString), which is the authoritative
-	// value to stamp. Without this an old device (no product.json) updating to a new
-	// release would keep falling back to its core version. See product.Version().
-	if err := stampStagedProductVersion(coreDest, update); err != nil {
-		return fmt.Errorf("stamp staged product version: %w", err)
-	}
+	// core/product.json ships INSIDE the downloaded tarball already, fully and
+	// correctly stamped by the cloud build (go/builder's writeProductVersion) with
+	// both this exact release's product version and its encrypted brand_id/
+	// device_config -- CloneAndParseRelease refuses to build a release without it, so
+	// there is nothing left for the device to stamp client-side. (This used to
+	// client-side-stamp just the version, back when the non-mono download was a
+	// product-agnostic, cache-shared core_arch_bin with no per-release product.json of
+	// its own -- that override was overwriting the extracted file with a version-only
+	// object, silently dropping brand_id/device_config and breaking activation/
+	// product-transfer matching on every non-mono update. See product.Version()/
+	// product.BrandId().)
 
 	// The release tarball bundles plugin SOURCES under data/plugins/{local,devel} so the
 	// device can recompile local plugins against the new core (start.sh relocates these
@@ -550,22 +549,6 @@ func convertDevelPluginsToLocal() error {
 	}
 
 	return nil
-}
-
-// stampStagedProductVersion writes the target product version into the staged core's
-// core/product.json ({"version": "..."}), the file product.Version() reads. The
-// non-mono core update is the shared, product-agnostic core_arch_bin, so the cloud
-// never embeds product.json in it; the device stamps the product version the server
-// reported for this update (update.Version) so the apply overlay carries it onto the
-// device. The shape mirrors core/utils/product.productInfo. A nil/empty version is a
-// hard error: a release that reached staging always carries a parsed product version.
-func stampStagedProductVersion(coreDest string, update *SoftwareReleaseUpdate) error {
-	if update == nil || update.Version == nil {
-		return errors.New("missing product version for staged core")
-	}
-
-	productPath := filepath.Join(coreDest, "core", "product.json")
-	return sdkutils.JsonWrite(productPath, map[string]string{"version": update.Version.String()})
 }
 
 // downloadAndExtractCore streams the self-contained core tarball to a temp file
