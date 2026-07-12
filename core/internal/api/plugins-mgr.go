@@ -669,8 +669,8 @@ func (self *PluginsMgr) buildPurchaseURL(r *http.Request, owner *PluginApi, pkg 
 	_, machineID := machineuid.GetMachineUID()
 
 	// env.WebBaseURL() is the cloud dashboard origin (www.<SERVER_DOMAIN>) where
-	// the plugin-checkout page is served.
-	return env.WebBaseURL() + "/plugin-checkout" +
+	// the plugin checkout page is served (RESTful new_plugin_checkout route).
+	return env.WebBaseURL() + "/plugin_checkouts/new" +
 		"?machine_id=" + url.QueryEscape(machineID) +
 		"&package=" + url.QueryEscape(pkg) +
 		"&return_url=" + url.QueryEscape(returnURL), nil
