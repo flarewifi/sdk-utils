@@ -599,6 +599,16 @@ func (self *PluginsMgr) CheckPurchase(pkg string) (sdkplugin.PluginPurchaseInfo,
 	if err != nil {
 		return sdkplugin.PluginPurchaseInfo{}, fmt.Errorf("check purchase for %q: %w", pkg, err)
 	}
+	// Success=false covers both an unexpected server-side failure (DB hiccup,
+	// etc.) and the conclusive case of no pricing row for pkg at all (unknown
+	// package) -- the server answers HTTP 200 either way (see
+	// CheckPluginPurchase) since err != nil here is already reserved for a
+	// plain transport failure. Surface it the same way as that transport
+	// failure so callers (ValidateStorePlugins) never disable an
+	// already-installed plugin based on inconclusive/unrecognized data.
+	if !resp.GetSuccess() {
+		return sdkplugin.PluginPurchaseInfo{}, fmt.Errorf("check purchase for %q: %s", pkg, resp.GetErrorMessage())
+	}
 
 	return sdkplugin.PluginPurchaseInfo{
 		Package:              pkg,
@@ -659,8 +669,8 @@ func (self *PluginsMgr) buildPurchaseURL(r *http.Request, owner *PluginApi, pkg 
 	_, machineID := machineuid.GetMachineUID()
 
 	// env.WebBaseURL() is the cloud dashboard origin (www.<SERVER_DOMAIN>) where
-	// the plugin-checkout page is served.
-	return env.WebBaseURL() + "/plugin-checkout" +
+	// the plugin checkout page is served (RESTful new_plugin_checkout route).
+	return env.WebBaseURL() + "/plugin_checkouts/new" +
 		"?machine_id=" + url.QueryEscape(machineID) +
 		"&package=" + url.QueryEscape(pkg) +
 		"&return_url=" + url.QueryEscape(returnURL), nil
@@ -842,7 +852,18 @@ func (self *PluginsMgr) uninstallPlugin(pkg string) error {
 	if def, err := plugins.GetPluginDef(pkg); err == nil && def.Src == sdkutils.PluginSrcSystem {
 		return errors.New("cannot uninstall system plugin: " + pkg)
 	}
-	return plugins.MarkToRemove(pkg)
+	if err := plugins.MarkToRemove(pkg); err != nil {
+		return err
+	}
+	// The plugin's HTTP routes are already gated per-request by
+	// middlewares.PluginValidityCheck (via IsToBeRemoved); stop its background
+	// work too, immediately, instead of leaving it running until the next
+	// reboot physically removes it. Mirrors the BlockPlugin/DisablePlugin call
+	// sites in blocked-plugins.go / boot.ValidateStorePlugins. The meta cascade
+	// (uninstallMeta) routes each member back through this same function, so a
+	// meta-bundle uninstall cancels every member's tasks too.
+	self.schedulerMgr.CancelOwner(pkg)
+	return nil
 }
 
 // IsToBeRemoved returns true if the plugin has been marked for removal.

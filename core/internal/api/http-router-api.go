@@ -54,6 +54,18 @@ func NewHttpRouterApi(api *PluginApi, db *db.Database, clnt *sessmgr.ClientRegis
 }
 
 func (self *HttpRouterApi) Initialize() {
+	// Blocks this plugin's own routes the moment it becomes invalid at runtime
+	// (blocked/disabled/update-skipped/queued-for-uninstall) instead of waiting
+	// for the next reboot -- see middlewares.PluginValidityCheck. Registered
+	// first on every one of this plugin's routers so an invalid plugin never
+	// reaches auth/scheme checks or its own handlers.
+	validityCheck := middlewares.PluginValidityCheck(self.api.CoreAPI, self.api.info.Package)
+	self.httpRouter.Use(validityCheck)
+	self.adminRouter.Use(validityCheck)
+	self.staticPluginRouter.Use(validityCheck)
+	self.staticAdminRouter.Use(validityCheck)
+	self.httpsRouter.Use(validityCheck)
+
 	// HTTPS for admin pages is enforced globally by middlewares.ForceHTTPS on
 	// RootRouter (see web.SetupAppRoutes); the admin routers only need auth here.
 	self.adminRouter.Use(middlewares.AdminAuth(self.api.CoreAPI))
@@ -150,9 +162,11 @@ func (self *HttpRouterApi) UseForPortal(middlewares ...func(http.Handler) http.H
 // ClaimPortalTraffic registers portal-traffic claim middlewares with the
 // shared funnel registry (see middlewares.RegisterPortalClaim) — both funnel
 // entry points (ForceHTTPS and the NotFoundHandler's RedirectToPortalDomain)
-// run them before making any routing decision.
+// run them before making any routing decision. Tagged with this plugin's own
+// package so a claim is automatically skipped once the plugin becomes invalid
+// at runtime (see plugins.IsInvalid), same as its ordinary routes.
 func (self *HttpRouterApi) ClaimPortalTraffic(claims ...func(next http.Handler) http.Handler) {
-	middlewares.RegisterPortalClaim(claims...)
+	middlewares.RegisterPortalClaim(self.api.info.Package, claims...)
 }
 
 func (self *HttpRouterApi) GetPortalMiddlewares() []func(http.Handler) http.Handler {

@@ -89,6 +89,47 @@ func StartOnlineMonitor(g *api.CoreGlobals) {
 		return nil
 	})
 
+	// Also re-validate on a fixed hourly cadence, independent of connectivity
+	// transitions: the handler above only fires on a down→up transition, so a
+	// machine that stays continuously online since boot would otherwise never get
+	// a fresh purchase recheck (e.g. a lapsed subscription would keep the plugin
+	// loaded until the next reconnect or reboot). Shares the validatingStore guard
+	// so a tick that lands mid-reconnect-pass collapses into the in-flight one.
+	//
+	// Hand-rolled ticker rather than Scheduler().Every: Every runs fn once
+	// immediately on registration, which happens before the monitor's first probe
+	// (StartOnlineMonitor is called during the offline part of boot) — that would
+	// burn CheckPurchase's retry budget on every plugin while definitely offline,
+	// for a check the EventInternetUp handler above already performs correctly
+	// once the machine actually comes online. This loop only needs to supply the
+	// hourly *recurrences*.
+	if err := g.CoreAPI.Scheduler().Go("validate-store-plugins", func(ctx context.Context) {
+		ticker := time.NewTicker(storePluginsValidationInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if !validatingStore.CompareAndSwap(false, true) {
+					continue
+				}
+				func() {
+					// A panic here must not take down the ticker loop — this is a
+					// best-effort recurring recheck, not boot-critical (mirrors
+					// performDeviceMerge's recover in jobs/device-merge.go). Without
+					// it, one bad pass would permanently stop the hourly recheck for
+					// the rest of the machine's uptime.
+					defer func() { _ = recover() }()
+					defer validatingStore.Store(false)
+					ValidateStorePlugins(g)
+				}()
+			}
+		}
+	}); err != nil {
+		g.CoreAPI.Logger().Error(fmt.Sprintf("boot: register store-plugins validation scheduler: %v", err))
+	}
+
 	// Register/re-validate activation with the cloud each time the machine is online
 	// (immediately at boot if already online, and on every reconnect). The boot
 	// sequence already kicks this once before provisioning; re-running it here makes
@@ -266,8 +307,15 @@ func ProvisionInstalledPlugins(g *api.CoreGlobals, progress *bootprogress.Tracke
 	}
 }
 
+// storePluginsValidationInterval is the fixed cadence for the connectivity-
+// independent re-check of installed store plugins' purchase entitlement — see
+// the scheduler registered in StartOnlineMonitor.
+const storePluginsValidationInterval = 1 * time.Hour
+
 // ValidateStorePlugins re-checks every installed STORE plugin with the cloud now
-// that the machine is online and withholds any that can no longer run here. Two
+// that the machine is online and withholds any that can no longer run here. Run
+// on every internet-up transition AND on a fixed hourly cadence (StartOnlineMonitor)
+// so a lapsed purchase is caught even on a machine that never disconnects. Two
 // verdicts disable a plugin, checked in this order:
 //   - UNAVAILABLE: the cloud reports the plugin as withdrawn/disabled by its
 //     developer (check.Available == false) — it can never be installed or loaded,
@@ -322,6 +370,10 @@ func ValidateStorePlugins(g *api.CoreGlobals) {
 				continue
 			}
 			if !alreadyDisabled {
+				// The plugin's HTTP routes are already gated per-request by
+				// middlewares.PluginValidityCheck; stop its background work too,
+				// immediately, instead of leaving it running until the next reboot.
+				g.SchedulerMgr.CancelOwner(pkg)
 				notifyPluginUnavailable(g, pkg)
 			}
 			continue
@@ -336,16 +388,25 @@ func ValidateStorePlugins(g *api.CoreGlobals) {
 			// Notify only on the transition into the disabled state, so a reconnect
 			// (which re-runs this pass) doesn't re-notify for an already-withheld plugin.
 			if !alreadyDisabled {
+				g.SchedulerMgr.CancelOwner(pkg)
 				notifyPluginPaymentRequired(g, pkg)
 			}
 			continue
 		}
 
 		// Purchase confirmed (paid, free, or meta-covered): clear any prior disabled
-		// marker so the loader picks the plugin up again on the next boot.
+		// marker. Its HTTP routes resume immediately (PluginValidityCheck reads the
+		// cleared marker on the very next request), same as disabling took effect
+		// immediately.
 		if plugins.IsDisabled(pkg) {
 			if err := plugins.EnablePlugin(pkg); err != nil {
 				g.CoreAPI.Logger().Error(fmt.Sprintf("re-enable store plugin %q after purchase confirmed: %v", pkg, err))
+			} else if g.SchedulerMgr.HadCancelledTasks(pkg) {
+				// Its background Go/Every/Cron tasks were killed by the earlier
+				// DisablePlugin+CancelOwner and cannot be re-registered without
+				// re-running the plugin's Init, which only ever runs once at boot.
+				// Surface this instead of leaving it silently half-working.
+				g.CoreAPI.Logger().Error(fmt.Sprintf("store plugin %q re-enabled, but its background tasks were stopped while disabled and require a machine reboot to resume", pkg))
 			}
 		}
 	}

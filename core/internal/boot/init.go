@@ -15,6 +15,7 @@ import (
 	coretheme "core/internal/theme"
 	"core/internal/web"
 	"core/utils/env"
+	"core/utils/plugins"
 	"core/utils/tags"
 
 	sdkapi "sdk/api"
@@ -49,6 +50,13 @@ func Init(g *api.CoreGlobals) {
 	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 
 	InitDirs()
+
+	// Seed the in-memory plugin validity cache (blocked/disabled/update-skipped/
+	// queued-for-uninstall) from on-disk markers BEFORE InitPlugins loads any
+	// plugin .so and before InitHttpServer (below) starts accepting requests.
+	// IsBlocked/IsDisabled/IsUpdateSkipped/IsToBeRemoved/IsInvalid are served
+	// from this cache from here on — see plugins.LoadValidityCache.
+	plugins.LoadValidityCache()
 
 	go func() {
 		ctx := context.Background()

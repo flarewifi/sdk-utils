@@ -7,6 +7,7 @@ import (
 	"core/internal/web/controllers"
 	"core/internal/web/middlewares"
 	"core/internal/web/router"
+	"core/utils/plugins"
 	sdkapi "sdk/api"
 )
 
@@ -77,9 +78,16 @@ func PortalRoutes(g *api.CoreGlobals) {
 			// Apply core middlewares (inner to outer)
 			handler = pendingPurchaseMw(handler)
 
-			// Collect portal middlewares from ALL plugins (not just core)
+			// Collect portal middlewares from ALL plugins (not just core), skipping
+			// any plugin that is currently blocked/disabled/update-skipped/queued
+			// for uninstall -- otherwise a plugin withheld from every other route
+			// (see middlewares.PluginValidityCheck) would still gate live captive-
+			// portal traffic through its UseForPortal middleware.
 			var portalMws []func(http.Handler) http.Handler
 			for _, plugin := range g.PluginMgr.PluginApis() {
+				if plugins.IsInvalid(plugin.Info().Package) {
+					continue
+				}
 				pluginMws := plugin.Http().Router().(*api.HttpRouterApi).GetPortalMiddlewares()
 				portalMws = append(portalMws, pluginMws...)
 			}
