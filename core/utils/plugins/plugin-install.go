@@ -273,6 +273,7 @@ func InstallPlugin(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		}
 	}
 
+	refreshValidity(info.Package)
 	return nil
 }
 
@@ -334,6 +335,7 @@ func InstallPrebuilt(pluginSrc string, sqldb *sql.DB, opts InstallOpts) error {
 		}
 	}
 
+	refreshValidity(info.Package)
 	return nil
 }
 
@@ -557,13 +559,18 @@ func MarkToRemove(pkg string) error {
 		return errors.New("Plugin not installed: " + pkg)
 	}
 	uninstallFile := filepath.Join(installPath, "uninstall")
-	return os.WriteFile(uninstallFile, []byte(""), sdkutils.PermFile)
+	if err := os.WriteFile(uninstallFile, []byte(""), sdkutils.PermFile); err != nil {
+		return err
+	}
+	refreshValidity(pkg)
+	return nil
 }
 
+// IsToBeRemoved reports whether a plugin is queued for uninstall, from the
+// in-memory validity cache (see LoadValidityCache) rather than a live
+// filesystem stat.
 func IsToBeRemoved(pkg string) bool {
-	installPath := GetInstallPath(pkg)
-	uninstallFile := filepath.Join(installPath, "uninstall")
-	return sdkutils.FsExists(uninstallFile)
+	return cachedValidity(pkg).toBeRemoved
 }
 
 // disabledMarker is the per-plugin marker file that withholds a plugin from the
@@ -581,23 +588,35 @@ func DisablePlugin(pkg string) error {
 	if !sdkutils.FsExists(installPath) {
 		return errors.New("Plugin not installed: " + pkg)
 	}
-	return os.WriteFile(filepath.Join(installPath, disabledMarker), []byte(""), sdkutils.PermFile)
+	if err := os.WriteFile(filepath.Join(installPath, disabledMarker), []byte(""), sdkutils.PermFile); err != nil {
+		return err
+	}
+	refreshValidity(pkg)
+	return nil
 }
 
 // EnablePlugin clears a plugin's disabled marker so the loader picks it up again
-// on the next boot. No-op (nil) when the plugin is not disabled.
+// on the next boot. No-op on disk when the plugin is not disabled, but still
+// refreshes the in-memory cache either way -- so a caller can self-heal a cache
+// entry that was somehow left stuck reporting disabled=true (e.g. the marker
+// was removed by something other than this function) by simply calling
+// EnablePlugin again, without needing a reboot to force a re-seed.
 func EnablePlugin(pkg string) error {
 	marker := filepath.Join(GetInstallPath(pkg), disabledMarker)
-	if !sdkutils.FsExists(marker) {
-		return nil
+	if sdkutils.FsExists(marker) {
+		if err := os.Remove(marker); err != nil {
+			return err
+		}
 	}
-	return os.Remove(marker)
+	refreshValidity(pkg)
+	return nil
 }
 
 // IsDisabled reports whether a plugin has been disabled (files kept, but skipped
-// by the boot loader).
+// by the boot loader), from the in-memory validity cache (see LoadValidityCache)
+// rather than a live filesystem stat.
 func IsDisabled(pkg string) bool {
-	return sdkutils.FsExists(filepath.Join(GetInstallPath(pkg), disabledMarker))
+	return cachedValidity(pkg).disabled
 }
 
 // blockedMarker is the per-plugin marker file that withholds a plugin from the
@@ -618,23 +637,32 @@ func BlockPlugin(pkg string) error {
 	if !sdkutils.FsExists(installPath) {
 		return errors.New("Plugin not installed: " + pkg)
 	}
-	return os.WriteFile(filepath.Join(installPath, blockedMarker), []byte(""), sdkutils.PermFile)
+	if err := os.WriteFile(filepath.Join(installPath, blockedMarker), []byte(""), sdkutils.PermFile); err != nil {
+		return err
+	}
+	refreshValidity(pkg)
+	return nil
 }
 
 // UnblockPlugin clears a plugin's blocked marker so the loader picks it up again
-// on the next boot. No-op (nil) when the plugin is not blocked.
+// on the next boot. No-op on disk when the plugin is not blocked, but still
+// refreshes the in-memory cache either way -- see EnablePlugin's doc for why.
 func UnblockPlugin(pkg string) error {
 	marker := filepath.Join(GetInstallPath(pkg), blockedMarker)
-	if !sdkutils.FsExists(marker) {
-		return nil
+	if sdkutils.FsExists(marker) {
+		if err := os.Remove(marker); err != nil {
+			return err
+		}
 	}
-	return os.Remove(marker)
+	refreshValidity(pkg)
+	return nil
 }
 
 // IsBlocked reports whether a plugin has been blocked by the cloud denylist
-// (files kept, but skipped by the boot loader).
+// (files kept, but skipped by the boot loader), from the in-memory validity
+// cache (see LoadValidityCache) rather than a live filesystem stat.
 func IsBlocked(pkg string) bool {
-	return sdkutils.FsExists(filepath.Join(GetInstallPath(pkg), blockedMarker))
+	return cachedValidity(pkg).blocked
 }
 
 // updateSkippedMarker is the per-plugin marker file that withholds a plugin from
@@ -666,13 +694,40 @@ func MarkUpdateSkipped(pkg string) error {
 	if !sdkutils.FsExists(installPath) {
 		return nil
 	}
-	return os.WriteFile(filepath.Join(installPath, updateSkippedMarker), []byte(""), sdkutils.PermFile)
+	if err := os.WriteFile(filepath.Join(installPath, updateSkippedMarker), []byte(""), sdkutils.PermFile); err != nil {
+		return err
+	}
+	refreshValidity(pkg)
+	return nil
 }
 
 // IsUpdateSkipped reports whether a plugin was skipped during a software update
-// (files kept, but skipped by the boot loader until a later update rebuilds it).
+// (files kept, but skipped by the boot loader until a later update rebuilds it),
+// from the in-memory validity cache (see LoadValidityCache) rather than a live
+// filesystem stat.
 func IsUpdateSkipped(pkg string) bool {
-	return sdkutils.FsExists(filepath.Join(GetInstallPath(pkg), updateSkippedMarker))
+	return cachedValidity(pkg).updateSkipped
+}
+
+// IsInvalid aggregates every marker that withholds a plugin from the boot
+// loader (blocked, disabled, update-skipped, queued for uninstall) into a
+// single "should this plugin be allowed to run" check, backed by the
+// in-memory validity cache (see LoadValidityCache) rather than a live
+// filesystem stat. Historically each marker only took effect on the NEXT
+// boot -- a plugin already loaded kept serving requests and running its
+// scheduled tasks until then, since a Go plugin .so can't be unloaded
+// mid-process. middlewares.PluginValidityCheck uses this to also gate a
+// loaded plugin's HTTP routes at request time, and callers that flip one of
+// these markers at runtime (reconcileBlockedPlugins, boot.ValidateStorePlugins)
+// pair it with SchedulerMgr.CancelOwner(pkg) so the plugin's background tasks
+// stop immediately too.
+func IsInvalid(pkg string) bool {
+	// Single cache read (one lock, one map lookup) instead of delegating to the
+	// four IsXxx functions, each of which would independently lock/look up --
+	// this runs on every request to every plugin route via
+	// middlewares.PluginValidityCheck, so it is this package's hottest path.
+	f := cachedValidity(pkg)
+	return f.blocked || f.disabled || f.updateSkipped || f.toBeRemoved
 }
 
 func UninstallPlugin(pkg string, sqldb *sql.DB) error {
@@ -728,5 +783,6 @@ func UninstallPlugin(pkg string, sqldb *sql.DB) error {
 		return err
 	}
 
+	refreshValidity(pkg)
 	return nil
 }

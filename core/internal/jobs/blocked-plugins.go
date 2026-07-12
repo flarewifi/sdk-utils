@@ -2,6 +2,9 @@ package jobs
 
 import (
 	"context"
+	"fmt"
+
+	"core/internal/api"
 	machineuid "core/internal/modules/machine-uid"
 	"core/internal/rpc"
 	"core/internal/rpc/rpc_flarewifi_v3"
@@ -17,18 +20,24 @@ import (
 // initial fetch runs shortly after boot so a freshly-flagged plugin is caught on
 // the next reboot without waiting a full day.
 //
+// g is threaded through (rather than just the raw *scheduler.Manager) so
+// reconcileBlockedPlugins can both cancel a newly-blocked plugin's OWN
+// scheduled tasks immediately via CancelOwner, rather than waiting for the
+// next reboot, and log when an unblock can't fully undo that cancellation
+// (see the CancelOwner comment below).
+//
 // reconcileBlockedPlugins recovers its own panics (see below) specifically so
 // the ticker loop survives a bad tick and keeps retrying daily; that resilience
 // would be lost by registering it via Every/Cron instead, since the scheduler
 // Manager stops a periodic task for good after one panic.
-func StartBlockedPluginsScheduler(scheduler sdkapi.ISchedulerApi) error {
-	return scheduler.Go("blocked-plugins", func(ctx context.Context) {
+func StartBlockedPluginsScheduler(sched sdkapi.ISchedulerApi, g *api.CoreGlobals) error {
+	return sched.Go("blocked-plugins", func(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(BlockedPluginsInitialDelay):
 		}
-		reconcileBlockedPlugins()
+		reconcileBlockedPlugins(g)
 
 		ticker := time.NewTicker(BlockedPluginsInterval)
 		defer ticker.Stop()
@@ -37,13 +46,13 @@ func StartBlockedPluginsScheduler(scheduler sdkapi.ISchedulerApi) error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				reconcileBlockedPlugins()
+				reconcileBlockedPlugins(g)
 			}
 		}
 	})
 }
 
-func reconcileBlockedPlugins() {
+func reconcileBlockedPlugins(g *api.CoreGlobals) {
 	// This runs in a background goroutine, never on the boot path — but a panic in
 	// a goroutine crashes the whole process, so contain it here. The shared RPC
 	// helper (rpc.GetTwirpServiceAndCtx) panics on a header error, and an offending
@@ -66,6 +75,14 @@ func reconcileBlockedPlugins() {
 		// offending plugin just because the machine briefly lost connectivity.
 		return
 	}
+	if !resp.GetSuccess() {
+		// The RPC always answers HTTP 200; Success=false means the server could
+		// not compute a definitive denylist (e.g. a DB hiccup), NOT that the
+		// denylist is empty. Treat it the same as a transport failure — leave
+		// every marker untouched rather than reading the (unpopulated) lists
+		// below as "nothing is blocked".
+		return
+	}
 
 	blockedPackages := sliceToSet(resp.GetBlockedPackages())
 	blockedNames := sliceToSet(resp.GetBlockedNames())
@@ -83,9 +100,22 @@ func reconcileBlockedPlugins() {
 
 		switch {
 		case shouldBlock && !plugins.IsBlocked(info.Package):
-			_ = plugins.BlockPlugin(info.Package)
+			if err := plugins.BlockPlugin(info.Package); err == nil {
+				// The plugin's HTTP routes are already gated per-request by
+				// middlewares.PluginValidityCheck; this stops its background
+				// work too, immediately, instead of leaving it running until
+				// the next reboot.
+				g.SchedulerMgr.CancelOwner(info.Package)
+			}
 		case !shouldBlock && plugins.IsBlocked(info.Package):
-			_ = plugins.UnblockPlugin(info.Package)
+			if err := plugins.UnblockPlugin(info.Package); err == nil && g.SchedulerMgr.HadCancelledTasks(info.Package) {
+				// Its background Go/Every/Cron tasks were killed by the earlier
+				// BlockPlugin+CancelOwner and cannot be re-registered without
+				// re-running the plugin's Init, which only ever runs once at
+				// boot. Surface this instead of leaving it silently
+				// half-working now that its HTTP routes resume immediately.
+				g.CoreAPI.Logger().Error(fmt.Sprintf("plugin %q unblocked, but its background tasks were stopped while blocked and require a machine reboot to resume", info.Package))
+			}
 		}
 	}
 }

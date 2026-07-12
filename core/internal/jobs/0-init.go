@@ -26,9 +26,10 @@ func Init(g *api.CoreGlobals) {
 		// cert from the cloud and hot-reloads HTTPS when it changes)
 		logJobErr(g, StartPortalCertScheduler(scheduler))
 
-		// Start blocked-plugins scheduler (polls the cloud denylist once a day and
-		// marks offending plugins so the boot loader skips them on the next reboot)
-		logJobErr(g, StartBlockedPluginsScheduler(scheduler))
+		// Start blocked-plugins scheduler (polls the cloud denylist once a day,
+		// marks offending plugins so the boot loader skips them, and immediately
+		// stops a newly-blocked plugin's own scheduled tasks)
+		logJobErr(g, StartBlockedPluginsScheduler(scheduler, g))
 
 		// Start installed-plugins report scheduler (reports the machine's full set of
 		// installed plugins so the cloud can track current installs + install history)

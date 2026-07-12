@@ -19,13 +19,14 @@ import (
 // CoreGlobals and is shared by every plugin's per-plugin ISchedulerApi facade.
 // The zero value is not usable; construct it with NewManager.
 type Manager struct {
-	mu           sync.Mutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
-	tasks        map[string]context.CancelFunc
-	logger       sdkapi.ILoggerApi
-	shuttingDown bool
+	mu              sync.Mutex
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
+	tasks           map[string]context.CancelFunc
+	cancelledOwners map[string]struct{}
+	logger          sdkapi.ILoggerApi
+	shuttingDown    bool
 }
 
 // NewManager returns a Manager ready to accept task registrations. Call
@@ -34,9 +35,10 @@ type Manager struct {
 func NewManager() *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Manager{
-		ctx:    ctx,
-		cancel: cancel,
-		tasks:  make(map[string]context.CancelFunc),
+		ctx:             ctx,
+		cancel:          cancel,
+		tasks:           make(map[string]context.CancelFunc),
+		cancelledOwners: make(map[string]struct{}),
 	}
 }
 
@@ -94,6 +96,48 @@ func (m *Manager) Cancel(owner, name string) {
 	if ok {
 		cancel()
 	}
+}
+
+// CancelOwner stops every task registered by owner (e.g. all of one plugin's
+// Go/Every/Cron tasks), leaving every other plugin's tasks and the Manager's
+// overall lifecycle untouched. Used to stop a plugin's background work the
+// moment it becomes invalid at runtime (blocked/disabled) instead of waiting
+// for the next reboot -- see middlewares.PluginValidityCheck. Cancellation is
+// asynchronous: each task's own goroutine observes ctx.Done() and unregisters
+// itself, same as a single Cancel.
+func (m *Manager) CancelOwner(owner string) {
+	prefix := owner + "/"
+
+	m.mu.Lock()
+	cancels := make([]context.CancelFunc, 0, len(m.tasks))
+	for k, cancel := range m.tasks {
+		if strings.HasPrefix(k, prefix) {
+			cancels = append(cancels, cancel)
+		}
+	}
+	if len(cancels) > 0 {
+		m.cancelledOwners[owner] = struct{}{}
+	}
+	m.mu.Unlock()
+
+	for _, cancel := range cancels {
+		cancel()
+	}
+}
+
+// HadCancelledTasks reports whether CancelOwner has ever cancelled at least one
+// task for owner during this process's lifetime. There is no mechanism to
+// re-register a plugin's Go/Every/Cron tasks without re-running its Init
+// (which only ever runs once, at boot -- see boot.InitLoadedPlugins), so a
+// plugin whose tasks were cancelled by a runtime block/disable stays without
+// its background work even after being re-enabled/unblocked, until the
+// machine reboots. Callers use this to warn instead of leaving that gap
+// silent -- see boot.ValidateStorePlugins and jobs.reconcileBlockedPlugins.
+func (m *Manager) HadCancelledTasks(owner string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_, ok := m.cancelledOwners[owner]
+	return ok
 }
 
 // Shutdown cancels every registered task and waits for them all to return, up

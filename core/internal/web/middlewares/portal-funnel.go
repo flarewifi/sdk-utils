@@ -11,6 +11,7 @@ import (
 	"core/internal/network"
 	"core/utils/env"
 	"core/utils/hostfinder"
+	"core/utils/plugins"
 )
 
 // Portal-traffic claim middlewares: plugin hooks run BEFORE any funnel/scheme
@@ -29,21 +30,36 @@ import (
 // installs via store/devkit, which is why writes can race live traffic and
 // unsynchronized access would be a data race), so the CAS retry loop is
 // effectively free.
-var portalClaims atomic.Pointer[[]func(http.Handler) http.Handler]
+//
+// Each entry carries the registering plugin's package alongside its
+// middleware so applyPortalClaims can skip a claim belonging to a plugin that
+// is currently blocked/disabled/update-skipped/queued for uninstall (see
+// plugins.IsInvalid) — otherwise a plugin withheld from every other route
+// (middlewares.PluginValidityCheck) would still be able to claim live
+// captive-portal traffic through this funnel hook.
+type portalClaim struct {
+	pkg string
+	mw  func(http.Handler) http.Handler
+}
 
-// RegisterPortalClaim adds portal-traffic claim middlewares. Claims wrap the
-// funnel decision in registration order (first registered = outermost) on
-// every top-level page navigation. Called via the SDK's ClaimPortalTraffic,
-// once per plugin Init.
-func RegisterPortalClaim(claims ...func(http.Handler) http.Handler) {
+var portalClaims atomic.Pointer[[]portalClaim]
+
+// RegisterPortalClaim adds portal-traffic claim middlewares owned by pkg.
+// Claims wrap the funnel decision in registration order (first registered =
+// outermost) on every top-level page navigation. Called via the SDK's
+// ClaimPortalTraffic, once per plugin Init.
+func RegisterPortalClaim(pkg string, claims ...func(http.Handler) http.Handler) {
 	for {
 		old := portalClaims.Load()
-		var cur []func(http.Handler) http.Handler
+		var cur []portalClaim
 		if old != nil {
 			cur = *old
 		}
-		next := make([]func(http.Handler) http.Handler, 0, len(cur)+len(claims))
-		next = append(append(next, cur...), claims...)
+		next := make([]portalClaim, 0, len(cur)+len(claims))
+		next = append(next, cur...)
+		for _, c := range claims {
+			next = append(next, portalClaim{pkg: pkg, mw: c})
+		}
 		if portalClaims.CompareAndSwap(old, &next) {
 			return
 		}
@@ -139,7 +155,10 @@ func applyPortalClaims(next http.Handler) http.Handler {
 
 	claims := *p
 	for i := len(claims) - 1; i >= 0; i-- {
-		next = claims[i](next)
+		if plugins.IsInvalid(claims[i].pkg) {
+			continue
+		}
+		next = claims[i].mw(next)
 	}
 	return next
 }
