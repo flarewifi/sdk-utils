@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"core/internal/api"
@@ -11,8 +10,6 @@ import (
 	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/plugins"
 	"time"
-
-	"github.com/twitchtv/twirp"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 	sdkapi "sdk/api"
@@ -73,27 +70,22 @@ func reconcileBlockedPlugins(g *api.CoreGlobals) {
 		MachineId: machineID,
 	})
 	if err != nil {
-		// A Twirp error means the cloud was reached and is CONCLUSIVELY reporting
-		// its own failure (e.g. a DB hiccup) — worth surfacing so a persistent
-		// server-side problem doesn't go unnoticed. Any other error (connection
-		// refused, timeout, DNS failure, ...) is a transport/connectivity
-		// failure — inconclusive, since the machine may just be briefly offline
-		// — and stays silent rather than logging routine network flakiness as
-		// an error. Either way, leave existing markers untouched and retry next
-		// tick: we never clear blocks on a failed fetch, since that would
+		// The server always answers HTTP 200 with Success=false on its own
+		// failures (see FetchBlockedPlugins), so an RPC-level error here is a
+		// plain transport/connectivity failure (connection refused, timeout,
+		// DNS failure, ...) — inconclusive, since the machine may just be
+		// briefly offline. Stay silent rather than logging routine network
+		// flakiness as an error, leave existing markers untouched, and retry
+		// next tick: we never clear blocks on a failed fetch, since that would
 		// unblock an offending plugin based on incomplete data.
-		var twerr twirp.Error
-		if errors.As(err, &twerr) {
-			g.CoreAPI.Logger().Error(fmt.Sprintf("fetch blocked plugins: %s", twerr.Msg()))
-		}
 		return
 	}
 	if !resp.GetSuccess() {
-		// Defensive fallback: the current server always pairs a query failure
-		// with a Twirp error (handled above) rather than Success=false, but
-		// treat this the same as a transport failure in case that ever changes
-		// — leave every marker untouched rather than reading the (unpopulated)
-		// lists below as "nothing is blocked".
+		// The cloud was reached and is CONCLUSIVELY reporting its own failure
+		// (e.g. a DB hiccup) — worth surfacing so a persistent server-side
+		// problem doesn't go unnoticed. Leave every marker untouched rather
+		// than reading the (unpopulated) lists below as "nothing is blocked".
+		g.CoreAPI.Logger().Error(fmt.Sprintf("fetch blocked plugins: %s", resp.GetErrorMessage()))
 		return
 	}
 
