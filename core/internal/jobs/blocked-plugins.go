@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"core/internal/api"
@@ -10,6 +11,8 @@ import (
 	"core/internal/rpc/rpc_flarewifi_v3"
 	"core/utils/plugins"
 	"time"
+
+	"github.com/twitchtv/twirp"
 
 	sdkutils "github.com/flarewifi/sdk-utils"
 	sdkapi "sdk/api"
@@ -70,17 +73,27 @@ func reconcileBlockedPlugins(g *api.CoreGlobals) {
 		MachineId: machineID,
 	})
 	if err != nil {
-		// Network/cloud hiccup: leave existing markers untouched and retry next
-		// tick. We never clear blocks on a failed fetch — that would unblock an
-		// offending plugin just because the machine briefly lost connectivity.
+		// A Twirp error means the cloud was reached and is CONCLUSIVELY reporting
+		// its own failure (e.g. a DB hiccup) — worth surfacing so a persistent
+		// server-side problem doesn't go unnoticed. Any other error (connection
+		// refused, timeout, DNS failure, ...) is a transport/connectivity
+		// failure — inconclusive, since the machine may just be briefly offline
+		// — and stays silent rather than logging routine network flakiness as
+		// an error. Either way, leave existing markers untouched and retry next
+		// tick: we never clear blocks on a failed fetch, since that would
+		// unblock an offending plugin based on incomplete data.
+		var twerr twirp.Error
+		if errors.As(err, &twerr) {
+			g.CoreAPI.Logger().Error(fmt.Sprintf("fetch blocked plugins: %s", twerr.Msg()))
+		}
 		return
 	}
 	if !resp.GetSuccess() {
-		// The RPC always answers HTTP 200; Success=false means the server could
-		// not compute a definitive denylist (e.g. a DB hiccup), NOT that the
-		// denylist is empty. Treat it the same as a transport failure — leave
-		// every marker untouched rather than reading the (unpopulated) lists
-		// below as "nothing is blocked".
+		// Defensive fallback: the current server always pairs a query failure
+		// with a Twirp error (handled above) rather than Success=false, but
+		// treat this the same as a transport failure in case that ever changes
+		// — leave every marker untouched rather than reading the (unpopulated)
+		// lists below as "nothing is blocked".
 		return
 	}
 

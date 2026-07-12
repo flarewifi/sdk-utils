@@ -599,11 +599,12 @@ func (self *PluginsMgr) CheckPurchase(pkg string) (sdkplugin.PluginPurchaseInfo,
 	if err != nil {
 		return sdkplugin.PluginPurchaseInfo{}, fmt.Errorf("check purchase for %q: %w", pkg, err)
 	}
-	// The RPC always answers HTTP 200; Success=false means the server could not
-	// compute a definitive verdict (e.g. a DB hiccup or unknown package) rather
-	// than "not purchased". Surface it the same way as a transport failure so
-	// callers (ValidateStorePlugins) never disable an already-installed plugin
-	// based on inconclusive data.
+	// An unexpected server-side failure (DB hiccup, etc.) now comes back as a
+	// Twirp error, caught by err != nil above. Success=false is narrower: the
+	// server conclusively found no pricing row for pkg at all (unknown package)
+	// rather than "not purchased". Surface it the same way as a transport failure
+	// so callers (ValidateStorePlugins) never disable an already-installed plugin
+	// based on inconclusive/unrecognized data.
 	if !resp.GetSuccess() {
 		return sdkplugin.PluginPurchaseInfo{}, fmt.Errorf("check purchase for %q: %s", pkg, resp.GetErrorMessage())
 	}

@@ -95,6 +95,14 @@ func StartOnlineMonitor(g *api.CoreGlobals) {
 	// a fresh purchase recheck (e.g. a lapsed subscription would keep the plugin
 	// loaded until the next reconnect or reboot). Shares the validatingStore guard
 	// so a tick that lands mid-reconnect-pass collapses into the in-flight one.
+	//
+	// Hand-rolled ticker rather than Scheduler().Every: Every runs fn once
+	// immediately on registration, which happens before the monitor's first probe
+	// (StartOnlineMonitor is called during the offline part of boot) — that would
+	// burn CheckPurchase's retry budget on every plugin while definitely offline,
+	// for a check the EventInternetUp handler above already performs correctly
+	// once the machine actually comes online. This loop only needs to supply the
+	// hourly *recurrences*.
 	if err := g.CoreAPI.Scheduler().Go("validate-store-plugins", func(ctx context.Context) {
 		ticker := time.NewTicker(storePluginsValidationInterval)
 		defer ticker.Stop()
@@ -107,6 +115,12 @@ func StartOnlineMonitor(g *api.CoreGlobals) {
 					continue
 				}
 				func() {
+					// A panic here must not take down the ticker loop — this is a
+					// best-effort recurring recheck, not boot-critical (mirrors
+					// performDeviceMerge's recover in jobs/device-merge.go). Without
+					// it, one bad pass would permanently stop the hourly recheck for
+					// the rest of the machine's uptime.
+					defer func() { _ = recover() }()
 					defer validatingStore.Store(false)
 					ValidateStorePlugins(g)
 				}()
