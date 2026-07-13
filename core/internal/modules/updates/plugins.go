@@ -25,10 +25,22 @@ import (
 	"core/utils/config"
 	"core/utils/plugins"
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	sdkutils "github.com/flarewifi/sdk-utils"
 )
+
+// pendingUpdate carries everything needed to build a PluginUpdate row once the
+// batched cloud response comes back. The installed version + display name are
+// captured up front (locally) so the response only has to supply the LATEST
+// version; isMeta selects which branch of the response to read.
+type pendingUpdate struct {
+	pkg     string
+	name    string
+	current *semver.Version
+	isMeta  bool
+}
 
 // CheckPluginUpdates returns the update status of every store-sourced plugin
 // installed on this machine. Each plugin's installed version is read from its
@@ -36,6 +48,14 @@ import (
 // cloud. Plugins whose release lookup fails are skipped (best-effort) rather than
 // failing the whole check. Meta bundles are returned as a single row each (keyed
 // by the bundle package); their owned members are not listed individually.
+//
+// All packages are resolved in a SINGLE batched RPC
+// (FetchLatestPluginReleasesByPackages) rather than one request per plugin. A
+// machine installs dozens of store plugins, and the old per-plugin loop issued
+// one HTTP request each — so when the machine was offline or cloud-sync was
+// disabled the admin log filled with a "failed to fetch the latest release for
+// <pkg>" line per plugin. Batching collapses a whole-check transport failure into
+// a single log line and any per-package misses into one aggregated line.
 func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 	cfg, err := config.ReadPluginsConfig()
 	if err != nil {
@@ -52,42 +72,19 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 	// through their bundle, so they are hidden from the per-plugin list.
 	hiddenMembers := metaOwnedMembers(cfg)
 
-	srv, ctx := rpc.GetTwirpServiceAndCtx()
+	// Phase 1 (local): gather every package to check along with the local metadata
+	// needed to build its row. Bad LOCAL versions are logged here (rare, genuinely
+	// diagnostic) and dropped — they never reach the batched request.
+	var pendings []pendingUpdate
 
-	updateList := []PluginUpdate{}
-
-	// One row per meta bundle: installed version from the meta record, latest from
-	// the cloud. A failed lookup skips that bundle (best-effort) rather than failing
-	// the whole check.
+	// One row per meta bundle: installed version from the meta record.
 	for _, m := range cfg.MetaPlugins {
 		current, err := semver.NewVersion(m.Version)
 		if err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: bad current version %q for meta %s: %v", m.Version, m.Package, err))
 			continue
 		}
-
-		resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest{
-			PluginPackage: m.Package,
-		})
-		if err != nil {
-			// Log only the method + package; the raw RPC error exposes the cloud endpoint URL.
-			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: failed to fetch the latest release for meta %s", m.Package))
-			continue
-		}
-
-		latest, err := semver.NewVersion(resp.GetVersion())
-		if err != nil {
-			continue
-		}
-
-		updateList = append(updateList, PluginUpdate{
-			Package:        m.Package,
-			Name:           m.Name,
-			CurrentVersion: current.String(),
-			LatestVersion:  latest.String(),
-			HasUpdate:      latest.GreaterThan(current),
-			IsMeta:         true,
-		})
+		pendings = append(pendings, pendingUpdate{pkg: m.Package, name: m.Name, current: current, isMeta: true})
 	}
 
 	for _, meta := range plugins.InstalledPluginsList() {
@@ -114,13 +111,64 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: bad current version %q for %s: %v", info.Version, meta.Package, err))
 			continue
 		}
+		pendings = append(pendings, pendingUpdate{pkg: meta.Package, name: info.Name, current: current, isMeta: false})
+	}
 
-		resp, err := srv.FetchLatestPluginReleaseByPackage(ctx, &rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest{
-			PluginPackage: meta.Package,
-		})
-		if err != nil {
-			// Log only the method + package; the raw RPC error exposes the cloud endpoint URL.
-			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: failed to fetch the latest release for %s", meta.Package))
+	updateList := []PluginUpdate{}
+	if len(pendings) == 0 {
+		return updateList, nil
+	}
+
+	// Phase 2 (one request): resolve every package's latest release in a single
+	// batched call.
+	reqs := make([]*rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest, 0, len(pendings))
+	for _, p := range pendings {
+		reqs = append(reqs, &rpc_flarewifi_v3.FetchLatestPluginReleaseByPackageRequest{PluginPackage: p.pkg})
+	}
+
+	srv, ctx := rpc.GetTwirpServiceAndCtx()
+	batch, err := srv.FetchLatestPluginReleasesByPackages(ctx, &rpc_flarewifi_v3.FetchLatestPluginReleasesByPackagesRequest{
+		Requests: reqs,
+	})
+	if err != nil {
+		// A single transport failure for the WHOLE check (offline / cloud-sync
+		// disabled / not activated). Log ONCE — not once per plugin — and abort.
+		// Log only the method; the raw RPC error exposes the cloud endpoint URL.
+		g.CoreAPI.LoggerAPI.Error("plugin update check: failed to fetch the latest plugin releases")
+		return nil, err
+	}
+
+	// Index results by package so rows map back order-independently.
+	byPkg := make(map[string]*rpc_flarewifi_v3.PluginReleaseResult, len(batch.GetResults()))
+	for _, res := range batch.GetResults() {
+		byPkg[res.GetPluginPackage()] = res
+	}
+
+	// Phase 3 (local): build the update rows from the batched results.
+	var failedPkgs []string
+	for _, p := range pendings {
+		res, ok := byPkg[p.pkg]
+		if !ok || res.GetError() != "" || res.GetResponse() == nil {
+			// This package's lookup failed on the cloud (not found / off-channel /
+			// gated). Collected for a single aggregated log line below.
+			failedPkgs = append(failedPkgs, p.pkg)
+			continue
+		}
+		resp := res.GetResponse()
+
+		if p.isMeta {
+			latest, err := semver.NewVersion(resp.GetVersion())
+			if err != nil {
+				continue
+			}
+			updateList = append(updateList, PluginUpdate{
+				Package:        p.pkg,
+				Name:           p.name,
+				CurrentVersion: p.current.String(),
+				LatestVersion:  latest.String(),
+				HasUpdate:      latest.GreaterThan(p.current),
+				IsMeta:         true,
+			})
 			continue
 		}
 
@@ -128,7 +176,6 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 		if resp.GetIsMeta() {
 			continue
 		}
-
 		rel := resp.GetPluginRelease()
 		if rel == nil {
 			continue
@@ -140,12 +187,18 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 		}
 
 		updateList = append(updateList, PluginUpdate{
-			Package:        meta.Package,
-			Name:           info.Name,
-			CurrentVersion: current.String(),
+			Package:        p.pkg,
+			Name:           p.name,
+			CurrentVersion: p.current.String(),
 			LatestVersion:  latest.String(),
-			HasUpdate:      latest.GreaterThan(current),
+			HasUpdate:      latest.GreaterThan(p.current),
 		})
+	}
+
+	// Per-package misses (the cloud was reachable but some packages had no
+	// resolvable release) are collapsed into ONE line instead of one per plugin.
+	if len(failedPkgs) > 0 {
+		g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: failed to fetch the latest release for %d plugin(s): %s", len(failedPkgs), strings.Join(failedPkgs, ", ")))
 	}
 
 	return updateList, nil
