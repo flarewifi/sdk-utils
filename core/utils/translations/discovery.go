@@ -22,15 +22,21 @@ var componentRoots = []string{
 	"data/plugins/local/*",
 }
 
-// DiscoverComponents returns every component under root that has a migrated
-// catalog (an en.json). Results are sorted by ID for stable output.
+// DiscoverComponents returns every component under root that has a
+// resources/translations directory. A component counts as discoverable as soon
+// as that directory exists — an en.json is NOT required — so `sync` can
+// bootstrap a brand-new (or old-format, pre-migration) plugin whose catalog
+// hasn't been generated yet. Results are sorted by ID for stable output.
 func DiscoverComponents(root string) []Component {
 	var comps []Component
 	for _, pattern := range componentRoots {
 		matches, _ := filepath.Glob(filepath.Join(root, pattern))
 		for _, base := range matches {
 			dir := filepath.Join(base, "resources", "translations")
-			if !fileExists(filepath.Join(dir, "en.json")) {
+			// Discover on the directory, not en.json: without this, a plugin
+			// that has Translate() calls but no catalog yet is invisible to
+			// every tool (including sync), leaving no way to create en.json.
+			if !dirExists(dir) {
 				continue
 			}
 			rel, err := filepath.Rel(root, base)
@@ -65,4 +71,9 @@ func Languages(dir string) []string {
 func fileExists(p string) bool {
 	info, err := os.Stat(p)
 	return err == nil && !info.IsDir()
+}
+
+func dirExists(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && info.IsDir()
 }
