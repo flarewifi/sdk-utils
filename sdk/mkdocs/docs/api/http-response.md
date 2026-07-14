@@ -37,7 +37,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 This method is similar to [PortalView](#portalview) and [AdminView](#adminview) but it renders the views **without** using any layout. Therefore you must enclose your [view templates](#template-parsing) with proper `html` tag and document type:
 
-```templ title="plugins/local/com.mydomain.myplugin/resources/views/sample.templ"
+```templ title="data/plugins/devel/com.mydomain.myplugin/resources/views/sample.templ"
 package views
 
 templ SamplePage(name string) {
@@ -166,7 +166,7 @@ func (w http.ResponseWriter, r *http.Request) {
 
 We use [Templ](https://templ.guide) in generating our views. To create a sample view for your plugin, create a file in `resources/views/welcome.templ` with the following contents:
 
-```templ title="plugins/local/com.mydomain.myplugin/resources/views/welcome.templ"
+```templ title="data/plugins/devel/com.mydomain.myplugin/resources/views/welcome.templ"
 package views
 
 templ WelcomePage(name string) {
@@ -215,7 +215,7 @@ After registering your assets in the manifest, you can then use the assets in yo
 
 For example, given the following portal assets manifest:
 
-```json title="plugins/local/com.mydomain.myplugin/resources/assets/manifest.portal.json"
+```json title="data/plugins/devel/com.mydomain.myplugin/resources/assets/manifest.portal.json"
 {
   "index.css": [
     "./portal/portal.css"

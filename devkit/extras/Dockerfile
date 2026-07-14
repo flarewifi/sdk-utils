@@ -51,7 +51,7 @@ USER ubuntu
 COPY ./scripts/install-tools.sh ./scripts/install-tools.sh
 RUN ./scripts/install-tools.sh
 
-EXPOSE 3000 443 8000
+EXPOSE 3000 3443 8000
 
 # Watch the developer's plugin sources and (re)build via the prebuilt flare CLI.
 CMD [ "./docker-cmd.sh", "./start-dev.sh" ]

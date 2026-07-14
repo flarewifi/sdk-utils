@@ -14,7 +14,7 @@ There two (2) types of routes:
 Below is an example on how to register a route to the [plugin router](../api/http-router-api.md#plugin-router).
 Any route registered to the plugin router are categorized as `plugin route`.
 
-```go title="plugins/local/com.mydomain.myplugin/main.go"
+```go title="data/plugins/devel/com.mydomain.myplugin/main.go"
 package main
 
 import (
@@ -40,7 +40,7 @@ func Init(api sdkapi.IPluginApi) error {
 }
 ```
 
-```templ title="plugins/local/com.mydomain.myplugin/resources/views/welcome.templ"
+```templ title="data/plugins/devel/com.mydomain.myplugin/resources/views/welcome.templ"
 package views
 
 templ WelcomePage(name string) {
@@ -58,7 +58,7 @@ Admin routes are very similar to [plugin routes](#plugin-routes), but are only a
 
 Below is an example on how to register an admin route. Any route registered to the [admin router](../api/http-router-api.md#admin-router) are categorized as `admin route`.
 
-```go title="plugins/local/com.mydomain.myplugin/main.go"
+```go title="data/plugins/devel/com.mydomain.myplugin/main.go"
 package main
 
 import (
@@ -97,7 +97,7 @@ In the example above, we [registered a plugin route](#plugin-routes) to the plug
 
 To add a portal menu item that links to `portal:welcome` route, we will use the [INavsApi.PortalNavsFactory](../api/http-navs-api.md#portalnavsfactory) method.
 
-```go title="plugins/local/com.mydomain.myplugin/main.go"
+```go title="data/plugins/devel/com.mydomain.myplugin/main.go"
 // rest of the init function code...
 
 navsAPI := api.Http().Navs()
@@ -123,7 +123,7 @@ In the example above, we also [registered an admin route](#admin-routes) to the 
 
 To add an admin menu item that links to `admin:welcome` route, we will use the [INavsApi.AdminNavsFactory](../api/http-navs-api.md#adminnavsfactory) method.
 
-```go title="plugins/local/com.mydomain.myplugin/main.go"
+```go title="data/plugins/devel/com.mydomain.myplugin/main.go"
 // rest of the init function code...
 
 navsAPI := api.Http().Navs()

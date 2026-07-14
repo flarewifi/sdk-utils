@@ -29,17 +29,22 @@ if [ ! -d "$SRC_DIR" ]; then
 fi
 
 SRC_DIR="$(cd "$SRC_DIR" && pwd)"
+
+# Check for queries before requiring core/sqlc.yml: a devkit build never ships
+# core/sqlc.yml (core is closed-source there — see build-devkit.go), so a plugin
+# with no queries must be able to skip out cleanly instead of erroring on a file
+# it doesn't actually need.
+if [ ! -d "$SRC_DIR/resources/queries" ]; then
+    echo "No queries in $SRC_DIR/resources/queries — skipping sqlc generation."
+    exit 0
+fi
+
 CORE_DIR="$(cd core && pwd)"
 CORE_SQLC="$CORE_DIR/sqlc.yml"
 
 if [ ! -f "$CORE_SQLC" ]; then
     echo "Error: core sqlc config not found: $CORE_SQLC" >&2
     exit 1
-fi
-
-if [ ! -d "$SRC_DIR/resources/queries" ]; then
-    echo "No queries in $SRC_DIR/resources/queries — skipping sqlc generation."
-    exit 0
 fi
 
 TMP_DIR="$(mktemp -d)"

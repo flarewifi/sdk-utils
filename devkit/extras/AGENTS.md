@@ -57,7 +57,7 @@ Minimum structure under `data/plugins/devel/<your.package>/`:
 ```
 main.go        # func Init(api sdkapi.IPluginApi) error  — entry point
 plugin.json    # name, package (must match the dir name), version, description
-go.mod         # module <your.package>; go 1.21 + toolchain go1.21.13
+go.mod         # module <your.package>; go 1.26 + toolchain go1.26.4
 resources/
   migrations/  # YYYYMMDD_NNNN_name.{up,down}.sql
   queries/     # *.sql → sqlc-generated into db/queries/ (do not edit generated)
@@ -75,7 +75,7 @@ resources/
 - New plugins are picked up on startup; `flare fix-workspace` (run automatically)
   adds them to `go.work`. If a brand-new plugin isn't seen, restart the `app`
   service.
-- Pin `go 1.21` / `toolchain go1.21.13` to match the devkit toolchain (see the
+- Pin `go 1.26` / `toolchain go1.26.4` to match the devkit toolchain (see the
   sample's `go.mod`). The prebuilt `flare` compiles every plugin with the
   `dev devkit sqlite` build tags — you don't choose tags.
 

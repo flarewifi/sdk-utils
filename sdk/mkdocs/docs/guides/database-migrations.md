@@ -576,7 +576,7 @@ be added to **core's** `sqlc.yml` (a core change) — reach out before doing so.
 ```bash
 ./scripts/sqlc-gen.sh <plugin_directory>
 # e.g.
-./scripts/sqlc-gen.sh ./data/plugins/local/my-plugin
+./scripts/sqlc-gen.sh ./data/plugins/devel/my-plugin
 ```
 
 > **Note:** The script needs core's `sqlc.yml` for foreign-key resolution, so run

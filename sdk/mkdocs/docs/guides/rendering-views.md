@@ -8,7 +8,7 @@ Paired with [htmx](https://htmx.org/), you can build modern, interactive pages w
 
 `Temple` templates must be created in the `resources/views` directory in your plugin. For example, we will create a template called `welcome.templ`:
 
-```templ title="plugins/local/com.mydomain.myplugin/resources/views/welcome.templ"
+```templ title="data/plugins/devel/com.mydomain.myplugin/resources/views/welcome.templ"
 package views
 
 templ WelcomePage(name string) {
@@ -18,7 +18,7 @@ templ WelcomePage(name string) {
 
 The SDK runtime will detect the file and watch for changes. It will then generate a new file based on the template we have created called `welcome_templ.go`:
 
-```go title="plugins/local/com.mydomain.myplugin/resources/views/welcome_templ.go"
+```go title="data/plugins/devel/com.mydomain.myplugin/resources/views/welcome_templ.go"
 package views
 
 func WelcomePage(name string) {

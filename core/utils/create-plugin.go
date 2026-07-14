@@ -75,14 +75,14 @@ func Init(api sdkapi.IPluginApi) error {
 		api.Http().Response().AdminView(w, r, sdkapi.ViewPage{
 			PageContent: homePage,
 		})
-	}).Name("home.index")
+	}).Name("admin:home.index")
 
 	api.Http().Navs().AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
 		return []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     "My Plugin",
-				RouteName: "home.index",
+				RouteName: "admin:home.index",
 				Keywords:  []string{"sample", "home"},
 			},
 		}
