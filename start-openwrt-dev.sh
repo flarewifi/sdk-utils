@@ -1,6 +1,5 @@
 #!/bin/sh
 
-export GOTOOLCHAIN=go1.21.13
 export CGO_ENABLED=0
 DB_DRIVER="sqlite"
 OS_CONFIG="wan-lan-mono"

@@ -1,6 +1,5 @@
 #!/usr/bin/env sh
 
-export GOTOOLCHAIN=go1.21.13
 GO_TAGS="dev"
 
 # Build everything: core templates/queries first, then CLI, then plugins

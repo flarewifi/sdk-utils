@@ -2,7 +2,7 @@
   "name": "Devkit Sample",
   "package": "com.flarego.devkit-sample",
   "description": "Starter sample plugin for the Flarewifi devkit",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "system_packages": null,
   "sdk": ""
 }
