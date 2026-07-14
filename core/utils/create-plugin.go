@@ -66,7 +66,7 @@ import (
 
 func main() {}
 
-func Init(api sdkapi.IPluginApi) {
+func Init(api sdkapi.IPluginApi) error {
 	// Your plugin code here
 	adminRouter := api.Http().Router().AdminRouter(nil)
 
@@ -87,6 +87,8 @@ func Init(api sdkapi.IPluginApi) {
 			},
 		}
 	})
+
+	return nil
 }
 `, modUri)
 
@@ -151,7 +153,7 @@ The license for this software is still under consideration and will be added in 
 	}
 
 	// Create default images directory
-	pubkeep := filepath.Join(pluginDir, "resources/assets/plublic/.keep")
+	pubkeep := filepath.Join(pluginDir, "resources/assets/public/.keep")
 	if err := os.MkdirAll(filepath.Dir(pubkeep), sdkutils.PermDir); err != nil {
 		panic(err)
 	}

@@ -10,6 +10,7 @@ import (
 	"core/internal/web/navs"
 	"core/internal/web/router"
 	"core/internal/web/routes"
+	"core/utils/tags"
 )
 
 func SetupBootRoutes(g *api.CoreGlobals) {
@@ -39,14 +40,21 @@ func SetupAppRoutes(g *api.CoreGlobals) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	// Register activation route
-	routes.ActivationRoutes(g)
+	// Activation and the forgot-password OTP flow are entirely cloud-dependent
+	// (activation self-bypasses in devkit via devkitBypass(), and OTP has no local
+	// fallback) — skip registering them so devkit never exposes a route that can
+	// only ever dead-end on the devkit RPC choke point.
+	if !tags.IsDevkit() {
+		routes.ActivationRoutes(g)
+	}
 
 	routes.PluginAssets(g)
 	routes.GlobalAssets(g)
 	routes.PortalRoutes(g)
 	routes.AdminRoutes(g)
-	routes.ForgotPasswordRoutes(g)
+	if !tags.IsDevkit() {
+		routes.ForgotPasswordRoutes(g)
+	}
 	routes.PaymentRoutes(g)
 	routes.WifiEventRoutes(g)
 

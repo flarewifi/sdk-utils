@@ -6,6 +6,7 @@ import (
 	"core/internal/web/controllers/adminctrl"
 	"core/internal/web/middlewares"
 	"core/internal/web/router"
+	"core/utils/tags"
 	"net/http"
 	sdkapi "sdk/api"
 )
@@ -42,20 +43,26 @@ func AdminRoutes(g *api.CoreGlobals) {
 			subrouter.Post("/save", adminctrl.GeneralSettingsSaveCtrl(g)).Name("admin:general:save")
 			subrouter.Get("/system-resources", adminctrl.GeneralSettingsSystemResourcesCtrl(g)).Name("admin:general:system-resources")
 		})
-		subrouter.Group("/updates", func(subrouter sdkapi.IHttpRouterInstance) {
-			subrouter.Get("/", adminctrl.CheckUpdatesPageCtrl(g)).Name("admin:updates:index")
-			subrouter.Post("/query", adminctrl.QuerySoftwareUpdatesCtrl(g)).Name("admin:updates:query")
-			subrouter.Get("/download", adminctrl.DownloadUpdatePageCtrl(g)).Name("admin:updates:download")
-			subrouter.Post("/download/status", adminctrl.DownloadStatusPartialCtrl(g)).Name("admin:updates:download-status")
-			subrouter.Post("/download/continue", adminctrl.DownloadContinueCtrl(g)).Name("admin:updates:download-continue")
-			subrouter.Post("/download/cancel", adminctrl.DownloadCancelCtrl(g)).Name("admin:updates:download-cancel")
-			subrouter.Get("/download/done", adminctrl.DownloadDoneCtrl(g)).Name("admin:updates:download-done")
-			subrouter.Post("/sysupgrade/upload", adminctrl.SysupgradeUploadCtrl(g)).Name("admin:updates:sysupgrade-upload")
-			subrouter.Get("/sysupgrade/success", adminctrl.SysupgradeSuccessPageCtrl(g)).Name("admin:updates:sysupgrade-success")
-			subrouter.Get("/sysupgrade/progress", adminctrl.SysupgradeProgressPageCtrl(g)).Name("admin:updates:sysupgrade-progress")
-			subrouter.Post("/sysupgrade/status", adminctrl.SysupgradeStatusPartialCtrl(g)).Name("admin:updates:sysupgrade-status")
-			subrouter.Post("/sysupgrade/delete", adminctrl.SysupgradeDeleteCtrl(g)).Name("admin:updates:sysupgrade-delete")
-		})
+		// Skip the whole Updates page in devkit: the release-check/download routes
+		// are cloud-dependent (dead-end on the RPC choke point) and the manual
+		// sysupgrade upload flashes the machine's own OS, which is out of scope for
+		// devkit's job of compiling/testing one plugin from data/plugins/devel.
+		if !tags.IsDevkit() {
+			subrouter.Group("/updates", func(subrouter sdkapi.IHttpRouterInstance) {
+				subrouter.Get("/", adminctrl.CheckUpdatesPageCtrl(g)).Name("admin:updates:index")
+				subrouter.Post("/query", adminctrl.QuerySoftwareUpdatesCtrl(g)).Name("admin:updates:query")
+				subrouter.Get("/download", adminctrl.DownloadUpdatePageCtrl(g)).Name("admin:updates:download")
+				subrouter.Post("/download/status", adminctrl.DownloadStatusPartialCtrl(g)).Name("admin:updates:download-status")
+				subrouter.Post("/download/continue", adminctrl.DownloadContinueCtrl(g)).Name("admin:updates:download-continue")
+				subrouter.Post("/download/cancel", adminctrl.DownloadCancelCtrl(g)).Name("admin:updates:download-cancel")
+				subrouter.Get("/download/done", adminctrl.DownloadDoneCtrl(g)).Name("admin:updates:download-done")
+				subrouter.Post("/sysupgrade/upload", adminctrl.SysupgradeUploadCtrl(g)).Name("admin:updates:sysupgrade-upload")
+				subrouter.Get("/sysupgrade/success", adminctrl.SysupgradeSuccessPageCtrl(g)).Name("admin:updates:sysupgrade-success")
+				subrouter.Get("/sysupgrade/progress", adminctrl.SysupgradeProgressPageCtrl(g)).Name("admin:updates:sysupgrade-progress")
+				subrouter.Post("/sysupgrade/status", adminctrl.SysupgradeStatusPartialCtrl(g)).Name("admin:updates:sysupgrade-status")
+				subrouter.Post("/sysupgrade/delete", adminctrl.SysupgradeDeleteCtrl(g)).Name("admin:updates:sysupgrade-delete")
+			})
+		}
 		subrouter.Group("/database", func(subrouter sdkapi.IHttpRouterInstance) {
 			subrouter.Get("/index", adminctrl.DatabaseSettingsIndexCtrl(g)).Name("admin:database:index")
 			subrouter.Post("/reset", adminctrl.DatabaseResetCtrl(g)).Name("admin:database:reset")
