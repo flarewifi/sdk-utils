@@ -16,14 +16,20 @@ import (
 	"core/internal/events"
 
 	sdkapi "sdk/api"
+
+	sdkutils "github.com/flarewifi/sdk-utils"
 )
 
-// Default polling cadence and per-probe dial timeout. The probe is a cheap TCP
-// connect to public DNS resolvers (port 53), so polling every few seconds is
-// inexpensive and detects connectivity changes promptly.
+// Default polling cadence, per-probe dial timeout, and probe retry budget. A
+// probe failure now retries (with sdkutils.Retry's built-in backoff) before the
+// monitor concedes the machine is offline, so a brief blip on one poll no longer
+// fires a false EventInternetDown; the interval was widened accordingly since a
+// single check can now absorb transient failures instead of relying on the next
+// tick to do so.
 const (
-	defaultInterval = 10 * time.Second
-	dialTimeout     = 3 * time.Second
+	defaultInterval    = 15 * time.Minute
+	dialTimeout        = 30 * time.Second
+	probeRetryAttempts = 10
 )
 
 // probeHosts are well-known, highly-available anycast resolvers reached by raw
@@ -161,7 +167,12 @@ func WaitOnline(ctx context.Context, timeout, interval time.Duration) bool {
 //     reboot (notifyOffline), which then silently cleared when the next probe
 //     succeeded. A machine never observed online hasn't "lost" connectivity.
 func (m *Monitor) check(ctx context.Context) {
-	online := probe()
+	online, _ := sdkutils.Retry(func() (bool, error) {
+		if probe() {
+			return true, nil
+		}
+		return false, fmt.Errorf("no probe host reachable")
+	}, probeRetryAttempts)
 
 	prev := m.up.Load()
 	first := !m.probed.Swap(true)
