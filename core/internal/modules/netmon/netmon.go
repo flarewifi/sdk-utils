@@ -27,9 +27,8 @@ import (
 // single check can now absorb transient failures instead of relying on the next
 // tick to do so.
 const (
-	defaultInterval    = 15 * time.Minute
-	dialTimeout        = 30 * time.Second
-	probeRetryAttempts = 10
+	defaultInterval = 15 * time.Minute
+	dialTimeout     = 30 * time.Second
 )
 
 // probeHosts are well-known, highly-available anycast resolvers reached by raw
@@ -40,6 +39,11 @@ var probeHosts = []string{
 	"8.8.8.8:53",
 	"9.9.9.9:53",
 }
+
+// probeRetryAttempts is derived, not hardcoded, so the "one check never outlasts
+// one polling interval" invariant holds even if dialTimeout/probeHosts/defaultInterval
+// are retuned later without anyone re-deriving the number by hand.
+var probeRetryAttempts = maxProbeRetries(defaultInterval, dialTimeout, len(probeHosts))
 
 // active points at the running monitor, set when Start is called, so package-level
 // callers (e.g. IMachineApi.IsOnline) can query connectivity without a handle on
@@ -220,4 +224,26 @@ func stateName(up bool) string {
 		return "up"
 	}
 	return "down"
+}
+
+// maxProbeRetries returns the largest retry count N such that N worst-case probe
+// attempts (every host timing out) plus sdkutils.Retry's linear backoff between
+// them (attempt*2s each) still fit inside budget. Always returns at least 1.
+func maxProbeRetries(budget, perHostTimeout time.Duration, hosts int) int {
+	perAttempt := time.Duration(hosts) * perHostTimeout
+
+	n := 1
+	for {
+		backoff := time.Duration(n*(n-1)) * time.Second
+		total := time.Duration(n)*perAttempt + backoff
+		if total > budget {
+			break
+		}
+		n++
+	}
+
+	if n == 1 {
+		return 1
+	}
+	return n - 1
 }
