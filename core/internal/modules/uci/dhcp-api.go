@@ -9,6 +9,12 @@ import (
 	sdkapi "sdk/api"
 )
 
+// DnsmasqSection is the anonymous UCI section holding dnsmasq's instance-wide
+// options in /etc/config/dhcp (address, leasefile, dhcpscript, etc.). It must be
+// addressed by its unnamed selector (@dnsmasq[0]); a lookup by the literal name
+// "dnsmasq" never matches.
+const DnsmasqSection = "@dnsmasq[0]"
+
 type UciDhcpApi struct{}
 
 func NewUciDhcpApi() *UciDhcpApi {
@@ -112,10 +118,7 @@ func (self *UciDhcpApi) SetConfig(ifname string, cfg *sdkapi.DhcpCfg) error {
 // Returns slice with default /tmp/dhcp.leases if not configured.
 // Currently returns single file, but designed to support multiple files in future.
 func (self *UciDhcpApi) GetDnsmasqLeasesFiles() ([]string, error) {
-	// The dnsmasq section in /etc/config/dhcp is anonymous, so it must be
-	// addressed by its unnamed selector (@dnsmasq[0]); a lookup by the literal
-	// name "dnsmasq" never matches and silently falls back to the default below.
-	leasefiles, ok := UciTree.Get("dhcp", "@dnsmasq[0]", "leasefile")
+	leasefiles, ok := UciTree.Get("dhcp", DnsmasqSection, "leasefile")
 	if !ok || len(leasefiles) == 0 {
 		// Default to standard OpenWRT dnsmasq leases path
 		return []string{"/tmp/dhcp.leases"}, nil

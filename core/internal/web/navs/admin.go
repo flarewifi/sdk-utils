@@ -2,6 +2,7 @@ package navs
 
 import (
 	"core/internal/api"
+	"core/utils/tags"
 	"net/http"
 	sdkapi "sdk/api"
 )
@@ -53,7 +54,13 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Order: 1000, // First item in System category
 				Icon:  "<i class='bi bi-gear'></i>",
 			},
-			{
+		}
+
+		// Software updates are cloud-dependent and not registered as a route in
+		// devkit builds (see AdminRoutes) — keep the nav item out too rather than
+		// leaving a dead link in the sidebar.
+		if !tags.IsDevkit() {
+			systemNavs = append(systemNavs, sdkapi.AdminNavItemOpt{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Updates"),
 				RouteName: "admin:updates:index",
@@ -68,7 +75,10 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				},
 				Order: 2000, // Second item in System category
 				Icon:  "<i class='bi bi-cloud-arrow-down'></i>",
-			},
+			})
+		}
+
+		systemNavs = append(systemNavs, []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     g.CoreAPI.Translate("label", "Database"),
@@ -149,7 +159,7 @@ func SetAdminNavs(g *api.CoreGlobals) {
 				Order: 9100, // Very last item
 				Icon:  "<i class='bi bi-power'></i>",
 			},
-		}
+		}...)
 
 		themesNavs := []sdkapi.AdminNavItemOpt{
 			{

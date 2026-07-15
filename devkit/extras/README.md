@@ -30,7 +30,7 @@ rebuilt automatically on change.
 | Service | URL | Purpose |
 |---------|-----|---------|
 | Admin & captive portal | <http://localhost:3000> | The Flarewifi machine UI where your plugin renders (admin dashboard + captive portal). |
-| Admin & portal (HTTPS) | <https://localhost:443> | Same as above over TLS (self-signed cert generated on first boot). |
+| Admin & portal (HTTPS) | <https://localhost:3443> | Same as above over TLS (self-signed cert generated on first boot). |
 | Live reload | `ws://localhost:8000` | Drives automatic browser refresh when a plugin rebuild completes. Used by the dev loop; not browsed directly. |
 | Plugin API docs | <http://localhost:3002> | The Flarewifi plugin SDK / API documentation site (mkdocs), live-reloaded from `sdk/mkdocs`. |
 | SQLite browser | <http://localhost:3001> | Browse and query the devkit's SQLite database (`data/db/database.sqlite`). |

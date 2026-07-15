@@ -10,15 +10,17 @@ package env
 // (twirp_service_devkit.go). These values exist only to satisfy the URL helpers.
 // Plugins are unaffected; they carry their own configuration.
 const (
-	GO_ENV     int8 = ENV_DEV
-	HTTP_PORT  int  = 3000
-	HTTPS_PORT int  = 443
+	GO_ENV    int8 = ENV_DEV
+	HTTP_PORT int  = 3000
+	// Matches the in-repo dev stack's HTTPS_PORT (env_dev.go) so a devkit plugin
+	// author sees the same https://localhost:3443 admin URL as core contributors.
+	HTTPS_PORT int = 3443
 	// HTTPS-consistent base: ForceHTTPS serves the admin/portal over TLS (the
-	// self-signed https://localhost:443), so absolute URLs built from this base —
+	// self-signed https://localhost:3443), so absolute URLs built from this base —
 	// notably the login form action via UrlForRoute("auth:login") — must also be
 	// https. With an http base the form posts cross-scheme from the https page and
 	// Chromium blocks it as an insecure form submission.
-	LocalBaseURL  string = "https://localhost"
+	LocalBaseURL  string = "https://localhost:3443"
 	RPC_TOKEN     string = ""
 	RPC_PROXY_URL string = ""
 	SERVER_DOMAIN string = "localhost"

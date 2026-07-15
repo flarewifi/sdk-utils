@@ -66,7 +66,7 @@ import (
 
 func main() {}
 
-func Init(api sdkapi.IPluginApi) {
+func Init(api sdkapi.IPluginApi) error {
 	// Your plugin code here
 	adminRouter := api.Http().Router().AdminRouter(nil)
 
@@ -75,18 +75,20 @@ func Init(api sdkapi.IPluginApi) {
 		api.Http().Response().AdminView(w, r, sdkapi.ViewPage{
 			PageContent: homePage,
 		})
-	}).Name("home.index")
+	}).Name("admin:home.index")
 
 	api.Http().Navs().AdminNavsFactory(func(r *http.Request) []sdkapi.AdminNavItemOpt {
 		return []sdkapi.AdminNavItemOpt{
 			{
 				Category:  sdkapi.NavCategorySystem,
 				Label:     "My Plugin",
-				RouteName: "home.index",
+				RouteName: "admin:home.index",
 				Keywords:  []string{"sample", "home"},
 			},
 		}
 	})
+
+	return nil
 }
 `, modUri)
 
@@ -151,7 +153,7 @@ The license for this software is still under consideration and will be added in 
 	}
 
 	// Create default images directory
-	pubkeep := filepath.Join(pluginDir, "resources/assets/plublic/.keep")
+	pubkeep := filepath.Join(pluginDir, "resources/assets/public/.keep")
 	if err := os.MkdirAll(filepath.Dir(pubkeep), sdkutils.PermDir); err != nil {
 		panic(err)
 	}

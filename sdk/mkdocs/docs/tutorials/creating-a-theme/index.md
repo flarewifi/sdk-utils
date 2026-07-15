@@ -71,9 +71,9 @@ The `go.mod` file should already be created by the `create-plugin` command. Upda
 ```go
 module com.example.my-theme
 
-go 1.21
+go 1.26
 
-toolchain go1.21.13
+toolchain go1.26.4
 
 require (
     github.com/a-h/templ v0.2.793

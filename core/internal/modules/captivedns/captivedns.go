@@ -14,14 +14,6 @@ import (
 	cmd "core/utils/shell"
 )
 
-const (
-	// dnsmasqSection is the UCI section that holds dnsmasq's `address` list.
-	// The dnsmasq section in /etc/config/dhcp is anonymous, so it must be
-	// addressed by its unnamed selector (@dnsmasq[0]); a lookup by the literal
-	// name "dnsmasq" never matches and makes every Set on it fail.
-	dnsmasqSection = "@dnsmasq[0]"
-)
-
 // Setup points the captive-portal hostname at the router's main LAN IP for
 // connected clients (split-horizon) and advertises the RFC 8908 captive-portal
 // API URL via DHCP option 114 on the DHCP pool of EVERY captive interface —
@@ -79,14 +71,14 @@ func Setup(lanIP string, captiveIfnames []string, freeIfnames []string) error {
 // replacing any stale entry for the same domain.
 func setSplitHorizon(domain, lanIP string) error {
 	entry := fmt.Sprintf("/%s/%s", domain, lanIP)
-	existing, _ := uci.UciTree.Get("dhcp", dnsmasqSection, "address")
+	existing, _ := uci.UciTree.Get("dhcp", uci.DnsmasqSection, "address")
 	list := append(filterOut(existing, func(v string) bool {
 		return strings.HasPrefix(v, "/"+domain+"/")
 	}), entry)
 
 	// Write as a UCI list: OpenWRT's dnsmasq init reads `address` via
 	// config_list_foreach, which ignores the single-value `option` form.
-	if ok := uci.UciTree.SetType("dhcp", dnsmasqSection, "address", gouci.TypeList, list...); !ok {
+	if ok := uci.UciTree.SetType("dhcp", uci.DnsmasqSection, "address", gouci.TypeList, list...); !ok {
 		return fmt.Errorf("set dnsmasq address for %s", domain)
 	}
 	return nil

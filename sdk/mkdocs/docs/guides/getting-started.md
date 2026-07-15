@@ -9,11 +9,9 @@ You can download docker from the official [docker website](https://docs.docker.c
 
 ## 2. Download the SDK {#download-sdk}
 
-Download the latest **devkit-x.x.xzip** file from [devkit releases repository](https://github.com/flarewifi/devkit/releases).
-Instructions for downloading the SDK:
+Download the latest **flarewifi-devkit-x.x.x.zip** file from the [devkit releases repository](https://github.com/flarewifi/devkit/releases).
 
-- If you are using Windows on x86/64 CPU architecture (non-arm CPU), choose the file with **amd64** in the file name.
-- If you are using Windows on Arm or Mac OS on M-series CPU, choose the file with **arm64** in the file name.
+This single zip bundles native binaries for both `amd64` and `arm64` and automatically selects the matching set for your machine when the container starts — there is no separate file to pick per CPU architecture. It runs as-is on Windows, Mac (Intel and Apple Silicon) and Linux (x86 and ARM).
 
 ![Download Flarewifi SDK](./img/01-select-latest-release.png)
 
@@ -52,5 +50,5 @@ The server will automatically recompile and restart when you make changes to any
 
 ## 4. Upgrading The SDK {#upgrade-sdk}
 
-To upgrade the SDK, download the latest release from the [devkit releases page](https://github.com/flarewifi/devkit/releases) and extract the contents to your desired destination. Then copy your plugin directory into the `plugins` directory inside the new SDK. Make sure to stop the previous SDK runtime then [start](#start-sdk) the new SDK runtime.
+To upgrade the SDK, download the latest release from the [devkit releases page](https://github.com/flarewifi/devkit/releases) and extract the contents to your desired destination. Then copy your plugin directory into the `data/plugins/devel` directory inside the new SDK (see [Plugin file structure](./creating-a-plugin.md#file-structure)). Make sure to stop the previous SDK runtime then [start](#start-sdk) the new SDK runtime.
 

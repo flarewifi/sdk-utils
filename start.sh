@@ -16,7 +16,6 @@
 # update are left untouched. The .staged_complete marker is written by the app
 # only after the full set is staged, so a partial download is never applied.
 
-export GOTOOLCHAIN=go1.21.13
 export FLARE_DIR="/opt/flarewifi"
 export APP_DIR="$FLARE_DIR/app"
 export APP_TMP="$FLARE_DIR/tmp"

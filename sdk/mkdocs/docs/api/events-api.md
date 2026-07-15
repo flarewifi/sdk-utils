@@ -344,6 +344,31 @@ api.Events().OnBoot(sdkapi.EventBoot, func(ctx context.Context) error {
 })
 ```
 
+### OnDhcpEvent
+
+Registers a callback that fires whenever dnsmasq reports a DHCPv4 lease event via its **dhcp-script** hook (see [OpenWrt's DHCP docs](https://openwrt.org/docs/guide-user/base-system/dhcp)). The callback runs synchronously in the core's DHCP listener goroutine, in registration order; its returned error is logged but does not stop other callbacks and **cannot veto the lease change** — it has already happened by the time dnsmasq calls the hook.
+
+A callback that does slow work must spawn its own goroutine so it does not stall the listener.
+
+> **IPv6 is not covered.** On this machine IPv6 leases are served by `odhcpd`, not dnsmasq, using a separate `leasetrigger` hook already wired to the stock OpenWrt hosts-file/NDP bookkeeping — `OnDhcpEvent` only ever fires for DHCPv4.
+
+**Available events:**
+
+| Event | Constant | Description |
+|-------|----------|--------------|
+| `"dhcp:lease_add"` | `sdkapi.EventDhcpLeaseAdd` | dnsmasq handed a brand-new lease to a client |
+| `"dhcp:lease_old"` | `sdkapi.EventDhcpLeaseOld` | An existing lease was renewed/rebound, or replayed because dnsmasq itself started/reloaded |
+| `"dhcp:lease_del"` | `sdkapi.EventDhcpLeaseDel` | A lease was destroyed — released by the client, expired, or removed administratively |
+
+```go
+api.Events().OnDhcpEvent(sdkapi.EventDhcpLeaseAdd, func(ctx context.Context, data sdkapi.DhcpEventData) error {
+    api.Logger().Info(fmt.Sprintf("new DHCP lease: %s -> %s (%s)", data.Mac, data.Ip, data.Hostname))
+    return nil
+})
+```
+
+> `data.Hostname` is only populated for `EventDhcpLeaseAdd`, and for `EventDhcpLeaseOld` when a client actually resumed/renewed its lease — dnsmasq does not persist hostnames in its lease database, so a cold-restart replay of `EventDhcpLeaseOld` leaves it empty. `data.Interface` is likewise empty for that same restart-replay case. `data.LeaseExpires` is zero for `EventDhcpLeaseDel`.
+
 ## Supporting Types
 
 ### SessionEventData
@@ -374,6 +399,21 @@ type EventClientMergeData struct {
 ```
 
 `Source` is populated only for `OnClientBeforeMerge` (where the device still exists). In `OnClientMerge` the source row is already gone, so `Source` is `nil` — use `SourceDeviceID`/`SourceDeviceUUID` there.
+
+### DhcpEventData
+
+The data received by `OnDhcpEvent` callbacks — the lease details dnsmasq passed to its dhcp-script hook.
+
+```go
+type DhcpEventData struct {
+    Mac          string    // Client hardware MAC address
+    Ip           string    // Leased IPv4 address
+    Hostname     string    // Hostname the client supplied, if any (see OnDhcpEvent notes above)
+    Interface    string    // Interface the DHCP request arrived on (e.g. "br-lan")
+    Tags         string    // dnsmasq config tags matched for this transaction, space-separated
+    LeaseExpires time.Time // Lease expiry time; zero for EventDhcpLeaseDel
+}
+```
 
 ### PurchaseEventData
 
@@ -476,4 +516,12 @@ type PurchaseEventData struct {
 | Constant | Value |
 |----------|-------|
 | `sdkapi.EventBoot` | `"boot:complete"` |
+
+### DhcpEvent Constants
+
+| Constant | Value |
+|----------|-------|
+| `sdkapi.EventDhcpLeaseAdd` | `"dhcp:lease_add"` |
+| `sdkapi.EventDhcpLeaseOld` | `"dhcp:lease_old"` |
+| `sdkapi.EventDhcpLeaseDel` | `"dhcp:lease_del"` |
 

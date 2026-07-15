@@ -5,7 +5,7 @@
 # docker-compose.yml that the packager copies in. Bundled helper services: the
 # plugin API documentation site (mkdocs) and a SQLite database browser.
 #
-# The flare server binds :3000 (http) and :443 (https, self-signed cert generated
+# The flare server binds :3000 (http) and :3443 (https, self-signed cert generated
 # on first boot under data/storage/certs).
 #
 # Architecture: the devkit ships native binaries for BOTH linux/amd64 and
@@ -33,9 +33,9 @@ services:
       - GOMODCACHE=/var/cache/go/mod
       - TZ=${TZ:-UTC}
     ports:
-      - "3000:3000" # admin + captive portal (http)
-      - "443:443"   # admin + captive portal (https, self-signed)
-      - "8000:8000" # livereload websocket
+      - "3000:3000"   # admin + captive portal (http)
+      - "3443:3443"   # admin + captive portal (https, self-signed)
+      - "8000:8000"   # livereload websocket
 
   # Plugin API documentation site (mkdocs-material), served at
   # http://localhost:3002. Built from the bundled sdk/mkdocs and live-reloaded as

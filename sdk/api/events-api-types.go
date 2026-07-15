@@ -6,6 +6,8 @@
 
 package sdkapi
 
+import "time"
+
 // SessionEvent represents the type of a session event.
 type SessionEvent string
 
@@ -36,6 +38,12 @@ type InternetEvent string
 
 // BootEvent represents a milestone in the machine's boot sequence.
 type BootEvent string
+
+// DhcpEvent represents a DHCPv4 lease lifecycle event, reported by dnsmasq's
+// dhcp-script hook (see https://openwrt.org/docs/guide-user/base-system/dhcp).
+// IPv6 leases are handled by odhcpd on this machine, not dnsmasq, so they are
+// not covered here.
+type DhcpEvent string
 
 // Session events.
 const (
@@ -262,6 +270,54 @@ const (
 	// work that should only start once the machine is fully booted.
 	EventBoot BootEvent = "boot:complete"
 )
+
+// DHCPv4 lease events (used with OnDhcpEvent). These map 1:1 onto the three
+// actions dnsmasq's dhcp-script hook invokes as its $1 argument.
+const (
+	// EventDhcpLeaseAdd fires when dnsmasq hands a brand-new lease to a client.
+	// Data.Hostname is populated if the client supplied one.
+	EventDhcpLeaseAdd DhcpEvent = "dhcp:lease_add"
+
+	// EventDhcpLeaseOld fires for an existing lease: a client renewal/rebind, or a
+	// replay of every current lease when dnsmasq itself starts or reloads. Data.Hostname
+	// is populated only when a client actually resumed/renewed — not on a cold dnsmasq
+	// restart replay, since dnsmasq does not persist hostnames in its lease database.
+	EventDhcpLeaseOld DhcpEvent = "dhcp:lease_old"
+
+	// EventDhcpLeaseDel fires when a lease is destroyed: released by the client,
+	// expired, or removed administratively. Data.Hostname is never populated.
+	EventDhcpLeaseDel DhcpEvent = "dhcp:lease_del"
+)
+
+// DhcpEventData carries the lease details dnsmasq passed to its dhcp-script hook
+// for a single DHCPv4 event.
+type DhcpEventData struct {
+	// Mac is the client's hardware MAC address.
+	Mac string
+
+	// Ip is the leased IPv4 address.
+	Ip string
+
+	// Hostname is the hostname the client supplied, if any — see the per-event doc
+	// comments above for when dnsmasq omits it.
+	Hostname string
+
+	// Interface is the name of the interface the DHCP request arrived on (e.g.
+	// "br-lan"). Empty for an EventDhcpLeaseOld replay emitted when dnsmasq itself
+	// restarts, since there is no live request to attribute it to.
+	Interface string
+
+	// Tags lists the dnsmasq config tags matched for this DHCP transaction (see
+	// OpenWrt's dhcp "tag"/"tag:" option), space-separated as dnsmasq supplies them.
+	// Empty if no tags matched.
+	Tags string
+
+	// LeaseExpires is the lease's expiry time, computed from dnsmasq's
+	// DNSMASQ_TIME_REMAINING (seconds remaining, always set regardless of whether the
+	// RTC-dependent DNSMASQ_LEASE_EXPIRES is available) at the moment the event was
+	// observed. Zero for EventDhcpLeaseDel, where the lease has no remaining time.
+	LeaseExpires time.Time
+}
 
 // SessionEventData represents the data associated with a session event.
 type SessionEventData struct {
