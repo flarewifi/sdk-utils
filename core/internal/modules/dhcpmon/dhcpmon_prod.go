@@ -5,6 +5,7 @@ package dhcpmon
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -16,12 +17,6 @@ import (
 )
 
 const (
-	// dnsmasqSection is the anonymous UCI section holding dnsmasq's instance-wide
-	// options in /etc/config/dhcp. It must be addressed by its unnamed selector
-	// (@dnsmasq[0]); a lookup by the literal name "dnsmasq" never matches. Mirrors
-	// core/internal/modules/captivedns's dnsmasqSection constant.
-	dnsmasqSection = "@dnsmasq[0]"
-
 	// scriptPath is where the dhcp-script is written. dnsmasq execs it on every
 	// lease add/old/del; its only job is to forward the event into eventFifoPath.
 	scriptPath = "/tmp/flare_dhcp_script.sh"
@@ -31,6 +26,12 @@ const (
 	// arrive with no unbounded growth or rotation to manage — same approach as
 	// core/internal/modules/ubus's hostapd_cli bridge.
 	eventFifoPath = "/tmp/flare_dhcp_events"
+
+	// reconnectDelay is how long readEvents waits before reopening the FIFO after
+	// a read error, so a transient hiccup doesn't spin-loop but also doesn't
+	// permanently stop event delivery. Matches the ubus wifi-event bridge's
+	// reconnectDelay.
+	reconnectDelay = 5 * time.Second
 )
 
 // scriptContent forwards the dhcp-script's positional args and the DNSMASQ_*
@@ -45,42 +46,56 @@ printf '%s|%s|%s|%s|%s|%s|%s\n' "$1" "$2" "$3" "$4" "${DNSMASQ_INTERFACE}" "${DN
 
 // Start writes the dhcp-script, points dnsmasq at it via UCI, and begins reading
 // lease events from the FIFO. Safe to call once; subsequent calls are no-ops.
-// ctx is not retained past setup — the read loop runs for the process lifetime,
-// same as netmon's monitor and the ubus wifi-event bridge.
+// Setup (UCI writes + a blocking dnsmasq restart) runs in its own goroutine so a
+// stalled service restart cannot stall the caller — jobs.Init() calls this
+// synchronously during boot. ctx is not retained past setup — the read loop runs
+// for the process lifetime, same as netmon's monitor and the ubus wifi-event
+// bridge.
 func (m *Monitor) Start(ctx context.Context) {
 	if !m.started.CompareAndSwap(false, true) {
 		return
 	}
 
-	if err := m.setup(); err != nil {
-		m.logError(fmt.Sprintf("dhcpmon: setup failed: %v", err))
-		return
-	}
-
-	go m.readEvents()
+	go func() {
+		if err := m.setup(); err != nil {
+			m.logError(fmt.Sprintf("dhcpmon: setup failed: %v", err))
+			return
+		}
+		m.run()
+	}()
 }
 
 // =============================================================================
 // HELPER FUNCTIONS (internal)
 // =============================================================================
 
-// setup writes the dhcp-script, creates the FIFO, and points dnsmasq's
-// dhcpscript option at the script, committing and restarting dnsmasq so the new
-// option takes effect.
+// setup writes the dhcp-script, ensures the FIFO exists, and points dnsmasq's
+// dhcpscript option at the script. The UCI write + dnsmasq restart are skipped
+// entirely when dhcpscript is already set correctly, so re-running setup on every
+// process restart (e.g. a dev reflex rebuild, or a crash-loop) doesn't force a
+// disruptive dnsmasq restart when nothing actually changed.
 func (m *Monitor) setup() error {
 	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
 		return fmt.Errorf("write dhcp-script: %w", err)
 	}
 
-	os.Remove(eventFifoPath)
-	if err := syscall.Mkfifo(eventFifoPath, 0666); err != nil {
+	if err := syscall.Mkfifo(eventFifoPath, 0666); err != nil && !errors.Is(err, syscall.EEXIST) {
 		return fmt.Errorf("create dhcp event fifo: %w", err)
 	}
 
-	if ok := uci.UciTree.Set("dhcp", dnsmasqSection, "dhcpscript", scriptPath); !ok {
-		return fmt.Errorf("set dhcp.%s.dhcpscript", dnsmasqSection)
+	current, _ := uci.UciTree.Get("dhcp", uci.DnsmasqSection, "dhcpscript")
+	if len(current) == 1 && current[0] == scriptPath {
+		return nil
+	}
+
+	if ok := uci.UciTree.Set("dhcp", uci.DnsmasqSection, "dhcpscript", scriptPath); !ok {
+		return fmt.Errorf("set dhcp.%s.dhcpscript", uci.DnsmasqSection)
 	}
 	if err := uci.UciTree.Commit(); err != nil {
+		// Set() already staged the change on the shared, process-lifetime
+		// UciTree singleton; revert it so an unrelated later Commit() elsewhere
+		// in the app can't silently flush this half-applied change to disk.
+		uci.UciTree.Revert("dhcp")
 		return fmt.Errorf("uci commit dhcp: %w", err)
 	}
 
@@ -94,15 +109,27 @@ func (m *Monitor) setup() error {
 	return nil
 }
 
-// readEvents tails the FIFO for the process lifetime, parsing and emitting each
-// line. Opening O_RDWR (rather than O_RDONLY) keeps a reader held open across
-// writer churn, so the dhcp-script's blocking open-for-append never stalls
-// waiting for a reader — same technique as the ubus hostapd_cli bridge.
-func (m *Monitor) readEvents() {
+// run tails the FIFO for the process lifetime. If readEvents returns (the FIFO
+// read failed), it waits reconnectDelay and reopens it, so a transient I/O error
+// pauses event delivery instead of permanently stopping it.
+func (m *Monitor) run() {
+	for {
+		if err := m.readEvents(); err != nil {
+			m.logError(fmt.Sprintf("dhcpmon: %v, reconnecting in %s", err, reconnectDelay))
+		}
+		time.Sleep(reconnectDelay)
+	}
+}
+
+// readEvents opens the FIFO and parses/emits each line until a read error
+// occurs, which it returns to the caller. Opening O_RDWR (rather than O_RDONLY)
+// keeps a reader held open across writer churn, so the dhcp-script's blocking
+// open-for-append never stalls waiting for a reader — same technique as the ubus
+// hostapd_cli bridge.
+func (m *Monitor) readEvents() error {
 	file, err := os.OpenFile(eventFifoPath, os.O_RDWR, 0666)
 	if err != nil {
-		m.logError(fmt.Sprintf("dhcpmon: open event fifo: %v", err))
-		return
+		return fmt.Errorf("open dhcp event fifo: %w", err)
 	}
 	defer file.Close()
 
@@ -110,11 +137,10 @@ func (m *Monitor) readEvents() {
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			m.logError(fmt.Sprintf("dhcpmon: read event fifo: %v", err))
-			return
+			return fmt.Errorf("read dhcp event fifo: %w", err)
 		}
 
-		event, data, ok := parseLeaseLine(strings.TrimRight(line, "\n"), time.Now())
+		event, data, ok := parseLeaseLine(strings.TrimRight(line, "\n"), time.Now().UTC())
 		if !ok {
 			continue
 		}
