@@ -68,6 +68,9 @@ func Init(g *api.CoreGlobals) {
 
 	// Initialize WiFi state tracker and start WiFi event detection
 	logJobErr(g, InitAndStartWifiMgr(scheduler, g.WifiMgr))
+
+	// Start DHCP lease-event listener (dnsmasq dhcp-script bridge)
+	StartDhcpMonitor(g)
 }
 
 // logJobErr reports a scheduler registration failure. These are static,

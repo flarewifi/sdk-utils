@@ -44,6 +44,7 @@ type EventsManager struct {
 	voucherBatchCallbacks      map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error
 	internetCallbacks          map[sdkapi.InternetEvent][]func(context.Context) error
 	bootCallbacks              map[sdkapi.BootEvent][]func(context.Context) error
+	dhcpCallbacks              map[sdkapi.DhcpEvent][]func(context.Context, sdkapi.DhcpEventData) error
 }
 
 // NewEventsManager constructs an EventsManager ready for use.
@@ -58,6 +59,7 @@ func NewEventsManager() *EventsManager {
 		voucherBatchCallbacks: make(map[sdkapi.VoucherBatchEvent][]func(context.Context, sdkapi.IVoucherBatch) error),
 		internetCallbacks:     make(map[sdkapi.InternetEvent][]func(context.Context) error),
 		bootCallbacks:         make(map[sdkapi.BootEvent][]func(context.Context) error),
+		dhcpCallbacks:         make(map[sdkapi.DhcpEvent][]func(context.Context, sdkapi.DhcpEventData) error),
 	}
 }
 
@@ -143,6 +145,14 @@ func (em *EventsManager) OnBootEvent(event sdkapi.BootEvent, cb func(context.Con
 	em.mu.Lock()
 	defer em.mu.Unlock()
 	em.bootCallbacks[event] = append(em.bootCallbacks[event], cb)
+}
+
+// OnDhcpEvent registers a callback that fires whenever dnsmasq reports a DHCPv4
+// lease event via its dhcp-script hook.
+func (em *EventsManager) OnDhcpEvent(event sdkapi.DhcpEvent, cb func(context.Context, sdkapi.DhcpEventData) error) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	em.dhcpCallbacks[event] = append(em.dhcpCallbacks[event], cb)
 }
 
 // =============================================================================
@@ -270,6 +280,18 @@ func (em *EventsManager) EmitBootEvent(ctx context.Context, event sdkapi.BootEve
 		}
 	}
 	return firstErr
+}
+
+// EmitDhcpEvent dispatches a DHCPv4 lease event to all registered callbacks
+// synchronously. The lease change has already happened by the time dnsmasq's
+// dhcp-script hook runs, so unlike the "before" events elsewhere in this file, a
+// returned error here is informational only — the caller (the DHCP listener) logs
+// it but there is nothing left to abort.
+func (em *EventsManager) EmitDhcpEvent(ctx context.Context, event sdkapi.DhcpEvent, data sdkapi.DhcpEventData) error {
+	em.mu.RLock()
+	cbs := append([]func(context.Context, sdkapi.DhcpEventData) error(nil), em.dhcpCallbacks[event]...)
+	em.mu.RUnlock()
+	return dispatch(ctx, cbs, data)
 }
 
 // =============================================================================

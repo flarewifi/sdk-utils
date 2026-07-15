@@ -197,4 +197,17 @@ type IEventsApi interface {
 	//
 	// Available events: EventBoot.
 	OnBootEvent(event BootEvent, callback func(ctx context.Context) error)
+
+	// OnDhcpEvent registers a callback that fires whenever dnsmasq reports a DHCPv4
+	// lease event via its dhcp-script hook. The callback runs synchronously in the
+	// core's DHCP listener goroutine, in registration order; its returned error is
+	// logged but does not stop other callbacks and cannot veto the lease change (it
+	// has already happened by the time dnsmasq calls the hook). A callback that does
+	// slow work must spawn its own goroutine so it does not stall the listener.
+	//
+	// IPv6 leases are handled by odhcpd on this machine, not dnsmasq, so they are not
+	// covered by this event.
+	//
+	// Available events: EventDhcpLeaseAdd, EventDhcpLeaseOld, EventDhcpLeaseDel.
+	OnDhcpEvent(event DhcpEvent, callback func(ctx context.Context, data DhcpEventData) error)
 }
