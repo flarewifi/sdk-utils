@@ -99,19 +99,32 @@ func CheckPluginUpdates(g *api.CoreGlobals) ([]PluginUpdate, error) {
 			continue
 		}
 
-		// Installed version + display name come from the loaded plugin.
-		p, ok := g.PluginMgr.FindByPkg(meta.Package)
-		if !ok {
+		// Installed version + display name normally come from the loaded plugin.
+		var name, version string
+		if p, ok := g.PluginMgr.FindByPkg(meta.Package); ok {
+			info := p.Info()
+			name, version = info.Name, info.Version
+		} else if plugins.IsUpdateSkipped(meta.Package) {
+			// Skipped during a prior software update (see plugins.MarkUpdateSkipped):
+			// the boot loader withholds its stale, ABI-mismatched .so, so it's absent
+			// from PluginMgr. Its plugin.json is still on disk though, so read it
+			// directly -- otherwise the failed update would silently vanish from every
+			// future check instead of being offered again until it rebuilds cleanly.
+			info, err := sdkutils.GetPluginInfoFromPath(plugins.GetInstallPath(meta.Package))
+			if err != nil {
+				continue
+			}
+			name, version = info.Name, info.Version
+		} else {
 			continue
 		}
-		info := p.Info()
 
-		current, err := semver.NewVersion(info.Version)
+		current, err := semver.NewVersion(version)
 		if err != nil {
-			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: bad current version %q for %s: %v", info.Version, meta.Package, err))
+			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("plugin update check: bad current version %q for %s: %v", version, meta.Package, err))
 			continue
 		}
-		pendings = append(pendings, pendingUpdate{pkg: meta.Package, name: info.Name, current: current, isMeta: false})
+		pendings = append(pendings, pendingUpdate{pkg: meta.Package, name: name, current: current, isMeta: false})
 	}
 
 	updateList := []PluginUpdate{}

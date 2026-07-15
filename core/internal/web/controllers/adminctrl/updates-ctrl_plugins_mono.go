@@ -14,7 +14,7 @@ import (
 
 func checkPluginUpdatesList(g *api.CoreGlobals) []updates.PluginUpdate { return nil }
 
-func renderPluginUpdatesOOB(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, list []updates.PluginUpdate) {
+func renderPluginUpdatesOOB(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, list []updates.PluginUpdate, coreCurrentVersion string, coreNewVersion string) {
 }
 
 // hasPluginUpdates is always false on mono — there is no plugin-only upgrade path.

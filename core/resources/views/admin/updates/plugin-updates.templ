@@ -6,28 +6,48 @@ import sdkapi "sdk/api"
 import "core/internal/modules/updates"
 
 // PluginUpdatesSection renders an empty placeholder on the Software Updates page.
-// Plugins are hidden until the user runs "Check for updates"; the unified check
+// Updates are hidden until the user runs "Check for updates"; the unified check
 // then fills #plugin-updates-list (via PluginUpdatesListPartial, an out-of-band
-// swap) with ONLY the plugins that have a newer version. The empty container must
-// exist up front so the OOB swap has a target to replace. There is no per-plugin
-// update action.
+// swap) with the pending core update (if any) plus ONLY the plugins that have a
+// newer version. The empty container must exist up front so the OOB swap has a
+// target to replace. There is no per-plugin update action.
 templ PluginUpdatesSection(api sdkapi.IPluginApi) {
 	<div id="plugin-updates-list"></div>
 }
 
-// PluginUpdatesListPartial is returned as an out-of-band swap after a check. The
-// caller passes ONLY the plugins that have an update available; when that list is
-// empty nothing is rendered, so the section stays hidden.
-templ PluginUpdatesListPartial(api sdkapi.IPluginApi, list []updates.PluginUpdate) {
+// PluginUpdatesListPartial is returned as an out-of-band swap after a check. It
+// lists the pending core update first (coreNewVersion == "" means no core update),
+// followed by ONLY the plugins that have an update available, so the admin sees
+// everything "Upgrade Now" will apply in one place. When there is nothing to show,
+// nothing is rendered.
+templ PluginUpdatesListPartial(api sdkapi.IPluginApi, coreCurrentVersion string, coreNewVersion string, list []updates.PluginUpdate) {
 	<div id="plugin-updates-list" hx-swap-oob="true">
-		if len(list) > 0 {
-			<h5 class="fw-semibold mb-3 mt-4">{ api.Translate("label", "Plugins to update") }</h5>
+		if coreNewVersion != "" || len(list) > 0 {
+			<h5 class="fw-semibold mb-3 mt-4">{ api.Translate("label", "Updates to install") }</h5>
 			<div class="list-group list-group-flush">
+				if coreNewVersion != "" {
+					@coreUpdateRow(api, coreCurrentVersion, coreNewVersion)
+				}
 				for _, p := range list {
 					@pluginUpdateRow(api, p)
 				}
 			</div>
 		}
+	</div>
+}
+
+templ coreUpdateRow(api sdkapi.IPluginApi, currentVersion string, newVersion string) {
+	<div class="list-group-item px-0 py-2">
+		<div class="d-flex align-items-center justify-content-between gap-3">
+			<span class="fw-semibold">
+				{ api.Translate("label", "Core software") }
+				<span class="badge text-bg-success ms-1 align-middle">{ api.Translate("label", "Core") }</span>
+			</span>
+			<span class="small text-muted">
+				<code>{ currentVersion }</code>
+				<span class="ms-1">&rarr; <code>{ newVersion }</code></span>
+			</span>
+		</div>
 	</div>
 }
 

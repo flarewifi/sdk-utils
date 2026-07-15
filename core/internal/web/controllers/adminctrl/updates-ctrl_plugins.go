@@ -34,9 +34,12 @@ func checkPluginUpdatesList(g *api.CoreGlobals) []updates.PluginUpdate {
 
 // renderPluginUpdatesOOB renders the (already fetched) plugin list as an
 // out-of-band swap so the unified "Check for updates" button refreshes both the
-// core result and the plugin list in a single response.
-func renderPluginUpdatesOOB(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, list []updates.PluginUpdate) {
-	if err := updatesview.PluginUpdatesListPartial(g.CoreAPI, list).Render(r.Context(), w); err != nil {
+// core result and the plugin list in a single response. coreCurrentVersion/
+// coreNewVersion surface the pending core update (if any) as the first row of the
+// same list, alongside the plugin versions; pass coreNewVersion == "" when there is
+// no core update.
+func renderPluginUpdatesOOB(g *api.CoreGlobals, w http.ResponseWriter, r *http.Request, list []updates.PluginUpdate, coreCurrentVersion string, coreNewVersion string) {
+	if err := updatesview.PluginUpdatesListPartial(g.CoreAPI, coreCurrentVersion, coreNewVersion, list).Render(r.Context(), w); err != nil {
 		g.CoreAPI.LoggerAPI.Error(err.Error())
 	}
 }

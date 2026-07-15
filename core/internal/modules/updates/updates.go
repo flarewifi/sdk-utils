@@ -464,10 +464,12 @@ func AwaitingPluginConfirm() bool {
 }
 
 // PluginBuildFailure is one row of the build-failure confirmation dialog: the
-// package that failed and a clean, human-readable reason (the cloud's message for a
-// disabled plugin or a compile error, or the staging error for a local plugin).
+// package that failed, its human-readable display name, and a clean reason (the
+// cloud's message for a disabled plugin or a compile error, or the staging error
+// for a local plugin).
 type PluginBuildFailure struct {
 	Package string
+	Name    string
 	Reason  string
 }
 

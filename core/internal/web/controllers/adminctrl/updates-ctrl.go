@@ -158,8 +158,9 @@ func QuerySoftwareUpdatesCtrl(g *api.CoreGlobals) http.HandlerFunc {
 		page.Render(r.Context(), w)
 
 		// Non-mono builds also fill the plugin update list via an OOB swap in the
-		// same response. No-op on mono (see updates-ctrl_plugins_mono.go).
-		renderPluginUpdatesOOB(g, w, r, outdated)
+		// same response, with the pending core update (if any) listed alongside the
+		// plugin versions. No-op on mono (see updates-ctrl_plugins_mono.go).
+		renderPluginUpdatesOOB(g, w, r, outdated, update.CurrentVersion, update.NewVersion)
 	}
 }
 
