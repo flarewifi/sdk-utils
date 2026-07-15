@@ -442,12 +442,21 @@ func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClient
 		return summary, nil
 	}
 
-	// Calculate elapsed time for the running session since resumed_at.
-	// Use a single GetSession() call and a single ResumedAt() snapshot to avoid
-	// a race where SnapshotTimeCons sets resumedAt to nil between the nil check
-	// and the dereference, which would cause a nil pointer panic.
-	var elapsedSecs int = 0
+	// While paused, the counters are frozen: elapsed time was already baked into
+	// the persisted consumption by Pause() (so the DB summary is already correct)
+	// and no new data is consumed. Subtracting the live deltas here would
+	// double-count and keep shrinking remaining time/data for the whole pause, so
+	// return the DB totals as-is for a paused session.
 	session := rs.GetSession()
+	if session.IsPaused() {
+		return summary, nil
+	}
+
+	// Calculate elapsed time for the running session since resumed_at.
+	// Use a single ResumedAt() snapshot to avoid a race where SnapshotTimeCons
+	// sets resumedAt to nil between the nil check and the dereference, which would
+	// cause a nil pointer panic.
+	var elapsedSecs int = 0
 	resumedAt := session.ResumedAt()
 	if resumedAt != nil {
 		elapsedSecs = int(time.Since(*resumedAt).Seconds())

@@ -43,6 +43,7 @@ SET
     consumption_mb = @consumption_mb,
     started_at = @started_at,
     resumed_at = @resumed_at,
+    paused_at = @paused_at,
     exp_days = @exp_days,
     down_mbits = @down_mbits,
     up_mbits = @up_mbits,
@@ -52,12 +53,17 @@ WHERE
 
 
 -- name: ResetAllResumedAt :exec
+-- Clears the running baseline for sessions that were live at shutdown so stale
+-- elapsed time isn't counted before they reconnect. Paused sessions (paused_at
+-- IS NOT NULL) are left untouched: their counters are frozen and their
+-- resumed_at baseline must survive the reboot to keep Status() == paused.
 UPDATE
   sessions
 SET
     resumed_at = NULL
 WHERE
-    resumed_at IS NOT NULL;
+    resumed_at IS NOT NULL
+    AND paused_at IS NULL;
 
 
 -- name: FindAvailableSessionForDevice :one
@@ -200,7 +206,10 @@ SET
     )) * 86400
   ) AS INTEGER)
 WHERE
-  resumed_at IS NOT NULL;
+  resumed_at IS NOT NULL
+  -- Skip paused sessions: their elapsed time was already baked into
+  -- consumption_secs by Pause(); re-baking here would double-count it.
+  AND paused_at IS NULL;
 
 
 -- name: GetAllSessions :many

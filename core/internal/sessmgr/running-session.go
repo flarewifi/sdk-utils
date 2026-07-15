@@ -504,6 +504,14 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 		return
 	}
 
+	// While the counters are paused, freeze data accounting entirely: don't add
+	// to the session's consumption, don't grow diffMb (which SessionSummary
+	// subtracts), and don't trip the consumed-stop check. IncDataCons is already
+	// a no-op when paused, but diffMb and the stop check are handled here.
+	if session.IsPaused() {
+		return
+	}
+
 	// Get network state atomically (no lock needed)
 	net := self.network.Load()
 

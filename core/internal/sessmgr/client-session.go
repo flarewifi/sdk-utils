@@ -148,9 +148,9 @@ func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
 		return 0
 	}
 
-	// If counter is paused, elapsed time was already snapshotted by StopCounter()
+	// If counter is paused, elapsed time was already snapshotted by Pause()
 	elapsed := 0
-	if !d.counterPaused {
+	if d.pausedAt == nil {
 		elapsed = int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
 	}
 	newData := d.copy()
@@ -158,8 +158,8 @@ func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
 
 	if clearResumed {
 		newData.resumedAt = nil
-		newData.counterPaused = false
-	} else if !d.counterPaused {
+		newData.pausedAt = nil
+	} else if d.pausedAt == nil {
 		now := time.Now().UTC()
 		newData.resumedAt = &now
 	}
@@ -168,51 +168,51 @@ func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
 	return elapsed
 }
 
-// StopCounter stops both time and data counters by snapshotting elapsed time into
-// stored consumption and pausing the counters. The session remains connected
+// Pause stops both time and data counters by snapshotting elapsed time into
+// stored consumption and setting pausedAt. The session remains connected
 // (resumedAt is preserved, TC rules and bandwidth limits stay active) but no
 // further time or data is counted. Caller must call PersistToDB() to persist the snapshot.
-func (self *ClientSession) StopCounter() {
+func (self *ClientSession) Pause() {
 	self.writeMu.Lock()
 	defer self.writeMu.Unlock()
 
 	d := self.data.Load()
-	if d.resumedAt == nil || d.counterPaused {
+	if d.resumedAt == nil || d.pausedAt != nil {
 		return
 	}
 
 	elapsed := int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
+	now := time.Now().UTC()
 	newData := d.copy()
 	newData.timeCons = d.timeCons + elapsed
-	newData.counterPaused = true
+	newData.pausedAt = &now
 	self.data.Store(&newData)
 }
 
-// ResumeCounter resumes both time and data counters after they were stopped by
-// StopCounter(). Resets resumedAt to now so elapsed time calculation starts fresh
-// from this point. Data consumption will be counted again from this point forward.
-func (self *ClientSession) ResumeCounter() {
+// Resume resumes both time and data counters after they were paused by Pause().
+// Clears pausedAt and resets resumedAt to now so elapsed time calculation starts
+// fresh from this point. Data consumption is counted again from here forward.
+func (self *ClientSession) Resume() {
 	self.writeMu.Lock()
 	defer self.writeMu.Unlock()
 
 	d := self.data.Load()
-	if !d.counterPaused {
+	if d.pausedAt == nil {
 		return
 	}
 
 	now := time.Now().UTC()
 	newData := d.copy()
-	newData.counterPaused = false
+	newData.pausedAt = nil
 	newData.resumedAt = &now
 	self.data.Store(&newData)
 }
 
-// IsCounterActive returns true if both time and data counters are actively counting.
-// The counters are active when the session is running (resumedAt is set) and
-// the counters have not been paused by StopCounter().
-func (self *ClientSession) IsCounterActive() bool {
-	d := self.data.Load()
-	return d.resumedAt != nil && !d.counterPaused
+// IsPaused returns true if the time/data counters are paused (Pause() was called
+// and Resume() has not been called since). While paused the session stays
+// connected but no time or data is counted.
+func (self *ClientSession) IsPaused() bool {
+	return self.data.Load().pausedAt != nil
 }
 
 // Status returns the session's current status: running, paused, or stopped.
@@ -221,7 +221,7 @@ func (self *ClientSession) Status() sdkapi.ClientSessionStatus {
 	if d.resumedAt == nil {
 		return sdkapi.ClielntSessionStatusStopped
 	}
-	if d.counterPaused {
+	if d.pausedAt != nil {
 		return sdkapi.ClientSessionStatusPaused
 	}
 	return sdkapi.ClientSessionStatusRunning
@@ -278,7 +278,7 @@ func (self *ClientSession) TimeConsumption() (sec int) {
 	consumption := d.timeCons
 
 	// If session is running and counter is not paused, add elapsed time since resumed_at
-	if d.resumedAt != nil && !d.counterPaused {
+	if d.resumedAt != nil && d.pausedAt == nil {
 		elapsed := int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
 		consumption += elapsed
 	}
@@ -428,7 +428,7 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 
 	// Calculate time consumption including elapsed time for running sessions
 	timeCons := d.timeCons
-	if d.resumedAt != nil && !d.counterPaused {
+	if d.resumedAt != nil && d.pausedAt == nil {
 		elapsed := int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
 		timeCons += elapsed
 	}
@@ -441,7 +441,7 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 	isExpired := self.isExpiredWithData(d)
 	isAvailable := self.isAvailableWithData(d)
 	isRunning := d.resumedAt != nil
-	isCounterActive := isRunning && !d.counterPaused
+	isPaused := d.pausedAt != nil
 	isConsumed := self.isConsumedWithData(d, sessionType, remainingTime, remainingData, isAvailable, isExpired)
 
 	return sdkapi.SessionData{
@@ -459,17 +459,18 @@ func (self *ClientSession) Data() sdkapi.SessionData {
 		ExpDays:        sdkutils.CopyIntPtr(d.expDays),
 		StartedAt:      sdkutils.CopyTimePtr(d.startedAt),
 		ResumedAt:      sdkutils.CopyTimePtr(d.resumedAt),
+		PausedAt:       sdkutils.CopyTimePtr(d.pausedAt),
 		CreatedAt:      d.createdAt,
 		UpdatedAt:      d.updatedAt,
 		// Pre-computed values
-		RemainingTime:   remainingTime,
-		RemainingData:   remainingData,
-		ExpiresAt:       expiresAt,
-		IsExpired:       isExpired,
-		IsAvailable:     isAvailable,
-		IsConsumed:      isConsumed,
-		IsRunning:       isRunning,
-		IsCounterActive: isCounterActive,
+		RemainingTime: remainingTime,
+		RemainingData: remainingData,
+		ExpiresAt:     expiresAt,
+		IsExpired:     isExpired,
+		IsAvailable:   isAvailable,
+		IsConsumed:    isConsumed,
+		IsRunning:     isRunning,
+		IsPaused:      isPaused,
 	}
 }
 
@@ -494,6 +495,7 @@ func (self *ClientSession) RawData() sdkapi.SessionRawData {
 		ExpDays:        sdkutils.CopyIntPtr(d.expDays),
 		StartedAt:      sdkutils.CopyTimePtr(d.startedAt),
 		ResumedAt:      sdkutils.CopyTimePtr(d.resumedAt),
+		PausedAt:       sdkutils.CopyTimePtr(d.pausedAt),
 		CreatedAt:      d.createdAt,
 		UpdatedAt:      d.updatedAt,
 	}
@@ -518,13 +520,13 @@ func (self *ClientSession) IncTimeCons(sec int) {
 
 // IncDataCons increases the session's data consumption in megabytes.
 // This value is not saved until Save() method is called.
-// No-op when the counter is paused (StopCounter was called).
+// No-op when the counter is paused (Pause was called).
 func (self *ClientSession) IncDataCons(mbytes float64) {
 	self.writeMu.Lock()
 	defer self.writeMu.Unlock()
 
 	old := self.data.Load()
-	if old.counterPaused {
+	if old.pausedAt != nil {
 		return
 	}
 	newData := old.copy()
@@ -565,14 +567,13 @@ func (d *sessionData) copy() sessionData {
 		dataCons:    d.dataCons,
 		startedAt:   sdkutils.CopyTimePtr(d.startedAt),
 		resumedAt:   sdkutils.CopyTimePtr(d.resumedAt),
+		pausedAt:    sdkutils.CopyTimePtr(d.pausedAt),
 		expDays:     sdkutils.CopyIntPtr(d.expDays),
 		downMbits:   d.downMbits,
 		upMbits:     d.upMbits,
 		useGlobal:   d.useGlobal,
 		createdAt:   d.createdAt,
 		updatedAt:   d.updatedAt,
-		// In-memory only
-		counterPaused: d.counterPaused,
 		// Preserve dirty flags during copy
 		dirtyTimeSecs:       d.dirtyTimeSecs,
 		dirtyDataMb:         d.dirtyDataMb,
@@ -682,6 +683,7 @@ func (d *sessionData) updateParams() models.UpdateSessionParams {
 		DataCons:       d.dataCons,
 		StartedAt:      d.startedAt,
 		ResumedAt:      d.resumedAt,
+		PausedAt:       d.pausedAt,
 		ExpDays:        d.expDays,
 		DownMbits:      d.downMbits,
 		UpMbits:        d.upMbits,
@@ -714,6 +716,7 @@ func (self *ClientSession) loadFromModel(s *models.Session) {
 		expDays:     sdkutils.CopyIntPtr(s.ExpDays()),
 		startedAt:   sdkutils.CopyTimePtr(s.StartedAt()),
 		resumedAt:   sdkutils.CopyTimePtr(s.ResumedAt()),
+		pausedAt:    sdkutils.CopyTimePtr(s.PausedAt()),
 		createdAt:   s.CreatedAt(),
 		updatedAt:   s.UpdatedAt(),
 	}
@@ -740,7 +743,7 @@ func (self *ClientSession) remainingTimeWithData(d *sessionData) int {
 	remaining := d.timeSecs - d.timeCons
 
 	// If session is running and counter is not paused, subtract elapsed time since resumed_at
-	if d.resumedAt != nil && !d.counterPaused {
+	if d.resumedAt != nil && d.pausedAt == nil {
 		elapsed := int(time.Since(*d.resumedAt).Round(time.Second).Seconds())
 		remaining -= elapsed
 	}

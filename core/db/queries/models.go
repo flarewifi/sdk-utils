@@ -120,6 +120,7 @@ type Session struct {
 	ResumedAt       sql.NullTime
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	PausedAt        sql.NullTime
 }
 
 type Voucher struct {

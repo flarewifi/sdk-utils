@@ -55,6 +55,7 @@ type SessionRawData struct {
 	ExpDays        *int       // Expiration days (nil if no expiration)
 	StartedAt      *time.Time // When session was first started
 	ResumedAt      *time.Time // When session was last resumed (nil if not running)
+	PausedAt       *time.Time // When counters were paused (nil if not paused)
 	CreatedAt      time.Time  // Creation timestamp
 	UpdatedAt      time.Time  // Last update timestamp
 }
@@ -78,6 +79,7 @@ type SessionData struct {
 	ExpDays        *int       // Expiration days (nil if no expiration)
 	StartedAt      *time.Time // When session was first started
 	ResumedAt      *time.Time // When session was last resumed (nil if not running)
+	PausedAt       *time.Time // When counters were paused (nil if not paused)
 	CreatedAt      time.Time  // Creation timestamp
 	UpdatedAt      time.Time  // Last update timestamp
 
@@ -89,7 +91,7 @@ type SessionData struct {
 	IsAvailable     bool       // True if session has never been started
 	IsConsumed      bool       // True if session resources are fully consumed
 	IsRunning       bool       // True if session is currently active
-	IsCounterActive bool       // True if time and data counters are actively counting
+	IsPaused        bool       // True if the time/data counters are paused
 }
 
 // SessionUpdateData contains fields to update on a session in a single batch operation.
@@ -201,7 +203,7 @@ type IClientSession interface {
 	// This method acquires the mutex once and returns all fields,
 	// reducing lock contention compared to calling individual getters.
 	// TimeCons includes elapsed time for running sessions (unless counter is paused).
-	// Pre-computed fields: RemainingTime, RemainingData, ExpiresAt, IsExpired, IsAvailable, IsConsumed, IsRunning, IsCounterActive.
+	// Pre-computed fields: RemainingTime, RemainingData, ExpiresAt, IsExpired, IsAvailable, IsConsumed, IsRunning, IsPaused.
 	Data() SessionData
 
 	// Returns a snapshot of raw session data fields as stored in the database.
@@ -239,18 +241,19 @@ type IClientSession interface {
 	// Does NOT set dirty flags (internal bookkeeping operation).
 	SnapshotTimeCons(clearResumed bool) int
 
-	// StopCounter stops both time and data counters by snapshotting elapsed time
-	// into stored consumption and pausing the counters. The session remains
+	// Pause stops both time and data counters by snapshotting elapsed time
+	// into stored consumption and setting paused_at. The session remains
 	// connected (TC rules and bandwidth limits stay active) but no further time
 	// or data is counted. Caller must call PersistToDB() to persist the snapshot.
-	StopCounter()
+	Pause()
 
-	// ResumeCounter resumes the time counter after it was stopped by StopCounter().
-	// Resets resumedAt to now so elapsed time calculation starts fresh from this point.
-	ResumeCounter()
+	// Resume resumes the time counter after it was paused by Pause().
+	// Clears paused_at and resets resumedAt to now so elapsed time calculation
+	// starts fresh from this point.
+	Resume()
 
-	// IsCounterActive returns true if both time and data counters are actively
-	// counting. The counters are active when the session is running (resumedAt is
-	// set) and the counters have not been paused by StopCounter().
-	IsCounterActive() bool
+	// IsPaused returns true if the time/data counters are paused (Pause() was
+	// called and Resume() has not been called since). While paused the
+	// session stays connected but no time or data is counted.
+	IsPaused() bool
 }

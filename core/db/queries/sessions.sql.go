@@ -25,6 +25,9 @@ SET
   ) AS INTEGER)
 WHERE
   resumed_at IS NOT NULL
+  -- Skip paused sessions: their elapsed time was already baked into
+  -- consumption_secs by Pause(); re-baking here would double-count it.
+  AND paused_at IS NULL
 `
 
 // Strip Go's timezone suffix (e.g. " +0000 UTC") from resumed_at before passing to julianday(),
@@ -162,7 +165,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id int64) error {
 
 const findAvailableSessionForDevice = `-- name: FindAvailableSessionForDevice :one
 SELECT
-    id, uuid, provider_pkg, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, exp_days, down_mbits, up_mbits, use_global, started_at, resumed_at, created_at, updated_at
+    id, uuid, provider_pkg, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, exp_days, down_mbits, up_mbits, use_global, started_at, resumed_at, created_at, updated_at, paused_at
 FROM
   sessions
 WHERE
@@ -223,13 +226,14 @@ func (q *Queries) FindAvailableSessionForDevice(ctx context.Context, deviceID in
 		&i.ResumedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PausedAt,
 	)
 	return i, err
 }
 
 const findSession = `-- name: FindSession :one
 SELECT
-    id, uuid, provider_pkg, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, exp_days, down_mbits, up_mbits, use_global, started_at, resumed_at, created_at, updated_at
+    id, uuid, provider_pkg, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, exp_days, down_mbits, up_mbits, use_global, started_at, resumed_at, created_at, updated_at, paused_at
 FROM
   sessions
 WHERE
@@ -259,13 +263,14 @@ func (q *Queries) FindSession(ctx context.Context, id int64) (Session, error) {
 		&i.ResumedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PausedAt,
 	)
 	return i, err
 }
 
 const findSessionByUUID = `-- name: FindSessionByUUID :one
 SELECT
-    id, uuid, provider_pkg, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, exp_days, down_mbits, up_mbits, use_global, started_at, resumed_at, created_at, updated_at
+    id, uuid, provider_pkg, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, exp_days, down_mbits, up_mbits, use_global, started_at, resumed_at, created_at, updated_at, paused_at
 FROM
   sessions
 WHERE
@@ -295,13 +300,14 @@ func (q *Queries) FindSessionByUUID(ctx context.Context, uuid string) (Session, 
 		&i.ResumedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PausedAt,
 	)
 	return i, err
 }
 
 const findSessionsForDev = `-- name: FindSessionsForDev :many
 SELECT
-    id, uuid, provider_pkg, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, exp_days, down_mbits, up_mbits, use_global, started_at, resumed_at, created_at, updated_at
+    id, uuid, provider_pkg, device_id, session_type, time_secs, data_mbytes, consumption_secs, consumption_mb, exp_days, down_mbits, up_mbits, use_global, started_at, resumed_at, created_at, updated_at, paused_at
 FROM
   sessions
 WHERE
@@ -367,6 +373,7 @@ func (q *Queries) FindSessionsForDev(ctx context.Context, deviceID int64) ([]Ses
 			&i.ResumedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PausedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -382,7 +389,7 @@ func (q *Queries) FindSessionsForDev(ctx context.Context, deviceID int64) ([]Ses
 }
 
 const getAllSessions = `-- name: GetAllSessions :many
-SELECT s.id, s.uuid, s.provider_pkg, s.device_id, s.session_type, s.time_secs, s.data_mbytes, s.consumption_secs, s.consumption_mb, s.exp_days, s.down_mbits, s.up_mbits, s.use_global, s.started_at, s.resumed_at, s.created_at, s.updated_at FROM sessions s
+SELECT s.id, s.uuid, s.provider_pkg, s.device_id, s.session_type, s.time_secs, s.data_mbytes, s.consumption_secs, s.consumption_mb, s.exp_days, s.down_mbits, s.up_mbits, s.use_global, s.started_at, s.resumed_at, s.created_at, s.updated_at, s.paused_at FROM sessions s
 ORDER BY s.created_at DESC
 LIMIT ?2 OFFSET ?1
 `
@@ -419,6 +426,7 @@ func (q *Queries) GetAllSessions(ctx context.Context, arg GetAllSessionsParams) 
 			&i.ResumedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PausedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -460,7 +468,7 @@ func (q *Queries) GetMostRecentSessionTimeForDevice(ctx context.Context, deviceI
 }
 
 const getSessionsFiltered = `-- name: GetSessionsFiltered :many
-SELECT s.id, s.uuid, s.provider_pkg, s.device_id, s.session_type, s.time_secs, s.data_mbytes, s.consumption_secs, s.consumption_mb, s.exp_days, s.down_mbits, s.up_mbits, s.use_global, s.started_at, s.resumed_at, s.created_at, s.updated_at FROM sessions s
+SELECT s.id, s.uuid, s.provider_pkg, s.device_id, s.session_type, s.time_secs, s.data_mbytes, s.consumption_secs, s.consumption_mb, s.exp_days, s.down_mbits, s.up_mbits, s.use_global, s.started_at, s.resumed_at, s.created_at, s.updated_at, s.paused_at FROM sessions s
 LEFT JOIN devices d ON d.id = s.device_id
 LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 LEFT JOIN vouchers v ON v.session_id = s.id
@@ -601,6 +609,7 @@ func (q *Queries) GetSessionsFiltered(ctx context.Context, arg GetSessionsFilter
 			&i.ResumedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PausedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -616,7 +625,7 @@ func (q *Queries) GetSessionsFiltered(ctx context.Context, arg GetSessionsFilter
 }
 
 const getSessionsPaginated = `-- name: GetSessionsPaginated :many
-SELECT s.id, s.uuid, s.provider_pkg, s.device_id, s.session_type, s.time_secs, s.data_mbytes, s.consumption_secs, s.consumption_mb, s.exp_days, s.down_mbits, s.up_mbits, s.use_global, s.started_at, s.resumed_at, s.created_at, s.updated_at FROM sessions s
+SELECT s.id, s.uuid, s.provider_pkg, s.device_id, s.session_type, s.time_secs, s.data_mbytes, s.consumption_secs, s.consumption_mb, s.exp_days, s.down_mbits, s.up_mbits, s.use_global, s.started_at, s.resumed_at, s.created_at, s.updated_at, s.paused_at FROM sessions s
 LEFT JOIN devices d ON d.id = s.device_id
 LEFT JOIN device_macs dm ON d.id = dm.device_id AND dm.is_current = TRUE
 LEFT JOIN vouchers v ON v.session_id = s.id
@@ -763,6 +772,7 @@ func (q *Queries) GetSessionsPaginated(ctx context.Context, arg GetSessionsPagin
 			&i.ResumedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PausedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -784,8 +794,13 @@ SET
     resumed_at = NULL
 WHERE
     resumed_at IS NOT NULL
+    AND paused_at IS NULL
 `
 
+// Clears the running baseline for sessions that were live at shutdown so stale
+// elapsed time isn't counted before they reconnect. Paused sessions (paused_at
+// IS NOT NULL) are left untouched: their counters are frozen and their
+// resumed_at baseline must survive the reboot to keep Status() == paused.
 func (q *Queries) ResetAllResumedAt(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, resetAllResumedAt)
 	return err
@@ -856,12 +871,13 @@ SET
     consumption_mb = ?6,
     started_at = ?7,
     resumed_at = ?8,
-    exp_days = ?9,
-    down_mbits = ?10,
-    up_mbits = ?11,
-    use_global = ?12
+    paused_at = ?9,
+    exp_days = ?10,
+    down_mbits = ?11,
+    up_mbits = ?12,
+    use_global = ?13
 WHERE
-  id = ?13
+  id = ?14
 `
 
 type UpdateSessionParams struct {
@@ -873,6 +889,7 @@ type UpdateSessionParams struct {
 	ConsumptionMb   float64
 	StartedAt       sql.NullTime
 	ResumedAt       sql.NullTime
+	PausedAt        sql.NullTime
 	ExpDays         sql.NullInt64
 	DownMbits       int64
 	UpMbits         int64
@@ -890,6 +907,7 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) er
 		arg.ConsumptionMb,
 		arg.StartedAt,
 		arg.ResumedAt,
+		arg.PausedAt,
 		arg.ExpDays,
 		arg.DownMbits,
 		arg.UpMbits,

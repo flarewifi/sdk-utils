@@ -45,6 +45,7 @@ type UpdateSessionParams struct {
 	DataCons       float64
 	StartedAt      *time.Time
 	ResumedAt      *time.Time
+	PausedAt       *time.Time
 	ExpDays        *int
 	DownMbits      int
 	UpMbits        int
@@ -144,6 +145,11 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 		resumedAtTime = sql.NullTime{Time: *params.ResumedAt, Valid: true}
 	}
 
+	var pausedAtTime sql.NullTime
+	if params.PausedAt != nil {
+		pausedAtTime = sql.NullTime{Time: *params.PausedAt, Valid: true}
+	}
+
 	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
 		ProviderPkg:     params.ProviderPkg,
 		SessionType:     string(params.Type),
@@ -153,6 +159,7 @@ func (self *SessionModel) Update(ctx context.Context, params UpdateSessionParams
 		ConsumptionMb:   params.DataCons,
 		StartedAt:       startedAtTime,
 		ResumedAt:       resumedAtTime,
+		PausedAt:        pausedAtTime,
 		ExpDays:         expDays,
 		DownMbits:       int64(params.DownMbits),
 		UpMbits:         int64(params.UpMbits),

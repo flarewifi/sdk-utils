@@ -68,7 +68,7 @@ d := session.CreatedAt()
 
 ### Data
 
-Returns a snapshot of all session data fields as a `SessionData` struct with pre-computed values. This method acquires the mutex once and returns all fields, reducing lock contention compared to calling individual getters. The `TimeCons` field includes elapsed time for running sessions (unless the counter is paused by `StopCounter()`).
+Returns a snapshot of all session data fields as a `SessionData` struct with pre-computed values. This method acquires the mutex once and returns all fields, reducing lock contention compared to calling individual getters. The `TimeCons` field includes elapsed time for running sessions (unless the counter is paused by `Pause()`).
 
 ```go
 data := session.Data()
@@ -102,6 +102,7 @@ The `SessionData` struct contains raw fields and pre-computed values:
 | `ExpDays` | `*int` | Expiration days (nil if no expiration) |
 | `StartedAt` | `*time.Time` | Session start time |
 | `ResumedAt` | `*time.Time` | Last resume time |
+| `PausedAt` | `*time.Time` | When counters were paused (nil if not paused) |
 | `CreatedAt` | `time.Time` | Creation timestamp |
 | `UpdatedAt` | `time.Time` | Last update timestamp |
 
@@ -116,7 +117,7 @@ The `SessionData` struct contains raw fields and pre-computed values:
 | `IsAvailable` | `bool` | True if session has never been started |
 | `IsConsumed` | `bool` | True if session is consumed |
 | `IsRunning` | `bool` | True if session is running |
-| `IsCounterActive` | `bool` | True if time and data counters are actively counting |
+| `IsPaused` | `bool` | True if the time/data counters are paused |
 
 !!! note "Pre-computed Values"
     The `SessionData` struct has no methods - all derived values are pre-computed when `Data()` is called. This ensures consistent values within a single snapshot.
@@ -238,15 +239,15 @@ if session.IsConsumed() {
 }
 ```
 
-### IsCounterActive
+### IsPaused
 
-Returns `true` if the time and data counters are actively counting. The counters are active when the session is running (`ResumedAt` is set) and the counters have not been paused by `StopCounter()`.
+Returns `true` if the time/data counters are paused (`Pause()` was called and `Resume()` has not been called since). **A paused session stays connected — the WiFi client is NOT disconnected** (firewall rules and bandwidth limits remain active); only time and data accounting is frozen.
 
 ```go
-if session.IsCounterActive() {
-    fmt.Println("Time and data are being counted")
+if session.IsPaused() {
+    fmt.Println("Counters are paused (client still connected)")
 } else {
-    fmt.Println("Counters are paused")
+    fmt.Println("Time and data are being counted")
 }
 ```
 
@@ -262,15 +263,15 @@ if session.IsExpired() {
 
 ### IsRunning
 
-Returns `true` if the session is currently active (i.e., `ResumedAt` is not nil). This indicates whether the session is connected. A session can be running but have its counters paused — use `IsCounterActive()` to check if time and data are being counted.
+Returns `true` if the session is currently active (i.e., `ResumedAt` is not nil). This indicates whether the session is connected. A session can be running but have its counters paused — use `IsPaused()` to check if time and data accounting is frozen.
 
 ```go
 if session.IsRunning() {
-    // Session is connected (may be active or paused)
-    if session.IsCounterActive() {
-        // Time and data are being counted
+    // Session is connected (may be counting or paused)
+    if session.IsPaused() {
+        // Counters are paused (Pause was called) — client is STILL connected
     } else {
-        // Counters are paused (StopCounter was called)
+        // Time and data are being counted
     }
 }
 ```
@@ -340,12 +341,12 @@ Returns the remaining session time in seconds. The return type is a `uint` value
 t := session.RemainingTime()
 ```
 
-### ResumeCounter
+### Resume
 
-Resumes both time and data counters after they were stopped by `StopCounter()`. Resets `resumedAt` to now so elapsed time calculation starts fresh from this point. Data consumption will be counted again from this point forward.
+Resumes both time and data counters after they were paused by `Pause()`. Clears `pausedAt` and resets `resumedAt` to now so elapsed time calculation starts fresh from this point. Data consumption will be counted again from this point forward. (A paused client was never disconnected, so no reconnection is involved — this only un-freezes accounting.)
 
 ```go
-session.ResumeCounter()
+session.Resume()
 err := session.PersistToDB(ctx)
 ```
 
@@ -481,7 +482,7 @@ Returns the session's current status as a `ClientSessionStatus` string. The stat
 | Value | Description |
 | --- | --- |
 | `"running"` | Session is active and counters are counting |
-| `"paused"` | Session is active but counters are stopped (`StopCounter()` was called) |
+| `"paused"` | Session is still connected but counters are frozen (`Pause()` was called) — the WiFi client is NOT disconnected |
 | `"stopped"` | Session is not running (`ResumedAt` is nil) |
 
 ```go
@@ -495,17 +496,20 @@ case sdkapi.ClielntSessionStatusStopped:
 }
 ```
 
-### StopCounter
+### Pause
 
-Stops both time and data counters by snapshotting elapsed time into stored consumption and pausing the counters. The session remains connected (TC rules and bandwidth limits stay active) but no further time or data is counted.
+Pauses both time and data counters by snapshotting elapsed time into stored consumption and setting `pausedAt`. No further time or data is counted until `Resume()` is called.
 
-This is useful when you want to temporarily pause time and data tracking without disconnecting the session — for example, to grant a bonus or apply a promotion without the original counters continuing to run in the background.
+!!! important "Pause does NOT disconnect the WiFi client"
+    The session stays fully connected while paused — the client keeps its internet access, firewall rules and bandwidth (TC) limits remain in place. Pausing only **freezes time/data accounting**; it is not a disconnect. The client's remaining time/data is held constant and resumes exactly where it left off on `Resume()`.
+
+This is useful when you want to temporarily stop time and data tracking without disconnecting the session — for example, to grant a bonus or apply a promotion without the original counters continuing to run in the background, or to stop charging a client whose device has gone idle.
 
 !!! warning "Persist required"
-    This method only updates the in-memory state. Call `PersistToDB()` to persist the stopped counters to the database.
+    This method only updates the in-memory state. Call `PersistToDB()` to persist the paused state (`paused_at`) to the database.
 
 ```go
-session.StopCounter()
+session.Pause()
 err := session.PersistToDB(ctx)
 ```
 
