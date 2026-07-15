@@ -618,6 +618,7 @@ func (self *SessionsMgr) NewClientSession(params sdkapi.NewClientSessionParams) 
 		DataCons:       params.DataCons,
 		StartedAt:      params.StartedAt,
 		ResumedAt:      params.ResumedAt,
+		PausedAt:       params.PausedAt,
 		ExpDays:        params.ExpDays,
 		DownMbits:      params.DownMbits,
 		UpMbits:        params.UpMbits,

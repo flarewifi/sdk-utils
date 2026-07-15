@@ -55,6 +55,7 @@ type NewClientSessionParams struct {
 	DataCons       float64
 	StartedAt      *time.Time
 	ResumedAt      *time.Time
+	PausedAt       *time.Time
 	ExpDays        *int
 	DownMbits      int
 	UpMbits        int
