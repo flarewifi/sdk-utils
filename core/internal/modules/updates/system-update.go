@@ -203,7 +203,7 @@ func stagePluginsUpdate(g *api.CoreGlobals) error {
 		// only stages members the machine is still entitled to.
 		if err := g.PluginMgr.StagePluginUpdate(pkg, "", ""); err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: store plugin %q failed to build: %v", pkg, err))
-			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Reason: buildFailureReason(err)})
+			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Name: storePluginDisplayName(g, pkg), Reason: buildFailureReason(err)})
 		} else {
 			stagedCount++
 			recordStagedPlugin(StagedComponent{Package: pkg, Name: storePluginDisplayName(g, pkg)})
@@ -362,7 +362,7 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 
 		if err := g.PluginMgr.StagePluginUpdate(pkg, "", targetCore); err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: store plugin %q failed to build: %v", pkg, err))
-			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Reason: buildFailureReason(err)})
+			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pkg, Name: storePluginDisplayName(g, pkg), Reason: buildFailureReason(err)})
 		} else {
 			recordStagedPlugin(StagedComponent{Package: pkg, Name: storePluginDisplayName(g, pkg)})
 		}
@@ -414,7 +414,7 @@ func stageSystemUpdate(g *api.CoreGlobals, update *SoftwareReleaseUpdate) error 
 		// load-failure path handles it; only com.flarego.core failing is fatal.
 		if err := plugins.StageLocalPluginRebuild(srcDir, coreDest, pinnedDeps); err != nil {
 			g.CoreAPI.LoggerAPI.Error(fmt.Sprintf("software update: local plugin %q failed to build: %v", pluginName, err))
-			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pluginName, Reason: buildFailureReason(err)})
+			failedPlugins = append(failedPlugins, PluginBuildFailure{Package: pluginName, Name: pluginDisplayName, Reason: buildFailureReason(err)})
 		} else {
 			recordStagedPlugin(StagedComponent{Package: pluginName, Name: pluginDisplayName})
 		}
