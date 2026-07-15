@@ -76,6 +76,19 @@ func GetStats() (stat StatResult, err error) {
 			}
 		}
 
+		// Paused-client upload counters — merge into the same MacStats map so a
+		// paused device's attempted (dropped) upload surfaces on the traffic feed,
+		// letting the autopause plugin resume the session on activity. A MAC is in
+		// EITHER connected_macs_map OR paused_macs_map (PauseClient/UnpauseClient
+		// move it between them), so this can never double-count a MAC. Best-effort:
+		// if the paused map read fails, connected stats are still returned.
+		nftlistpaused, pausedErr := nftListMap(pausedMacMap)
+		if pausedErr == nil {
+			for mac, data := range resultMap(nftlistpaused) {
+				macstat[mac] = data
+			}
+		}
+
 		result = StatResult{
 			MacStats: macstat,
 			IpStats:  ipstat,

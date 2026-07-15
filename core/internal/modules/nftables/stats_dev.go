@@ -56,6 +56,14 @@ func GetStats() (stat StatResult, err error) {
 		nftMu.RLock()
 		connectedMACs := make([]string, 0, len(macToIps))
 		for mac := range macToIps {
+			// Paused devices are disconnected from the internet, so they generate no
+			// (accepted) traffic. Emit no stats for them — in production their
+			// attempted upload is a real counter, but the dev mock has no real
+			// packets to count, so reporting zero keeps a paused session paused
+			// instead of self-resuming on fabricated traffic.
+			if pausedTable[strings.ToUpper(mac)] {
+				continue
+			}
 			connectedMACs = append(connectedMACs, mac)
 		}
 		nftMu.RUnlock()

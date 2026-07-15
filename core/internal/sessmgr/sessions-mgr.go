@@ -225,14 +225,11 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 					return true
 				}
 
+				// The in-memory session is authoritative here — it carries unsaved
+				// time/data consumption that FlushRunningSessions hasn't persisted
+				// yet. Restart it as-is; reloading from the DB would roll that back.
 				cs := rs.GetSession()
-				err := cs.Reload(ctx)
-				if err != nil {
-					rangeErr = err
-					return false
-				}
-
-				err = rs.Start(ctx, cs)
+				err := rs.Start(ctx, cs)
 				if err != nil {
 					rangeErr = err
 					return false
@@ -445,12 +442,21 @@ func (self *SessionsMgr) SessionSummary(ctx context.Context, clnt sdkapi.IClient
 		return summary, nil
 	}
 
-	// Calculate elapsed time for the running session since resumed_at.
-	// Use a single GetSession() call and a single ResumedAt() snapshot to avoid
-	// a race where SnapshotTimeCons sets resumedAt to nil between the nil check
-	// and the dereference, which would cause a nil pointer panic.
-	var elapsedSecs int = 0
+	// While paused, the counters are frozen: elapsed time was already baked into
+	// the persisted consumption by Pause() (so the DB summary is already correct)
+	// and no new data is consumed. Subtracting the live deltas here would
+	// double-count and keep shrinking remaining time/data for the whole pause, so
+	// return the DB totals as-is for a paused session.
 	session := rs.GetSession()
+	if session.IsPaused() {
+		return summary, nil
+	}
+
+	// Calculate elapsed time for the running session since resumed_at.
+	// Use a single ResumedAt() snapshot to avoid a race where SnapshotTimeCons
+	// sets resumedAt to nil between the nil check and the dereference, which would
+	// cause a nil pointer panic.
+	var elapsedSecs int = 0
 	resumedAt := session.ResumedAt()
 	if resumedAt != nil {
 		elapsedSecs = int(time.Since(*resumedAt).Seconds())
@@ -612,6 +618,7 @@ func (self *SessionsMgr) NewClientSession(params sdkapi.NewClientSessionParams) 
 		DataCons:       params.DataCons,
 		StartedAt:      params.StartedAt,
 		ResumedAt:      params.ResumedAt,
+		PausedAt:       params.PausedAt,
 		ExpDays:        params.ExpDays,
 		DownMbits:      params.DownMbits,
 		UpMbits:        params.UpMbits,
@@ -681,18 +688,57 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 			upMbits = cfg.UserUpMbits
 		}
 
-		// Update session bandwidth settings
-		session.SetData(sdkapi.SessionUpdateData{
+		// Atomically update+persist the bandwidth settings; the save side effects
+		// (handleSessionSaved) apply the TC changes via ApplyBandwidthUpdate.
+		// On error keep going — one failed TC update must not abort the Range
+		// and block the remaining sessions from receiving the new settings.
+		self.UpdateSession(ctx, session, sdkapi.SessionUpdateData{
 			DownMbits:      &downMbits,
 			UpMbits:        &upMbits,
 			UseGlobalSpeed: &cfg.UseGlobal,
-		})
-
-		// Save triggers the save callback which calls ApplyBandwidthUpdate
-		session.Save(ctx, nil)
+		}, nil)
 
 		return true // Continue to next session
 	})
+}
+
+// UpdateSession atomically applies the given field updates to a session and
+// persists them to the database in a single operation. If the session is
+// currently running, the update is routed to the live in-memory session
+// instance (the authoritative copy), so unsaved runtime consumption is never
+// lost and the caller may pass a stale wrapper safely. Side effects (timer
+// reset, TC updates, EventSessionChanged) are applied by handleSessionSaved
+// after a successful persist.
+func (self *SessionsMgr) UpdateSession(ctx context.Context, session sdkapi.IClientSession, data sdkapi.SessionUpdateData, opts *sdkapi.SessionSaveOpts) error {
+	if session == nil {
+		return errors.New("cannot update nil session")
+	}
+	// In-memory previews built via NewClientSession have no DB row yet; a DB
+	// UPDATE for id=0 would silently match nothing and report success.
+	if session.ID() == 0 {
+		return errors.New("cannot update unsaved session (ID is 0)")
+	}
+
+	// Route the update to the authoritative running instance when one exists —
+	// the caller's wrapper may be a stale snapshot fetched from the DB.
+	target := session
+	if rs, _, ok := self.getRunningSessionBySessionID(session.ID()); ok {
+		if live := rs.GetSession(); live != nil {
+			target = live
+			self.coreAPI.Logger().Debug(fmt.Sprintf("UpdateSession: routed session %d to live running instance", session.ID()))
+		}
+	}
+
+	cs, ok := target.(*ClientSession)
+	if !ok {
+		// Defensive fallback for foreign IClientSession implementations;
+		// *ClientSession is the only implementation today.
+		self.coreAPI.Logger().Debug(fmt.Sprintf("UpdateSession: session %d target is not *ClientSession, using SetData+Save fallback", session.ID()))
+		target.SetData(data)
+		return target.Save(ctx, opts)
+	}
+
+	return cs.UpdateAndSave(ctx, data, opts)
 }
 
 // =============================================================================
@@ -856,6 +902,58 @@ func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *Runni
 	}
 
 	return rs, true
+}
+
+// getRunningSessionByDeviceID looks up a running session by device ID — the key
+// the sessions map uses. Unlike getRunningSession it takes the raw id, so a
+// ClientSession (which holds only devId, not the IClientDevice) can reach its own
+// RunningSession — e.g. to resolve the MAC for the pause firewall enforcement.
+func (self *SessionsMgr) getRunningSessionByDeviceID(devId int64) (*RunningSession, bool) {
+	v, ok := self.sessions.Load(devId)
+	if !ok {
+		return nil, false
+	}
+	rs, ok := v.(*RunningSession)
+	return rs, ok
+}
+
+// pauseClientFirewall disconnects a paused session's device from the internet
+// WITHOUT redirecting it to the captive portal (see nftables.PauseClient). It is
+// the firewall half of ClientSession.Pause(): the session freezes its counters,
+// this cuts network access while keeping a per-MAC counter of the client's
+// now-dropped upload attempts (so an idle-paused session can be auto-resumed the
+// moment the client is active again). Best-effort: Pause() has no error channel
+// and the counter freeze has already taken effect, so a failure is logged, not
+// propagated. A device with no running session or no known MAC is a no-op.
+func (self *SessionsMgr) pauseClientFirewall(devId int64) {
+	rs, ok := self.getRunningSessionByDeviceID(devId)
+	if !ok {
+		return
+	}
+	mac := rs.MacAddr()
+	if mac == "" {
+		return
+	}
+	if err := nftables.PauseClient(mac); err != nil && self.coreAPI != nil {
+		self.coreAPI.Logger().Error(fmt.Sprintf("Failed to disconnect paused device %d (MAC %s) from the internet: %v", devId, mac, err))
+	}
+}
+
+// unpauseClientFirewall reverses pauseClientFirewall, restoring the device's
+// internet access. It is the firewall half of ClientSession.Resume(). Same
+// best-effort/no-op semantics as pauseClientFirewall.
+func (self *SessionsMgr) unpauseClientFirewall(devId int64) {
+	rs, ok := self.getRunningSessionByDeviceID(devId)
+	if !ok {
+		return
+	}
+	mac := rs.MacAddr()
+	if mac == "" {
+		return
+	}
+	if err := nftables.UnpauseClient(mac); err != nil && self.coreAPI != nil {
+		self.coreAPI.Logger().Error(fmt.Sprintf("Failed to reconnect resumed device %d (MAC %s) to the internet: %v", devId, mac, err))
+	}
 }
 
 func (self *SessionsMgr) endSession(clnt sdkapi.IClientDevice) error {

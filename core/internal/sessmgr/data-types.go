@@ -108,6 +108,11 @@ type sessionData struct {
 	createdAt   time.Time
 	updatedAt   time.Time
 
+	// pausedAt is set when the time/data counters are paused (persisted to the
+	// paused_at column). When non-nil, elapsed time is not added to consumption
+	// and the session's remaining time/data stays frozen until resumed.
+	pausedAt *time.Time
+
 	// Dirty tracking - which fields changed since last save/load
 	dirtyTimeSecs       bool // time_secs changed
 	dirtyDataMb         bool // data_mb changed

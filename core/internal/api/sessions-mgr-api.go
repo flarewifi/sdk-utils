@@ -294,6 +294,12 @@ func (self *SessionsMgrApi) FindSessionByID(ctx context.Context, sessionID int64
 	return self.pluginApi.SessionMgr.FindSessionByID(ctx, sessionID)
 }
 
+// UpdateSession atomically applies field updates to a session and persists them.
+// If the session is running, the update is routed to the live in-memory instance.
+func (self *SessionsMgrApi) UpdateSession(ctx context.Context, session sdkapi.IClientSession, data sdkapi.SessionUpdateData, opts *sdkapi.SessionSaveOpts) error {
+	return self.pluginApi.SessionMgr.UpdateSession(ctx, session, data, opts)
+}
+
 // NewClientSession wraps session data into an IClientSession object without performing
 // additional database queries.
 func (self *SessionsMgrApi) NewClientSession(params sdkapi.NewClientSessionParams) sdkapi.IClientSession {

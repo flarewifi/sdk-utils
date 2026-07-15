@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+type ClientSessionStatus string
+
+const (
+	ClientSessionStatusRunning  ClientSessionStatus = "running"
+	ClientSessionStatusPaused   ClientSessionStatus = "paused"
+	ClielntSessionStatusStopped ClientSessionStatus = "stopped"
+)
+
 // SessionChangedFields tracks which session fields were modified since last save.
 // Maps directly to database columns for granular change tracking.
 type SessionChangedFields struct {
@@ -47,6 +55,7 @@ type SessionRawData struct {
 	ExpDays        *int       // Expiration days (nil if no expiration)
 	StartedAt      *time.Time // When session was first started
 	ResumedAt      *time.Time // When session was last resumed (nil if not running)
+	PausedAt       *time.Time // When counters were paused (nil if not paused)
 	CreatedAt      time.Time  // Creation timestamp
 	UpdatedAt      time.Time  // Last update timestamp
 }
@@ -70,17 +79,19 @@ type SessionData struct {
 	ExpDays        *int       // Expiration days (nil if no expiration)
 	StartedAt      *time.Time // When session was first started
 	ResumedAt      *time.Time // When session was last resumed (nil if not running)
+	PausedAt       *time.Time // When counters were paused (nil if not paused)
 	CreatedAt      time.Time  // Creation timestamp
 	UpdatedAt      time.Time  // Last update timestamp
 
 	// Pre-computed values
-	RemainingTime int        // Remaining time in seconds
-	RemainingData float64    // Remaining data in megabytes
-	ExpiresAt     *time.Time // When session expires, or nil if no expiration
-	IsExpired     bool       // True if session has passed expiration date
-	IsAvailable   bool       // True if session has never been started
-	IsConsumed    bool       // True if session resources are fully consumed
-	IsRunning     bool       // True if session is currently active
+	RemainingTime   int        // Remaining time in seconds
+	RemainingData   float64    // Remaining data in megabytes
+	ExpiresAt       *time.Time // When session expires, or nil if no expiration
+	IsExpired       bool       // True if session has passed expiration date
+	IsAvailable     bool       // True if session has never been started
+	IsConsumed      bool       // True if session resources are fully consumed
+	IsRunning       bool       // True if session is currently active
+	IsPaused        bool       // True if the time/data counters are paused
 }
 
 // SessionUpdateData contains fields to update on a session in a single batch operation.
@@ -179,16 +190,20 @@ type IClientSession interface {
 	UseGlobalSpeed() bool
 
 	// IsRunning returns true if the session is currently active (resumedAt is not nil).
+	// deprecated: use Status()
 	IsRunning() bool
 
 	// IsAvailable returns true if the session has never been started (available for use).
+	// deprecated: use Status()
 	IsAvailable() bool
+
+	Status() ClientSessionStatus
 
 	// Returns a snapshot of all session data fields with pre-computed values.
 	// This method acquires the mutex once and returns all fields,
 	// reducing lock contention compared to calling individual getters.
-	// TimeCons includes elapsed time for running sessions.
-	// Pre-computed fields: RemainingTime, RemainingData, ExpiresAt, IsExpired, IsAvailable, IsConsumed, IsRunning.
+	// TimeCons includes elapsed time for running sessions (unless counter is paused).
+	// Pre-computed fields: RemainingTime, RemainingData, ExpiresAt, IsExpired, IsAvailable, IsConsumed, IsRunning, IsPaused.
 	Data() SessionData
 
 	// Returns a snapshot of raw session data fields as stored in the database.
@@ -207,13 +222,12 @@ type IClientSession interface {
 	// Sets multiple session fields in a single batch operation.
 	// Only non-nil fields in the data parameter will be updated.
 	// Values are not saved until Save() method is called.
+	// For atomic update+persist, prefer SessionsMgr().UpdateSession().
 	SetData(data SessionUpdateData)
 
 	// Saves the session's changes.
+	// For atomic update+persist, prefer SessionsMgr().UpdateSession().
 	Save(ctx context.Context, opts *SessionSaveOpts) error
-
-	// Reloads the session's data from the database.
-	Reload(ctx context.Context) error
 
 	// Saves the session state directly to the database without triggering save callbacks.
 	// Unlike Save(), this does NOT trigger the onSave callback and does NOT clear dirty flags.
@@ -227,13 +241,23 @@ type IClientSession interface {
 	// Does NOT set dirty flags (internal bookkeeping operation).
 	SnapshotTimeCons(clearResumed bool) int
 
-	// Sync reloads session data from the database and applies any changes to the running session.
-	// This is useful when session data has been modified externally (e.g., by another process or
-	// direct database update) and you need to synchronize the in-memory state.
-	// For running sessions, this will:
-	// - Reset the timer if time allocation changed
-	// - Update TC (traffic control) rules if bandwidth settings changed
-	// - Stop the session if resources are now consumed
-	// Emits EventSessionChanged after syncing.
-	Sync(ctx context.Context) error
+	// Pause stops both time and data counters by snapshotting elapsed time into
+	// stored consumption and setting paused_at, AND disconnects the client from
+	// the internet without redirecting it to the captive portal (its HTTP is left
+	// alone — a paused client's browser just fails to load rather than being
+	// bounced to the login page). The session object stays "running" (TC classes
+	// are kept) so it can be resumed cheaply, and the client's dropped upload is
+	// still counted so an idle-paused session can be auto-resumed on activity.
+	// Caller must call PersistToDB() to persist the snapshot.
+	Pause()
+
+	// Resume resumes the time and data counters after Pause() and restores the
+	// client's internet access. Clears paused_at and resets resumedAt to now so
+	// elapsed time calculation starts fresh from this point.
+	Resume()
+
+	// IsPaused returns true if the session is paused (Pause() was called and
+	// Resume() has not been called since). While paused the counters are frozen
+	// and the client is disconnected from the internet (but not portal-redirected).
+	IsPaused() bool
 }

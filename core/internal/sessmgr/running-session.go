@@ -193,18 +193,18 @@ func (self *RunningSession) PrepareForChain() {
 }
 
 func (self *RunningSession) Start(ctx context.Context, s sdkapi.IClientSession) error {
-	// 1. DB reload - no lock needed (session has its own synchronization)
-	if err := s.Reload(ctx); err != nil {
-		return fmt.Errorf("failed to reload session: %w", err)
-	}
+	// The passed-in session is used as-is: loopSessions fetches it fresh from the
+	// DB right before calling Start, and ReloadSessions passes the authoritative
+	// in-memory instance. Reloading from the DB here would discard unsaved
+	// time/data consumption that FlushRunningSessions hasn't persisted yet.
 
-	// 2. Validate session fields against freshly reloaded data before touching DB or TC.
+	// 1. Validate session fields before touching DB or TC.
 	sessionData := s.Data()
 	if err := validation.ValidateSessionData(sessionData.Type, sessionData.DownMbits, sessionData.UpMbits, sessionData.UseGlobalSpeed); err != nil {
 		return fmt.Errorf("invalid session %d: %w", sessionData.ID, err)
 	}
 
-	// 3. Store session reference and clear stopped flag under mu.
+	// 2. Store session reference and clear stopped flag under mu.
 	// Note: We allow Start() even if stopped=true (after PrepareForChain()) to enable session chaining.
 	self.mu.Lock()
 	self.stopped.Store(false)
@@ -305,6 +305,15 @@ func (self *RunningSession) StopWithReason(reason StopReason) error {
 	doneCh := self.doneCh
 	self.cleanUpTimer()
 	self.mu.Unlock()
+
+	// Bake any elapsed time since the last resume/checkpoint into timeCons and clear
+	// resumedAt so the DB reflects that the session is no longer running. Without this,
+	// remaining_time (and TimeConsumption()) keep computing elapsed time off a stale
+	// resumedAt for as long as the session stays stopped/paused/disconnected, since
+	// RemainingTime()/RemainingData() treat any non-nil resumedAt as "still running".
+	// No lock held here — SnapshotTimeCons acquires ClientSession.writeMu internally,
+	// which would nest under RunningSession.mu if called while mu is held.
+	self.snapshotTimeConsumption(session, true)
 
 	saveErr := self.persistSession(session)
 
@@ -492,6 +501,14 @@ func (self *RunningSession) UpdateDataConsumption(stats *sdkapi.TrafficData) {
 	self.mu.Unlock()
 
 	if session == nil {
+		return
+	}
+
+	// While the counters are paused, freeze data accounting entirely: don't add
+	// to the session's consumption, don't grow diffMb (which SessionSummary
+	// subtracts), and don't trip the consumed-stop check. IncDataCons is already
+	// a no-op when paused, but diffMb and the stop check are handled here.
+	if session.IsPaused() {
 		return
 	}
 

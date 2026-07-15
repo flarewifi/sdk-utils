@@ -55,6 +55,7 @@ type NewClientSessionParams struct {
 	DataCons       float64
 	StartedAt      *time.Time
 	ResumedAt      *time.Time
+	PausedAt       *time.Time
 	ExpDays        *int
 	DownMbits      int
 	UpMbits        int
@@ -193,6 +194,27 @@ type ISessionsMgrApi interface {
 	// this method only checks in-memory running sessions for better performance when
 	// you only need to know if a session is actively connected.
 	FindRunningSessionByUUID(uuid string) (IClientSession, bool)
+
+	// UpdateSession atomically applies the given field updates to a session and
+	// persists them to the database in a single operation. If the session is
+	// currently running, the update is routed to the live in-memory session
+	// instance (the authoritative copy), so unsaved runtime consumption is never
+	// lost and it is safe to pass a session object fetched earlier (e.g. via
+	// FindSessionByID) even if it has become stale.
+	//
+	// Only non-nil fields in data are updated (same semantics as SetData).
+	// Side effects for running sessions run after a successful persist: timer
+	// reset (time fields), consumed-check (data fields), and TC rule updates
+	// (bandwidth fields). EventSessionChanged is emitted unless
+	// opts.IgnoreCallbacks is set. On a database error nothing is applied.
+	//
+	// Note: if the session was running, the update lands on the live instance;
+	// the object you passed may be a stale snapshot afterward. Re-fetch via
+	// RunningSession()/FindRunningSessionByUUID() if you need current values.
+	//
+	// This is the preferred way to modify a session, replacing the non-atomic
+	// SetData() + Save() sequence.
+	UpdateSession(ctx context.Context, session IClientSession, data SessionUpdateData, opts *SessionSaveOpts) error
 
 	// MergeClientDevices merges the source device into the target device.
 	// All sessions, purchases, and fingerprints are transferred from

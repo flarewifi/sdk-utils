@@ -1,8 +1,6 @@
 package models
 
 import (
-	"context"
-	"database/sql"
 	"time"
 
 	"core/db"
@@ -24,6 +22,7 @@ type BuildSessionParams struct {
 	DataCons       float64
 	StartedAt      *time.Time
 	ResumedAt      *time.Time
+	PausedAt       *time.Time
 	ExpDays        *int
 	DownMbits      int
 	UpMbits        int
@@ -46,6 +45,7 @@ type Session struct {
 	dataCons    float64
 	startedAt   *time.Time
 	resumedAt   *time.Time
+	pausedAt    *time.Time
 	expDays     *int
 	expiresAt   *time.Time
 	downMbits   int
@@ -78,6 +78,11 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 			resumedAt = &s.ResumedAt.Time
 		}
 
+		var pausedAt *time.Time
+		if s.PausedAt.Valid {
+			pausedAt = &s.PausedAt.Time
+		}
+
 		session.id = s.ID
 		session.uuid = s.Uuid
 		session.providerPkg = s.ProviderPkg
@@ -90,6 +95,7 @@ func NewSession(dtb *db.Database, mdls *Models, s *queries.Session) *Session {
 		session.expDays = expDays
 		session.startedAt = startedAt
 		session.resumedAt = resumedAt
+		session.pausedAt = pausedAt
 
 		// TODO: fix proper expiry calculation
 		// session.expiresAt = sRow.ExpiresAt
@@ -123,6 +129,7 @@ func BuildSession(params BuildSessionParams) *Session {
 		dataCons:    params.DataCons,
 		startedAt:   params.StartedAt,
 		resumedAt:   params.ResumedAt,
+		pausedAt:    params.PausedAt,
 		expDays:     params.ExpDays,
 		downMbits:   params.DownMbits,
 		upMbits:     params.UpMbits,
@@ -176,6 +183,10 @@ func (self *Session) ResumedAt() *time.Time {
 	return self.resumedAt
 }
 
+func (self *Session) PausedAt() *time.Time {
+	return self.pausedAt
+}
+
 func (self *Session) ExpDays() *int {
 	return self.expDays
 }
@@ -210,56 +221,4 @@ func (self *Session) CreatedAt() time.Time {
 
 func (self *Session) UpdatedAt() time.Time {
 	return self.updatedAt
-}
-
-func (self *Session) Update(ctx context.Context, t string, secs int, mb float64, timecon int, datacon float64, started *time.Time, resumed *time.Time, exp *int, downMbit int, upMbit int, g bool) error {
-	var startedTime sql.NullTime
-	if started != nil {
-		startedTime = sql.NullTime{Time: *started, Valid: true}
-	}
-
-	var resumedTime sql.NullTime
-	if resumed != nil {
-		resumedTime = sql.NullTime{Time: *resumed, Valid: true}
-	}
-
-	var expDays sql.NullInt64
-	if exp != nil {
-		expDays = sql.NullInt64{Int64: int64(*exp), Valid: true}
-	}
-
-	err := self.db.Queries.UpdateSession(ctx, queries.UpdateSessionParams{
-		ProviderPkg:     self.providerPkg,
-		SessionType:     t,
-		TimeSecs:        int64(secs),
-		DataMbytes:      mb,
-		ConsumptionSecs: int64(timecon),
-		ConsumptionMb:   datacon,
-		StartedAt:       startedTime,
-		ResumedAt:       resumedTime,
-		ExpDays:         expDays,
-		DownMbits:       int64(downMbit),
-		UpMbits:         int64(upMbit),
-		UseGlobal:       g,
-		ID:              self.id,
-	})
-	if err != nil {
-		return err
-	}
-
-	self.sessionType = t
-	self.timeSecs = secs
-	self.dataMb = mb
-	self.timeCons = timecon
-	self.dataCons = datacon
-	self.startedAt = started
-	self.resumedAt = resumed
-	self.downMbits = downMbit
-	self.upMbits = upMbit
-
-	return nil
-}
-
-func (self *Session) Save(ctx context.Context) error {
-	return self.Update(ctx, self.sessionType, self.timeSecs, self.dataMb, self.timeCons, self.dataCons, self.startedAt, self.resumedAt, self.expDays, self.downMbits, self.upMbits, self.useGlobal)
 }
