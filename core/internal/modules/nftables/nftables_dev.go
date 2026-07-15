@@ -247,12 +247,16 @@ func doConnect(ip string, mac string) error {
 	connTable[normalizedMAC] = true
 
 	// Record IP→MAC and MAC→IPs mappings for traffic accounting and GetMacByIp().
+	// A (re)connect also clears any paused state (mirrors the real doConnect): a
+	// reconnecting client must not stay in pausedTable, or the dev stats mock would
+	// keep reporting it as paused. nftMu guards pausedTable (stats_dev reads it).
 	nftMu.Lock()
 	ipToMac[ip] = normalizedMAC
 	if macToIps[normalizedMAC] == nil {
 		macToIps[normalizedMAC] = make(map[string]bool)
 	}
 	macToIps[normalizedMAC][ip] = true
+	delete(pausedTable, normalizedMAC)
 	nftMu.Unlock()
 
 	return nil

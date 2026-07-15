@@ -960,7 +960,27 @@ func doConnect(ip string, mac string) error {
 	}
 	macToIps[normalizedMAC][ip] = true
 	whitelisted := whitelistedMacs[normalizedMAC]
+
+	// A (re)connect is an authoritative "this client is active" signal, so it must
+	// clear any lingering paused state. Otherwise the MAC would sit in BOTH the
+	// connected verdict map (accept, added above) and paused_macs_map (drop): the
+	// forward chain evaluates connected before paused, so the client would silently
+	// regain internet while paused_macs still bypassed the portal and the session
+	// still showed paused — leaving firewall and session state desynced with no
+	// path back (PauseClient set it, but only UnpauseClient ever cleared it, and a
+	// reconnect fires neither). Snapshot whether it was paused so the nft element
+	// deletes below run outside the lock.
+	wasPaused := pausedMacs[normalizedMAC]
+	delete(pausedMacs, normalizedMAC)
+	delete(pausedMacIps, normalizedMAC)
 	nftMu.Unlock()
+
+	// Tear down the paused firewall objects for this MAC (best-effort — an element
+	// may already be absent if UnpauseClient raced ahead). Idempotent via || true.
+	if wasPaused {
+		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, pausedMacSet, normalizedMAC), nil)
+		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, pausedMacMap, normalizedMAC), nil)
+	}
 
 	// If this MAC is whitelisted (AllowMAC), learn the IP it just connected with
 	// so return traffic works, and prune only a stale same-family IP from a prior
