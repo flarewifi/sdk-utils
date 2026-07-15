@@ -241,19 +241,23 @@ type IClientSession interface {
 	// Does NOT set dirty flags (internal bookkeeping operation).
 	SnapshotTimeCons(clearResumed bool) int
 
-	// Pause stops both time and data counters by snapshotting elapsed time
-	// into stored consumption and setting paused_at. The session remains
-	// connected (TC rules and bandwidth limits stay active) but no further time
-	// or data is counted. Caller must call PersistToDB() to persist the snapshot.
+	// Pause stops both time and data counters by snapshotting elapsed time into
+	// stored consumption and setting paused_at, AND disconnects the client from
+	// the internet without redirecting it to the captive portal (its HTTP is left
+	// alone — a paused client's browser just fails to load rather than being
+	// bounced to the login page). The session object stays "running" (TC classes
+	// are kept) so it can be resumed cheaply, and the client's dropped upload is
+	// still counted so an idle-paused session can be auto-resumed on activity.
+	// Caller must call PersistToDB() to persist the snapshot.
 	Pause()
 
-	// Resume resumes the time counter after it was paused by Pause().
-	// Clears paused_at and resets resumedAt to now so elapsed time calculation
-	// starts fresh from this point.
+	// Resume resumes the time and data counters after Pause() and restores the
+	// client's internet access. Clears paused_at and resets resumedAt to now so
+	// elapsed time calculation starts fresh from this point.
 	Resume()
 
-	// IsPaused returns true if the time/data counters are paused (Pause() was
-	// called and Resume() has not been called since). While paused the
-	// session stays connected but no time or data is counted.
+	// IsPaused returns true if the session is paused (Pause() was called and
+	// Resume() has not been called since). While paused the counters are frozen
+	// and the client is disconnected from the internet (but not portal-redirected).
 	IsPaused() bool
 }

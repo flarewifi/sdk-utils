@@ -241,11 +241,11 @@ if session.IsConsumed() {
 
 ### IsPaused
 
-Returns `true` if the time/data counters are paused (`Pause()` was called and `Resume()` has not been called since). **A paused session stays connected — the WiFi client is NOT disconnected** (firewall rules and bandwidth limits remain active); only time and data accounting is frozen.
+Returns `true` if the session is paused (`Pause()` was called and `Resume()` has not been called since). **While paused the counters are frozen AND the client is disconnected from the internet — but it is NOT redirected to the captive portal** (its HTTP is left alone, so its browser simply fails to load rather than showing the login page). The session object itself stays "running" (its TC classes are kept) so it can be resumed cheaply.
 
 ```go
 if session.IsPaused() {
-    fmt.Println("Counters are paused (client still connected)")
+    fmt.Println("Counters frozen and client disconnected (no portal redirect)")
 } else {
     fmt.Println("Time and data are being counted")
 }
@@ -263,13 +263,13 @@ if session.IsExpired() {
 
 ### IsRunning
 
-Returns `true` if the session is currently active (i.e., `ResumedAt` is not nil). This indicates whether the session is connected. A session can be running but have its counters paused — use `IsPaused()` to check if time and data accounting is frozen.
+Returns `true` if the session is currently active (i.e., `ResumedAt` is not nil). A running session can still have its counters paused — use `IsPaused()` to check. Note that a *paused* running session has its client disconnected from the internet (see `IsPaused`), even though the session object is still "running".
 
 ```go
 if session.IsRunning() {
-    // Session is connected (may be counting or paused)
+    // Session object is active (may be counting, or paused+disconnected)
     if session.IsPaused() {
-        // Counters are paused (Pause was called) — client is STILL connected
+        // Counters frozen and client disconnected (no portal redirect)
     } else {
         // Time and data are being counted
     }
@@ -343,7 +343,7 @@ t := session.RemainingTime()
 
 ### Resume
 
-Resumes both time and data counters after they were paused by `Pause()`. Clears `pausedAt` and resets `resumedAt` to now so elapsed time calculation starts fresh from this point. Data consumption will be counted again from this point forward. (A paused client was never disconnected, so no reconnection is involved — this only un-freezes accounting.)
+Resumes both time and data counters after they were paused by `Pause()`, and restores the client's internet access (which `Pause()` cut). Clears `pausedAt` and resets `resumedAt` to now so elapsed time calculation starts fresh from this point. Data consumption will be counted again from this point forward.
 
 ```go
 session.Resume()
@@ -482,7 +482,7 @@ Returns the session's current status as a `ClientSessionStatus` string. The stat
 | Value | Description |
 | --- | --- |
 | `"running"` | Session is active and counters are counting |
-| `"paused"` | Session is still connected but counters are frozen (`Pause()` was called) — the WiFi client is NOT disconnected |
+| `"paused"` | Counters are frozen (`Pause()` was called) and the client is disconnected from the internet — but NOT redirected to the captive portal. The session object stays "running" so it can be resumed. |
 | `"stopped"` | Session is not running (`ResumedAt` is nil) |
 
 ```go
@@ -498,12 +498,12 @@ case sdkapi.ClielntSessionStatusStopped:
 
 ### Pause
 
-Pauses both time and data counters by snapshotting elapsed time into stored consumption and setting `pausedAt`. No further time or data is counted until `Resume()` is called.
+Pauses both time and data counters by snapshotting elapsed time into stored consumption and setting `pausedAt`, and disconnects the client from the internet. No further time or data is counted until `Resume()` is called, and the client's remaining time/data is held constant and resumes exactly where it left off.
 
-!!! important "Pause does NOT disconnect the WiFi client"
-    The session stays fully connected while paused — the client keeps its internet access, firewall rules and bandwidth (TC) limits remain in place. Pausing only **freezes time/data accounting**; it is not a disconnect. The client's remaining time/data is held constant and resumes exactly where it left off on `Resume()`.
+!!! important "Pause disconnects the client, but does NOT open the captive portal"
+    While paused, the client loses internet access, but its HTTP traffic is **not** intercepted and it is **not** redirected to the captive portal — a paused client's browser simply fails to load rather than being bounced to the login page. The session object itself stays "running" (its bandwidth/TC classes are kept) so `Resume()` restores access cheaply. The client's dropped upload attempts are still counted, so an idle-paused session can be auto-resumed the moment the client is active again.
 
-This is useful when you want to temporarily stop time and data tracking without disconnecting the session — for example, to grant a bonus or apply a promotion without the original counters continuing to run in the background, or to stop charging a client whose device has gone idle.
+This is useful to stop charging a client whose device has gone idle (see the autopause plugin) while keeping the session ready to resume the instant the client returns.
 
 !!! warning "Persist required"
     This method only updates the in-memory state. Call `PersistToDB()` to persist the paused state (`paused_at`) to the database.

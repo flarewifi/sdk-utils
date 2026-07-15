@@ -74,6 +74,22 @@ const (
 	// being jumped to directly from forward. See registerCoreChain.
 	blockForwardChain string = "block_forward"
 
+	// Paused-client objects (see PauseClient/UnpauseClient). A paused device is
+	// disconnected from the internet but, unlike a fresh/unauthenticated client,
+	// is NOT redirected to the captive portal — its HTTP is left alone. Two
+	// objects implement this because a single map element can carry only one
+	// verdict, and paused clients need OPPOSITE verdicts in the two hooks:
+	//   - pausedMacSet (set) → prerouting "accept" so the port-80 captive DNAT is
+	//     skipped (no portal, no HTTP intercept).
+	//   - pausedMacMap (verdict map + counter) → forward "drop" so internet is
+	//     cut, while its per-MAC counter keeps tallying the paused client's
+	//     (now-dropped) upload attempts. GetStats folds this counter into the
+	//     traffic feed so the autopause plugin can resume the session the moment
+	//     the client is active again. A device is in EITHER connected_macs_map OR
+	//     paused_macs_map, never both (PauseClient/UnpauseClient move it between).
+	pausedMacSet string = "paused_macs"
+	pausedMacMap string = "paused_macs_map"
+
 	// managedIfacesSet (type ifname) holds the interfaces the app manages.
 	// Membership is toggled by SetInterfaceMode as the admin flips an interface
 	// between managed and unmanaged on the Interfaces page — no rule surgery
@@ -141,6 +157,16 @@ var (
 	// blocked_client_ips_* (the download/return-side deny captured at block time).
 	// Lets UnblockMAC remove exactly what was added. Guarded by nftMu.
 	blockedMacIps = make(map[string]map[string]bool)
+
+	// pausedMacs tracks MACs currently paused via PauseClient (disconnected from
+	// the internet but not portal-redirected). Source of truth for the pause, used
+	// by isConnected so a stop-while-paused still runs teardown. Guarded by nftMu.
+	pausedMacs = make(map[string]bool)
+
+	// pausedMacIps maps a paused MAC → snapshot of the connected IPs it had at
+	// pause time (captured from macToIps). UnpauseClient re-registers exactly these
+	// IPs into the connected verdict maps to restore access. Guarded by nftMu.
+	pausedMacIps = make(map[string]map[string]bool)
 
 	// whitelistReconcilerOnce ensures the background reconciler goroutine is
 	// started at most once, even if Setup runs again.
@@ -247,6 +273,15 @@ func doSetup() (err error) {
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ether_addr; }\n", tableFamily, internetTable, blockedMacSet))
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv4_addr; }\n", tableFamily, internetTable, blockedIpsV4Set))
 	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ipv6_addr; }\n", tableFamily, internetTable, blockedIpsV6Set))
+
+	// Paused-client objects (see the pausedMacSet/pausedMacMap consts and
+	// PauseClient). The set drives the prerouting portal bypass; the verdict map
+	// drops paused clients in forward while counting their attempted upload. Both
+	// are re-declared idempotently on a Setup re-run, so live paused elements
+	// survive exactly like the connected/blocked sets.
+	batch.WriteString(fmt.Sprintf("add set %s %s %s { type ether_addr; }\n", tableFamily, internetTable, pausedMacSet))
+	batch.WriteString(fmt.Sprintf("add map %s %s %s { type ether_addr : verdict ; counter; }\n", tableFamily, internetTable, pausedMacMap))
+
 	batch.WriteString(fmt.Sprintf("add chain %s %s %s\n", tableFamily, internetTable, blockForwardChain))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter drop\n", tableFamily, internetTable, blockForwardChain, blockedMacSet))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr @%s counter drop\n", tableFamily, internetTable, blockForwardChain, blockedIpsV4Set))
@@ -356,6 +391,16 @@ func doSetup() (err error) {
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, connMacMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIpMap))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ip6 daddr vmap @%s\n", tableFamily, internetTable, forwardChain, connIp6Map))
+	// Paused clients: drop (no internet) and count their attempted upload per MAC.
+	// A paused MAC is NOT in connected_macs_map, so the vmap above doesn't match it
+	// and evaluation reaches here. The map's element verdict is "drop", so this is
+	// terminal for paused devices; a non-paused MAC isn't in the map (no match) and
+	// falls through, exactly like the connected vmap. Placed BEFORE the
+	// plugin_forward_after (whitelist) jump so pause reliably cuts internet — a
+	// paused device that is also whitelisted stays cut until UnpauseClient (an
+	// intentional, rare override). The per-element counter is what GetStats folds
+	// into the traffic feed to drive activity-based auto-resume.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr vmap @%s\n", tableFamily, internetTable, forwardChain, pausedMacMap))
 	// Service port jumps are appended after this rule for unauthenticated
 	// clients (see CreateServicePort in core/internal/api/firewall-api.go).
 	// Plugin forward-after jump: the LAST rule Setup adds to forward, so it only
@@ -388,6 +433,13 @@ func doSetup() (err error) {
 	//      outside Setup, and lands after this — an accepted scope boundary.
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s counter jump %s\n", tableFamily, internetTable, preroutingChain, pluginPreroutingBeforeChain))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, connMacSet))
+	// Paused-device bypass — a paused client (paused_macs) skips the captive-portal
+	// DNAT just like an authenticated one, so its HTTP is never intercepted and the
+	// portal never auto-opens. This "accept" only means "don't DNAT here"; the
+	// packet still reaches the forward chain, where paused_macs_map drops it (no
+	// internet). Placed in this batch, so it lands before the port-80 DNAT that
+	// SetCaptivePortalTarget appends later.
+	batch.WriteString(fmt.Sprintf("add rule %s %s %s ether saddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, pausedMacSet))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s ip daddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, captiveIfacesSet, portalIpsV4Set))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s iifname @%s ip6 daddr @%s counter accept\n", tableFamily, internetTable, preroutingChain, captiveIfacesSet, portalIpsV6Set))
 	batch.WriteString(fmt.Sprintf("add rule %s %s %s counter jump %s\n", tableFamily, internetTable, preroutingChain, pluginPreroutingAfterChain))
@@ -860,7 +912,16 @@ func isConnected(mac string) bool {
 		return false
 	}
 
-	err = cmd.Exec(fmt.Sprintf("nft get element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, normalizedMAC), nil)
+	if err = cmd.Exec(fmt.Sprintf("nft get element %s %s %s '{ %s }'", tableFamily, internetTable, connMacSet, normalizedMAC), nil); err == nil {
+		return true
+	}
+
+	// A paused device is not in connected_macs_set (PauseClient moved it out to cut
+	// internet) but still holds firewall state (paused_macs/paused_macs_map) that
+	// must be torn down when its session ends. endSession gates teardown on this
+	// function, so report a paused MAC as "connected" to guarantee doDisconnect
+	// runs and clears the paused elements instead of leaking them.
+	err = cmd.Exec(fmt.Sprintf("nft get element %s %s %s '{ %s }'", tableFamily, internetTable, pausedMacSet, normalizedMAC), nil)
 	return err == nil
 }
 
@@ -980,6 +1041,47 @@ func UnblockMAC(mac string) error {
 		contextInfo,
 		func() (any, error) {
 			return nil, doUnblockMAC(mac)
+		},
+	)
+	return err
+}
+
+// PauseClient disconnects a device from the internet WITHOUT redirecting it to
+// the captive portal: it moves the MAC out of the connected verdict maps (so the
+// forward chain drops it) and into paused_macs (prerouting portal bypass) +
+// paused_macs_map (forward counted drop). The device's HTTP is left alone — a
+// paused client that opens a browser simply fails to reach the net instead of
+// being bounced to the login page. The counted drop keeps tallying the client's
+// upload attempts, which GetStats folds into the traffic feed so the caller can
+// resume the session on activity. Reverse with UnpauseClient. Distinct from
+// BlockMAC, which is an absolute admin deny (top-of-forward, no portal bypass,
+// not meant to be reversed by client activity).
+func PauseClient(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Pause Client (Disconnect, No Portal)",
+		contextInfo,
+		func() (any, error) {
+			return nil, doPauseClient(mac)
+		},
+	)
+	return err
+}
+
+// UnpauseClient reverses PauseClient: it removes the MAC from paused_macs /
+// paused_macs_map and re-registers it (and the IPs it had at pause time) into the
+// connected verdict maps, restoring internet access.
+func UnpauseClient(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Unpause Client (Reconnect)",
+		contextInfo,
+		func() (any, error) {
+			return nil, doUnpauseClient(mac)
 		},
 	)
 	return err
@@ -1111,6 +1213,97 @@ func doUnblockMAC(mac string) error {
 	return nil
 }
 
+func doPauseClient(mac string) error {
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		return fmt.Errorf("invalid MAC address: %v", err)
+	}
+
+	// Snapshot the IPs this device is currently connected with so UnpauseClient can
+	// re-register exactly them. macToIps/ipToMac are intentionally left intact (not
+	// evicted like doDisconnect does) so GetMacByIp keeps resolving while paused.
+	nftMu.Lock()
+	pausedMacs[normalizedMAC] = true
+	ipsCopy := make(map[string]bool)
+	for ip := range macToIps[normalizedMAC] {
+		ipsCopy[ip] = true
+	}
+	pausedMacIps[normalizedMAC] = ipsCopy
+	nftMu.Unlock()
+
+	// Portal bypass + counted drop. No "2>/dev/null || true" here — these two adds
+	// ARE the guarantee PauseClient promises (no HTTP intercept + a live counter
+	// for resume), so a failure (e.g. called before Setup() created the objects)
+	// must propagate instead of leaving pausedMacs/callers believing a device is
+	// paused when the kernel never bypassed the portal. A freshly-added map element
+	// starts at counter 0, giving a clean zero baseline for activity detection.
+	if err := cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }'", tableFamily, internetTable, pausedMacSet, normalizedMAC), nil); err != nil {
+		return fmt.Errorf("add paused MAC element: %w", err)
+	}
+	if err := cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s : drop }'", tableFamily, internetTable, pausedMacMap, normalizedMAC), nil); err != nil {
+		return fmt.Errorf("add paused MAC map element: %w", err)
+	}
+
+	// Cut internet: remove the device from the connected verdict maps/set (upload +
+	// prerouting authed bypass) and from the download IP maps for each snapshotted
+	// IP, then flush conntrack so established flows die immediately rather than
+	// surviving until they time out. Best-effort — an element may already be absent.
+	cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, connMacMap, normalizedMAC), nil)
+	cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, connMacSet, normalizedMAC), nil)
+	for ip := range ipsCopy {
+		ipMap := connIpMap
+		if isIPv6(ip) {
+			ipMap = connIp6Map
+		}
+		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, ipMap, ip), nil)
+		flushConntrackForIP(ip)
+	}
+
+	return nil
+}
+
+func doUnpauseClient(mac string) error {
+	normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+	if err != nil {
+		return fmt.Errorf("invalid MAC address: %v", err)
+	}
+
+	// Recover the IPs captured at pause time (fall back to the live macToIps in the
+	// unlikely event the snapshot is gone), then clear paused tracking.
+	nftMu.Lock()
+	delete(pausedMacs, normalizedMAC)
+	ips := pausedMacIps[normalizedMAC]
+	if len(ips) == 0 {
+		ips = macToIps[normalizedMAC]
+	}
+	ipList := make([]string, 0, len(ips))
+	for ip := range ips {
+		ipList = append(ipList, ip)
+	}
+	delete(pausedMacIps, normalizedMAC)
+	nftMu.Unlock()
+
+	// Restore internet: re-add to the connected verdict map + set (upload +
+	// prerouting authed bypass) and re-register each IP into the download maps.
+	// Idempotent via || true — safe if some element already exists.
+	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, connMacMap, normalizedMAC), nil)
+	cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, connMacSet, normalizedMAC), nil)
+	for _, ip := range ipList {
+		ipMap := connIpMap
+		if isIPv6(ip) {
+			ipMap = connIp6Map
+		}
+		cmd.Exec(fmt.Sprintf("nft add element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, ipMap, ip), nil)
+	}
+
+	// Remove the paused bypass + counted drop last, so there is never a window where
+	// the device is in neither the connected nor the paused maps.
+	cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, pausedMacSet, normalizedMAC), nil)
+	cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, pausedMacMap, normalizedMAC), nil)
+
+	return nil
+}
+
 func doDisconnect(ip string, mac string) error {
 	// Validate IP address
 	if _, err := sdkutils.ValidateIPAddress(ip); err != nil {
@@ -1165,6 +1358,19 @@ func doDisconnect(ip string, mac string) error {
 	if remainingIPs == 0 {
 		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s : accept }' 2>/dev/null || true", tableFamily, internetTable, connMacMap, normalizedMAC), nil)
 		cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, connMacSet, normalizedMAC), nil)
+
+		// If the device was paused when its session ended (stopped, not resumed),
+		// tear down the paused firewall state too so it does not leak — a lingering
+		// paused_macs entry would keep bypassing the captive portal for that MAC.
+		nftMu.Lock()
+		_, wasPaused := pausedMacs[normalizedMAC]
+		delete(pausedMacs, normalizedMAC)
+		delete(pausedMacIps, normalizedMAC)
+		nftMu.Unlock()
+		if wasPaused {
+			cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, pausedMacSet, normalizedMAC), nil)
+			cmd.Exec(fmt.Sprintf("nft delete element %s %s %s '{ %s }' 2>/dev/null || true", tableFamily, internetTable, pausedMacMap, normalizedMAC), nil)
+		}
 	}
 
 	return nil

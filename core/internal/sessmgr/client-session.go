@@ -169,15 +169,20 @@ func (self *ClientSession) SnapshotTimeCons(clearResumed bool) int {
 }
 
 // Pause stops both time and data counters by snapshotting elapsed time into
-// stored consumption and setting pausedAt. The session remains connected
-// (resumedAt is preserved, TC rules and bandwidth limits stay active) but no
-// further time or data is counted. Caller must call PersistToDB() to persist the snapshot.
+// stored consumption and setting pausedAt, then disconnects the client from the
+// internet WITHOUT redirecting it to the captive portal (via the session
+// manager's pauseClientFirewall — see nftables.PauseClient). The session object
+// itself stays "running" (resumedAt is preserved, TC classes are kept) so it can
+// be resumed cheaply, but the device loses network access while paused. A per-MAC
+// counter of the client's now-dropped upload keeps ticking so an idle-paused
+// session can be auto-resumed on activity. Caller must call PersistToDB() to
+// persist the counter snapshot.
 func (self *ClientSession) Pause() {
 	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
 
 	d := self.data.Load()
 	if d.resumedAt == nil || d.pausedAt != nil {
+		self.writeMu.Unlock()
 		return
 	}
 
@@ -187,17 +192,27 @@ func (self *ClientSession) Pause() {
 	newData.timeCons = d.timeCons + elapsed
 	newData.pausedAt = &now
 	self.data.Store(&newData)
+	devId := newData.devId
+	self.writeMu.Unlock()
+
+	// Cut the client's internet access now that its counters are frozen. Done
+	// outside writeMu because it shells out to nft (serialized on nftQue) and must
+	// not block other writes to this session.
+	if self.sessMgr != nil {
+		self.sessMgr.pauseClientFirewall(devId)
+	}
 }
 
-// Resume resumes both time and data counters after they were paused by Pause().
-// Clears pausedAt and resets resumedAt to now so elapsed time calculation starts
-// fresh from this point. Data consumption is counted again from here forward.
+// Resume resumes both time and data counters after they were paused by Pause():
+// it clears pausedAt, resets resumedAt to now so elapsed time starts fresh, and
+// restores the client's internet access (via the session manager's
+// unpauseClientFirewall). Data consumption is counted again from here forward.
 func (self *ClientSession) Resume() {
 	self.writeMu.Lock()
-	defer self.writeMu.Unlock()
 
 	d := self.data.Load()
 	if d.pausedAt == nil {
+		self.writeMu.Unlock()
 		return
 	}
 
@@ -206,6 +221,13 @@ func (self *ClientSession) Resume() {
 	newData.pausedAt = nil
 	newData.resumedAt = &now
 	self.data.Store(&newData)
+	devId := newData.devId
+	self.writeMu.Unlock()
+
+	// Restore internet access outside writeMu (see Pause).
+	if self.sessMgr != nil {
+		self.sessMgr.unpauseClientFirewall(devId)
+	}
 }
 
 // IsPaused returns true if the time/data counters are paused (Pause() was called

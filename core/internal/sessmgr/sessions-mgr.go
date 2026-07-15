@@ -904,6 +904,58 @@ func (self *SessionsMgr) getRunningSession(clnt sdkapi.IClientDevice) (rs *Runni
 	return rs, true
 }
 
+// getRunningSessionByDeviceID looks up a running session by device ID — the key
+// the sessions map uses. Unlike getRunningSession it takes the raw id, so a
+// ClientSession (which holds only devId, not the IClientDevice) can reach its own
+// RunningSession — e.g. to resolve the MAC for the pause firewall enforcement.
+func (self *SessionsMgr) getRunningSessionByDeviceID(devId int64) (*RunningSession, bool) {
+	v, ok := self.sessions.Load(devId)
+	if !ok {
+		return nil, false
+	}
+	rs, ok := v.(*RunningSession)
+	return rs, ok
+}
+
+// pauseClientFirewall disconnects a paused session's device from the internet
+// WITHOUT redirecting it to the captive portal (see nftables.PauseClient). It is
+// the firewall half of ClientSession.Pause(): the session freezes its counters,
+// this cuts network access while keeping a per-MAC counter of the client's
+// now-dropped upload attempts (so an idle-paused session can be auto-resumed the
+// moment the client is active again). Best-effort: Pause() has no error channel
+// and the counter freeze has already taken effect, so a failure is logged, not
+// propagated. A device with no running session or no known MAC is a no-op.
+func (self *SessionsMgr) pauseClientFirewall(devId int64) {
+	rs, ok := self.getRunningSessionByDeviceID(devId)
+	if !ok {
+		return
+	}
+	mac := rs.MacAddr()
+	if mac == "" {
+		return
+	}
+	if err := nftables.PauseClient(mac); err != nil && self.coreAPI != nil {
+		self.coreAPI.Logger().Error(fmt.Sprintf("Failed to disconnect paused device %d (MAC %s) from the internet: %v", devId, mac, err))
+	}
+}
+
+// unpauseClientFirewall reverses pauseClientFirewall, restoring the device's
+// internet access. It is the firewall half of ClientSession.Resume(). Same
+// best-effort/no-op semantics as pauseClientFirewall.
+func (self *SessionsMgr) unpauseClientFirewall(devId int64) {
+	rs, ok := self.getRunningSessionByDeviceID(devId)
+	if !ok {
+		return
+	}
+	mac := rs.MacAddr()
+	if mac == "" {
+		return
+	}
+	if err := nftables.UnpauseClient(mac); err != nil && self.coreAPI != nil {
+		self.coreAPI.Logger().Error(fmt.Sprintf("Failed to reconnect resumed device %d (MAC %s) to the internet: %v", devId, mac, err))
+	}
+}
+
 func (self *SessionsMgr) endSession(clnt sdkapi.IClientDevice) error {
 	rs, ok := self.getRunningSession(clnt)
 

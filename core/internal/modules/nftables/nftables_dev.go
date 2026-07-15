@@ -35,6 +35,9 @@ var (
 	whitelistTable = map[string]bool{}
 	// blockedTable tracks hard-blocked MACs (MAC → true).
 	blockedTable = map[string]bool{}
+	// pausedTable tracks paused MACs (MAC → true): disconnected from the internet
+	// but not portal-redirected. Mirrors the production paused_macs/paused_macs_map.
+	pausedTable = map[string]bool{}
 
 	// ipToMac maps connected IP address (IPv4 or IPv6) → uppercase normalized MAC.
 	// Populated on Connect, evicted on Disconnect.
@@ -218,8 +221,14 @@ func isConnected(mac string) bool {
 		return false
 	}
 
-	_, ok := connTable[normalizedMAC]
-	return ok
+	if _, ok := connTable[normalizedMAC]; ok {
+		return true
+	}
+	// A paused device is not in connTable but still holds paused state that must be
+	// torn down on session end; report it as connected so doDisconnect runs (mirrors
+	// the production isConnected paused_macs check).
+	_, paused := pausedTable[normalizedMAC]
+	return paused
 }
 
 func doConnect(ip string, mac string) error {
@@ -328,6 +337,57 @@ func UnblockMAC(mac string) error {
 	return err
 }
 
+// PauseClient disconnects a device from the internet without portal redirect
+// (mock: moves from connTable to pausedTable; macToIps left intact so the dev
+// stats mock can still find the device but reports zero traffic for it — see
+// stats_dev.go — keeping the session paused until a resume trigger is injected).
+func PauseClient(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Pause Client (Disconnect, No Portal)",
+		contextInfo,
+		func() (any, error) {
+			normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+			if err != nil {
+				return nil, fmt.Errorf("invalid MAC address: %v", err)
+			}
+			// nftMu guards pausedTable because stats_dev's GetStats reads it from a
+			// different queue (nftStatsQue) while this runs on nftQue.
+			nftMu.Lock()
+			pausedTable[normalizedMAC] = true
+			delete(connTable, normalizedMAC)
+			nftMu.Unlock()
+			return nil, nil
+		},
+	)
+	return err
+}
+
+// UnpauseClient reverses PauseClient (mock: moves back from pausedTable to connTable).
+func UnpauseClient(mac string) error {
+	contextInfo := fmt.Sprintf("MAC=%s", mac)
+
+	_, err := nftQue.ExecWithTimeout(
+		30*time.Second,
+		"Unpause Client (Reconnect)",
+		contextInfo,
+		func() (any, error) {
+			normalizedMAC, err := sdkutils.ValidateAndNormalizeMAC(mac)
+			if err != nil {
+				return nil, fmt.Errorf("invalid MAC address: %v", err)
+			}
+			nftMu.Lock()
+			delete(pausedTable, normalizedMAC)
+			connTable[normalizedMAC] = true
+			nftMu.Unlock()
+			return nil, nil
+		},
+	)
+	return err
+}
+
 // AddPreRoutingChainBeforeInternet/AddPreRoutingChainAfterInternet/
 // AddForwardChainBeforeInternet/AddForwardChainAfterInternet: dev mocks, no
 // real nftables chains/jumps to wire — always succeed.
@@ -398,6 +458,12 @@ func doDisconnect(ip string, mac string) error {
 
 	if remainingIPs == 0 {
 		delete(connTable, normalizedMAC)
+		// Clear any paused state too, so a stop-while-paused doesn't leak (mirrors
+		// the production doDisconnect paused cleanup). nftMu guards pausedTable
+		// against stats_dev's cross-queue read.
+		nftMu.Lock()
+		delete(pausedTable, normalizedMAC)
+		nftMu.Unlock()
 	}
 
 	return nil
