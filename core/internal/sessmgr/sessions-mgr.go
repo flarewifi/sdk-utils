@@ -225,14 +225,11 @@ func (self *SessionsMgr) ReloadSessions(ctx context.Context, iface string) error
 					return true
 				}
 
+				// The in-memory session is authoritative here — it carries unsaved
+				// time/data consumption that FlushRunningSessions hasn't persisted
+				// yet. Restart it as-is; reloading from the DB would roll that back.
 				cs := rs.GetSession()
-				err := cs.Reload(ctx)
-				if err != nil {
-					rangeErr = err
-					return false
-				}
-
-				err = rs.Start(ctx, cs)
+				err := rs.Start(ctx, cs)
 				if err != nil {
 					rangeErr = err
 					return false
@@ -681,18 +678,57 @@ func (self *SessionsMgr) UpdateInterfaceBandwidth(ctx context.Context, ifname st
 			upMbits = cfg.UserUpMbits
 		}
 
-		// Update session bandwidth settings
-		session.SetData(sdkapi.SessionUpdateData{
+		// Atomically update+persist the bandwidth settings; the save side effects
+		// (handleSessionSaved) apply the TC changes via ApplyBandwidthUpdate.
+		// On error keep going — one failed TC update must not abort the Range
+		// and block the remaining sessions from receiving the new settings.
+		self.UpdateSession(ctx, session, sdkapi.SessionUpdateData{
 			DownMbits:      &downMbits,
 			UpMbits:        &upMbits,
 			UseGlobalSpeed: &cfg.UseGlobal,
-		})
-
-		// Save triggers the save callback which calls ApplyBandwidthUpdate
-		session.Save(ctx, nil)
+		}, nil)
 
 		return true // Continue to next session
 	})
+}
+
+// UpdateSession atomically applies the given field updates to a session and
+// persists them to the database in a single operation. If the session is
+// currently running, the update is routed to the live in-memory session
+// instance (the authoritative copy), so unsaved runtime consumption is never
+// lost and the caller may pass a stale wrapper safely. Side effects (timer
+// reset, TC updates, EventSessionChanged) are applied by handleSessionSaved
+// after a successful persist.
+func (self *SessionsMgr) UpdateSession(ctx context.Context, session sdkapi.IClientSession, data sdkapi.SessionUpdateData, opts *sdkapi.SessionSaveOpts) error {
+	if session == nil {
+		return errors.New("cannot update nil session")
+	}
+	// In-memory previews built via NewClientSession have no DB row yet; a DB
+	// UPDATE for id=0 would silently match nothing and report success.
+	if session.ID() == 0 {
+		return errors.New("cannot update unsaved session (ID is 0)")
+	}
+
+	// Route the update to the authoritative running instance when one exists —
+	// the caller's wrapper may be a stale snapshot fetched from the DB.
+	target := session
+	if rs, _, ok := self.getRunningSessionBySessionID(session.ID()); ok {
+		if live := rs.GetSession(); live != nil {
+			target = live
+			self.coreAPI.Logger().Debug(fmt.Sprintf("UpdateSession: routed session %d to live running instance", session.ID()))
+		}
+	}
+
+	cs, ok := target.(*ClientSession)
+	if !ok {
+		// Defensive fallback for foreign IClientSession implementations;
+		// *ClientSession is the only implementation today.
+		self.coreAPI.Logger().Debug(fmt.Sprintf("UpdateSession: session %d target is not *ClientSession, using SetData+Save fallback", session.ID()))
+		target.SetData(data)
+		return target.Save(ctx, opts)
+	}
+
+	return cs.UpdateAndSave(ctx, data, opts)
 }
 
 // =============================================================================

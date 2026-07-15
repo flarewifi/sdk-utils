@@ -302,6 +302,38 @@ if ok {
 }
 ```
 
+### UpdateSession
+
+Atomically applies field updates to a session and persists them to the database in a single operation. This is the **preferred way to modify a session**, replacing the non-atomic `SetData()` + `Save()` sequence.
+
+If the session is currently running, the update is routed to the **live in-memory session instance** (the authoritative copy), so unsaved runtime consumption is never lost — it is safe to pass a session object fetched earlier (e.g. via `FindSessionByID`) even if it has become stale.
+
+**Signature:**
+
+```go
+UpdateSession(ctx context.Context, session IClientSession, data SessionUpdateData, opts *SessionSaveOpts) error
+```
+
+**Behavior:**
+
+- Only non-nil fields in `data` are updated (same semantics as [`SetData`](./client-session.md#setdata)).
+- Apply + database persist happen atomically; on a database error nothing is applied.
+- Side effects for running sessions run after a successful persist: **timer reset** (time fields), **consumed-check** (data fields), **TC rule updates** (bandwidth fields).
+- `EventSessionChanged` is emitted unless `opts.IgnoreCallbacks` is set.
+
+```go
+// Extend a session's total time atomically — works whether or not it is running
+err := api.SessionsMgr().UpdateSession(r.Context(), session, sdkapi.SessionUpdateData{
+    TimeSecs: sdkutils.IntPtr(session.TimeSecs() + 3600),
+}, nil)
+```
+
+!!! note "The passed object may become stale"
+    If the session was running, the update lands on the live instance — the object you passed may be a stale snapshot afterward. Re-fetch via [`RunningSession()`](#runningsession) or [`FindRunningSessionByUUID()`](#findrunningsessionbyuuid) if you need the current values.
+
+!!! note "TimeCons is a base value for running sessions"
+    When you set `TimeCons` on a running session, the periodic time checkpoint immediately adds the elapsed time since the last resume on top of your new base — the same semantics `Save()` always had.
+
 ### MergeClientDevices
 
 !!! warning "Deprecated"
@@ -401,7 +433,9 @@ table query.
 
 ## Updating Sessions
 
-To update a session's time, data, or bandwidth, use [`session.SetData()`](./client-session.md#setdata) followed by [`session.Save()`](./client-session.md#save). The `Save()` method automatically applies side effects for running sessions (timer reset, TC rule updates) and emits `EventSessionChanged`.
+To update a session's time, data, or bandwidth, use [`UpdateSession()`](#updatesession). It applies the fields and persists them atomically, routes the update to the live in-memory instance if the session is running, applies side effects (timer reset, TC rule updates), and emits `EventSessionChanged`.
+
+The legacy two-step form — [`session.SetData()`](./client-session.md#setdata) followed by [`session.Save()`](./client-session.md#save) — still works but is not atomic: another writer can interleave between the two calls, and updates to a stale wrapper of a running session are lost on the next periodic flush. Prefer `UpdateSession()`.
 
 ### Update Remaining Time
 
@@ -413,8 +447,8 @@ if err != nil {
 
 // Set new total time = desired remaining + already consumed
 newTimeSecs := remainingSecs + session.ConsumedTimeSecs()
-session.SetData(sdkapi.SessionUpdateData{TimeSecs: sdkutils.IntPtr(newTimeSecs)})
-err = session.Save(r.Context(), nil)
+err = api.SessionsMgr().UpdateSession(r.Context(), session,
+    sdkapi.SessionUpdateData{TimeSecs: sdkutils.IntPtr(newTimeSecs)}, nil)
 ```
 
 ### Update Remaining Data
@@ -427,8 +461,8 @@ if err != nil {
 
 // Set new total data = desired remaining + already consumed
 newDataMb := remainingMb + session.ConsumedDataMb()
-session.SetData(sdkapi.SessionUpdateData{DataMb: sdkutils.Float64Ptr(newDataMb)})
-err = session.Save(r.Context(), nil)
+err = api.SessionsMgr().UpdateSession(r.Context(), session,
+    sdkapi.SessionUpdateData{DataMb: sdkutils.Float64Ptr(newDataMb)}, nil)
 ```
 
 ### Update Bandwidth
@@ -439,10 +473,9 @@ if err != nil {
     // handle error
 }
 
-session.SetData(sdkapi.SessionUpdateData{
+err = api.SessionsMgr().UpdateSession(r.Context(), session, sdkapi.SessionUpdateData{
     DownMbits:      sdkutils.IntPtr(10),
     UpMbits:        sdkutils.IntPtr(5),
     UseGlobalSpeed: sdkutils.BoolPtr(false),
-})
-err = session.Save(r.Context(), nil)
+}, nil)
 ```

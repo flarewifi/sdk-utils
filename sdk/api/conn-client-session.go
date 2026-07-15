@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+type ClientSessionStatus string
+
+const (
+	ClientSessionStatusRunning  ClientSessionStatus = "running"
+	ClientSessionStatusPaused   ClientSessionStatus = "paused"
+	ClielntSessionStatusStopped ClientSessionStatus = "stopped"
+)
+
 // SessionChangedFields tracks which session fields were modified since last save.
 // Maps directly to database columns for granular change tracking.
 type SessionChangedFields struct {
@@ -74,13 +82,14 @@ type SessionData struct {
 	UpdatedAt      time.Time  // Last update timestamp
 
 	// Pre-computed values
-	RemainingTime int        // Remaining time in seconds
-	RemainingData float64    // Remaining data in megabytes
-	ExpiresAt     *time.Time // When session expires, or nil if no expiration
-	IsExpired     bool       // True if session has passed expiration date
-	IsAvailable   bool       // True if session has never been started
-	IsConsumed    bool       // True if session resources are fully consumed
-	IsRunning     bool       // True if session is currently active
+	RemainingTime   int        // Remaining time in seconds
+	RemainingData   float64    // Remaining data in megabytes
+	ExpiresAt       *time.Time // When session expires, or nil if no expiration
+	IsExpired       bool       // True if session has passed expiration date
+	IsAvailable     bool       // True if session has never been started
+	IsConsumed      bool       // True if session resources are fully consumed
+	IsRunning       bool       // True if session is currently active
+	IsCounterActive bool       // True if time and data counters are actively counting
 }
 
 // SessionUpdateData contains fields to update on a session in a single batch operation.
@@ -179,16 +188,20 @@ type IClientSession interface {
 	UseGlobalSpeed() bool
 
 	// IsRunning returns true if the session is currently active (resumedAt is not nil).
+	// deprecated: use Status()
 	IsRunning() bool
 
 	// IsAvailable returns true if the session has never been started (available for use).
+	// deprecated: use Status()
 	IsAvailable() bool
+
+	Status() ClientSessionStatus
 
 	// Returns a snapshot of all session data fields with pre-computed values.
 	// This method acquires the mutex once and returns all fields,
 	// reducing lock contention compared to calling individual getters.
-	// TimeCons includes elapsed time for running sessions.
-	// Pre-computed fields: RemainingTime, RemainingData, ExpiresAt, IsExpired, IsAvailable, IsConsumed, IsRunning.
+	// TimeCons includes elapsed time for running sessions (unless counter is paused).
+	// Pre-computed fields: RemainingTime, RemainingData, ExpiresAt, IsExpired, IsAvailable, IsConsumed, IsRunning, IsCounterActive.
 	Data() SessionData
 
 	// Returns a snapshot of raw session data fields as stored in the database.
@@ -207,13 +220,12 @@ type IClientSession interface {
 	// Sets multiple session fields in a single batch operation.
 	// Only non-nil fields in the data parameter will be updated.
 	// Values are not saved until Save() method is called.
+	// For atomic update+persist, prefer SessionsMgr().UpdateSession().
 	SetData(data SessionUpdateData)
 
 	// Saves the session's changes.
+	// For atomic update+persist, prefer SessionsMgr().UpdateSession().
 	Save(ctx context.Context, opts *SessionSaveOpts) error
-
-	// Reloads the session's data from the database.
-	Reload(ctx context.Context) error
 
 	// Saves the session state directly to the database without triggering save callbacks.
 	// Unlike Save(), this does NOT trigger the onSave callback and does NOT clear dirty flags.
@@ -227,13 +239,18 @@ type IClientSession interface {
 	// Does NOT set dirty flags (internal bookkeeping operation).
 	SnapshotTimeCons(clearResumed bool) int
 
-	// Sync reloads session data from the database and applies any changes to the running session.
-	// This is useful when session data has been modified externally (e.g., by another process or
-	// direct database update) and you need to synchronize the in-memory state.
-	// For running sessions, this will:
-	// - Reset the timer if time allocation changed
-	// - Update TC (traffic control) rules if bandwidth settings changed
-	// - Stop the session if resources are now consumed
-	// Emits EventSessionChanged after syncing.
-	Sync(ctx context.Context) error
+	// StopCounter stops both time and data counters by snapshotting elapsed time
+	// into stored consumption and pausing the counters. The session remains
+	// connected (TC rules and bandwidth limits stay active) but no further time
+	// or data is counted. Caller must call PersistToDB() to persist the snapshot.
+	StopCounter()
+
+	// ResumeCounter resumes the time counter after it was stopped by StopCounter().
+	// Resets resumedAt to now so elapsed time calculation starts fresh from this point.
+	ResumeCounter()
+
+	// IsCounterActive returns true if both time and data counters are actively
+	// counting. The counters are active when the session is running (resumedAt is
+	// set) and the counters have not been paused by StopCounter().
+	IsCounterActive() bool
 }

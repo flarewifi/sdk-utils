@@ -108,6 +108,9 @@ type sessionData struct {
 	createdAt   time.Time
 	updatedAt   time.Time
 
+	// In-memory only (not persisted to DB)
+	counterPaused bool // When true, elapsed time is not added to consumption
+
 	// Dirty tracking - which fields changed since last save/load
 	dirtyTimeSecs       bool // time_secs changed
 	dirtyDataMb         bool // data_mb changed

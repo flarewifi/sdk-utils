@@ -58,197 +58,6 @@ type SessionSaveOpts struct {
 
 The following methods are available in `IClientSession`.
 
-### ID
-
-Returns the session's ID as an `int64` value.
-
-```go
-id := session.ID()
-```
-
-### UUID
-
-Returns the session's unique identifier as a `string` value.
-
-```go
-uuid := session.UUID()
-```
-
-### DeviceID
-
-Returns the database ID of the device that owns this session as an `int64` value. This is useful when you need to look up the device associated with a session.
-
-```go
-deviceID := session.DeviceID()
-
-// Use with FindClientById to get the full device
-device, err := api.SessionsMgr().FindClientById(ctx, deviceID)
-```
-
-### Plugin
-
-Returns the provider plugin of the session record as an `IPluginApi` interface.
-
-```go
-plugin := session.Plugin()
-```
-
-### Type
-
-Returns the session type. The session type is a `SessionType` value (string type).
-
-```go
-t := session.Type()
-```
-
-The available session types are:
-
-| Value | Description
-| --- | ---
-| `"time"` | Represents a `time` session in seconds. Time sessions are sessions that expire when the allocated time is consumed.
-| `"data"` | Represents a `data` session in Megabytes. Data sessions are sessions that expire when the allocated data is consumed.
-| `"time-or-data"` | Represents a `time-or-data` session. Time or data sessions are sessions that are limited by time or data, whichever is consumed first.
-
-### TimeSecs
-
-Returns the allocated session time in seconds. This is only applicable for `time` and `time_or_data` sessions.
-
-```go
-secs := session.TimeSecs()
-```
-
-### DataMb
-
-Returns the allocated session data in Megabytes. This is only applicable for `data` and `time_or_data` sessions.
-
-```go
-mb := session.DataMb()
-```
-
-### TimeConsumption
-
-Returns the consumed session time in seconds. The return type is a `uint` value. This is only applicable for `time` and `time_or_data` sessions. It is used to track the consumed time of the session.
-
-```go
-consumedSecs := session.TimeConsumption()
-```
-
-### DataConsumption
-
-Returns the consumed session data in Megabytes. The return type is a `float64` value. This is only applicable for `data` and `time_or_data` sessions. It is used to track the consumed data of the session.
-
-```go
-consumedMb := session.DataConsumption()
-```
-
-### ConsumedTimeSecs
-
-Returns the raw stored time consumption in seconds (without elapsed time calculation). Use this for syncing/persistence where you need the base value without the elapsed time since `resumed_at`.
-
-```go
-rawSecs := session.ConsumedTimeSecs()
-```
-
-### ConsumedDataMb
-
-Returns the raw stored data consumption in megabytes. Use this for syncing/persistence where you need the base value.
-
-```go
-rawMb := session.ConsumedDataMb()
-```
-
-### RemainingTime
-
-Returns the remaining session time in seconds. The return type is a `uint` value and is calculated by subtracting the time consumption from the allocated time. This is only applicable for `time` and `time_or_data` sessions.
-
-```go
-t := session.RemainingTime()
-```
-
-### RemainingData
-
-Returns the remaining session data in Megabytes. The return type is a `float64` value and is calculated by subtracting the data consumption from the allocated data. This is only applicable for `data` and `time_or_data` sessions.
-
-```go
-mb := session.RemainingData()
-```
-
-### IsConsumed
-
-Returns `true` if the session resources are fully consumed. A session is considered consumed when:
-
-- For `time` sessions: remaining time <= 0
-- For `data` sessions: data consumption >= data allowance
-- For `time-or-data` sessions: either time or data is exhausted
-- For any session type: expiration date has passed
-
-```go
-if session.IsConsumed() {
-    // Session is no longer usable
-}
-```
-
-### IsExpired
-
-Returns `true` if the session has passed its expiration date. This only checks the expiration date (calculated from `ExpDays` and `StartedAt`), not whether time/data resources are exhausted. Returns `false` if the session has no expiration date set.
-
-```go
-if session.IsExpired() {
-    // Session has expired by date
-}
-```
-
-### IsRunning
-
-Returns `true` if the session is currently active (i.e., `ResumedAt` is not nil). This indicates whether the session is actively tracking time consumption.
-
-```go
-if session.IsRunning() {
-    // Session is currently active
-}
-```
-
-### IsAvailable
-
-Returns `true` if the session is available for use. A session is NOT available when any of the following is true:
-
-- `StartedAt` is set, OR
-- `ResumedAt` is set, OR
-- There's consumption data (`TimeConsumption > 0` or `DataConsumption > 0`), OR
-- The session has expired (`IsExpired()` returns true)
-
-This is useful for determining session status in admin interfaces:
-
-```go
-if session.IsAvailable() {
-    // Session has never been used and not expired - show as "Available"
-} else if session.IsConsumed() {
-    // Session is fully consumed - show as "Consumed"
-} else if session.IsExpired() {
-    // Session has expired by date - show as "Expired"
-} else if session.IsRunning() {
-    // Session is currently active - show as "Active"
-} else {
-    // Session was started but is not running - show as "Paused"
-}
-```
-
-### StartedAt
-
-Returns a `*time.Time` value representing the time the session started. A `nil` value is returned if the session has not started.
-
-```go
-s := session.StartedAt()
-```
-
-### ResumedAt
-
-Returns a `*time.Time` value representing the time the session was last resumed. A `nil` value is returned if the session is not currently running. This is used for calculating elapsed time since the session started running.
-
-```go
-resumed := session.ResumedAt()
-```
-
 ### CreatedAt
 
 Returns a `time.Time` value representing the time the session was created.
@@ -257,57 +66,9 @@ Returns a `time.Time` value representing the time the session was created.
 d := session.CreatedAt()
 ```
 
-### UpdatedAt
-
-Returns a `time.Time` value representing the time the session was last updated.
-
-```go
-updated := session.UpdatedAt()
-```
-
-### ExpDays
-
-Returns a `*int` value representing the expiration days after the session is started. A `nil` value is returned if the session does not have expiration date.
-
-```go
-exp := session.ExpDays()
-```
-
-### ExpiresAt
-
-Returns a `*time.Time` value representing the time the session will expire. The expiration time is calculated based on the session start time and the expiration days. A `nil` value is returned if the session does not have expiration date.
-
-```go
-expAt := session.ExpiresAt()
-```
-
-### DownMbits
-
-Returns the download speed of the session in Megabits per second (mbps).
-
-```go
-mbps := session.DownMbits()
-```
-
-### UpMbits
-
-Returns the upload speed of the session in Megabits per second (mbps).
-
-```go
-mbps := session.UpMbits()
-```
-
-### UseGlobalSpeed
-
-Returns a `bool` value indicating if the session uses the global [bandwidth settings](./config-api.md#bandwidth) for the network interface which the [IClientDevice](./client-device.md) is connected.
-
-```go
-useGlobal := session.UseGlobalSpeed()
-```
-
 ### Data
 
-Returns a snapshot of all session data fields as a `SessionData` struct with pre-computed values. This method acquires the mutex once and returns all fields, reducing lock contention compared to calling individual getters. The `TimeCons` field includes elapsed time for running sessions.
+Returns a snapshot of all session data fields as a `SessionData` struct with pre-computed values. This method acquires the mutex once and returns all fields, reducing lock contention compared to calling individual getters. The `TimeCons` field includes elapsed time for running sessions (unless the counter is paused by `StopCounter()`).
 
 ```go
 data := session.Data()
@@ -355,9 +116,183 @@ The `SessionData` struct contains raw fields and pre-computed values:
 | `IsAvailable` | `bool` | True if session has never been started |
 | `IsConsumed` | `bool` | True if session is consumed |
 | `IsRunning` | `bool` | True if session is running |
+| `IsCounterActive` | `bool` | True if time and data counters are actively counting |
 
 !!! note "Pre-computed Values"
     The `SessionData` struct has no methods - all derived values are pre-computed when `Data()` is called. This ensures consistent values within a single snapshot.
+
+### DataConsumption
+
+Returns the consumed session data in Megabytes. The return type is a `float64` value. This is only applicable for `data` and `time_or_data` sessions. It is used to track the consumed data of the session.
+
+```go
+consumedMb := session.DataConsumption()
+```
+
+### DataMb
+
+Returns the allocated session data in Megabytes. This is only applicable for `data` and `time_or_data` sessions.
+
+```go
+mb := session.DataMb()
+```
+
+### DeviceID
+
+Returns the database ID of the device that owns this session as an `int64` value. This is useful when you need to look up the device associated with a session.
+
+```go
+deviceID := session.DeviceID()
+
+// Use with FindClientById to get the full device
+device, err := api.SessionsMgr().FindClientById(ctx, deviceID)
+```
+
+### DownMbits
+
+Returns the download speed of the session in Megabits per second (mbps).
+
+```go
+mbps := session.DownMbits()
+```
+
+### ExpDays
+
+Returns a `*int` value representing the expiration days after the session is started. A `nil` value is returned if the session does not have expiration date.
+
+```go
+exp := session.ExpDays()
+```
+
+### ExpiresAt
+
+Returns a `*time.Time` value representing the time the session will expire. The expiration time is calculated based on the session start time and the expiration days. A `nil` value is returned if the session does not have expiration date.
+
+```go
+expAt := session.ExpiresAt()
+```
+
+### ID
+
+Returns the session's ID as an `int64` value.
+
+```go
+id := session.ID()
+```
+
+### IncDataCons
+
+Increments the consumed session data by `n` Megabytes. The new value is not saved until the [save](#save) method is called.
+
+```go
+session.IncDataCons(10)
+session.Save(ctx, nil)
+```
+
+### IncTimeCons
+
+Increments the consumed session time by `n` seconds. The new value is not saved until the [save](#save) method is called.
+
+```go
+session.IncTimeCons(60)
+session.Save(ctx, nil)
+```
+
+### IsAvailable
+
+Returns `true` if the session is available for use. A session is NOT available when any of the following is true:
+
+- `StartedAt` is set, OR
+- `ResumedAt` is set, OR
+- There's consumption data (`TimeConsumption > 0` or `DataConsumption > 0`), OR
+- The session has expired (`IsExpired()` returns true)
+
+This is useful for determining session status in admin interfaces:
+
+```go
+if session.IsAvailable() {
+    // Session has never been used and not expired - show as "Available"
+} else if session.IsConsumed() {
+    // Session is fully consumed - show as "Consumed"
+} else if session.IsExpired() {
+    // Session has expired by date - show as "Expired"
+} else if session.IsRunning() {
+    // Session is currently active - show as "Active"
+} else {
+    // Session was started but is not running - show as "Paused"
+}
+```
+
+### IsConsumed
+
+Returns `true` if the session resources are fully consumed. A session is considered consumed when:
+
+- For `time` sessions: remaining time <= 0
+- For `data` sessions: data consumption >= data allowance
+- For `time-or-data` sessions: either time or data is exhausted
+- For any session type: expiration date has passed
+
+```go
+if session.IsConsumed() {
+    // Session is no longer usable
+}
+```
+
+### IsCounterActive
+
+Returns `true` if the time and data counters are actively counting. The counters are active when the session is running (`ResumedAt` is set) and the counters have not been paused by `StopCounter()`.
+
+```go
+if session.IsCounterActive() {
+    fmt.Println("Time and data are being counted")
+} else {
+    fmt.Println("Counters are paused")
+}
+```
+
+### IsExpired
+
+Returns `true` if the session has passed its expiration date. This only checks the expiration date (calculated from `ExpDays` and `StartedAt`), not whether time/data resources are exhausted. Returns `false` if the session has no expiration date set.
+
+```go
+if session.IsExpired() {
+    // Session has expired by date
+}
+```
+
+### IsRunning
+
+Returns `true` if the session is currently active (i.e., `ResumedAt` is not nil). This indicates whether the session is connected. A session can be running but have its counters paused — use `IsCounterActive()` to check if time and data are being counted.
+
+```go
+if session.IsRunning() {
+    // Session is connected (may be active or paused)
+    if session.IsCounterActive() {
+        // Time and data are being counted
+    } else {
+        // Counters are paused (StopCounter was called)
+    }
+}
+```
+
+### PersistToDB
+
+Saves the session state directly to the database without triggering side effects. Unlike `Save()`, this does NOT apply TC updates, timer resets, or emit events, and does NOT clear dirty flags. This is used for internal bookkeeping operations such as periodic saves and stop operations.
+
+!!! warning "Internal Use"
+    This method is primarily intended for internal system operations. For normal session updates, use [Save](#save) instead.
+
+```go
+err := session.PersistToDB(ctx)
+```
+
+### Plugin
+
+Returns the provider plugin of the session record as an `IPluginApi` interface.
+
+```go
+plugin := session.Plugin()
+```
 
 ### RawData
 
@@ -389,23 +324,72 @@ The `SessionRawData` struct contains:
 | `CreatedAt` | `time.Time` | Creation timestamp |
 | `UpdatedAt` | `time.Time` | Last update timestamp |
 
-### IncTimeCons
+### RemainingData
 
-Increments the consumed session time by `n` seconds. The new value is not saved until the [save](#save) method is called.
-
-```go
-session.IncTimeCons(60)
-session.Save(ctx, nil)
-```
-
-### IncDataCons
-
-Increments the consumed session data by `n` Megabytes. The new value is not saved until the [save](#save) method is called.
+Returns the remaining session data in Megabytes. The return type is a `float64` value and is calculated by subtracting the data consumption from the allocated data. This is only applicable for `data` and `time_or_data` sessions.
 
 ```go
-session.IncDataCons(10)
-session.Save(ctx, nil)
+mb := session.RemainingData()
 ```
+
+### RemainingTime
+
+Returns the remaining session time in seconds. The return type is a `uint` value and is calculated by subtracting the time consumption from the allocated time. This is only applicable for `time` and `time_or_data` sessions.
+
+```go
+t := session.RemainingTime()
+```
+
+### ResumeCounter
+
+Resumes both time and data counters after they were stopped by `StopCounter()`. Resets `resumedAt` to now so elapsed time calculation starts fresh from this point. Data consumption will be counted again from this point forward.
+
+```go
+session.ResumeCounter()
+err := session.PersistToDB(ctx)
+```
+
+### ResumedAt
+
+Returns a `*time.Time` value representing the time the session was last resumed. A `nil` value is returned if the session is not currently running. This is used for calculating elapsed time since the session started running.
+
+```go
+resumed := session.ResumedAt()
+```
+
+### Save
+
+Save the session changes to the database. After saving, side effects are applied for running sessions:
+
+- **Timer reset** if time allocation or consumption changed
+- **TC (traffic control) update** if bandwidth settings changed
+- **Event emission** (`EventSessionChanged`) unless `IgnoreCallbacks` is set
+
+**Signature:**
+
+```go
+func (s *ClientSession) Save(ctx context.Context, opts *SessionSaveOpts) error
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ctx` | `context.Context` | Context for the operation |
+| `opts` | `*SessionSaveOpts` | Optional settings. Pass `nil` for default behavior. |
+
+**Examples:**
+
+```go
+// Default behavior - applies all side effects and emits events
+err := session.Save(ctx, nil)
+
+// Skip event emission (useful for batch updates)
+err := session.Save(ctx, &sdkapi.SessionSaveOpts{IgnoreCallbacks: true})
+```
+
+!!! tip "Prefer UpdateSession for update+persist"
+    For the common "set fields, then save" flow, prefer the atomic [`SessionsMgr().UpdateSession()`](sessions-mgr-api.md#updatesession) instead of `SetData()` + `Save()`.
 
 ### SetData
 
@@ -459,55 +443,8 @@ err := session.Save(ctx, nil)
 !!! tip "Performance Optimization"
     Use `SetData()` instead of multiple individual setters when updating 3 or more fields. This significantly reduces lock contention in high-throughput scenarios.
 
-### Save
-
-Save the session changes to the database. After saving, side effects are applied for running sessions:
-
-- **Timer reset** if time allocation or consumption changed
-- **TC (traffic control) update** if bandwidth settings changed
-- **Event emission** (`EventSessionChanged`) unless `IgnoreCallbacks` is set
-
-**Signature:**
-
-```go
-func (s *ClientSession) Save(ctx context.Context, opts *SessionSaveOpts) error
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `ctx` | `context.Context` | Context for the operation |
-| `opts` | `*SessionSaveOpts` | Optional settings. Pass `nil` for default behavior. |
-
-**Examples:**
-
-```go
-// Default behavior - applies all side effects and emits events
-err := session.Save(ctx, nil)
-
-// Skip event emission (useful for batch updates)
-err := session.Save(ctx, &sdkapi.SessionSaveOpts{IgnoreCallbacks: true})
-```
-
-### Reload
-
-Reload the session data from the database.
-
-```go
-err := session.Reload(ctx)
-```
-
-### PersistToDB
-
-Saves the session state directly to the database without triggering side effects. Unlike `Save()`, this does NOT apply TC updates, timer resets, or emit events, and does NOT clear dirty flags. This is used for internal bookkeeping operations such as periodic saves and stop operations.
-
-!!! warning "Internal Use"
-    This method is primarily intended for internal system operations. For normal session updates, use [Save](#save) instead.
-
-```go
-err := session.PersistToDB(ctx)
-```
+!!! tip "Prefer UpdateSession for update+persist"
+    `SetData()` + `Save()` is a two-step sequence — another writer can interleave between the two calls. When you want to apply fields **and** persist them, prefer the atomic [`SessionsMgr().UpdateSession()`](sessions-mgr-api.md#updatesession), which also routes the update to the live in-memory session if it is currently running.
 
 ### SnapshotTimeCons
 
@@ -526,63 +463,112 @@ elapsed := session.SnapshotTimeCons(true)  // Session stopping
 elapsed := session.SnapshotTimeCons(false) // Checkpoint, continue tracking
 ```
 
-### Sync
+!!! note "Reload and Sync were removed"
+    Older SDK versions had `Reload()` and `Sync()` methods that re-read the session row from the database into memory. Both were removed: for a running session the in-memory instance is the authoritative copy (it carries unsaved time/data consumption that is only flushed to the database periodically), so overwriting it from the database silently rolled that consumption back. To modify a session, use the atomic [`SessionsMgr().UpdateSession()`](sessions-mgr-api.md#updatesession) — it routes the update to the live instance and applies the same side effects (timer reset, TC update, consumed-check) that `Sync()` used to.
 
-Reloads session data from the database and applies any changes to the running session. This is useful when session data has been modified externally (e.g., by another process or direct database update) and you need to synchronize the in-memory state with the database.
+### StartedAt
 
-For running sessions, `Sync()` will automatically:
-
-- **Reset the timer** if time allocation (`TimeSecs`) or consumption (`TimeCons`) changed
-- **Update TC (traffic control) rules** if bandwidth settings (`DownMbits`, `UpMbits`, `UseGlobalSpeed`) changed
-- **Stop the session** if resources are now consumed (time/data exhausted)
-
-After syncing, `EventSessionChanged` is emitted if any fields changed.
+Returns a `*time.Time` value representing the time the session started. A `nil` value is returned if the session has not started.
 
 ```go
-// Sync a running session after external modification
-sessions, _ := api.SessionsMgr().ListRunningSessions()
-for _, session := range sessions {
-    err := session.Sync(ctx)
-    if err != nil {
-        log.Printf("Failed to sync session %d: %v", session.ID(), err)
-    }
+s := session.StartedAt()
+```
+
+### Status
+
+Returns the session's current status as a `ClientSessionStatus` string. The status is one of:
+
+| Value | Description |
+| --- | --- |
+| `"running"` | Session is active and counters are counting |
+| `"paused"` | Session is active but counters are stopped (`StopCounter()` was called) |
+| `"stopped"` | Session is not running (`ResumedAt` is nil) |
+
+```go
+switch session.Status() {
+case sdkapi.ClientSessionStatusRunning:
+    // Active session with counting
+case sdkapi.ClientSessionStatusPaused:
+    // Active session with paused counters
+case sdkapi.ClielntSessionStatusStopped:
+    // Session is not running
 }
 ```
 
-**Example: Sync after direct database update**
+### StopCounter
+
+Stops both time and data counters by snapshotting elapsed time into stored consumption and pausing the counters. The session remains connected (TC rules and bandwidth limits stay active) but no further time or data is counted.
+
+This is useful when you want to temporarily pause time and data tracking without disconnecting the session — for example, to grant a bonus or apply a promotion without the original counters continuing to run in the background.
+
+!!! warning "Persist required"
+    This method only updates the in-memory state. Call `PersistToDB()` to persist the stopped counters to the database.
 
 ```go
-// Scenario: Admin adds time via direct database query
-// UPDATE sessions SET time_secs = time_secs + 3600 WHERE id = 123;
-
-// Get the running session and sync to apply the change
-runningSession, ok := api.SessionsMgr().RunningSession(device)
-if ok {
-    // Sync reloads from DB and resets the timer with new time
-    err := runningSession.Sync(ctx)
-    if err != nil {
-        log.Printf("Sync failed: %v", err)
-    }
-    // Timer is now reset with the additional hour
-}
+session.StopCounter()
+err := session.PersistToDB(ctx)
 ```
 
-**Example: Sync after external updates**
+### TimeConsumption
+
+Returns the consumed session time in seconds. The return type is a `uint` value. This is only applicable for `time` and `time_or_data` sessions. It is used to track the consumed time of the session.
 
 ```go
-// After external process writes new consumption values to database
-for _, session := range updatedSessions {
-    // Find if this session is currently running
-    runningSessions, _ := api.SessionsMgr().ListRunningSessions()
-    for _, rs := range runningSessions {
-        if rs.ID() == session.ID() {
-            // Sync to apply external updates to running session
-            rs.Sync(ctx)
-            break
-        }
-    }
-}
+consumedSecs := session.TimeConsumption()
 ```
 
-!!! tip "Sync vs Reload"
-    Use `Sync()` when you need the changes to take effect immediately on running sessions (timer reset, bandwidth update). Use `Reload()` when you just need to refresh the in-memory data without applying side effects.
+### TimeSecs
+
+Returns the allocated session time in seconds. This is only applicable for `time` and `time_or_data` sessions.
+
+```go
+secs := session.TimeSecs()
+```
+
+### Type
+
+Returns the session type. The session type is a `SessionType` value (string type).
+
+```go
+t := session.Type()
+```
+
+The available session types are:
+
+| Value | Description
+| --- | ---
+| `"time"` | Represents a `time` session in seconds. Time sessions are sessions that expire when the allocated time is consumed.
+| `"data"` | Represents a `data` session in Megabytes. Data sessions are sessions that expire when the allocated data is consumed.
+| `"time-or-data"` | Represents a `time-or-data` session. Time or data sessions are sessions that are limited by time or data, whichever is consumed first.
+
+### UpMbits
+
+Returns the upload speed of the session in Megabits per second (mbps).
+
+```go
+mbps := session.UpMbits()
+```
+
+### UpdatedAt
+
+Returns a `time.Time` value representing the time the session was last updated.
+
+```go
+updated := session.UpdatedAt()
+```
+
+### UseGlobalSpeed
+
+Returns a `bool` value indicating if the session uses the global [bandwidth settings](./config-api.md#bandwidth) for the network interface which the [IClientDevice](./client-device.md) is connected.
+
+```go
+useGlobal := session.UseGlobalSpeed()
+```
+
+### UUID
+
+Returns the session's unique identifier as a `string` value.
+
+```go
+uuid := session.UUID()
+```
