@@ -1,1 +1,0 @@
-# Flarewifi Default Theme

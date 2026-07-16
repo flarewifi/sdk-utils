@@ -97,7 +97,8 @@ nav:
       - "plugin.json": api/plugin.json.md
       - "window.$flare": api/flare-variable.md
   - Free Plugins:
-      - "Flarewifi Theme": "plugins/com.flarego.default-theme.md"
+      - "Coffee Theme": "plugins/com.flarego.coffee-theme.md"
+      - "Devkit": "plugins/com.flarego.devkit.md"
 
 copyright: |
   &copy; 2024 <a href="https://www.flarego.ph">Flarego Technologies Corp.</a>
