@@ -208,6 +208,47 @@ func ValidatePluginContract(pluginDir string) {
 	}
 }
 
+// EnsurePluginSystemFilesIfMissing generates the two GENERATED entry-point
+// mirror files — system/main.go and system/main_mono.go — for pluginDir when
+// either is absent, running the same ordered enforcement pass sysplugin-prepare
+// uses: tag main.go !mono → mirror it to main_mono.go → mirror both root files
+// into system/.
+//
+// It is a fast no-op when both mirrors already exist: the plugin dir is left
+// completely untouched (main.go is NOT re-tagged, nothing is rewritten), so a
+// plugin with hand-maintained system/ files — or one already fully prepared —
+// is never clobbered and no reflex rebuild is triggered in steady state.
+//
+// This is the workspace-prep entry point (called from CreateGoWorkspace /
+// `flare fix-workspace`): an in-tree plugin scaffolded during development may
+// have only main.go until a release/mono build tool would otherwise generate
+// the mirrors, which leaves it silently violating the four-file contract. Doing
+// it here means every plugin in the workspace has a valid four-file layout
+// before build-plugins compiles it, with no manual prep step.
+//
+// Unlike the Ensure* primitives it composes (which panic on malformed input),
+// this never aborts the caller: a bad plugin (e.g. missing main.go) is logged
+// and skipped via recover, so one broken plugin can't fail workspace generation
+// for the rest.
+func EnsurePluginSystemFilesIfMissing(pluginDir string) {
+	sysMain := filepath.Join(pluginDir, "system", "main.go")
+	sysMonoMain := filepath.Join(pluginDir, "system", "main_mono.go")
+	if fileExists(sysMain) && fileExists(sysMonoMain) {
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("WARNING: could not precreate system entry-point files for %s: %v\n", pluginDir, r)
+		}
+	}()
+
+	EnsureMainGoBuildTag(pluginDir)
+	EnsurePluginMainMono(pluginDir)
+	EnsurePluginSystemFiles(pluginDir)
+	fmt.Printf("%s: precreated system/ entry-point mirror files\n", pluginDir)
+}
+
 // =============================================================================
 // HELPER FUNCTIONS (internal)
 // =============================================================================

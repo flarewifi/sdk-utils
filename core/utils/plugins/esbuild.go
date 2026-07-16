@@ -68,6 +68,8 @@ func EsbuildCss(indexfile string, outfile string) (result api.BuildResult) {
 			".jpg":   api.LoaderFile,
 			".jpeg":  api.LoaderFile,
 			".png":   api.LoaderFile,
+			".webp":  api.LoaderFile,
+			".avif":  api.LoaderFile,
 			".gif":   api.LoaderFile,
 		},
 		EntryNames:        "[name]-[hash]",

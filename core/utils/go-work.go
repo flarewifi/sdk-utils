@@ -82,6 +82,13 @@ use (
 				}
 				seenModule[module] = pluginDir
 
+				// Ensure this in-tree plugin has its generated system/ entry-point
+				// mirrors before build-plugins compiles it, so a plugin scaffolded
+				// during development (only main.go) satisfies the four-file contract
+				// without a manual sysplugin-prepare/mono step. No-op — and no write —
+				// when the mirrors already exist.
+				EnsurePluginSystemFilesIfMissing(pluginDir)
+
 				goWork += "\n    ./" + pluginDir
 			}
 		}
