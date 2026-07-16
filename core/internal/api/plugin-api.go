@@ -106,6 +106,13 @@ type PluginApi struct {
 func (self *PluginApi) Initialize(coreApi *PluginApi) {
 	self.CoreAPI = coreApi
 	self.HttpAPI.Initialize()
+	// Pre-create the plugin's storage directory so its /storage/plugin/<pkg>/
+	// route is registered at boot (setupAssetsRoutes mounts it only when the dir
+	// exists). Without this, the first file a plugin writes to storage — e.g. a
+	// theme's admin-uploaded logo/banner — would 404 until the next restart.
+	if err := self.StorageAPI.EnsureDir(); err != nil {
+		self.Logger().Error("failed to create plugin storage directory: " + err.Error())
+	}
 }
 
 // SetInitFn records the plugin's Init entry point, to be invoked later by RunInit.

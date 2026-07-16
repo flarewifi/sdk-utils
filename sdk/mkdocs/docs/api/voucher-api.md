@@ -1,6 +1,14 @@
 # IVouchersApi
 
-The `IVouchersApi` manages voucher lifecycle including creation, activation, and deletion. Each plugin gets its own scoped instance — vouchers are filtered by the plugin's package name.
+The `IVouchersApi` manages voucher lifecycle including creation, activation, and deletion.
+
+!!! important "Which operations are package-scoped — and which are not"
+    Only some operations filter by your plugin's package (`provider_pkg`):
+
+    - **Package-scoped** — act only on vouchers *your* plugin created: `CreateVouchers` (stamps them with your package), `Count`, `DeleteActivated`.
+    - **Global** — act on *any* voucher regardless of which plugin created it: `FindByCode`, `FindByID`, `Activate`, `Update`, `Delete`, and the batch lookups (`FindBatchByCode`, `FindBatchByUUID`).
+
+    This is deliberate: a code a customer types is looked up and activated globally, so any plugin (e.g. a **theme** with its own voucher input) can redeem a voucher created by another plugin such as `com.flarego.wifi-hotspot`. Do **not** assume `FindByCode`/`Activate` only see your own vouchers.
 
 ## Accessing IVouchersApi
 

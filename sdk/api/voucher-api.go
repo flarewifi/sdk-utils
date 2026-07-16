@@ -112,7 +112,15 @@ type UpdateVoucherBatchParams struct {
 }
 
 // IVouchersApi manages voucher lifecycle including creation, activation, and deletion.
-// Each plugin gets its own scoped instance — vouchers are filtered by the plugin's package name.
+//
+// Scoping is per-method, not per-instance: CreateVouchers (stamps the caller's
+// package), Count, and DeleteActivated act only on the plugin's OWN vouchers,
+// but FindByCode, FindByID, Activate, Update, Delete, and the batch lookups act
+// on ANY voucher by code/ID/UUID regardless of which plugin created it. This is
+// intentional — a customer-typed code is looked up and activated globally, so a
+// theme (or any plugin) can redeem a voucher created by another plugin (e.g.
+// com.flarego.wifi-hotspot). Do NOT assume FindByCode/Activate are limited to
+// your own vouchers.
 type IVouchersApi interface {
 	// CreateVouchers creates a batch of vouchers, one per entry in params.Entries,
 	// and returns them. Each entry carries its own type/time/data/speed/expiry/code,

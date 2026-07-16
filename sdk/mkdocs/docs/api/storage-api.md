@@ -213,6 +213,9 @@ Use in templates:
 <img src={ templ.SafeURL(api.Storage().UrlFor("logo.png")) } alt="Logo" />
 ```
 
+!!! note "The route is available even before your first write"
+    Core registers the `/storage/plugin/<pkg>/` file-serving route only when the plugin's storage directory exists, and it pre-creates that directory for every plugin during initialization. So a file you upload at runtime is served immediately — you do **not** need to seed the directory yourself, and there is no "works only after a restart" gap. (Files still appear as they are written; `UrlFor` just returns the path — it does not create the file.)
+
 ## Complete Example
 
 ```go

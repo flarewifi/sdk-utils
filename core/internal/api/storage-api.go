@@ -352,3 +352,13 @@ func (s *StorageApi) Path(filename string) string {
 func (s *StorageApi) UrlFor(filename string) string {
 	return path.Join("/storage/plugin", s.api.info.Package, filepath.ToSlash(filename))
 }
+
+// EnsureDir creates the plugin's storage directory if it does not already exist.
+// Core calls this when the plugin API is initialized (PluginApi.Initialize) so the
+// /storage/plugin/<pkg>/ HTTP route is always registered at boot: setupAssetsRoutes
+// only mounts that route when the directory exists, so without pre-creation a file
+// uploaded into a plugin that had never written to storage (e.g. a theme's first
+// logo/banner upload) would 404 until the next restart.
+func (s *StorageApi) EnsureDir() error {
+	return os.MkdirAll(s.storageDir(), 0o755)
+}

@@ -471,23 +471,28 @@ Based on the code examples above, you'll need these asset files:
 - `resources/assets/auth/login.js`
 - `resources/assets/auth/login.css`
 
+Each manifest **key must match the `JsFile`/`CssFile` string** you passed to the theme opts (and to any `ViewAssets`) — that string is how core looks the bundle up. The admin and portal themes above use `JsFile: "theme.js"` / `CssFile: "theme.css"`, so the keys are `"theme.js"` / `"theme.css"` (not `"index.js"`/`"index.css"`):
+
 `resources/assets/manifest.admin.json`:
 ```json
 {
-  "index.js": ["./admin/theme.js"],
-  "index.css": ["./admin/theme.css"]
+  "theme.js": ["./admin/theme.js"],
+  "theme.css": ["./admin/theme.css"]
 }
 ```
 
 `resources/assets/manifest.portal.json`:
 ```json
 {
-  "index.js": ["./portal/theme.js"],
-  "index.css": ["./portal/theme.css"],
+  "theme.js": ["./portal/theme.js"],
+  "theme.css": ["./portal/theme.css"],
   "auth/login.js": ["./auth/login.js"],
   "auth/login.css": ["./auth/login.css"]
 }
 ```
+
+!!! note "Per-page `ViewAssets`"
+    If a page factory returns extra `ViewAssets` (e.g. the `IndexPageFactory` above sets `JsFile: "portal/index.js"`), add a matching key — `"portal/index.js": ["./portal/index.js"]` — to the portal manifest, or drop the `ViewAssets` if the page needs no page-specific bundle.
 
 ## Step 10: Add Translations (Optional)
 
